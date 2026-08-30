@@ -1225,3 +1225,139 @@ TEST(CodecAbcReader, MalformedRules){
 		ASSERT_EQ(digest(blob, abc::malformed_t::REFUSE, data, patched), abc::error_t::NONE);
 	}
 }
+/**
+ * @brief Проверка отказа на длину значения, отрезку события не вмещающуюся
+ *
+ * @details Отрезок события несёт смещение и длину ТРИДЦАТЬЮ ДВУМЯ разрядами: события
+ *          копятся очередью, и восемьдесят разрядов на событие стоили бы памяти на всякой
+ *          записи ради невиданного. Но длина, за предел выходящая, ложилась бы в отрезок
+ *          усечённой МОЛЧА - событие вышло бы годным по виду, а содержимое его оборванным
+ *
+ * @note Проверка эта СТОИТ ДЁШЕВО, хотя стережёт величины в гигабайты: отказ приходит по
+ *       ОБЪЯВЛЕННОЙ длине, а не по поданным октетам, и подавать четыре гигабайта незачем.
+ *       Тем она и отличается от сторожа хранилища дерева, какой проверкою набора не
+ *       закрепить: там отказ вырабатывается лишь настоящим содержимым
+ *
+ * @note Возможности записать значение длиннее четырёх гигабайт отказ НЕ отнимает: такое
+ *       значение кладётся кусками, и проверка ниже закрепляет, что путь этот открыт
+ *
+ */
+TEST(CodecAbcReader, SpanWidthLimit){
+	/**
+	 * Работа разбора записи с объявленной длиной значения
+	 *
+	 * @param lead   ведущий октет значения
+	 * @param length объявляемая длина значения
+	 * @return       код отказа разбора
+	 */
+	auto digest = [](const uint8_t lead, const uint64_t length) noexcept -> abc::error_t {
+		// Собираемая запись
+		vector <uint8_t> record;
+		/**
+		 * Выполняем укладку ведущего октета значения с объявлением длины восемью октетами
+		 *
+		 * @note Ширина метки берётся наибольшая намеренно: объявить четыре гигабайта с
+		 * лишком иначе нельзя, а именно это и поверяется
+		 */
+		record.push_back(static_cast <uint8_t> (lead | 0x1B));
+		/**
+		 * Выполняем перебор всех октетов объявляемой длины
+		 *
+		 * @note Октеты кладутся МЛАДШИМ ВПЕРЁД, как то и делает запись: первая сборка
+		 * проверки клала их старшим вперёд, и длина `0xFFFFFFFF` обращалась в
+		 * `0xFFFFFFFF00000000` - проверка краснела на своей же ошибке, а не на кодеке
+		 */
+		for(uint8_t i = 0; i < 8; i++)
+			// Выполняем укладку очередного октета длины младшим вперёд
+			record.push_back(static_cast <uint8_t> ((length >> (i * 8)) & 0xFF));
+		// Разборщик бинарной записи
+		abc::reader_t reader(::logger());
+		/**
+		 * Выполняем подачу записи НЕОКОНЧЕННОЙ намеренно
+		 *
+		 * @note Поданной окончательно она отвергалась бы нехваткой октетов значения - тем
+		 * же кодом, каким отвечает и сторож ширины отрезка, - и два случая стали бы
+		 * неотличимы. Неоконченная подача разделяет их: длина, отрезку вмещающаяся, велит
+		 * ждать октетов, а не вмещающаяся отвергается НЕМЕДЛЯ, октетов не дожидаясь
+		 */
+		if(!reader.feed(record.data(), record.size(), false))
+			// Выводим код отказа разбора
+			return reader.error();
+		// Сообщаем, что запись разобрана без отказа
+		return abc::error_t::NONE;
+	};
+	// Ведущий октет строкового значения
+	const uint8_t text = static_cast <uint8_t> (static_cast <uint8_t> (abc::group_t::STRING) << 5);
+	// Ведущий октет двоичного значения
+	const uint8_t blob = static_cast <uint8_t> (static_cast <uint8_t> (abc::group_t::BLOB) << 5);
+	/**
+	 * Длина, отрезку события ровно вмещающаяся, отказа не вызывает: разбор ждёт октетов
+	 */
+	ASSERT_EQ(digest(text, static_cast <uint64_t> (numeric_limits <uint32_t>::max())),
+	 abc::error_t::NONE);
+	ASSERT_EQ(digest(blob, static_cast <uint64_t> (numeric_limits <uint32_t>::max())),
+	 abc::error_t::NONE);
+	/**
+	 * Длина на единицу шире отрезка события отвергается ею самой
+	 */
+	ASSERT_EQ(digest(text, static_cast <uint64_t> (numeric_limits <uint32_t>::max()) + 1),
+	 abc::error_t::INVALID_LENGTH);
+	ASSERT_EQ(digest(blob, static_cast <uint64_t> (numeric_limits <uint32_t>::max()) + 1),
+	 abc::error_t::INVALID_LENGTH);
+	/**
+	 * Длина, объявленная пределом разрядной сетки, отвергается ею же
+	 */
+	ASSERT_EQ(digest(text, numeric_limits <uint64_t>::max()), abc::error_t::INVALID_LENGTH);
+	ASSERT_EQ(digest(blob, numeric_limits <uint64_t>::max()), abc::error_t::INVALID_LENGTH);
+	/**
+	 * Работа разбора величины неограниченной ширины с объявленной длиной октетов
+	 *
+	 * @param subtype подвид расширения: целое любой ширины либо десятичное
+	 * @param length  объявляемая длина октетов величины
+	 * @return        код отказа разбора
+	 */
+	auto extend = [](const abc::extend_t subtype, const uint64_t length) noexcept -> abc::error_t {
+		// Собираемая запись
+		vector <uint8_t> record;
+		// Выполняем укладку метки расширения затребованного подвида
+		record.push_back(static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::EXTEND) << 5) |
+		 static_cast <uint8_t> (subtype)));
+		/**
+		 * Если расширение является десятичным, впереди длины стоит порядок величины
+		 */
+		if(subtype == abc::extend_t::DECIMAL)
+			// Выполняем укладку нулевого десятичного порядка величины
+			record.push_back(0x00);
+		// Выполняем укладку метки длины октетов величины шириною в восемь октетов
+		record.push_back(static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::UNSIGNED) << 5) | 0x1B));
+		// Выполняем перебор всех октетов объявляемой длины
+		for(uint8_t i = 0; i < 8; i++)
+			// Выполняем укладку очередного октета длины младшим вперёд
+			record.push_back(static_cast <uint8_t> ((length >> (i * 8)) & 0xFF));
+		// Разборщик бинарной записи
+		abc::reader_t reader(::logger());
+		// Выполняем подачу записи разборщику неоконченной
+		if(!reader.feed(record.data(), record.size(), false))
+			// Выводим код отказа разбора
+			return reader.error();
+		// Сообщаем, что запись разобрана без отказа
+		return abc::error_t::NONE;
+	};
+	/**
+	 * Длина октетов величины, отрезку события ровно вмещающаяся, отказа не вызывает
+	 */
+	ASSERT_EQ(extend(abc::extend_t::BIGNUM, static_cast <uint64_t> (numeric_limits <uint32_t>::max())),
+	 abc::error_t::NONE);
+	/**
+	 * Длина октетов величины шире отрезка события отвергается им
+	 *
+	 * @note Величина неограниченной ширины кусками НЕ кладётся, оттого предел этот ей
+	 * настоящий - но величина в четыре гигабайта есть число о тридцати четырёх миллиардах
+	 * разрядов, и тесным предел назвать нельзя
+	 */
+	ASSERT_EQ(extend(abc::extend_t::BIGNUM, static_cast <uint64_t> (numeric_limits <uint32_t>::max()) + 1),
+	 abc::error_t::INVALID_LENGTH);
+	// Выполняем проверку того же у десятичного расширения
+	ASSERT_EQ(extend(abc::extend_t::DECIMAL, static_cast <uint64_t> (numeric_limits <uint32_t>::max()) + 1),
+	 abc::error_t::INVALID_LENGTH);
+}

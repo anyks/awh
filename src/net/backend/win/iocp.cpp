@@ -7972,10 +7972,11 @@ namespace post {
 	 * @param error    код ошибки обращения
 	 * @param token    метка завершения поданной операции
 	 * @param name     название операции для журнала
+	 * @param owner    узел, какому операция принадлежит, для разбора отказа
 	 * @return         метка завершения либо `INVALID`, если подать операцию не удалось
 	 *
 	 */
-	static uint64_t submitted(const bool accepted, const DWORD error, const uint64_t token, const char * name) noexcept {
+	static uint64_t submitted(const bool accepted, const DWORD error, const uint64_t token, const char * name, void * owner = nullptr) noexcept {
 		// Если операция выполнена сразу либо принята системой
 		if(accepted || (error == ERROR_IO_PENDING))
 			// Выводим метку завершения
@@ -8047,11 +8048,29 @@ namespace post {
 			int32_t size = static_cast <int32_t> (sizeof(address));
 			// Признак того, что описатель привязан
 			const bool bound = (socket && (::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&address), &size) == 0));
-			// Записываем ошибку в лог вместе с состоянием описателя
+			/**
+			 * Узел, какому операция принадлежит, называется здесь же
+			 *
+			 * @details Приходит он ОТДЕЛЬНЫМ доводом, а не полем пользовательских данных:
+			 *          ядру передаётся запись учёта подписки, а не узел, и чтение её как
+			 *          узла даёт вымысел. Промах этот был допущен и стоил замера: прибор
+			 *          напечатал "узел 0, состояние 0" там, где узел был жив
+			 *
+			 * @note Состояние описателя говорит, ЧТО не так, а состояние узла - ПОЧЕМУ:
+			 *       непривязанный дейтаграммный сокет у узла, ещё не запущенного, это
+			 *       одно, а у запущенного - совсем другое
+			 */
+			::io::node_t * const node = reinterpret_cast <::io::node_t *> (owner);
+			// Записываем ошибку в лог вместе с состоянием описателя и узла
 			::post::log->print(
-				"%s: cannot submit %s on descriptor %llu: %s (гнездо: %s, разновидность: %d, привязан: %s)",
+				"%s: cannot submit %s on descriptor %llu: %s (гнездо: %s, разновидность: %d, привязан: %s, "
+				"узел: %llu, состояние: %u, вид: %u, тип: %u)",
 				log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock),
-				::kernel::message(error).c_str(), (socket ? "да" : "нет"), kind, (bound ? "да" : "нет")
+				::kernel::message(error).c_str(), (socket ? "да" : "нет"), kind, (bound ? "да" : "нет"),
+				static_cast <uint64_t> ((node != nullptr) ? node->id : 0),
+				static_cast <uint32_t> ((node != nullptr) ? node->state.status : event::status_t::NONE),
+				static_cast <uint32_t> ((node != nullptr) ? node->state.node : event::node_t::NONE),
+				static_cast <uint32_t> ((node != nullptr) ? node->state.type : event::type_t::NONE)
 			);
 		}
 		// Выводим отсутствие метки завершения
@@ -8086,12 +8105,13 @@ namespace post {
 	 * @param sock      дескриптор, готовность которого ожидается
 	 * @param mask      набор ожидаемых событий готовности
 	 * @param multishot признак многократного ожидания, порту завершений неведомый
-	 * @param udata     узел, которому операция принадлежит
+	 * @param udata     запись учёта подписки, ядру передаваемая
 	 * @param kind      разновидность, под которой операция ложится в учёт
+	 * @param owner     узел, какому подписка принадлежит, для разбора отказа подачи
 	 * @return          метка завершения
 	 *
 	 */
-	static uint64_t poll(const net::socket_t sock, const uint32_t mask, [[maybe_unused]] const bool multishot, void * udata, const ::inflight::kind_t kind = ::inflight::kind_t::POLL) noexcept {
+	static uint64_t poll(const net::socket_t sock, const uint32_t mask, [[maybe_unused]] const bool multishot, void * udata, const ::inflight::kind_t kind = ::inflight::kind_t::POLL, void * owner = nullptr) noexcept {
 		// Занимаем запись учёта под операцию
 		const uint64_t result = ::inflight::acquire(kind, sock, udata);
 		// Получаем запись учёта
@@ -8306,7 +8326,7 @@ namespace post {
 		// Выполняем подачу приёма нулевой длины
 		accepted = (::WSARecv(static_cast <SOCKET> (sock), &buffer, 1, &bytes, &flags, &slot->overlapped, nullptr) == 0);
 		// Выводим результат подачи ожидания готовности к приёму
-		return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "read readiness");
+		return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "read readiness", owner);
 	}
 	/**
 	 * @brief Функция подачи родного приёма данных
@@ -8347,10 +8367,11 @@ namespace post {
 	 * @param udata    запись подписки, которой операция принадлежит
 	 * @param datagram признак дейтаграммного дескриптора
 	 * @param metadata признак приёма со служебными метаданными
+	 * @param owner    узел, какому подписка принадлежит, для разбора отказа подачи
 	 * @return         метка завершения
 	 *
 	 */
-	static uint64_t fetch(const net::socket_t sock, void * udata, const bool datagram, const bool metadata = false) noexcept {
+	static uint64_t fetch(const net::socket_t sock, void * udata, const bool datagram, const bool metadata = false, void * owner = nullptr) noexcept {
 		// Выполняем занятие буфера приёма
 		const uint16_t bid = ::pool::take();
 		// Если свободных буферов приёма не осталось
@@ -8497,7 +8518,7 @@ namespace post {
 		 *       родной приём каналу тогда не подавался ни разу, а работа уходила к
 		 *       подделке готовности со всей её гонкой
 		 */
-		const uint64_t token = ::post::submitted(accepted, (pipe ? ::GetLastError() : static_cast <DWORD> (::WSAGetLastError())), result, "receive");
+		const uint64_t token = ::post::submitted(accepted, (pipe ? ::GetLastError() : static_cast <DWORD> (::WSAGetLastError())), result, "receive", owner);
 		// Если подать родной приём не удалось - освобождаем занятый буфер
 		if(token == ::inflight::INVALID)
 			// Освобождаем занятый буфер приёма
@@ -10485,6 +10506,66 @@ namespace kernel {
 		return true;
 	}
 	/**
+	 * @brief Функция привязки дейтаграммного сокета к нулевому адресу
+	 *
+	 * @details Приём на непривязанном дейтаграммном сокете система отвергает отказом
+	 *          `WSAEINVAL` (10022). Ядру POSIX такое обращение законно: оно отвечает
+	 *          `EAGAIN` и держит приём до прихода дейтаграммы, а привязку делает само
+	 *          при первой отправке. Замером по трём системам подтверждено: macOS и
+	 *          FreeBSD отвечают кодом 35, Linux - кодом 11, и ни одна отказом не
+	 *          отвечает. Оттого движки POSIX заслона этого не имеют вовсе, и ставить
+	 *          его там незачем - лишнее обращение в горячем пути
+	 *
+	 *          Дейтаграммный узел без заданного исходного адреса не привязывается
+	 *          нигде: `commit` заводит сокет и применяет настройки, взведение готовности
+	 *          подаёт приём, а привязку у POSIX берёт на себя ядро. Здесь её приходится
+	 *          делать самим - ровно тем же порядком, каким она делается перед наложенным
+	 *          подключением, которому `ConnectEx` тоже требует привязанного сокета
+	 *
+	 * @note Установлено прибором на стенде: отказ подачи приходил у ЗАПУЩЕННЫХ узлов
+	 *       (состояние LAUNCHED) вида клиент и вида сервер, тип дейтаграммный, при
+	 *       годном гнезде без привязки. Виден он был не всякий прогон и не всякой
+	 *       проверкой, а разбор его в согласовании уходил в ветку неизвестных отказов,
+	 *       которая повторной подачи НЕ ставит - оттого узел изредка замолкал навсегда
+	 *
+	 * @param sock   дескриптор привязываемого сокета
+	 * @param family семейство адресов узла
+	 * @param log    объект работы с логами
+	 * @return       результат привязки
+	 *
+	 */
+	static bool anchor(const net::socket_t sock, const event::family_t family, const log_t * log) noexcept {
+		// Если семейство адресов сокету не подходит - привязывать нечем
+		if((family != event::family_t::IPV4) && (family != event::family_t::IPV6))
+			// Выводим успешный результат: привязка здесь не нужна
+			return true;
+		// Адрес, к которому сокет привязан
+		struct sockaddr_storage bound{};
+		// Размер адреса, к которому сокет привязан
+		int32_t length = static_cast <int32_t> (sizeof(bound));
+		// Если сокет уже привязан - делать нечего
+		if(::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&bound), &length) == 0)
+			// Выводим успешный результат
+			return true;
+		// Собственный адрес привязки
+		struct sockaddr_storage source{};
+		// Устанавливаем семейство собственного адреса привязки
+		source.ss_family = static_cast <ADDRESS_FAMILY> ((family == event::family_t::IPV6) ? AF_INET6 : AF_INET);
+		// Размер собственного адреса привязки
+		const int32_t bytes = static_cast <int32_t> ((family == event::family_t::IPV6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+		// Если привязать сокет к нулевому адресу не удалось
+		if(::__awh_bind__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&source), bytes) != 0){
+			// Записываем ошибку в лог
+			log->print("%s: cannot bind datagram descriptor %llu before receive: %s", log_t::flag_t::CRITICAL,
+			 ::__AWH_IO_BACKEND__, static_cast <uint64_t> (sock), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+			// Выводим результат с ошибкой
+			return false;
+		}
+		// Выводим успешный результат
+		return true;
+	}
+
+	/**
 	 * @brief Функция согласования учёта одного дескриптора с очередью опроса
 	 *
 	 * @details Приводит подписку в очереди опроса к тому виду, который сложился в
@@ -11129,6 +11210,37 @@ namespace kernel {
 		 *       обслуживаться дальше. Путь этот медленнее ровно на одно обращение к
 		 *       ядру, а не хуже по существу
 		 */
+		/**
+		 * Дейтаграммный сокет прежде подачи приёма привязывается
+		 *
+		 * @note Отказ привязки подачу не отменяет: она отвергнется сама и уйдёт в разбор
+		 *       отказов общим порядком. Свой доклад привязка уже записала
+		 */
+		if(datagram){
+			/**
+			 * Узел вида сервер к нулевому адресу НЕ привязывается
+			 *
+			 * @warning Привязку серверу назначает заведение, и трогать её отсюда нельзя:
+			 *          путь настоящей привязки написан как `io::bound(fd) || bind(...)`,
+			 *          то есть уже привязанный сокет он ПРОПУСКАЕТ. Привязка к нулевому
+			 *          адресу отменила бы настоящую - сервер молча сел бы на случайный
+			 *          порт вместо назначенного
+			 *
+			 * @note Непривязанный дейтаграммный сервер сам по себе дефектом не является:
+			 *       у рассылки такой узел есть ОТПРАВИТЕЛЬ, принимать ему нечего, и
+			 *       заведение его намеренно не привязывает. Отказ подачи приёма у него
+			 *       наречием уже разобран и безвреден - у сокета многоадресной рассылки
+			 *       готовность приходит родным приёмом
+			 *
+			 * @warning Поле `endpoint.server` у такого узла держит адрес НАЗНАЧЕНИЯ, а не
+			 *          адрес привязки. Судить по его порту о пропущенной привязке нельзя:
+			 *          порт там ненулевой всегда и по устройству. Ошибка эта была
+			 *          допущена и стоила ложного вывода о чужом дефекте
+			 */
+			if(node->state.node != event::node_t::SERVER)
+				// Выполняем привязку дейтаграммного сокета к нулевому адресу
+				::kernel::anchor(state.sock, node->state.family, log);
+		}
 		// Признак поданного родного приёма
 		bool fetching = false;
 		// Если дескриптор слушающий - подаём приём подключения
@@ -11146,13 +11258,13 @@ namespace kernel {
 			 *       обязан отдавать адрес отправителя, и разбор его тоже читает
 			 *       `recvfrom`, а не `recv`
 			 */
-			state.token = (suitable ? ::post::fetch(state.sock, &state, (datagram || raw), metadata) : ::inflight::INVALID);
+			state.token = (suitable ? ::post::fetch(state.sock, &state, (datagram || raw), metadata, node) : ::inflight::INVALID);
 			// Запоминаем поданность родного приёма
 			fetching = (state.token != ::inflight::INVALID);
 			// Если родной приём не подавался либо подать его не удалось
 			if(!fetching)
 				// Выполняем подачу ожидания готовности дескриптора
-				state.token = ::post::poll(state.sock, events, false, &state);
+				state.token = ::post::poll(state.sock, events, false, &state, ::inflight::kind_t::POLL, node);
 		}
 		// Получаем запись принятого по дескриптору
 		::pool::fetched_t * fetch = ::pool::get(state.sock);

@@ -96,6 +96,46 @@ TEST(CodecYamlCommon, Messages) {
 	}
 }
 /**
+ * @brief Проверка названий кодировок и их обратного разбора
+ *
+ * @details Кодек, кодировку принимающий, обязан уметь и назвать её, и опознать по
+ * названию: иначе потребитель, взявший название из настроек, обратить его в кодировку
+ * ничем не может. Договор этот один у INI, TOML и YAML
+ *
+ * @warning Границей перебора стоит ПОСЛЕДНИЙ член перечня, а не имя кодировки, некогда
+ *          бывшее последним: заведённая следом кодировка выпала бы из перебора молча
+ *
+ */
+TEST(CodecYamlCommon, EncodingNames) {
+	/**
+	 * Выполняем перебор всех поддерживаемых кодировок
+	 */
+	for(uint8_t i = static_cast <uint8_t> (yaml::encoding_t::UTF8); i <= static_cast <uint8_t> (yaml::encoding_t::CP1252); i++){
+		// Получаем название очередной кодировки
+		const string name(yaml::name(static_cast <yaml::encoding_t> (i)));
+		// Выполняем проверку того, что название кодировки не пусто
+		ASSERT_FALSE(name.empty()) << static_cast <uint32_t> (i);
+		// Выполняем проверку того, что кодировка названа, а не помечена неизвестной
+		ASSERT_NE(name, "unknown") << static_cast <uint32_t> (i);
+		// Выполняем проверку обратного разбора названия кодировки
+		ASSERT_EQ(yaml::encoding(name), static_cast <yaml::encoding_t> (i)) << name;
+	}
+	// Выполняем проверку разбора названия кодировки без учёта регистра
+	ASSERT_EQ(yaml::encoding("utf-8"), yaml::encoding_t::UTF8);
+	// Выполняем проверку разбора названия кодировки без указания порядка байтов
+	ASSERT_EQ(yaml::encoding("UTF-16"), yaml::encoding_t::UTF16BE);
+	// Выполняем проверку разбора названия кодировки UTF-32 без указания порядка байтов
+	ASSERT_EQ(yaml::encoding("UTF-32"), yaml::encoding_t::UTF32BE);
+	// Выполняем проверку разбора обиходного названия кодировки ISO-8859-1
+	ASSERT_EQ(yaml::encoding("latin1"), yaml::encoding_t::LATIN1);
+	// Выполняем проверку разбора обиходного названия кодировки Windows-1252
+	ASSERT_EQ(yaml::encoding("cp1252"), yaml::encoding_t::CP1252);
+	// Выполняем проверку разбора неизвестного названия кодировки
+	ASSERT_EQ(yaml::encoding("koi8-r"), yaml::encoding_t::NONE);
+	// Выполняем проверку разбора пустого названия кодировки
+	ASSERT_EQ(yaml::encoding(""), yaml::encoding_t::NONE);
+}
+/**
  * @brief Проверка названий видов узлов, видов значений и событий чтения
  *
  */

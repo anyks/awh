@@ -737,7 +737,7 @@ bool awh::codec::toml::Document::spacious(const size_t length) noexcept {
 	 */
 	if((this->_store.length() + length) > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INTERNAL;
+		this->fault(error_t::INTERNAL);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат проверки
@@ -1017,7 +1017,7 @@ bool awh::codec::toml::Document::compose(writer_t & writer, const uint32_t node)
 		}
 	}
 	// Запоминаем код ошибки записи дерева настроек
-	this->_error = error_t::INVALID_VALUE;
+	this->fault(error_t::INVALID_VALUE);
 	// Выполняем вывод сообщения об отказе в лог
 	this->report();
 	// Выводим отрицательный результат выполнения операции
@@ -1036,7 +1036,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 	 */
 	if(path.empty()){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::EMPTY_KEY;
+		this->fault(error_t::EMPTY_KEY);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -1047,7 +1047,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 	 */
 	if((this->_settings.reader.maxParts > 0) && (path.size() > static_cast <size_t> (this->_settings.reader.maxParts))){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::PARTS_EXCEEDED;
+		this->fault(error_t::PARTS_EXCEEDED);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -1062,7 +1062,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 		 */
 		if((this->_settings.reader.maxKey > 0) && (part.length() > static_cast <size_t> (this->_settings.reader.maxKey))){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::KEY_TOO_LONG;
+			this->fault(error_t::KEY_TOO_LONG);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1083,7 +1083,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 			 */
 			if(((letter < 0x20) && (part[i] != '\t')) || (letter == 0x7F)){
 				// Запоминаем код ошибки правки дерева настроек
-				this->_error = error_t::INVALID_KEY;
+				this->fault(error_t::INVALID_KEY);
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Выводим отрицательный результат выполнения операции
@@ -1106,7 +1106,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 		 */
 		if(this->locate(name, kind_t::PAIR) != NO_RECORD){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::REDEFINE_TABLE;
+			this->fault(error_t::REDEFINE_TABLE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1136,7 +1136,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 			 */
 			if(!ordinal(path.at(i), number) || (number >= tables)){
 				// Запоминаем код ошибки правки дерева настроек
-				this->_error = error_t::REDEFINE_TABLE;
+				this->fault(error_t::REDEFINE_TABLE);
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Выводим отрицательный результат выполнения операции
@@ -1149,7 +1149,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 	 */
 	if(this->count(path) > 0){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::REDEFINE_TABLE;
+		this->fault(error_t::REDEFINE_TABLE);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -1164,7 +1164,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 		 */
 		if(this->locate(path, kind_t::PAIR) != NO_RECORD){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::REDEFINE_TABLE;
+			this->fault(error_t::REDEFINE_TABLE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1182,7 +1182,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 		 */
 		if(this->_dotted.count(buffer) > 0){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::DUPLICATE_TABLE;
+			this->fault(error_t::DUPLICATE_TABLE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1197,7 +1197,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 		 */
 		if(this->locate(path, kind_t::TABLE) != NO_RECORD){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::REDEFINE_TABLE;
+			this->fault(error_t::REDEFINE_TABLE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1216,7 +1216,7 @@ bool awh::codec::toml::Document::acceptable(const vector <string_view> & path, c
 		 */
 		if(this->_children.count(buffer) > 0){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::REDEFINE_TABLE;
+			this->fault(error_t::REDEFINE_TABLE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1523,7 +1523,7 @@ awh::codec::toml::Document::node_t * awh::codec::toml::Document::reach(const vec
 	 */
 	if(created == NO_RECORD){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INTERNAL;
+		this->fault(error_t::INTERNAL);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим пустой указатель узла значения
@@ -1582,7 +1582,7 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 	 */
 	if(text.length() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
 		// Запоминаем код ошибки разбора текста настроек
-		this->_error = error_t::INTERNAL;
+		this->fault(error_t::INTERNAL);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2283,6 +2283,14 @@ bool awh::codec::toml::Document::item(const vector <string_view> & path, const s
  *
  */
 bool awh::codec::toml::Document::create(const vector <string_view> & path) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Собираемая длина составного имени объявляемой таблицы
 	size_t length = 0;
 	/**
@@ -2337,6 +2345,14 @@ bool awh::codec::toml::Document::create(const vector <string_view> & path) noexc
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const string_view value, const string_t quoting) noexcept {
 	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
+	/**
 	 * Если значение в хранилище знаков не вмещается
 	 *
 	 * @note Проверка ведётся прежде правки: узел, заведённый под значение, которое не
@@ -2377,6 +2393,14 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
  *
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const char * value, const string_t quoting) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Выполняем установку строкового значения пары
 	return this->set(path, string_view((value != nullptr) ? value : ""), quoting);
 }
@@ -2389,6 +2413,14 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const ch
  *
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const bool value) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Выполняем получение узла значения для правки
 	node_t * node = this->reach(path);
 	/**
@@ -2415,6 +2447,14 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const bo
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const int64_t value, const radix_t radix) noexcept {
 	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
+	/**
 	 * Если отрицательное число записывается системой счисления с приставкой
 	 *
 	 * @note Описание отводит знак числа лишь десятичной записи, и записать такое
@@ -2423,7 +2463,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const in
 	 */
 	if((radix != radix_t::DECIMAL) && (value < 0)){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INVALID_NUMBER;
+		this->fault(error_t::INVALID_NUMBER);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2455,6 +2495,14 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const in
  *
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const double value) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Выполняем получение узла значения для правки
 	node_t * node = this->reach(path);
 	/**
@@ -2481,12 +2529,20 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const do
  */
 bool awh::codec::toml::Document::set(const vector <string_view> & path, const stamp_t & value, const type_t type) noexcept {
 	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
+	/**
 	 * Если устанавливаемый тип отметкой времени не является
 	 */
 	if((type != type_t::OFFSET_DATETIME) && (type != type_t::LOCAL_DATETIME) &&
 	   (type != type_t::LOCAL_DATE) && (type != type_t::LOCAL_TIME)){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INVALID_DATETIME;
+		this->fault(error_t::INVALID_DATETIME);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2505,7 +2561,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 	if(dated && ((value.date.year > 9999) ||
 	   !toml::calendar(value.date.year, value.date.month, value.date.day))){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INVALID_DATETIME;
+		this->fault(error_t::INVALID_DATETIME);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2521,7 +2577,7 @@ bool awh::codec::toml::Document::set(const vector <string_view> & path, const st
 	   ((value.time.hour > 23) || (value.time.minute > 59) || (value.time.second > 60) ||
 	    (value.time.nanosecond > 999999999))){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::INVALID_DATETIME;
+		this->fault(error_t::INVALID_DATETIME);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2615,6 +2671,14 @@ uint32_t awh::codec::toml::Document::dive(const vector <string_view> & path) noe
  *
  */
 bool awh::codec::toml::Document::arrange(const vector <string_view> & path, const bool table) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Выполняем поиск места объявления среди значений, уже деревом несомых
 	uint32_t target = this->dive(path);
 	/**
@@ -2668,6 +2732,14 @@ bool awh::codec::toml::Document::arrange(const vector <string_view> & path, cons
  */
 bool awh::codec::toml::Document::push(const vector <string_view> & path, const content_t & value) noexcept {
 	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
+	/**
 	 * Если значение в хранилище знаков не вмещается
 	 *
 	 * @note Проверка ведётся прежде правки: узел, заведённый под значение, которое не
@@ -2703,6 +2775,14 @@ bool awh::codec::toml::Document::push(const vector <string_view> & path, const c
  *
  */
 bool awh::codec::toml::Document::put(const vector <string_view> & path, const vector <string_view> & name, const content_t & value) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Собираемая длина составного имени добавляемой пары
 	size_t length = value.text.length();
 	/**
@@ -2746,6 +2826,14 @@ bool awh::codec::toml::Document::put(const vector <string_view> & path, const ve
  *
  */
 bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Выполняем поиск записи пары по составному имени
 	const uint32_t record = this->locate(path, kind_t::PAIR);
 	/**
@@ -2758,7 +2846,7 @@ bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexce
 	 */
 	if(record == NO_RECORD){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::UNKNOWN_KEY;
+		this->fault(error_t::UNKNOWN_KEY);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2794,6 +2882,14 @@ bool awh::codec::toml::Document::erase(const vector <string_view> & path) noexce
  *
  */
 bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за один разбор: переживи
+	 *       он удачную работу следом, потребитель судил бы о ней по причине, к ней
+	 *       отношения не имеющей. Вместе с кодом сбрасывается и положение ошибки
+	 */
+	this->fault(error_t::NONE);
 	// Выполняем поиск записи объявления таблицы по составному имени
 	const uint32_t record = this->locate(path, kind_t::TABLE);
 	/**
@@ -2803,7 +2899,7 @@ bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexc
 	 */
 	if(record == NO_RECORD){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::UNKNOWN_TABLE;
+		this->fault(error_t::UNKNOWN_TABLE);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2954,6 +3050,13 @@ void awh::codec::toml::Document::clear() noexcept {
  *
  */
 string awh::codec::toml::Document::text(const writer_t::settings_t & settings) const noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Сборка текста отвечает за себя наравне с работами над деревом: код её
+	 *       обязан говорить о ней, а не о прежнем разборе
+	 */
+	this->fault(error_t::NONE);
 	// Объект записи текста настроек
 	writer_t writer(this->_log, settings);
 	/**
@@ -3099,6 +3202,27 @@ awh::codec::toml::writer_t::settings_t awh::codec::toml::Document::writing() con
 	result.separated = false;
 	// Выводим настройки записи текста настроек
 	return result;
+}
+/**
+ * @brief Метод запоминания кода отказа работы над деревом
+ *
+ * @param error запоминаемый код отказа
+ * @return      признак отказа для выхода из работы
+ *
+ */
+bool awh::codec::toml::Document::fault(const error_t error) const noexcept {
+	// Запоминаем код отказа работы над деревом
+	this->_error = error;
+	/**
+	 * Выполняем сброс положения обнаруженной ошибки
+	 *
+	 * @note Положение это принадлежит разбору текста, и работа над деревом текста под
+	 *       собою не имеет: переживи оно код, донесение указывало бы в текст, которого
+	 *       более нет
+	 */
+	this->_errorLocation = location_t();
+	// Выводим признак отказа для выхода из работы
+	return (error == error_t::NONE);
 }
 /**
  * @brief Метод вывода сообщения об отказе в лог

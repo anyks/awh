@@ -391,6 +391,10 @@ namespace awh {
 			 * порядка байтов в начале текста; при её отсутствии текст считается записанным
 			 * в UTF-8
 			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
+			 * порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
+			 * только навязанными извне
+			 *
 			 * \~english
 			 * @brief Encodings of the source settings text
 			 * @details A settings text does not announce its encoding, and it is determined by the byte
@@ -406,7 +410,9 @@ namespace awh {
 				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
 				LATIN1  = 0x04, // Кодировка ISO-8859-1
 				ASCII   = 0x05, // Кодировка US-ASCII
-				CP1252  = 0x06  // Кодировка Windows-1252
+				CP1252  = 0x06, // Кодировка Windows-1252
+				UTF32LE = 0x07, // Кодировка UTF-32 с обратным порядком байтов
+				UTF32BE = 0x08  // Кодировка UTF-32 с прямым порядком байтов
 			};
 
 			/**

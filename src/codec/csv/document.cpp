@@ -834,6 +834,18 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       ради того сбор и ведётся кусками, что таблица в несколько гигабайт иначе
 	 *       держалась бы в памяти дважды
 	 */
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	/**
+	 * Выполняем сброс положения ошибки прежней работы
+	 *
+	 * @details У отказа записи места в исходном тексте нет вовсе, а положение прежнего
+	 * разбора, его пережив, складывалось бы с новым кодом в донесение стройное, но
+	 * ложное. Замер: разбор отказывал в строке 1 столбце 5, следом отказывала запись
+	 * непредставимым полем - и `errorLocation()` отвечал тем же местом, указывая в
+	 * текст, которого более нет
+	 */
+	this->_location = location_t();
 	const string temporary = (filename + ".awh-tmp");
 	// Открываем временный файл таблицы для записи
 	ofstream file(temporary, ios::binary | ios::trunc);
@@ -851,6 +863,8 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе
 			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_OPENED));
+		// Запоминаем код отказа открытия файла таблицы
+		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -876,6 +890,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 				file.close();
 				// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 				::remove(temporary.c_str());
+				// Запоминаем код отказа сохранения таблицы
+				if(this->_error == error_t::NONE)
+					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
 				// Выводим признак неудачного сохранения таблицы
 				return false;
 			}
@@ -894,6 +911,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			file.close();
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 			::remove(temporary.c_str());
+			// Запоминаем код отказа сохранения таблицы
+			if(this->_error == error_t::NONE)
+				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
 			// Выводим признак неудачного сохранения таблицы
 			return false;
 		}
@@ -916,6 +936,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 				file.close();
 				// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 				::remove(temporary.c_str());
+				// Запоминаем код отказа сохранения таблицы
+				if(this->_error == error_t::NONE)
+					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
 				// Выводим признак неудачного сохранения таблицы
 				return false;
 			}
@@ -934,6 +957,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			file.close();
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 			::remove(temporary.c_str());
+			// Запоминаем код отказа сохранения таблицы
+			if(this->_error == error_t::NONE)
+				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
 			// Выводим признак неудачного сохранения таблицы
 			return false;
 		}
@@ -972,6 +998,8 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_WRITTEN));
 		// Выполняем снос недописанного временного файла таблицы
 		::remove(temporary.c_str());
+		// Запоминаем код отказа записи файла таблицы
+		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -990,6 +1018,8 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_WRITTEN));
 		// Выполняем снос временного файла таблицы
 		::remove(temporary.c_str());
+		// Запоминаем код отказа переименования временного файла таблицы
+		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1397,6 +1427,17 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <double> 
  *
  */
 bool awh::codec::csv::Document::header(const vector <string> & names) noexcept {
+	/**
+	 * Выполняем сброс кода отказа и положения прежней работы
+	 *
+	 * @details Договор велит ставить код ЗАНОВО всякой работе, а не одному разбору:
+	 * иначе код прежнего отказа переживал бы работу удавшуюся. Замер: разбор отказывал
+	 * лишним полем, следом удавалось занесение записи, а `error()` отвечал кодом
+	 * разбора - вместе с положением в тексте, которого более нет
+	 */
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_location = location_t();
 	// Очищаем хранилище имён столбцов
 	this->_names.clear();
 	// Очищаем указания на имена столбцов
@@ -1412,6 +1453,16 @@ bool awh::codec::csv::Document::header(const vector <string> & names) noexcept {
 		 *       оставить столбец без доступа
 		 */
 		if(name.empty()){
+			/**
+			 * Запоминаем код отказа установки заголовка
+			 *
+			 * @details Код этот у наречия ЕСТЬ, и разбор заголовка из текста им и
+			 * отвечает. Установка же заголовка извне отвергала пустое имя МОЛЧА: правило
+			 * одно, судьи два, и один из них причины не называл. Замер дал три разные
+			 * причины отказа - пустое имя, повтор имени и переполнение хранилища, - из
+			 * которых код ставила лишь последняя
+			 */
+			this->_error = error_t::EMPTY_HEADER;
 			// Очищаем хранилище имён столбцов
 			this->_names.clear();
 			// Очищаем указания на имена столбцов
@@ -1455,6 +1506,13 @@ bool awh::codec::csv::Document::header(const vector <string> & names) noexcept {
 	 *       заголовка повтор отвергает - отвергать его надлежит и здесь
 	 */
 	if(this->_columns.size() != this->_header.size()){
+		/**
+		 * Запоминаем код отказа установки заголовка
+		 *
+		 * @note Довод общий с отказом пустому имени: код этот у наречия есть, и разбор
+		 *       заголовка из текста им отвечает, а установка извне молчала
+		 */
+		this->_error = error_t::DUPLICATE_HEADER;
 		// Очищаем хранилище имён столбцов
 		this->_names.clear();
 		// Очищаем указания на имена столбцов
@@ -1474,6 +1532,17 @@ bool awh::codec::csv::Document::header(const vector <string> & names) noexcept {
  *
  */
 void awh::codec::csv::Document::append(const vector <string> & fields) noexcept {
+	/**
+	 * Выполняем сброс кода отказа и положения прежней работы
+	 *
+	 * @details Договор велит ставить код ЗАНОВО всякой работе, а не одному разбору:
+	 * иначе код прежнего отказа переживал бы работу удавшуюся. Замер: разбор отказывал
+	 * лишним полем, следом удавалось занесение записи, а `error()` отвечал кодом
+	 * разбора - вместе с положением в тексте, которого более нет
+	 */
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_location = location_t();
 	// Общая длина содержимого полей добавляемой записи
 	size_t length = 0;
 	// Выполняем подсчёт общей длины содержимого полей записи
@@ -1515,6 +1584,15 @@ void awh::codec::csv::Document::append(const vector <string> & fields) noexcept 
  *
  */
 void awh::codec::csv::Document::append(const vector <string_view> & fields) noexcept {
+	/**
+	 * Выполняем сброс кода отказа и положения прежней работы
+	 *
+	 * @details Довод тот же, что и у первого вида занесения: договор велит ставить код
+	 * ЗАНОВО всякой работе, а не одному разбору
+	 */
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_location = location_t();
 	// Длина всех полей добавляемой записи
 	size_t length = 0;
 	/**
@@ -1577,6 +1655,18 @@ void awh::codec::csv::Document::append(const vector <string_view> & fields) noex
  *
  */
 string awh::codec::csv::Document::text() const noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	/**
+	 * Выполняем сброс положения ошибки прежней работы
+	 *
+	 * @details У отказа записи места в исходном тексте нет вовсе, а положение прежнего
+	 * разбора, его пережив, складывалось бы с новым кодом в донесение стройное, но
+	 * ложное. Замер: разбор отказывал в строке 1 столбце 5, следом отказывала запись
+	 * непредставимым полем - и `errorLocation()` отвечал тем же местом, указывая в
+	 * текст, которого более нет
+	 */
+	this->_location = location_t();
 	// Запись текста таблицы
 	writer_t writer(this->_log, this->_settings.writer);
 	/**
@@ -1595,18 +1685,24 @@ string awh::codec::csv::Document::text() const noexcept {
 			 *       звучащему таблицей законченной. Причину оглашает журналом сама
 			 *       запись, а таблица непустая пустого текста не даёт никогда
 			 */
-			if(!writer.field(string_view(this->_names.data() + name.offset, name.length)))
+						if(!writer.field(string_view(this->_names.data() + name.offset, name.length))){
+				// Запоминаем код отказа записи текста таблицы
+				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 				// Выводим пустой текст таблицы
 				return string();
+			}
 		}
 		// Завершаем запись заголовка
 		writer.record();
 		/**
 		 * Если завершение записи заголовка окончилось отказом
 		 */
-		if(writer.error() != error_t::NONE)
+				if(writer.error() != error_t::NONE){
+			// Запоминаем код отказа записи текста таблицы
+			this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 			// Выводим пустой текст таблицы
 			return string();
+		}
 	}
 	/**
 	 * Выполняем перебор всех записей таблицы
@@ -1619,9 +1715,12 @@ string awh::codec::csv::Document::text() const noexcept {
 		 */
 		for(size_t j = 0; j < count; j++){
 			// Если очередное поле записи записать не удалось
-			if(!writer.field(this->get(this->_fields.at(this->_records.at(i) + j))))
+						if(!writer.field(this->get(this->_fields.at(this->_records.at(i) + j)))){
+				// Запоминаем код отказа записи текста таблицы
+				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 				// Выводим пустой текст таблицы
 				return string();
+			}
 		}
 		// Завершаем запись
 		writer.record();
@@ -1633,9 +1732,12 @@ string awh::codec::csv::Document::text() const noexcept {
 		 *       таблица ушла бы МОЛЧА КОРОЧЕ на эту запись - ровно та потеря, ради какой
 		 *       отказ и заведён
 		 */
-		if(writer.error() != error_t::NONE)
+				if(writer.error() != error_t::NONE){
+			// Запоминаем код отказа записи текста таблицы
+			this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 			// Выводим пустой текст таблицы
 			return string();
+		}
 	}
 	// Выводим собранный текст таблицы
 	return writer.text();

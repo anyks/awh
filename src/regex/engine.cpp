@@ -582,6 +582,8 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	if(expression.forward.sweeping) {
+		// Выполняем учёт прохода текста единственной попыткой
+		AWH_REGEX_TICK(path_t::SWEEPING);
 		// Выполняем установку допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((text.size() - start + 1) * BACKTRACK_RATIO);
 		/**

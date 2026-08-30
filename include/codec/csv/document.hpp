@@ -206,10 +206,24 @@ namespace awh {
 					// Настройки контейнера
 					settings_t _settings;
 				private:
-					// Код ошибки разбора
-					error_t _error;
-					// Положение ошибки в исходном тексте
-					location_t _location;
+					/**
+					 * @brief Код отказа последней работы над таблицей
+					 *
+					 * @details Поле изменчиво нарочно: выдача текста таблицы и запись её в
+					 * файл идут работами неизменными, а сообщать отказ обязаны - иначе пустой
+					 * текст неотличим от таблицы пустой. Прежде код отведён был одному лишь
+					 * разбору, и отказ записи пропадал вовсе
+					 */
+					mutable error_t _error;
+					/**
+					 * @brief Положение ошибки в исходном тексте
+					 *
+					 * @details Поле изменчиво нарочно, наравне с кодом отказа: работы записи
+					 * идут неизменными, а положение сбрасывать обязаны - у отказа записи места
+					 * в исходном тексте нет вовсе, и положение прежнего разбора, его пережив,
+					 * складывалось бы с новым кодом в донесение стройное, но ложное
+					 */
+					mutable location_t _location;
 				private:
 					// Хранилище знаков полей таблицы
 					string _storage;
@@ -432,13 +446,27 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод получения кода ошибки разбора
+					 * @brief Метод получения кода отказа последней работы над таблицей
 					 *
-					 * @return код ошибки разбора
+					 * @details Разбор текста, чтение файла, выдача текста и запись его в файл
+					 * ставят код этот заново каждая. Прежде отведён он был одному лишь
+					 * разбору, и отказ записи пропадал вовсе: замер дал таблицу, поле которой
+					 * настройками укрыть нечем, - `text()` отвечал пустой строкой, `save()`
+					 * ложью, а `error()` при том молчал
+					 *
+					 * @note Договор этот ОБЩИЙ у кодеков: владеющие значения разметки XML и
+					 *       документа JSON отвечают тем же кодом и тем же порядком
+					 *
+					 * @return код отказа последней работы
 					 *
 					 * \~english
-					 * @brief Method of getting the error code of the parsing
-					 * @return error code of the parsing
+					 * @brief Method of the getting of the code of the refusal of the last operation over the table
+					 * @details The parsing of a text, the reading of a file, the issuance of a text and the writing
+					 * of it into a file each set this code anew. Formerly it was allotted to the parsing alone,
+					 * and the refusal of the writing was lost entirely
+					 * @note This contract is COMMON among the codecs: the owning values of an XML markup
+					 *       and of a JSON document answer with the same code and in the same order
+					 * @return code of the refusal of the last operation
 					 *
 					 * \~
 					 */
@@ -680,6 +708,15 @@ namespace awh {
 					 * @details Заголовок задаётся отдельно от записей: таблица, прочитанная
 					 * без заголовка, вправе получить имена столбцов извне
 					 *
+					 * @note Отказ называет причину кодом, и причин у него три: пустое имя
+					 *       столбца - `EMPTY_HEADER`, повтор имени - `DUPLICATE_HEADER`,
+					 *       переполнение хранилища имён - `STORAGE_EXHAUSTED`. Прежде код
+					 *       ставила лишь последняя, а первые две отвергали МОЛЧА: правило
+					 *       одно с разбором заголовка из текста, а причину называл лишь он
+					 *
+					 * @note Пустой перечень имён отказом НЕ является: он снимает заголовок,
+					 *       и таблица остаётся при одних записях
+					 *
 					 * @param names имена столбцов в порядке следования
 					 * @return      результат установки
 					 *
@@ -687,6 +724,10 @@ namespace awh {
 					 * @brief Method of setting the header of the table
 					 * @details The header is given separately from the records: a table read
 					 * without a header has the right to receive the names of the columns from the outside
+					 * @note The refusal names its cause by a code, and it has three causes: an empty name
+					 *       of a column — `EMPTY_HEADER`, a repetition of a name — `DUPLICATE_HEADER`,
+					 *       an overflow of the storage of the names — `STORAGE_EXHAUSTED`
+					 * @note An empty list of the names is NOT a refusal: it removes the header
 					 * @param names names of the columns in the order of the succession
 					 * @return      result of the setting
 					 *

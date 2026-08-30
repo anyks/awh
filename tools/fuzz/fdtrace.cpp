@@ -226,6 +226,24 @@ extern "C" {
 	 * @param fds   перечень описателей, признанных утёкшими
 	 * @param count число описателей в перечне
 	 */
+	// Объявление метода заведения щупа, определённого самим ворошителем
+	void __awh_fdtrace_install__(void (* fn) (const int32_t *, const size_t)) noexcept;
+	/**
+	 * @brief Метод вывода мест заведения живых описателей
+	 */
+	void __awh_fdtrace_report__(const int32_t * fds, const size_t count);
+	/**
+	 * @brief Заведение щупа у ворошителя переменной процесса
+	 *
+	 * @note Заводится ДО входа в ворошитель: тела переменных процесса строятся раньше
+	 *       `main`, и к первому же обращению щуп уже на месте
+	 */
+	static const int __awh_fdtrace_installed__ = ([]() noexcept -> int {
+		// Заводим тело щупа у ворошителя
+		__awh_fdtrace_install__(&__awh_fdtrace_report__);
+		// Выводим значение-заглушку
+		return 0;
+	})();
 	void __awh_fdtrace_report__(const int32_t * fds, const size_t count){
 		// Выполняем блокировку учёта
 		const std::lock_guard <std::recursive_mutex> lock(guard());

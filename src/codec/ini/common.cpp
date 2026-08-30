@@ -375,6 +375,14 @@ const char * awh::codec::ini::name(const encoding_t encoding) noexcept {
 		case static_cast <uint8_t> (encoding_t::UTF16BE):
 			// Выводим название кодировки
 			return "UTF-16BE";
+		// Если кодировкой является UTF-32 с обратным порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32LE):
+			// Выводим название кодировки
+			return "UTF-32LE";
+		// Если кодировкой является UTF-32 с прямым порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32BE):
+			// Выводим название кодировки
+			return "UTF-32BE";
 		// Если кодировкой является ISO-8859-1
 		case static_cast <uint8_t> (encoding_t::LATIN1):
 			// Выводим название кодировки
@@ -433,6 +441,28 @@ awh::codec::ini::encoding_t awh::codec::ini::encoding(const string_view text) no
 	if(::compare(text, "UTF-16") || ::compare(text, "UTF16"))
 		// Выводим определённую кодировку
 		return encoding_t::UTF16BE;
+	/**
+	 * Если кодировкой является UTF-32 с обратным порядком байтов
+	 */
+	if(::compare(text, "UTF-32LE") || ::compare(text, "UTF32LE"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF32LE;
+	/**
+	 * Если кодировкой является UTF-32 с прямым порядком байтов
+	 */
+	if(::compare(text, "UTF-32BE") || ::compare(text, "UTF32BE"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF32BE;
+	/**
+	 * Если кодировка объявлена как UTF-32 без указания порядка байтов
+	 *
+	 * @note Порядок байтов в таком случае определяется меткой в начале текста,
+	 *       поэтому название разбирается в кодировку с прямым порядком лишь как
+	 *       основание по умолчанию - тем же доводом, что и у UTF-16
+	 */
+	if(::compare(text, "UTF-32") || ::compare(text, "UTF32"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF32BE;
 	/**
 	 * Если кодировкой является ISO-8859-1
 	 *

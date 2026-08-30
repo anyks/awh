@@ -289,6 +289,22 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Код отказа последней работы над значением
+					 *
+					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
+					 * неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
+					 * от значения пустого
+					 *
+					 * \~english
+					 * @brief Code of the refusal of the last operation over the value
+					 * @details The field is mutable deliberately: the issuance of the text of a value
+					 * is a constant operation, while it is obliged to report a refusal — otherwise
+					 * an empty text is indistinguishable from an empty value
+					 * \~
+					 */
+					mutable error_t _error = error_t::NONE;
 					const log_t * _log = nullptr;
 				private:
 					/**
@@ -508,6 +524,32 @@ namespace awh {
 					 * \~
 					 */
 					bool valid() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения кода отказа последней работы над значением
+					 *
+					 * @details Код этот отвечает на вопрос, отчего работа не сбылась: разбор
+					 * текста, чтение файла, выдача текста и запись его в файл ставят его
+					 * заново каждая. Прежде канала отказа у значения не было вовсе, и пустой
+					 * текст выдачи был неотличим от значения пустого
+					 *
+					 * @note Договор этот ОБЩИЙ у кодеков: владеющее значение разметки XML
+					 *       и таблица CSV отвечают тем же кодом и тем же порядком
+					 *
+					 * @return код отказа последней работы
+					 *
+					 * \~english
+					 * @brief Method of the getting of the code of the refusal of the last operation over the value
+					 * @details This code answers the question of why an operation did not come true: the parsing
+					 * of a text, the reading of a file, the issuance of a text and the writing of it into a file
+					 * each set it anew. Formerly a value had no channel of a refusal at all, and the empty text
+					 * of the issuance was indistinguishable from an empty value
+					 * @note This contract is COMMON among the codecs: the owning value of an XML markup
+					 *       and a CSV table answer with the same code and in the same order
+					 * @return code of the refusal of the last operation
+					 * \~
+					 */
+					error_t error() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида значения

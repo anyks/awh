@@ -4224,6 +4224,15 @@ string awh::codec::yaml::Document::dump() const noexcept {
  *
  */
 bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
+	/**
+	 * Получаем собранный текст документа
+	 *
+	 * @warning Сборка ведётся ПРЕЖДЕ открытия файла намеренно: поток записи усекает цель
+	 *          при открытии, и сборка, текста не давшая, сносила бы прежнее содержимое
+	 *          файла начисто, а запись отвечала бы успехом. Порядок этот один у INI,
+	 *          TOML и YAML
+	 */
+	const string text = this->dump();
 	// Выполняем открытие записываемого файла
 	ofstream file(filename, ios::binary | ios::trunc);
 	/**
@@ -4247,8 +4256,6 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		// Выводим признак неудачной записи текста
 		return false;
 	}
-	// Получаем собранный текст документа
-	const string text = this->dump();
 	// Выполняем запись собранного текста в файл
 	file.write(text.data(), static_cast <streamsize> (text.size()));
 	// Выводим признак успешной записи текста

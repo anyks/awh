@@ -446,8 +446,20 @@ namespace awh {
 					this->_lists[index].free = addr;
 					// Увеличиваем число блоков в кэше
 					this->_lists[index].count++;
+					/**
+					 * Лежащее в кэше считаем В РЕГИСТРЕ, а записываем однажды
+					 *
+					 * Записанное неделимое поле собиратель обязан перечитать из памяти,
+					 * и проверка предела читала ровно то, что сама же секундой раньше
+					 * записала: пересылка из записи в чтение стоит нескольких тактов на
+					 * КАЖДОМ освобождении. Разбор машинного кода на FreeBSD показал эту
+					 * пару - `movq %rcx, 0x18(%r14)` и тут же `movq 0x18(%r14), %rax` -
+					 * в пике профиля возврата
+					 */
+					// Считаем лежащее в кэше после возврата блока
+					const size_t bytes = (this->_bytes.load(std::memory_order_relaxed) + this->_classes->size(index));
 					// Увеличиваем лежащее в кэше
-					this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) + this->_classes->size(index)), std::memory_order_relaxed);
+					this->_bytes.store(bytes, std::memory_order_relaxed);
 					/**
 					 * Просьба опустошиться здесь НЕ читается намеренно
 					 *
@@ -459,7 +471,7 @@ namespace awh {
 					 * `relieve`. Мгновенности здесь не требуется вовсе
 					 */
 					// Если предел кэша перебран
-					if(this->_bytes.load(std::memory_order_relaxed) > this->_limit.load(std::memory_order_relaxed))
+					if(bytes > this->_limit.load(std::memory_order_relaxed))
 						// Отдаём излишек центральным спискам
 						this->relieve();
 				}

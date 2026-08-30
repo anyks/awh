@@ -1468,9 +1468,12 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			 *          он лишь проверке возможности совпадения.
 			 *
 			 */
-			} else if(!program.prefilter.possible(text, pos))
+			} else if(!program.prefilter.possible(text, pos)) {
+				// Выполняем учёт отказа по проверке возможности совпадения
+				AWH_REGEX_TICK(path_t::DENYING);
 				// Выводим результат поиска совпадения
 				return false;
+			}
 		}
 		/**
 		 * Если предварительный отбор позиций сопоставления применим

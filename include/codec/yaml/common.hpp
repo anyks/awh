@@ -642,6 +642,12 @@ namespace awh {
 			 * метку порядка байтов в начале потока. Кодировка опознаётся по метке, а при её
 			 * отсутствии - по расположению нулевых байтов в первых четырёх октетах
 			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - описанием
+			 * не предписаны и заведены сверх него: файл, полученный от чужой оснастки, бывает
+			 * записан иначе, и отвергать его целиком значило бы оставлять потребителя без
+			 * всякого способа его прочесть. Метки порядка байтов они не имеют вовсе и
+			 * опознанию не поддаются: принимаются только навязанными извне
+			 *
 			 * \~english
 			 * @brief Encodings of the source text
 			 * @details The specification prescribes **UTF-8**, **UTF-16** and **UTF-32** and permits
@@ -656,7 +662,10 @@ namespace awh {
 				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
 				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
 				UTF32LE = 0x04, // Кодировка UTF-32 с обратным порядком байтов
-				UTF32BE = 0x05  // Кодировка UTF-32 с прямым порядком байтов
+				UTF32BE = 0x05, // Кодировка UTF-32 с прямым порядком байтов
+				LATIN1  = 0x06, // Кодировка ISO-8859-1
+				ASCII   = 0x07, // Кодировка US-ASCII
+				CP1252  = 0x08  // Кодировка Windows-1252
 			};
 
 			/**
@@ -1011,6 +1020,42 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const event_t event) noexcept;
+
+			/**
+			 * \~russian
+			 * @brief Метод получения названия кодировки
+			 *
+			 * @param encoding кодировка исходного текста
+			 * @return         общепринятое название кодировки
+			 *
+			 * \~english
+			 * @brief Method of getting the name of an encoding
+			 * @param encoding encoding of the source text
+			 * @return         commonly accepted name of the encoding
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
+
+			/**
+			 * \~russian
+			 * @brief Метод определения кодировки по её названию
+			 *
+			 * @details Договор этот один у INI, TOML и YAML: кодек, кодировки принимающий,
+			 * обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
+			 * название из настроек, обратить его в кодировку ничем не может
+			 *
+			 * @param text название кодировки в любом регистре
+			 * @return     определённая кодировка исходного текста
+			 *
+			 * \~english
+			 * @brief Method of determining an encoding by its name
+			 * @param text name of the encoding in any case
+			 * @return     determined encoding of the source text
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ encoding_t encoding(const string_view text) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения вида узла по виду значения

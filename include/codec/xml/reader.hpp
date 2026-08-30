@@ -230,6 +230,26 @@ namespace awh {
 						 * Разборы, не различающие раздел дословного текста и обычный, склеивают
 						 * такое содержимое целиком, и слепок разбора с ними тогда не совпадёт
 						 *
+						 * @warning Содержимое разрывает и САМА ГРАНИЦА ПОДАЧИ: склейка идёт в
+						 *          пределах поданного куска, а держать содержимое до конца текста
+						 *          ради склейки значило бы копить его без предела - чего потоковое
+						 *          чтение и избегает. Текст `<к>ЖЖЖ</к>`, поданный одним куском,
+						 *          даёт одно событие содержимого, а поданный двумя - два, «Ж» и
+						 *          «ЖЖ». Звучащему, ведущему чтение напрямую, надлежит СКЛАДЫВАТЬ
+						 *          подряд идущие события одного вида самому. Перечень разрывов
+						 *          выше границы подачи не называл, и обещание склейки было тем
+						 *          самым шире исполнения
+						 *
+						 * @note Дерева разметки и владеющего значения это НЕ касается: сборка их
+						 *       складывает куски сама, и чтение файла, идущее кусками по 64 КиБ,
+						 *       даёт дерево, равное разбору того же текста строкой целиком -
+						 *       проверено содержимым в 200 000 байтов
+						 *
+						 * @note Кодеки JSON и CSV границей подачи содержимое НЕ разрывают: поле
+						 *       таблицы и значение документа выдаются одним событием при любой
+						 *       нарезке. Расхождение по существу: у них содержимое ограничено
+						 *       пределами настроек, а у разметки текстовый узел не ограничен вовсе
+						 *
 						 * \~english
 						 * Flag of the gluing of the consecutive chunks of a text content into a single event
 						 * @note Only the chunks of one and the same kind going in a row are glued.
@@ -238,6 +258,16 @@ namespace awh {
 						 * an event is not issued for them, but they remain a boundary of the content.
 						 * The parsers that do not distinguish a literal text section from an ordinary one glue
 						 * such a content in full, and the snapshot of the parsing will then not coincide with theirs
+						 * @warning The BOUNDARY OF A FEED breaks a content apart as well: the gluing goes
+						 * within the limits of the fed chunk, whereas holding a content until the end of
+						 * the text for the sake of the gluing would mean accumulating it without a limit —
+						 * which is what a streaming reading avoids. The consumer driving the reading directly
+						 * is to CONCATENATE the consecutive events of one and the same kind itself
+						 * @note This does NOT concern the markup tree and the owning value: their assembling
+						 * concatenates the chunks itself, and the reading of a file, going by chunks of 64 KiB,
+						 * gives a tree equal to the parsing of the same text as a whole string
+						 * @note The JSON and CSV codecs do NOT break a content by a boundary of a feed: a field
+						 * of a table and a value of a document are issued as a single event at any chunking
 						 *
 						 * \~
 						 */

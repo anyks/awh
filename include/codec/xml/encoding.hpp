@@ -178,6 +178,35 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ bool isName(const uint32_t code) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод проверки имени на правильность построения
+			 *
+			 * @details Записать имя, которое не удастся прочесть обратно, нельзя: такое
+			 * указание отвергается, а не записывается с надеждой на снисходительность
+			 * читающего. Судья этот ОБЩИЙ: им судит и запись разметки, и правка владеющего
+			 * значения. Прежде он стоял внутри записи двумя её собственными помощниками, и
+			 * правка значения имени не судила вовсе - негодное имя принималось молча, а
+			 * запись отдавала затем пустую строку по ВСЕМУ дереву без всякого отказа
+			 *
+			 * @param name      проверяемое имя
+			 * @param separator признак допустимости разделителя префикса в имени
+			 * @return          результат проверки
+			 *
+			 * \~english
+			 * @brief Method of the checking of a name for the correctness of its construction
+			 * @details A name that will not be read back cannot be written: such an instruction
+			 * is rejected rather than written in the hope of the leniency of the reader. This judge
+			 * is COMMON: both the writing of a markup and the editing of an owning value judge by it.
+			 * Formerly it stood inside the writing as two of its own helpers, while the editing of a value
+			 * did not judge a name at all — an unfit name was accepted silently, and the writing then
+			 * issued an empty string over the WHOLE tree without any refusal
+			 * @param name name being checked
+			 * @param separator sign of the admissibility of the separator of a prefix in the name
+			 * @return result of the check
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ bool nameable(const string_view name, const bool separator = false) noexcept;
 
 			/**
 			 * \~russian

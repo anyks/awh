@@ -92,7 +92,7 @@ awh::codec::ini::span_t awh::codec::ini::Document::add(const string_view text) n
 	 */
 	if((this->_store.length() + text.length()) > static_cast <size_t> (NO_RECORD)){
 		// Запоминаем код ошибки правки
-		this->_error = error_t::OVERFLOW_LIMIT;
+		this->fault(error_t::OVERFLOW_LIMIT);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим пустой отрезок хранилища знаков
@@ -179,7 +179,7 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 	 */
 	if(name.length() > this->_settings.reader.maxName){
 		// Запоминаем код ошибки правки
-		this->_error = error_t::NAME_TOO_LONG;
+		this->fault(error_t::NAME_TOO_LONG);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -600,7 +600,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 	 */
 	if(static_cast <uint64_t> (stack.size()) > static_cast <uint64_t> (this->_settings.maxReferenceDepth)){
 		// Запоминаем код ошибки разбора
-		this->_error = error_t::REFERENCE_DEPTH;
+		this->fault(error_t::REFERENCE_DEPTH);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -623,7 +623,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			 */
 			if((budget--) == 0){
 				// Запоминаем код ошибки разбора
-				this->_error = error_t::EXPANSION_EXCEEDED;
+				this->fault(error_t::EXPANSION_EXCEEDED);
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Выводим отрицательный результат выполнения операции
@@ -646,7 +646,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			 */
 			if((budget--) == 0){
 				// Запоминаем код ошибки разбора
-				this->_error = error_t::EXPANSION_EXCEEDED;
+				this->fault(error_t::EXPANSION_EXCEEDED);
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Выводим отрицательный результат выполнения операции
@@ -672,7 +672,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			 */
 			if((budget--) == 0){
 				// Запоминаем код ошибки разбора
-				this->_error = error_t::EXPANSION_EXCEEDED;
+				this->fault(error_t::EXPANSION_EXCEEDED);
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Выводим отрицательный результат выполнения операции
@@ -695,7 +695,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		 */
 		if(position == string_view::npos){
 			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_REFERENCE;
+			this->fault(error_t::INVALID_REFERENCE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -711,7 +711,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		 */
 		if((closing == 2) && (((position + 1) >= value.length()) || (value[position + 1] != 's'))){
 			// Запоминаем код ошибки разбора
-			this->_error = error_t::INVALID_REFERENCE;
+			this->fault(error_t::INVALID_REFERENCE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -764,7 +764,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 				 */
 				if(!found){
 					// Запоминаем код ошибки разбора
-					this->_error = error_t::UNKNOWN_REFERENCE;
+					this->fault(error_t::UNKNOWN_REFERENCE);
 					// Выполняем вывод сообщения об отказе в лог
 					this->report();
 					// Выводим отрицательный результат выполнения операции
@@ -781,7 +781,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 		 */
 		if((j == this->_properties.end()) || j->second.empty()){
 			// Запоминаем код ошибки разбора
-			this->_error = error_t::UNKNOWN_REFERENCE;
+			this->fault(error_t::UNKNOWN_REFERENCE);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -798,7 +798,7 @@ bool awh::codec::ini::Document::expand(const string_view value, const uint32_t s
 			 */
 			if(item.compare(label) == 0){
 				// Запоминаем код ошибки разбора
-				this->_error = error_t::RECURSIVE_REFERENCE;
+				this->fault(error_t::RECURSIVE_REFERENCE);
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Выводим отрицательный результат выполнения операции
@@ -915,7 +915,7 @@ bool awh::codec::ini::Document::resolve(const bool strict) noexcept {
 			 * не заведён, - и объявлять правку неудавшейся за это нельзя. Значение
 			 * остаётся таким, каким записано, и разрешится само, едва источник появится
 			 */
-			this->_error = error_t::NONE;
+			this->fault(error_t::NONE);
 			// Запоминаем, что дерево несёт неразрешимое обращение
 			this->_dangling = true;
 			// Запоминаем значение свойства в виде, в каком оно записано
@@ -1211,7 +1211,7 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 		// Выполняем освобождение дерева настроек
 		this->clear();
 		// Запоминаем код ошибки подстановки обращений
-		this->_error = error;
+		this->fault(error);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -1546,7 +1546,7 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 	 * @note Код держится от последней операции, а не от последней неудачной: иначе
 	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
 	 */
-	this->_error = error_t::NONE;
+	this->fault(error_t::NONE);
 	/**
 	 * Если имя объявляемого раздела недопустимо
 	 */
@@ -1565,7 +1565,7 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 		 */
 		if(this->_settings.reader.subsections == subsection_t::NONE){
 			// Запоминаем код ошибки правки
-			this->_error = error_t::INVALID_SUBSECTION;
+			this->fault(error_t::INVALID_SUBSECTION);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1604,7 +1604,7 @@ bool awh::codec::ini::Document::create(const string_view section, const string_v
 			 */
 			if(depth >= this->_settings.reader.maxDepth){
 				// Запоминаем код ошибки правки
-				this->_error = error_t::DEPTH_EXCEEDED;
+				this->fault(error_t::DEPTH_EXCEEDED);
 				// Выполняем вывод сообщения об отказе в лог
 				this->report();
 				// Выводим отрицательный результат выполнения операции
@@ -1708,7 +1708,7 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 	 * @note Код держится от последней операции, а не от последней неудачной: иначе
 	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
 	 */
-	this->_error = error_t::NONE;
+	this->fault(error_t::NONE);
 	/**
 	 * Если имя устанавливаемого свойства недопустимо
 	 */
@@ -1750,7 +1750,7 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 		 */
 		if(!this->search(section, subsection, index)){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::INTERNAL;
+			this->fault(error_t::INTERNAL);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -1974,7 +1974,7 @@ bool awh::codec::ini::Document::push(const string_view key, const string_view va
 	/**
 	 * Выполняем сброс кода ошибки последней операции
 	 */
-	this->_error = error_t::NONE;
+	this->fault(error_t::NONE);
 	/**
 	 * Если имя доливаемого свойства недопустимо
 	 */
@@ -2015,7 +2015,7 @@ bool awh::codec::ini::Document::push(const string_view key, const string_view va
 		 */
 		if(!this->search(section, subsection, index)){
 			// Запоминаем код ошибки правки дерева настроек
-			this->_error = error_t::INTERNAL;
+			this->fault(error_t::INTERNAL);
 			// Выполняем вывод сообщения об отказе в лог
 			this->report();
 			// Выводим отрицательный результат выполнения операции
@@ -2041,7 +2041,7 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 	 * @note Код держится от последней операции, а не от последней неудачной: иначе
 	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
 	 */
-	this->_error = error_t::NONE;
+	this->fault(error_t::NONE);
 	// Порядковый номер найденного раздела
 	uint32_t index = 0;
 	/**
@@ -2049,7 +2049,7 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 	 */
 	if(!this->search(section, subsection, index)){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::UNKNOWN_SECTION;
+		this->fault(error_t::UNKNOWN_SECTION);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2065,7 +2065,7 @@ bool awh::codec::ini::Document::erase(const string_view key, const string_view s
 	 */
 	if((i == this->_properties.end()) || i->second.empty()){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::UNKNOWN_KEY;
+		this->fault(error_t::UNKNOWN_KEY);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2140,13 +2140,13 @@ bool awh::codec::ini::Document::remove(const string_view section, const string_v
 	 * @note Код держится от последней операции, а не от последней неудачной: иначе
 	 *       отказ, случившийся когда-то прежде, приписывался бы удачной правке
 	 */
-	this->_error = error_t::NONE;
+	this->fault(error_t::NONE);
 	/**
 	 * Если имя удаляемого раздела пусто
 	 */
 	if(section.empty()){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::EMPTY_SECTION;
+		this->fault(error_t::EMPTY_SECTION);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2159,7 +2159,7 @@ bool awh::codec::ini::Document::remove(const string_view section, const string_v
 	 */
 	if(!this->search(section, subsection, index)){
 		// Запоминаем код ошибки правки дерева настроек
-		this->_error = error_t::UNKNOWN_SECTION;
+		this->fault(error_t::UNKNOWN_SECTION);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим отрицательный результат выполнения операции
@@ -2244,7 +2244,7 @@ bool awh::codec::ini::Document::empty() const noexcept {
  */
 void awh::codec::ini::Document::clear() noexcept {
 	// Выполняем сброс кода ошибки разбора
-	this->_error = error_t::NONE;
+	this->fault(error_t::NONE);
 	// Выполняем сброс признака наличия обращений к значениям
 	this->_referenced = false;
 	// Выполняем сброс признака устаревшей подстановки обращений
@@ -2349,7 +2349,7 @@ string awh::codec::ini::Document::text() const noexcept {
 }
 string awh::codec::ini::Document::text(const writer_t::settings_t & settings) const noexcept {
 	// Выполняем сброс кода ошибки последней операции
-	this->_error = error_t::NONE;
+	this->fault(error_t::NONE);
 	// Выполняем пересчёт подстановки обращений, устаревшей после правки
 	this->refresh();
 	/**
@@ -2362,7 +2362,7 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 	 */
 	if(this->_dangling){
 		// Запоминаем код ошибки записи
-		this->_error = error_t::UNKNOWN_REFERENCE;
+		this->fault(error_t::UNKNOWN_REFERENCE);
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим пустой текст настроек
@@ -2481,6 +2481,27 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 	}
 	// Выводим собранный текст настроек
 	return writer.text();
+}
+/**
+ * @brief Метод запоминания кода отказа работы над деревом
+ *
+ * @param error запоминаемый код отказа
+ * @return      признак отказа для выхода из работы
+ *
+ */
+bool awh::codec::ini::Document::fault(const error_t error) const noexcept {
+	// Запоминаем код отказа работы над деревом
+	this->_error = error;
+	/**
+	 * Выполняем сброс положения обнаруженной ошибки
+	 *
+	 * @note Положение это принадлежит разбору текста, и работа над деревом текста под
+	 *       собою не имеет: переживи оно код, донесение указывало бы в текст, которого
+	 *       более нет
+	 */
+	this->_errorLocation = location_t();
+	// Выводим признак отказа для выхода из работы
+	return (error == error_t::NONE);
 }
 /**
  * @brief Метод вывода сообщения об отказе в лог

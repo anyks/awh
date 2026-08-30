@@ -910,46 +910,76 @@ TEST(CodecTomlWriter, TrailingRefusal) {
  *
  */
 TEST(CodecTomlWriter, Unfinished) {
-	// Объект записи текста настроек
-	toml::writer_t writer(::logger());
-	// Выполняем запись имени ключа пары
-	ASSERT_TRUE(writer.key("value"));
-	// Выполняем проверку отказа записи объявления таблицы
-	ASSERT_FALSE(writer.table("server"));
-	// Выполняем проверку кода ошибки записи
-	ASSERT_EQ(writer.error(), toml::error_t::MISSING_VALUE);
-	// Выполняем проверку отказа выдачи недописанного текста настроек
-	ASSERT_TRUE(writer.text().empty());
-	// Выполняем запись значения пары
-	ASSERT_TRUE(writer.integer(1));
-	// Выполняем проверку выдачи собранного текста настроек
-	ASSERT_EQ(writer.text(), "value = 1\n");
-	// Выполняем запись начала перечня значений вне пары
-	ASSERT_FALSE(writer.arrayOpen());
-	// Выполняем проверку кода ошибки записи
-	ASSERT_EQ(writer.error(), toml::error_t::UNEXPECTED_CONTENT);
+	/**
+	 * Выполняем проверку отказа записи объявления таблицы при недописанной паре
+	 */
+	{
+		// Объект записи текста настроек
+		toml::writer_t writer(::logger());
+		// Выполняем запись имени ключа пары
+		ASSERT_TRUE(writer.key("value"));
+		// Выполняем проверку отказа записи объявления таблицы
+		ASSERT_FALSE(writer.table("server"));
+		// Выполняем проверку кода ошибки записи
+		ASSERT_EQ(writer.error(), toml::error_t::MISSING_VALUE);
+		// Выполняем проверку отказа выдачи недописанного текста настроек
+		ASSERT_TRUE(writer.text().empty());
+	}
+	/**
+	 * Выполняем проверку отказа записи начала перечня значений вне пары
+	 */
+	{
+		// Объект записи текста настроек
+		toml::writer_t writer(::logger());
+		// Выполняем запись имени ключа пары
+		ASSERT_TRUE(writer.key("value"));
+		// Выполняем запись значения пары
+		ASSERT_TRUE(writer.integer(1));
+		// Выполняем проверку выдачи собранного текста настроек
+		ASSERT_EQ(writer.text(), "value = 1\n");
+		// Выполняем запись начала перечня значений вне пары
+		ASSERT_FALSE(writer.arrayOpen());
+		// Выполняем проверку кода ошибки записи
+		ASSERT_EQ(writer.error(), toml::error_t::UNEXPECTED_CONTENT);
+	}
 }
 /**
  * @brief Проверка отказа закрытия незаписанного составного значения
  *
  */
 TEST(CodecTomlWriter, Unbalanced) {
-	// Объект записи текста настроек
-	toml::writer_t writer(::logger());
-	// Выполняем запись имени ключа пары
-	ASSERT_TRUE(writer.key("value"));
-	// Выполняем запись начала перечня значений
-	ASSERT_TRUE(writer.arrayOpen());
-	// Выполняем проверку отказа закрытия перечня скобкой встроенной таблицы
-	ASSERT_FALSE(writer.inlineClose());
-	// Выполняем проверку кода ошибки записи
-	ASSERT_EQ(writer.error(), toml::error_t::UNCLOSED_INLINE_TABLE);
-	// Выполняем запись конца перечня значений
-	ASSERT_TRUE(writer.arrayClose());
-	// Выполняем проверку отказа закрытия незаписанного перечня значений
-	ASSERT_FALSE(writer.arrayClose());
-	// Выполняем проверку кода ошибки записи
-	ASSERT_EQ(writer.error(), toml::error_t::UNCLOSED_ARRAY);
+	/**
+	 * Выполняем проверку отказа закрытия перечня скобкой встроенной таблицы
+	 */
+	{
+		// Объект записи текста настроек
+		toml::writer_t writer(::logger());
+		// Выполняем запись имени ключа пары
+		ASSERT_TRUE(writer.key("value"));
+		// Выполняем запись начала перечня значений
+		ASSERT_TRUE(writer.arrayOpen());
+		// Выполняем проверку отказа закрытия перечня скобкой встроенной таблицы
+		ASSERT_FALSE(writer.inlineClose());
+		// Выполняем проверку кода ошибки записи
+		ASSERT_EQ(writer.error(), toml::error_t::UNCLOSED_INLINE_TABLE);
+	}
+	/**
+	 * Выполняем проверку отказа закрытия незаписанного перечня значений
+	 */
+	{
+		// Объект записи текста настроек
+		toml::writer_t writer(::logger());
+		// Выполняем запись имени ключа пары
+		ASSERT_TRUE(writer.key("value"));
+		// Выполняем запись начала перечня значений
+		ASSERT_TRUE(writer.arrayOpen());
+		// Выполняем запись конца перечня значений
+		ASSERT_TRUE(writer.arrayClose());
+		// Выполняем проверку отказа закрытия незаписанного перечня значений
+		ASSERT_FALSE(writer.arrayClose());
+		// Выполняем проверку кода ошибки записи
+		ASSERT_EQ(writer.error(), toml::error_t::UNCLOSED_ARRAY);
+	}
 }
 /**
  * @brief Проверка украшений собираемого текста настроек
@@ -1505,6 +1535,82 @@ TEST(CodecTomlWriter, ArrayRemarks) {
 	ASSERT_EQ(outside.error(), toml::error_t::UNEXPECTED_CONTENT);
 }
 /**
+ * @brief Проверка того, что отказ записи писателя заклинивает
+ *
+ * @details Договор этот у трёх кодеков сведён к одному решением владельца: отказ записи
+ *          липкий - писатель, отказом задетый, дальнейших записей не принимает вовсе, а
+ *          код отказа держит до сброса. Прежде кодеки расходились: у INI отказ прилипал,
+ *          у TOML собранный текст метился рваным, а YAML запись продолжал
+ *
+ * @warning Перебираются ВСЕ методы записи открытого договора, а не выборка их: сторож
+ *          стоит в каждом теле по отдельности, и метод, сторожа не получивший, выпал бы
+ *          из договора молча. Заведётся у записи новый метод - приписать его сюда
+ *
+ */
+TEST(CodecTomlWriter, RefusalLocksWriter) {
+	// Объект записи текста настроек
+	toml::writer_t writer(::logger());
+	// Выполняем запись имени ключа пары
+	ASSERT_TRUE(writer.key("value"));
+	// Выполняем запись значения пары
+	ASSERT_TRUE(writer.integer(1));
+	// Запоминаем собранный текст настроек до отказа
+	const string before = writer.text();
+	// Выполняем проверку отказа дописки примечания со знаком конца строки
+	ASSERT_FALSE(writer.trailing("первая\nвторая"));
+	// Выполняем проверку кода ошибки записи
+	ASSERT_EQ(writer.error(), toml::error_t::INVALID_CHARACTER);
+	// Запоминаем код отказа записи
+	const toml::error_t error = writer.error();
+	// Отметка времени, к записи подаваемая
+	toml::stamp_t stamp;
+	// Путь к записываемому имени
+	const vector <toml::part_t> parts = ::path({"имя"});
+	/**
+	 * Выполняем перебор всех методов записи открытого договора
+	 */
+	/**
+	 * @note Утверждения ниже суть EXPECT, а не ASSERT, намеренно: ASSERT обрывает тело
+	 *       проверки первым же отказом, и методы за ним не спрашивались бы вовсе
+	 *
+	 * @note Снятие всех двадцати одного сторожа роняет девять утверждений из двадцати
+	 *       двух: остальные отвергаются и своими условиями, сторожа не спрашивая.
+	 *       Замерено срывом
+	 */
+	EXPECT_FALSE(writer.table(parts));
+	EXPECT_FALSE(writer.table("таблица"));
+	EXPECT_FALSE(writer.arrayTable(parts));
+	EXPECT_FALSE(writer.arrayTable("таблица"));
+	EXPECT_FALSE(writer.key(parts));
+	EXPECT_FALSE(writer.key("ключ"));
+	EXPECT_FALSE(writer.value(toml::content_t{}));
+	EXPECT_FALSE(writer.text("значение"));
+	EXPECT_FALSE(writer.boolean(true));
+	EXPECT_FALSE(writer.integer(1));
+	EXPECT_FALSE(writer.real(1.5));
+	EXPECT_FALSE(writer.stamp(stamp, toml::type_t::LOCAL_DATE));
+	EXPECT_FALSE(writer.arrayOpen());
+	EXPECT_FALSE(writer.arrayClose());
+	EXPECT_FALSE(writer.inlineOpen());
+	EXPECT_FALSE(writer.inlineClose());
+	EXPECT_FALSE(writer.comment("примечание"));
+	EXPECT_FALSE(writer.trailing("дописка"));
+	EXPECT_FALSE(writer.remark("примечание перечня"));
+	EXPECT_FALSE(writer.remarked("примечание перечня", true));
+	EXPECT_FALSE(writer.blank());
+	EXPECT_FALSE(writer.number("число", 1));
+	// Выполняем проверку того, что код отказа заклинившим писателем сохранён
+	ASSERT_EQ(writer.error(), error);
+	// Выполняем проверку того, что собранный текст отказом не тронут
+	ASSERT_EQ(writer.text(), before);
+	// Выполняем сброс записи в исходное состояние
+	writer.clear();
+	// Выполняем проверку того, что сброс код отказа отпускает
+	ASSERT_EQ(writer.error(), toml::error_t::NONE);
+	// Выполняем проверку того, что запись после сброса принимается
+	ASSERT_TRUE(writer.key("ключ") && writer.integer(1));
+}
+/**
  * @brief Проверка отказа выдачи текста, отказом оборванного
  *
  * @details Отказ, случившийся после того, как операция уже дописала начало своё,
@@ -1536,19 +1642,22 @@ TEST(CodecTomlWriter, TornRefusal) {
 	 * @note Без проверки выдавался бы текст с открывающей скобкой на конце
 	 */
 	ASSERT_TRUE(writer.text().empty());
-	// Выполняем запись пустой строки, оборванную строку завершающую
-	ASSERT_TRUE(writer.blank());
 	/**
-	 * Выполняем проверку отказа выдачи текста, оборванность которого завершена
+	 * Выполняем проверку того, что отказ писателя заклинил
 	 *
-	 * @note Признак рваности липкий: удачная запись пустой строки дописала знак конца
-	 *       строки к оборванной, и по одному лишь виду собранного текста рваность эта
-	 *       уже неразличима - выдался бы текст с одинокой открывающей скобкой строкой
+	 * @note Прежде запись после отказа продолжалась, и удачная пустая строка дописывала
+	 *       знак конца строки к оборванной: по одному лишь виду собранного текста
+	 *       рваность эта становилась неразличима. Ныне писатель дальнейших записей не
+	 *       принимает вовсе, и случай этот отпал
 	 */
+	ASSERT_FALSE(writer.blank());
+	// Выполняем проверку того, что код отказа заклинившим писателем сохранён
+	ASSERT_EQ(writer.error(), toml::error_t::KEY_TOO_LONG);
+	// Выполняем проверку того, что выдача текста остаётся пустой
 	ASSERT_TRUE(writer.text().empty());
 	// Выполняем сброс записи в исходное состояние
 	writer.clear();
-	// Выполняем проверку того, что сброс признак рваности снимает
+	// Выполняем проверку того, что сброс снимает и признак рваности, и заклинивание
 	ASSERT_TRUE(writer.key("ab") && writer.integer(1));
 	// Выполняем проверку выдачи собранного заново текста настроек
 	ASSERT_EQ(writer.text(), "ab = 1\n");
@@ -1988,9 +2097,18 @@ TEST(CodecTomlWriter, LineRefusedOnPendingKey) {
 		else ASSERT_FALSE(writer.blank()) << sample;
 		// Выполняем проверку кода ошибки записи
 		ASSERT_EQ(writer.error(), toml::error_t::MISSING_VALUE) << sample;
-		// Выполняем запись значения пары
-		ASSERT_TRUE(writer.integer(1)) << sample;
-		// Выполняем проверку того, что отвергнутая строка текста не испортила
-		ASSERT_EQ(writer.text(), "value = 1\n") << sample;
+		/**
+		 * Выполняем проверку того, что отказ писателя заклинил
+		 *
+		 * @note Прежде отвергнутая строка проверялась дописыванием значения следом:
+		 *       текст выдавался целым, и тем доказывалось, что отказ его не испортил.
+		 *       Ныне писатель после отказа записей не принимает, и целость текста
+		 *       судится пустой его выдачей вместе с сохранённым кодом отказа
+		 */
+		ASSERT_FALSE(writer.integer(1)) << sample;
+		// Выполняем проверку того, что код отказа заклинившим писателем сохранён
+		ASSERT_EQ(writer.error(), toml::error_t::MISSING_VALUE) << sample;
+		// Выполняем проверку того, что недописанный текст выдаче не подлежит
+		ASSERT_TRUE(writer.text().empty()) << sample;
 	}
 }

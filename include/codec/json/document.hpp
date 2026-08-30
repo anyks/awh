@@ -1150,8 +1150,15 @@ namespace awh {
 					 */
 					reader_t _reader;
 				private:
-					// Код отказа разбора
-					error_t _error;
+					/**
+					 * @brief Код отказа последней работы над документом
+					 *
+					 * @details Поле изменчиво нарочно: выдача текста документа и запись его в
+					 * файл идут работами неизменными, а сообщать отказ обязаны - иначе пустой
+					 * текст неотличим от документа пустого. Прежде код отведён был одному
+					 * лишь разбору, и отказ записи пропадал вовсе
+					 */
+					mutable error_t _error;
 				private:
 					/**
 					 * \~russian
@@ -1225,8 +1232,15 @@ namespace awh {
 					// Отображение имён полей крупного объекта в места их в перечне имён
 					unordered_map <string_view, size_t> _lookup;
 				private:
-					// Положение отказа разбора в исходном тексте
-					location_t _position;
+					/**
+					 * @brief Положение отказа разбора в исходном тексте
+					 *
+					 * @details Поле изменчиво нарочно, наравне с кодом отказа: выдача текста
+					 * идёт работой неизменной, а положение сбрасывать обязана - у отказа записи
+					 * места в исходном тексте нет вовсе, и положение прежнего разбора, его
+					 * пережив, складывалось бы с новым кодом в донесение стройное, но ложное
+					 */
+					mutable location_t _position;
 				private:
 					/**
 					 * \~russian
@@ -1270,6 +1284,17 @@ namespace awh {
 					 * \~
 					 */
 					bool _completed;
+					/**
+					 * @brief Признак прекращения разбора по требованию обработчика
+					 *
+					 * @details Обработчик потоковой выдачи вправе ответить ложью, и разбор
+					 * тогда прекращается. Прекращение это ОТКАЗОМ НЕ ЯВЛЯЕТСЯ: потребитель
+					 * получил, сколько хотел. Прежде разбор отвечал на него ложью при коде
+					 * `NONE` - отличить своё же «довольно» от отказа неведомой причины было
+					 * нечем, - тогда как таблица CSV на то же действие отвечает успехом и
+					 * договором это описывает
+					 */
+					bool _halted;
 				private:
 					/**
 					 * \~russian
@@ -1485,8 +1510,13 @@ namespace awh {
 					 * @param node node the number of which is being written
 					 *
 					 * \~
+					 * @return признак успешности записи
+					 *
+					 * @note Исход сличается выдачей текста: отказ записи МЕСТНЫЙ, и выдача,
+					 *       идущая до конца не глядя, получала последний его код вместо
+					 *       первого - звучащему называлась не та причина
 					 */
-					void compose(writer_t & writer, const node_t & node) const noexcept;
+					bool compose(writer_t & writer, const node_t & node) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1522,8 +1552,15 @@ namespace awh {
 					 * очередное значение верхнего уровня, а память под него переиспользуется.
 					 * Пригодно для потока NDJSON и для крупных массивов
 					 *
+					 * @note Обработчик вправе ответить ЛОЖЬЮ, и разбор тогда прекращается.
+					 *       Прекращение это отказом НЕ является: потребитель получил, сколько
+					 *       хотел, и разбор отвечает УСПЕХОМ при коде `NONE`. Прежде он
+					 *       отвечал на это ложью, и отличить своё же «довольно» от отказа
+					 *       неведомой причины было нечем. Таблица CSV держится того же
+					 *       договора и описывала его прямо
+					 *
 					 * @param text     разбираемый текст документа
-					 * @param callback обработчик потоковой выдачи значений
+					 * @param callback обработчик потоковой выдачи значений, ложь прекращает разбор
 					 * @return         признак успешности разбора
 					 *
 					 * \~english
@@ -1531,8 +1568,11 @@ namespace awh {
 					 * @details The document is thereby not filled at all: the next value of the top level
 					 * is issued to the handler, while the memory for it is reused.
 					 * Suitable for an NDJSON stream and for the large arrays
+					 * @note The handler is entitled to answer with FALSE, and the parsing is then terminated.
+					 *       Such a termination is NOT a refusal: the consumer has got as much as it wanted,
+					 *       and the parsing answers with SUCCESS at the code `NONE`
 					 * @param text text of the document being parsed
-					 * @param callback handler of the streaming issuance of the values
+					 * @param callback handler of the streaming issuance of the values, false terminates the parsing
 					 * @return sign of the success of the parsing
 					 *
 					 * \~
@@ -1774,13 +1814,23 @@ namespace awh {
 					bool empty() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод извлечения кода отказа разбора
+					 * @brief Метод извлечения кода отказа последней работы над документом
 					 *
-					 * @return код отказа разбора
+					 * @details Разбор текста, чтение файла, выдача текста и запись его в файл
+					 * ставят код этот заново каждая. Прежде отведён он был одному лишь разбору
+					 *
+					 * @note Договор этот ОБЩИЙ у кодеков: таблица CSV и владеющие значения
+					 *       разметки XML и документа JSON отвечают тем же кодом и тем же порядком
+					 *
+					 * @return код отказа последней работы
 					 *
 					 * \~english
-					 * @brief Method of the extraction of the error code of the parsing
-					 * @return error code of the parsing
+					 * @brief Method of the extraction of the code of the refusal of the last operation over the document
+					 * @details The parsing of a text, the reading of a file, the issuance of a text and the writing
+					 * of it into a file each set this code anew. Formerly it was allotted to the parsing alone
+					 * @note This contract is COMMON among the codecs: a CSV table and the owning values
+					 *       of an XML markup and of a JSON document answer with the same code and in the same order
+					 * @return code of the refusal of the last operation
 					 *
 					 * \~
 					 */

@@ -335,6 +335,42 @@ namespace awh {
 					 * \~
 					 */
 					static bool indexed(const string_view segment, size_t & result) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод поверки родственности имён полей отображения
+					 *
+					 * @details Тождество ИМЕНИ строже равенства значений, и строгость эта взята
+					 * у самой записи: имена там сличаются полной записью, а целое `42` и дробное
+					 * `42.0` записываются РАЗНЫМИ метками, то есть суть разные имена. Оператор
+					 * равенства же сличает числа величиною поверх вида хранения - и правильно
+					 * делает, ибо он о ЗНАЧЕНИЯХ, а не об именах
+					 *
+					 * @note Без поверки этой заведение поля отвечало успехом, ПОТЕРЯВ поле:
+					 * замерено щупом 30.08.2026 - внесение имён `42` и `42.0` оба отвечали
+					 * успехом, а полей у отображения выходило ОДНО. Меж тем сборщик записи оба
+					 * имени укладывает, и разбор такой записи в значение даёт ДВА поля: собрать
+					 * заведением то, что разбирается чтением, было нельзя
+					 *
+					 * @note Расходятся ровно два перехода: целое с дробным да целое неограниченной
+					 * ширины с десятичным. Отметка времени с целым не схлопывается - разряд вида
+					 * у неё свой
+					 *
+					 * @param first  первое сличаемое имя поля
+					 * @param second второе сличаемое имя поля
+					 * @return       признак того, что имена принадлежат одному виду записи
+					 *
+					 * \~english
+					 * @brief Method of the checking of the kinship of the names of the fields of a mapping
+					 * @details The identity of a NAME is stricter than the equality of the values, and this
+					 * strictness is taken from the record itself: the integer `42` and the real `42.0` are
+					 * written by DIFFERENT tags, that is, they are different names
+					 * @param first first name of a field being compared
+					 * @param second second name of a field being compared
+					 * @return sign that the names belong to one kind of the record
+					 *
+					 * \~
+					 */
+					[[nodiscard]] static bool akin(const Value & first, const Value & second) noexcept;
 				public:
 					/**
 					 * \~russian

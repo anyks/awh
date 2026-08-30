@@ -390,11 +390,35 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод записи имени поля объекта
 					 *
+					 * @warning Повтор имени поля запись НЕ СТЕРЕЖЁТ, а разбор его по
+					 *          умолчанию ОТВЕРГАЕТ: правило `duplicate_t::ERROR` стоит
+					 *          умолчанием у чтения, и текст `{"имя":1,"имя":2}`, записью
+					 *          выданный без единого возражения, собственным разбором при
+					 *          настройках по умолчанию не принимается вовсе. Замер: запись
+					 *          отвечала успехом, разбор - кодом `DUPLICATE_KEY`. Звучащему,
+					 *          повторы допускающему, надлежит либо не писать их, либо
+					 *          разбирать правилом `FIRST`, `LAST` либо `KEEP`
+					 *
+					 * @note Запись разметки XML повтор свойства узла стережёт и отвергает
+					 *       кодом `DUPLICATE_ATTRIBUTE`, держа имена открытого узла при
+					 *       себе. Здесь того же не делается: полей у объекта бывает сколько
+					 *       угодно, и хранилище имён под каждый открытый объект легло бы на
+					 *       горячий путь записи. Решение о заслоне - за владельцем
+					 *
 					 * @param name записываемое имя поля объекта
 					 * @return     признак успешности записи
 					 *
 					 * \~english
 					 * @brief Method of the writing of the name of a field of an object
+					 * @warning The writing does NOT guard against a repetition of the name of a field, while
+					 *          the parsing by default REJECTS it: the rule `duplicate_t::ERROR` stands as
+					 *          the default of the reading, and the text `{"name":1,"name":2}`, issued by
+					 *          the writing without a single objection, is not accepted at all by its own
+					 *          parsing at the default settings
+					 * @note The writing of an XML markup guards against a repetition of an attribute of a node
+					 *       and rejects it by the code `DUPLICATE_ATTRIBUTE`. The same is not done here:
+					 *       an object has as many fields as one likes, and a storage of the names for each
+					 *       opened object would lie upon the hot path of the writing
 					 * @param name name of the field of the object being written
 					 * @return sign of the success of the writing
 					 *

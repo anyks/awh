@@ -529,6 +529,10 @@ namespace awh {
 			 * бывает записан иначе, и отвергать его целиком значило бы оставлять
 			 * потребителя без всякого способа его прочесть
 			 *
+			 * @note Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 - метки
+			 * порядка байтов не имеют вовсе и опознанию не поддаются: принимаются они
+			 * только навязанными извне
+			 *
 			 * \~english
 			 * @brief Encodings of the source settings text
 			 * @details The specification allots a single encoding to a TOML text — UTF-8 — and
@@ -543,7 +547,12 @@ namespace awh {
 				NONE    = 0x00, // Кодировка не определена
 				UTF8    = 0x01, // Кодировка UTF-8
 				UTF16LE = 0x02, // Кодировка UTF-16 с обратным порядком байтов
-				UTF16BE = 0x03  // Кодировка UTF-16 с прямым порядком байтов
+				UTF16BE = 0x03, // Кодировка UTF-16 с прямым порядком байтов
+				LATIN1  = 0x04, // Кодировка ISO-8859-1
+				ASCII   = 0x05, // Кодировка US-ASCII
+				CP1252  = 0x06, // Кодировка Windows-1252
+				UTF32LE = 0x07, // Кодировка UTF-32 с обратным порядком байтов
+				UTF32BE = 0x08  // Кодировка UTF-32 с прямым порядком байтов
 			};
 
 			/**
@@ -988,6 +997,26 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ const char * name(const encoding_t encoding) noexcept;
+
+			/**
+			 * \~russian
+			 * @brief Метод определения кодировки по её названию
+			 *
+			 * @details Договор этот один у INI, TOML и YAML: кодек, кодировки принимающий,
+			 * обязан уметь и назвать её, и опознать по названию - иначе потребитель, взявший
+			 * название из настроек, обратить его в кодировку ничем не может
+			 *
+			 * @param text название кодировки в любом регистре
+			 * @return     определённая кодировка исходного текста
+			 *
+			 * \~english
+			 * @brief Method of determining an encoding by its name
+			 * @param text name of the encoding in any case
+			 * @return     determined encoding of the source text
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ encoding_t encoding(const string_view text) noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод получения названия типа значения

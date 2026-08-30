@@ -1959,6 +1959,26 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
  *
  */
 bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
+	/**
+	 * Если ссылка на значение недействительна
+	 *
+	 * @warning Поверка эта стоит ПРЕЖДЕ открытия файла намеренно: поток записи усекает
+	 *          цель при открытии, и значение, текста не дающее, сносило бы прежнее
+	 *          содержимое файла начисто, а запись отвечала бы УСПЕХОМ. Замерено щупом:
+	 *          файл в 38 байт обращался в нуль, а save() выдавал истину
+	 */
+	if(!this->valid()){
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе записи недействительного значения
+			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::yaml::message(error_t::INVALID_PATH));
+		// Выводим признак неудачной записи
+		return false;
+	}
+	// Получаем текст YAML, значением записанный
+	const string text = this->dump();
 	// Выполняем открытие записываемого файла
 	ofstream file(filename, ios::binary | ios::trunc);
 	/**
@@ -1979,8 +1999,6 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Получаем текст YAML, значением записанный
-	const string text = this->dump();
 	// Выполняем запись текста YAML в файл
 	file.write(text.data(), static_cast <streamsize> (text.size()));
 	// Выводим признак успешности записи

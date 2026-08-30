@@ -30,6 +30,7 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <encoding/ascii.hpp>
 #include <codec/yaml/common.hpp>
 #include <codec/yaml/encoding.hpp>
 
@@ -42,6 +43,51 @@ using namespace std;
  * Используем пространство имён контейнера YAML
  */
 using namespace awh::codec::yaml;
+
+/**
+ * @brief Внутренние служебные объекты приведения названий кодировок
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Метод сличения последовательностей знаков без учёта регистра
+	 *
+	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
+	 * Названия кодировок знаками US-ASCII ограничены, и привлекать сюда правила
+	 * местности незачем
+	 *
+	 * @param first  первая последовательность знаков для сличения
+	 * @param second вторая последовательность знаков для сличения
+	 * @return       результат сличения
+	 *
+	 */
+	static bool compare(const string_view first, const string_view second) noexcept {
+		/**
+		 * Если длины последовательностей знаков не совпадают
+		 */
+		if(first.length() != second.length())
+			// Выводим отрицательный результат сличения
+			return false;
+		/**
+		 * Выполняем перебор всех знаков последовательности
+		 */
+		for(size_t i = 0; i < first.length(); i++){
+			/**
+			 * Если очередные знаки не совпадают
+			 */
+			if(!ascii::equals(first[i], second[i]))
+				// Выводим отрицательный результат сличения
+				return false;
+		}
+		// Выводим положительный результат сличения
+		return true;
+	}
+};
 
 /**
  * @brief Внутренние помощники разрешения видов скалярных значений
@@ -1438,4 +1484,139 @@ type_t awh::codec::yaml::narrow(const string_view text, const schema_t schema, n
 	}
 	// Выводим самый узкий вид, разобранное число вмещающий
 	return fitted(negative, collected, result);
+}
+
+/**
+ * @brief Метод получения названия кодировки
+ *
+ * @param encoding кодировка исходного текста
+ * @return         общепринятое название кодировки
+ *
+ */
+const char * awh::codec::yaml::name(const encoding_t encoding) noexcept {
+	/**
+	 * Определяем кодировку исходного текста
+	 */
+	switch(static_cast <uint8_t> (encoding)){
+		// Если кодировкой является UTF-8
+		case static_cast <uint8_t> (encoding_t::UTF8):
+			// Выводим название кодировки
+			return "UTF-8";
+		// Если кодировкой является UTF-16 с обратным порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF16LE):
+			// Выводим название кодировки
+			return "UTF-16LE";
+		// Если кодировкой является UTF-16 с прямым порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF16BE):
+			// Выводим название кодировки
+			return "UTF-16BE";
+		// Если кодировкой является UTF-32 с обратным порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32LE):
+			// Выводим название кодировки
+			return "UTF-32LE";
+		// Если кодировкой является UTF-32 с прямым порядком байтов
+		case static_cast <uint8_t> (encoding_t::UTF32BE):
+			// Выводим название кодировки
+			return "UTF-32BE";
+		// Если кодировкой является ISO-8859-1
+		case static_cast <uint8_t> (encoding_t::LATIN1):
+			// Выводим название кодировки
+			return "ISO-8859-1";
+		// Если кодировкой является US-ASCII
+		case static_cast <uint8_t> (encoding_t::ASCII):
+			// Выводим название кодировки
+			return "US-ASCII";
+		// Если кодировкой является Windows-1252
+		case static_cast <uint8_t> (encoding_t::CP1252):
+			// Выводим название кодировки
+			return "WINDOWS-1252";
+	}
+	// Выводим название неопределённой кодировки
+	return "unknown";
+}
+
+/**
+ * @brief Метод определения кодировки по её названию
+ *
+ * @param text название кодировки в любом регистре
+ * @return     определённая кодировка исходного текста
+ *
+ */
+awh::codec::yaml::encoding_t awh::codec::yaml::encoding(const string_view text) noexcept {
+	/**
+	 * Если название кодировки не передано
+	 */
+	if(text.empty())
+		// Выводим неопределённую кодировку
+		return encoding_t::NONE;
+	/**
+	 * Если кодировкой является UTF-8
+	 */
+	if(::compare(text, "UTF-8") || ::compare(text, "UTF8"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF8;
+	/**
+	 * Если кодировкой является UTF-16 с обратным порядком байтов
+	 */
+	if(::compare(text, "UTF-16LE") || ::compare(text, "UTF16LE"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF16LE;
+	/**
+	 * Если кодировкой является UTF-16 с прямым порядком байтов
+	 */
+	if(::compare(text, "UTF-16BE") || ::compare(text, "UTF16BE"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF16BE;
+	/**
+	 * Если кодировка объявлена как UTF-16 без указания порядка байтов
+	 *
+	 * @note Порядок байтов в таком случае определяется меткой в начале текста,
+	 *       поэтому название разбирается в кодировку с прямым порядком лишь как
+	 *       основание по умолчанию
+	 */
+	if(::compare(text, "UTF-16") || ::compare(text, "UTF16"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF16BE;
+	/**
+	 * Если кодировкой является UTF-32 с обратным порядком байтов
+	 */
+	if(::compare(text, "UTF-32LE") || ::compare(text, "UTF32LE"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF32LE;
+	/**
+	 * Если кодировкой является UTF-32 с прямым порядком байтов
+	 */
+	if(::compare(text, "UTF-32BE") || ::compare(text, "UTF32BE"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF32BE;
+	/**
+	 * Если кодировка объявлена как UTF-32 без указания порядка байтов
+	 */
+	if(::compare(text, "UTF-32") || ::compare(text, "UTF32"))
+		// Выводим определённую кодировку
+		return encoding_t::UTF32BE;
+	/**
+	 * Если кодировкой является ISO-8859-1
+	 */
+	if(::compare(text, "ISO-8859-1") || ::compare(text, "ISO8859-1") || ::compare(text, "LATIN1") || ::compare(text, "L1"))
+		// Выводим определённую кодировку
+		return encoding_t::LATIN1;
+	/**
+	 * Если кодировкой является Windows-1252
+	 *
+	 * @note Кодировка эта с ISO-8859-1 не совпадает и отдельной ветвью разбирается
+	 *       намеренно: там, где у ISO-8859-1 управляющие знаки области C1, у неё
+	 *       знаки печатные - денежный знак евро, кавычки-лапки, тире
+	 */
+	if(::compare(text, "WINDOWS-1252") || ::compare(text, "CP1252") || ::compare(text, "WINDOWS1252"))
+		// Выводим определённую кодировку
+		return encoding_t::CP1252;
+	/**
+	 * Если кодировкой является US-ASCII
+	 */
+	if(::compare(text, "US-ASCII") || ::compare(text, "ASCII") || ::compare(text, "ANSI_X3.4-1968"))
+		// Выводим определённую кодировку
+		return encoding_t::ASCII;
+	// Выводим неопределённую кодировку
+	return encoding_t::NONE;
 }

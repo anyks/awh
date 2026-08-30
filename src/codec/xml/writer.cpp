@@ -39,104 +39,6 @@ namespace {
 	 */
 	using namespace awh::codec::xml;
 
-	/**
-	 * @brief Метод проверки имени на правильность построения
-	 *
-	 * @details Записать имя, которое не удастся прочесть обратно, нельзя: такое
-	 *          указание отвергается, а не записывается с надеждой на снисходительность
-	 *          читающего
-	 *
-	 * @param name проверяемое имя без префикса
-	 * @return     результат проверки
-	 *
-	 */
-	static bool correct(const string_view name) noexcept {
-		/**
-		 * Если имя пусто
-		 */
-		if(name.empty())
-			// Выводим отрицательный результат проверки
-			return false;
-		/**
-		 * Выполняем перебор всех знаков имени
-		 */
-		for(size_t i = 0; i < name.length();){
-			// Длина прочитанной последовательности знака
-			size_t length = 0;
-			// Выполняем чтение кодового значения очередного знака
-			const uint32_t code = decode(name.data() + i, name.length() - i, length);
-			/**
-			 * Если знак прочитать не удалось
-			 */
-			if((length == 0) || (code == INVALID_CODEPOINT))
-				// Выводим отрицательный результат проверки
-				return false;
-			/**
-			 * Если знак недопустим в имени
-			 */
-			if((i == 0) ? !isNameStart(code) : !isName(code))
-				// Выводим отрицательный результат проверки
-				return false;
-			/**
-			 * Если знак является разделителем префикса
-			 *
-			 * @note Префикс назначается записью по обозначению пространства имён, а
-			 *       не задаётся вызывающим: разделитель в местном имени недопустим
-			 */
-			if(code == ':')
-				// Выводим отрицательный результат проверки
-				return false;
-			// Выполняем переход к следующему знаку имени
-			i += length;
-		}
-		// Выводим положительный результат проверки
-		return true;
-	}
-	/**
-	 * @brief Метод проверки имени, записываемого дословно
-	 *
-	 * @details Разбор без пространств имён кладёт имя в дерево целиком, вместе с
-	 * разделителем префикса: пространств имён там нет вовсе, и делить имя не на что.
-	 * Такое имя записью дословно и воспроизводится, а проверяется оно правилом
-	 * договора разметки, где разделитель обычным знаком имени и является
-	 *
-	 * @param name проверяемое имя
-	 * @return     результат проверки
-	 *
-	 */
-	static bool plain(const string_view name) noexcept {
-		/**
-		 * Если имя пусто
-		 */
-		if(name.empty())
-			// Выводим отрицательный результат проверки
-			return false;
-		/**
-		 * Выполняем перебор всех знаков имени
-		 */
-		for(size_t i = 0; i < name.length();){
-			// Длина прочитанной последовательности знака
-			size_t length = 0;
-			// Выполняем чтение кодового значения очередного знака
-			const uint32_t code = decode(name.data() + i, name.length() - i, length);
-			/**
-			 * Если знак прочитать не удалось
-			 */
-			if((length == 0) || (code == INVALID_CODEPOINT))
-				// Выводим отрицательный результат проверки
-				return false;
-			/**
-			 * Если знак недопустим в имени
-			 */
-			if((i == 0) ? !isNameStart(code) : !isName(code))
-				// Выводим отрицательный результат проверки
-				return false;
-			// Выполняем переход к следующему знаку имени
-			i += length;
-		}
-		// Выводим положительный результат проверки
-		return true;
-	}
 };
 
 /**
@@ -656,9 +558,9 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
  * @return         результат выполнения операции
  *
  */
-bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix, const bool oneline) noexcept {
+bool awh::codec::xml::Writer::open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix, const bool oneline, const bool verbatim) noexcept {
 	// Выводим результат открытия узла разметки с его объявлениями и желаемым префиксом
-	return this->open(local, uri, (declares.empty() ? nullptr : &declares), (prefix.empty() ? nullptr : &prefix), false, oneline);
+	return this->open(local, uri, (declares.empty() ? nullptr : &declares), (prefix.empty() ? nullptr : &prefix), verbatim, oneline);
 }
 /**
  * @brief Метод открытия узла разметки с заданными объявлениями
@@ -680,7 +582,7 @@ bool awh::codec::xml::Writer::open(const string_view local, const string_view ur
 	/**
 	 * Если имя открываемого узла построено ошибочно
 	 */
-	if(verbatim ? !::plain(local) : !::correct(local)){
+	if(!nameable(local, verbatim)){
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_NAME);
 	}
@@ -962,19 +864,6 @@ bool awh::codec::xml::Writer::occupy(const string_view name) noexcept {
 	return true;
 }
 /**
- * @brief Метод записи атрибута при открытом узле
- *
- * @param local местное имя атрибута без префикса
- * @param value значение атрибута
- * @param uri   обозначение пространства имён атрибута
- * @return      результат выполнения операции
- *
- */
-bool awh::codec::xml::Writer::attribute(const string_view local, const string_view value, const string_view uri) noexcept {
-	// Выводим результат записи атрибута с подбором префикса по обозначению
-	return this->attribute(local, value, uri, false);
-}
-/**
  * @brief Метод записи атрибута при открытом узле с дословной записью имени
  *
  * @param local    имя атрибута, записываемое как есть
@@ -1001,7 +890,7 @@ bool awh::codec::xml::Writer::attribute(const string_view local, const string_vi
 	/**
 	 * Если имя атрибута построено ошибочно
 	 */
-	if(verbatim ? !::plain(local) : !::correct(local)){
+	if(!nameable(local, verbatim)){
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_NAME);
 	}
@@ -1103,7 +992,7 @@ bool awh::codec::xml::Writer::binding(const string_view prefix, const string_vie
 	/**
 	 * Если префикс объявления построен ошибочно
 	 */
-	if(!prefix.empty() && !::correct(prefix)){
+	if(!prefix.empty() && !nameable(prefix, false)){
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_PREFIX);
 	}
@@ -1351,7 +1240,7 @@ bool awh::codec::xml::Writer::processing(const string_view target, const string_
 	 *          разделителем, а разбор с выключенным разрешением префиксов такую цель
 	 *          принимает - разобранное дерево обратно бы не записывалось
 	 */
-	if(!::plain(target)){
+	if(!nameable(target, true)){
 		// Выполняем отказ записи с сообщением о нём в журнал
 		return this->refuse(error_t::INVALID_PROCESSING);
 	}

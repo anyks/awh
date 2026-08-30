@@ -1039,9 +1039,12 @@ bool awh::regex::Dfa::scan(string_view text, const size_t from, size_t & result)
 		 *          превосходство более чем в двадцать раз.
 		 *
 		 */
-		if(halting && (pos > from) && ((this->_marks[current] & SCANT) != 0))
+		if(halting && (pos > from) && ((this->_marks[current] & SCANT) != 0)) {
+			// Выполняем учёт остановки автомата привязкой к позиции начала поиска
+			AWH_REGEX_TICK(path_t::HALTING);
 			// Выводим результат прохода по тексту
 			return found;
+		}
 		/**
 		 * Если из текущего состояния допустим пропуск позиций
 		 *

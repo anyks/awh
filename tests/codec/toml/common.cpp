@@ -73,6 +73,46 @@ TEST(CodecTomlCommon, Encodings) {
 	ASSERT_STREQ(toml::name(toml::encoding_t::NONE), "unknown");
 }
 /**
+ * @brief Проверка названий кодировок и их обратного разбора
+ *
+ * @details Кодек, кодировку принимающий, обязан уметь и назвать её, и опознать по
+ * названию: иначе потребитель, взявший название из настроек, обратить его в кодировку
+ * ничем не может. Договор этот один у INI, TOML и YAML
+ *
+ * @warning Границей перебора стоит ПОСЛЕДНИЙ член перечня, а не имя кодировки, некогда
+ *          бывшее последним: заведённая следом кодировка выпала бы из перебора молча
+ *
+ */
+TEST(CodecTomlCommon, EncodingNames) {
+	/**
+	 * Выполняем перебор всех поддерживаемых кодировок
+	 */
+	for(uint8_t i = static_cast <uint8_t> (toml::encoding_t::UTF8); i <= static_cast <uint8_t> (toml::encoding_t::CP1252); i++){
+		// Получаем название очередной кодировки
+		const string name(toml::name(static_cast <toml::encoding_t> (i)));
+		// Выполняем проверку того, что название кодировки не пусто
+		ASSERT_FALSE(name.empty()) << static_cast <uint32_t> (i);
+		// Выполняем проверку того, что кодировка названа, а не помечена неизвестной
+		ASSERT_NE(name, "unknown") << static_cast <uint32_t> (i);
+		// Выполняем проверку обратного разбора названия кодировки
+		ASSERT_EQ(toml::encoding(name), static_cast <toml::encoding_t> (i)) << name;
+	}
+	// Выполняем проверку разбора названия кодировки без учёта регистра
+	ASSERT_EQ(toml::encoding("utf-8"), toml::encoding_t::UTF8);
+	// Выполняем проверку разбора названия кодировки без указания порядка байтов
+	ASSERT_EQ(toml::encoding("UTF-16"), toml::encoding_t::UTF16BE);
+	// Выполняем проверку разбора названия кодировки UTF-32 без указания порядка байтов
+	ASSERT_EQ(toml::encoding("UTF-32"), toml::encoding_t::UTF32BE);
+	// Выполняем проверку разбора обиходного названия кодировки ISO-8859-1
+	ASSERT_EQ(toml::encoding("latin1"), toml::encoding_t::LATIN1);
+	// Выполняем проверку разбора обиходного названия кодировки Windows-1252
+	ASSERT_EQ(toml::encoding("cp1252"), toml::encoding_t::CP1252);
+	// Выполняем проверку разбора неизвестного названия кодировки
+	ASSERT_EQ(toml::encoding("koi8-r"), toml::encoding_t::NONE);
+	// Выполняем проверку разбора пустого названия кодировки
+	ASSERT_EQ(toml::encoding(""), toml::encoding_t::NONE);
+}
+/**
  * @brief Проверка названий типов значений
  *
  * @details Названия эти уходят в сообщения об ошибках несовпадения типа, и опознан

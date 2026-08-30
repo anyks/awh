@@ -257,6 +257,32 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Метод запоминания кода отказа работы над деревом
+					 *
+					 * @details Положение обнаруженной ошибки сбрасывается вместе с кодом намеренно:
+					 * положение это принадлежит РАЗБОРУ текста, и работа над деревом текста под
+					 * собою не имеет вовсе. Переживи оно код, донесение вышло бы стройным, но
+					 * ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
+					 * которого более нет
+					 *
+					 * @note Разбор через это тело НЕ идёт: он ставит положение сам, следом за кодом
+					 *
+					 * @param error запоминаемый код отказа
+					 * @return      признак отказа для выхода из работы
+					 *
+					 * \~english
+					 * @brief Method of the remembering of the error code of an operation over the tree
+					 * @details The location of the discovered error is reset together with the code deliberately:
+					 * that location belongs to the PARSING of a text, while an operation over the tree has no
+					 * text under it at all
+					 * @param error error code being remembered
+					 * @return sign of the refusal for the exit from the operation
+					 *
+					 * \~
+					 */
+					bool fault(const error_t error) const noexcept;
+					/**
+					 * \~russian
 					 * Объект для работы с логами
 					 *
 					 * \~english
@@ -462,7 +488,7 @@ namespace awh {
 					mutable error_t _error;
 				private:
 					// Положение обнаруженной ошибки в исходном тексте
-					location_t _errorLocation;
+					mutable location_t _errorLocation;
 				private:
 					/**
 					 * \~russian

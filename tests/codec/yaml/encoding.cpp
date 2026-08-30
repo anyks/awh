@@ -613,6 +613,168 @@ TEST(CodecYamlEncoding, Forced) {
 	ASSERT_EQ(result, "C");
 }
 /**
+ * @brief Проверка приведения текста в однобайтовых кодировках
+ *
+ * @details Описание YAML предписывает UTF-8, UTF-16 и UTF-32, а кодировки однобайтовые -
+ * ISO-8859-1, US-ASCII и Windows-1252 - кодек принимает сверх описания: файл, полученный
+ * от чужой оснастки, бывает записан иначе, и отвергать его целиком значило бы оставлять
+ * потребителя без всякого способа его прочесть
+ *
+ * @note Метки порядка байтов кодировки эти не имеют вовсе и опознанию не поддаются:
+ *       принимаются только навязанными извне
+ *
+ * @note Область 0x80-0x9F у ISO-8859-1 и у Windows-1252 расходится, и обе кодировки
+ *       проверяются одним и тем же байтом нарочно: у ISO-8859-1 там управляющие знаки
+ *       области C1, какие описание YAML печатными не признаёт, а у Windows-1252 знаки
+ *       печатные. Оттого один и тот же байт даёт у первой отказ, а у второй знак евро
+ *
+ */
+TEST(CodecYamlEncoding, SingleByte) {
+	/**
+	 * Выполняем перебор размеров куска подаваемого текста
+	 */
+	for(size_t chunk = 1; chunk < 4; chunk++){
+		/**
+		 * Выполняем проверку приведения текста в кодировке ISO-8859-1
+		 */
+		{
+			// Объект приведения кодировки исходного текста
+			yaml::decoder_t decoder(::logger());
+			// Собираемый приведённый текст
+			string result;
+			// Исходный текст в кодировке ISO-8859-1
+			const string text("cle: caf\xE9 \xC0\xDF\xFF\n");
+			// Задаём кодировку исходного текста
+			ASSERT_TRUE(decoder.encoding(yaml::encoding_t::LATIN1));
+			/**
+			 * Выполняем подачу исходного текста кусками
+			 */
+			for(size_t offset = 0; offset < text.size(); offset += chunk){
+				// Получаем размер очередного куска подачи
+				const size_t length = min(chunk, (text.size() - offset));
+				// Выполняем проверку приведения очередного куска
+				ASSERT_TRUE(decoder.convert(text.data() + offset, length, ((offset + length) >= text.size()), result)) << chunk;
+			}
+			// Выполняем проверку приведённого текста
+			ASSERT_EQ(result, "cle: caf\xC3\xA9 \xC3\x80\xC3\x9F\xC3\xBF\n") << chunk;
+		}
+		/**
+		 * Выполняем проверку приведения текста в кодировке Windows-1252
+		 */
+		{
+			// Объект приведения кодировки исходного текста
+			yaml::decoder_t decoder(::logger());
+			// Собираемый приведённый текст
+			string result;
+			// Исходный текст в кодировке Windows-1252
+			const string text("cle: \x80 \x93x\x94\n");
+			// Задаём кодировку исходного текста
+			ASSERT_TRUE(decoder.encoding(yaml::encoding_t::CP1252));
+			/**
+			 * Выполняем подачу исходного текста кусками
+			 */
+			for(size_t offset = 0; offset < text.size(); offset += chunk){
+				// Получаем размер очередного куска подачи
+				const size_t length = min(chunk, (text.size() - offset));
+				// Выполняем проверку приведения очередного куска
+				ASSERT_TRUE(decoder.convert(text.data() + offset, length, ((offset + length) >= text.size()), result)) << chunk;
+			}
+			// Выполняем проверку приведённого текста
+			ASSERT_EQ(result, "cle: \xE2\x82\xAC \xE2\x80\x9Cx\xE2\x80\x9D\n") << chunk;
+		}
+		/**
+		 * Выполняем проверку приведения текста в кодировке US-ASCII
+		 */
+		{
+			// Объект приведения кодировки исходного текста
+			yaml::decoder_t decoder(::logger());
+			// Собираемый приведённый текст
+			string result;
+			// Исходный текст в кодировке US-ASCII
+			const string text("key: value\n");
+			// Задаём кодировку исходного текста
+			ASSERT_TRUE(decoder.encoding(yaml::encoding_t::ASCII));
+			/**
+			 * Выполняем подачу исходного текста кусками
+			 */
+			for(size_t offset = 0; offset < text.size(); offset += chunk){
+				// Получаем размер очередного куска подачи
+				const size_t length = min(chunk, (text.size() - offset));
+				// Выполняем проверку приведения очередного куска
+				ASSERT_TRUE(decoder.convert(text.data() + offset, length, ((offset + length) >= text.size()), result)) << chunk;
+			}
+			// Выполняем проверку приведённого текста
+			ASSERT_EQ(result, "key: value\n") << chunk;
+		}
+	}
+	/**
+	 * Выполняем проверку отказа на байт, за пределы кодировки US-ASCII выходящий
+	 */
+	{
+		// Объект приведения кодировки исходного текста
+		yaml::decoder_t decoder(::logger());
+		// Собираемый приведённый текст
+		string result;
+		// Задаём кодировку исходного текста
+		ASSERT_TRUE(decoder.encoding(yaml::encoding_t::ASCII));
+		// Выполняем проверку отказа приведения
+		ASSERT_FALSE(decoder.convert("a: \xE9\n", 5, true, result));
+		// Выполняем проверку выданного кода ошибки приведения
+		ASSERT_EQ(decoder.error(), yaml::error_t::INVALID_ENCODING);
+	}
+	/**
+	 * Выполняем проверку отказа на знак, кодировке Windows-1252 не принадлежащий
+	 */
+	{
+		// Объект приведения кодировки исходного текста
+		yaml::decoder_t decoder(::logger());
+		// Собираемый приведённый текст
+		string result;
+		// Задаём кодировку исходного текста
+		ASSERT_TRUE(decoder.encoding(yaml::encoding_t::CP1252));
+		// Выполняем проверку отказа приведения
+		ASSERT_FALSE(decoder.convert("a: \x81\n", 5, true, result));
+		// Выполняем проверку выданного кода ошибки приведения
+		ASSERT_EQ(decoder.error(), yaml::error_t::INVALID_CHARACTER);
+	}
+	/**
+	 * Выполняем проверку отказа на управляющий знак области C1 кодировки ISO-8859-1
+	 */
+	{
+		// Объект приведения кодировки исходного текста
+		yaml::decoder_t decoder(::logger());
+		// Собираемый приведённый текст
+		string result;
+		// Задаём кодировку исходного текста
+		ASSERT_TRUE(decoder.encoding(yaml::encoding_t::LATIN1));
+		// Выполняем проверку отказа приведения
+		ASSERT_FALSE(decoder.convert("a: \x80\n", 5, true, result));
+		// Выполняем проверку выданного кода ошибки приведения
+		ASSERT_EQ(decoder.error(), yaml::error_t::INVALID_CHARACTER);
+	}
+	/**
+	 * Выполняем проверку того, что байты метки порядка байтов кодировки UTF-8 у
+	 * однобайтовой кодировки меткою не считаются
+	 *
+	 * @note Снятие их означало бы толкование текста чужой кодировкой: у ISO-8859-1
+	 *       байты эти суть три законных знака
+	 */
+	{
+		// Объект приведения кодировки исходного текста
+		yaml::decoder_t decoder(::logger());
+		// Собираемый приведённый текст
+		string result;
+		// Задаём кодировку исходного текста
+		ASSERT_TRUE(decoder.encoding(yaml::encoding_t::LATIN1));
+		// Выполняем проверку приведения текста
+		ASSERT_TRUE(decoder.convert("\xEF\xBB\xBF" "a", 4, true, result));
+		// Выполняем проверку того, что метка порядка байтов не обнаружена
+		ASSERT_FALSE(decoder.signature());
+		// Выполняем проверку приведённого текста
+		ASSERT_EQ(result, "\xC3\xAF\xC2\xBB\xC2\xBF" "a");
+	}
+}
+/**
  * @brief Проверка признака ненадобности приведения
  *
  * @details Текст в UTF-8 приведения не требует вовсе, и признак этот дозволяет чтению

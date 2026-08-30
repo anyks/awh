@@ -379,6 +379,35 @@ namespace awh {
 					 * \~
 					 */
 					bool quadrupled(const char * buffer, const size_t size, const bool end, string & result) noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод приведения куска текста, записанного одиночными байтами
+					 *
+					 * @details Кодировки однобайтовые - ISO-8859-1, US-ASCII и Windows-1252 -
+					 * приводятся единым проходом: знак каждой из них занимает ровно один байт,
+					 * и удерживать обрывки между кусками, как то нужно у UTF-8, UTF-16 и
+					 * UTF-32, здесь не приходится вовсе
+					 *
+					 * @param buffer приводимый кусок исходного текста
+					 * @param size   размер приводимого куска
+					 * @param result строка, куда дописывается приведённый текст
+					 * @return       признак успешного приведения куска
+					 *
+					 * \~english
+					 * @brief Method of the conversion of a chunk of a text written by the single bytes
+					 * @details The single-byte encodings — ISO-8859-1, US-ASCII and Windows-1252 —
+					 * are converted by a single pass: a character of each of them occupies exactly one byte,
+					 * and to hold the fragments between the chunks, as is needed by UTF-8, UTF-16 and
+					 * UTF-32, is not required here at all
+					 * @param buffer chunk of the source text being converted
+					 * @param size size of the chunk being converted
+					 * @param result string to which the converted text is appended
+					 * @return sign of the successful conversion of the chunk
+					 *
+					 * \~
+					 */
+					bool single(const char * buffer, const size_t size, string & result) noexcept;
 				public:
 					/**
 					 * \~russian

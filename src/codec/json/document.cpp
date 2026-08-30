@@ -154,7 +154,7 @@ void awh::codec::json::Document::setLogger(const log_t * log) noexcept {
  * @param log объект ведения журнала работы
  *
  */
-awh::codec::json::Document::Document(const log_t * log) noexcept : _reader(log), _error(error_t::NONE), _log(log), _named(0), _keyed(false), _completed(false), _pointer(0), _base(0), _callback(nullptr) {
+awh::codec::json::Document::Document(const log_t * log) noexcept : _reader(log), _error(error_t::NONE), _log(log), _named(0), _keyed(false), _completed(false), _pointer(0), _base(0), _halted(false), _callback(nullptr) {
 	/**
 	 * Выполняем заведение запаса памяти под сборку дерева документа
 	 *
@@ -713,7 +713,7 @@ string awh::codec::json::Document::Value::raw() const noexcept {
  * @param node   узел, число какого записывается
  *
  */
-void awh::codec::json::Document::compose(writer_t & writer, const node_t & node) const noexcept {
+bool awh::codec::json::Document::compose(writer_t & writer, const node_t & node) const noexcept {
 	/**
 	 * Определяем вид значения узла документа
 	 */
@@ -724,33 +724,28 @@ void awh::codec::json::Document::compose(writer_t & writer, const node_t & node)
 		case type_t::INT32:
 		case type_t::INT64:
 			// Выполняем запись целого числа со знаком
-			writer.value(node.number <int64_t> ());
-		break;
+			return writer.value(node.number <int64_t> ());
 		// Если значение является целым без знака любой ширины
 		case type_t::UINT8:
 		case type_t::UINT16:
 		case type_t::UINT32:
 		case type_t::UINT64:
 			// Выполняем запись целого числа без знака
-			writer.value(node.number <uint64_t> ());
-		break;
+			return writer.value(node.number <uint64_t> ());
 		// Если значение является дробным одинарной точности
 		case type_t::FLOAT:
 			// Выполняем запись дробного числа одинарной точности
-			writer.value(static_cast <double> (node.number <float> ()));
-		break;
+			return writer.value(static_cast <double> (node.number <float> ()));
 		// Если значение является дробным двойной точности
 		case type_t::DOUBLE:
 			// Выполняем запись дробного числа двойной точности
-			writer.value(node.number <double> ());
-		break;
+			return writer.value(node.number <double> ());
 		/**
 		 * Если значение является числом, не вместимым ни в один родной вид
 		 */
 		case type_t::EXTENDED:
 			// Выполняем запись числа его записью, как она стояла в тексте
-			writer.raw(string(this->_storage.data() + node.offset, node.length()));
-		break;
+			return writer.raw(string(this->_storage.data() + node.offset, node.length()));
 		/**
 		 * Если видом хранения число не является
 		 *
@@ -775,6 +770,14 @@ void awh::codec::json::Document::compose(writer_t & writer, const node_t & node)
 		case type_t::NUMBER:
 		break;
 	}
+	/**
+	 * Выводим признак успешности записи числа
+	 *
+	 * @note Виды, числом не являющиеся, сюда не доходят вовсе: выдача зовёт запись
+	 *       числа лишь для узла числового. Успех здесь - ответ на вид неожиданный,
+	 *       и отказом он записи не портит
+	 */
+	return true;
 }
 bool awh::codec::json::Document::Value::value(string & result) const noexcept {
 	/**
@@ -1057,9 +1060,12 @@ bool awh::codec::json::Document::digest(reader_t & reader, const event_t event, 
 			/**
 			 * Если обработчик потребовал прекращения разбора
 			 */
-			if(!(* this->_callback)(this->root()))
+			if(!(* this->_callback)(this->root())){
+				// Запоминаем прекращение разбора по требованию обработчика
+				this->_halted = true;
 				// Выводим признак неудачной сборки
 				return false;
+			}
 			// Выполняем очистку перечня узлов документа
 			this->_nodes.clear();
 			// Сдвигаем сквозное положение первого знака хранилища документа
@@ -1658,6 +1664,8 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 		// Выполняем установку настроек разбора текста
 		reader.settings(bounded);
 	}
+	// Снимаем признак прекращения разбора по требованию обработчика
+	this->_halted = false;
 	// Запоминаем обработчик потоковой выдачи значений
 	this->_callback = & callback;
 	// Получаем признак потоковой выдачи значений
@@ -1735,6 +1743,25 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 	 * Если разбор текста документа завершился отказом
 	 */
 	if(!result){
+		/**
+		 * Если разбор прекращён по требованию обработчика
+		 *
+		 * @details Прекращение это ОТКАЗОМ НЕ ЯВЛЯЕТСЯ: потребитель получил, сколько
+		 * хотел, и звать это неудачей неверно. Прежде разбор отвечал ложью при коде
+		 * `NONE`, и отличить своё же «довольно» от отказа неведомой причины было нечем.
+		 * Таблица CSV на то же действие отвечает успехом и договором это описывает -
+		 * «ложь прекращает разбор», а исход зовётся результатом разбора
+		 *
+		 * @note Сличается заодно и код отказа: обработчик вправе ответить ложью и ПОСЛЕ
+		 *       того, как разбор уже отказал, и прекращение не должно выдавать отказ
+		 *       за успех
+		 */
+		if(this->_halted && (this->_error == error_t::NONE) && (reader.error() == error_t::NONE)){
+			// Выполняем очистку перечня узлов документа
+			this->_nodes.clear();
+			// Выводим признак успешного разбора
+			return true;
+		}
 		/**
 		 * Если своего отказа сборка дерева не выдала
 		 *
@@ -1958,6 +1985,16 @@ string awh::codec::json::Document::dump() const noexcept {
  *
  */
 string awh::codec::json::Document::dump(const format_t format) const noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	/**
+	 * Выполняем сброс положения отказа прежней работы
+	 *
+	 * @note У отказа записи места в исходном тексте нет вовсе, а положение прежнего
+	 *       разбора, его пережив, складывалось бы с новым кодом в донесение стройное,
+	 *       но ложное. Таблица CSV держится того же правила
+	 */
+	this->_position = location_t();
 	// Запись текста документа
 	writer_t writer(this->_log);
 	// Получаем настройки записи текста
@@ -1994,7 +2031,20 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 			// Удаляем номер узла за последним узлом вместилища из стека
 			nesting.pop_back();
 			// Выполняем закрытие вместилища
-			writer.close();
+			/**
+			 * Если запись отказала
+			 *
+			 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+			 *       отказ записи местный - последний затирал первый, и звучащему
+			 *       называлась не та причина. Замер: число `NaN` давало
+			 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+			 */
+			if(!writer.close()){
+				// Запоминаем код отказа записи текста документа
+				this->_error = writer.error();
+				// Выводим пустой текст документа
+				return string();
+			}
 		}
 		// Получаем очередной узел документа
 		const node_t & node = this->_nodes[index];
@@ -2003,7 +2053,20 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 		 */
 		if(node.keyed)
 			// Выполняем запись имени поля объекта
-			writer.key(string(this->_storage.data() + (node.offset - node.named), node.named));
+			/**
+			 * Если запись отказала
+			 *
+			 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+			 *       отказ записи местный - последний затирал первый, и звучащему
+			 *       называлась не та причина. Замер: число `NaN` давало
+			 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+			 */
+			if(!writer.key(string(this->_storage.data() + (node.offset - node.named), node.named))){
+				// Запоминаем код отказа записи текста документа
+				this->_error = writer.error();
+				// Выводим пустой текст документа
+				return string();
+			}
 		/**
 		 * Определяем вид очередного узла документа
 		 */
@@ -2011,12 +2074,38 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 			// Если узел является пустым значением
 			case kind_t::NUL:
 				// Выполняем запись пустого значения
-				writer.null();
+				/**
+				 * Если запись отказала
+				 *
+				 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+				 *       отказ записи местный - последний затирал первый, и звучащему
+				 *       называлась не та причина. Замер: число `NaN` давало
+				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+				 */
+				if(!writer.null()){
+					// Запоминаем код отказа записи текста документа
+					this->_error = writer.error();
+					// Выводим пустой текст документа
+					return string();
+				}
 			break;
 			// Если узел является логическим значением
 			case kind_t::BOOL:
 				// Выполняем запись логического значения
-				writer.value(node.length() == 4);
+				/**
+				 * Если запись отказала
+				 *
+				 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+				 *       отказ записи местный - последний затирал первый, и звучащему
+				 *       называлась не та причина. Замер: число `NaN` давало
+				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+				 */
+				if(!writer.value(node.length() == 4)){
+					// Запоминаем код отказа записи текста документа
+					this->_error = writer.error();
+					// Выводим пустой текст документа
+					return string();
+				}
 			break;
 			/**
 			 * Если узел является числом
@@ -2026,24 +2115,76 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 			 */
 			case kind_t::NUMBER:
 				// Выполняем запись числа, хранимого узлом
-				this->compose(writer, node);
+				/**
+				 * Если запись отказала
+				 *
+				 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+				 *       отказ записи местный - последний затирал первый, и звучащему
+				 *       называлась не та причина. Замер: число `NaN` давало
+				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+				 */
+				if(!this->compose(writer, node)){
+					// Запоминаем код отказа записи текста документа
+					this->_error = writer.error();
+					// Выводим пустой текст документа
+					return string();
+				}
 			break;
 			// Если узел является строкой
 			case kind_t::STRING:
 				// Выполняем запись строкового значения
-				writer.value(string(this->_storage.data() + node.offset, node.length()));
+				/**
+				 * Если запись отказала
+				 *
+				 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+				 *       отказ записи местный - последний затирал первый, и звучащему
+				 *       называлась не та причина. Замер: число `NaN` давало
+				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+				 */
+				if(!writer.value(string(this->_storage.data() + node.offset, node.length()))){
+					// Запоминаем код отказа записи текста документа
+					this->_error = writer.error();
+					// Выводим пустой текст документа
+					return string();
+				}
 			break;
 			// Если узел является массивом
 			case kind_t::ARRAY: {
 				// Выполняем открытие массива
-				writer.array();
+				/**
+				 * Если запись отказала
+				 *
+				 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+				 *       отказ записи местный - последний затирал первый, и звучащему
+				 *       называлась не та причина. Замер: число `NaN` давало
+				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+				 */
+				if(!writer.array()){
+					// Запоминаем код отказа записи текста документа
+					this->_error = writer.error();
+					// Выводим пустой текст документа
+					return string();
+				}
 				// Добавляем номер узла за последним узлом массива в стек
 				nesting.push_back(index + node.extent());
 			} break;
 			// Если узел является объектом
 			case kind_t::OBJECT: {
 				// Выполняем открытие объекта
-				writer.object();
+				/**
+				 * Если запись отказала
+				 *
+				 * @note Исход СЛИЧАЕТСЯ: прежде выдача шла до конца, не глядя на отказы, а
+				 *       отказ записи местный - последний затирал первый, и звучащему
+				 *       называлась не та причина. Замер: число `NaN` давало
+				 *       `EXPECTED_VALUE` вместо `INVALID_NUMBER`
+				 */
+				if(!writer.object()){
+					// Запоминаем код отказа записи текста документа
+					this->_error = writer.error();
+					// Выводим пустой текст документа
+					return string();
+				}
 				// Добавляем номер узла за последним узлом объекта в стек
 				nesting.push_back(index + node.extent());
 			} break;
@@ -2065,8 +2206,28 @@ string awh::codec::json::Document::dump(const format_t format) const noexcept {
 	while(!nesting.empty()){
 		// Удаляем номер узла за последним узлом вместилища из стека
 		nesting.pop_back();
-		// Выполняем закрытие вместилища
-		writer.close();
+		/**
+		 * Если закрытие вместилища отказало
+		 */
+		if(!writer.close()){
+			// Запоминаем код отказа записи текста документа
+			this->_error = writer.error();
+			// Выводим пустой текст документа
+			return string();
+		}
+	}
+	/**
+	 * Если запись текста документа окончилась отказом
+	 *
+	 * @details Отказ идёт от записи, и код у неё свой: документ лишь передаёт его своему
+	 * звучащему. Прежде отказ этот пропадал вовсе - выдача отвечала пустым текстом, а
+	 * отличить её от документа пустого было нечем
+	 */
+	if(writer.error() != error_t::NONE){
+		// Запоминаем код отказа записи текста документа
+		this->_error = writer.error();
+		// Выводим пустой текст документа
+		return string();
 	}
 	// Выводим собранный текст документа
 	return writer.take();
@@ -2092,14 +2253,35 @@ bool awh::codec::json::Document::save(const string & filename) const noexcept {
  *
  */
 bool awh::codec::json::Document::save(const string & filename, const format_t format) const noexcept {
+	/**
+	 * Получаем собранный текст документа
+	 *
+	 * @details Текст собирается ДО открытия файла нарочно: прежде файл усекался первым,
+	 * и документ, записи не подлежащий, оставлял на его месте файл ПУСТОЙ, а запись
+	 * отвечала при том успехом. Тем же порядком пользуются ныне владеющие значения
+	 * обоих кодеков и таблица CSV
+	 */
+	const string text = this->dump(format);
+	/**
+	 * Если собранный текст документа пуст
+	 *
+	 * @note Выдача текста код отказа уже поставила, коли отказала: здесь он лишь
+	 *       дополняется случаем документа ПУСТОГО, где записывать попросту нечего
+	 */
+	if(text.empty()){
+		/**
+		 * Если отказа выдачи не было
+		 */
+		if(this->_error == error_t::NONE)
+			// Запоминаем код отказа записи пустого документа
+			this->_error = error_t::EMPTY_TEXT;
+		// Выводим признак неудачной записи
+		return false;
+	}
 	// Открываем файл документа для записи
 	ofstream file(filename, ios::binary | ios::trunc);
 	/**
 	 * Если файл документа открыть не удалось
-	 *
-	 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без
-	 *       настоящего вывода запись файла отказывала бы молча, тогда как отказ
-	 *       разбора того же файла в лог уходит
 	 */
 	if(!file.is_open()){
 		/**
@@ -2108,25 +2290,17 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе
 			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(error_t::FILE_NOT_OPENED));
+		// Запоминаем код отказа открытия файла документа
+		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Получаем собранный текст документа
-	const string text = this->dump(format);
 	// Выполняем запись текста документа в файл
 	file.write(text.data(), static_cast <streamsize> (text.size()));
-	/**
-	 * Выполняем закрытие файла документа
-	 *
-	 * @note Закрытие обязано идти ЯВНО и до вывода признака: поток сбрасывает
-	 *       свой буфер разрушением своим, то есть уже ПОСЛЕ вычисления
-	 *       возвращаемого значения. Текст, целиком уместившийся в буфер, уходил
-	 *       бы отказом сброса молча, а вызов отчитывался бы успехом - замер дал
-	 *       успех при 512 байтах из 1101 в файле
-	 */
+	// Выполняем закрытие файла документа
 	file.close();
 	/**
-	 * Если запись текста документа в файл не удалась
+	 * Если запись файла документа не удалась
 	 */
 	if(!file){
 		/**
@@ -2135,6 +2309,8 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе
 			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(error_t::FILE_NOT_WRITTEN));
+		// Запоминаем код отказа записи файла документа
+		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выводим признак неудачной записи
 		return false;
 	}

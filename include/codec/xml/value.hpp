@@ -433,6 +433,25 @@ namespace awh {
 					 * \~
 					 */
 					void indexed(const string & local) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод подсчёта корневых узлов разметки, значением вносимых
+					 *
+					 * @details Запись узел вида документа РАЗВОРАЧИВАЕТ, выдавая одно лишь
+					 * содержимое его: документ, вложенный в разметку, записывается верно, а
+					 * вот число корней он вносит своё. Подсчёт потому и ведётся возвратом
+					 *
+					 * @return количество корневых узлов разметки
+					 *
+					 * \~english
+					 * @brief Method of the counting of the root markup nodes brought in by a value
+					 * @details The writing UNWRAPS a node of the kind of a document, issuing only its
+					 * content: a document nested into a markup is written correctly, while the number
+					 * of the roots it brings in is its own. Therefore the counting is performed by a recursion
+					 * @return number of the root markup nodes
+					 * \~
+					 */
+					uint32_t roots() const noexcept;
 				private:
 					/**
 					 * \~russian
@@ -486,6 +505,22 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Код отказа последней работы над значением
+					 *
+					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
+					 * неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
+					 * от значения пустого
+					 *
+					 * \~english
+					 * @brief Code of the refusal of the last operation over the value
+					 * @details The field is mutable deliberately: the issuance of the text of a value
+					 * is a constant operation, while it is obliged to report a refusal — otherwise
+					 * an empty text is indistinguishable from an empty value
+					 * \~
+					 */
+					mutable error_t _error = error_t::NONE;
 					const log_t * _log = nullptr;
 				private:
 					/**
@@ -730,6 +765,34 @@ namespace awh {
 					 * \~
 					 */
 					bool valid() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения кода отказа последней работы над значением
+					 *
+					 * @details Код этот отвечает на вопрос, отчего работа не сбылась: разбор
+					 * текста, чтение файла, выдача текста и запись его в файл ставят его
+					 * заново каждая. Прежде канала отказа у значения не было вовсе, и пустой
+					 * текст выдачи был неотличим от значения пустого: замер дал одиннадцать
+					 * способов завести значение, записи не подлежащее, и все они молчали
+					 *
+					 * @note Работы, отказать не могущие, кода не трогают: снятие вида, имени
+					 *       и содержимого идёт мимо этого канала
+					 *
+					 * @return код отказа последней работы
+					 *
+					 * \~english
+					 * @brief Method of the getting of the code of the refusal of the last operation over the value
+					 * @details This code answers the question of why an operation did not come true: the parsing
+					 * of a text, the reading of a file, the issuance of a text and the writing of it into a file
+					 * each set it anew. Formerly a value had no channel of a refusal at all, and the empty text
+					 * of the issuance was indistinguishable from an empty value: a measurement gave eleven ways
+					 * to obtain a value not subject to the writing, and all of them kept silent
+					 * @note The operations that cannot refuse do not touch the code: the taking of the kind,
+					 *       of the name and of the content goes past this channel
+					 * @return code of the refusal of the last operation
+					 * \~
+					 */
+					error_t error() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения вида узла

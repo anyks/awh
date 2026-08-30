@@ -3770,6 +3770,18 @@ namespace bandwidth {
 };
 
 /**
+ * @brief Предобъявление сноса узла события
+ *
+ * @note Нужно оно разбору отвергнутых ядром записей подписки: снос там зовётся при
+ *       отказе окончательном, а само тело лежит много ниже
+ *
+ */
+namespace io {
+	// Объявляем метод удаления узла события
+	static bool destroy(::io::node_t *, const awh::eth_t *, const awh::log_t *) noexcept;
+}
+
+/**
  * @brief Инкапсулируем статические объекты и переменные в локальное пространство имён
  *
  */
@@ -3789,6 +3801,15 @@ namespace local {
 	 *
 	 */
 	static vector <struct kevent> result;
+	/**
+	 * @brief Записи пачки, отвергнутые ядром по причине ВРЕМЕННОЙ
+	 *
+	 * @details Держатся до следующего оборота опроса и подаются заново. Пачка после
+	 *          отправки очищается целиком, и без отдельного перечня отвергнутое ушло бы
+	 *          вместе с нею - а подписки у ядра нет, и событие замолкло бы навсегда
+	 *
+	 */
+	static vector <struct kevent> repeat;
 	/**
 	 * @brief Список узлов, ожидающих окончательного уничтожения
 	 *
@@ -4242,7 +4263,7 @@ namespace local {
 	 * @return    результат выполнения обработки
 	 *
 	 */
-	static bool commit(const log_t * log) noexcept {
+	static bool commit(const eth_t * eth, const log_t * log) noexcept {
 		// Результат работы функции
 		bool result = false;
 		/**
@@ -4645,20 +4666,129 @@ namespace local {
 							/**
 							 * Перебираем все результаты установки записей пакета
 							 */
-							for(auto & item : ::local::result){
+							// Записи, отвергнутые по причине временной: их подаём заново
+							vector <struct kevent> retry;
+							/**
+							 * Перебираем все результаты установки записей пакета
+							 */
+							for(size_t index = 0; index < ::local::result.size(); index++){
+								// Получаем очередной результат установки
+								const struct kevent & item = ::local::result[index];
 								// Если запись пакета отвергнута ядром
 								if((item.flags & EV_ERROR) && (item.data != 0)){
+									// Запоминаем причину отказа, названную ядром
+									const int32_t reason = static_cast <int32_t> (item.data);
 									// Получаем узел, которому принадлежит отвергнутая запись
 									::io::node_t * owner = (((item.udata != nullptr) && (item.udata != ::local::internal)) ? reinterpret_cast <::io::node_t *> (item.udata) : nullptr);
 									// Записываем ошибку в лог
 									log->print("Event change rejected: ident=%llu, filter=%d, flags=0x%x, %s (node: id=%u, type=%u, status=%u)", log_t::flag_t::WARNING,
 									 static_cast <uint64_t> (item.ident), static_cast <int32_t> (item.filter), static_cast <uint32_t> (item.flags),
-									 ::strerror(static_cast <int32_t> (item.data)),
+									 ::strerror(reason),
 									 (owner != nullptr ? owner->id : 0u),
 									 (owner != nullptr ? static_cast <uint32_t> (owner->state.node) : 0xFFu),
 									 (owner != nullptr ? static_cast <uint32_t> (owner->state.status) : 0xFFu));
+									/**
+									 * Определяем, временен отказ или окончателен
+									 *
+									 * @details Ядро называет причину точно, и обходиться с ней
+									 *          следует по ней же. Договор тот же, что у epoll:
+									 *          временный отказ - подать заново следующим
+									 *          оборотом, окончательный - сообщить потребителю и
+									 *          снести узел, жить ему нечем
+									 *
+									 * @warning Прежде отказ ЛЮБОГО рода лишь писался в журнал, а
+									 *          запись из пачки пропадала вместе с самой пачкой:
+									 *          подписки у ядра нет, движок уверен в обратном, и
+									 *          событие, которое лишь ждёт данных, замолкало
+									 *          НАВСЕГДА - потребителю о том не говорилось ничего.
+									 *          У epoll этот же дефект был закрыт прежде, а до
+									 *          kqueue разбор не дошёл; вскрыт он сличением с
+									 *          движком MS Windows, где Андрей нашёл ту же ветвь
+									 */
+									switch(reason){
+										/**
+										 * Отказы временные: у ядра кончилась память под подписку
+										 *
+										 * @note Числом попытки не ограничены намеренно - обрыв их
+										 *       хоронил бы событие ровно тогда, когда система под
+										 *       нагрузкой. Горячего цикла не выходит: пачка
+										 *       отправляется единожды за оборот опроса
+										 */
+										case ENOMEM:
+										#if defined(ENOBUFS)
+											case ENOBUFS:
+										#endif
+										{
+											// Берём исходную запись пачки, а не её приговор
+											struct kevent repeat = ::local::change[index];
+											// Снимаем признак запроса приговора: он свой у каждой подачи
+											repeat.flags &= static_cast <uint16_t> (~EV_RECEIPT);
+											// Оставляем запись на следующий оборот
+											retry.push_back(repeat);
+										} break;
+										/**
+										 * Отказ по отсутствию подписки безвреден
+										 *
+										 * @note Приходит он на снятие подписки, какой у ядра уже
+										 *       нет, - состояние это и есть желаемое. Ни повтора,
+										 *       ни сноса узла оно не требует
+										 */
+										case ENOENT: break;
+										/**
+										 * Отказы окончательные: описателя нет либо наблюдение его
+										 * ядром невозможно
+										 *
+										 * @details Повторять по ним обращение бессмысленно:
+										 *          недействительный описатель заново не оживёт, а
+										 *          описатель, наблюдения не терпящий, не станет
+										 *          терпеть его и позже
+										 */
+										case EBADF:
+										case EPERM:
+										case EINVAL:
+										case ESRCH:
+										/**
+										 * @note Коды эти добавлены ПО ЗАМЕРУ, а не по догадке:
+										 *       щуп на четырёх системах kqueue показал, что
+										 *       фильтр, роду описателя неприменимый, отвергается
+										 *       по договору - `EVFILT_VNODE` на сокете даёт
+										 *       EINVAL всюду, а `EVFILT_VNODE` на `/dev/null` у
+										 *       FreeBSD даёт ENOTSUP (45). Без этой ветви такой
+										 *       отказ проваливался бы мимо ОБЕИХ: ни повтора,
+										 *       ни доклада, ни сноса - то есть ровно то молчание,
+										 *       ради устранения которого разбор и заводится
+										 */
+										#if defined(ENOTSUP)
+											case ENOTSUP:
+										#endif
+										#if defined(EOPNOTSUPP) && (!defined(ENOTSUP) || (EOPNOTSUPP != ENOTSUP))
+											case EOPNOTSUPP:
+										#endif
+										{
+											// Если узел, которому запись принадлежала, известен
+											if(owner != nullptr){
+												// Получаем набор функций обратного вызова узла
+												::io::callbacks_t * callbacks = owner->hooks();
+												// Если функция обратного вызова об ошибке установлена
+												if((callbacks != nullptr) && (callbacks->error != nullptr))
+													// Вызываем функцию обратного вызова об ошибке события
+													callbacks->error(owner->id, event::error_t::EVENT_FAIL, ::strerror(reason));
+												// Выполняем удаление узла события
+												::io::destroy(owner, eth, log);
+											}
+										} break;
+									}
 								}
 							}
+							/**
+							 * Если отвергнутое по причине временной осталось, подаём его заново
+							 *
+							 * @note Пачка ниже очищается целиком, оттого удержанное переносится в
+							 *       неё после очистки - иначе оно ушло бы вместе с прочим
+							 */
+							if(!retry.empty())
+								// Запоминаем записи, подлежащие повторной подаче
+								::local::repeat.swap(retry);
 						// Если и повторная установка не выполнена, ошибка уже не в отдельной записи
 						} else log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						// Очищаем список результатов активации
@@ -4667,6 +4797,18 @@ namespace local {
 				#endif
 				// Очищаем список изменений
 				::local::change.clear();
+				/**
+				 * Возвращаем в пачку записи, отвергнутые по причине временной
+				 *
+				 * @note Делается это ПОСЛЕ очистки: очистка сносит пачку целиком, и
+				 *       удержанное ушло бы вместе с прочим
+				 */
+				if(!::local::repeat.empty()){
+					// Переносим удержанные записи обратно в пачку
+					::local::change.swap(::local::repeat);
+					// Очищаем перечень удержанных записей
+					::local::repeat.clear();
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -72887,7 +73029,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выполняем фиксацию изменений к ядру
-				::local::commit(this->_log);
+				::local::commit(&this->_eth, this->_log);
 				// Выполняем ожидание событий в ядре
 				events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__.get(), static_cast <int32_t> (::__awh_events_size__), pts));
 			/**
@@ -72905,7 +73047,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					// Если ядро остановилось на сбойной записи пакета
 					if((events < 0) && (errno != EINTR)){
 						// Разбираем пакет прежним путём, называя сбойные записи
-						::local::commit(this->_log);
+						::local::commit(&this->_eth, this->_log);
 						// Выполняем ожидание событий в ядре отдельным вызовом
 						events = static_cast <ssize_t> (::kevent(::__awh_kq__, nullptr, 0, ::__awh_events__.get(), static_cast <int32_t> (::__awh_events_size__), pts));
 					// Если пакет применён ядром, снимаем его с учёта

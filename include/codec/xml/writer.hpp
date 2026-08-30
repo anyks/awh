@@ -563,48 +563,7 @@ namespace awh {
 					 * \~
 					 */
 					bool element(const node_t & node, const bool preserve) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод записи атрибута при открытом узле с дословной записью имени
-					 *
-					 * @details Дословная запись предназначена дереву, разобранному без
-					 * пространств имён: имена лежат там целиком, вместе с разделителем
-					 * префикса, а объявления пространств имён считаются обычными атрибутами.
-					 * Подбор префикса такому имени не по чему вести, а учёт связываний
-					 * учитывать нечего - объявлений в таком дереве нет
-					 *
-					 * @warning Дословная запись объявления мимо учёта действующих связываний
-					 * допустима лишь потому, что задаётся она не вызывающим, а записью дерева:
-					 * разбор с пространствами имён объявления из перечня атрибутов изымает, и
-					 * смешать оба вида записи в одном тексте неоткуда
-					 *
-					 * @param local    имя атрибута, записываемое как есть
-					 * @param value    значение атрибута
-					 * @param uri      обозначение пространства имён атрибута
-					 * @param verbatim признак дословной записи имени атрибута
-					 * @return         результат выполнения операции
-					 *
-					 * \~english
-					 * @brief Method of writing an attribute at an open node with a literal writing of the name
-					 * @details The literal writing is intended for a tree parsed without the
-					 * namespaces: the names lie there in full, together with the separator of the
-					 * prefix, while the declarations of the namespaces are considered ordinary attributes.
-					 * There is nothing to conduct a selection of a prefix for such a name by, while there is nothing for the accounting of the bindings
-					 * to account — there are no declarations in such a tree
-					 * @warning A literal writing of a declaration bypassing the accounting of the effective bindings
-					 * is admissible only because it is given not by the caller but by the writing of a tree:
-					 * a parsing with the namespaces extracts the declarations from the list of the attributes, and
-					 * there is nowhere to mix both kinds of the writing in a single text
-					 * @param local    name of the attribute written as it is
-					 * @param value    value of the attribute
-					 * @param uri      designation of the namespace of the attribute
-					 * @param verbatim flag of the literal writing of the name of the attribute
-					 * @return         result of performing the operation
-					 *
-					 * \~
-					 */
-					bool attribute(const string_view local, const string_view value, const string_view uri, const bool verbatim) noexcept;
-				private:
+									private:
 					// Счётчик самостоятельно назначенных префиксов пространств имён
 					uint32_t _counter;
 				public:
@@ -709,11 +668,14 @@ namespace awh {
 					 * @param declares bindings of the prefixes declared by the node itself
 					 * @param prefix   desired prefix of the name of the node, an empty one — at the choice of the stream
 					 * @param oneline  flag of the writing of the content of the node in a single line without the indents
+					 * @param verbatim flag of the writing of the name of the node verbatim, together with the separator
+					 *                 of a prefix: the parsing without the namespaces puts a name into the tree
+					 *                 in full, and there is nothing to divide it by
 					 * @return         result of performing the operation
 					 *
 					 * \~
 					 */
-					bool open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix = "", const bool oneline = false) noexcept;
+					bool open(const string_view local, const string_view uri, const vector <binding_t> & declares, const string_view prefix = "", const bool oneline = false, const bool verbatim = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод закрытия последнего открытого узла
@@ -748,11 +710,14 @@ namespace awh {
 					 * @param local local name of the attribute
 					 * @param value value of the attribute
 					 * @param uri   designation of the namespace of the attribute
+					 * @param verbatim flag of the writing of the name of the attribute verbatim, together with
+					 *                 the separator of a prefix: the parsing without the namespaces puts a name
+					 *                 into the tree in full, and there is nothing to divide it by
 					 * @return      result of performing the operation
 					 *
 					 * \~
 					 */
-					bool attribute(const string_view local, const string_view value, const string_view uri = "") noexcept;
+					bool attribute(const string_view local, const string_view value, const string_view uri = "", const bool verbatim = false) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод объявления пространства имён при открытом узле

@@ -742,6 +742,51 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * @brief Отрезок записи имени поля отображения вместе со свёрткой его
+					 *
+					 * @details Свёртка держится РЯДОМ с отрезком намеренно: сличение имён идёт
+					 * со всеми прежними именами вместимого, то есть квадратом их количества, и
+					 * полное сличение октетов на всякой паре обходилось дорого. Замер 30.08.2026
+					 * дал выигрыш от пропуска груза 26 крат против 55 при снятой поверке, а со
+					 * снятым одним лишь обходом - 49: плата сидела именно в обходе, а не в
+					 * переносе имён. Свёртка обращает сличение в числовое, а полное остаётся
+					 * лишь при совпадении её
+					 *
+					 * \~english
+					 * @brief Segment of the record of the name of a field of a mapping together with its digest
+					 * @details The digest is kept BESIDE the segment deliberately: the comparison of the names
+					 * goes over all the previous names of the container, that is, by the square of their number
+					 *
+					 * \~
+					 */
+					typedef struct Naming {
+						// Смещение записи имени поля в общем вместилище октетов
+						uint32_t offset;
+						// Длина записи имени поля отображения
+						uint32_t length;
+						// Свёртка записи имени поля отображения
+						uint64_t digest;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param offset смещение записи имени поля
+						 * @param length длина записи имени поля
+						 * @param digest свёртка записи имени поля
+						 *
+						 * \~english
+						 * @brief Constructor
+						 * @param offset offset of the record of the name of a field
+						 * @param length length of the record of the name of a field
+						 * @param digest digest of the record of the name of a field
+						 *
+						 * \~
+						 */
+						Naming(const uint32_t offset = 0, const uint32_t length = 0, const uint64_t digest = 0) noexcept :
+						 offset(offset), length(length), digest(digest) {}
+					} naming_t;
+					/**
+					 * \~russian
 					 * Отрезки записей имён полей всех вместимых стека
 					 *
 					 * @details Перечень общий: часть его, принадлежащая звену, начинается со
@@ -757,7 +802,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					vector <pair <uint32_t, uint32_t>> _spans;
+					vector <naming_t> _spans;
 				private:
 					/**
 					 * \~russian

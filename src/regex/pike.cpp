@@ -456,9 +456,12 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 *          текст до конца.
 	 *
 	 */
-	if(!program.anchored && !program.prefilter.possible(text, pos))
+	if(!program.anchored && !program.prefilter.possible(text, pos)) {
+		// Выполняем учёт отказа по проверке возможности совпадения
+		AWH_REGEX_TICK(path_t::PRESUMING);
 		// Выводим результат поиска совпадения
 		return false;
+	}
 	/**
 	 * Если детерминированное исполнение применимо и совпадение не обнаружено
 	 *
@@ -469,9 +472,29 @@ bool awh::regex::Pike::exec(const program_t & program, string_view text, const s
 	 *          совпадения избавляет от повторного прохода по тексту.
 	 *
 	 */
-	if(!bound && (mode != mode_t::VERIFIED) && this->_dfa.available(program) && !this->_dfa.test(program, text, pos))
-		// Выводим результат поиска совпадения
-		return false;
+	if(!bound && this->_dfa.available(program)) {
+		/**
+		 * Если наличие совпадения снято вызывающей стороной
+		 *
+		 * @details Проход по тексту вторичный отменяется целиком, и учитывается
+		 *          именно отмена его: ветвление это и есть весь ускоритель,
+		 *          а учёт обращения к признаку отменённого прохода
+		 *          от совершённого не отличал бы.
+		 *
+		 */
+		if(mode == mode_t::VERIFIED)
+			// Выполняем учёт переиспользования итога детерминированного исполнения
+			AWH_REGEX_TICK(path_t::REUSING);
+		/**
+		 * Если совпадение детерминированным исполнением не обнаружено
+		 */
+		else if(!this->_dfa.test(program, text, pos)) {
+			// Выполняем учёт отказа по пробе детерминированным исполнением
+			AWH_REGEX_TICK(path_t::VERIFYING);
+			// Выводим результат поиска совпадения
+			return false;
+		}
+	}
 	// Выполняем выделение исходного набора позиций захвата групп
 	const uint32_t initial = this->acquire();
 	/**

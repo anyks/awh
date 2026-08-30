@@ -2129,14 +2129,26 @@ TEST(CodecYamlWriter, MalformedRefusedInKey) {
  *
  */
 TEST(CodecYamlWriter, TrailingNeedsLineAndSizeCounts) {
+	/**
+	 * Выполняем проверку отказа дописки примечания к записи пустой
+	 *
+	 * @note Писатель заводится свой: отказ записи липкий, и записи следом за ним
+	 *       отвергались бы все
+	 */
+	{
+		// Объект записи текста документа
+		yaml::writer_t writer(::logger());
+		// Выполняем проверку того, что счёт пустой записи равен нулю
+		ASSERT_EQ(writer.size(), static_cast <size_t> (0));
+		// Выполняем проверку отказа дописки примечания к записи пустой
+		ASSERT_FALSE(writer.trailing("примечание"));
+		// Выполняем проверку кода ошибки записи
+		ASSERT_EQ(writer.error(), yaml::error_t::UNEXPECTED_CONTENT);
+		// Выполняем проверку того, что отказ писателя заклинил
+		ASSERT_FALSE(writer.mapping());
+	}
 	// Объект записи текста документа
 	yaml::writer_t writer(::logger());
-	// Выполняем проверку того, что счёт пустой записи равен нулю
-	ASSERT_EQ(writer.size(), static_cast <size_t> (0));
-	// Выполняем проверку отказа дописки примечания к записи пустой
-	ASSERT_FALSE(writer.trailing("примечание"));
-	// Выполняем проверку кода ошибки записи
-	ASSERT_EQ(writer.error(), yaml::error_t::UNEXPECTED_CONTENT);
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени пары отображения
@@ -2172,6 +2184,19 @@ TEST(CodecYamlWriter, BlockAndCommentRefusals) {
 		ASSERT_TRUE(writer.key("имя"));
 		// Выполняем проверку отказа записи блочного значения видом простым
 		ASSERT_FALSE(writer.block("значение", yaml::style_t::PLAIN, yaml::chomp_t::CLIP));
+		// Выполняем проверку того, что отказ писателя заклинил
+		ASSERT_FALSE(writer.block("значение", yaml::style_t::LITERAL, yaml::chomp_t::CLIP));
+	}
+	/**
+	 * Выполняем проверку записи блочного значения видом дословным
+	 */
+	{
+		// Объект записи текста документа
+		yaml::writer_t writer(::logger());
+		// Выполняем открытие отображения пар
+		ASSERT_TRUE(writer.mapping());
+		// Выполняем запись имени пары отображения
+		ASSERT_TRUE(writer.key("имя"));
 		// Выполняем проверку записи блочного значения видом дословным
 		ASSERT_TRUE(writer.block("значение", yaml::style_t::LITERAL, yaml::chomp_t::CLIP));
 	}
@@ -2193,53 +2218,131 @@ TEST(CodecYamlWriter, BlockAndCommentRefusals) {
 		ASSERT_TRUE(writer.key("имя"));
 		// Выполняем проверку отказа записи блочного значения негодного
 		ASSERT_FALSE(writer.block(broken, yaml::style_t::LITERAL, yaml::chomp_t::CLIP));
+		// Выполняем проверку того, что отказ писателя заклинил
+		ASSERT_FALSE(writer.comment("примечание"));
+	}
+	/**
+	 * Выполняем проверку отказа записи примечания негодного
+	 */
+	{
+		// Настройки записи текста
+		yaml::writer_t::settings_t settings;
+		// Задаём обхождение с негодной последовательностью отказом
+		settings.malformed = yaml::malformed_t::REFUSE;
+		// Объект записи текста документа
+		yaml::writer_t writer(::logger(), settings);
+		// Собираемая запись с байтом, знака Юникода не составляющим
+		const string broken = string("текст\xFF");
+		// Выполняем открытие отображения пар
+		ASSERT_TRUE(writer.mapping());
+		// Выполняем запись имени пары отображения
+		ASSERT_TRUE(writer.key("имя"));
+		// Выполняем запись значения пары отображения
+		ASSERT_TRUE(writer.value(string("значение")));
 		// Выполняем проверку отказа записи примечания негодного
 		ASSERT_FALSE(writer.comment(broken));
+	}
+	/**
+	 * Выполняем проверку записи примечания годного
+	 */
+	{
+		// Объект записи текста документа
+		yaml::writer_t writer(::logger());
+		// Выполняем открытие отображения пар
+		ASSERT_TRUE(writer.mapping());
+		// Выполняем запись имени пары отображения
+		ASSERT_TRUE(writer.key("имя"));
+		// Выполняем запись значения пары отображения
+		ASSERT_TRUE(writer.value(string("значение")));
 		// Выполняем проверку записи примечания годного
 		ASSERT_TRUE(writer.comment("примечание"));
 	}
 }
 /**
- * @brief Проверка поведения записи YAML вслед за отказом
+ * @brief Проверка того, что отказ записи писателя заклинивает
  *
- * @details Отказ записи у YAML код ошибки запоминает, но записи не запирает: содержимое
- *          следом принимается, и собранный текст несёт всё, кроме отвергнутого. Держится
- *          это тем, что всякий отказ приходит ПРЕЖДЕ дописывания к собранному тексту -
- *          рваным он не остаётся
+ * @details Договор этот сведён к одному у трёх кодеков решением владельца: отказ записи
+ *          липкий - писатель, отказом задетый, дальнейших записей не принимает вовсе, а
+ *          код отказа держит до сброса. Прежде кодеки расходились: у INI отказ прилипал,
+ *          у TOML собранный текст метился рваным и выдача его отвечала пустотою, а YAML
+ *          запись продолжал
  *
- * @warning Договор этот у трёх кодеков разный, и проверка закрепляет нынешний, а не
- *          желаемый: у INI отказ прилипает - запись следом отвергается вся; у TOML
- *          собранный текст помечается рваным и выдача его отвечает пустотою; у YAML
- *          запись продолжается. Расхождение доложено владельцу, и решение за ним
+ * @details Опасность прежнего обхождения YAML была в молчании: потребитель, кода отказа
+ *          не сверивший, получал текст без отвергнутой части и пропажи не замечал
+ *
+ * @warning Перебираются ВСЕ методы записи открытого договора, а не выборка их: сторож
+ *          стоит в каждом теле по отдельности, и метод, сторожа не получивший, выпал бы
+ *          из договора молча. Заведётся у записи новый метод - приписать его сюда
  *
  */
-TEST(CodecYamlWriter, RefusalDoesNotLockWriter) {
+TEST(CodecYamlWriter, RefusalLocksWriter) {
 	// Настройки записи текста
 	yaml::writer_t::settings_t settings;
 	// Задаём обхождение с негодной последовательностью отказом
 	settings.malformed = yaml::malformed_t::REFUSE;
-	// Объект записи текста документа
-	yaml::writer_t writer(::logger(), settings);
 	// Собираемая запись с байтом, знака Юникода не составляющим
 	const string broken = string("текст\xFF");
+	// Объект записи текста документа
+	yaml::writer_t writer(::logger(), settings);
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени первой пары отображения
 	ASSERT_TRUE(writer.key("первый"));
 	// Выполняем запись значения первой пары отображения
 	ASSERT_TRUE(writer.value(string("значение")));
+	// Получаем собранный текст до отказа
+	const string before = writer.text();
 	// Выполняем проверку отказа записи примечания негодного
 	ASSERT_FALSE(writer.comment(broken));
-	// Выполняем проверку кода ошибки записи
+	// Выполняем проверку того, что отказ помечен кодом своим
 	ASSERT_NE(writer.error(), yaml::error_t::NONE);
-	// Выполняем проверку того, что запись имени пары следом принимается
-	ASSERT_TRUE(writer.key("второй"));
-	// Выполняем проверку того, что запись значения следом принимается
-	ASSERT_TRUE(writer.value(string("значение")));
-	// Выполняем проверку того, что собранный текст несёт обе пары
-	ASSERT_NE(writer.text().find("первый"), string::npos);
-	// Выполняем проверку того, что собранный текст несёт вторую пару
-	ASSERT_NE(writer.text().find("второй"), string::npos);
-	// Выполняем проверку того, что отвергнутое примечание в текст не попало
-	ASSERT_EQ(writer.text().find('#'), string::npos);
+	// Запоминаем код отказа записи
+	const yaml::error_t error = writer.error();
+	/**
+	 * Выполняем перебор всех методов записи открытого договора
+	 */
+	/**
+	 * @note Утверждения ниже суть EXPECT, а не ASSERT, намеренно: ASSERT обрывает тело
+	 *       проверки первым же отказом, и методы за ним не спрашивались бы вовсе -
+	 *       перебор изображал бы полноту, поверяя один лишь первый метод
+	 *
+	 * @note Снятие всех двадцати пяти сторожей роняет девятнадцать утверждений из
+	 *       двадцати пяти: остальные шесть отвергаются и своими условиями, сторожа не
+	 *       спрашивая. Замерено срывом
+	 */
+	EXPECT_FALSE(writer.mapping());
+	EXPECT_FALSE(writer.mapping(yaml::layout_t::FLOW));
+	EXPECT_FALSE(writer.sequence());
+	EXPECT_FALSE(writer.sequence(yaml::layout_t::FLOW));
+	EXPECT_FALSE(writer.close());
+	EXPECT_FALSE(writer.key("второй"));
+	EXPECT_FALSE(writer.anchor("метка"));
+	EXPECT_FALSE(writer.tag("!вид"));
+	EXPECT_FALSE(writer.alias("метка"));
+	EXPECT_FALSE(writer.null());
+	EXPECT_FALSE(writer.blank());
+	EXPECT_FALSE(writer.value(true));
+	EXPECT_FALSE(writer.value(string("значение")));
+	EXPECT_FALSE(writer.value(string("значение"), yaml::style_t::SINGLE));
+	EXPECT_FALSE(writer.value("значение"));
+	EXPECT_FALSE(writer.value(static_cast <int64_t> (1)));
+	EXPECT_FALSE(writer.value(static_cast <uint64_t> (1)));
+	EXPECT_FALSE(writer.value(1.5));
+	EXPECT_FALSE(writer.block("текст", yaml::style_t::LITERAL, yaml::chomp_t::CLIP));
+	EXPECT_FALSE(writer.raw("значение"));
+	EXPECT_FALSE(writer.comment("примечание"));
+	EXPECT_FALSE(writer.trailing("дописка"));
+	EXPECT_FALSE(writer.document());
+	EXPECT_FALSE(writer.finish());
+	EXPECT_FALSE(writer.verbatim("дословно", 0));
+	// Выполняем проверку того, что код отказа заклинившим писателем сохранён
+	ASSERT_EQ(writer.error(), error);
+	// Выполняем проверку того, что собранный текст отвергнутым не задет
+	ASSERT_EQ(writer.text(), before);
+	// Выполняем сброс записи в исходное состояние
+	writer.clear();
+	// Выполняем проверку того, что сброс код отказа отпускает
+	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
+	// Выполняем проверку того, что запись после сброса принимается
+	ASSERT_TRUE(writer.mapping() && writer.key("имя") && writer.value(string("значение")));
 }
