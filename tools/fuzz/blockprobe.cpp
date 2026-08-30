@@ -70,14 +70,22 @@ static void guard(const uint32_t ms) noexcept {
  *
  */
 int main(int argc, char * argv[]) noexcept {
-	// Признак снятия блокировки у узла
-	const bool unblock = ((argc > 1) && (::atoi(argv[1]) != 0));
+	/**
+	 * Вид опыта: 0 - настройки по умолчанию, 1 - блокировка снята, 2 - блокировка
+	 * назначена явно
+	 */
+	const int32_t mode = ((argc > 1) ? ::atoi(argv[1]) : 0);
 	// Объект фреймворка
 	static awh::fmk_t fmk;
 	// Объект работы с логами
 	static awh::log_t log(&fmk);
-	// Снимаем вывод журнала
-	log.level(awh::log_t::level_t::NONE);
+	/**
+	 * Журнал НЕ глушим
+	 *
+	 * @note Заглушенный журнал прячет и причину отказа, и отладочные сообщения самого
+	 *       движка: за сессию 30.08.2026 это трижды оставляло опыт без объяснения
+	 */
+	log.level(awh::log_t::level_t::ALL);
 	// Объект сетевого движка
 	awh::engine::io_t io(&fmk, &log);
 	// Выполняем заведение сетевого движка
@@ -86,6 +94,42 @@ int main(int argc, char * argv[]) noexcept {
 		::fprintf(stderr, "Сетевой движок завести не удалось\n");
 		// Выходим с кодом ошибки
 		return EXIT_FAILURE;
+	}
+	/**
+	 * Замер учёта: дейтаграммный сервер, которому данных не придёт
+	 *
+	 * @note Вопрос один - держится ли ячейка учёта, занятая под поданный приём, если
+	 *       завершения по нему не будет никогда
+	 */
+	if(mode == 3){
+		// Заводим узел дейтаграммного сервера
+		const awh::event::id_t srv = io.event(
+			awh::event::node_t::SERVER, awh::event::family_t::IPV4,
+			awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP
+		);
+		// Назначаем серверу адрес привязки
+		static_cast <void> (io.setAddress(srv, awh::event::address_t::IPV4, "127.0.0.1"));
+		// Назначаем серверу порт привязки
+		static_cast <void> (io.setSourcePort(srv, static_cast <uint16_t> (20000 + (::getpid() % 30000))));
+		// Сообщаем об итоге фиксации
+		::fprintf(stderr, "Дейтаграммный сервер: фиксация %s\n", (io.commit(srv) ? "принята" : "ОТВЕРГНУТА"));
+		// Выполняем запуск сервера
+		static_cast <void> (io.launch(srv));
+		// Выполняем обороты опроса, не подавая серверу ни одной датаграммы
+		for(uint8_t i = 0; i < 6; i++)
+			// Выполняем оборот опроса
+			static_cast <void> (io.poll(100));
+		// Уничтожаем узел сервера
+		::fprintf(stderr, "Сносим узел сервера\n");
+		static_cast <void> (io.destroy(srv));
+		// Выполняем обороты опроса после сноса узла
+		for(uint8_t i = 0; i < 4; i++)
+			// Выполняем оборот опроса
+			static_cast <void> (io.poll(100));
+		// Уничтожаем все узлы движка
+		static_cast <void> (io.deinitialize());
+		// Выходим с успешным кодом
+		return EXIT_SUCCESS;
 	}
 	// Заводим клиентский узел потоковой передачи
 	const awh::event::id_t id = io.event(
@@ -102,9 +146,13 @@ int main(int argc, char * argv[]) noexcept {
 		return EXIT_FAILURE;
 	}
 	// Если блокировку у узла требуется снять
-	if(unblock)
+	if(mode == 1)
 		// Снимаем блокировку ввода-вывода у узла
 		static_cast <void> (io.setOption(id, awh::event::options::NO_IO_BLOCK, true));
+	// Если блокировку у узла требуется назначить явно
+	else if(mode == 2)
+		// Назначаем узлу блокирующий ввод-вывод
+		static_cast <void> (io.setOption(id, awh::event::options::NO_IO_BLOCK, false));
 	/**
 	 * Адрес заведомо недостижимый: он назначен документом RFC 5737 под примеры и
 	 * в сети не маршрутизируется, оттого подключение к нему не завершится никогда
@@ -113,11 +161,22 @@ int main(int argc, char * argv[]) noexcept {
 	// Назначаем порт удалённой стороны
 	static_cast <void> (io.setTargetPort(id, 80));
 	// Итог фиксации настроек узла
+	/**
+	 * Подписываемся на отклик об ошибке события
+	 *
+	 * @note Без подписки договор проверяется наполовину: видно, что разбор дошёл до
+	 *       вызова отклика, но не видно, что отклик доходит ДО ПОТРЕБИТЕЛЯ
+	 */
+	io.on(id, [](const awh::event::id_t id, const awh::event::error_t code, const std::string & text) noexcept -> void {
+		// Сообщаем о полученном отклике потребителя
+		::fprintf(stderr, "ПОТРЕБИТЕЛЬ ПОЛУЧИЛ ОТКЛИК: узел %u, код %u, причина: %s\n",
+		 id, static_cast <uint32_t> (code), text.c_str());
+	});
 	const bool committed = io.commit(id);
 	// Сообщаем об итоге фиксации
 	::fprintf(stderr, "Фиксация: %s\n", (committed ? "принята" : "ОТВЕРГНУТА"));
 	// Сообщаем о начале опыта
-	::fprintf(stderr, "Узел заведён%s, подключаемся\n", (unblock ? " и переведён в неблокирующий режим" : " с настройками по умолчанию"));
+	::fprintf(stderr, "Узел заведён (%s), подключаемся\n", ((mode == 1) ? "блокировка снята" : ((mode == 2) ? "блокировка назначена явно" : "настройки по умолчанию")));
 	// Сбрасываем поток ошибок: буфер теряет вывод при выходе из обработчика
 	::fflush(stderr);
 	// Взводим сторожевой срок на подключение и опрос

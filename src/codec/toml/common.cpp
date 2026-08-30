@@ -224,6 +224,10 @@ const char * awh::codec::toml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::UNKNOWN_TABLE):
 			// Выводим описание кода ошибки
 			return "no such table in the document";
+		// Если разбираемый текст не помещается в разрядность хранилища
+		case static_cast <uint8_t> (error_t::STORAGE_EXHAUSTED):
+			// Выводим описание кода ошибки
+			return "the text does not fit the width of the parser storage";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

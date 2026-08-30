@@ -79,7 +79,7 @@ size_t awh::RegularExpression::Hash::operator () (const key_t & key) const noexc
  *
  */
 awh::RegularExpression::RegularExpression(const log_t * log) noexcept :
- _error(error_t::NONE), _offset(0), _log(log), _limit(awh::regex::MAX_STEPS) {}
+ _error(error_t::NONE), _offset(0), _log(log), _limit(awh::regex::MAX_STEPS), _nesting(awh::regex::MAX_RECURSION) {}
 /**
  * @brief Метод извлечения кода ошибки последней сборки
  *
@@ -127,6 +127,16 @@ void awh::RegularExpression::clear() noexcept {
 void awh::RegularExpression::limit(const size_t limit) noexcept {
 	// Выполняем установку наибольшего допустимого объёма работы сопоставления
 	this->_limit = limit;
+}
+/**
+ * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
+ *
+ * @param nesting наибольшая допустимая глубина рекурсивных вызовов
+ *
+ */
+void awh::RegularExpression::nesting(const size_t nesting) noexcept {
+	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	this->_nesting = nesting;
 }
 /**
  * @brief Метод сборки регулярного выражения
@@ -281,6 +291,36 @@ static bool verified(string_view text, const awh::RegularExpression::exp_t & exp
  * @return     результат проверки наличия совпадения
  *
  */
+/**
+ * @brief Метод снятия кода ошибки сопоставления с движка
+ *
+ */
+void awh::RegularExpression::receive() const noexcept {
+	// Выполняем снятие кода ошибки сопоставления с движка
+	this->_error = engine().error();
+	/**
+	 * Если ошибки сопоставления не случилось
+	 */
+	if(this->_error == error_t::NONE)
+		// Выходим из метода снятия кода ошибки
+		return;
+	// Выполняем снятие текста ошибки сопоставления с движка
+	this->_message = engine().message();
+	/**
+	 * Если объект журнала событий передан
+	 */
+	if(this->_log != nullptr)
+		// Записываем ошибку в лог
+		this->_log->print("Regular expression matching failed: %s", log_t::flag_t::WARNING, this->_message.c_str());
+}
+/**
+ * @brief Метод проверки наличия совпадения в тексте
+ *
+ * @param text текст для сопоставления
+ * @param exp  собранное регулярное выражение
+ * @return     результат проверки наличия совпадения
+ *
+ */
 bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noexcept {
 	/**
 	 * Если собранное регулярное выражение не установлено
@@ -305,8 +345,14 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	 *       к выражению, взял бы иначе умолчание вместо настройки объекта
 	 */
 	engine().limit(this->_limit);
+	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	engine().nesting(this->_nesting);
+	// Выполняем проверку наличия совпадения в тексте
+	const bool result = engine().test(* exp, text, 0);
+	// Выполняем снятие кода ошибки сопоставления с движка
+	this->receive();
 	// Выводим результат проверки наличия совпадения в тексте
-	return engine().test(* exp, text, 0);
+	return result;
 }
 /**
  * @brief Метод извлечения границ совпадения и захваченных групп
@@ -353,15 +399,21 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	}
 	// Выполняем установку наибольшего допустимого объёма работы сопоставления
 	engine().limit(this->_limit);
+	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	engine().nesting(this->_nesting);
 	/**
 	 * Если совпадение в тексте не обнаружено
 	 */
 	if(!engine().exec(* exp, text, 0, result)) {
 		// Выполняем очистку набора границ совпадения
 		result.clear();
+		// Выполняем снятие кода ошибки сопоставления с движка
+		this->receive();
 		// Выводим результат поиска совпадения
 		return false;
 	}
+	// Выполняем снятие кода ошибки сопоставления с движка
+	this->receive();
 	// Выводим результат поиска совпадения
 	return true;
 }

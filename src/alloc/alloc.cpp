@@ -890,8 +890,15 @@ namespace {
 	 *
 	 */
 	static bool preliminary(const void * ptr) noexcept {
+		/**
+		 * Спрашиваем принадлежность ОДНИМ сличением, а не двумя
+		 *
+		 * Разность беззнаковая: адрес ниже начала области даёт при вычитании огромное
+		 * число, и оно границы не проходит. Два сличения с ветвлением обращаются в одно
+		 * вычитание и одно сличение, а путь этот проходит КАЖДОЕ освобождение
+		 */
 		// Выводим признак принадлежности адреса области первоначальной выдачи
-		return ((ptr >= bootstrap) && (ptr < (bootstrap + BOOTSTRAP)));
+		return ((reinterpret_cast <uintptr_t> (ptr) - reinterpret_cast <uintptr_t> (bootstrap)) < BOOTSTRAP);
 	}
 	/**
 	 * @brief Метод получения номера текущего процесса
@@ -1262,6 +1269,8 @@ namespace {
 			machinery->caches.limit(settings.cacheLimit);
 		// Задаём потолок придержанных крупных областей
 		machinery->huge.ceiling(settings.hugeCache);
+		// Задаём потолок придержки областей сверх разрядов
+		machinery->central.keeper(settings.spanCache);
 		/**
 		 * Заводим слой крупных выдач
 		 *
@@ -1418,6 +1427,25 @@ namespace {
 	 *
 	 */
 	static AWH_ALLOC_INLINE void account(awh::alloc::cache_t * cache, const int64_t size) noexcept {
+		/**
+		 * Признак AWH_ALLOC_NO_ACCOUNTING снимает учёт расхода памяти
+		 *
+		 * Снявший его теряет показатели ALLOCATED и PEAK: обе отвечают нулём, а нуль тот
+		 * от «расхода нет» ничем не отличается
+		 *
+		 * Выгода АРХИТЕКТУРНО ЗАВИСИМА и меняет ЗНАК. У x86-64 снятие даёт двенадцать
+		 * процентов, у ARM64 - ОТНИМАЕТ тридцать: там обращение к счётчику потока держит
+		 * его строку кэша горячей, и быстрый путь ею же и пользуется. Умолчание - учёт
+		 * включён; снимать его вправе тот, кто замерил выигрыш на СВОЕЙ машине
+		 */
+		#if defined(AWH_ALLOC_NO_ACCOUNTING)
+			// Обходим учёт: ни кэш, ни изменение к делу не идут
+			(void) cache;
+			// Обходим учёт занятого
+			(void) size;
+			// Учитывать нечего
+			return;
+		#endif
 		// Изменение, отдаваемое общему счётчику
 		int64_t given = size;
 		// Если кэш текущего потока заведён
@@ -1935,7 +1963,7 @@ namespace {
 	 * дороге, а первым же делом ПОВТОРНО читал признак голой выдачи - тот самый, что
 	 * уже лежит у нас в руке
 	 */
-	static void * reserve(const size_t wanted) noexcept {
+	static AWH_ALLOC_INLINE void * reserve(const size_t wanted) noexcept {
 		/**
 		 * Нулевой запрос обращаем в наименьший блок, а не в пустоту
 		 *
@@ -1976,7 +2004,7 @@ namespace {
 				// Если блок выдан
 				if(AWH_ALLOC_LIKELY(result != nullptr)){
 					// Учитываем выданное прикладному коду
-					account(cache, static_cast <int64_t> (unit->classes.size(index)));
+					account(cache, static_cast <int64_t> (unit->classes.extent(index)));
 					// Выводим выданный блок
 					return result;
 				}
@@ -2297,7 +2325,7 @@ namespace {
 					// Записываем номер разряда
 					(* index) = which;
 				// Выводим размер блока разряда
-				return unit->classes.size(which);
+				return unit->classes.extent(which);
 			}
 		}
 		// Разбираем адрес по холодным путям
@@ -2311,7 +2339,7 @@ namespace {
 	 * @param cache кэш текущего потока, либо nullptr
 	 *
 	 */
-	static void recycle(void * ptr, const size_t index, awh::alloc::cache_t * cache) noexcept {
+	static void recycle(void * ptr, const size_t index, awh::alloc::cache_t * cache, const bool keeping = true) noexcept {
 		// Если блок выдан слоем крупных выдач
 		if(AWH_ALLOC_UNLIKELY(index == awh::alloc::Huge::INDEX)){
 			// Отдаём крупную выдачу источнику
@@ -2346,7 +2374,7 @@ namespace {
 		 * Довод и замер - у самого признака: отдача по просьбе отсрочки не смотрит, а
 		 * запрет отдачи не смотрит ничего
 		 */
-		machinery->central.free(ptr, (stamped.load(std::memory_order_relaxed) ? stamp() : 0));
+		machinery->central.free(ptr, (stamped.load(std::memory_order_relaxed) ? stamp() : 0), keeping);
 	}
 	/**
 	 * @brief Метод освобождения памяти
@@ -2532,7 +2560,15 @@ namespace {
 	 * крупные выдачи и области сверх разрядов - вынесено в `discardSlow`, помеченный
 	 * холодным и невстраиваемым
 	 */
-	static void discard(void * ptr) noexcept {
+	/**
+	 * Признак придержки нужен ПЕРЕВЫДАЧЕ, и только ей
+	 *
+	 * Освобождая прежнюю область после переноса содержимого, перевыдача запрещает
+	 * придержку: придержанная область для кучи занята, и следующий рост не нашёл бы
+	 * свободного соседа. Придержка кормила бы сама себя - отказ роста освобождает
+	 * область, та ложится в придержку и заслоняет рост следующему
+	 */
+	static AWH_ALLOC_INLINE void discard(void * ptr, const bool keeping = true) noexcept {
 		// Если освобождать нечего
 		if(AWH_ALLOC_UNLIKELY(ptr == nullptr))
 			// Освобождать нечего
@@ -2596,7 +2632,7 @@ namespace {
 			return;
 		}
 		// Возвращаем блок слоям распределителя
-		recycle(ptr, index, cache);
+		recycle(ptr, index, cache, keeping);
 	}
 };
 
@@ -2884,8 +2920,8 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) {
 		return nullptr;
 	// Переносим содержимое прежнего блока
 	::memcpy(result, ptr, before);
-	// Освобождаем прежний блок
-	::discard(ptr);
+	// Освобождаем прежний блок БЕЗ придержки: та заслонила бы рост следующей области
+	::discard(ptr, false);
 	/**
 	 * Обнуляем хвост сверх перенесённого по настройке
 	 *
@@ -3697,6 +3733,8 @@ void awh::alloc::Allocator::options(const options_t & options) noexcept {
 		::machinery->caches.limit(::settings.cacheLimit);
 		// Задаём потолок придержанных крупных областей
 		::machinery->huge.ceiling(::settings.hugeCache);
+		// Задаём потолок придержки областей сверх разрядов
+		::machinery->central.keeper(::settings.spanCache);
 		/**
 		 * Передаём источнику просьбу о крупных страницах
 		 *

@@ -837,7 +837,9 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 	/**
 	 * Выполняем перебор набора инструкций программы
 	 */
-	for(const auto & instruction : program.instructions) {
+	for(size_t index = 0; index < program.instructions.size(); index++) {
+		// Получаем очередное указание проверяемой программы
+		const auto & instruction = program.instructions[index];
 		/**
 		 * Определяем код операции инструкции программы
 		 */
@@ -951,6 +953,21 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 				 */
 				if(!inside(instruction.look.body) || !inside(instruction.look.target) ||
 				 !inside(instruction.look.alternate))
+					// Выводим результат проверки правильности программы
+					return false;
+				/**
+				 * Если тело проверки окружения указывает на неё же
+				 *
+				 * @details Тело исполняется вложенным исполнением, и указание тела
+				 *          на саму проверку дало бы вложенность бесконечную. Сборка
+				 *          такого не порождает, а запись поддельная - вполне.
+				 *
+				 *          Заслон этот исполнение не заменяет, а дополняет: связка
+				 *          проверок, указывающих одна на другую, здесь не ловится,
+				 *          и стережёт её предел вложенности исполнений.
+				 *
+				 */
+				if(static_cast <size_t> (instruction.look.body) == index)
 					// Выводим результат проверки правильности программы
 					return false;
 				/**

@@ -426,6 +426,16 @@ TEST_F(AllocFixture, PagedBlockGrowsInPlace){
  *
  */
 TEST_F(AllocFixture, InPlaceGrowthIsAccounted){
+	/**
+	 * Проверка эта спрашивает учёт расхода, а тот снимается сборкой
+	 *
+	 * Признак AWH_ALLOC_NO_ACCOUNTING обращает ALLOCATED и PEAK в нуль намеренно, и
+	 * утверждать по ним что-либо в такой сборке нельзя
+	 */
+	#if defined(AWH_ALLOC_NO_ACCOUNTING)
+		// Пропускаем проверку: учёт расхода снят сборкой
+		GTEST_SKIP() << "учёт расхода снят сборкой: AWH_ALLOC_NO_ACCOUNTING";
+	#endif
 	// Размер, заведомо выходящий за разряды
 	const size_t start = (64u * 1024u);
 	// Выдаём блок сверх разрядов
@@ -600,3 +610,86 @@ TEST_F(AllocFixture, SecureBlocksDoNotSharePages){
 }
 
 #endif // !AWH_ALLOC_SANITIZED
+/**
+ * @brief Тест придержки освобождённой области сверх разрядов
+ *
+ * @note Придержка эта ВЫКЛЮЧЕНА по умолчанию и включается настройкой `spanCache`.
+ *       Довод умолчания записан у самой настройки: придержка враждебна росту области на
+ *       месте, и обмен выбирает приложение
+ *
+ * @warning Сличать АДРЕСА выданных областей здесь нельзя: куча и без придержки отдаёт
+ *          на тот же запрос ту же самую область, и совпадение адресов не доказывает
+ *          ничего. Придержку отличает иное - освобождённая область куче НЕ
+ *          возвращается, и свободное у кучи не растёт
+ *
+ */
+TEST_F(AllocFixture, SpanReserveWorksOnlyWhenAsked){
+	/**
+	 * Под санитайзером проверять нечего: выдача принадлежит ЕМУ
+	 *
+	 * Захват там не состоится, память идёт мимо наших слоёв, и ни свободное у кучи, ни
+	 * адрес области ничего о придержке не говорят. Проверка эта стоит ВНЕ блока
+	 * `#if !AWH_ALLOC_SANITIZED`, каким укрыты соседи по файлу, оттого пропуск здесь свой
+	 */
+	#if AWH_ALLOC_SANITIZED
+		// Пропускаем проверку: захват под санитайзером не состоится
+		GTEST_SKIP() << "захват под санитайзером не состоится";
+	#else
+	// Размер области сверх разрядов: выше границы разрядов, ниже размера куска
+	constexpr size_t SPAN = (64u * 1024u);
+	// Получаем действующие настройки
+	awh::alloc::options_t options = awh::alloc::Allocator::options();
+	/**
+	 * Сперва спрашиваем поведение по умолчанию: область обязана уйти куче
+	 */
+	{
+		// Выключаем придержку областей сверх разрядов
+		options.spanCache = 0;
+		// Применяем настройки
+		awh::alloc::Allocator::options(options);
+		// Выдаём область сверх разрядов
+		void * span = ::malloc(SPAN);
+		// Выдача обязана состояться
+		ASSERT_NE(span, nullptr);
+		// Запоминаем свободное у кучи до освобождения
+		const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE);
+		// Освобождаем область
+		::free(span);
+		// Свободное у кучи обязано вырасти: область ей возвращена
+		EXPECT_GE(awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE), (before + SPAN));
+	}
+	/**
+	 * Теперь включаем придержку и повторяем круг
+	 */
+	{
+		// Задаём потолок придержки с запасом под область
+		options.spanCache = (SPAN * 4u);
+		// Применяем настройки
+		awh::alloc::Allocator::options(options);
+		// Выдаём область сверх разрядов
+		void * span = ::malloc(SPAN);
+		// Выдача обязана состояться
+		ASSERT_NE(span, nullptr);
+		// Запоминаем свободное у кучи до освобождения
+		const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE);
+		// Освобождаем область
+		::free(span);
+		// Свободное у кучи обязано остаться прежним: область придержана, а не отдана
+		EXPECT_EQ(awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE), before);
+		// Выдаём область того же размера
+		void * again = ::malloc(SPAN);
+		// Выдача обязана состояться
+		ASSERT_NE(again, nullptr);
+		// Область обязана достаться придержанная, то есть та же самая
+		EXPECT_EQ(again, span);
+		// Освобождаем область
+		::free(again);
+	}
+	// Выключаем придержку: придержанное обязано уйти куче немедленно
+	options.spanCache = 0;
+	// Применяем настройки
+	awh::alloc::Allocator::options(options);
+	// Свободное у кучи обязано вобрать отданную придержку
+	EXPECT_GE(awh::alloc::Allocator::property(awh::alloc::property_t::PAGEFREE), SPAN);
+	#endif
+}

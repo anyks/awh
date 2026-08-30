@@ -37,6 +37,15 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+/**
+ * Стандартные заголовочные файлы
+ *
+ * @note Свойства типов нужны обращению по написанию знака: ограда пропускает ровно
+ *       разряд `char`, а перечнем это не лечится - заводитель по знаку делает
+ *       двусмысленным обычное `v[0]`
+ */
+#include <type_traits>
+
 #include "writer.hpp"
 #include "document.hpp"
 
@@ -1142,6 +1151,12 @@ namespace awh {
 					 * номеру, а прочие - к узлу разметки по местному имени. Обращение к
 					 * отсутствующему пути ничего не заводит и отдаёт значение неопределённое
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param path путь к разыскиваемому узлу
 					 * @return     ссылка на разысканный узел
 					 *
@@ -1151,6 +1166,11 @@ namespace awh {
 					 * `/Envelope/Body/0`. A numeric part accesses a nested node by an
 					 * index, while the others access a markup node by a local name. An access to
 					 * an absent path creates nothing and gives away an undefined value
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param path path to the node being searched for
 					 * @return reference to the found node
 					 *
@@ -1165,6 +1185,12 @@ namespace awh {
 					 * именем звена. Звено числовое недостающего не заводит и отвечает
 					 * значением мусорным: имени у заводимого узла взять неоткуда
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param path путь к разыскиваемому узлу
 					 * @return     ссылка на разысканный либо заведённый узел
 					 *
@@ -1173,6 +1199,11 @@ namespace awh {
 					 * @details The missing links of the path are created as markup nodes with the local
 					 * name of the link. A numeric link does not create a missing one and answers
 					 * with a scrap value: there is nowhere to take the name of the node being created from
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param path path to the node being searched for
 					 * @return reference to the found or created node
 					 *
@@ -1184,11 +1215,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод обращения к вложенному узлу разметки по местному имени
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param local местное имя вложенного узла
 					 * @return      ссылка на первый вложенный узел с таким именем
 					 *
 					 * \~english
 					 * @brief Method of the access to a nested markup node by a local name
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param local local name of the nested node
 					 * @return reference to the first nested node with such name
 					 *
@@ -1200,12 +1242,23 @@ namespace awh {
 					 * @brief Метод обращения к вложенному узлу разметки по местному имени с
 					 *        заведением недостающего
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param local местное имя вложенного узла
 					 * @return      ссылка на первый вложенный узел с таким именем
 					 *
 					 * \~english
 					 * @brief Method of the access to a nested markup node by a local name with
 					 *        the creation of a missing one
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param local local name of the nested node
 					 * @return reference to the first nested node with such name
 					 *
@@ -1216,11 +1269,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод обращения к вложенному узлу по номеру
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param index номер вложенного узла
 					 * @return      ссылка на вложенный узел
 					 *
 					 * \~english
 					 * @brief Method of the access to a nested node by an index
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param index index of the nested node
 					 * @return reference to the nested node
 					 *
@@ -1234,6 +1298,12 @@ namespace awh {
 					 * @details Обращение за границу перечня растит его до затребованного номера
 					 * узлами неопределёнными
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param index номер вложенного узла
 					 * @return      ссылка на вложенный узел
 					 *
@@ -1241,12 +1311,83 @@ namespace awh {
 					 * @brief Method of the access to a nested node by an index with the creation of a missing one
 					 * @details An access beyond the boundary of the list grows it up to the demanded index
 					 * by the undefined nodes
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param index index of the nested node
 					 * @return reference to the nested node
 					 *
 					 * \~
 					 */
 					Value & operator [] (const size_t index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод обращения по написанию знака
+					 *
+					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
+					 * ИМЯ из одного знака, а не номер. Правило это одно на весь кодек
+					 *
+					 * @note Без этого метода `v['z']` молча обращался к элементу под номером
+					 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
+					 *       Перечнем беда не лечится: заводитель по разряду `char` делает
+					 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 * @param  name разыскиваемое имя из одного знака
+					 * @return ссылка на дочерний узел
+					 *
+					 * \~english
+					 * @brief Method of the access by a writing of a character
+					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
+					 * of a single character rather than for an index. This rule is one for the whole codec
+					 * @note Without this method `v['z']` silently addressed the element under the index 122
+					 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
+					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
+					 *       ambiguous, hence a template with a guard here
+					 * @tparam T width of the access, the guard admits exactly a character
+					 * @param name name of a single character being searched for
+					 * @return reference to the child node
+					 *
+					 * \~
+					 */
+					template <typename T>
+					typename std::enable_if <std::is_same <T, char>::value, const Value &>::type
+					operator [] (const T name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод обращения по написанию знака
+					 *
+					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
+					 * ИМЯ из одного знака, а не номер. Правило это одно на весь кодек
+					 *
+					 * @note Без этого метода `v['z']` молча обращался к элементу под номером
+					 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
+					 *       Перечнем беда не лечится: заводитель по разряду `char` делает
+					 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 * @param  name разыскиваемое имя из одного знака
+					 * @return ссылка на дочерний узел
+					 *
+					 * \~english
+					 * @brief Method of the access by a writing of a character
+					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
+					 * of a single character rather than for an index. This rule is one for the whole codec
+					 * @note Without this method `v['z']` silently addressed the element under the index 122
+					 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
+					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
+					 *       ambiguous, hence a template with a guard here
+					 * @tparam T width of the access, the guard admits exactly a character
+					 * @param name name of a single character being searched for
+					 * @return reference to the child node
+					 *
+					 * \~
+					 */
+					template <typename T>
+					typename std::enable_if <std::is_same <T, char>::value, Value &>::type
+					operator [] (const T name) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1363,6 +1504,13 @@ namespace awh {
 					 *       половины от нуля (`1.5` даёт `2`, `-1.5` даёт `-2`), дробное за
 					 *       пределом затребованного целого вида выдаётся пределом этого вида,
 					 *       а `NaN` - нулём
+					 *
+					 * @note Дробного с НУЛЕВОЙ дробной частью правило это не касается: `300.0`
+					 *       извлекается ровно как `300` и заворачивается по кругу. Запись числа
+					 *       ответа менять не должна - решение владельца от 30.08.2026; предел
+					 *       вида остаётся лишь там, где дробная часть есть на деле. Совпадение
+					 *       записей держится до 2^53: выше `double` целых точно не представляет,
+					 *       и `9007199254740993.0` теряет число ещё у разбора
 					 *
 					 * @param result переменная, куда помещается извлечённое значение
 					 * @return       признак успешности извлечения
@@ -1576,6 +1724,12 @@ namespace awh {
 					 *       подлежит: свойства узла суть набор, а содержимое разметки
 					 *       определено порядком своим
 					 *
+					 * @warning Равенство значений НЕ означает совпадения их записей. Замеры при
+					 * `==`, отвечающем истиной: свойства пишутся в своём порядке у каждого, а
+					 * префиксы пространств имён сохраняются каждый свой. Сличение отвечает о
+					 * ЗНАЧЕНИИ, а запись хранит ОФОРМЛЕНИЕ, и решать по сличению, будут ли
+					 * тексты одинаковы, нельзя. Так же поступает и сличение значения JSON
+					 *
 					 * @param value сличаемое значение
 					 * @return      признак совпадения значений
 					 *
@@ -1588,6 +1742,11 @@ namespace awh {
 					 * @note The order of the properties is not subject to the comparison, while the order of the nested nodes
 					 *       is: the properties of a node are a set, while the content of a markup
 					 *       is defined by its order
+					 * @warning The equality of the values does NOT mean the coincidence of their records. Measurements with
+					 * `==` answering true: the attributes are written in their own order for each, while
+					 * the prefixes of the namespaces are preserved each its own. The comparison answers about the
+					 * VALUE, while the writing keeps the FORM, and it is not permissible to decide by the comparison whether the
+					 * texts will be identical. The comparison of a JSON value acts the same way
 					 * @param value value being compared
 					 * @return sign of the coincidence of the values
 					 *

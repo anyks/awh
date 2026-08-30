@@ -495,6 +495,21 @@ namespace awh {
 							const Document * _doc;
 							// Номер узла в перечне узлов документа
 							uint32_t _index;
+						private:
+							/**
+							 * \~russian
+							 * @brief Клеймо поколения перечня узлов, при заведении ссылки снятое
+							 *
+							 * @details Ссылка живёт номером узла, а перестроение перечня номера
+							 * смещает: без клейма ссылка, перестроение пережившая, отвечала бы
+							 * годной и отдавала бы содержимое совсем другого узла
+							 *
+							 * \~english
+							 * @brief Stamp of the generation of the list of the nodes taken at the creation of the reference
+							 *
+							 * \~
+							 */
+							uint32_t _stamp;
 							/**
 							 * Номер узла за последним узлом вместилища, какому узел принадлежит
 							 *
@@ -1007,7 +1022,7 @@ namespace awh {
 							 * \~
 							 */
 							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
-							 _doc(doc), _index(index), _bound(bound) {}
+							 _doc(doc), _index(index), _bound(bound), _stamp((doc != nullptr) ? doc->_generation : 0) {}
 					} value_t;
 					/**
 					 * Открываем ссылке доступ к внутреннему устройству документа
@@ -1050,6 +1065,37 @@ namespace awh {
 					settings_t _settings;
 					// Плоский перечень узлов дерева документа
 					vector <node_t> _nodes;
+				private:
+					/**
+					 * \~russian
+					 * @brief Клеймо поколения перечня узлов
+					 *
+					 * @details Ссылка на узел держит НОМЕР его в перечне, а очистка, вставка и
+					 * снос номера смещают: ссылка, перестроение пережившая, указывала бы на
+					 * совсем другой узел - и отвечала бы годной, отдавая правдоподобное чужое
+					 * содержимое. Ни кода отказа, ни падения при этом нет, и отличить подмену
+					 * потребителю нечем вовсе
+					 *
+					 * @details Клеймо растёт при всяком перестроении, ссылка снимает его при
+					 * заведении, а действительность сличает
+					 *
+					 * @note Дозапись узла в КОНЕЦ перечня клейма не трогает намеренно: смысла
+					 * прежних номеров она не меняет, и клеймение её обрывало бы ссылки, взятые
+					 * при обходе растущего дерева
+					 *
+					 * @warning Беду эту нашёл Василий у кодеков JSON и XML и передал соседям;
+					 * у YAML она подтвердилась щупом - узел, снятый до повторного разбора,
+					 * отвечал годным и отдавал содержимое НОВОГО документа
+					 *
+					 * \~english
+					 * @brief Stamp of the generation of the list of the nodes
+					 * @details A reference to a node holds the INDEX of it in the list, while a clearing,
+					 * an insertion and a removal shift the indexes: a reference which has survived a rebuilding
+					 * would point at an entirely different node
+					 *
+					 * \~
+					 */
+					uint32_t _generation;
 					// Перечень свойств узлов, записью им предпосланных
 					vector <props_t> _props;
 					// Хранилище имён и записей значений

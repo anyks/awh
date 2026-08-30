@@ -167,7 +167,7 @@ void awh::codec::json::Writer::setLogger(const log_t * log) noexcept {
  */
 awh::codec::json::Writer::Writer(const log_t * log) noexcept :
  _empty(true), _keyed(false), _log(log),
- _error(error_t::NONE), _started(false), _taken(0) {}
+ _error(error_t::NONE), _started(false), _separated(false), _taken(0) {}
 /**
  * @brief Метод записи разделителя перед очередным значением
  *
@@ -208,7 +208,7 @@ bool awh::codec::json::Writer::separate() noexcept {
 	 * @note Без разделителя два документа склеились бы в одну последовательность
 	 *       знаков, разбор какой распался бы на границе между ними
 	 */
-	if(this->_nesting.empty() && this->_started && !this->_settings.stream)
+	if(this->_nesting.empty() && this->_started && !this->_separated)
 		// Выполняем отказ записи с сообщением о доводе его в журнал
 		return this->refuse(error_t::TEXT_ALREADY_ENDED);
 	/**
@@ -462,6 +462,8 @@ void awh::codec::json::Writer::clear() noexcept {
 	this->_keyed = false;
 	// Снимаем признак наличия записанных документов
 	this->_started = false;
+	// Снимаем признак разделённости записанных документов
+	this->_separated = false;
 	// Выполняем сброс количества изъятых из сборщика байтов
 	this->_taken = 0;
 }
@@ -1077,6 +1079,16 @@ bool awh::codec::json::Writer::finish() noexcept {
 	if(this->_settings.stream)
 		// Записываем знак-разделитель документов
 		this->_result.push_back('\n');
+	/**
+	 * Запоминаем, разделён ли записанный документ от следующего
+	 *
+	 * @note Признак снимается ЗДЕСЬ, где разделитель и пишется, а спрашивается заслоном
+	 *       при начале следующего документа: настройка потока к тому мигу вправе быть
+	 *       уже иной, и спрашивать её значило бы судить о написанном по несвязанному с
+	 *       ним. Замер: включение потока после завершения первого документа давало
+	 *       `{"a":1}{` при успехе записи
+	 */
+	this->_separated = this->_settings.stream;
 	// Устанавливаем признак наличия записанных документов
 	this->_started = true;
 	// Снимаем признак наличия значений у вместилища, открывая запись следующего документа

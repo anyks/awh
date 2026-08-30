@@ -307,6 +307,29 @@ namespace awh {
 				 * \~
 				 */
 				string message() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод толкования кода ошибки текстом
+				 *
+				 * @details Толкование заведено отдельно от message(): код ошибки
+				 *          сопоставления держит движок, а не разборщик, и толковать
+				 *          его текстом надлежит тем же порядком, что и код разбора.
+				 *
+				 * @param error толкуемый код ошибки
+				 * @return      текст толкуемого кода ошибки
+				 *
+				 * \~english
+				 * @brief Method of interpreting an error code as text
+				 * @details The interpretation is provided separately from message():
+				 *          the code of a matching error is held by the engine rather
+				 *          than by the parser, and it is to be interpreted as text
+				 *          in the same order as the code of the parsing.
+				 * @param error interpreted error code
+				 * @return      text of the interpreted error code
+				 *
+				 * \~
+				 */
+				static string message(const error_t error) noexcept;
 			public:
 				/**
 				 * \~russian

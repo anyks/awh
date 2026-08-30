@@ -472,6 +472,15 @@ namespace awh {
 			 */
 			enum class error_t : uint8_t {
 				NONE                    = 0x00, // Ошибок не обнаружено
+				/**
+				 * Внутренняя ошибка разбора
+				 *
+				 * @note Код этот ЗАПАСНОЙ и в исправной работе не рождается вовсе: ставится
+				 *       он там, где нижний слой отказал, НЕ НАЗВАВ кода. Замерено картой
+				 *       рождённых кодов по всему набору - молчит он один из немногих, и
+				 *       молчание это ожидаемо: случай требует изъяна в самом кодеке, оттого
+				 *       проверкою он и не закреплён
+				 */
 				INTERNAL                = 0x01, // Внутренняя ошибка разбора
 				INVALID_CHARACTER       = 0x02, // Знак недопустим в разметке
 				INVALID_ENCODING        = 0x03, // Последовательность байтов не отвечает объявленной кодировке
@@ -516,7 +525,8 @@ namespace awh {
 				FILE_NOT_WRITTEN        = 0x2A, // Текст разметки записать в файл не удалось
 				STORAGE_EXHAUSTED       = 0x2B, // Разбираемый текст не помещается в разрядность хранилища
 				TOO_MANY_ATTRIBUTES     = 0x2C, // Количество атрибутов у узла превышает допустимое
-				FILE_NOT_READ           = 0x2D  // Файл разметки прочитать не удалось
+				FILE_NOT_READ           = 0x2D, // Файл разметки прочитать не удалось
+				INVALID_NODE            = 0x2E  // Переданный узел дерева непригоден
 			};
 
 			/**
@@ -929,6 +939,12 @@ namespace awh {
 			 * узла не выдаются: они не описывают узел, а связывают префиксы, и доступны
 			 * отдельным перечнем
 			 *
+			 * @warning Значение живёт лишь до разбора следующего узла со свойствами:
+			 * хранилище свойств переиспользуется. Замер: значение, удержанное у первого
+			 * узла, после двухсот узлов со свойствами читало испорченное содержимое.
+			 * Ручательство названо нарочно - соседняя свёртка имени о своём сроке
+			 * ГОВОРИТ, и молчание здесь читалось бы как её срок
+			 *
 			 * \~english
 			 * @brief Attribute of a markup node
 			 * @details The value of an attribute is issued already brought to its final form:
@@ -937,6 +953,11 @@ namespace awh {
 			 * @note The declarations of the namespaces — «xmlns» and «xmlns:*» — are not issued in the list of the attributes
 			 * of a node: they do not describe the node but bind the prefixes, and they are available
 			 * as a separate list
+			 * @warning The value lives only until the parsing of the next node with attributes:
+			 * the storage of the attributes is reused. Measurement: a value held at the first
+			 * node, after two hundred nodes with attributes read a corrupted content.
+			 * The lifetime is named deliberately — the neighbouring structure of a name DOES SPEAK
+			 * of its own lifetime, and a silence here would read as its lifetime
 			 *
 			 * \~
 			 */
@@ -969,10 +990,21 @@ namespace awh {
 			 * @details Действует внутри узла, где объявлено, и внутри всех вложенных в него,
 			 * пока не будет переопределено
 			 *
+			 * @warning Поля живут лишь до закрытия узла, связывание объявившего: хранилище
+			 * областей переиспользуется. Замер: обозначение, удержанное у корневого узла,
+			 * по закрытии его читало СДВИНУТОЕ содержимое - «p» вместо «urn:A», - тогда как
+			 * зов `resolve()` отвечал пустым, то есть верно. Ответ о связывании надлежит
+			 * брать зовом, а нужное дольше - копировать
+			 *
 			 * \~english
 			 * @brief Binding of a prefix to a namespace
 			 * @details Acts inside the node where it is declared and inside all the ones nested into it,
 			 * until it is redefined
+			 * @warning The fields live only until the closing of the node that declared the binding: the storage
+			 * of the scopes is reused. Measurement: a designation held at the root node,
+			 * upon its closing read a SHIFTED content — «p» instead of «urn:A» — whereas
+			 * a call to `resolve()` answered empty, that is, correctly. The answer about a binding should be
+			 * taken by a call, and what is needed for longer — copied
 			 *
 			 * \~
 			 */

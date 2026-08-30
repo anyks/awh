@@ -233,8 +233,47 @@ namespace awh {
 			 */
 			size_t _limit;
 		private:
+			/**
+			 * \~russian
+			 * Наибольшая допустимая глубина рекурсивных вызовов подвыражений
+			 * @details Глубина держится полем объекта, а не движка, по той же причине,
+			 *          что и предел объёма работы: движок принадлежит потоку исполнения,
+			 *          а настройка - объекту.
+			 *
+			 * \~english
+			 * Largest admissible depth of recursive calls of subpatterns
+			 * @details The depth is stored as a field of the object rather than of the engine
+			 *          for the same reason as the limit of the amount of work: the engine
+			 *          belongs to the thread of execution, whereas the setting belongs
+			 *          to the object.
+			 *
+			 * \~
+			 */
+			size_t _nesting;
+		private:
 			// Кэш собранных регулярных выражений
 			mutable unordered_map <key_t, weak_ptr <const awh::regex::expression_t>, Hash> _cache;
+		private:
+			/**
+			 * \~russian
+			 * @brief Метод снятия кода ошибки сопоставления с движка
+			 *
+			 * @details Отказ сопоставления бывает двух родов: совпадения в тексте
+			 *          нет вовсе либо движок исчерпал допустимый объём работы,
+			 *          и потребителю различать их надлежит опросом error(). Без
+			 *          снятия кода с движка оба рода выглядели бы одинаково.
+			 *
+			 * \~english
+			 * @brief Method of taking the matching error code from the engine
+			 * @details A refusal of the matching is of two kinds: there is no match
+			 *          in the text at all, or the engine has exhausted the admissible
+			 *          amount of work, and the consumer is to tell them apart by
+			 *          polling error(). Without taking the code from the engine
+			 *          both kinds would look the same.
+			 *
+			 * \~
+			 */
+			void receive() const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -580,6 +619,34 @@ namespace awh {
 			 * \~
 			 */
 			void limit(const size_t limit) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
+			 *
+			 * @details Ссылки подвыражений на себя разворачиваются вглубь, и глубина
+			 *          эта ограничивается: память под кадры вызовов растёт соразмерно
+			 *          ей. Превышение глубины отвечает отказом сопоставления с кодом
+			 *          превышения допустимого объёма работы. Нуль восстанавливает
+			 *          глубину умолчания.
+			 *
+			 * @note Умолчанием служит тысяча вызовов - столько же берёт и эталон
+			 *
+			 * @param nesting наибольшая допустимая глубина рекурсивных вызовов
+			 *
+			 * \~english
+			 * @brief Method of setting the largest admissible depth of recursive calls
+			 * @details References of subpatterns to themselves are unfolded in depth,
+			 *          and that depth is bounded: the memory of the call frames grows
+			 *          in proportion to it. Exceeding the depth answers with a refusal
+			 *          of the matching with the code of exceeding the admissible amount
+			 *          of work. Zero restores the depth of the default.
+			 * @note One thousand calls serves as the default - the reference takes
+			 *       the same amount
+			 * @param nesting largest admissible depth of recursive calls
+			 *
+			 * \~
+			 */
+			void nesting(const size_t nesting) noexcept;
 		public:
 			/**
 			 * \~russian

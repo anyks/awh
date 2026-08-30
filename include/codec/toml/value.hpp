@@ -134,6 +134,21 @@ namespace awh {
 			 *       is a kind — whereas TOML records the kind unambiguously at the parsing
 			 *
 			 * \~
+			 * @warning ССЫЛКА, ЭТИМИ ТЕЛАМИ ОТДАВАЕМАЯ, ЖИВЁТ ДО ПЕРВОГО ЗАВЕДЕНИЯ СОСЕДА.
+			 * Дети лежат в перемещаемом вместилище, и рост его перевыделяет память: ссылка,
+			 * взятая прежде, указывает на память освобождённую. Надзор за памятью валит это
+			 * настоящим обращением к освобождённому - `heap-use-after-free`, замерено щупом
+			 * на шестидесяти четырёх соседях
+			 *
+			 * @warning Клейма поколения, каким лечится ссылка на узел у дерева YAML, здесь
+			 * поставить НЕЧЕМ: ссылка языка признака нести не может, и поверить её нельзя
+			 * ничем. Оттого правило записано договором: держать надлежит ПУТЬ, а не ссылку -
+			 * `значение["раздел"]["ключ"]` заново, а не `Value & ключ` про запас
+			 *
+			 * @note Правило это общее у INI и TOML, а найдено оно Василием у кодеков JSON и
+			 * XML: устройство там то же - дети в перемещаемом вместилище
+			 *
+			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Value {
 				private:
@@ -837,6 +852,74 @@ namespace awh {
 					 * \~
 					 */
 					Value & operator [] (const size_t index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон вида имени, знаком записанного
+					 * @tparam T вид имени искомой пары
+					 *
+					 * \~english
+					 * @brief Template of the kind of the name written as a character
+					 * @tparam T kind of the name of the sought pair
+					 *
+					 * \~
+					 */
+					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Оператор обращения к паре по имени из одного знака
+					 *
+					 * @details Написание знака есть ТЕКСТ, а не число: без этого оператора
+					 * обращение `value['z']` уходило бы к номеру 122 МОЛЧА - доведение знака
+					 * до числа языком дозволено, а до строки требует заводителя, - и потребитель
+					 * получал бы пустоту вместо значения, отказа не видя вовсе
+					 *
+					 * @warning Ограда `enable_if` на ТОЧНОЕ совпадение обязательна: оператор
+					 *          без неё делает двусмысленным обычное `value[0]` - доведение
+					 *          `int` до `size_t` и до `char` суть приведения одного разряда.
+					 *          Замерено щупом ДО правки заголовка
+					 *
+					 * @param name имя искомой пары из одного знака
+					 * @return     найденное значение
+					 *
+					 * \~english
+					 * @brief Operator of the access to a pair by a name of one character
+					 * @param name name of the sought pair of one character
+					 * @return     found value
+					 *
+					 * \~
+					 */
+					typename enable_if <is_same <T, char>::value, const Value &>::type operator [] (const T name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон вида имени, знаком записанного
+					 * @tparam T вид имени заводимой пары
+					 *
+					 * \~english
+					 * @brief Template of the kind of the name written as a character
+					 * @tparam T kind of the name of the pair being created
+					 *
+					 * \~
+					 */
+					template <typename T>
+					/**
+					 * \~russian
+					 * @brief Оператор заведения пары по имени из одного знака
+					 *
+					 * @details Довод тот же, что и у обращения постоянного: написание знака
+					 * есть текст. Заведение полуверным оставлять нельзя - снятие по знаку
+					 * давало бы значение, а заведение по нему клало бы его номером
+					 *
+					 * @param name имя заводимой пары из одного знака
+					 * @return     заведённое значение
+					 *
+					 * \~english
+					 * @brief Operator of the creation of a pair by a name of one character
+					 * @param name name of the pair being created of one character
+					 * @return     created value
+					 *
+					 * \~
+					 */
+					typename enable_if <is_same <T, char>::value, Value &>::type operator [] (const T name) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1449,6 +1532,71 @@ namespace awh {
 					 * \~
 					 */
 					Value(const double value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон вида записываемого целого числа
+					 * @tparam T вид записываемого целого числа
+					 *
+					 * \~english
+					 * @brief Template of the kind of the integer being written
+					 * @tparam T kind of the integer being written
+					 *
+					 * \~
+					 */
+					/**
+					 * @note Ограда `enable_if` обязательна: без неё заводитель перехватывал бы и
+					 *       написание дробное - `Value(1.5f)` доводится до `float` точным
+					 *       совпадением, а до `double` приведением, и сборка искала бы шаблон,
+					 *       созданный лишь для целых чисел. Замерено отказом связывания
+					 */
+					template <typename T, typename = typename enable_if <is_integral <T>::value>::type>
+					/**
+					 * \~russian
+					 * @brief Конструктор целого числа записи любой
+					 *
+					 * @details Заводитель этот отвечает за написания, ширины которым отведено
+					 * менее восьми байтов, - `short`, `int`, `long`, `size_t` и прочие. Без
+					 * него запись `Value(1)` расходилась бы между целым со знаком, целым без
+					 * знака и дробным видами приведением равной силы, и сборка отвечала бы
+					 * двусмысленностью: годились ЛИШЬ `long long` и `unsigned long long`
+					 *
+					 * @note Знаковость выбирает вид, которому число доводится: число без знака
+					 *       уходит через `uint64_t`, а со знаком через `int64_t`. Обход через
+					 *       один лишь `int64_t` обращал бы `4294967295u` в отрицательное
+					 *
+					 * @param value устанавливаемое целое число
+					 * @param radix система счисления записи целого числа
+					 *
+					 * \~english
+					 * @brief Constructor of an integer of any record
+					 * @param value integer being set
+					 * @param radix radix of the record of the integer
+					 *
+					 * \~
+					 */
+					Value(const T value, const radix_t radix = radix_t::DECIMAL) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор знака
+					 *
+					 * @details Знак ложится строкою из одного знака, а не числом: вида знака у
+					 * наречия TOML нет вовсе, и числовое прочтение отдало бы `Value('z')`
+					 * числом 122 молча
+					 *
+					 * @param value устанавливаемый знак
+					 * @param quoting запись строкового значения
+					 *
+					 * \~english
+					 * @brief Constructor of a character
+					 * @details The character is laid as a string of one character rather than as a number:
+					 * the TOML dialect has no kind of a character at all, and a numeric reading would
+					 * silently yield `Value('z')` as the number 122
+					 * @param value character being set
+					 * @param quoting record of the string value
+					 *
+					 * \~
+					 */
+					Value(const char value, const string_t quoting = string_t::BASIC) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор строкового значения

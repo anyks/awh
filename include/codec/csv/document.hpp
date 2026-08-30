@@ -292,6 +292,41 @@ namespace awh {
 					void reindex() noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод переноса заголовка из чтения в контейнер
+					 *
+					 * @details Перенос идёт единожды и лишь при заголовке ещё не снятом: зовётся
+					 * он по ходу подачи текста, до выдачи записей обработчику, - тем имена
+					 * столбцов и оказываются доступны ПРЯМО ИЗ ОБРАБОТЧИКА, как и обещано
+					 * договором потокового чтения. Прежде перенос стоял после цикла подачи, и
+					 * обещание это не исполнялось вовсе: обработчик видел заголовок пустым, а
+					 * разрешать поля по имени на потоковом пути было НЕЧЕМ - при том, что путь
+					 * этот заведён ради таблиц, в память не помещающихся, где иного случая
+					 * обратиться к столбцу по имени не представится
+					 *
+					 * @note Заслон по непустоте заголовка снимает и повторный перенос, и плату
+					 *       за перестроение соответствия: за весь проход они идут по разу
+					 *
+					 * @param reader чтение, заголовок которого переносится
+					 *
+					 * \~english
+					 * @brief Method of the transfer of the header from the reading into the container
+					 * @details The transfer goes once and only at a header not yet taken: it is called
+					 * along the course of the feeding of the text, before the issuance of the records to the handler —
+					 * thereby the names of the columns turn out to be available RIGHT FROM THE HANDLER, as is promised
+					 * by the contract of the streaming reading. Formerly the transfer stood after the loop of the feeding, and
+					 * that promise was not kept at all: the handler saw the header empty, and
+					 * there was NOTHING to resolve the fields by name with on the streaming path — while that path
+					 * is instituted for the sake of the tables not fitting into the memory, where another occasion
+					 * to address a column by name will not present itself
+					 * @note The guard by the non-emptiness of the header removes both the repeated transfer, and the cost
+					 *       of the rebuilding of the correspondence: over the whole pass they go once
+					 * @param reader reading whose header is being transferred
+					 *
+					 * \~
+					 */
+					void adopt(const reader_t & reader) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод сбора событий разбора в таблицу
 					 *
 					 * @details Собирает выданное чтением, не полагаясь на то, подан ли
@@ -415,12 +450,38 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод разбора текста таблицы записями
 					 *
+					 * @details Записи выдаются по одной, а в контейнере не оседают вовсе:
+					 * тем разбор этот и отличается от разбора, таблицу удерживающего
+					 *
+					 * @note Заголовок, объявлен он настройками или нет, обработчику не
+					 *       выдаётся: имена столбцов берутся из `header()` по окончании
+					 *       разбора либо прямо из обработчика
+					 *
+					 * @note Прекращение разбора обработчиком отказом НЕ считается: итог
+					 *       выходит успешным, а канал отказа - пустым. Так же поступает
+					 *       и потоковый разбор JSON
+					 *
+					 * @warning Поля живут лишь на время вызова обработчика: буфер записи
+					 * переиспользуется, и сохранять ссылки на поля дольше вызова нельзя -
+					 * содержимое, нужное дольше, следует копировать
+					 *
 					 * @param text     разбираемый текст таблицы
 					 * @param callback обработчик очередной записи, ложь прекращает разбор
 					 * @return         результат разбора
 					 *
 					 * \~english
 					 * @brief Method of parsing the text of a table by records
+					 * @details The records are issued one by one, and do not settle in the container at all:
+					 * that is what distinguishes the present parsing from the parsing that holds the table
+					 * @note The header, whether it is declared by the settings or not, is not issued to the
+					 * handler: the names of the columns are taken from `header()` upon the end of the
+					 * parsing or right from the handler
+					 * @note The termination of the parsing by the handler is NOT considered a refusal: the result
+					 * comes out successful, and the channel of the refusal — empty. The streaming parsing of JSON
+					 * acts the same way
+					 * @warning The fields live only for the duration of the call of the handler: the buffer of a record
+					 * is reused, and the references to the fields cannot be preserved longer than the call —
+					 * the content needed for longer should be copied
 					 * @param text     text of the table being parsed
 					 * @param callback handler of the next record, false terminates the parsing
 					 * @return         result of the parsing
@@ -548,10 +609,19 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения имён столбцов
 					 *
+					 * @warning Выданное живёт лишь до ближайшего изменения таблицы: виды
+					 * указывают в общее хранилище знаков, а оно при росте ПЕРЕЕЗЖАЕТ. Беда эта
+					 * молчалива - вид не падает, он начинает читать чужое содержимое, - и
+					 * содержимое, нужное дольше, следует копировать
+					 *
 					 * @return имена столбцов в порядке объявления
 					 *
 					 * \~english
 					 * @brief Method of getting the names of the columns
+					 * @warning What is issued lives only until the nearest change of the table: the views
+					 * point into the common storage of the characters, and it MOVES at a growth. That trouble is
+					 * silent — the view does not fall, it begins to read a foreign content — and
+					 * the content needed for longer should be copied
 					 * @return names of the columns in the order of the declaration
 					 *
 					 * \~
@@ -592,12 +662,21 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения содержимого поля по номеру записи и столбца
 					 *
+					 * @warning Выданное живёт лишь до ближайшего изменения таблицы: виды
+					 * указывают в общее хранилище знаков, а оно при росте ПЕРЕЕЗЖАЕТ. Беда эта
+					 * молчалива - вид не падает, он начинает читать чужое содержимое, - и
+					 * содержимое, нужное дольше, следует копировать
+					 *
 					 * @param row номер записи, считая с нуля
 					 * @param col номер столбца, считая с нуля
 					 * @return    содержимое поля, пустое при его отсутствии
 					 *
 					 * \~english
 					 * @brief Method of getting the content of a field by the number of the record and of the column
+					 * @warning What is issued lives only until the nearest change of the table: the views
+					 * point into the common storage of the characters, and it MOVES at a growth. That trouble is
+					 * silent — the view does not fall, it begins to read a foreign content — and
+					 * the content needed for longer should be copied
 					 * @param row number of the record, counting from zero
 					 * @param col number of the column, counting from zero
 					 * @return    content of the field, empty in its absence
@@ -609,12 +688,21 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения содержимого поля по номеру записи и имени столбца
 					 *
+					 * @warning Выданное живёт лишь до ближайшего изменения таблицы: виды
+					 * указывают в общее хранилище знаков, а оно при росте ПЕРЕЕЗЖАЕТ. Беда эта
+					 * молчалива - вид не падает, он начинает читать чужое содержимое, - и
+					 * содержимое, нужное дольше, следует копировать
+					 *
 					 * @param row  номер записи, считая с нуля
 					 * @param name имя столбца
 					 * @return     содержимое поля, пустое при его отсутствии
 					 *
 					 * \~english
 					 * @brief Method of getting the content of a field by the number of the record and the name of the column
+					 * @warning What is issued lives only until the nearest change of the table: the views
+					 * point into the common storage of the characters, and it MOVES at a growth. That trouble is
+					 * silent — the view does not fall, it begins to read a foreign content — and
+					 * the content needed for longer should be copied
 					 * @param row  number of the record, counting from zero
 					 * @param name name of the column
 					 * @return     content of the field, empty in its absence
@@ -627,11 +715,20 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения записи целиком
 					 *
+					 * @warning Выданное живёт лишь до ближайшего изменения таблицы: виды
+					 * указывают в общее хранилище знаков, а оно при росте ПЕРЕЕЗЖАЕТ. Беда эта
+					 * молчалива - вид не падает, он начинает читать чужое содержимое, - и
+					 * содержимое, нужное дольше, следует копировать
+					 *
 					 * @param row номер записи, считая с нуля
 					 * @return    поля записи в порядке следования
 					 *
 					 * \~english
 					 * @brief Method of getting a record in full
+					 * @warning What is issued lives only until the nearest change of the table: the views
+					 * point into the common storage of the characters, and it MOVES at a growth. That trouble is
+					 * silent — the view does not fall, it begins to read a foreign content — and
+					 * the content needed for longer should be copied
 					 * @param row number of the record, counting from zero
 					 * @return    fields of the record in the order of the succession
 					 *
@@ -642,11 +739,20 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения столбца целиком
 					 *
+					 * @warning Выданное живёт лишь до ближайшего изменения таблицы: виды
+					 * указывают в общее хранилище знаков, а оно при росте ПЕРЕЕЗЖАЕТ. Беда эта
+					 * молчалива - вид не падает, он начинает читать чужое содержимое, - и
+					 * содержимое, нужное дольше, следует копировать
+					 *
 					 * @param col номер столбца, считая с нуля
 					 * @return    поля столбца в порядке следования записей
 					 *
 					 * \~english
 					 * @brief Method of getting a column in full
+					 * @warning What is issued lives only until the nearest change of the table: the views
+					 * point into the common storage of the characters, and it MOVES at a growth. That trouble is
+					 * silent — the view does not fall, it begins to read a foreign content — and
+					 * the content needed for longer should be copied
 					 * @param col number of the column, counting from zero
 					 * @return    fields of the column in the order of the succession of the records
 					 *
@@ -657,11 +763,20 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения столбца целиком по его имени
 					 *
+					 * @warning Выданное живёт лишь до ближайшего изменения таблицы: виды
+					 * указывают в общее хранилище знаков, а оно при росте ПЕРЕЕЗЖАЕТ. Беда эта
+					 * молчалива - вид не падает, он начинает читать чужое содержимое, - и
+					 * содержимое, нужное дольше, следует копировать
+					 *
 					 * @param name имя столбца
 					 * @return     поля столбца в порядке следования записей
 					 *
 					 * \~english
 					 * @brief Method of getting a column in full by its name
+					 * @warning What is issued lives only until the nearest change of the table: the views
+					 * point into the common storage of the characters, and it MOVES at a growth. That trouble is
+					 * silent — the view does not fall, it begins to read a foreign content — and
+					 * the content needed for longer should be copied
 					 * @param name name of the column
 					 * @return     fields of the column in the order of the succession of the records
 					 *
@@ -685,6 +800,21 @@ namespace awh {
 					 *       упирается в предел вида, - и расхождение это намеренно: там
 					 *       выдаётся само значение, отказать которым нечем, а здесь выдаётся
 					 *       признак успеха, и он обязан быть правдив
+					 *
+					 * @note Расхождение это СЛИЧЕНО замером 30.08.2026, и запись оказалась
+					 *       неполна. У JSON упор в предел стоит лишь у пути ДРОБНОГО: целое,
+					 *       в затребованный вид не помещающееся, заворачивается по кругу -
+					 *       `300` видом `uint8_t` даёт 44, тогда как `300.0` даёт 255, а
+					 *       `-1` видом `uint64_t` даёт 18446744073709551615. Довод у JSON
+					 *       записан: приведение отвечает ЯЗЫКУ везде, где у языка ответ
+					 *       определён, а предел подставляется лишь там, где поведение
+					 *       неопределено
+					 *
+					 * @note Числа эти совпадают у ШЕСТИ кодеков рамки - JSON, INI, TOML,
+					 *       YAML замерены, XML и CSV своих числовых видов не имеют, - и
+					 *       расхождение записей одного числа вынесено владельцу вопросом.
+					 *       CSV же отвергает всякое непомещающееся число, и здесь описано
+					 *       именно это
 					 * @warning Записи «inf» и «nan» переносятся в дробный вид как есть: они
 					 *          пределом не ограничены, и терять им нечего
 					 *

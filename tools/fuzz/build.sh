@@ -71,7 +71,10 @@ TARGET=$("$COMPILER" -dumpmachine 2>/dev/null || echo "")
 SANITIZE="${SANITIZE:-address,undefined}"
 
 # Уровень оптимизации сборки ворошителя
-LEVEL="-O1"
+#
+# Переопределяется окружением: разбор пойманного зависания требует "-O0", иначе
+# отладчик отвечает "<unavailable>" на всякую переменную и место находки не назвать
+LEVEL="${LEVEL:--O1}"
 
 # Отключаем надзирателей у целей MS Windows и поднимаем уровень оптимизации
 #
@@ -248,6 +251,15 @@ fi
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi" ;;
 	SunOS) SYSTEM_LIBS="-lsocket -lnsl -ldladm" ;;
+	##
+	# @warning У NetBSD и OpenBSD «backtrace» и «backtrace_symbols_fd» лежат в
+	#          ОТДЕЛЬНОЙ библиотеке «libexecinfo», а не в libc. Заголовок
+	#          «execinfo.h» там на месте, и условное включение по «__has_include»
+	#          срабатывает, поэтому сборка проходит целиком и валится лишь на
+	#          связывании: «undefined reference to backtrace». У FreeBSD и Linux
+	#          нехватки не видно, оттого дефект и не всплывал до 31.08.2026
+	##
+	NetBSD|OpenBSD) SYSTEM_LIBS="-lexecinfo" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -347,7 +359,7 @@ case "$CODEC" in
 	#       собирать его значило бы платить сборкой самой крупной части дерева за
 	#       то, чего ворошитель не зовёт
 	##
-	io|eth|blockprobe)
+	io|eth|blockprobe|deadlockprobe)
 		# Отбираем движок по системе
 		case "$(uname -s)" in
 			# У систем BSD и macOS движком служит kqueue

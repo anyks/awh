@@ -40,6 +40,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <type_traits>
 #include <string_view>
 #include <unordered_map>
 
@@ -513,6 +514,35 @@ namespace awh {
 							 * \~
 							 */
 							uint32_t _bound;
+						private:
+							/**
+							 * \~russian
+							 * Клеймо поколения дерева, при котором ссылка снята
+							 *
+							 * @details Ссылка хранит номер узла, а перестроение дерева - разбор,
+							 * чтение, очистка, прививка - нумерацию меняет. Ссылка, пережившая
+							 * перестроение, указывала бы на СОВСЕМ ДРУГОЕ значение, отвечая при этом
+							 * действительностью и отдавая правдоподобное содержимое: отличить
+							 * подмену эту потребителю было НЕЧЕМ. Замер: узел, снятый до повторного
+							 * разбора, отвечал `valid() == true` и выдавал значение нового документа
+							 *
+							 * @note Клеймо снимается в самом заводителе ссылки, оттого ни одно место
+							 *       её заведения правки не потребовало
+							 *
+							 * \~english
+							 * Stamp of the generation of the tree at which the reference was taken
+							 * @details The reference holds the index of a node, while a rebuilding of the tree — the parsing,
+							 * the reading, the clearing, the grafting — changes the numbering. A reference that has survived
+							 * a rebuilding would point at a COMPLETELY DIFFERENT value, answering at that
+							 * with validity and giving away a plausible content: there was NOTHING for the consumer
+							 * to tell that substitution by. Measurement: a node taken before a repeated
+							 * parsing answered `valid() == true` and issued the value of the new document
+							 * @note The stamp is taken in the constructor of the reference itself, whereby not a single place
+							 *       of its construction has required a change
+							 *
+							 * \~
+							 */
+							uint32_t _stamp;
 						public:
 							/**
 							 * \~russian
@@ -528,7 +558,7 @@ namespace awh {
 							 */
 							AWH_JSON_INLINE bool valid() const noexcept {
 								// Выводим признак действительности ссылки
-								return ((this->_doc != nullptr) && (this->_index < this->_doc->_nodes.size()));
+								return ((this->_doc != nullptr) && (this->_index < this->_doc->_nodes.size()) && (this->_stamp == this->_doc->_stamp));
 							}
 							/**
 							 * \~russian
@@ -735,6 +765,39 @@ namespace awh {
 							 * \~
 							 */
 							Value operator [] (const size_t index) const noexcept;
+						/**
+						 * \~russian
+						 * @brief Метод обращения по написанию знака
+						 *
+						 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
+						 * ИМЯ из одного знака, а не номер. Правило это одно на весь кодек
+						 *
+						 * @note Без этого метода `v['z']` молча обращался к элементу под номером
+						 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
+						 *       Перечнем беда не лечится: заводитель по разряду `char` делает
+						 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
+						 *
+						 * @tparam T разряд обращения, ограда пропускает ровно знак
+						 * @param  name разыскиваемое имя из одного знака
+						 * @return снятое значение
+						 *
+						 * \~english
+						 * @brief Method of the access by a writing of a character
+						 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
+						 * of a single character rather than for an index. This rule is one for the whole codec
+						 * @note Without this method `v['z']` silently addressed the element under the index 122
+						 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
+						 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
+						 *       ambiguous, hence a template with a guard here
+						 * @tparam T width of the access, the guard admits exactly a character
+						 * @param name name of a single character being searched for
+						 * @return value taken
+						 *
+						 * \~
+						 */
+						template <typename T>
+						typename std::enable_if <std::is_same <T, char>::value, Value>::type
+						operator [] (const T name) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод обращения к значению по указателю JSON Pointer
@@ -1018,10 +1081,21 @@ namespace awh {
 							 * \~russian
 							 * @brief Метод извлечения строкового значения без копирования
 							 *
+							 * @warning Вид этот живёт лишь до ближайшего перестроения дерева: он
+							 * указывает в общее хранилище знаков, а разбор, чтение, очистка и прививка
+							 * его переписывают. Сама ссылка клеймом поколения защищена и по устаревании
+							 * отвечает пустым, а вот вид, СНЯТЫЙ ПРЕЖДЕ и удержанный, защищён быть не
+							 * может: замер дал испорченное содержимое. Нужное дольше следует копировать
+							 *
 							 * @return строковое значение, пусто у прочих узлов
 							 *
 							 * \~english
 							 * @brief Method of the extraction of a string value without a copying
+							 * @warning This view lives only until the nearest rebuilding of the tree: it
+							 * points into the common storage of the characters, while the parsing, the reading, the clearing and the grafting
+							 * rewrite it. The reference itself is protected by the stamp of the generation and upon becoming stale
+							 * answers with an empty result, whereas a view TAKEN BEFOREHAND and held cannot be
+							 * protected: the measurement gave a corrupted content. What is needed for longer should be copied
 							 * @return string value, empty for the other nodes
 							 *
 							 * \~
@@ -1092,7 +1166,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							Value() noexcept : _doc(nullptr), _index(NO_INDEX), _bound(0) {}
+							Value() noexcept : _doc(nullptr), _index(NO_INDEX), _bound(0), _stamp(0) {}
 							/**
 							 * \~russian
 							 * @brief Конструктор
@@ -1109,7 +1183,7 @@ namespace awh {
 							 *
 							 * \~
 							 */
-							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept : _doc(doc), _index(index), _bound(bound) {}
+							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept : _doc(doc), _index(index), _bound(bound), _stamp((doc != nullptr) ? doc->_stamp : 0) {}
 					} value_t;
 					/**
 					 * \~russian
@@ -1188,6 +1262,49 @@ namespace awh {
 					 *
 					 * \~
 					 */
+				private:
+					/**
+					 * \~russian
+					 * Клеймо поколения дерева документа
+					 *
+					 * @details Растёт всякий раз, как нумерация узлов перестраивается: разбором,
+					 * чтением, очисткой и прививкой. Ссылки хранят клеймо своего поколения и по
+					 * несовпадению отвечают недействительностью - тем молчаливая подмена значения
+					 * и обращается в честный отказ
+					 *
+					 * @note Плата за клеймо измерена вперемежку, десятью кругами, лучшим из
+					 *       прогонов - подряд идущие блоки на двумодальных ядрах Apple Silicon
+					 *       ловят разное и дают бессмыслицу. Обход с извлечением строк: 81 мс без
+					 *       клейма, 91 при клейме ПРЕЖДЕ проверки номера, 83 при клейме ПОСЛЕ неё.
+					 *       Полосы значений не пересекаются вовсе
+					 *
+					 * @note Соседство клейма с перечнем узлов в памяти не дало НИЧЕГО: дело не в
+					 *       строке кэша, а в лишней загрузке, какую свернуть некуда
+					 *
+					 * @warning Порядок этот НЕ переносим между кодеками. У соседнего кодека YAML,
+					 * устроенного тем же клеймом, замер дал обратное: клеймо прежде номера - 1.5 %,
+					 * после - 9.4 %. Дерево там плоское и обход идёт по одному уровню, здесь же
+					 * дерево вложенное и обход идёт вниз. Выгодный порядок есть свойство своего
+					 * кодека, и мерить его надлежит у себя
+					 *
+					 * @note Переполнение разрядности беды не делает: совпадение клейм требует
+					 *       ровно четырёх миллиардов перестроений между снятием ссылки и её
+					 *       чтением, а ссылки живут в пределах одной работы
+					 *
+					 * \~english
+					 * Stamp of the generation of the tree of the document
+					 * @details Grows every time the numbering of the nodes is rebuilt: by the parsing,
+					 * the reading, the clearing and the grafting. The references hold the stamp of their generation and
+					 * answer with invalidity upon a mismatch — whereby the silent substitution of a value
+					 * turns into an honest refusal
+					 * @note An overflow of the bit width does no harm: a coincidence of the stamps requires
+					 *       exactly four billion rebuildings between the taking of a reference and its
+					 *       reading, while the references live within the bounds of a single operation
+					 *
+					 * \~
+					 */
+					uint32_t _stamp;
+				private:
 					vector <node_t> _nodes;
 				private:
 					// Хранилище знаков всех строк и имён документа
@@ -1446,6 +1563,10 @@ namespace awh {
 					 * хранилища знаков документа, а имя поля ложится вплотную перед
 					 * содержимым - одного смещения хватает обоим
 					 *
+					 * @note Перенос идёт возвратом: узел зовёт себя на каждого своего ребёнка,
+					 *       и глубина значения ложится прямо на стек вызовов. Пределы замерены
+					 *       у открытого метода `graft`, откуда перенос этот и зовётся
+					 *
 					 * @param value переносимое владеющее значение
 					 * @param name  имя поля объекта, ноль - узел полем объекта не является
 					 * @param nodes перечень узлов, куда ложится перенесённое значение
@@ -1457,6 +1578,9 @@ namespace awh {
 					 * the node itself, then its children in a row. The content is appended to the end of
 					 * the storage of the characters of the document, while the name of a field is placed right before
 					 * the content — one offset suffices for both
+					 * @note The transfer goes recursively: a node calls itself upon every one of its
+					 *       children, and the depth of the value falls right onto the stack of the calls.
+					 *       The limits are measured at the public `graft` method, whence this transfer is called
 					 * @param value owning value being transferred
 					 * @param name name of the field of an object, a zero — the node is not a field of an object
 					 * @param nodes list of the nodes where the transferred value is placed
@@ -1698,6 +1822,17 @@ namespace awh {
 					 *       действие нечастое, и платить за неё сжатием хранилища на всякий
 					 *       раз было бы дороже
 					 *
+					 * @note Перенос значения в дерево идёт возвратом, глубина за глубиной, и
+					 *       дерево неслыханной вложенности переполнит стек. Значение, снятое
+					 *       с разбора, огранено пределом вложенности чтения (1024 по
+					 *       умолчанию), а собранному вручную предела нет вовсе. Замер на
+					 *       macOS ARM64 со стеком 8 МБ: прививка переполняет стек около
+					 *       65 000 уровней при `-O1` и около 14 000 при `-O0`; снос самого
+					 *       значения держится вдвое дольше, оттого узким местом служит
+					 *       именно перенос. Пересчёт на стек 4 МБ (NetBSD, OpenBSD) даёт
+					 *       около 7 000 уровней при худшем сочетании - предел чтения удержан
+					 *       и там с семикратным запасом
+					 *
 					 * @param pointer указатель на прививаемое место по RFC 6901
 					 * @param value   прививаемое владеющее значение
 					 * @return        признак успешности прививки
@@ -1719,6 +1854,16 @@ namespace awh {
 					 *       of the replaced subtree remains in it as a dead weight. The grafting is
 					 *       an infrequent action, and to pay for it by a compaction of the storage every
 					 *       time would be more expensive
+					 * @note The transfer of a value into the tree goes recursively, depth by depth, and
+					 *       a tree of an unheard-of nesting would overflow the stack. A value taken from
+					 *       a parsing is bounded by the limit of the nesting of the reading (1024 by
+					 *       default), while for one built by hand there is no limit at all. A measurement on
+					 *       macOS ARM64 with a stack of 8 MB: the grafting overflows the stack at about
+					 *       65 000 levels with `-O1` and at about 14 000 with `-O0`; the destruction of the
+					 *       value itself holds twice as long, and so it is the transfer that is the narrow
+					 *       place. A recalculation onto a stack of 4 MB (NetBSD, OpenBSD) gives about
+					 *       7 000 levels at the worst combination — the limit of the reading holds there
+					 *       too with a sevenfold reserve
 					 * @param pointer pointer to the place being grafted by RFC 6901
 					 * @param value owning value being grafted
 					 * @return sign of the success of the grafting
@@ -1770,6 +1915,39 @@ namespace awh {
 					 * \~
 					 */
 					value_t operator [] (const size_t index) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод обращения по написанию знака
+					 *
+					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
+					 * ИМЯ из одного знака, а не номер. Правило это одно на весь кодек
+					 *
+					 * @note Без этого метода `v['z']` молча обращался к элементу под номером
+					 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение.
+					 *       Перечнем беда не лечится: заводитель по разряду `char` делает
+					 *       двусмысленным обычное `v[0]`, оттого здесь шаблон с оградой
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 * @param  name разыскиваемое имя из одного знака
+					 * @return снятое значение
+					 *
+					 * \~english
+					 * @brief Method of the access by a writing of a character
+					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
+					 * of a single character rather than for an index. This rule is one for the whole codec
+					 * @note Without this method `v['z']` silently addressed the element under the index 122
+					 *       and gave away an emptiness, while `v["z"]` gave away a value. By a list the
+					 *       trouble is not cured: a creator by the `char` width makes the ordinary `v[0]`
+					 *       ambiguous, hence a template with a guard here
+					 * @tparam T width of the access, the guard admits exactly a character
+					 * @param name name of a single character being searched for
+					 * @return value taken
+					 *
+					 * \~
+					 */
+					template <typename T>
+					typename std::enable_if <std::is_same <T, char>::value, value_t>::type
+					operator [] (const T name) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод обращения к значению по указателю JSON Pointer

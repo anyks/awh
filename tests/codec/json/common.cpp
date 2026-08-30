@@ -108,7 +108,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
 	 *       последними, не сличались вовсе
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::FILE_NOT_READ); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::STORAGE_EXHAUSTED); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = json::message(static_cast <json::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -126,7 +126,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::FILE_NOT_READ) + 1)), "unknown error");
+	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::STORAGE_EXHAUSTED) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(json::message(static_cast <json::error_t> (0xFF)), "unknown error");
 }

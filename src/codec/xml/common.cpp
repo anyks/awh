@@ -348,6 +348,10 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		case error_t::FILE_NOT_READ:
 			// Выводим описание кода ошибки
 			return "cannot read the markup file";
+		// Если переданный узел дерева непригоден
+		case error_t::INVALID_NODE:
+			// Выводим описание кода ошибки
+			return "the passed tree node is unfit";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

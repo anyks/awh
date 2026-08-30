@@ -70,7 +70,7 @@ TEST(CodecYamlCommon, Messages) {
 		yaml::error_t::SCALAR_TOO_LONG, yaml::error_t::NUMBER_TOO_LONG,
 		yaml::error_t::ANCHOR_TOO_LONG, yaml::error_t::TOO_MANY_NODES,
 		yaml::error_t::EMPTY_TEXT, yaml::error_t::OVERFLOW_LIMIT,
-		yaml::error_t::CONFLICTING_SETTINGS
+		yaml::error_t::CONFLICTING_SETTINGS, yaml::error_t::STORAGE_EXHAUSTED
 	};
 	// Собрание уже встреченных описаний
 	unordered_set <string> descriptions;
@@ -329,6 +329,24 @@ TEST(CodecYamlCommon, ResolveLegacy) {
 	ASSERT_EQ(yaml::resolve("12:30.5", schema), yaml::type_t::NUMBER);
 	// Выполняем проверку записи, шестидесятиричной не являющейся
 	ASSERT_EQ(yaml::resolve("12:ab", schema), yaml::type_t::STRING);
+	/**
+	 * Выполняем проверку разделения разрядов знаком подчёркивания у записи по основанию
+	 *
+	 * @note Записи по основанию разбирает свой заход, отдельный от десятичной: дозволение
+	 *       подчёркивания у него своё, и проверка `1_000` его не задевает вовсе
+	 */
+	ASSERT_EQ(yaml::resolve("0x1_F", schema), yaml::type_t::NUMBER);
+	// Выполняем проверку разделения разрядов у записи восьмеричной
+	ASSERT_EQ(yaml::resolve("0o1_7", schema), yaml::type_t::NUMBER);
+	// Выполняем проверку разделения разрядов у записи двоичной
+	ASSERT_EQ(yaml::resolve("0b1_0", schema), yaml::type_t::NUMBER);
+	/**
+	 * Выполняем проверку того, что подчёркивание схемою ядровой не дозволено
+	 *
+	 * @note Заход этот стоит рядом нарочно: приятие подчёркивания всякою схемой отвечало
+	 *       бы тем же ожиданиям, и порча дозволения осталась бы незамечена
+	 */
+	ASSERT_EQ(yaml::resolve("0x1_F", yaml::schema_t::CORE), yaml::type_t::STRING);
 }
 /**
  * @brief Проверка разрешения видов схемою строгого соответствия правилам JSON
@@ -822,6 +840,8 @@ TEST(CodecYamlCommon, MessagesAndUnknownNames) {
 		ASSERT_STREQ(yaml::name(static_cast <yaml::type_t> (0xFE000000)), "unknown");
 		// Выполняем проверку названия, событию чтения неведомому выдаваемого
 		ASSERT_STREQ(yaml::name(static_cast <yaml::event_t> (0xFE)), "UNKNOWN");
+		// Выполняем проверку названия, кодировке неведомой выдаваемого
+		ASSERT_STREQ(yaml::name(static_cast <yaml::encoding_t> (0xFE)), "unknown");
 	}
 }
 /**

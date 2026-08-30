@@ -167,6 +167,9 @@ const char * awh::codec::json::message(const error_t error) noexcept {
 		// Если файл документа прочитать не удалось
 		case error_t::FILE_NOT_READ:
 			return "cannot read the document file";
+		// Если разбираемый текст не помещается в разрядность хранилища
+		case error_t::STORAGE_EXHAUSTED:
+			return "the text does not fit the width of the parser storage";
 		// Если корень документа уже несёт значение
 		case error_t::MULTIPLE_ROOTS:
 			return "the document root already holds a value";

@@ -703,6 +703,26 @@ namespace awh {
 				 * \~
 				 */
 				void limit(const size_t limit) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
+				 *
+				 * @details Глубина ограничивает вложенность рекурсивных вызовов подвыражений
+				 *          у исполнения с возвратом: память под кадры вызовов растёт
+				 *          соразмерно ей. Нуль восстанавливает глубину умолчания.
+				 *
+				 * @param nesting наибольшая допустимая глубина рекурсивных вызовов
+				 *
+				 * \~english
+				 * @brief Method of setting the largest admissible depth of recursive calls
+				 * @details The depth bounds the nesting of recursive calls of subpatterns
+				 *          in the execution with backtracking: the memory of the call frames
+				 *          grows in proportion to it. Zero restores the depth of the default.
+				 * @param nesting largest admissible depth of recursive calls
+				 *
+				 * \~
+				 */
+				void nesting(const size_t nesting) noexcept;
 			public:
 				/**
 				 * \~russian

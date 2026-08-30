@@ -2346,3 +2346,84 @@ TEST(CodecYamlWriter, RefusalLocksWriter) {
 	// Выполняем проверку того, что запись после сброса принимается
 	ASSERT_TRUE(writer.mapping() && writer.key("имя") && writer.value(string("значение")));
 }
+/**
+ * @brief Проверка записи знака непечатаемого отменяющей последовательностью
+ *
+ */
+TEST(CodecYamlWriter, EscapedUnicodeCharacter) {
+	// Объект потоковой записи текста
+	yaml::writer_t writer(::logger());
+	// Выполняем открытие отображения пар
+	ASSERT_TRUE(writer.mapping());
+	// Выполняем запись имени пары строкового значения
+	ASSERT_TRUE(writer.key("знак"));
+	/**
+	 * Выполняем запись значения со знаком непечатаемым сверх одного байта
+	 *
+	 * @note Знак U+FFFF описанием печатным не признан, а в один байт не укладывается:
+	 *       записывается он последовательностью `\u` о четырёх разрядах
+	 */
+	ASSERT_TRUE(writer.value(string("до\xEF\xBF\xBF" "после"), yaml::style_t::DOUBLE));
+	// Выполняем завершение записи текста
+	ASSERT_TRUE(writer.finish());
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.text(), "знак: \"до\\uFFFFпосле\"\n");
+}
+/**
+ * @brief Проверка отказа записи примечания негодной кодировкой
+ *
+ */
+TEST(CodecYamlWriter, TrailingRefusedByMalformedEncoding) {
+	// Настройки записи текста
+	yaml::writer_t::settings_t settings;
+	/**
+	 * Устанавливаем отказ записи на негодную последовательность байтов
+	 *
+	 * @note Умолчанием негодная последовательность заменяется знаком замены, и отказа
+	 *       запись не даёт вовсе: без этой настройки проверка сторожила бы пустоту
+	 */
+	settings.malformed = yaml::malformed_t::REFUSE;
+	// Объект потоковой записи текста
+	yaml::writer_t writer(::logger(), settings);
+	// Выполняем открытие отображения пар
+	ASSERT_TRUE(writer.mapping());
+	// Выполняем запись имени пары строкового значения
+	ASSERT_TRUE(writer.key("ключ"));
+	// Выполняем запись строкового значения пары
+	ASSERT_TRUE(writer.value(string("значение")));
+	// Выполняем проверку отказа записи примечания с негодной последовательностью
+	ASSERT_FALSE(writer.trailing(string("до\xC3" "после")));
+	// Выполняем проверку выданного кода отказа записи
+	ASSERT_EQ(writer.error(), yaml::error_t::INVALID_ENCODING);
+	/**
+	 * Выполняем проверку того, что текст, отказом задетый, выдачи не даёт
+	 *
+	 * @note Правило это общее у кодеков: текст без отвергнутой части от целого глазом
+	 *       неотличим, а разбору не поддаётся
+	 */
+	ASSERT_TRUE(writer.take().empty());
+}
+/**
+ * @brief Проверка записи примечания годной кодировкой при том же запрете
+ *
+ */
+TEST(CodecYamlWriter, TrailingAcceptedWhenEncodingSound) {
+	// Настройки записи текста
+	yaml::writer_t::settings_t settings;
+	// Устанавливаем отказ записи на негодную последовательность байтов
+	settings.malformed = yaml::malformed_t::REFUSE;
+	// Объект потоковой записи текста
+	yaml::writer_t writer(::logger(), settings);
+	// Выполняем открытие отображения пар
+	ASSERT_TRUE(writer.mapping());
+	// Выполняем запись имени пары строкового значения
+	ASSERT_TRUE(writer.key("ключ"));
+	// Выполняем запись строкового значения пары
+	ASSERT_TRUE(writer.value(string("значение")));
+	// Выполняем проверку записи примечания годной кодировкой
+	ASSERT_TRUE(writer.trailing(string("пояснение")));
+	// Выполняем завершение записи текста
+	ASSERT_TRUE(writer.finish());
+	// Выполняем проверку собранного текста
+	ASSERT_EQ(writer.take(), "ключ: значение # пояснение\n");
+}

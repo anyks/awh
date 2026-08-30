@@ -102,6 +102,16 @@ namespace {
  *
  */
 TEST(AllocMangleTest, LinkIsNotStoredInPlain){
+	/**
+	 * Проверка эта спрашивает перемешивание, а оно снимается сборкой
+	 *
+	 * Признак AWH_ALLOC_NO_MANGLE кладёт указатель в блок как есть намеренно, и
+	 * утверждать о его перемешанности в такой сборке нельзя
+	 */
+	#if defined(AWH_ALLOC_NO_MANGLE)
+		// Пропускаем проверку: заслон списка снят сборкой
+		GTEST_SKIP() << "заслон списка снят сборкой: AWH_ALLOC_NO_MANGLE";
+	#endif
 	// Выдаём два блока одного разряда
 	void * first = ::malloc(64);
 	void * second = ::malloc(64);
@@ -139,6 +149,16 @@ TEST(AllocMangleTest, LinkIsNotStoredInPlain){
  *
  */
 TEST(AllocMangleTest, LinkDependsOnBlockAddress){
+	/**
+	 * Проверка эта спрашивает перемешивание, а оно снимается сборкой
+	 *
+	 * Признак AWH_ALLOC_NO_MANGLE кладёт указатель в блок как есть намеренно, и
+	 * утверждать о его перемешанности в такой сборке нельзя
+	 */
+	#if defined(AWH_ALLOC_NO_MANGLE)
+		// Пропускаем проверку: заслон списка снят сборкой
+		GTEST_SKIP() << "заслон списка снят сборкой: AWH_ALLOC_NO_MANGLE";
+	#endif
 	// Выдаём три блока одного разряда
 	void * anchor = ::malloc(96);
 	void * left = ::malloc(96);

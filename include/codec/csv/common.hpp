@@ -642,16 +642,31 @@ namespace awh {
 			 * сняты, удвоенные кавычки внутри поля сведены к одной, обвязка снята в объёме,
 			 * разрешённом настройками
 			 *
-			 * @note Поле ссылается на память, принадлежащую разбираемому тексту либо
-			 * хранилищу знаков, и живёт не дольше их
+			 * @warning Сроки жизни двух видов свёртки РАЗНЫЕ, и мерить их надлежит порознь.
+			 * Значение живёт не дольше следующего события: оно ссылается в буфер записи, а
+			 * тот переиспользуется, - замер дал обращение к освобождённой памяти после
+			 * двухсот поданных записей. Имя же живёт до сброса состояния чтения: оно
+			 * ссылается в хранилище заголовка, отдельное от буфера записей и по разборе
+			 * заголовка более не растущее, - те же двести подач оно пережило
+			 *
+			 * @note Прежде свёртка ручалась за оба вида одним, КОРОТКИМ сроком. Ручательство
+			 *       это было безопасным, но неверным: звучащий копировал имя без нужды, а
+			 *       главное - одинаковая запись на разные сроки скрывала, что сроки разные
 			 *
 			 * \~english
 			 * @brief Field of a record
 			 * @details The value is issued already brought to its final form: the quotes are
 			 * removed, the doubled quotes inside the field are reduced to one, the padding is removed in the volume
 			 * permitted by the settings
-			 * @note A field refers to the memory belonging to the text being parsed or to the
-			 * storage of the characters, and it lives no longer than they do
+			 * @warning The lifetimes of the two views of the structure are DIFFERENT, and they should be measured separately.
+			 * The value lives no longer than the next event: it refers into the buffer of a record, and
+			 * that one is reused — the measurement gave an access to a freed memory after
+			 * two hundred fed records. The name, however, lives until the reset of the state of the reading: it
+			 * refers into the storage of the header, separate from the buffer of the records and, once the header
+			 * is parsed, no longer growing — it survived those same two hundred feedings
+			 * @note Formerly the structure guaranteed one, SHORT lifetime for both views. That guarantee
+			 *       was safe but untrue: the caller copied the name without need, and
+			 *       above all — one and the same record for different lifetimes concealed that the lifetimes differ
 			 *
 			 * \~
 			 */

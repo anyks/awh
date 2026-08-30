@@ -66,7 +66,9 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::alloc::Central::Central() noexcept : _pages(nullptr), _classes(nullptr), _heap() {}
+awh::alloc::Central::Central() noexcept :
+ _pages(nullptr), _classes(nullptr), _heap(), _reserve(), _kept{}, _keptBytes(0),
+ _keptCeiling(DEFAULT_KEPT) {}
 /**
  * @brief Метод заведения центральных списков
  *
@@ -114,6 +116,23 @@ void awh::alloc::Central::reset() noexcept {
 		this->_lists[i].regions = 0;
 		// Освобождаем замок разряда
 		this->_lists[i].lock.release();
+	}
+	/**
+	 * Обнуляем придержку вслед за списками
+	 *
+	 * Записи её лежат в самих областях, а те принадлежат куче: разрушается она следом
+	 */
+	{
+		// Захватываем замок придержки
+		hold_t hold(this->_reserve);
+		/**
+		 * Перебираем списки придержанных областей
+		 */
+		for(size_t i = 0; i <= Pages::PAGES; i++)
+			// Обнуляем голову списка придержанных областей
+			this->_kept[i] = nullptr;
+		// Обнуляем объём придержанного
+		this->_keptBytes = 0;
 	}
 	// Обнуляем разряды размеров
 	this->_classes = nullptr;
@@ -403,6 +422,159 @@ void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
 	return nullptr;
 }
 /**
+ * @brief Метод взятия области у придержки
+ *
+ * @param pages требуемое число страниц кучи
+ * @return      адрес придержанной области либо nullptr
+ *
+ */
+void * awh::alloc::Central::recall(const size_t pages) noexcept {
+	// Если придержка выключена либо размер ей не по мерке
+	if((this->_keptCeiling == 0) || (pages == 0) || (pages > KEPT_PAGES))
+		// Выдавать нечего
+		return nullptr;
+	// Захватываем замок придержки
+	hold_t hold(this->_reserve);
+	// Получаем голову списка придержанных областей этого размера
+	kept_t * kept = this->_kept[pages];
+	// Если придержанных областей такого размера нет
+	if(kept == nullptr)
+		// Выдавать нечего
+		return nullptr;
+	// Головой списка становится следующая область
+	this->_kept[pages] = kept->next;
+	// Определяем объём выдаваемой области
+	const size_t held = (pages * Pages::PAGE);
+	// Уменьшаем объём придержанного, не уходя ниже нуля
+	this->_keptBytes -= ((this->_keptBytes < held) ? this->_keptBytes : held);
+	// Выводим придержанную область
+	return reinterpret_cast <void *> (kept);
+}
+/**
+ * @brief Метод придержки освобождённой области
+ *
+ * @param addr  адрес освобождаемой области
+ * @param pages размер области в страницах кучи
+ * @return      признак придержки области
+ *
+ */
+bool awh::alloc::Central::keep(void * addr, const size_t pages) noexcept {
+	// Если придержка выключена, область не задана либо размер ей не по мерке
+	if((this->_keptCeiling == 0) || (addr == nullptr) || (pages == 0) || (pages > KEPT_PAGES))
+		// Придерживать нечего
+		return false;
+	// Определяем объём придерживаемой области
+	const size_t held = (pages * Pages::PAGE);
+	// Захватываем замок придержки
+	hold_t hold(this->_reserve);
+	// Если потолок придержки перебран
+	if((this->_keptBytes + held) > this->_keptCeiling)
+		// Придерживать больше нечем: область уйдёт куче обычным путём
+		return false;
+	/**
+	 * Запись кладётся в САМУ область
+	 *
+	 * Область свободна, и первые её байты наши. Просить память под запись у
+	 * распределителя изнутри его же освобождения нельзя вовсе
+	 */
+	// Заводим запись придержки прямо в области
+	kept_t * kept = reinterpret_cast <kept_t *> (addr);
+	// Связываем область с прежней головой списка
+	kept->next = this->_kept[pages];
+	// Запоминаем размер области
+	kept->pages = pages;
+	// Головой списка становится придержанная область
+	this->_kept[pages] = kept;
+	// Увеличиваем объём придержанного
+	this->_keptBytes += held;
+	// Отвечаем успехом
+	return true;
+}
+/**
+ * @brief Метод отдачи придержанных областей куче
+ *
+ * @param all отдавать всё, не глядя на потолок
+ * @return    объём отданного куче в байтах
+ *
+ */
+size_t awh::alloc::Central::unkeep(const bool all) noexcept {
+	// Если куча не заведена
+	if(this->_pages == nullptr)
+		// Отдавать нечего
+		return 0;
+	// Снятая с придержки цепочка областей
+	kept_t * taken = nullptr;
+	// Объём отданного куче
+	size_t result = 0;
+	/**
+	 * Снимаем придержанное ОДНИМ заходом, а не по области за раз
+	 *
+	 * Прежде здесь на каждую область брался замок кучи, и отдача тридцати двух
+	 * мегабайтов брала его пять сотен раз. Зовётся же отдача с отказа роста на месте,
+	 * то есть на пути перевыдачи
+	 */
+	{
+		// Захватываем замок придержки
+		hold_t hold(this->_reserve);
+		/**
+		 * Перебираем списки придержанных областей от крупных к мелким
+		 */
+		for(size_t i = KEPT_PAGES; i > 0; i--){
+			/**
+			 * Снимаем придержанные области этого размера
+			 */
+			while(this->_kept[i] != nullptr){
+				// Если потолок соблюдён и отдавать всё не просили
+				if(!all && (this->_keptBytes <= this->_keptCeiling))
+					// Снимать больше нечего
+					break;
+				// Изымаем голову списка
+				kept_t * kept = this->_kept[i];
+				// Головой списка становится следующая область
+				this->_kept[i] = kept->next;
+				// Определяем объём изъятой области
+				const size_t held = (i * Pages::PAGE);
+				// Уменьшаем объём придержанного, не уходя ниже нуля
+				this->_keptBytes -= ((this->_keptBytes < held) ? this->_keptBytes : held);
+				// Связываем изъятую область со снятой цепочкой
+				kept->next = taken;
+				// Головой снятой цепочки становится изъятая область
+				taken = kept;
+				// Увеличиваем объём отданного куче
+				result += held;
+			}
+			// Если потолок соблюдён и отдавать всё не просили
+			if(!all && (this->_keptBytes <= this->_keptCeiling))
+				// Снимать больше нечего
+				break;
+		}
+	}
+	// Если снимать было нечего
+	if(taken == nullptr)
+		// Отдавать нечего
+		return 0;
+	/**
+	 * Отдаём снятое куче под ОДНИМ захватом её замка
+	 */
+	{
+		// Захватываем замок кучи
+		hold_t hold(this->_heap);
+		/**
+		 * Перебираем снятую цепочку областей
+		 */
+		while(taken != nullptr){
+			// Запоминаем следующую область цепочки
+			kept_t * next = taken->next;
+			// Возвращаем область куче
+			this->_pages->free(reinterpret_cast <void *> (taken), 0);
+			// Переходим к следующей области цепочки
+			taken = next;
+		}
+	}
+	// Выводим объём отданного куче
+	return result;
+}
+/**
  * @brief Метод выдачи памяти сверх разрядов
  *
  * @param size требуемый размер в байтах
@@ -429,6 +601,26 @@ void * awh::alloc::Central::alloc(const size_t size, size_t * served) noexcept {
 	if(pages > Pages::PAGES)
 		// Отвечаем отказом
 		return nullptr;
+	/**
+	 * Сперва спрашиваем придержку, и лишь затем кучу
+	 *
+	 * Придержанная область готова к выдаче: она уже помечена, уже принадлежит куску и
+	 * ждёт ровно такого запроса. Ходить за нею к куче значило бы искать, изымать,
+	 * дробить и помечать заново то, что и так наше
+	 */
+	{
+		// Берём область у придержки
+		void * kept = this->recall(pages);
+		// Если придержанная область нашлась
+		if(kept != nullptr){
+			// Записываем действительно выданный размер
+			if(served != nullptr)
+				// Размер придержанной области известен точно
+				(* served) = (pages * Pages::PAGE);
+			// Выводим придержанную область
+			return kept;
+		}
+	}
 	// Число действительно выданных страниц
 	size_t taken = 0;
 	// Берём у кучи область требуемого размера
@@ -469,6 +661,29 @@ bool awh::alloc::Central::expand(void * addr, const size_t size) noexcept {
 	if(pages > Pages::PAGES)
 		// Расширять некуда
 		return false;
+	/**
+	 * Пробуем вырасти на месте
+	 */
+	{
+		// Захватываем замок кучи
+		hold_t hold(this->_heap);
+		// Если область выросла на месте
+		if(this->_pages->expand(addr, pages))
+			// Расширение состоялось
+			return true;
+	}
+	/**
+	 * Отказ роста - повод отдать придержанное и попробовать снова
+	 *
+	 * Растёт область за счёт СВОБОДНЫХ соседей, а придержанная область для кучи занята:
+	 * не отдав её, мы своею же придержкой заслоняем себе рост
+	 */
+	// Если придерживать нечего
+	if(this->_keptBytes == 0)
+		// Расти некуда
+		return false;
+	// Отдаём придержанное куче
+	this->unkeep(true);
 	// Захватываем замок кучи
 	hold_t hold(this->_heap);
 	// Выводим признак состоявшегося расширения
@@ -482,11 +697,33 @@ bool awh::alloc::Central::expand(void * addr, const size_t size) noexcept {
  * @return     признак возврата памяти
  *
  */
-bool awh::alloc::Central::free(void * addr, const uint64_t now) noexcept {
+bool awh::alloc::Central::free(void * addr, const uint64_t now, const bool keeping) noexcept {
 	// Если куча не заведена либо адрес не задан
 	if((this->_pages == nullptr) || (addr == nullptr))
 		// Возвращать нечего
 		return false;
+	/**
+	 * Пробуем придержать область прежде, чем нести её куче
+	 *
+	 * Придержанная область остаётся выданной и ждёт следующего запроса того же размера:
+	 * куче не приходится ни искать её, ни дробить, ни помечать заново
+	 *
+	 * Придержка НЕ делается при отметке времени: та означает уклад отдачи памяти системе
+	 * по сроку, а придержанная область системе не видна
+	 */
+	if(keeping && (now == 0)){
+		// Размер области в страницах кучи
+		size_t pages = 0;
+		// Метка владельца области
+		uint32_t tag = 0;
+		// Адрес начала области
+		void * begin = nullptr;
+		// Если адрес - начало живой области сверх разрядов и та придержана
+		if(this->_pages->describe(addr, &begin, &pages, &tag) && (begin == addr) &&
+		   (tag == 0) && this->keep(addr, pages))
+			// Область придержана: куче её нести незачем
+			return true;
+	}
 	// Захватываем замок кучи
 	hold_t hold(this->_heap);
 	// Выводим признак возврата области куче
@@ -516,6 +753,13 @@ size_t awh::alloc::Central::purge(const uint64_t now, const bool all) noexcept {
 	if(this->_pages == nullptr)
 		// Отдавать нечего
 		return 0;
+	/**
+	 * Отдаём придержанное куче ПРЕЖДЕ обхода её списков
+	 *
+	 * Иначе придержанные области остались бы для кучи выданными, и отдача системе обошла
+	 * бы их стороною
+	 */
+	this->unkeep(all);
 	// Объём отданной системе памяти
 	size_t result = 0;
 	// Место перебора списков свободных областей
@@ -609,6 +853,27 @@ bool awh::alloc::Central::occupy(const size_t arena, const bool confined) noexce
  * @param limit потолок взятого у источника в байтах
  *
  */
+/**
+ * @brief Метод задания потолка придержки областей сверх разрядов
+ *
+ * @param limit потолок придержки в байтах
+ *
+ */
+void awh::alloc::Central::keeper(const size_t limit) noexcept {
+	{
+		// Захватываем замок придержки
+		hold_t hold(this->_reserve);
+		// Запоминаем потолок придержки
+		this->_keptCeiling = limit;
+	}
+	/**
+	 * Приводим придержанное к новому потолку
+	 *
+	 * Опущенный потолок обязан подействовать сразу, а не с ближайшего освобождения:
+	 * приложение, выключившее придержку, вправе ждать возврата памяти куче
+	 */
+	this->unkeep(limit == 0);
+}
 void awh::alloc::Central::ceiling(const size_t limit) noexcept {
 	// Если куча не заведена
 	if(this->_pages == nullptr)
@@ -714,12 +979,16 @@ void awh::alloc::Central::prepare() noexcept {
 		this->_lists[i].lock.acquire();
 	// Захватываем замок кучи
 	this->_heap.acquire();
+	// Захватываем замок придержки последним: в работе он поверх кучи не берётся
+	this->_reserve.acquire();
 }
 /**
  * @brief Метод освобождения всех замков после ветвления процесса
  *
  */
 void awh::alloc::Central::resume() noexcept {
+	// Освобождаем замок придержки первым: захватывался он последним
+	this->_reserve.release();
 	// Освобождаем замок кучи
 	this->_heap.release();
 	/**
@@ -734,6 +1003,8 @@ void awh::alloc::Central::resume() noexcept {
  *
  */
 void awh::alloc::Central::adopt() noexcept {
+	// Освобождаем замок придержки, не глядя на его состояние
+	this->_reserve.reset();
 	// Освобождаем замок кучи, не глядя на его состояние
 	this->_heap.reset();
 	/**

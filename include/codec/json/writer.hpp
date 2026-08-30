@@ -263,6 +263,32 @@ namespace awh {
 					// Признак того, что хотя бы один документ уже записан
 					bool _started;
 				private:
+					/**
+					 * \~russian
+					 * Признак того, что записанные документы разделены знаком перевода строки
+					 *
+					 * @details Заслон против склейки документов спрашивает ЭТОТ признак, а не
+					 * настройку потока. Прежде он спрашивал настройку - и в тот миг, когда
+					 * начинался второй документ, - тогда как разделитель пишется завершением
+					 * ПЕРВОГО. Включение потока после завершения первого документа заслон
+					 * проходило, а разделителя в тексте не было: замер дал `{"a":1}{` при
+					 * успехе записи и пустом коде отказа - два документа, склеенные в текст,
+					 * разбор какого распадётся на границе между ними
+					 *
+					 * \~english
+					 * Sign that the written documents are separated by a line feed character
+					 * @details The guard against the gluing of the documents asks THIS sign rather than
+					 * the setting of the stream. Formerly it asked the setting — and at the moment when
+					 * the second document began — whereas the separator is written by the finishing
+					 * of the FIRST one. The enabling of the stream after the finishing of the first document passed
+					 * the guard, while there was no separator in the text: the measurement gave `{"a":1}{` at
+					 * a success of the writing and an empty code of the refusal — two documents glued into a text
+					 * whose parsing would fall apart at the boundary between them
+					 *
+					 * \~
+					 */
+					bool _separated;
+				private:
 					// Количество байтов, изъятых из сборщика за всё время работы
 					uint64_t _taken;
 				private:

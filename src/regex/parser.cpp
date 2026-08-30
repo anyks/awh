@@ -209,10 +209,21 @@ size_t awh::regex::Parser::errorPos() const noexcept {
  *
  */
 string awh::regex::Parser::message() const noexcept {
+	// Выводим текст ошибки последней операции разбора
+	return Parser::message(this->_error);
+}
+/**
+ * @brief Метод толкования кода ошибки текстом
+ *
+ * @param error толкуемый код ошибки
+ * @return      текст толкуемого кода ошибки
+ *
+ */
+string awh::regex::Parser::message(const error_t error) noexcept {
 	/**
 	 * Определяем код ошибки последней операции разбора
 	 */
-	switch(static_cast <uint8_t> (this->_error)) {
+	switch(static_cast <uint8_t> (error)) {
 		// Ошибок не обнаружено
 		case static_cast <uint8_t> (error_t::NONE): return "no error";
 		// Внутренняя ошибка разбора
@@ -271,6 +282,8 @@ string awh::regex::Parser::message() const noexcept {
 		case static_cast <uint8_t> (error_t::UNSUPPORTED): return "unsupported pattern construct";
 		// Выводим текст ошибки превышения допустимого объёма работы сопоставления
 		case static_cast <uint8_t> (error_t::BUDGET_EXCEEDED): return "match budget exceeded";
+		// Повторный рекурсивный вызов в той же позиции текста
+		case static_cast <uint8_t> (error_t::NESTED_RECURSION): return "recursive call could loop indefinitely";
 	}
 	// Выводим текст неизвестной ошибки разбора
 	return "unknown error";

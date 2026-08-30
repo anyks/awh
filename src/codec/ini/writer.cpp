@@ -775,8 +775,16 @@ bool awh::codec::ini::Writer::escape(const string_view value) noexcept {
  *
  */
 void awh::codec::ini::Writer::newline() noexcept {
+	/**
+	 * Запоминаем разметку конца строки, на деле применённую
+	 *
+	 * @note Запоминается она ЗДЕСЬ, у самой записи, а не спрашивается позже у настроек:
+	 *       настройка вправе смениться между записью строки и допиской к ней, и суд по
+	 *       ней снимал бы не ту последовательность знаков
+	 */
+	this->_written = this->_settings.newline;
 	// Выполняем запись знака конца строки
-	this->_text.append(awh::codec::ini::newline(this->_settings.newline));
+	this->_text.append(awh::codec::ini::newline(this->_written));
 }
 /**
  * @brief Метод ограждения примечания, оканчивающегося продолжением
@@ -1301,7 +1309,16 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 		}
 	}
 	// Получаем последовательность знаков конца строки
-	const string_view newline = awh::codec::ini::newline(this->_settings.newline);
+	/**
+	 * Получаем последовательность знаков конца строки, ПОСЛЕДНЕЙ записью применённую
+	 *
+	 * @warning Спрашивается здесь именно применённое, а не настройка: настройка вправе
+	 *          смениться между записью строки и допиской к ней. Замерено щупом - при
+	 *          смене разметки с CRLF на LF дописка снимала один перевод строки из двух
+	 *          знаков и оставляла одинокий возврат каретки ПОСРЕДИ строки, отвечая при
+	 *          том успехом; обратная смена давала отказ кодом INTERNAL
+	 */
+	const string_view newline = awh::codec::ini::newline(this->_written);
 	/**
 	 * Если записанного текста для дописывания примечания недостаточно
 	 *
@@ -1331,6 +1348,13 @@ bool awh::codec::ini::Writer::trailing(const string_view text) noexcept {
 	 *          собранный текст знаком конца строки, а дописка примечания, знак этот
 	 *          снявшая, ставит его обратно. Замерено: дописка к строке, дописку уже
 	 *          несущую, сюда не заходит
+	 *
+	 * @warning Прежний довод недостижимости был НЕВЕРЕН, и вот чем. Он не учитывал смены
+	 *          настроек между записью строки и допиской к ней: разметка, сменённая с LF
+	 *          на CRLF, приводила сюда - снимаемая последовательность бралась из настроек
+	 *          НЫНЕШНИХ, а текст был записан прежними. Ныне снимается то, что на деле
+	 *          записано, и заход недостижим уже по-настоящему. Довод «о написанном нельзя
+	 *          судить по настройке» принесён Василием от кодека JSON
 	 *
 	 * @note Код INTERNAL здесь ВЕРЕН, в отличие от захода выше: недостача знака конца
 	 *       строки при непустом тексте означала бы, что тело записи своего договора не
@@ -1472,7 +1496,8 @@ void awh::codec::ini::Writer::report() const noexcept {
  *
  */
 awh::codec::ini::Writer::Writer(const log_t * log) noexcept :
- _log(log), _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false) {}
+ _log(log), _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false),
+ _written(newline_t::LF) {}
 /**
  * @brief Конструктор
  *
@@ -1482,7 +1507,8 @@ awh::codec::ini::Writer::Writer(const log_t * log) noexcept :
  */
 awh::codec::ini::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
  _log(log),
- _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _settings(settings) {}
+ _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _written(settings.newline),
+ _settings(settings) {}
 /**
  * @brief Деструктор
  *

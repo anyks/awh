@@ -242,16 +242,24 @@ namespace awh {
 					if(size > this->_maximum)
 						// Сообщаем, что разряда для него нет
 						return LIMIT;
-					// Запрос нулевого размера обслуживается наименьшим разрядом
-					const size_t need = ((size > 0) ? size : 1);
+					/**
+					 * Нулевой размер НЕ выправляется: таблица отвечает на него сама
+					 *
+					 * Место нулевого размера в таблице - нулевое, а лежит в нём первый
+					 * разряд, чей блок вмещает нуль байт, то есть наименьший, - ровно
+					 * тот же ответ, какой давало выправление нуля единицей. Сличение же
+					 * с условной пересылкой стояло на КАЖДОЙ выдаче: счётчик инструкций
+					 * отдавал поиску разряда пятнадцать команд на действие при
+					 * тридцати двух на весь путь выдачи у tcmalloc
+					 */
 					// Номер найденного разряда
 					size_t result = 0;
 					// Если размер не превышает порога мелкого запроса
-					if(need <= SMALL)
+					if(size <= SMALL)
 						// Берём разряд из мелкой таблицы
-						result = static_cast <size_t> (this->_small[((need + (STEP_SMALL - 1)) / STEP_SMALL)]);
+						result = static_cast <size_t> (this->_small[((size + (STEP_SMALL - 1)) / STEP_SMALL)]);
 					// Если размер превышает порог мелкого запроса
-					else result = static_cast <size_t> (this->_large[((need + (STEP_LARGE - 1)) / STEP_LARGE)]);
+					else result = static_cast <size_t> (this->_large[((size + (STEP_LARGE - 1)) / STEP_LARGE)]);
 					// Если разряда для размера не нашлось
 					if(result >= this->_count)
 						// Сообщаем, что разряда для него нет
@@ -273,6 +281,30 @@ namespace awh {
 				AWH_CLASSES_INLINE size_t size(const size_t index) const noexcept {
 					// Выводим размер блока разряда либо нуль при негодном номере
 					return ((index < this->_count) ? this->_size[index] : 0);
+				}
+				/**
+				 * \~russian
+				 * @brief Метод получения размера блока разряда БЕЗ проверки номера
+				 *
+				 * @warning Номер разряда обязан быть годным: звавший ручается за него
+				 *          сам. Негодный номер читает память за таблицей
+				 *
+				 * @note Заведён ради горячих путей. Те спрашивают годность разряда сами -
+				 *       без неё им не решить, идти ли быстрой дорогой вовсе, - и
+				 *       спрашивали её ВТОРИЧНО на каждой выдаче и каждом возврате: счётчик
+				 *       инструкций отдавал одному этому сличению пять команд на действие
+				 *       при сорока трёх на весь путь у соперника
+				 *
+				 * @param index номер разряда
+				 * @return      размер блока в байтах
+				 *
+				 * \~english
+				 * @brief Method of getting the class block size without checking the index
+				 *
+				 */
+				AWH_CLASSES_INLINE size_t extent(const size_t index) const noexcept {
+					// Выводим размер блока разряда
+					return this->_size[index];
 				}
 				/**
 				 * \~russian

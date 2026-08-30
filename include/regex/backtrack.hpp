@@ -236,7 +236,30 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		constexpr size_t MAX_RECURSION = 0x100;
+		constexpr size_t MAX_RECURSION = 1000;
+		/**
+		 * \~russian
+		 * @brief Наибольшая допустимая вложенность исполнений программы
+		 *
+		 * @details Тело проверки окружения исполняется вложенным исполнением,
+		 *          и вложенность его ограничена стеком машины, а не памятью
+		 *          сопоставления. Программа, тело проверки какой указывает
+		 *          на неё же, дала бы вложенность бесконечную и исчерпание
+		 *          стека: собранная программа такого не содержит, а поддельная
+		 *          запись хранилища - вполне.
+		 *
+		 * \~english
+		 * @brief Largest admissible nesting of executions of the program
+		 * @details The body of a lookaround assertion is executed by a nested
+		 *          execution, and its nesting is bounded by the stack of the machine
+		 *          rather than by the memory of the matching. A program whose body
+		 *          of an assertion points at itself would give an infinite nesting
+		 *          and an exhaustion of the stack: a built program contains no such
+		 *          thing, whereas a forged record of the storage may well.
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_NESTED = 256;
 
 		/**
 		 * \~russian
@@ -407,6 +430,12 @@ namespace awh {
 			private:
 				// Действующий объём работы текущего сопоставления
 				size_t _limit;
+			private:
+				// Наибольшая допустимая глубина рекурсивных вызовов подвыражений
+				size_t _nesting;
+			private:
+				// Действующая вложенность исполнений программы
+				size_t _nested;
 			private:
 				/**
 				 * \~russian
@@ -647,6 +676,26 @@ namespace awh {
 				 * \~
 				 */
 				void ceiling(const size_t ceiling) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
+				 *
+				 * @details Глубина ограничивает вложенность рекурсивных вызовов подвыражений:
+				 *          память под кадры вызовов растёт соразмерно ей. Нуль восстанавливает
+				 *          глубину умолчания.
+				 *
+				 * @param nesting наибольшая допустимая глубина рекурсивных вызовов
+				 *
+				 * \~english
+				 * @brief Method of setting the largest admissible depth of recursive calls
+				 * @details The depth bounds the nesting of recursive calls of subpatterns:
+				 *          the memory of the call frames grows in proportion to it. Zero
+				 *          restores the depth of the default.
+				 * @param nesting largest admissible depth of recursive calls
+				 *
+				 * \~
+				 */
+				void nesting(const size_t nesting) noexcept;
 			public:
 				/**
 				 * \~russian

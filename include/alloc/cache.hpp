@@ -405,10 +405,14 @@ namespace awh {
 				 *
 				 */
 				AWH_CACHE_INLINE void * alloc(const size_t index) noexcept {
-					// Если кэш не заведён либо разряд неведом
-					if((this->_classes == nullptr) || (index >= this->_classes->count()))
-						// Выдавать нечего
-						return nullptr;
+					/**
+					 * Годность разряда здесь НЕ спрашивается: за неё ручается звавший
+					 *
+					 * Спрашивал её всякий, кто сюда заходит, - без этого ему не решить,
+					 * идти ли быстрой дорогой, - а сличение стояло ВТОРИЧНО на каждой
+					 * выдаче. Счётчик инструкций отдавал ему два с половиной действия из
+					 * ста одного, и столько же второму такому сличению у возврата
+					 */
 					// Если свободных блоков разряда в кэше не осталось
 					if(this->_lists[index].free == nullptr)
 						// Забираем у центральных списков пачку блоков
@@ -420,7 +424,7 @@ namespace awh {
 					// Уменьшаем число блоков в кэше
 					this->_lists[index].count--;
 					// Уменьшаем лежащее в кэше
-					this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) - this->_classes->size(index)), std::memory_order_relaxed);
+					this->_bytes.store((this->_bytes.load(std::memory_order_relaxed) - this->_classes->extent(index)), std::memory_order_relaxed);
 					// Выводим выданный блок
 					return result;
 				}
@@ -436,10 +440,13 @@ namespace awh {
 				 *
 				 */
 				AWH_CACHE_INLINE void free(const size_t index, void * addr) noexcept {
-					// Если кэш не заведён, разряд неведом либо блок не задан
-					if((this->_classes == nullptr) || (index >= this->_classes->count()) || (addr == nullptr))
-						// Возвращать нечего
-						return;
+					/**
+					 * Ни разряд, ни адрес здесь НЕ спрашиваются: за них ручается звавший
+					 *
+					 * Довод тот же, что у выдачи двумя десятками строк выше: возврат
+					 * спрашивает и годность разряда, и наличие адреса сам, прежде чем
+					 * решить, куда нести блок
+					 */
 					// Связываем возвращаемый блок с прежней головой списка
 					awh::alloc::Link::next(addr, this->_lists[index].free);
 					// Головой списка становится возвращаемый блок
@@ -457,7 +464,7 @@ namespace awh {
 					 * в пике профиля возврата
 					 */
 					// Считаем лежащее в кэше после возврата блока
-					const size_t bytes = (this->_bytes.load(std::memory_order_relaxed) + this->_classes->size(index));
+					const size_t bytes = (this->_bytes.load(std::memory_order_relaxed) + this->_classes->extent(index));
 					// Увеличиваем лежащее в кэше
 					this->_bytes.store(bytes, std::memory_order_relaxed);
 					/**

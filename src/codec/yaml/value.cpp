@@ -86,6 +86,45 @@ namespace {
 			// Выводим нулевое число
 			return static_cast <T> (0);
 		/**
+		 * Если дробной части у числа нет вовсе
+		 *
+		 * @details Запись числа ответа менять не должна: `300.0` обязано извлекаться ровно
+		 * так же, как `300`, - решение владельца от 30.08.2026. Оттого число с нулевой
+		 * дробной частью уходит на путь ЦЕЛОГО и заворачивается по кругу языком, а не
+		 * выдаётся пределом вида. Предел остаётся лишь у чисел, дробная часть у которых
+		 * есть на деле: там записи целой числу этому не отвечает вовсе, и сличать нечего
+		 *
+		 * @note Ход этот берётся, лишь пока число укладывается в разрядность хранимого
+		 *       целого: путь целого держит `int64_t` со знаком и `uint64_t` без него, и
+		 *       повторить перенос вне этих границ нечем - там неопределено и приведение
+		 *       самого языка. Числа шире уходят ниже, к пределам вида
+		 *
+		 * @warning Правило это держится ровно до предела точного представления целых
+		 *          числом двойной точности - 2^53. За ним дробная запись теряет число ЕЩЁ
+		 *          ДО приведения: `strtod` иного `double` для `9007199254740993` не имеет
+		 *          вовсе, и починить это здесь нечем - число приходит сюда уже потерянным.
+		 *          Граница закреплена проверкой `NumberSpellingsAgreeUpToDoublePrecision`
+		 *          обеими половинами: совпадением на пределе и расхождением за ним
+		 */
+		if(value == ::trunc(value)){
+			/**
+			 * Если число отрицательное
+			 */
+			if(value < 0.){
+				/**
+				 * Если число укладывается в разрядность целого со знаком
+				 */
+				if(value >= -::ldexp(1., 63))
+					// Выводим приведённое число, завёрнутое по кругу путём целого
+					return static_cast <T> (static_cast <int64_t> (value));
+			/**
+			 * Если число укладывается в разрядность целого без знака
+			 */
+			} else if(value < ::ldexp(1., 64))
+				// Выводим приведённое число, завёрнутое по кругу путём целого
+				return static_cast <T> (static_cast <uint64_t> (value));
+		}
+		/**
 		 * Если целая часть числа лежит ниже предела затребованного вида
 		 */
 		if(value <= static_cast <double> (std::numeric_limits <T>::lowest()))
@@ -1287,6 +1326,19 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	/**
 	 * Если ссылка на узел документа недействительна
 	 */
+	/**
+	 * Если ссылка на узел документа недействительна
+	 *
+	 * @warning Заход этот есть ЗАСТАВА, покуда держится условие: содержимое берётся
+	 *          через свойства самой ссылки, а те недействительную отвергают у себя -
+	 *          снятие с подорванным заходом всё равно отдаёт пустое значение.
+	 *          Замерено срывом: проверка AbsorbFromStaleReference при снесённом
+	 *          заходе не падает
+	 *
+	 * @note Сносу заход не подлежит: он снимает лишние обращения к свойствам и
+	 *       выражает договор прямо - свойство, поверку у себя потерявшее, без него
+	 *       отдало бы содержимое узла чужого
+	 */
 	if(!value.valid())
 		// Выходим из снятия значения
 		return;
@@ -2456,6 +2508,24 @@ awh::codec::yaml::Value::Value(const double value) noexcept : Value() {
 	this->recognize();
 }
 /**
+ * @brief Конструктор целого числа записи любой
+ *
+ * @param value заводимое целое число
+ *
+ */
+template <typename T, typename E>
+awh::codec::yaml::Value::Value(const T value) noexcept :
+ Value(static_cast <typename conditional <is_signed <T>::value, int64_t, uint64_t>::type> (value)) {}
+/**
+ * @brief Конструктор знака
+ *
+ * @param value заводимый знак
+ * @param style оформление записи значения
+ *
+ */
+awh::codec::yaml::Value::Value(const char value, const style_t style) noexcept :
+ Value(string(1, value), style) {}
+/**
  * @brief Конструктор строкового значения
  *
  * @param value заводимое значение
@@ -3038,3 +3108,55 @@ awh::codec::yaml::Value awh::codec::yaml::Builder::finish() noexcept {
  *
  */
 awh::codec::yaml::Builder::Builder() noexcept : _keyed(false), _appended(false), _done(false) {}
+/**
+ * @brief Написание целого числа со знаком, виду `int64_t` не тождественное
+ *
+ * @note Ширина `int64_t` у разных систем ложится то на `long`, то на `long long`, и
+ *       перечень, одной из них подогнанный, у другой отвечал бы созданием шаблона по
+ *       заводителю, шаблоном не являющемуся. Оттого берётся то написание, которым
+ *       `int64_t` НЕ является
+ */
+typedef conditional <is_same <int64_t, long>::value, long long, long>::type wide_t;
+/**
+ * @brief Написание целого числа без знака, виду `uint64_t` не тождественное
+ *
+ */
+typedef conditional <is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type uwide_t;
+/**
+ * Выполняем создание конкретных шаблонов заводителя целого числа записи любой
+ */
+template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const short) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const unsigned short) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const int) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const unsigned int) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const wide_t) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value::Value(const uwide_t) noexcept;
+/**
+ * @brief Оператор обращения к паре по имени из одного знака
+ *
+ * @param name имя искомой пары из одного знака
+ * @return     найденное значение
+ *
+ */
+template <typename T>
+typename enable_if <is_same <T, char>::value, const awh::codec::yaml::Value &>::type awh::codec::yaml::Value::operator [] (const T name) const noexcept {
+	// Выводим значение пары, именем из одного знака разыскиваемое
+	return (* this)[string(1, name)];
+}
+/**
+ * @brief Оператор заведения пары по имени из одного знака
+ *
+ * @param name имя заводимой пары из одного знака
+ * @return     заведённое значение
+ *
+ */
+template <typename T>
+typename enable_if <is_same <T, char>::value, awh::codec::yaml::Value &>::type awh::codec::yaml::Value::operator [] (const T name) noexcept {
+	// Выводим значение пары, именем из одного знака заводимое
+	return (* this)[string(1, name)];
+}
+/**
+ * Выполняем создание конкретных шаблонов оператора обращения по имени из одного знака
+ */
+template __AWH_SHARED_EXPORT__ const awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] <char> (const char) const noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::yaml::Value & awh::codec::yaml::Value::operator [] <char> (const char) noexcept;

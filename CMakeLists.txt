@@ -1064,6 +1064,41 @@ if (NOT CMAKE_BUILD_ALLOCATOR)
     message(STATUS "Built-in allocator capture is DISABLED")
 endif()
 
+##
+ # Ключи снятия возможностей ради скорости
+ #
+ # Объявлять снятие надлежит СБОРКОЙ, а не настройкой в работе: проверка признака на
+ # горячем пути стоила бы ровно того, что снимается
+ #
+ # Выгода обоих ключей АРХИТЕКТУРНО ЗАВИСИМА, и у учёта она меняет ЗНАК. Замерено на
+ # сценарии «один разряд», наносекунд на действие:
+ #
+ #   система          заслон списка   учёт расхода
+ #   macOS ARM64      нет выгоды      МИНУС 30 %
+ #   Debian x86-64    плюс 4.5 %      плюс 12-15 %
+ #   FreeBSD amd64    плюс 6 %        плюс 12 %
+ #
+ # У ARM64 обращение к счётчику потока держит его строку кэша горячей, и быстрый путь
+ # ею же и пользуется: снятие учёта там не ускоряет, а замедляет
+ #
+ # Умолчание у обоих - возможность ВКЛЮЧЕНА: распределитель общего назначения обязан
+ # быть безопасным и наблюдаемым, пока у него не попросили иного. Снимать их вправе
+ # тот, кто замерил выигрыш на СВОЕЙ машине
+ ##
+option(CMAKE_BUILD_ALLOCATOR_MANGLE "Mangle free list pointers to detect heap corruption" ON)
+if (NOT CMAKE_BUILD_ALLOCATOR_MANGLE)
+    # Снимаем заслон списка свободных блоков
+    add_definitions(-DAWH_ALLOC_NO_MANGLE)
+    message(STATUS "Allocator free list mangling is DISABLED (heap corruption goes undetected)")
+endif()
+
+option(CMAKE_BUILD_ALLOCATOR_ACCOUNTING "Account allocated and peak memory usage" ON)
+if (NOT CMAKE_BUILD_ALLOCATOR_ACCOUNTING)
+    # Снимаем учёт расхода памяти
+    add_definitions(-DAWH_ALLOC_NO_ACCOUNTING)
+    message(STATUS "Allocator memory accounting is DISABLED (ALLOCATED and PEAK report zero)")
+endif()
+
 # Выполняем подключение исходников
 SET(SOURCE_FILES
     "${SOURCE_FILES}"

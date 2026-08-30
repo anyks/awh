@@ -35,6 +35,15 @@
 #define __AWH_CODEC_JSON_VALUE__
 
 /**
+ * Стандартные заголовочные файлы
+ *
+ * @note Свойства типов нужны заводителям чисел: разряд `int64_t` у macOS есть
+ *       `long long`, а у Linux LP64 - `long`, и объявить оба разряда перечнем нельзя -
+ *       у одной из систем это выйдет повтором подписи
+ */
+#include <type_traits>
+
+/**
  * Подключаем заголовочные файлы модуля
  */
 #include "document.hpp"
@@ -713,6 +722,12 @@ namespace awh {
 					 * разделёнными косой чертой: `/response/users/0/id`. Обращение к
 					 * отсутствующему пути ничего не заводит и отдаёт значение неопределённое
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param path путь к разыскиваемому значению
 					 * @return     ссылка на разысканное значение
 					 *
@@ -721,6 +736,11 @@ namespace awh {
 					 * @details The path is written as a JSON Pointer, by the parts
 					 * separated by a slash: `/response/users/0/id`. An access to an
 					 * absent path creates nothing and gives away an undefined value
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param path path to the value being searched for
 					 * @return reference to the found value
 					 *
@@ -735,6 +755,12 @@ namespace awh {
 					 * числовая заводит массив. Значение простое, встреченное на пути вместо
 					 * вместилища, перерождается вместилищем
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param path путь к разыскиваемому значению
 					 * @return     ссылка на разысканное либо заведённое значение
 					 *
@@ -743,6 +769,11 @@ namespace awh {
 					 * @details The missing containers of the path are created as objects, while a numeric part
 					 * of the path creates an array. A simple value met on the path instead of
 					 * a container is reborn as a container
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param path path to the value being searched for
 					 * @return reference to the found or created value
 					 *
@@ -754,11 +785,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод обращения к полю объекта по имени
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param name имя поля объекта
 					 * @return     ссылка на значение поля объекта
 					 *
 					 * \~english
 					 * @brief Method of the access to a field of an object by a name
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param name name of the field of the object
 					 * @return reference to the value of the field of the object
 					 *
@@ -772,6 +814,12 @@ namespace awh {
 					 * @details Обращение к отсутствующему имени заводит поле значением
 					 * неопределённым, ровно как это делает `nlohmann::json`
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param name имя поля объекта
 					 * @return     ссылка на значение поля объекта
 					 *
@@ -779,6 +827,11 @@ namespace awh {
 					 * @brief Method of the access to a field of an object by a name with the creation of a missing one
 					 * @details An access to an absent name creates the field with an undefined
 					 * value, exactly as `nlohmann::json` does it
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param name name of the field of the object
 					 * @return reference to the value of the field of the object
 					 *
@@ -789,11 +842,22 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод обращения к значению вместилища по номеру
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param index номер значения во вместилище
 					 * @return      ссылка на значение вместилища
 					 *
 					 * \~english
 					 * @brief Method of the access to a value of a container by an index
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param index index of the value in the container
 					 * @return reference to the value of the container
 					 *
@@ -807,6 +871,12 @@ namespace awh {
 					 * @details Обращение за границу массива растит его до затребованного
 					 * номера значениями неопределёнными
 					 *
+					 * @warning Выданная ссылка живёт лишь до ближайшего заведения соседа:
+					 * дети лежат в перемещаемом вместилище, и рост его ОБЕСЦЕНИВАЕТ ссылки на
+					 * прежних детей. Замер: чтение ссылки после заведения соседей есть обращение
+					 * к освобождённой памяти, надзор валит его по праву. Держать надлежит не
+					 * ссылку, а путь к узлу, и снимать её заново
+					 *
 					 * @param index номер значения во вместилище
 					 * @return      ссылка на значение вместилища
 					 *
@@ -814,12 +884,85 @@ namespace awh {
 					 * @brief Method of the access to a value of a container by an index with the creation of a missing one
 					 * @details An access beyond the boundary of an array grows it up to the demanded
 					 * index by the undefined values
+					 * @warning The issued reference lives only until the nearest institution of a sibling:
+					 * the children lie in a movable container, and its growth INVALIDATES the references to
+					 * the previous children. Measurement: a reading of the reference after the institution of the siblings is an access
+					 * to a freed memory, the sanitizer rightfully aborts on it. What should be held is not
+					 * the reference but the path to the node, and it should be taken anew
 					 * @param index index of the value in the container
 					 * @return reference to the value of the container
 					 *
 					 * \~
 					 */
 					Value & operator [] (const size_t index) noexcept;
+					/**
+					 * \~russian
+					 * @brief Методы обращения по написанию знака
+					 *
+					 * @details Написание знака есть ТЕКСТ, и обращение по нему разыскивает
+					 * ИМЯ из одного знака, а не номер. Правило это одно на весь кодек: им же
+					 * заведено и значение из написания знака
+					 *
+					 * @note Без этих методов `v['z']` молча обращался к элементу под номером
+					 *       122 и отдавал пустоту, тогда как `v["z"]` отдавал значение:
+					 *       написания различались одной кавычкой, а значили разное. Замерено
+					 *       щупом, отказа не было вовсе
+					 *
+					 * @note Перечнем беда эта не лечится: заводитель по разряду `char` делает
+					 *       двусмысленным обычное `v[0]` - и `int`→`size_t`, и `int`→`char`
+					 *       суть приведения одного разряда. Оттого здесь шаблон с оградой на
+					 *       точное совпадение: прочие разряды его не создают вовсе. Проверено
+					 *       щупом ДО правки - лекарство перечнем вышло бы хуже болезни
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 * @param  name разыскиваемое имя из одного знака
+					 * @return ссылка на значение поля объекта
+					 *
+					 * \~english
+					 * @brief Methods of the access by a writing of a character
+					 * @details A writing of a character is a TEXT, and an access by it searches for a NAME
+					 * of a single character rather than for an index. This rule is one for the whole codec:
+					 * by it a value from a writing of a character is created as well
+					 * @note Without these methods `v['z']` silently addressed the element under the index
+					 *       122 and gave away an emptiness, while `v["z"]` gave away a value: the writings
+					 *       differed by a single quotation mark yet meant different things. Measured by a probe,
+					 *       there was no refusal at all
+					 * @note By a list this trouble is not cured: a creator by the `char` width makes the
+					 *       ordinary `v[0]` ambiguous — both `int`→`size_t` and `int`→`char` are conversions
+					 *       of one rank. Hence a template with a guard upon an exact match here: the other
+					 *       widths do not create it at all. Checked by a probe BEFORE the fix — a cure by a
+					 *       list would have come out worse than the trouble
+					 * @tparam T width of the access, the guard admits exactly a character
+					 * @param name name of a single character being searched for
+					 * @return reference to the value of the field of the object
+					 *
+					 * \~
+					 */
+					template <typename T>
+					typename std::enable_if <std::is_same <T, char>::value, const Value &>::type
+					operator [] (const T name) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод обращения по написанию знака с заведением недостающего
+					 *
+					 * @details Написание знака есть ТЕКСТ: разыскивается имя из одного знака
+					 *
+					 * @tparam T разряд обращения, ограда пропускает ровно знак
+					 * @param  name разыскиваемое имя из одного знака
+					 * @return ссылка на значение поля объекта
+					 *
+					 * \~english
+					 * @brief Method of the access by a writing of a character with the institution of the missing
+					 * @details A writing of a character is a TEXT: a name of a single character is searched for
+					 * @tparam T width of the access, the guard admits exactly a character
+					 * @param name name of a single character being searched for
+					 * @return reference to the value of the field of the object
+					 *
+					 * \~
+					 */
+					template <typename T>
+					typename std::enable_if <std::is_same <T, char>::value, Value &>::type
+					operator [] (const T name) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -978,6 +1121,13 @@ namespace awh {
 					 *       целого вида, выдаётся пределом этого вида, а `NaN` - нулём:
 					 *       стандарт зовёт такое приведение неопределённым поведением, а
 					 *       неопределённого поведения в кодеке не будет
+					 *
+					 * @note Дробного с НУЛЕВОЙ дробной частью правило это не касается: `300.0`
+					 *       извлекается ровно как `300` и заворачивается по кругу. Запись числа
+					 *       ответа менять не должна - решение владельца от 30.08.2026; предел
+					 *       вида остаётся лишь там, где дробная часть есть на деле. Совпадение
+					 *       записей держится до 2^53: выше `double` целых точно не представляет,
+					 *       и `9007199254740993.0` теряет число ещё у разбора
 					 *
 					 * @note Целое, не помещающееся в затребованный целый вид, ЗАВОРАЧИВАЕТСЯ
 					 *       по правилам самого языка, а не огранивается пределом: приведение
@@ -1206,6 +1356,18 @@ namespace awh {
 					 * сличению не подлежит: число, заведённое `INT8`, и то же число,
 					 * заведённое `UINT64`, одинаковы по сути своей
 					 *
+					 * @note Порядок полей объекта сличению НЕ подлежит, а порядок членов
+					 *       массива - подлежит: поля объекта суть набор, а массив определён
+					 *       порядком своим. Так же поступает и сличение владеющего значения
+					 *       разметки со своими свойствами и вложенными узлами
+					 *
+					 * @warning Равенство значений НЕ означает совпадения их записей. Замеры,
+					 * все четыре при `==`, отвечающем истиной: `0.0` и `-0.0` пишутся врозь
+					 * (знак сохраняется), `1` и `1.0` пишутся врозь (вид числа сохраняется),
+					 * `1e2` и `100` пишутся врозь по той же причине, поля объекта пишутся в
+					 * своём порядке у каждого. Сличение отвечает о ЗНАЧЕНИИ, а запись хранит
+					 * ОФОРМЛЕНИЕ, и решать по сличению, будут ли тексты одинаковы, нельзя
+					 *
 					 * @param value сличаемое значение
 					 * @return      признак совпадения значений
 					 *
@@ -1214,6 +1376,16 @@ namespace awh {
 					 * @details The kind and the content of the tree are compared, while the kind of the storage of a number
 					 * is not subject to the comparison: a number created as `INT8` and the same number
 					 * created as `UINT64` are identical in their essence
+					 * @note The order of the fields of an object is NOT subject to the comparison, while the order of the members
+					 *       of an array is: the fields of an object are a set, while an array is defined
+					 *       by its order. The comparison of an owning value of a markup acts the same way
+					 *       with its attributes and nested nodes
+					 * @warning The equality of the values does NOT mean the coincidence of their records. Measurements,
+					 * all four with `==` answering true: `0.0` and `-0.0` are written differently
+					 * (the sign is preserved), `1` and `1.0` are written differently (the kind of the number is preserved),
+					 * `1e2` and `100` are written differently for the same reason, the fields of an object are written in
+					 * their own order for each. The comparison answers about the VALUE, while the writing keeps
+					 * the FORM, and it is not permissible to decide by the comparison whether the texts will be identical
 					 * @param value value being compared
 					 * @return sign of the coincidence of the values
 					 *
@@ -1342,6 +1514,63 @@ namespace awh {
 					 * \~
 					 */
 					Value(const double value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструкторы целого значения прочих разрядностей
+					 *
+					 * @details Заводители эти ничего нового не хранят и сводятся к паре
+					 * `int64_t`/`uint64_t`, но без них ни `Value v = 1;`, ни `v = size_t(1);`
+					 * не собирались вовсе: разряд `int` доводился до `int64_t`, `uint64_t` и
+					 * `double` одинаково, и выбор выходил двусмысленным. Годились только
+					 * `long long` и `unsigned long long` - те самые, что писал набор проверок
+					 * девяносто пятью приведениями, оттого беда эта им и не давалась
+					 *
+					 * @note Перечень выбран вместо шаблона НАМЕРЕННО. Шаблон с телом в `.cpp`
+					 *       нашему устройству не перечит - так живёт `Writer::number <T>` у
+					 *       TOML и INI, - но охват у него мнимый: разрядность, для которой
+					 *       создания не написано, даёт не двусмысленность, а отказ связывания.
+					 *       Перечень и шаблон покрывают ровно то, что в них перечислено, и
+					 *       разнятся лишь видом отказа у неперечисленного. Разобрано с
+					 *       Николаем, у него в TOML и YAML стоит шаблон - расхождение это
+					 *       ничего не стоит
+					 *
+					 * @note Широкий разряд берётся ТОТ, КАКИМ `int64_t` НЕ ЯВЛЯЕТСЯ: у macOS
+					 *       это `long long`, а у Linux LP64 - `long`. Перечнем их объявить
+					 *       нельзя - у одной из систем вышел бы повтор подписи, и кодек не
+					 *       собрался бы вовсе. Ловушку эту указал Николай, замерено щупом
+					 *
+					 * @note Разряд `char` заведён СТРОКОЮ из одного знака, и заведён нарочно:
+					 *       без своего заводителя он доводился до `int` и `'z'` молча
+					 *       становился числом 122 - замерено. Различие же с `"z"`, дающим
+					 *       строку, свелось бы к одной кавычке, а вида для знака у JSON нет
+					 *       вовсе, и знак там - текст
+					 *
+					 * @param value заводимое значение
+					 *
+					 * \~english
+					 * @brief Constructors of an integer value of the other widths
+					 * @details These creators hold nothing new and reduce to the `int64_t`/`uint64_t`
+					 * pair, yet without them neither `Value v = 1;` nor `v = size_t(1);` compiled at
+					 * all: an `int` was brought to `int64_t`, `uint64_t` and `double` alike, and the
+					 * choice came out ambiguous. Only `long long` and `unsigned long long` were fit —
+					 * the very ones the suite of the checks wrote by ninety-five casts, and that is why
+					 * this trouble never showed itself to it
+					 * @note The `char` width is created as a STRING of a single character, and created on
+					 *       purpose: without a creator of its own it was brought to an `int` and `'z'`
+					 *       silently became the number 122 — measured. The difference from `"z"`, which
+					 *       gives a string, would come down to a single quotation mark, while a width for
+					 *       a character JSON has not at all, and a character there is a text
+					 * @param value value being created
+					 *
+					 * \~
+					 */
+					Value(const char value) noexcept;
+					Value(const short value) noexcept;
+					Value(const unsigned short value) noexcept;
+					Value(const int value) noexcept;
+					Value(const unsigned int value) noexcept;
+					Value(const std::conditional <std::is_same <int64_t, long>::value, long long, long>::type value) noexcept;
+					Value(const std::conditional <std::is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор строкового значения

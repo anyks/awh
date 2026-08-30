@@ -349,6 +349,20 @@ namespace awh {
 			 */
 			// Потолок придержанных крупных областей, в байтах
 			size_t hugeCache;
+			/**
+			 * Потолок придержки областей сверх разрядов, в байтах: нуль - не придерживать
+			 *
+			 * Область сверх разрядов (от границы разрядов до размера куска кучи) после
+			 * освобождения не возвращается куче, а ждёт следующего запроса того же
+			 * размера. Круг «выдал - освободил» ускоряется этим в полтора раза
+			 *
+			 * @warning Придержка ВРАЖДЕБНА росту области на месте: растёт та за счёт
+			 *          СВОБОДНЫХ соседей, а придержанная для кучи занята. Замерено -
+			 *          рост перевыдачей падает вчетверо. Оттого умолчание нулевое:
+			 *          обмен этот выбирает приложение, а не мы за него
+			 */
+			// Потолок придержки областей сверх разрядов, в байтах
+			size_t spanCache;
 			// Порог доклада о крупном выделении, в байтах: нуль - не докладывать
 			size_t reportLarge;
 			/**
@@ -387,7 +401,7 @@ namespace awh {
 			constexpr Options() noexcept :
 			 arena(0), confined(false), purgeMode(purge_t::MANUAL), purgeDelay(10),
 			 purgeFree(0), purgeBlock(0),
-			 heapLimit(0), cacheLimit(0), classLimit(0), hugeCache(256u * 1024u * 1024u), reportLarge(0), profileRate(0),
+			 heapLimit(0), cacheLimit(0), classLimit(0), hugeCache(256u * 1024u * 1024u), spanCache(0), reportLarge(0), profileRate(0),
 			 guardRate(0), quarantine(0), fill(fill_t::NONE), hugePages(false) {}
 		} options_t;
 		/**

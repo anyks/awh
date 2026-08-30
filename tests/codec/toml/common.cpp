@@ -44,8 +44,14 @@ TEST(CodecTomlCommon, Messages) {
 	ASSERT_STREQ(toml::message(toml::error_t::NONE), "no error");
 	/**
 	 * Выполняем перебор всех кодов ошибок разбора и записи
+	 *
+	 * @warning Верхний предел перебора берётся ПОСЛЕДНИМ членом перечня, а не тем, что
+	 *          стоял последним в день написания: перебор до CONFLICTING_SETTINGS
+	 *          оставлял за собою три кода, заведённых после него, - и описания их
+	 *          никем не проверялись. Та же беда была у перебора кодировок, и найдена
+	 *          она снастью молчащих кодов, а не глазами
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::CONFLICTING_SETTINGS); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::STORAGE_EXHAUSTED); code++){
 		// Получаем описание очередного кода ошибки
 		const char * message = toml::message(static_cast <toml::error_t> (code));
 		// Выполняем проверку того, что описание кода ошибки выдано
@@ -86,8 +92,14 @@ TEST(CodecTomlCommon, Encodings) {
 TEST(CodecTomlCommon, EncodingNames) {
 	/**
 	 * Выполняем перебор всех поддерживаемых кодировок
+	 *
+	 * @warning Верхний предел перебора берётся ПОСЛЕДНИМ значением перечня, а не
+	 *          последней кодировкой, заведённой к тому дню: перебор до CP1252
+	 *          оставлял кодировки UTF-32 за собою вовсе - заведены они были после
+	 *          него и стали в перечне выше. Замерено покрытием: строки выдачи
+	 *          названий их и разбора названий обратно числились слепыми
 	 */
-	for(uint8_t i = static_cast <uint8_t> (toml::encoding_t::UTF8); i <= static_cast <uint8_t> (toml::encoding_t::CP1252); i++){
+	for(uint8_t i = static_cast <uint8_t> (toml::encoding_t::UTF8); i <= static_cast <uint8_t> (toml::encoding_t::UTF32BE); i++){
 		// Получаем название очередной кодировки
 		const string name(toml::name(static_cast <toml::encoding_t> (i)));
 		// Выполняем проверку того, что название кодировки не пусто
@@ -459,4 +471,29 @@ TEST(CodecTomlCommon, InspectBoundaries) {
 			ASSERT_EQ(length, sample.size) << "запись " << std::hex << sample.code;
 		}
 	}
+}
+/**
+ * @brief Проверка чтения знака Юникода из оборванной последовательности
+ *
+ * @details Чтение знака выдаёт количество байтов его, а ноль означает знак битый
+ * либо оборванный. Путь этот покрытием не задевался: чтение зовётся лишь именами
+ * ключей, а имя с битым знаком отвергается разбором прежде
+ *
+ */
+TEST(CodecTomlCommon, DecodeBrokenSequence) {
+	// Прочитанный знак Юникода
+	uint32_t code = 0;
+	// Выполняем проверку чтения знака из оборванной последовательности
+	ASSERT_EQ(toml::decode(string_view("\xD0", 1), 0, code), static_cast <size_t> (0));
+	// Выполняем проверку чтения знака из последовательности, построенной ошибочно
+	ASSERT_EQ(toml::decode(string_view("\x80\x80", 2), 0, code), static_cast <size_t> (0));
+	/**
+	 * Выполняем проверку чтения знака из последовательности годной
+	 *
+	 * @note Заход этот стоит рядом нарочно: ноль, приходящий на всякую
+	 *       последовательность, отвечал бы тому же ожиданию
+	 */
+	ASSERT_EQ(toml::decode(string_view("\xD0\xB0", 2), 0, code), static_cast <size_t> (2));
+	// Выполняем проверку прочитанного знака Юникода
+	ASSERT_EQ(code, static_cast <uint32_t> (0x430));
 }

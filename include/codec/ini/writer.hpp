@@ -609,6 +609,31 @@ namespace awh {
 					string _text;
 				private:
 					// Настройки записи текста настроек
+					/**
+					 * \~russian
+					 * @brief Разметка конца строки, ПОСЛЕДНЕЙ записью на деле применённая
+					 *
+					 * @details Дописка примечания снимает знак конца строки с собранного текста,
+					 * и снимать она обязана ровно то, что было записано, - а не то, что велит
+					 * настройка НЫНЕ: настройка вправе смениться между записью строки и допиской
+					 * к ней, и суд по ней снимал бы не ту последовательность
+					 *
+					 * @warning Замерено щупом: при смене разметки с CRLF на LF дописка снимала
+					 * один перевод строки из двух знаков, оставляя одинокий возврат каретки
+					 * ПОСРЕДИ строки, - и отвечала УСПЕХОМ. Обратная смена, с LF на CRLF, давала
+					 * отказ кодом INTERNAL. Довод этот - «о написанном нельзя судить по
+					 * настройке» - принесён Василием от кодека JSON, где та же беда склеивала
+					 * документы потока
+					 *
+					 * \~english
+					 * @brief Line ending actually applied by the last writing
+					 * @details The appending of a comment removes the line ending from the assembled text,
+					 * and it must remove exactly what was written rather than what the settings demand NOW
+					 *
+					 * \~
+					 */
+					newline_t _written;
+				private:
 					settings_t _settings;
 				private:
 					/**

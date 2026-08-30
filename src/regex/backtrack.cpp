@@ -43,7 +43,7 @@ using namespace awh;
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
+ _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _nested(0), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
 	// Выполняем сброс таблицы принадлежности значений байта классу символов
 	::memset(this->_bytes, 0, sizeof(this->_bytes));
 }
@@ -56,6 +56,21 @@ awh::regex::Backtrack::Backtrack() noexcept :
 void awh::regex::Backtrack::budget(const size_t budget) noexcept {
 	// Выполняем установку допустимого объёма работы сопоставления
 	this->_budget = ((budget < this->_ceiling) ? budget : this->_ceiling);
+}
+/**
+ * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
+ *
+ * @param nesting наибольшая допустимая глубина рекурсивных вызовов
+ *
+ */
+void awh::regex::Backtrack::nesting(const size_t nesting) noexcept {
+	/**
+	 * Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	 *
+	 * @note Нуль восстанавливает глубину умолчания: снимать её вовсе нельзя,
+	 *       ибо память под кадры вызовов растёт соразмерно глубине
+	 */
+	this->_nesting = ((nesting > 0) ? nesting : MAX_RECURSION);
 }
 /**
  * @brief Метод установки наибольшего допустимого объёма работы сопоставления
@@ -334,6 +349,52 @@ bool awh::regex::Backtrack::matches(const uint32_t number, const uint32_t flags,
  *
  */
 bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const size_t base, const size_t bound, size_t & end) noexcept {
+	/**
+	 * Если допустимая вложенность исполнений программы превышена
+	 *
+	 * @details Вложенность ограничена стеком машины, а не памятью сопоставления:
+	 *          тело проверки окружения исполняется вложенным исполнением, и
+	 *          программа, тело проверки какой указывает на неё же, исчерпала бы
+	 *          стек падением. Собранная программа такого не содержит, а запись
+	 *          хранилища поддельная - вполне, отчего заслон этот обязателен.
+	 *
+	 */
+	if(this->_nested >= MAX_NESTED) {
+		// Выполняем установку ошибки превышения допустимого объёма работы
+		this->_error = error_t::BUDGET_EXCEEDED;
+		// Выводим результат исполнения программы
+		return false;
+	}
+	/**
+	 * @brief Учёт вложенности исполнения программы
+	 *
+	 * @details Учёт ведётся объектом, а не парою действий: исполнение выходит
+	 *          из метода многими путями, и снятие учёта, поставленное перед
+	 *          каждым из них, рано или поздно было бы забыто.
+	 *
+	 */
+	struct Nesting {
+		// Учитываемое исполнение с возвратом
+		Backtrack * owner;
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param owner учитываемое исполнение с возвратом
+		 *
+		 */
+		Nesting(Backtrack * owner) noexcept : owner(owner) {
+			// Выполняем увеличение вложенности исполнений программы
+			this->owner->_nested++;
+		}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Nesting() noexcept {
+			// Выполняем уменьшение вложенности исполнений программы
+			this->owner->_nested--;
+		}
+	} nesting(this);
 	// Получаем набор инструкций исполняемой программы
 	const Sequence <instruction_t> & instructions = this->_program->instructions;
 	/**
@@ -1019,7 +1080,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					/**
 					 * Если допустимая глубина рекурсивных вызовов превышена
 					 */
-					if(depth >= MAX_RECURSION) {
+					if(depth >= this->_nesting) {
 						// Выполняем установку ошибки превышения допустимого объёма работы
 						this->_error = error_t::BUDGET_EXCEEDED;
 						// Выводим результат исполнения программы
@@ -1082,6 +1143,8 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 * Выполняем сбор изменений ячеек захвата, выполненных вызовом
 					 */
 					for(size_t i = this->_journal.size(); i > frame.journal; i--) {
+						// Получаем очередное изменение ячейки захвата, вызовом выполненное
+						const change_t & change = this->_journal.at(i - 1);
 						/**
 						 * Если изменена ячейка начала совпадения
 						 *
@@ -1090,11 +1153,49 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 *          захватов, поэтому отмене не подлежит.
 						 *
 						 */
-						if(this->_journal.at(i - 1).slot == 0)
+						if(change.slot == 0)
 							// Переходим к предшествующему изменению ячейки захвата
 							continue;
-						// Выполняем добавление отменяемого изменения ячейки захвата
-						this->_undo.push_back(this->_journal.at(i - 1));
+						// Флаг наличия собранной записи той же ячейки захвата
+						bool collected = false;
+						/**
+						 * Выполняем поиск собранной записи той же ячейки захвата
+						 *
+						 * @details Ячейка, изменённая вызовом многократно, восстанавливается
+						 *          значением самым ранним, а прочие изменения её на итог
+						 *          не влияют вовсе. Обход журнала ведётся от изменений новых
+						 *          к старым, отчего значение записи перезаписывается всякий
+						 *          раз и остаётся в ней самое раннее.
+						 *
+						 *          Сжатие набора отменяемых изменений по ячейкам обязательно,
+						 *          а не желательно: отмена выполняется сохранением прежних
+						 *          значений, то есть сама пишется в журнал, - и без сжатия
+						 *          журнал удваивался бы на всяком уровне рекурсии. Замером
+						 *          выражения «^(?<r>a(?&r)b|ab)$» на глубине двадцати
+						 *          получено 1 048 574 отменяемых изменения при двух ячейках
+						 *          затронутых, отчего объём работы исчерпывал предел
+						 *          и сопоставление отвергалось при совпадении имеющемся.
+						 *
+						 */
+						for(auto & record : this->_undo) {
+							/**
+							 * Если собранная запись изменяет ту же ячейку захвата
+							 */
+							if(record.slot == change.slot) {
+								// Выполняем перезапись значения собранной записи
+								record.value = change.value;
+								// Выполняем установку флага наличия собранной записи
+								collected = true;
+								// Прекращаем поиск собранной записи ячейки захвата
+								break;
+							}
+						}
+						/**
+						 * Если собранной записи той же ячейки захвата не имеется
+						 */
+						if(!collected)
+							// Выполняем добавление отменяемого изменения ячейки захвата
+							this->_undo.push_back(change);
 					}
 					/**
 					 * Выполняем отмену захватов, выполненных рекурсивным вызовом

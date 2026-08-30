@@ -253,6 +253,16 @@ TEST(AllocZoneTest, ZoneReportsGoodSize){
  *
  */
 TEST(AllocZoneTest, ZoneReportsStatistics){
+	/**
+	 * Проверка эта спрашивает учёт расхода, а тот снимается сборкой
+	 *
+	 * Признак AWH_ALLOC_NO_ACCOUNTING обращает занятое в нуль намеренно, и показатели
+	 * зоны, идущие от него, в такой сборке ничего не утверждают
+	 */
+	#if defined(AWH_ALLOC_NO_ACCOUNTING)
+		// Пропускаем проверку: учёт расхода снят сборкой
+		GTEST_SKIP() << "учёт расхода снят сборкой: AWH_ALLOC_NO_ACCOUNTING";
+	#endif
 	// Получаем нашу зону
 	::malloc_zone_t * zone = ::owned();
 	// Наша зона обязана быть в процессе

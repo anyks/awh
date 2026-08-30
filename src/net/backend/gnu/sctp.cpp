@@ -1587,6 +1587,21 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		// Флаги отправки сообщения
 		int32_t flags = 0;
 		/**
+		 * Если система умеет подавлять сигнал разорванного канала при отправке
+		 *
+		 * @warning Флаг этот ОБЯЗАТЕЛЕН: отправка в оборванное соединение без него
+		 *          валит процесс потребителя сигналом `SIGPIPE`, а библиотека ронять
+		 *          чужой процесс не смеет. Замер на Debian 12 (движок epoll, ворошитель,
+		 *          зерно 5016): код выхода 141, то есть 128 + `SIGPIPE`, воспроизводится
+		 *          дважды из трёх. Прочие пути отправки движка защищены `MSG_NOSIGNAL`
+		 *          давно; этот оставался открытым, потому что флаги здесь уходят
+		 *          библиотеке, а не ядру напрямую
+		 */
+		#if defined(MSG_NOSIGNAL)
+			// Подавляем сигнал разорванного канала
+			flags |= MSG_NOSIGNAL;
+		#endif
+		/**
 		 * Если сообщение завершается на этом куске
 		 *
 		 * @note Граница записи ставится в явном виде лишь тогда, когда включён режим
@@ -1614,7 +1629,72 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t
 		 *          журнале. О понижении сообщает движок - один раз на узел, при
 		 *          заведении режима явной границы записи
 		 */
+		/**
+		 * Отправка ведётся напрямую, а не вызовом `sctp_sendmsg`
+		 *
+		 * @warning `sctp_sendmsg` флагов не принимает ВОВСЕ и обращается к ядру с нулём,
+		 *          отчего отправка в оборванное соединение валит процесс потребителя
+		 *          сигналом `SIGPIPE`. Замер на Debian 12 (движок epoll, ворошитель,
+		 *          зерно 5016): код выхода 141, воспроизводится дважды из трёх, место
+		 *          снято отладчиком - `sctp_sendmsg` из `libsctp` зовёт `sendmsg` с
+		 *          `flags = 0`. Здесь делается ровно то же, что делает библиотека, но
+		 *          с подавлением сигнала: метаданные уходят служебной записью
+		 *          `SCTP_SNDRCV`, а флаг - ядру
+		 */
+		// Буфер отправляемых данных
+		struct iovec iov{};
+		// Устанавливаем буфер отправляемых данных
+		iov.iov_base = const_cast <void *> (buffer);
+		// Устанавливаем размер буфера отправляемых данных
+		iov.iov_len = size;
+		// Служебные данные сообщения
+		union {
+			// Выравнивание по границе служебной записи
+			struct cmsghdr align;
+			// Место под запись метаданных отправки
+			char space[CMSG_SPACE(sizeof(struct sctp_sndrcvinfo))];
+		} control{};
+		// Объект сообщения для отправки
+		struct msghdr message{};
+		// Устанавливаем адрес удалённой стороны
+		message.msg_name = const_cast <struct sockaddr *> (addr);
+		// Устанавливаем размер адреса удалённой стороны
+		message.msg_namelen = length;
+		// Устанавливаем список буферов данных
+		message.msg_iov = &iov;
+		// Устанавливаем длину списка буферов данных
+		message.msg_iovlen = 1;
+		// Устанавливаем буфер служебных данных
+		message.msg_control = control.space;
+		// Устанавливаем размер служебных данных
+		message.msg_controllen = CMSG_SPACE(sizeof(struct sctp_sndrcvinfo));
+		// Получаем первую служебную запись сообщения
+		struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message);
+		// Устанавливаем уровень служебной записи
+		cmsg->cmsg_level = IPPROTO_SCTP;
+		// Устанавливаем тип служебной записи
+		cmsg->cmsg_type = SCTP_SNDRCV;
+		// Устанавливаем длину служебной записи
+		cmsg->cmsg_len = CMSG_LEN(sizeof(struct sctp_sndrcvinfo));
+		// Переносим метаданные отправки в служебную запись
+		::memcpy(CMSG_DATA(cmsg), &info, sizeof(struct sctp_sndrcvinfo));
+		/**
+		 * Длину служебных данных выставляем ровно по записи
+		 *
+		 * @note Расхождение здесь у систем Sun теряет опознаватель связи, см. запись
+		 *       о длине служебных данных SCTP
+		 */
+		message.msg_controllen = cmsg->cmsg_len;
+		// Флаги отправки сообщения
+		int32_t flags = 0;
+		/**
+		 * Если система умеет подавлять сигнал разорванного канала при отправке
+		 */
+		#if defined(MSG_NOSIGNAL)
+			// Подавляем сигнал разорванного канала
+			flags |= MSG_NOSIGNAL;
+		#endif
 		// Выполняем отправку сообщения прежним способом
-		return ::sctp_sendmsg(sock, buffer, size, const_cast <struct sockaddr *> (addr), length, info.sinfo_ppid, info.sinfo_flags, info.sinfo_stream, info.sinfo_timetolive, info.sinfo_context);
+		return ::sendmsg(sock, &message, flags);
 	#endif
 }

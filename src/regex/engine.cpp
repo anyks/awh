@@ -56,7 +56,18 @@ awh::regex::error_t awh::regex::Engine::error() const noexcept {
  *
  */
 string awh::regex::Engine::message() const noexcept {
-	// Выводим текст ошибки последней операции движка
+	/**
+	 * Если ошибка последней операции движка ошибке разбора не отвечает
+	 *
+	 * @details Ошибка сопоставления принадлежит движку, а не разборщику,
+	 *          и толковать её текстом разборщика нельзя: он ответил бы
+	 *          отсутствием ошибки при ошибке имеющейся.
+	 *
+	 */
+	if(this->_error != this->_parser.error())
+		// Выводим текст ошибки последней операции движка
+		return Parser::message(this->_error);
+	// Выводим текст ошибки последней операции разбора
 	return this->_parser.message();
 }
 /**
@@ -88,6 +99,16 @@ uint32_t awh::regex::Engine::captures() const noexcept {
 void awh::regex::Engine::limit(const size_t limit) noexcept {
 	// Выполняем установку наибольшего допустимого объёма работы сопоставления
 	this->_backtrack.ceiling(limit);
+}
+/**
+ * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
+ *
+ * @param nesting наибольшая допустимая глубина рекурсивных вызовов
+ *
+ */
+void awh::regex::Engine::nesting(const size_t nesting) noexcept {
+	// Выполняем установку наибольшей допустимой глубины рекурсивных вызовов
+	this->_backtrack.nesting(nesting);
 }
 /**
  * @brief Метод сборки регулярного выражения

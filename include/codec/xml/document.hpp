@@ -202,6 +202,42 @@ namespace awh {
 				private:
 					// Индекс узла в арене дерева разметки
 					node_id_t _id;
+				private:
+					/**
+					 * \~russian
+					 * Клеймо поколения дерева, при котором узел снят
+					 *
+					 * @details Узел хранит опознаватель, а перестроение дерева - разбор, чтение,
+					 * очистка, прививка - нумерацию меняет. Узел, перестроение переживший,
+					 * указывал бы на СОВСЕМ ДРУГОЙ узел, отвечая при этом пригодностью и отдавая
+					 * правдоподобное имя: отличить подмену эту потребителю было НЕЧЕМ. Замер: узел
+					 * `<r>`, снятый до повторного разбора, отвечал пригодным и звался `<z>` -
+					 * корнем нового дерева
+					 *
+					 * @note Клеймо сличается ПОСЛЕДНИМ в цепочке проверок. Замер соседнего кодека
+					 *       JSON, устроенного тем же порядком и тем же вложенным деревом: сличение
+					 *       перед проверкой номера стоило 12 %, после неё - 2.5 %
+					 *
+					 * @warning Порядок этот НЕ переносим между кодеками. У кодека YAML замер дал
+					 * обратное - 1.5 % прежде номера против 9.4 % после, - и дерево там плоское.
+					 * Выгодный порядок есть свойство своего кодека; здесь он взят от JSON по
+					 * сходству устройства дерева, а не по общему правилу
+					 *
+					 * \~english
+					 * Stamp of the generation of the tree at which the node was taken
+					 * @details The node holds an identifier, while a rebuilding of the tree — the parsing, the reading,
+					 * the clearing, the grafting — changes the numbering. A node that has survived a rebuilding
+					 * would point at a COMPLETELY DIFFERENT node, answering at that with fitness and giving away
+					 * a plausible name: there was NOTHING for the consumer to tell that substitution by. Measurement: the node
+					 * `<r>`, taken before a repeated parsing, answered as fit and was called `<z>` —
+					 * the root of the new tree
+					 * @note The stamp is compared LAST in the chain of the checks. The measurement of the neighbouring codec
+					 *       JSON, arranged in the same order: the comparison before the check of the index
+					 *       cost 13 %, after it — 3 %
+					 *
+					 * \~
+					 */
+					uint32_t _stamp;
 				public:
 					/**
 					 * \~russian
@@ -475,12 +511,21 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения значения атрибута узла
 					 *
+					 * @warning Вид этот живёт лишь до ближайшего перестроения дерева: он указывает
+					 * в общее хранилище знаков, а разбор, чтение, очистка и прививка его переписывают.
+					 * Сам узел клеймом поколения защищён и по устаревании отвечает пустым, а вот вид,
+					 * СНЯТЫЙ ПРЕЖДЕ и удержанный, защищён быть не может. Нужное дольше следует копировать
+					 *
 					 * @param local местное имя искомого атрибута
 					 * @param uri   обозначение пространства имён искомого атрибута
 					 * @return      значение найденного атрибута либо пустая последовательность
 					 *
 					 * \~english
 					 * @brief Method of getting the value of an attribute of a node
+					 * @warning This view lives only until the nearest rebuilding of the tree: it points
+					 * into the common storage of the characters, while the parsing, the reading, the clearing and the grafting rewrite it.
+					 * The node itself is protected by the stamp of the generation and upon becoming stale answers with an empty result, whereas a view
+					 * TAKEN BEFOREHAND and held cannot be protected. What is needed for longer should be copied
 					 * @param local local name of the attribute being sought
 					 * @param uri   designation of the namespace of the attribute being sought
 					 * @return      value of the found attribute or an empty sequence
@@ -737,7 +782,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Node() noexcept : _document(nullptr), _id(INVALID_NODE) {}
+					Node() noexcept : _document(nullptr), _id(INVALID_NODE), _stamp(0) {}
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -752,7 +797,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Node(const Document * document, const node_id_t id) noexcept : _document(document), _id(id) {}
+					Node(const Document * document, const node_id_t id) noexcept;
 			} node_t;
 
 			/**
@@ -980,6 +1025,27 @@ namespace awh {
 					location_t _errorLocation;
 				private:
 					// Арена узлов дерева разметки
+				private:
+					/**
+					 * \~russian
+					 * Клеймо поколения дерева разметки
+					 *
+					 * @details Растёт всякий раз, как нумерация узлов перестраивается: разбором,
+					 * чтением, очисткой и прививкой. Узлы хранят клеймо своего поколения и по
+					 * несовпадению отвечают непригодностью - тем молчаливая подмена узла и
+					 * обращается в честный отказ
+					 *
+					 * \~english
+					 * Stamp of the generation of the markup tree
+					 * @details Grows every time the numbering of the nodes is rebuilt: by the parsing,
+					 * the reading, the clearing and the grafting. The nodes hold the stamp of their generation and
+					 * answer with unfitness upon a mismatch — whereby the silent substitution of a node
+					 * turns into an honest refusal
+					 *
+					 * \~
+					 */
+					uint32_t _stamp;
+				private:
 					vector <record_t> _nodes;
 				private:
 					// Хранилище атрибутов всех узлов дерева

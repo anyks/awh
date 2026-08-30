@@ -230,15 +230,27 @@ namespace awh {
 						 * Разборы, не различающие раздел дословного текста и обычный, склеивают
 						 * такое содержимое целиком, и слепок разбора с ними тогда не совпадёт
 						 *
-						 * @warning Содержимое разрывает и САМА ГРАНИЦА ПОДАЧИ: склейка идёт в
-						 *          пределах поданного куска, а держать содержимое до конца текста
-						 *          ради склейки значило бы копить его без предела - чего потоковое
-						 *          чтение и избегает. Текст `<к>ЖЖЖ</к>`, поданный одним куском,
-						 *          даёт одно событие содержимого, а поданный двумя - два, «Ж» и
-						 *          «ЖЖ». Звучащему, ведущему чтение напрямую, надлежит СКЛАДЫВАТЬ
-						 *          подряд идущие события одного вида самому. Перечень разрывов
-						 *          выше границы подачи не называл, и обещание склейки было тем
-						 *          самым шире исполнения
+						 * @warning Граница подачи разрывает содержимое ЛИШЬ ПРИ ОПУЩЕННОЙ склейке.
+						 *          Замерено: текст `<k>WWW</k>` при опущенной склейке даёт одно
+						 *          событие `[WWW]` целиком и два - «WW» и «W» - кусками; при
+						 *          поднятой даёт одно событие `[WWW]` при всякой нарезке, вплоть
+						 *          до подачи ПО ОДНОМУ БАЙТУ. Складывать подряд идущие события
+						 *          самому надлежит потому лишь тому, кто ведёт чтение с опущенной
+						 *          склейкой
+						 *
+						 * @warning Плата за склейку через границу подачи - накопление содержимого
+						 *          в памяти: узел, склеиваемый до конца, копится без предела, и
+						 *          ограждает его лишь `maxEvent`. Ведущему чтение потока без конца
+						 *          предел этот надлежит задать, иначе один узел вправе съесть
+						 *          сколько угодно памяти
+						 *
+						 * @note Прежняя запись здесь утверждала обратное - будто склейка идёт в
+						 *       пределах поданного куска ВСЕГДА, - и велела потребителю писать
+						 *       сложение, которое кодек делает сам. Вскрыто сплошным обходом
+						 *       настроек: признак этот единственный не дал расхождений, и разбор
+						 *       причины показал, что лжёт не код, а запись. Довод против записи
+						 *       нашёлся в самом наборе: помощник `both` разбирает текст ПО БАЙТУ
+						 *       со склейкой и требует совпадения с разбором целиком
 						 *
 						 * @note Дерева разметки и владеющего значения это НЕ касается: сборка их
 						 *       складывает куски сама, и чтение файла, идущее кусками по 64 КиБ,
@@ -258,11 +270,19 @@ namespace awh {
 						 * an event is not issued for them, but they remain a boundary of the content.
 						 * The parsers that do not distinguish a literal text section from an ordinary one glue
 						 * such a content in full, and the snapshot of the parsing will then not coincide with theirs
-						 * @warning The BOUNDARY OF A FEED breaks a content apart as well: the gluing goes
-						 * within the limits of the fed chunk, whereas holding a content until the end of
-						 * the text for the sake of the gluing would mean accumulating it without a limit —
-						 * which is what a streaming reading avoids. The consumer driving the reading directly
-						 * is to CONCATENATE the consecutive events of one and the same kind itself
+						 * @warning The boundary of a feed breaks a content apart ONLY WITH THE GLUING LOWERED.
+						 * Measured: the text `<k>WWW</k>` with the gluing lowered gives a single event `[WWW]`
+						 * as a whole and two — "WW" and "W" — by chunks; with the gluing raised it gives a
+						 * single event `[WWW]` at any chunking, down to a feeding BYTE BY BYTE. To concatenate
+						 * the consecutive events oneself is therefore needed only by the one driving the
+						 * reading with the gluing lowered
+						 * @warning The price of the gluing across a boundary of a feed is an accumulation of the
+						 * content in the memory: a node being glued to its end accumulates without a limit, and
+						 * only `maxEvent` fences it. The one driving a reading of an endless stream is to set
+						 * that limit, otherwise a single node is entitled to eat any amount of the memory
+						 * @note The former record here asserted the opposite — as if the gluing went within the
+						 * limits of the fed chunk ALWAYS — and ordered the consumer to write a concatenation
+						 * which the codec does itself. Uncovered by a continuous sweep of the settings
 						 * @note This does NOT concern the markup tree and the owning value: their assembling
 						 * concatenates the chunks itself, and the reading of a file, going by chunks of 64 KiB,
 						 * gives a tree equal to the parsing of the same text as a whole string
@@ -2090,8 +2110,21 @@ namespace awh {
 					 * @note Признак последнего куска обязателен: без него не отличить конец
 					 * текста от его обрыва, и незакрытые узлы останутся незамеченными
 					 *
-					 * @note Отказ приведения исходного текста к кодировке UTF-8 выдаётся не
-					 * настоящим методом, а по исчерпании уже приведённого начала текста:
+					 * @note ВСЯКИЙ отказ разбора выдаётся не настоящим методом, а перебором
+					 * событий: настоящий метод лишь принимает кусок в очередь, а разбирается
+					 * он зовами @c next(). Замер: текст `<r><<a></a></r>` принят подачей
+					 * успешно и с пустым кодом отказа, а код появился лишь по переборе
+					 * событий. Звучащий, смотрящий на один возврат подачи, отказа не заметит
+					 * до следующего куска - принят тот уже не будет
+					 *
+					 * @warning Соседние кодеки поступают ОБРАТНО: разбор JSON и таблицы CSV
+					 * идёт ПРЯМО В ПОДАЧЕ, и отказ там виден возвратом самой подачи. Замеры:
+					 * `{"a":@1}` - подача отвечает ложью и кодом сразу; `a,"b` - то же.
+					 * Единый цикл на три кодека обязан спрашивать @c error() либо состояние,
+					 * а не один лишь возврат подачи
+					 *
+					 * @note Отказ приведения исходного текста к кодировке UTF-8 задерживается
+					 * тем же порядком - по исчерпании уже приведённого начала текста:
 					 * события, разобранные до испорченного знака, выдаются, и подача текста
 					 * целиком выдаёт то же самое, что и подача его кусками. Настоящий метод
 					 * отвечает при этом положительно - события ещё предстоит вычитать
@@ -2115,6 +2148,17 @@ namespace awh {
 					 * or of a reference to an entity
 					 * @note The flag of the last chunk is obligatory: without it the end of a text cannot be distinguished
 					 * from its cut-off, and the unclosed nodes will remain unnoticed
+					 * @note EVERY refusal of the parsing is issued not by the present method but by the traversal
+					 * of the events: the present method only accepts a chunk into the queue, while it is parsed
+					 * by the calls to @c next(). Measurement: the text `<r><<a></a></r>` was accepted by the feeding
+					 * successfully and with an empty code of the refusal, while the code `INVALID_MARKUP` appeared only
+					 * upon the traversal of the events. A caller looking at the return of the feeding alone will not notice
+					 * a refusal until the next chunk — and that one will no longer be accepted
+					 * @warning The neighbouring codecs act the OPPOSITE way: the parsing of JSON and of a CSV table
+					 * goes RIGHT IN THE FEEDING, and a refusal there is visible by the return of the feeding itself. Measurements:
+					 * `{"a":@1}` — the feeding answers with false and with a code at once; `a,"b` — the same.
+					 * A single loop over the three codecs is obliged to ask @c error() or the state,
+					 * rather than the return of the feeding alone
 					 * @note A refusal of the conversion of the source text to the UTF-8 encoding is issued not by
 					 * the present method but upon the exhaustion of the already converted beginning of the text:
 					 * the events parsed before the spoiled character are issued, and a feeding of the text
@@ -2345,6 +2389,11 @@ namespace awh {
 					 * атрибуты, в отличие от узлов, объявлению пространства имён по умолчанию
 					 * не подчиняются
 					 *
+					 * @warning Вид этот живёт лишь до разбора следующего узла со свойствами:
+					 * хранилище свойств переиспользуется. Замер: вид, снятый у первого узла,
+					 * после двухсот узлов со свойствами читал испорченное содержимое. Нужное
+					 * дольше следует копировать
+					 *
 					 * @param local местное имя искомого атрибута
 					 * @param uri   обозначение пространства имён искомого атрибута
 					 * @return      значение найденного атрибута либо пустая последовательность
@@ -2355,6 +2404,10 @@ namespace awh {
 					 * local name. An empty designation corresponds to an attribute without a prefix:
 					 * the attributes, unlike the nodes, are not subject to a default namespace
 					 * declaration
+					 * @warning This view lives only until the parsing of the next node with attributes:
+					 * the storage of the attributes is reused. Measurement: a view taken at the first node,
+					 * after two hundred nodes with attributes read a corrupted content. What is needed
+					 * for longer should be copied
 					 * @param local local name of the attribute being sought
 					 * @param uri   designation of the namespace of the attribute being sought
 					 * @return      value of the found attribute or an empty sequence
@@ -2468,6 +2521,13 @@ namespace awh {
 					 * @details Поиск ведётся по связываниям, действующим в текущем месте
 					 * разбора, от ближайшего узла к корню
 					 *
+					 * @warning Вид этот годен, пока открыт узел, связывание объявивший. По
+					 * закрытии его связывание снимается, а вид ПРОДОЛЖАЕТ читаться: хранилище
+					 * областей не освобождается, и удержанный вид отдаёт связывание, какого более
+					 * НЕТ. Замер: по закрытии узла удержанный вид читался прежним, а снятый заново
+					 * отвечал пустым - как и должно. Ответ на вопрос о связывании надлежит брать
+					 * зовом, а не удержанным видом
+					 *
 					 * @param prefix префикс без разделителя, пустой для объявления по умолчанию
 					 * @return       обозначение связанного пространства имён
 					 *
@@ -2475,6 +2535,12 @@ namespace awh {
 					 * @brief Method of getting the designation of a namespace by a prefix
 					 * @details The search is conducted by the bindings effective at the current place
 					 * of the parsing, from the nearest node to the root
+					 * @warning This view is fit while the node that declared the binding is open. Upon
+					 * its closing the binding is removed, while the view CONTINUES to read: the storage
+					 * of the scopes is not released, and a held view gives away a binding that
+					 * NO LONGER EXISTS. Measurement: upon the closing of the node a held view read as before, while one taken anew
+					 * answered empty — as it should. The answer to a question about a binding should be taken
+					 * by a call rather than by a held view
 					 * @param prefix prefix without the separator, empty for a default declaration
 					 * @return       designation of the bound namespace
 					 *
@@ -2559,10 +2625,19 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод получения объявленного издания разметки
 					 *
+					 * @note Вид этот подачу переживает и живёт до сброса состояния чтения:
+					 *       пролог разбирается единожды и более не растёт. Ручательство названо
+					 *       нарочно - соседние тела того же чтения ручаются за ОБРАТНОЕ, и
+					 *       молчание здесь читалось бы как их срок. Замер: вид пережил двести подач
+					 *
 					 * @return объявленное издание разметки
 					 *
 					 * \~english
 					 * @brief Method of getting the declared edition of the markup
+					 * @note This view survives a feeding and lives until the reset of the state of the reading:
+					 *       the prolog is parsed once and does not grow any more. The guarantee is named
+					 *       deliberately — the neighbouring bodies of the same reading guarantee the OPPOSITE, and
+					 *       a silence here would read as their lifetime. Measurement: the view survived two hundred feedings
 					 * @return declared edition of the markup
 					 *
 					 * \~

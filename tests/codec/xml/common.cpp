@@ -131,7 +131,7 @@ TEST(CodecXmlCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (static_cast <uint32_t> (xml::error_t::FILE_NOT_READ) + 1)), "unknown error");
+	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (static_cast <uint32_t> (xml::error_t::INVALID_NODE) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(xml::message(static_cast <xml::error_t> (0xFF)), "unknown error");
 }

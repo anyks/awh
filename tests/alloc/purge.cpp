@@ -362,6 +362,16 @@ TEST_F(AllocFixture, ZeroCacheLimitRestoresDiscretion){
  *
  */
 TEST_F(AllocFixture, PropertiesAreConsistent){
+	/**
+	 * Проверка эта спрашивает учёт расхода, а тот снимается сборкой
+	 *
+	 * Признак AWH_ALLOC_NO_ACCOUNTING обращает ALLOCATED и PEAK в нуль намеренно, и
+	 * утверждать по ним что-либо в такой сборке нельзя
+	 */
+	#if defined(AWH_ALLOC_NO_ACCOUNTING)
+		// Пропускаем проверку: учёт расхода снят сборкой
+		GTEST_SKIP() << "учёт расхода снят сборкой: AWH_ALLOC_NO_ACCOUNTING";
+	#endif
 	// Выдаём заметный блок
 	void * block = ::malloc(1u << 20);
 	ASSERT_NE(block, nullptr);
@@ -603,6 +613,16 @@ TEST_F(AllocFixture, SuperpagesRequestKeepsAllocationWorking){
  *
  */
 TEST_F(AllocFixture, AccountingBalancesAcrossPaths){
+	/**
+	 * Проверка эта спрашивает учёт расхода, а тот снимается сборкой
+	 *
+	 * Признак AWH_ALLOC_NO_ACCOUNTING обращает ALLOCATED и PEAK в нуль намеренно, и
+	 * утверждать по ним что-либо в такой сборке нельзя
+	 */
+	#if defined(AWH_ALLOC_NO_ACCOUNTING)
+		// Пропускаем проверку: учёт расхода снят сборкой
+		GTEST_SKIP() << "учёт расхода снят сборкой: AWH_ALLOC_NO_ACCOUNTING";
+	#endif
 	// Запоминаем занятое прикладным кодом до выдачи
 	const size_t before = awh::alloc::Allocator::property(awh::alloc::property_t::ALLOCATED);
 	// Выданные блоки

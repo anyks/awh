@@ -2697,21 +2697,33 @@ TEST(Regex, CodegenRefusal) {
 	 * @brief Набор выражений, порождению машинного кода непригодных
 	 *
 	 */
-	static const char * SAMPLES[] = {
-		"(?R)|a", "\\X+", "(?(1)a|b)(x)"
+	static const struct {
+		const char * pattern;
+		const uint32_t flags;
+	} SAMPLES[] = {
+		{"(?R)|a", 0}, {"\\X+", 0}, {"(?(1)a|b)(x)", 0},
+		/**
+		 * @details Единица кодирования сопоставляет байт один, а в режиме UTF
+		 *          знак занимает их несколько: порождение такого не берёт,
+		 *          и отказ его при режиме UTF - тот самый заслон, какой иначе
+		 *          не проверяется вовсе.
+		 */
+		{"\\C+", static_cast <uint32_t> (regex::flag_t::UTF)}
 	};
 	// Количество выражений, заслоном отвергнутых
 	size_t refused = 0;
 	/**
 	 * Выполняем обход набора выражений
 	 */
-	for(const char * pattern : SAMPLES) {
+	for(const auto & sample : SAMPLES) {
+		// Получаем текст очередного регулярного выражения
+		const char * pattern = sample.pattern;
 		// Создаём объект движка регулярных выражений
 		regex::engine_t engine(::logger());
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
-		ASSERT_TRUE(engine.build(pattern, 0, expression)) << pattern;
+		ASSERT_TRUE(engine.build(pattern, sample.flags, expression)) << pattern;
 		// Выполняем проверку непригодности программы порождению
 		EXPECT_FALSE(regex::codegen_t::applicable(expression.forward)) << pattern;
 		// Создаём объект порождения машинного кода
@@ -3191,4 +3203,105 @@ TEST(Regex, CodegenSkipping) {
 	 * Выполняем проверку того, что сличению было что сличать
 	 */
 	ASSERT_GT(matched, static_cast <size_t> (5));
+}
+/**
+ * @brief Тест отказа порождения по испорченной программе
+ *
+ * @details Порождение принимает программу от сборки, но приходит она и от
+ *          восстановления записи, а запись бывает поддельною. Порождение
+ *          обязано такую программу отвергнуть либо породить по ней код,
+ *          а падать при разборе её не вправе: заслоны целости внутри
+ *          порождения тем и стоят.
+ *
+ */
+TEST(Regex, CodegenMutated) {
+	/**
+	 * Если кодогенерация сборкой не поддерживается
+	 */
+	if(!regex::emitter_t::available() || !regex::assembly_t::available())
+		// Выходим из проверки отказа порождения
+		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
+	/**
+	 * @brief Набор выражений, устройством программы различающихся
+	 *
+	 */
+	static const char * SAMPLES[] = {
+		"[a-z]+", "(\\w+)@(\\w+)", "^(?:GET|POST) /[a-z]*$",
+		"(?>a+)b", "(?=ab)a", "(?<=ab)c", "\\d{1,3}(?:\\.\\d{1,3}){3}"
+	};
+	// Количество программ, порождением отвергнутых
+	size_t refused = 0, accepted = 0;
+	/**
+	 * Выполняем обход набора выражений
+	 */
+	for(const char * pattern : SAMPLES) {
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine(::logger());
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build(pattern, 0, expression)) << pattern;
+		// Получаем количество указаний собранной программы
+		const size_t count = expression.forward.instructions.size();
+		// Выполняем проверку наличия указаний собранной программы
+		ASSERT_GT(count, static_cast <size_t> (0)) << pattern;
+		/**
+		 * Выполняем обход указаний собранной программы
+		 */
+		for(size_t i = 0; i < count; i++) {
+			/**
+			 * @brief Набор подменяемых значений адреса указания
+			 *
+			 * @details Подмены выбраны по видам несообразности: нуль, указание
+			 *          на себя, предел программы, значение за пределом её
+			 *          и значение непомерное.
+			 *
+			 */
+			const uint32_t values[] = {
+				0, static_cast <uint32_t> (i), static_cast <uint32_t> (count),
+				static_cast <uint32_t> (count + 1000), 0xFFFFFFFF
+			};
+			/**
+			 * Выполняем перебор четырёхбайтовых полей указания
+			 *
+			 * @details Поля указания лежат объединением, и подмена одного лишь
+			 *          адреса перехода задевала бы у прочих видов указаний
+			 *          не то поле, какое ими читается: замером получен один
+			 *          оживший заслон против десяти при переборе полей всех.
+			 *
+			 */
+			for(size_t shift = 0; (shift + sizeof(uint32_t)) <= sizeof(regex::instruction_t); shift += sizeof(uint32_t))
+			/**
+			 * Выполняем перебор подмен значения поля указания
+			 */
+			for(const uint32_t value : values) {
+				// Создаём подделываемую программу выражения
+				regex::program_t program = expression.forward;
+				// Получаем адрес подделываемого указания программы
+				char * target = reinterpret_cast <char *> (&program.instructions[i]);
+				// Выполняем подмену очередного поля указания
+				::memcpy((target + shift), &value, sizeof(value));
+				// Создаём объект порождения машинного кода
+				regex::codegen_t codegen(::logger());
+				/**
+				 * Если порождение машинного кода по испорченной программе выполнено
+				 */
+				if(codegen.compile(program))
+					// Увеличиваем количество порождений выполненных
+					accepted++;
+				// Увеличиваем количество порождений отвергнутых
+				else refused++;
+			}
+		}
+	}
+	/**
+	 * Выполняем проверку отвержения программ испорченных
+	 *
+	 * @details Проверка утверждает, что заслоны целости звучат: порождение,
+	 *          принимающее всякую программу, не отвергло бы ни одной, - и
+	 *          испытание тогда мерило бы одну лишь живучесть.
+	 *
+	 */
+	EXPECT_GT(refused, static_cast <size_t> (0))
+	 << "принято " << accepted << ", отвергнуто " << refused;
 }

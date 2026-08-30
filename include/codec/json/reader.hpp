@@ -161,17 +161,47 @@ namespace awh {
 						 * \~russian
 						 * Признак строгого следования RFC 8259
 						 *
-						 * @note Строгий разбор отвечает отказом на знаки за окончанием
-						 * документа и на метку порядка байтов в начале текста - стандарт
-						 * её запрещает. Обиход этого не соблюдает, потому умолчанием
-						 * разбор нестрогий
+						 * @details Признак этот есть общий РУБИЛЬНИК послаблений: подъём его
+						 * гасит `allowComments`, `allowTrailingCommas`, `allowSingleQuotes` и
+						 * `allowInfinityAndNan` разом, ибо всякое из них стандарту противоречит.
+						 * Гашение правит сам хранимый снимок настроек, и выдача их говорит лишь
+						 * о том, что действует
+						 *
+						 * @note Знаки за окончанием документа отвергаются ВСЕГДА, а не в строгом
+						 *       разборе: текст JSON есть одно значение, и хвост при нём
+						 *       недопустим ни при каких настройках. Замерено щупом
+						 *
+						 * @note Метка порядка байтов принимается и в строгом разборе НАМЕРЕННО:
+						 *       §8.1 стандарта дозволяет разбору её игнорировать, а запрещает
+						 *       её СТАВИТЬ - и запись кодека не ставит её никогда, признака
+						 *       такого у неё нет вовсе. Сверх того метка эта и опознаёт
+						 *       кодировку текста: отказ на неё лишил бы строгий разбор
+						 *       распознавания UTF-16 и UTF-32
+						 *
+						 * @note Прежде признак этот НЕ ЧИТАЛСЯ НИ ОДНИМ местом кодека, а
+						 *       описание обещало оба отказа - и оба обещания были ложны: один
+						 *       делается всегда, другой не делается вовсе. Вскрыто сплошным
+						 *       обходом настроек: читается ли каждая хоть где-нибудь
 						 *
 						 * \~english
 						 * Flag of the strict following of RFC 8259
-						 * @note The strict parsing answers with a refusal to the characters after the end of
-						 * the document and to the byte order mark at the beginning of the text — the standard
-						 * forbids it. The custom does not observe this, therefore by default
-						 * the parsing is a non-strict one
+						 * @details This flag is the common SWITCH of the relaxations: raising it
+						 * extinguishes `allowComments`, `allowTrailingCommas`, `allowSingleQuotes` and
+						 * `allowInfinityAndNan` at once, for every one of them contradicts the standard.
+						 * The extinguishing edits the stored snapshot of the settings itself, and their
+						 * issuing speaks only of what takes effect
+						 * @note The characters after the end of the document are refused ALWAYS rather than
+						 *       in the strict parsing: a JSON text is a single value, and a tail at it is
+						 *       inadmissible under any settings. Measured by a probe
+						 * @note The byte order mark is accepted in the strict parsing as well, ON PURPOSE:
+						 *       §8.1 of the standard permits a parsing to ignore it and forbids ADDING it —
+						 *       and the writing of the codec never adds it, it has no such flag at all.
+						 *       Moreover this mark also identifies the encoding of the text: a refusal upon
+						 *       it would deprive the strict parsing of the recognition of UTF-16 and UTF-32
+						 * @note Formerly this flag was NOT READ BY A SINGLE place of the codec, while the
+						 *       description promised both refusals — and both promises were false: one is
+						 *       done always, the other is not done at all. Uncovered by a continuous sweep
+						 *       of the settings: is every one of them read anywhere
 						 *
 						 * \~
 						 */
@@ -799,6 +829,15 @@ namespace awh {
 					 * заданного размера: проверка стоит в приведении текста, и разыменования не
 					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
 					 *
+					 * @note Разбор идёт ПРЯМО В ПОДАЧЕ, и отказ виден возвратом самой подачи:
+					 *       код отказа стоит уже к возврату, до всякого перебора событий. Замер:
+					 *       текст `{"a":@1}` - подача отвечает ложью и кодом сразу
+					 *
+					 * @warning Разбор разметки XML поступает ОБРАТНО: подача там лишь принимает
+					 * кусок в очередь, разбирается он перебором событий, и отказ подача выдаёт
+					 * УСПЕХОМ. Единый цикл на несколько кодеков обязан спрашивать `error()`,
+					 * а не один лишь возврат подачи
+					 *
 					 * @param buffer буфер подаваемого текста
 					 * @param size   размер буфера подаваемого текста
 					 * @param end    признак того, что кусок последний
@@ -809,6 +848,13 @@ namespace awh {
 					 * @note A null pointer to the buffer is equated to an empty feeding independently of
 					 * the given size: the check stands in the conversion of the text, and no dereferencing
 					 * takes place. The parsing answers thereby by its own rule about an empty text
+					 * @note The parsing goes RIGHT IN THE FEEDING, and a refusal is visible by the return of the feeding itself:
+					 *       the code of the refusal is already set by the return, before any traversal of the events. Measurement:
+					 *       the text `{"a":@1}` — the feeding answers with false and with a code at once
+					 * @warning The parsing of the XML markup acts the OPPOSITE way: the feeding there only accepts
+					 * a chunk into the queue, it is parsed by the traversal of the events, and the feeding issues a refusal
+					 * as a SUCCESS. A single loop over several codecs is obliged to ask `error()`,
+					 * rather than the return of the feeding alone
 					 * @param buffer buffer of the text being fed
 					 * @param size size of the buffer of the text being fed
 					 * @param end  flag that the chunk is the last one
@@ -1123,10 +1169,31 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод установки настроек разбора текста
 					 *
+					 * @note Настройки, поставленные ПОСРЕДИ разбора, вступают в силу с ближайшего
+					 *       разбираемого знака: разобранное прежними настройками остаётся разобранным
+					 *
+					 * @warning Навязывание кодировки посреди разбора отвергается ОТКАЗОМ ближайшей
+					 * подачи: приведение к UTF-8 кодировку посреди текста сменить не может. Замер:
+					 * подача отвечает ложью, код `INVALID_ENCODING`, а настройки продолжают говорить
+					 * о навязанной кодировке - просьба не теряется, она стоит текста
+					 *
+					 * @note Соседние кодеки на ту же просьбу отвечают ИНАЧЕ, и переносить отсюда
+					 *       ничего нельзя: таблица CSV и разметка XML несбывшееся указание снимают
+					 *       из самих настроек и разбор продолжают
+					 *
 					 * @param settings устанавливаемые настройки разбора текста
 					 *
 					 * \~english
 					 * @brief Method of the setting of the settings of the parsing of a text
+					 * @note The settings put IN THE MIDDLE of the parsing take effect from the nearest
+					 *       character being parsed: what has been parsed by the previous settings stays parsed
+					 * @warning The forcing of an encoding in the middle of the parsing is rejected by a REFUSAL of the nearest
+					 * feeding: the bringing to UTF-8 cannot change the encoding in the middle of a text. Measurement:
+					 * the feeding answers with false, the code `INVALID_ENCODING`, while the settings continue to speak
+					 * of the forced encoding — the request is not lost, it costs the text
+					 * @note The neighbouring codecs answer the same request DIFFERENTLY, and nothing can be carried over
+					 *       from here: the CSV table and the XML markup remove the unfulfilled instruction
+					 *       from the settings themselves and continue the parsing
 					 * @param settings settings of the parsing of a text being set
 					 *
 					 * \~

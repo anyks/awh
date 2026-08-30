@@ -80,6 +80,45 @@ namespace {
 			// Выводим нулевое число
 			return static_cast <T> (0);
 		/**
+		 * Если дробной части у числа нет вовсе
+		 *
+		 * @details Запись числа ответа менять не должна: `300.0` обязано извлекаться ровно
+		 * так же, как `300`, - решение владельца от 30.08.2026. Оттого число с нулевой
+		 * дробной частью уходит на путь ЦЕЛОГО и заворачивается по кругу языком, а не
+		 * выдаётся пределом вида. Предел остаётся лишь у чисел, дробная часть у которых
+		 * есть на деле: там записи целой числу этому не отвечает вовсе, и сличать нечего
+		 *
+		 * @note Ход этот берётся, лишь пока число укладывается в разрядность хранимого
+		 *       целого: путь целого держит `int64_t` со знаком и `uint64_t` без него, и
+		 *       повторить перенос вне этих границ нечем - там неопределено и приведение
+		 *       самого языка. Числа шире уходят ниже, к пределам вида
+		 *
+		 * @warning Правило это держится ровно до предела точного представления целых
+		 *          числом двойной точности - 2^53. За ним дробная запись теряет число ЕЩЁ
+		 *          ДО приведения: `strtod` иного `double` для `9007199254740993` не имеет
+		 *          вовсе, и починить это здесь нечем - число приходит сюда уже потерянным.
+		 *          Граница закреплена проверкой `NumberSpellingsAgreeUpToDoublePrecision`
+		 *          обеими половинами: совпадением на пределе и расхождением за ним
+		 */
+		if(value == ::trunc(value)){
+			/**
+			 * Если число отрицательное
+			 */
+			if(value < 0.){
+				/**
+				 * Если число укладывается в разрядность целого со знаком
+				 */
+				if(value >= -::ldexp(1., 63))
+					// Выводим приведённое число, завёрнутое по кругу путём целого
+					return static_cast <T> (static_cast <int64_t> (value));
+			/**
+			 * Если число укладывается в разрядность целого без знака
+			 */
+			} else if(value < ::ldexp(1., 64))
+				// Выводим приведённое число, завёрнутое по кругу путём целого
+				return static_cast <T> (static_cast <uint64_t> (value));
+		}
+		/**
 		 * Если целая часть числа лежит ниже предела затребованного вида
 		 */
 		if(value <= static_cast <double> (numeric_limits <T>::lowest()))
@@ -1491,6 +1530,25 @@ awh::codec::toml::Value::Value(const double value) noexcept :
  _log(nullptr), _type(type_t::FLOAT), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(value) {}
 /**
+ * @brief Конструктор целого числа записи любой
+ *
+ * @param value устанавливаемое целое число
+ * @param radix система счисления записи целого числа
+ *
+ */
+template <typename T, typename E>
+awh::codec::toml::Value::Value(const T value, const radix_t radix) noexcept :
+ Value(static_cast <typename conditional <is_signed <T>::value, int64_t, uint64_t>::type> (value), radix) {}
+/**
+ * @brief Конструктор знака
+ *
+ * @param value   устанавливаемый знак
+ * @param quoting запись строкового значения
+ *
+ */
+awh::codec::toml::Value::Value(const char value, const string_t quoting) noexcept :
+ Value(string(1, value), quoting) {}
+/**
  * @brief Конструктор строкового значения
  *
  * @param value   устанавливаемое содержимое
@@ -1582,6 +1640,13 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			Value item;
 			/**
 			 * Если снять очередную таблицу набора не удалось
+			 *
+			 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: таблицы набора
+			 *          перебираются по числу, дереву известному, и снятие всякой из них
+			 *          отвечает успехом. Замерено покрытием: заход не задет ни разу
+			 *
+			 * @note Пропуск, а не отказ, выбран нарочно: набор, таблицы не давший, есть
+			 *       рассогласование дерева с собою, докладывать о нём не здесь
 			 */
 			if(!item.absorb(document, nested))
 				// Выполняем переход к следующей таблице набора
@@ -1625,6 +1690,10 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
 			 * @note Пара, снятия не давшая, пропускается, а не валит снятие целиком:
 			 *       перечень имён взят у самого дерева, и отказ на нём означал бы
 			 *       рассогласование дерева с собою - докладывать о нём не здесь
+			 *
+			 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: имена взяты у самого
+			 *          дерева, узел по ним всегда находится, а тип его у дерева объявленного
+			 *          пустым не бывает. Замерено покрытием: заход не задет ни разу
 			 */
 			if(!item.absorb(document, nested))
 				// Выполняем переход к следующей паре таблицы
@@ -2223,6 +2292,12 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 			}
 			/**
 			 * Если добавить значение к перечню не удалось
+			 *
+			 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: место перечня
+			 *          объявлено вызывающим прежде захода сюда, а значение уже поверено
+			 *          действительным выше. Замерено покрытием: заход не задет ни разу
+			 *
+			 * @note Сносу заход не подлежит: без него отказ дописывания пропал бы молча
 			 */
 			if(!document.push(path, content))
 				// Выводим признак неудачного наполнения
@@ -2251,6 +2326,12 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 		 *
 		 * @note Дыра узнаётся недействительным значением: пара с пустым именем, значение
 		 *       несущая, есть запись `"" = 5`, описанием дозволенная, и переносу подлежит
+	 *
+	 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: имена и значения
+	 *          встроенной таблицы наращиваются парою, и перечень имён короче
+	 *          перечня значений не бывает. Замерено покрытием: заход не задет ни разу
+	 *
+	 * @note Сносу заход не подлежит: без него обращение к имени вышло бы за край
 		 */
 		if(i >= this->_names.size())
 			// Выводим признак неудачного наполнения
@@ -2265,6 +2346,14 @@ bool awh::codec::toml::Value::inflate(Document & document, const vector <string_
 		const vector <string_view> name = {string_view(this->_names.at(i))};
 		/**
 		 * Если добавить пару к встроенной таблице не удалось
+	 *
+	 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: место встроенной
+	 *          таблицы объявлено вызывающим прежде захода сюда, а имя пары взято у
+	 *          самой таблицы и пустым быть не может. Замерено покрытием: заход не
+	 *          задет ни разу
+	 *
+	 * @note Сносу заход не подлежит: без него отказ занесения пропал бы молча, и
+	 *       дерево вышло бы неполным при успехе, отданном потребителю
 		 */
 		if(!document.put(path, name, content))
 			// Выводим признак неудачного наполнения
@@ -2519,6 +2608,14 @@ bool awh::codec::toml::Builder::expand(Value && value) noexcept {
 		 *
 		 * @note Отказ намеренный: имя, назначенное до открытия корня, положить некуда -
 		 *       вместилища, какому оно принадлежало бы, ещё нет
+		 *
+		 * @warning Заход этот НЕДОСТИЖИМ, покуда держится условие: имя назначается лишь
+		 *          вместилищу открытому - `key` отвергает имя, покуда `opened` таблицею не
+		 *          является, а до открытия корня корень недействителен. Условие это
+		 *          закреплено проверкой `BuilderRefusesKeyBeforeRoot`
+		 *
+		 * @note Сносу заход не подлежит: он держит договор сборки на случай, если
+		 *       порядок проверок у `key` однажды переменится
 		 */
 		if(this->_keyed)
 			// Выводим признак неудачного открытия
@@ -2790,3 +2887,55 @@ awh::codec::toml::Value awh::codec::toml::Builder::finish() noexcept {
  *
  */
 awh::codec::toml::Builder::Builder() noexcept : _keyed(false), _done(false) {}
+/**
+ * @brief Написание целого числа со знаком, виду `int64_t` не тождественное
+ *
+ * @note Ширина `int64_t` у разных систем ложится то на `long`, то на `long long`, и
+ *       перечень, одной из них подогнанный, у другой отвечал бы созданием шаблона по
+ *       заводителю, шаблоном не являющемуся. Оттого берётся то написание, которым
+ *       `int64_t` НЕ является
+ */
+typedef conditional <is_same <int64_t, long>::value, long long, long>::type wide_t;
+/**
+ * @brief Написание целого числа без знака, виду `uint64_t` не тождественное
+ *
+ */
+typedef conditional <is_same <uint64_t, unsigned long>::value, unsigned long long, unsigned long>::type uwide_t;
+/**
+ * Выполняем создание конкретных шаблонов заводителя целого числа записи любой
+ */
+template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const short, const radix_t) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const unsigned short, const radix_t) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const int, const radix_t) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const unsigned int, const radix_t) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const wide_t, const radix_t) noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::toml::Value::Value(const uwide_t, const radix_t) noexcept;
+/**
+ * @brief Оператор обращения к паре по имени из одного знака
+ *
+ * @param name имя искомой пары из одного знака
+ * @return     найденное значение
+ *
+ */
+template <typename T>
+typename enable_if <is_same <T, char>::value, const awh::codec::toml::Value &>::type awh::codec::toml::Value::operator [] (const T name) const noexcept {
+	// Выводим значение пары, именем из одного знака разыскиваемое
+	return (* this)[string(1, name)];
+}
+/**
+ * @brief Оператор заведения пары по имени из одного знака
+ *
+ * @param name имя заводимой пары из одного знака
+ * @return     заведённое значение
+ *
+ */
+template <typename T>
+typename enable_if <is_same <T, char>::value, awh::codec::toml::Value &>::type awh::codec::toml::Value::operator [] (const T name) noexcept {
+	// Выводим значение пары, именем из одного знака заводимое
+	return (* this)[string(1, name)];
+}
+/**
+ * Выполняем создание конкретных шаблонов оператора обращения по имени из одного знака
+ */
+template __AWH_SHARED_EXPORT__ const awh::codec::toml::Value & awh::codec::toml::Value::operator [] <char> (const char) const noexcept;
+template __AWH_SHARED_EXPORT__ awh::codec::toml::Value & awh::codec::toml::Value::operator [] <char> (const char) noexcept;

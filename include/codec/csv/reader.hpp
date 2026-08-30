@@ -899,6 +899,15 @@ namespace awh {
 					 * заданного размера: проверка стоит в приведении текста, и разыменования не
 					 * происходит. Отвечает разбор при этом по своему правилу о пустом тексте
 					 *
+					 * @note Разбор идёт ПРЯМО В ПОДАЧЕ, и отказ виден возвратом самой подачи:
+					 *       код отказа стоит уже к возврату, до всякого перебора событий. Замер:
+					 *       текст `a,"b` - подача отвечает ложью и кодом сразу
+					 *
+					 * @warning Разбор разметки XML поступает ОБРАТНО: подача там лишь принимает
+					 * кусок в очередь, разбирается он перебором событий, и отказ подача выдаёт
+					 * УСПЕХОМ. Единый цикл на несколько кодеков обязан спрашивать `error()`,
+					 * а не один лишь возврат подачи
+					 *
 					 * @param buffer буфер с куском текста
 					 * @param size   размер куска текста в байтах
 					 * @param end    признак того, что кусок является последним
@@ -909,6 +918,13 @@ namespace awh {
 					 * @note A null pointer to the buffer is equated to an empty feeding independently of
 					 * the given size: the check stands in the conversion of the text, and no dereferencing
 					 * takes place. The parsing answers thereby by its own rule about an empty text
+					 * @note The parsing goes RIGHT IN THE FEEDING, and a refusal is visible by the return of the feeding itself:
+					 *       the code of the refusal is already set by the return, before any traversal of the events. Measurement:
+					 *       the text `a,"b` — the feeding answers with false and with a code at once
+					 * @warning The parsing of the XML markup acts the OPPOSITE way: the feeding there only accepts
+					 * a chunk into the queue, it is parsed by the traversal of the events, and the feeding issues a refusal
+					 * as a SUCCESS. A single loop over several codecs is obliged to ask `error()`,
+					 * rather than the return of the feeding alone
 					 * @param buffer buffer with the chunk of the text
 					 * @param size   size of the chunk of the text in bytes
 					 * @param end    flag of the chunk being the last one
@@ -1070,12 +1086,27 @@ namespace awh {
 					 * @details Имена доступны лишь при включённом признаке заголовка и
 					 * лишь после того, как заголовок разобран
 					 *
+					 * @note Виды эти живут до сброса состояния чтения и подачу переживают:
+					 *       имена лежат в СВОЁМ хранилище, отдельном от буфера записей, и
+					 *       разобранный заголовок более не растёт. Ручательство это названо
+					 *       нарочно: соседнее чтение разметки предупреждает об ОБРАТНОМ -
+					 *       его виды живут лишь до следующей подачи, - и читающий оба
+					 *       договора рядом заключил бы то же и здесь. Замер: виды, снятые
+					 *       после первого куска, пережили двести последующих подач
+					 *
 					 * @return имена полей заголовка в порядке объявления
 					 *
 					 * \~english
 					 * @brief Method of getting the names of the fields of the header
 					 * @details The names are available only when the flag of the header is enabled and
 					 * only after the header has been parsed
+					 * @note These views live until the reset of the state of the reading and survive a feeding:
+					 *       the names lie in THEIR OWN storage, separate from the buffer of the records, and
+					 *       a parsed header does not grow any more. This guarantee is named
+					 *       deliberately: the neighbouring reading of the markup warns of the OPPOSITE —
+					 *       its views live only until the next feeding — and one who reads both
+					 *       contracts side by side would conclude the same here. Measurement: the views taken
+					 *       after the first chunk survived two hundred subsequent feedings
 					 * @return names of the fields of the header in the order of the declaration
 					 *
 					 * \~
@@ -1099,10 +1130,37 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод установки настроек разбора текста
 					 *
+					 * @note Настройки, поставленные ПОСРЕДИ разбора, вступают в силу с ближайшего
+					 *       разбираемого знака: разобранное прежними настройками остаётся разобранным.
+					 *       Сброс состояния идёт лишь до начала разбора
+					 *
+					 * @warning Разделитель полей посреди текста НЕ меняется: он либо задан настройками
+					 * с самого начала, либо уже определён образцом, и смена его разошлась бы с уже
+					 * разобранными записями. Замер: по смене разделителя на `;` запись `3;4` осталась
+					 * ОДНИМ полем, отказа не было. Так же поступает и запись таблицы, где грамматика,
+					 * поданная посреди сборки, отбрасывается
+					 *
+					 * @warning Навязывание кодировки посреди текста отвергается СНЯТИЕМ указания:
+					 * настройки после того говорят `NONE` и лгать о несбывшемся не будут. Замер:
+					 * подача проходит, код пуст, настройки отвечают `NONE`. Разбор JSON на ту же
+					 * просьбу отвечает ОТКАЗОМ подачи - переносить поведение отсюда нельзя
+					 *
 					 * @param settings настройки разбора текста
 					 *
 					 * \~english
 					 * @brief Method of setting the settings of the parsing of a text
+					 * @note The settings put IN THE MIDDLE of the parsing take effect from the nearest
+					 *       character being parsed: what has been parsed by the previous settings stays parsed.
+					 *       The reset of the state goes only before the beginning of the parsing
+					 * @warning The separator of the fields is NOT changed in the middle of a text: it is either set by the settings
+					 * from the very beginning, or already determined by a sample, and its change would diverge from the already
+					 * parsed records. Measurement: upon a change of the separator to `;` the record `3;4` remained
+					 * ONE field, there was no refusal. The writing of a table acts the same way, where a grammar
+					 * fed in the middle of the assembly is dropped
+					 * @warning The forcing of an encoding in the middle of a text is rejected by the REMOVAL of the instruction:
+					 * the settings after that say `NONE` and will not lie about what did not happen. Measurement:
+					 * the feeding passes, the code is empty, the settings answer `NONE`. The parsing of JSON answers the same
+					 * request with a REFUSAL of the feeding — the behaviour cannot be carried over from here
 					 * @param settings settings of the parsing of a text
 					 *
 					 * \~

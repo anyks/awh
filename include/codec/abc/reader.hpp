@@ -188,7 +188,10 @@ namespace awh {
 						 * записи, а НЕ по исправленной строке. Оттого `REPLACE` повторов не
 						 * создаёт: два разных негодных имени, обратившихся в один знак замены,
 						 * повтором не станут. Уклад этот намеренный: поверка строгого вида есть
-						 * договор о ЗАПИСИ, и исправление содержимого его не касается
+						 * договор о ЗАПИСИ, и исправление содержимого его не касается.
+						 * Закреплено проверкой `CodecAbcReader.RepairCreatesNoDuplicates`,
+						 * утверждающей обе половины: исправление повторов НЕ создаёт и
+						 * настоящего повтора НЕ прячет
 						 *
 						 * @note Умолчанием взят ОТКАЗ: строка объявлена кодировкой UTF-8, а данные,
 						 * ей не подчинённые, записываются двоичным значением, - на то оно и
@@ -557,6 +560,29 @@ namespace awh {
 						size_t mark;
 						/**
 						 * \~russian
+						 * Величина указателя имён полей вместимого, ведомого открытой засылкой
+						 *
+						 * @details Сам указатель лежит НЕ здесь, а в запасе разбирателя
+						 * (`_tables`) по глубине вложенности звена, звено же держит лишь величину
+						 * его: нуль означает, что указателя вместимое не завело. Отделены они
+						 * ради выделений - звено заводится на всякое вместимое записи, и указатель
+						 * внутри него выделял бы память всякий раз заново, тогда как запас
+						 * разбирателя переживает и вместимое, и самоё запись
+						 *
+						 * @note Указатель заводится ЛИШЬ по достижении порога `HASHING_NAMES`
+						 * имён: малому отображению обход перечня дешевле, ибо обход десятка
+						 * свёрток укладывается в считанные такты, а указателю надобно обнуление
+						 * гнёзд
+						 *
+						 * \~english
+						 * Index of the names of the fields of a container, kept by open addressing
+						 * @note Created ONLY upon reaching the threshold `HASHING_NAMES` of the names
+						 *
+						 * \~
+						 */
+						size_t hashed;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -567,7 +593,7 @@ namespace awh {
 						 */
 						Frame() noexcept :
 						 beyond(0), mapping(false), indefinite(false), expectKey(false), remain(0),
-						 segment(type_t::UNDEFINED), gathered(0), marked(false), base(0), mark(0) {}
+						 segment(type_t::UNDEFINED), gathered(0), marked(false), base(0), mark(0), hashed(0) {}
 					} frame_t;
 					/**
 					 * \~russian
@@ -806,6 +832,27 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Запас указателей имён полей по глубине вложенности вместимых
+					 *
+					 * @details Указатель берётся глубиною звена в стеке, а не заводится внутри
+					 * него: звено живёт одним вместимым, тогда как запас переживает и запись, -
+					 * оттого выделение памяти случается однажды на разбиратель, а не на всякое
+					 * отображение. Сбросом разбора запас НЕ освобождается: переиспользуемый
+					 * разбиратель тем и ценен, что памяти заново не просит
+					 *
+					 * @note Гнездо держит место имени в общем перечне `_spans`, увеличенное на
+					 * единицу: нуль означает гнездо пустое
+					 *
+					 * \~english
+					 * Reserve of the indexes of the names of the fields by the depth of the nesting of the containers
+					 * @note A slot holds the place of a name in the shared list `_spans` increased by one
+					 *
+					 * \~
+					 */
+					vector <vector <uint32_t>> _tables;
+				private:
+					/**
+					 * \~russian
 					 * Октеты записей имён полей всех вместимых стека
 					 *
 					 * @note Октеты держатся своей копией, а не отрезком буфера разбора: буфер
@@ -945,6 +992,57 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool fail(const error_t error) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод перестроения указателя имён полей вместимого
+					 *
+					 * @details Указатель заводится заново по всей части перечня, принадлежащей
+					 * звену: перестроение обходится дешевле поддержания указателя при усечении
+					 * перечня, а случается оно на удвоении числа имён, то есть впятеро реже
+					 *
+					 * @param depth  глубина вложенности звена, чей указатель перестраивается
+					 * @param frame  звено стека вместимых, чей указатель перестраивается
+					 * @param needed число имён, какое указателю надлежит вместить
+					 *
+					 * \~english
+					 * @brief Method of the rebuilding of the index of the names of the fields of a container
+					 * @param frame  frame of the stack of the containers whose index is rebuilt
+					 * @param needed number of the names which the index has to hold
+					 *
+					 * \~
+					 */
+					void rehash(const size_t depth, frame_t & frame, const size_t needed) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод поверки имени поля отображения на повтор
+					 *
+					 * @details Способ поверки выбирается числом имён вместимого: малое
+					 * отображение сличается обходом перечня, а по достижении порога
+					 * `HASHING_NAMES` заводится указатель, и сличение идёт гнездом. Обход
+					 * растёт квадратом числа имён, и на больших отображениях он и был главною
+					 * платою поверки (замер 30.08.2026)
+					 *
+					 * @note Имя, повтором НЕ оказавшееся, вносится в указатель здесь же, но в
+					 *       общий перечень его укладывает зовущий: перечень и вместилище
+					 *       октетов ведутся вместе, и разрывать их надвое незачем
+					 *
+					 * @param frame  звено стека вместимых, чьё имя поля поверяется
+					 * @param offset смещение записи имени поля в общем вместилище октетов
+					 * @param length длина записи имени поля отображения
+					 * @param digest свёртка записи имени поля отображения
+					 * @return       признак того, что имя поля в этом вместимом уже было
+					 *
+					 * \~english
+					 * @brief Method of the check of the name of a field of a mapping for a duplicate
+					 * @param frame  frame of the stack of the containers whose name of a field is checked
+					 * @param offset offset of the record of the name of a field in the shared container of the octets
+					 * @param length length of the record of the name of a field of a mapping
+					 * @param digest digest of the record of the name of a field of a mapping
+					 * @return sign that the name of a field has already been in this container
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выдачи собранного события разбора
