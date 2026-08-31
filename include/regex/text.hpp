@@ -345,8 +345,9 @@ namespace awh {
 		 * @param start позиция начала попытки сопоставления
 		 * @param type  тип проверяемой привязки к позиции в тексте
 		 * @param flags набор режимов компиляции инструкции
-		 * @param pos   проверяемая позиция в тексте
-		 * @return      результат проверки привязки к позиции в тексте
+		 * @param pos        проверяемая позиция в тексте
+		 * @param convention соглашение о переводе строки выражения
+		 * @return           результат проверки привязки к позиции в тексте
 		 *
 		 * \~english
 		 * @brief Function of checking an anchor to a position in the text
@@ -354,12 +355,13 @@ namespace awh {
 		 * @param start position of the beginning of the match attempt
 		 * @param type  type of the checked anchor to a position in the text
 		 * @param flags set of compilation modes of the instruction
-		 * @param pos   position in the text to check
-		 * @return      result of checking the anchor to a position in the text
+		 * @param pos        position in the text to check
+		 * @param convention newline convention of the expression
+		 * @return           result of checking the anchor to a position in the text
 		 *
 		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ bool assertion(string_view text, const size_t start, const anchor_t type, const uint32_t flags, const size_t pos) noexcept;
+		__AWH_SHARED_EXPORT__ bool assertion(string_view text, const size_t start, const anchor_t type, const uint32_t flags, const size_t pos, const newline_t convention = newline_t::LF) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция проверки принадлежности символа классу символов

@@ -229,7 +229,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		constexpr uint16_t STORAGE_VERSION = 0x0008;
+		constexpr uint16_t STORAGE_VERSION = 0x000B;
 
 		/**
 		 * \~russian

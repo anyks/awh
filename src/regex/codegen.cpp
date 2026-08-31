@@ -4927,12 +4927,32 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				case static_cast <uint8_t> (anchor_t::LINE_END): {
 					// Получаем признак проверки привязки к концу строки
 					const bool ending = (lines && (instruction.assertion.type == anchor_t::LINE_END));
+					/**
+					 * Получаем признак отведения привязке одного конца текста
+					 *
+					 * @details Признак этот отменяет соответствие привязки «$»
+					 *          переводу строки завершающему, а при режиме
+					 *          соответствия привязок границам строк не действует
+					 *          вовсе - как и у эталона PCRE2. Привязки «\Z»
+					 *          он не касается: ей перевод строки завершающий
+					 *          отведён самим её смыслом.
+					 *
+					 */
+					const bool solely = (!lines && (instruction.assertion.type == anchor_t::LINE_END) &&
+					 hasFlag(instruction.flags, flag_t::DOLLAR_END));
 					// Заводим метку выполненной проверки привязки
 					const size_t passed = emitter.label();
 					// Выполняем сравнение позиции сопоставления с размером текста
 					emitter.compare(reg_t::CURSOR, reg_t::SIZE);
 					// Выполняем переход к выполненной проверке в конце текста
 					emitter.branch(cond_t::EQUAL, passed);
+					/**
+					 * Если привязке отведён один лишь конец текста
+					 */
+					if(solely)
+						// Выполняем переход к отказу вне конца текста
+						emitter.jump(failure);
+					else {
 					/**
 					 * Если привязка проверяется к концу текста, а не строки
 					 *
@@ -4954,6 +4974,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 					emitter.compare(reg_t::LETTER, static_cast <uint32_t> (0x0A));
 					// Выполняем переход к отказу вне конца строки
 					emitter.branch(cond_t::NOTEQUAL, failure);
+					}
 					// Выполняем расстановку метки выполненной проверки привязки
 					emitter.place(passed);
 				} break;

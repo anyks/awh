@@ -88,7 +88,7 @@ Which kind of tunnel device is created on which operating system, and how.
 | **Solaris / OpenIndiana** | `/dev/net/<name>`, created beforehand  | same device, same call            |  ❌  |  ❌  |
 | **Windows**               | Wintun, falls back to tap-windows6     | tap-windows6 only                 |  ❌  |  ❌  |
 
-Notes worth knowing before you use them:
+**Notes worth knowing before you use them:**
 
 * **macOS has no TAP device in the stock system.** `/dev/tapN` appears only when a third party driver
   (`tuntaposx` and the like) is installed, so TAP there is an option, not a given.
@@ -107,7 +107,9 @@ Notes worth knowing before you use them:
   through a ring in memory shared with the driver, without entering the kernel per packet.
 * **`GIF` on Linux is refused by the kernel**: the device is created by `RTM_NEWLINK` with the driver
   name as its kind, and Linux knows no kind called `gif` — it uses `sit` and `ip6tnl` for the same
-  encapsulations. `GRE` is a valid kind there and works.
+  encapsulations. The same holds for `WLAN`: a wireless device is not created that way on Linux at all.
+  Asking for either gets `Unknown device type` from the kernel and no device is made — measured on
+  kernels 6.1 and 6.12. `GRE` is a valid kind there and works.
 * **Solaris and illumos refuse `GIF` and `GRE`** outright, and MS Windows creates TUN and TAP only.
 
 ## Requirements

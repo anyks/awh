@@ -297,7 +297,7 @@ void awh::regex::Pike::append(vector <thread_t> & list, vector <uint32_t> & mark
 				/**
 				 * Если привязка к позиции в тексте не выполняется
 				 */
-				if(!assertion(this->_text, this->_start, instruction.assertion.type, instruction.flags, pos)) {
+				if(!assertion(this->_text, this->_start, instruction.assertion.type, instruction.flags, pos, this->_program->newline)) {
 					// Выполняем освобождение набора позиций захвата групп состояния
 					this->release(thread.slots);
 					// Переходим к следующему состоянию стека замыкания

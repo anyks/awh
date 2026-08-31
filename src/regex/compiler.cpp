@@ -90,6 +90,7 @@ namespace {
 				case static_cast <uint8_t> (node_t::RECURSE):
 				case static_cast <uint8_t> (node_t::LOOKAROUND):
 				case static_cast <uint8_t> (node_t::CONDITION):
+				case static_cast <uint8_t> (node_t::CONTROL):
 					// Выводим непринадлежность выражения регулярному подмножеству
 					return false;
 				/**
@@ -275,7 +276,7 @@ namespace {
  */
 awh::regex::Compiler::Compiler() noexcept :
  _parser(nullptr), _arena(nullptr), _program(nullptr), _reverse(false), _full(false),
- _cells(0), _atomics(0), _error(error_t::NONE) {}
+ _cells(0), _branch(~0u), _atomics(0), _error(error_t::NONE) {}
 /**
  * @brief Метод извлечения кода ошибки компиляции
  *
@@ -593,12 +594,42 @@ bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
 		 * Если ветвь выражения является последней
 		 */
 		if(next == INVALID_NODE) {
+			// Сохраняем номер ячейки отметки ветви охватывающей
+			const uint32_t saved = this->_branch;
+			/**
+			 * Если ветвь выражения несёт глагол перехода к ветви следующей
+			 *
+			 * @details Ветвь последняя отметку получает наравне с прочими: возврат
+			 *          в глагол её точки возврата ветви отсекает, а ветви следующей
+			 *          за нею нет - отказ уходит наружу, к точкам, выбор
+			 *          разместившим.
+			 *
+			 */
+			if(this->moving(branch)) {
+				// Выполняем размещение ячейки отметки начала ветви
+				this->_branch = static_cast <uint32_t> (this->_atomics++);
+				// Выполняем размещение инструкции отметки состояния возврата
+				const address_t mark = this->emit(opcode_t::MARK, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(mark == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку номера ячейки отметки состояния возврата
+				this->_program->instructions.at(mark).atomic.cell = this->_branch;
+			}
 			/**
 			 * Если компиляция последней ветви выражения не выполнена
 			 */
-			if(!this->compileNode(branch))
+			if(!this->compileNode(branch)) {
+				// Выполняем восстановление номера ячейки отметки ветви
+				this->_branch = saved;
 				// Выводим результат выполнения компиляции
 				return false;
+			}
+			// Выполняем восстановление номера ячейки отметки ветви
+			this->_branch = saved;
 			// Выходим из цикла компиляции ветвей выражения
 			break;
 		}
@@ -612,12 +643,42 @@ bool awh::regex::Compiler::compileAlternate(const node_id_t id) noexcept {
 			return false;
 		// Выполняем установку адреса ветви с наибольшим приоритетом
 		this->_program->instructions.at(split).split.first = this->position();
+		// Сохраняем номер ячейки отметки ветви охватывающей
+		const uint32_t saved = this->_branch;
+		/**
+		 * Если ветвь выражения несёт глагол перехода к ветви следующей
+		 *
+		 * @details Отметка размещается за переходом по двум ветвям, отчего точка
+		 *          возврата, ветвь следующую хранящая, отсечением не затрагивается:
+		 *          возврат в глагол отсекает накопленное ветвью и продолжается
+		 *          ветвью следующей - как то и у эталонной реализации.
+		 *
+		 */
+		if(this->moving(branch)) {
+			// Выполняем размещение ячейки отметки начала ветви
+			this->_branch = static_cast <uint32_t> (this->_atomics++);
+			// Выполняем размещение инструкции отметки состояния возврата
+			const address_t mark = this->emit(opcode_t::MARK, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(mark == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку номера ячейки отметки состояния возврата
+			this->_program->instructions.at(mark).atomic.cell = this->_branch;
+		}
 		/**
 		 * Если компиляция очередной ветви выражения не выполнена
 		 */
-		if(!this->compileNode(branch))
+		if(!this->compileNode(branch)) {
+			// Выполняем восстановление номера ячейки отметки ветви
+			this->_branch = saved;
 			// Выводим результат выполнения компиляции
 			return false;
+		}
+		// Выполняем восстановление номера ячейки отметки ветви
+		this->_branch = saved;
 		// Выполняем размещение инструкции перехода к завершению выражения
 		const address_t jump = this->emit(opcode_t::JUMP, node.flags);
 		/**
@@ -1420,6 +1481,80 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 			 * Выполняем компиляцию узла ссылки на захваченную группу
 			 */
 			case static_cast <uint8_t> (node_t::BACKREF): {
+				// Получаем набор номеров групп, объявленных именем ссылки
+				const vector <uint32_t> * numbers = this->duplicates(node.backref.name);
+				/**
+				 * Если имя ссылки объявлено несколькими группами
+				 *
+				 * @details Ссылка обращается к первой из одноимённых групп, захват
+				 *          выполнившей, а к прочим не возвращается вовсе: цепочка
+				 *          собирается из условных переходов, точек возврата
+				 *          не оставляющих.
+				 *
+				 */
+				if(numbers != nullptr) {
+					// Набор адресов переходов к завершению цепочки проверок
+					vector <address_t> jumps;
+					/**
+					 * Выполняем обход набора номеров одноимённых групп
+					 */
+					for(size_t index = 0; index < (numbers->size() - 1); index++) {
+						// Выполняем размещение инструкции перехода по выполненности захвата
+						const address_t condition = this->emit(opcode_t::CONDITION, node.flags);
+						/**
+						 * Если размещение инструкции не выполнено
+						 */
+						if(condition == INVALID_ADDRESS)
+							// Выводим результат выполнения компиляции
+							return false;
+						// Выполняем установку вида условия перехода
+						this->_program->instructions.at(condition).condition.type = test_t::CAPTURED;
+						// Выполняем установку номера проверяемой группы
+						this->_program->instructions.at(condition).condition.number = numbers->at(index);
+						// Выполняем установку адреса ветви выполненного захвата
+						this->_program->instructions.at(condition).condition.positive = this->position();
+						// Выполняем размещение инструкции сопоставления захваченного текста
+						const address_t matching = this->emit(opcode_t::BACKREF, node.flags);
+						/**
+						 * Если размещение инструкции не выполнено
+						 */
+						if(matching == INVALID_ADDRESS)
+							// Выводим результат выполнения компиляции
+							return false;
+						// Выполняем установку номера группы, захваченный текст которой сопоставляется
+						this->_program->instructions.at(matching).backref.number = numbers->at(index);
+						// Выполняем размещение инструкции перехода к завершению цепочки
+						const address_t jump = this->emit(opcode_t::JUMP, node.flags);
+						/**
+						 * Если размещение инструкции не выполнено
+						 */
+						if(jump == INVALID_ADDRESS)
+							// Выводим результат выполнения компиляции
+							return false;
+						// Выполняем добавление адреса перехода в набор переходов
+						jumps.push_back(jump);
+						// Выполняем установку адреса ветви невыполненного захвата
+						this->_program->instructions.at(condition).condition.negative = this->position();
+					}
+					// Выполняем размещение инструкции сопоставления захваченного текста
+					const address_t matching = this->emit(opcode_t::BACKREF, node.flags);
+					/**
+					 * Если размещение инструкции не выполнено
+					 */
+					if(matching == INVALID_ADDRESS)
+						// Выводим результат выполнения компиляции
+						return false;
+					// Выполняем установку номера группы, захваченный текст которой сопоставляется
+					this->_program->instructions.at(matching).backref.number = numbers->back();
+					/**
+					 * Выполняем обход набора адресов переходов к завершению цепочки
+					 */
+					for(auto & jump : jumps)
+						// Выполняем установку адреса завершения цепочки проверок
+						this->_program->instructions.at(jump).jump.target = this->position();
+					// Выводим результат выполнения компиляции
+					return true;
+				}
 				// Выполняем размещение инструкции сопоставления захваченного текста
 				const address_t address = this->emit(opcode_t::BACKREF, node.flags);
 				/**
@@ -1444,6 +1579,100 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 			case static_cast <uint8_t> (node_t::GRAPHEME):
 				// Выводим результат размещения инструкции сопоставления графемного кластера
 				return (this->emit(opcode_t::GRAPHEME, node.flags) != INVALID_ADDRESS);
+			/**
+			 * Выполняем компиляцию узла глагола управления возвратом
+			 *
+			 * @details Глаголы управления правят движком возврата и потому
+			 *          доступны исполнению с возвратом одному: компиляция общая
+			 *          отвечает на них отказом неподдерживаемой конструкции,
+			 *          и выражение собирается целиком - тем же порядком,
+			 *          каким собираются выражения с обратными ссылками.
+			 *
+			 */
+			case static_cast <uint8_t> (node_t::CONTROL): {
+				/**
+				 * Если компиляция ведётся не для исполнения с возвратом
+				 */
+				if(!this->_full) {
+					// Выполняем установку ошибки неподдерживаемой конструкции
+					this->_error = error_t::UNSUPPORTED;
+					// Выводим результат выполнения компиляции
+					return false;
+				}
+				/**
+				 * Если глагол управления отмечает ветвь именем
+				 *
+				 * @details Имя переносится в хранилище имён программы, а ячейка
+				 *          отметки последней отводится единожды на всё выражение:
+				 *          глаголы пишут в неё адрес свой, а возврат запись
+				 *          отменяет наравне с ячейками захвата.
+				 *
+				 */
+				if(node.control.type == control_t::MARK) {
+					/**
+					 * Если ячейка отметки последней ещё не отведена
+					 */
+					if(this->_program->marker == ~0u)
+						// Выполняем размещение ячейки отметки последней
+						this->_program->marker = this->reserve();
+					// Получаем смещение имени отметки в хранилище имён программы
+					const uint32_t spot = static_cast <uint32_t> (this->_program->markers.size());
+					/**
+					 * Выполняем перенос имени отметки в хранилище имён программы
+					 */
+					for(uint32_t index = 0; index < node.control.length; index++) {
+						/**
+						 * Если имя отметки выходит за пределы хранилища разбора
+						 */
+						if((static_cast <size_t> (node.control.offset) + static_cast <size_t> (index)) >= this->_parser->markers().size()) {
+							// Выполняем установку внутренней ошибки компиляции
+							this->_error = error_t::INTERNAL;
+							// Выводим результат выполнения компиляции
+							return false;
+						}
+						// Выполняем добавление очередного октета имени отметки
+						this->_program->markers.push_back(this->_parser->markers().at(static_cast <size_t> (node.control.offset) + static_cast <size_t> (index)));
+					}
+					// Выполняем размещение инструкции глагола управления возвратом
+					const address_t address = this->emit(opcode_t::CONTROL, node.flags);
+					/**
+					 * Если размещение инструкции не выполнено
+					 */
+					if(address == INVALID_ADDRESS)
+						// Выводим результат выполнения компиляции
+						return false;
+					// Выполняем установку вида глагола управления возвратом
+					this->_program->instructions.at(address).control.type = control_t::MARK;
+					// Выполняем установку номера ячейки отметки последней
+					this->_program->instructions.at(address).control.cell = this->_program->marker;
+					// Выполняем установку смещения имени отметки в хранилище имён
+					this->_program->instructions.at(address).control.offset = spot;
+					// Выполняем установку длины имени отметки
+					this->_program->instructions.at(address).control.length = node.control.length;
+					// Выводим результат выполнения компиляции
+					return true;
+				}
+				/**
+				 * Если глагол управления завершает сопоставление с успехом
+				 */
+				if(node.control.type == control_t::ACCEPT)
+					// Выводим результат размещения инструкции завершения сопоставления
+					return (this->emit(opcode_t::ACCEPT, node.flags) != INVALID_ADDRESS);
+				// Выполняем размещение инструкции глагола управления возвратом
+				const address_t address = this->emit(opcode_t::CONTROL, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(address == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку вида глагола управления возвратом
+				this->_program->instructions.at(address).control.type = node.control.type;
+				// Выполняем установку номера ячейки отметки ветви охватывающей
+				this->_program->instructions.at(address).control.cell = this->_branch;
+				// Выводим результат выполнения компиляции
+				return true;
+			}
 			/**
 			 * Выполняем компиляцию узла рекурсивного вызова
 			 */
@@ -1487,6 +1716,40 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 	 */
 	this->_error = error_t::UNSUPPORTED;
 	// Выводим результат выполнения компиляции
+	return false;
+}
+/**
+ * @brief Метод проверки наличия глагола перехода к ветви следующей
+ *
+ * @param id индекс проверяемого узла в арене узлов
+ * @return   результат проверки наличия глагола перехода
+ *
+ */
+bool awh::regex::Compiler::moving(const node_id_t id) const noexcept {
+	// Получаем индекс обходимого узла синтаксического дерева
+	node_id_t current = id;
+	/**
+	 * Выполняем обход цепочки узлов синтаксического дерева
+	 */
+	while(current != INVALID_NODE) {
+		// Получаем обходимый узел синтаксического дерева
+		const node_data_t & node = this->node(current);
+		/**
+		 * Если узел является глаголом перехода к ветви следующей
+		 */
+		if((node.type == node_t::CONTROL) && (node.control.type == control_t::THEN))
+			// Выводим результат проверки наличия глагола перехода
+			return true;
+		/**
+		 * Если вложенная цепочка узлов несёт глагол перехода
+		 */
+		if(this->moving(node.child))
+			// Выводим результат проверки наличия глагола перехода
+			return true;
+		// Переходим к следующему узлу цепочки
+		current = node.next;
+	}
+	// Выводим результат проверки наличия глагола перехода
 	return false;
 }
 /**
@@ -1791,6 +2054,8 @@ size_t awh::regex::Compiler::spanningNode(const node_id_t id) const noexcept {
 		case static_cast <uint8_t> (node_t::EMPTY):
 		// Привязка к позиции в тексте текста не поглощает вовсе
 		case static_cast <uint8_t> (node_t::ANCHOR):
+		// Глагол управления возвратом текста не поглощает вовсе
+		case static_cast <uint8_t> (node_t::CONTROL):
 		// Проверка окружения текста не поглощает вовсе
 		case static_cast <uint8_t> (node_t::LOOKAROUND):
 			// Выводим наибольшую длину сопоставления узла
@@ -2417,6 +2682,19 @@ string awh::regex::Compiler::leading(const node_id_t id) const noexcept {
 		 *          совпадения смещает его границу и литерал прерывает.
 		 *
 		 */
+		/**
+		 * Если узел является глаголом управления возвратом
+		 *
+		 * @details Глагол длины не имеет и начала совпадения не смещает наравне
+		 *          с привязкою: ведущий литерал им не прерывается. Отбор позиций
+		 *          при этом глагол обходит - как то и у эталонной реализации,
+		 *          где «(*COMMIT)a» на тексте «ba» совпадение находит, а с указанием
+		 *          «(*NO_START_OPT)» - нет.
+		 *
+		 */
+		if(node.type == node_t::CONTROL)
+			// Переходим к следующему узлу цепочки
+			continue;
 		if(node.type == node_t::ANCHOR) {
 			/**
 			 * Если привязка сбрасывает начало совпадения
@@ -2652,6 +2930,17 @@ void awh::regex::Compiler::analyze() noexcept {
 	prefilter_t & prefilter = this->_program->prefilter;
 	// Выполняем очистку предварительного отбора позиций
 	prefilter.clear();
+	/**
+	 * Если оптимизации отыскания начала совпадения сняты
+	 *
+	 * @details Отбор исхода сопоставления не меняет, а меняет одну лишь скорость,
+	 *          и снятие его выражается пустым отбором: сопоставление обходит
+	 *          позиции подряд, ни одной не отсеивая.
+	 *
+	 */
+	if((this->_program->flags & static_cast <uint32_t> (flag_t::NOSTART)) != 0)
+		// Выходим из формирования предварительного отбора позиций
+		return;
 	// Выполняем установку режима разбора текста как последовательности UTF-8
 	prefilter.utf = ((this->_program->flags & static_cast <uint32_t> (flag_t::UTF)) != 0);
 	// Выполняем формирование набора допустимых начальных байтов
@@ -3287,6 +3576,31 @@ bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) 
  * @return   результат выполнения компиляции
  *
  */
+/**
+ * @brief Метод извлечения набора номеров одноимённых групп
+ *
+ * @param name индекс имени группы в хранилище имён
+ * @return     набор номеров одноимённых групп либо ничего
+ *
+ */
+const vector <uint32_t> * awh::regex::Compiler::duplicates(const uint32_t name) const noexcept {
+	/**
+	 * Если ссылка выполняется не по имени группы
+	 */
+	if(name == NO_NAME)
+		// Выводим отсутствие набора номеров одноимённых групп
+		return nullptr;
+	// Выполняем поиск имени группы в соответствии имён наборам их номеров
+	auto i = this->_parser->groups().find(this->_parser->name(name));
+	/**
+	 * Если имя группы объявлено единственной группой
+	 */
+	if((i == this->_parser->groups().end()) || (i->second.size() < 2))
+		// Выводим отсутствие набора номеров одноимённых групп
+		return nullptr;
+	// Выводим набор номеров одноимённых групп
+	return &i->second;
+}
 bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 	// Получаем узел условного выражения
 	const node_data_t & node = this->node(id);
@@ -3340,22 +3654,54 @@ bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 	 * Выполняем размещение инструкции перехода по ветвям условного выражения
 	 */
 	} else {
-		// Выполняем размещение инструкции перехода по ветвям условного выражения
-		condition = this->emit(opcode_t::CONDITION, node.flags);
 		/**
-		 * Если размещение инструкции не выполнено
+		 * Получаем набор номеров групп, объявленных именем условия
+		 *
+		 * @details Условие по имени выполнено при захвате любой из одноимённых
+		 *          групп, отчего по набору их номеров размещается цепочка проверок,
+		 *          ветвь выполненного условия у каждой из которых одна и та же.
+		 *
 		 */
-		if(condition == INVALID_ADDRESS)
-			// Выводим результат выполнения компиляции
-			return false;
+		const vector <uint32_t> * numbers = (((node.condition.type == condition_t::GROUP_SET) ||
+		 (node.condition.type == condition_t::NAME_SET)) ? this->duplicates(node.condition.name) : nullptr);
+		// Получаем количество размещаемых проверок условия
+		const size_t count = ((numbers != nullptr) ? numbers->size() : 1);
 		// Определяем тип условия условного выражения
 		const test_t type = ((node.condition.type == condition_t::RECURSING) ? test_t::RECURSING : test_t::CAPTURED);
-		// Выполняем установку типа условия условного выражения
-		this->_program->instructions.at(condition).condition.type = type;
-		// Выполняем установку номера проверяемой группы условного выражения
-		this->_program->instructions.at(condition).condition.number = node.condition.number;
-		// Выполняем установку адреса ветви выполненного условия
-		this->_program->instructions.at(condition).condition.positive = this->position();
+		// Набор адресов размещённых проверок условия
+		vector <address_t> conditions;
+		/**
+		 * Выполняем размещение проверок условия условного выражения
+		 */
+		for(size_t index = 0; index < count; index++) {
+			// Выполняем размещение инструкции перехода по ветвям условного выражения
+			condition = this->emit(opcode_t::CONDITION, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(condition == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку типа условия условного выражения
+			this->_program->instructions.at(condition).condition.type = type;
+			// Выполняем установку номера проверяемой группы условного выражения
+			this->_program->instructions.at(condition).condition.number =
+			 ((numbers != nullptr) ? numbers->at(index) : node.condition.number);
+			// Выполняем добавление адреса проверки в набор проверок условия
+			conditions.push_back(condition);
+			/**
+			 * Если размещённая проверка условия не является последней
+			 */
+			if((index + 1) < count)
+				// Выполняем установку адреса следующей проверки условия
+				this->_program->instructions.at(condition).condition.negative = this->position();
+		}
+		/**
+		 * Выполняем обход набора адресов размещённых проверок условия
+		 */
+		for(auto & item : conditions)
+			// Выполняем установку адреса ветви выполненного условия
+			this->_program->instructions.at(item).condition.positive = this->position();
 	}
 	/**
 	 * Если компиляция ветви выполненного условия не выполнена
@@ -3646,6 +3992,12 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 		this->collect(parser.root());
 	// Выполняем установку набора режимов компиляции программы
 	program.flags = parser.options();
+	// Выполняем установку пределов, самим выражением заданных
+	program.steps = parser.steps();
+	program.depth = parser.depth();
+	program.heap = parser.heap();
+	// Выполняем установку соглашения о переводе строки выражения
+	program.newline = parser.newline();
 	// Выполняем размещение инструкции сохранения начала совпадения
 	const address_t begin = this->emit(opcode_t::SAVE, 0);
 	/**

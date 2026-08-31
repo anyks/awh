@@ -1131,7 +1131,7 @@ TEST(Regex, EngineProbing) {
 		// Выполняем поиск совпадения в тексте
 		ASSERT_TRUE(engine.exec(expression, "mail forman@anyks and more", 0, captures));
 		// Выполняем проверку прохождения пути сопоставления машинным кодом
-		EXPECT_GT(regex::probe_t::count(regex::path_t::MACHINE), static_cast <uint64_t> (0));
+		EXPECT_GT(regex::probe_t::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения пути поиска последовательностью
@@ -2493,4 +2493,65 @@ TEST(Regex, MatchingMutated) {
 TEST(Regex, DISABLED_MatchingMutatedThorough) {
 	// Выполняем обход подделок указаний программы по всем выражениям
 	mutating(true);
+}
+/**
+ * @brief Тест отсечения возврата атомарной группой при рекурсии
+ *
+ */
+TEST(Regex, MatchingAtomicRecursion) {
+	/**
+	 * @brief Ожидаемые границы совпадения по длине текста
+	 *
+	 * @details Значения сняты с эталона PCRE2 и подтверждены Perl: обе стороны
+	 *          дают ряд один, а он немонотонен - длина совпадения то растёт,
+	 *          то падает обратно. Немонотонность эта и есть след отсечения:
+	 *          при иных длинах текста атомарная группа обрывает перебор
+	 *          на ином уровне рекурсии.
+	 *
+	 */
+	static const size_t BOUNDS[] = {0, 2, 2, 4, 2, 4, 6, 8, 2, 4, 6, 8};
+	// Создаём объект движка регулярных выражений
+	regex::engine_t engine(::logger());
+	/**
+	 * Выполняем обход способов сопоставления
+	 */
+	for(const bool jit : {false, true}) {
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build("(?>(a+?)(?R)?(?1))",
+		 (jit ? static_cast <uint32_t> (regex::flag_t::JIT) : 0), expression));
+		/**
+		 * Выполняем обход длин текста сопоставления
+		 */
+		for(size_t length = 1; length <= (sizeof(BOUNDS) / sizeof(BOUNDS[0])); length++) {
+			// Создаём текст сопоставления заданной длины
+			const string text(length, 'a');
+			// Набор границ совпадения и захваченных групп
+			vector <pair <size_t, size_t>> captures;
+			// Получаем ожидаемую границу совпадения
+			const size_t expected = BOUNDS[length - 1];
+			// Выполняем сопоставление текста регулярным выражением
+			const bool obtained = engine.exec(expression, text, 0, captures);
+			// Выполняем проверку наличия совпадения в тексте
+			ASSERT_EQ(obtained, (expected > 0)) << "длина " << length << (jit ? ", машинный код" : "");
+			/**
+			 * Если совпадение в тексте обнаружено
+			 */
+			if(expected > 0)
+				/**
+				 * Выполняем проверку конечной границы совпадения
+				 *
+				 * @details Отметка атомарной группы держится ячейкой, одной
+				 *          на всю программу, а рекурсивный вызов входит в ту же
+				 *          группу заново и ячейку перезаписывает. Без отката
+				 *          её отсечение уровня внешнего брало глубину уровня
+				 *          внутреннего и точек возврата не отсекало вовсе:
+				 *          совпадение выходило длиннее должного.
+				 *
+				 */
+				EXPECT_EQ(captures.front().second, expected)
+				 << "длина " << length << (jit ? ", машинный код" : "");
+		}
+	}
 }

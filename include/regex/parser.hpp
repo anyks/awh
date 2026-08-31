@@ -172,6 +172,65 @@ namespace awh {
 				// Общее количество захватывающих групп, определённое предварительным проходом
 				uint32_t _total;
 			private:
+				/**
+				 * \~russian
+				 * Пределы шагов сопоставления и глубины вызовов, выражением заданные
+				 *
+				 * @details Пределы задаются указаниями «(*LIMIT_MATCH=N)»
+				 *          и «(*LIMIT_DEPTH=N)» в начале выражения, а нуль означает,
+				 *          что выражение предела своего не задаёт вовсе.
+				 *
+				 * \~english
+				 * Limits of the matching steps and of the call depth set by the expression
+				 * @details The limits are set by the «(*LIMIT_MATCH=N)» and «(*LIMIT_DEPTH=N)»
+				 *          options at the start of an expression, whereas zero means
+				 *          that the expression sets no limit of its own at all.
+				 *
+				 * \~
+				 */
+				uint32_t _stepLimit;
+				uint32_t _depthLimit;
+				uint32_t _heapLimit;
+			private:
+				/**
+				 * \~russian
+				 * Соглашение о переводе строки и охват последовательности «\\R»
+				 *
+				 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале
+				 *          выражения и правит точкой и привязками, а охват «\\R»
+				 *          правится указаниями «(*BSR_ANYCRLF)» и «(*BSR_UNICODE)»
+				 *          отдельно от соглашения.
+				 *
+				 * \~english
+				 * Newline convention and the coverage of the «\\R» sequence
+				 * @details The convention is set by an option of the «(*CRLF)» kind at the start
+				 *          of an expression and governs the dot and the anchors, whereas the coverage of «\\R»
+				 *          is governed by the «(*BSR_ANYCRLF)» and «(*BSR_UNICODE)» options
+				 *          separately from the convention.
+				 *
+				 * \~
+				 */
+				newline_t _convention;
+				bool _restricted;
+			private:
+				/**
+				 * \~russian
+				 * Хранилище имён отметок глаголов управления
+				 *
+				 * @details Имена всех отметок выражения лежат сплошным набором
+				 *          октетов, а узел глагола ссылается на участок его
+				 *          смещением и длиною наравне с классами символов.
+				 *
+				 * \~english
+				 * Storage of the names of the marks of the control verbs
+				 * @details The names of all the marks of an expression lie in a contiguous set
+				 *          of octets, whereas the node of a verb refers to a span of it
+				 *          by an offset and a length, along with the character classes.
+				 *
+				 * \~
+				 */
+				vector <uint8_t> _markers;
+			private:
 				// Набор режимов компиляции, действующих в текущей позиции разбора
 				uint32_t _flags;
 			private:
@@ -225,6 +284,35 @@ namespace awh {
 			private:
 				// Хранилище последовательностей символов узлов типа «STRING»
 				vector <uint32_t> _strings;
+			private:
+				/**
+				 * \~russian
+				 * @brief Признак разрыва связи квантора встроенными настройками
+				 *
+				 * @details Встроенные настройки символов не сопоставляют и элемента
+				 *          выражения не образуют, однако связь квантора повторения
+				 *          с элементом предшествующим разрывают: квантор за ними
+				 *          считается ошибкой. Прочие же элементы пустые - примечание,
+				 *          завершение экранирования и дословная последовательность
+				 *          пустая - остаются прозрачными, и квантор за ними
+				 *          применяется к элементу, им предшествующему. Признак
+				 *          выставляется разбором настроек и снимается разбором
+				 *          последовательности элементов.
+				 *
+				 * \~english
+				 * @brief Flag of the quantifier binding break by inline options
+				 * @details Inline character options match nothing and do not form
+				 *          an item of the expression, yet they break the binding
+				 *          of a repetition quantifier to the preceding item: a quantifier
+				 *          after them is treated as an error. Other empty items —
+				 *          a comment, the end of quoting and an empty quoted sequence —
+				 *          stay transparent, and a quantifier after them applies
+				 *          to the item preceding them. The flag is set by the parsing
+				 *          of options and cleared by the parsing of an item sequence.
+				 *
+				 * \~
+				 */
+				bool _barrier;
 			private:
 				// Набор отложенных ссылок на именованные группы
 				vector <deferred_t> _deferred;
@@ -357,6 +445,71 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t captures() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения предела шагов сопоставления выражения
+				 *
+				 * @return предел шагов сопоставления либо нуль при его отсутствии
+				 *
+				 * \~english
+				 * @brief Method of getting the limit of the matching steps of the expression
+				 * @return limit of the matching steps or zero if it is absent
+				 *
+				 * \~
+				 */
+				uint32_t steps() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения предела глубины рекурсивных вызовов выражения
+				 *
+				 * @return предел глубины рекурсивных вызовов либо нуль при его отсутствии
+				 *
+				 * \~english
+				 * @brief Method of getting the limit of the recursive call depth of the expression
+				 * @return limit of the recursive call depth or zero if it is absent
+				 *
+				 * \~
+				 */
+				uint32_t depth() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения предела объёма памяти сопоставления выражения
+				 *
+				 * @return предел объёма памяти в килобайтах либо предельное значение при его отсутствии
+				 *
+				 * \~english
+				 * @brief Method of getting the limit of the matching memory of the expression
+				 * @return limit of the memory in kibibytes or the largest value of the type if it is absent
+				 *
+				 * \~
+				 */
+				uint32_t heap() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения соглашения о переводе строки выражения
+				 *
+				 * @return соглашение о переводе строки выражения
+				 *
+				 * \~english
+				 * @brief Method of getting the newline convention of the expression
+				 * @return newline convention of the expression
+				 *
+				 * \~
+				 */
+				newline_t newline() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения хранилища имён отметок глаголов управления
+				 *
+				 * @return хранилище имён отметок глаголов управления
+				 *
+				 * \~english
+				 * @brief Method of getting the storage of the names of the marks of the control verbs
+				 * @return storage of the names of the marks of the control verbs
+				 *
+				 * \~
+				 */
+				const vector <uint8_t> & markers() const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод извлечения исходного набора режимов компиляции
@@ -717,9 +870,15 @@ namespace awh {
 				 *          кодовое значение одиночного символа, либо добавляет диапазоны
 				 *          сокращённого класса символов в формируемый класс.
 				 *
+				 *          Дословная последовательность «\\Q...\\E» одиночным символом
+				 *          выступает краем диапазона: нижним краем служит символ её
+				 *          последний, а верхним - первый, прочие же символы входят
+				 *          в класс наравне с остальными.
+				 *
 				 * @param result класс символов для добавления диапазонов
 				 * @param code   кодовое значение разобранного одиночного символа
 				 * @param single флаг разбора одиночного символа
+				 * @param ending флаг разбора верхнего края диапазона
 				 * @return       результат выполнения разбора
 				 *
 				 * \~english
@@ -727,14 +886,19 @@ namespace awh {
 				 * @details The method parses an escaped sequence and either returns
 				 *          the code point value of a single character or adds the ranges
 				 *          of an abbreviated character class to the class being built.
+				 *          A literal «\\Q...\\E» sequence acts as a single character
+				 *          at an edge of a range: its last character serves as the lower
+				 *          edge and its first one as the upper edge, whereas the rest of
+				 *          the characters enter the class along with the others.
 				 * @param result character class to add the ranges to
 				 * @param code   code point value of the parsed single character
 				 * @param single flag of parsing a single character
+				 * @param ending flag of parsing the upper edge of a range
 				 * @return       result of performing the parsing
 				 *
 				 * \~
 				 */
-				bool parseClassEscape(class_t & result, uint32_t & code, bool & single) noexcept;
+				bool parseClassEscape(class_t & result, uint32_t & code, bool & single, const bool ending = false) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -785,6 +949,35 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				/**
+				 * \~russian
+				 * @brief Метод создания узла любого символа с учётом соглашения
+				 *
+				 * @details Точка вне режима «DOTALL» сопоставляет всякий символ,
+				 *          кроме тех, что соглашение о переводе строки завершением
+				 *          строки почитает. Узел любого символа знает лишь перевод
+				 *          строки, поэтому прочие соглашения выражаются классом
+				 *          символов отрицающим - устройством, всем путям исполнения
+				 *          уже известным. Соглашение пары возврата каретки одиночных
+				 *          завершений не знает вовсе, отчего точка при нём
+				 *          сопоставляет всякий символ.
+				 *
+				 * @return индекс созданного узла в арене узлов
+				 *
+				 * \~english
+				 * @brief Method of creating a node of any character with regard to the convention
+				 * @details Outside the «DOTALL» mode the dot matches every character
+				 *          except those that the newline convention deems an end
+				 *          of a line. The node of any character knows the line feed alone,
+				 *          therefore the other conventions are expressed by a negated character
+				 *          class — a construct already known to every execution path. The convention
+				 *          of the carriage return pair knows no single-character terminators at all,
+				 *          hence the dot under it matches every character.
+				 * @return index of the created node in the node arena
+				 *
+				 * \~
+				 */
+				node_id_t makeAny() noexcept;
 				node_id_t makeClass(class_t & value) noexcept;
 				/**
 				 * \~russian
@@ -1030,6 +1223,27 @@ namespace awh {
 				 * \~
 				 */
 				bool prescan() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод разбора начальных указаний регулярного выражения
+				 *
+				 * @details Указания вида «(*UTF)» размещаются в начале выражения
+				 *          и правят режимами его сборки. Разбираются те из них,
+				 *          что ложатся на признаки сборки, модулем заведённые,
+				 *          а прочие остаются разбору общему, отвергающему их
+				 *          доводом неподдерживаемой конструкции.
+				 *
+				 * \~english
+				 * @brief Method of parsing the start-of-pattern options of a regular expression
+				 * @details The options of the «(*UTF)» kind are placed at the start of an expression
+				 *          and govern the modes of its compilation. The ones parsed are those
+				 *          that map onto the compilation flags declared by the module,
+				 *          whereas the rest are left to the general parsing, which refuses them
+				 *          with the reason of an unsupported construct.
+				 *
+				 * \~
+				 */
+				void settings() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод вычисления длины сопоставляемой узлами последовательности

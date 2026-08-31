@@ -557,6 +557,16 @@ void awh::regex::Storage::save(const program_t & program, string & result) const
 	writeVar(program.cells, result);
 	// Выполняем запись набора режимов компиляции
 	writeVar(program.flags, result);
+	// Выполняем запись предела шагов сопоставления выражения
+	writeVar(program.steps, result);
+	// Выполняем запись предела глубины рекурсивных вызовов выражения
+	writeVar(program.depth, result);
+	// Выполняем запись предела объёма памяти сопоставления выражения
+	writeVar(program.heap, result);
+	// Выполняем запись соглашения о переводе строки выражения
+	write8(static_cast <uint8_t> (program.newline), result);
+	// Выполняем запись номера ячейки отметки последней
+	writeVar(program.marker, result);
 	// Выполняем запись признаков программы
 	write8(static_cast <uint8_t> (program.plain ? 1 : 0), result);
 	write8(static_cast <uint8_t> (program.sweeping ? 1 : 0), result);
@@ -614,6 +624,8 @@ void awh::regex::Storage::save(const program_t & program, string & result) const
 	writeRegion(program.properties, result);
 	// Выполняем запись хранилища последовательностей символов образом памяти
 	writeRegion(program.strings, result);
+	// Выполняем запись хранилища имён отметок глаголов управления
+	writeRegion(program.markers, result);
 }
 /**
  * @brief Метод восстановления программы регулярного выражения
@@ -635,7 +647,41 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	if(!read64(data, offset, program.id) ||
 	 !readVar(data, offset, program.captures) ||
 	 !readVar(data, offset, program.cells) ||
-	 !readVar(data, offset, program.flags)) {
+	 !readVar(data, offset, program.flags) ||
+	 !readVar(data, offset, program.steps) ||
+	 !readVar(data, offset, program.depth) ||
+	 !readVar(data, offset, program.heap)) {
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	// Соглашение о переводе строки, читаемое записью
+	uint8_t convention = 0;
+	/**
+	 * Если чтение соглашения о переводе строки не выполнено
+	 */
+	if(!read8(data, offset, convention)) {
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	/**
+	 * Если соглашение о переводе строки набором не заведено
+	 */
+	if(convention > static_cast <uint8_t> (newline_t::NUL)) {
+		// Устанавливаем ошибку неверного устройства записи
+		this->_error = storage_error_t::BAD_CONTENT;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	// Выполняем установку соглашения о переводе строки выражения
+	program.newline = static_cast <newline_t> (convention);
+	/**
+	 * Если чтение номера ячейки отметки последней не выполнено
+	 */
+	if(!readVar(data, offset, program.marker)) {
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы
@@ -787,6 +833,15 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	 * Если восстановление хранилища последовательностей символов не выполнено
 	 */
 	if(!readRegion(data, offset, MAX_STORAGE, program.strings)) {
+		// Устанавливаем ошибку обрыва записи
+		this->_error = storage_error_t::TRUNCATED;
+		// Выводим результат восстановления программы
+		return false;
+	}
+	/**
+	 * Если восстановление хранилища имён отметок не выполнено
+	 */
+	if(!readRegion(data, offset, MAX_STORAGE, program.markers)) {
 		// Устанавливаем ошибку обрыва записи
 		this->_error = storage_error_t::TRUNCATED;
 		// Выводим результат восстановления программы

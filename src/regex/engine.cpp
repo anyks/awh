@@ -45,6 +45,16 @@ awh::regex::Engine::Engine(const log_t * log) noexcept : _error(error_t::NONE), 
  * @return код ошибки последней операции движка
  *
  */
+const string & awh::regex::Engine::marker() const noexcept {
+	// Выводим имя отметки совпадения последнего
+	return this->_marker;
+}
+/**
+ * @brief Метод извлечения кода ошибки последней операции
+ *
+ * @return код ошибки последней операции
+ *
+ */
 awh::regex::error_t awh::regex::Engine::error() const noexcept {
 	// Выводим код ошибки последней операции движка
 	return this->_error;
@@ -170,6 +180,18 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		if(((flags & static_cast <uint32_t> (flag_t::JIT)) == 0) ||
 		 ((flags & (static_cast <uint32_t> (flag_t::ANCHORED) | static_cast <uint32_t> (flag_t::NOTEMPTY))) != 0) ||
 		 expression.forward.plain)
+			// Выходим из порождения сопоставителя выражения
+			return;
+		/**
+		 * Если выражение несёт соглашение о переводе строки не умолчания
+		 *
+		 * @details Порождение машинного кода знает завершением строки один лишь
+		 *          перевод её и сравнивает с ним знаком единственным. Выражения
+		 *          с соглашением иным исполняются толкователем - исход тот же,
+		 *          а скорость ниже.
+		 *
+		 */
+		if(expression.forward.newline != newline_t::LF)
 			// Выходим из порождения сопоставителя выражения
 			return;
 		// Создаём сопоставитель выражения в виде порождённого машинного кода
@@ -356,7 +378,7 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 */
 	if(expression.machine) {
 		// Выполняем учёт сопоставления порождённым машинным кодом
-		AWH_REGEX_TICK(path_t::MACHINE);
+		AWH_REGEX_TICK(path_t::JITTED);
 		// Признак отказа порождённого сопоставителя от сопоставления
 		bool refused = false;
 		// Выполняем сопоставление порождённым машинным кодом
@@ -458,11 +480,35 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	// Выполняем очистку набора границ совпадения
 	captures.clear();
 	/**
+	 * Выполняем очистку имени отметки совпадения последнего
+	 *
+	 * @details Имя отвечает совпадению последнему и сопоставлением всяким
+	 *          очищается: имя, прежним совпадением оставленное, за отметку
+	 *          нынешнего принято быть не должно.
+	 *
+	 */
+	this->_marker.clear();
+	/**
 	 * Если движок к сопоставлению не готов
 	 */
 	if(!expression.ready)
 		// Выводим результат поиска совпадения
 		return false;
+	/**
+	 * Если выражение работы сопоставления не допускает вовсе
+	 *
+	 * @details Предел «(*LIMIT_MATCH=0)» работы не допускает ни единого шага,
+	 *          и отказ даётся до выбора пути исполнения: пути, линейные
+	 *          по построению, шагов не считают, и предел на них иначе
+	 *          не сказался бы вовсе.
+	 *
+	 */
+	if(expression.forward.steps == 0) {
+		// Выполняем установку ошибки превышения допустимого объёма работы
+		this->_error = error_t::BUDGET_EXCEEDED;
+		// Выводим результат поиска совпадения
+		return false;
+	}
 	/**
 	 * Если выражение несёт сопоставитель в виде порождённого машинного кода
 	 *
@@ -472,7 +518,7 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 */
 	if(expression.machine) {
 		// Выполняем учёт сопоставления порождённым машинным кодом
-		AWH_REGEX_TICK(path_t::MACHINE);
+		AWH_REGEX_TICK(path_t::JITTED);
 		// Признак отказа порождённого сопоставителя от сопоставления
 		bool refused = false;
 		// Выполняем сопоставление порождённым машинным кодом
@@ -498,6 +544,33 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 		const bool result = this->_backtrack.exec(expression.forward, text, start, captures);
 		// Выполняем установку кода ошибки исполнения с возвратом
 		this->_error = this->_backtrack.error();
+		{
+			/**
+			 * Получаем адрес глагола отметки совпадения последнего
+			 *
+			 * @details Совпадение выводит отметку пути, его давшего, а отказ -
+			 *          отметку последнюю попытки последней: правила эти сняты
+			 *          с эталонной реализации опытом.
+			 *
+			 */
+			const size_t address = (result ? this->_backtrack.marked() : this->_backtrack.failed());
+			/**
+			 * Если совпадение глагол отметки прошло
+			 */
+			if((address != string_view::npos) && (address < expression.forward.instructions.size())) {
+				// Получаем инструкцию глагола отметки совпадения
+				const instruction_t & instruction = expression.forward.instructions[address];
+				// Получаем смещение имени отметки в хранилище имён
+				const size_t spot = static_cast <size_t> (instruction.control.offset);
+				/**
+				 * Если имя отметки хранилищу имён принадлежит
+				 */
+				if((spot + static_cast <size_t> (instruction.control.length)) <= expression.forward.markers.size())
+					// Выполняем установку имени отметки совпадения последнего
+					this->_marker.assign(reinterpret_cast <const char *> (expression.forward.markers.data() + spot),
+					 static_cast <size_t> (instruction.control.length));
+			}
+		}
 		// Выводим результат поиска совпадения
 		return result;
 	}

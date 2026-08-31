@@ -68,6 +68,21 @@ namespace awh {
 	 */
 	namespace fiber {
 		/**
+		 * @brief Прототип класса волокна
+		 *
+		 */
+		class Fiber;
+		/**
+		 * @brief Тип волокна
+		 *
+		 */
+		using fiber_t = Fiber;
+		/**
+		 * @brief Тип функции, выполняемой волокном
+		 *
+		 */
+		using task_t = function <void (void)>;
+		/**
 		 * @brief Состояние волокна
 		 *
 		 */
@@ -87,34 +102,46 @@ namespace awh {
 		 */
 		static constexpr size_t STACK_SIZE = 0x10000;
 		/**
-		 * @brief Прототип класса волокна
+		 * @brief Функция заведения волокна
+		 *
+		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
+		 *
+		 * @param task функция, выполняемая волокном
+		 * @param size размер стека волокна в октетах
+		 * @return     заведённое волокно, либо nullptr при отказе
 		 *
 		 */
-		class Fiber;
-		/**
-		 * @brief Тип функции, выполняемой волокном
-		 *
-		 */
-		typedef function <void (void)> task_t;
+		fiber_t * spawn(task_t task, const size_t size) noexcept;
 		/**
 		 * @brief Функция заведения волокна
 		 *
 		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
 		 *
-		 * @param task  функция, выполняемая волокном
-		 * @param log   объект работы с логами
-		 * @param size  размер стека волокна в октетах
-		 * @return      заведённое волокно, либо nullptr при отказе
+		 * @param task функция, выполняемая волокном
+		 * @param log  объект работы с логами
+		 * @return     заведённое волокно, либо nullptr при отказе
 		 *
 		 */
-		Fiber * spawn(task_t task, const log_t * log = nullptr, const size_t size = STACK_SIZE) noexcept;
+		fiber_t * spawn(task_t task, const log_t * log) noexcept;
+		/**
+		 * @brief Функция заведения волокна
+		 *
+		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
+		 *
+		 * @param task функция, выполняемая волокном
+		 * @param size размер стека волокна в октетах
+		 * @param log  объект работы с логами
+		 * @return     заведённое волокно, либо nullptr при отказе
+		 *
+		 */
+		fiber_t * spawn(task_t task, const size_t size = STACK_SIZE, const log_t * log = nullptr) noexcept;
 		/**
 		 * @brief Функция получения волокна, в котором идёт выполнение
 		 *
 		 * @return волокно, либо nullptr, если выполнение идёт вне волокна
 		 *
 		 */
-		Fiber * current() noexcept;
+		fiber_t * current() noexcept;
 		/**
 		 * @brief Функция усыпления текущего волокна
 		 *
@@ -135,7 +162,7 @@ namespace awh {
 		 * @return      результат пробуждения
 		 *
 		 */
-		bool resume(Fiber * fiber) noexcept;
+		bool resume(fiber_t * fiber) noexcept;
 		/**
 		 * @brief Функция получения состояния волокна
 		 *
@@ -143,7 +170,7 @@ namespace awh {
 		 * @return      состояние волокна
 		 *
 		 */
-		state_t status(const Fiber * fiber) noexcept;
+		state_t status(const fiber_t * fiber) noexcept;
 		/**
 		 * @brief Функция уничтожения волокна
 		 *
@@ -154,7 +181,7 @@ namespace awh {
 		 * @return      результат уничтожения
 		 *
 		 */
-		bool destroy(Fiber * fiber) noexcept;
+		bool destroy(fiber_t * fiber) noexcept;
 	};
 };
 

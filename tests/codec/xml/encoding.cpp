@@ -30,6 +30,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/encoding.hpp>
+#include <codec/csv/encoding.hpp>
+#include <codec/json/encoding.hpp>
 #include <codec/xml/reader.hpp>
 #include <codec/xml/document.hpp>
 
@@ -1246,5 +1248,210 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 		ASSERT_FALSE(document.parse(text)) << item;
 		// Выполняем проверку кода отказа
 		ASSERT_EQ(document.error(), xml::error_t::UNSUPPORTED_ENCODING) << item;
+	}
+}
+
+/**
+ * @brief Пространство имён внешнего судьи годности UTF-8
+ *
+ * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
+ *       программою, и одноимённые построения разных файлов иначе сходятся в одно
+ *
+ * @note Судья этот повторяет собою тот, что стоит у проверок JSON. Повтор намеренный
+ *       и неустранимый: общего заголовка у проверок нет, а вынести судью в кодек
+ *       значило бы лишить его звания ВНЕШНЕГО - он стал бы частью проверяемого
+ *
+ */
+namespace {
+	/**
+	 * @brief Метод чтения кодового значения внешним судьёй
+	 *
+	 * @details Судья писан по описанию Юникода и ни одному кодеку не принадлежит.
+	 * Кратчайшесть записи, суррогаты и предел U+10FFFF отсекаются пределами первого
+	 * продолжающего байта - ровно так, как то задано таблицей описания, а не проверками
+	 * над собранным значением
+	 *
+	 * @param buffer буфер читаемой последовательности
+	 * @param size   размер буфера читаемой последовательности
+	 * @param length длина годной последовательности, ноль при негодной
+	 * @return       прочитанное кодовое значение
+	 *
+	 */
+	uint32_t judge(const unsigned char * buffer, const size_t size, size_t & length) noexcept {
+		// Сбрасываем длину прочитанной последовательности
+		length = 0;
+		// Если читать нечего
+		if(size == 0) return 0;
+		// Получаем ведущий байт последовательности
+		const unsigned char letter = buffer[0];
+		// Количество продолжающих байтов последовательности
+		size_t count = 0;
+		// Пределы первого продолжающего байта последовательности
+		unsigned char lower = 0x80, upper = 0xBF;
+		// Собираемое кодовое значение знака
+		uint32_t code = 0;
+		/**
+		 * Определяем ведущий байт очередной последовательности
+		 */
+		if(letter < 0x80){
+			// Запоминаем длину прочитанной последовательности
+			length = 1;
+			// Выводим кодовое значение знака US-ASCII
+			return letter;
+		} else if((letter >= 0xC2) && (letter <= 0xDF)){ count = 1; code = (letter & 0x1F); }
+		else if(letter == 0xE0){ count = 2; lower = 0xA0; code = (letter & 0x0F); }
+		else if((letter >= 0xE1) && (letter <= 0xEC)){ count = 2; code = (letter & 0x0F); }
+		else if(letter == 0xED){ count = 2; upper = 0x9F; code = (letter & 0x0F); }
+		else if((letter >= 0xEE) && (letter <= 0xEF)){ count = 2; code = (letter & 0x0F); }
+		else if(letter == 0xF0){ count = 3; lower = 0x90; code = (letter & 0x07); }
+		else if((letter >= 0xF1) && (letter <= 0xF3)){ count = 3; code = (letter & 0x07); }
+		else if(letter == 0xF4){ count = 3; upper = 0x8F; code = (letter & 0x07); }
+		// Выводим признак негодной последовательности
+		else return 0;
+		// Если последовательность оборвана концом буфера
+		if(size < (count + 1)) return 0;
+		/**
+		 * Выполняем перебор всех продолжающих байтов последовательности
+		 */
+		for(size_t i = 1; i <= count; i++){
+			// Получаем очередной продолжающий байт последовательности
+			const unsigned char next = buffer[i];
+			// Получаем пределы очередного продолжающего байта
+			const unsigned char from = ((i == 1) ? lower : 0x80), till = ((i == 1) ? upper : 0xBF);
+			// Если продолжающий байт вышел за свои пределы
+			if((next < from) || (next > till)) return 0;
+			// Дописываем разряды продолжающего байта к кодовому значению
+			code = ((code << 6) | (next & 0x3F));
+		}
+		// Запоминаем длину прочитанной последовательности
+		length = (count + 1);
+		// Выводим собранное кодовое значение знака
+		return code;
+	}
+}
+
+/**
+ * @brief Проверка согласия трёх разбирателей UTF-8 с внешним судьёй
+ *
+ * @details Кодеки CSV, JSON и XML несут по своему разбирателю последовательностей UTF-8
+ * - тела у них РАЗНЫЕ, - и сличаются они здесь не друг с другом, а с судьёй, ни одному
+ * из них не принадлежащим. Сличение их между собою было бы кругом иного вида: согласие
+ * трёх ничего не говорит о правоте, если правило у них позаимствовано одно у другого
+ *
+ * @note Сличается ПРИГОВОР о годности, а не длина: длину при негодной последовательности
+ *       судья и кодеки договорили по-разному, и сличение её мерило бы договорённость.
+ *       У годной же последовательности сличаются и кодовое значение, и длина
+ *
+ * @note Замер щупом 31.08.2026 исчерпал ВСЕ последовательности длиною до трёх байтов -
+ *       16 843 008 на кодек - и 2 102 784 четырёхбайтовых: расхождений ноль у всех трёх.
+ *       Зрячесть доказана порчею ОДНОГО кодека: снятие отсечения суррогатов дало ровно
+ *       2048 расхождений у него и ни одного у двух прочих. Здесь перебор сокращён до
+ *       исчерпывающего двухбайтового и всех граничных троек с четвёрками: проверки
+ *       собираются с покрытием кода, и полный перебор стоил бы минут
+ *
+ */
+TEST(CodecXmlEncoding, DecodersAgreeWithExternalJudge) {
+	// Количество расхождений приговора, кодового значения и длины
+	size_t verdicts = 0, codes = 0, lengths = 0;
+	/**
+	 * @brief Метод сличения приговора кодеков с приговором судьи
+	 *
+	 * @param buffer сличаемая последовательность байтов
+	 * @param size   размер сличаемой последовательности
+	 *
+	 */
+	const auto compare = [&](const unsigned char * buffer, const size_t size) noexcept {
+		// Длина годной последовательности по приговору судьи
+		size_t expected = 0;
+		// Кодовое значение по приговору судьи
+		const uint32_t wanted = ::judge(buffer, size, expected);
+		// Получаем указание на сличаемую последовательность
+		const char * text = reinterpret_cast <const char *> (buffer);
+		// Длина последовательности по приговору кодека
+		size_t length = 0;
+		/**
+		 * Выполняем сличение приговоров всех трёх кодеков
+		 */
+		for(size_t codec = 0; codec < 3; codec++){
+			// Сбрасываем длину последовательности
+			length = 0;
+			// Получаем кодовое значение приговором очередного кодека
+			const uint32_t code = ((codec == 0) ? csv::decode(text, size, length) :
+			                      ((codec == 1) ? json::decode(text, size, length) :
+			                                      xml::decode(text, size, length)));
+			// Если приговоры о годности разошлись
+			if((code == xml::INVALID_CODEPOINT) != (expected == 0)) verdicts++;
+			/**
+			 * Если последовательность годна
+			 */
+			else if(expected != 0){
+				// Если разошлись кодовые значения
+				if(code != wanted) codes++;
+				// Если разошлись длины
+				else if(length != expected) lengths++;
+			}
+		}
+	};
+	// Сличаемая последовательность байтов
+	unsigned char buffer[4] = {0};
+	/**
+	 * Выполняем исчерпывающий перебор всех последовательностей одного и двух байтов
+	 */
+	for(uint32_t first = 0; first < 256; first++){
+		buffer[0] = static_cast <unsigned char> (first);
+		compare(buffer, 1);
+		for(uint32_t second = 0; second < 256; second++){
+			buffer[1] = static_cast <unsigned char> (second);
+			compare(buffer, 2);
+		}
+	}
+	/**
+	 * Выполняем перебор граничных троек и четвёрок
+	 *
+	 * @note Ведущие байты подобраны по границам описания: `C0`/`C1` - переудлинённая
+	 *       запись, `E0` - её же трёхбайтовый случай, `ED` - суррогаты, `F0` - её же
+	 *       четырёхбайтовый случай, `F4` - предел U+10FFFF, `F5` - за пределом
+	 */
+	for(const unsigned char leading : {0xC0, 0xC1, 0xE0, 0xE1, 0xED, 0xEE, 0xF0, 0xF1, 0xF4, 0xF5}){
+		buffer[0] = leading;
+		/**
+		 * Выполняем исчерпывающий перебор продолжающих байтов у граничных ведущих
+		 */
+		for(uint32_t second = 0; second < 256; second++){
+			buffer[1] = static_cast <unsigned char> (second);
+			for(const unsigned char third : {0x00, 0x7F, 0x80, 0x8F, 0x90, 0x9F, 0xA0, 0xBF, 0xC0, 0xFF}){
+				buffer[2] = third;
+				compare(buffer, 3);
+				for(const unsigned char fourth : {0x00, 0x80, 0xBF, 0xC0, 0xFF}){
+					buffer[3] = fourth;
+					compare(buffer, 4);
+				}
+			}
+		}
+	}
+	// Выполняем проверку согласия приговоров о годности
+	ASSERT_EQ(verdicts, static_cast <size_t> (0));
+	// Выполняем проверку согласия кодовых значений
+	ASSERT_EQ(codes, static_cast <size_t> (0));
+	// Выполняем проверку согласия длин годных последовательностей
+	ASSERT_EQ(lengths, static_cast <size_t> (0));
+	/**
+	 * Выполняем проверку зрячести самого судьи
+	 *
+	 * @note Судья, всё подряд отвергающий, прошёл бы проверку выше лишь при кодеках,
+	 *       делающих то же, - но проверка стоит здесь затем, что молчащий судья
+	 *       неотличим от согласия
+	 */
+	{
+		// Длина годной последовательности по приговору судьи
+		size_t length = 0;
+		// Выполняем проверку отвержения суррогата судьёю
+		const unsigned char surrogate[3] = {0xED, 0xA0, 0x80};
+		::judge(surrogate, 3, length);
+		ASSERT_EQ(length, static_cast <size_t> (0));
+		// Выполняем проверку принятия годной последовательности судьёю
+		const unsigned char letter[2] = {0xD0, 0x91};
+		ASSERT_EQ(::judge(letter, 2, length), static_cast <uint32_t> (0x411));
+		ASSERT_EQ(length, static_cast <size_t> (2));
 	}
 }

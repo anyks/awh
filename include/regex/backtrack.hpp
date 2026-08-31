@@ -316,6 +316,8 @@ namespace awh {
 					size_t pos;
 					// Размер журнала изменений ячеек захвата на момент сохранения
 					size_t journal;
+					// Размер журнала изменений отметок атомарных групп на момент сохранения
+					size_t remarks;
 					/**
 					 * \~russian
 					 * Количество оставшихся позиций ряда повторения одиночного символа
@@ -339,6 +341,29 @@ namespace awh {
 					size_t span;
 					/**
 					 * \~russian
+					 * Вид глагола управления, точку разместившего
+					 *
+					 * @details Значение выводится увеличенным на единицу, а нуль
+					 *          означает точку обыкновенную: глаголы управления
+					 *          размещают точку, исполнения не продолжающую, - возврат
+					 *          в неё прекращает попытку сопоставления, а вид глагола
+					 *          указывает, как её продолжать.
+					 *
+					 * \~english
+					 * Kind of the control verb that placed the point
+					 * @details The value is yielded increased by one, whereas zero
+					 *          means an ordinary point: the control verbs place a point
+					 *          that does not continue the execution — backtracking into it
+					 *          terminates the matching attempt, and the kind of the verb
+					 *          tells how to continue it.
+					 *
+					 * \~
+					 */
+					uint8_t control;
+					// Номер ячейки отметки ветви охватывающей группы глагола перехода
+					uint32_t cell;
+					/**
+					 * \~russian
 					 * @brief Конструктор
 					 *
 					 *
@@ -347,7 +372,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Point() noexcept : frame(false), pc(0), pos(0), journal(0), span(0) {}
+					Point() noexcept : frame(false), pc(0), pos(0), journal(0), span(0), control(0), cell(0) {}
 				} point_t;
 			private:
 				/**
@@ -434,6 +459,93 @@ namespace awh {
 				// Наибольшая допустимая глубина рекурсивных вызовов подвыражений
 				size_t _nesting;
 			private:
+				/**
+				 * \~russian
+				 * Действующая наибольшая глубина рекурсивных вызовов сопоставления
+				 *
+				 * @details Глубина берётся наименьшей из заданной вызывающей стороной
+				 *          и заданной самим выражением указанием «(*LIMIT_DEPTH=N)»:
+				 *          предел выражения понижает предел вызывающей стороны,
+				 *          но не повышает его.
+				 *
+				 * \~english
+				 * Effective largest depth of the recursive calls of the matching
+				 * @details The depth is taken as the smallest of the one set by the calling side
+				 *          and the one set by the expression itself by the «(*LIMIT_DEPTH=N)» option:
+				 *          the limit of the expression lowers the limit of the calling side
+				 *          but never raises it.
+				 *
+				 * \~
+				 */
+				size_t _deepest;
+			private:
+				/**
+				 * \~russian
+				 * Действующий наибольший объём памяти сопоставления в байтах
+				 *
+				 * @details Объём задаётся самим выражением указанием «(*LIMIT_HEAP=N)»
+				 *          и считается по наборам точек возврата, кадров вызовов
+				 *          и записей журнала наравне с прочими пределами их размеров.
+				 *
+				 * \~english
+				 * Effective largest amount of the matching memory in bytes
+				 * @details The amount is set by the expression itself by the «(*LIMIT_HEAP=N)» option
+				 *          and is counted over the sets of the backtracking points, the call frames
+				 *          and the journal entries along with the other limits of their sizes.
+				 *
+				 * \~
+				 */
+				size_t _memory;
+			private:
+				/**
+				 * \~russian
+				 * Вид глагола управления, попытку сопоставления прекратившего
+				 *
+				 * @details Значение выводится увеличенным на единицу наравне с точкой
+				 *          возврата, а нуль означает прекращение обыкновенное. Внешний
+				 *          обход позиций начала читает его и решает, продолжать ли
+				 *          попытки: глагол отказа целиком их прекращает, а глаголы
+				 *          переноса задают позицию продолжения.
+				 *
+				 * \~english
+				 * Kind of the control verb that terminated the matching attempt
+				 * @details The value is yielded increased by one along with the backtracking point,
+				 *          whereas zero means an ordinary termination. The outer walk over the starting
+				 *          positions reads it and decides whether to continue the attempts:
+				 *          the verb of the whole refusal terminates them, whereas the verbs of moving
+				 *          set the position of continuation.
+				 *
+				 * \~
+				 */
+				uint8_t _control;
+			private:
+				// Позиция продолжения попытки сопоставления глаголом переноса
+				size_t _resume;
+			private:
+				/**
+				 * \~russian
+				 * Адрес глагола отметки, попыткою последней пройденного
+				 *
+				 * @details Ячейка отметки возвратом отменяется, отчего по отказу
+				 *          сопоставления в ней ничего не остаётся. Эталонная же
+				 *          реализация имя отметки выводит и при отказе - отметку
+				 *          последнюю попытки последней, - и адрес ведётся потому
+				 *          отдельно: возвратом он не отменяется, началом попытки
+				 *          очищается, а глаголом отсечения снимается.
+				 *
+				 * \~english
+				 * Address of the mark verb passed by the last attempt
+				 * @details The mark cell is undone by backtracking, whereby nothing remains in it
+				 *          upon a failure of the matching. The reference implementation, however,
+				 *          yields the name of the mark upon a failure as well — the last mark
+				 *          of the last attempt — and the address is therefore maintained
+				 *          separately: it is not undone by backtracking, is cleared at the start
+				 *          of an attempt and is removed by a cutting verb.
+				 *
+				 * \~
+				 */
+				size_t _failing;
+			private:
 				// Действующая вложенность исполнений программы
 				size_t _nested;
 			private:
@@ -497,6 +609,53 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
+				 * @brief Изменение отметки атомарной группы
+				 *
+				 * @details Ячейка отметки одна на всю программу, а рекурсивный
+				 *          вызов входит в ту же атомарную группу заново
+				 *          и ячейку перезаписывает. Оттого отсечение уровня
+				 *          внешнего брало глубину уровня внутреннего и точек
+				 *          возврата не отсекало вовсе. Изменения ведутся
+				 *          журналом наравне с ячейками захвата: кадр вызова
+				 *          и точка возврата держат отсечку журнала, а возврат
+				 *          восстанавливает прежние значения отметок.
+				 *
+				 * \~english
+				 * @brief Change of an atomic group mark
+				 * @details The mark cell is a single one for the whole program, while
+				 *          a recursive call enters the same atomic group anew
+				 *          and overwrites the cell. Because of that the cut of an outer level
+				 *          took the depth of an inner level and cut no backtracking
+				 *          points at all. Changes are kept in a journal alongside
+				 *          the capture cells: the call frame and the backtracking point
+				 *          keep the journal watermark, and backtracking
+				 *          restores the previous values of the marks.
+				 *
+				 * \~
+				 */
+				typedef struct Remark {
+					// Номер ячейки изменённой отметки
+					uint32_t cell;
+					// Прежнее значение отметки
+					size_t value;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Remark() noexcept : cell(0), value(0) {}
+				} remark_t;
+			private:
+				// Журнал изменений отметок атомарных групп
+				vector <remark_t> _remarks;
+			private:
+				/**
+				 * \~russian
 				 * @brief Кадр исполняемого рекурсивного вызова подвыражения
 				 *
 				 * \~english
@@ -511,6 +670,8 @@ namespace awh {
 					uint32_t number;
 					// Размер журнала изменений ячеек захвата на момент вызова
 					size_t journal;
+					// Размер журнала изменений отметок атомарных групп на момент вызова
+					size_t remarks;
 					// Номер кадра вызова, из которого выполнен рекурсивный вызов
 					size_t parent;
 					// Глубина рекурсивного вызова, отсчитываемая с единицы
@@ -717,6 +878,41 @@ namespace awh {
 				 * \~
 				 */
 				error_t error() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения адреса глагола отметки совпадения последнего
+				 *
+				 * @details Адрес берётся из ячейки отметки последней, ведомой наравне
+				 *          с ячейками захвата: по совпадении в ней остаётся глагол
+				 *          пути, совпадение давшего. Значение недостижимое означает
+				 *          совпадение, глаголов отметки не прошедшее.
+				 *
+				 * @return адрес глагола отметки совпадения последнего
+				 *
+				 * \~english
+				 * @brief Method of getting the address of the mark verb of the last match
+				 * @details The address is taken from the cell of the last mark, maintained along
+				 *          with the capture cells: upon a match it holds the verb of the path
+				 *          that produced the match. An unreachable value means a match
+				 *          that passed no mark verbs.
+				 * @return address of the mark verb of the last match
+				 *
+				 * \~
+				 */
+				size_t marked() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения адреса глагола отметки попытки последней
+				 *
+				 * @return адрес глагола отметки попытки последней
+				 *
+				 * \~english
+				 * @brief Method of getting the address of the mark verb of the last attempt
+				 * @return address of the mark verb of the last attempt
+				 *
+				 * \~
+				 */
+				size_t failed() const noexcept;
 			private:
 				/**
 				 * \~russian
@@ -831,6 +1027,29 @@ namespace awh {
 				 * \~
 				 */
 				void restore(const size_t mark) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод отката изменений отметок атомарных групп
+				 *
+				 * @details Откат ведётся по возврате из рекурсивного вызова
+				 *          и по отмене его: ячейка отметки одна на всю программу,
+				 *          и вызов, вошедший в ту же атомарную группу, значение
+				 *          её перезаписывает.
+				 *
+				 * @param mark отсечка журнала изменений отметок
+				 *
+				 * \~english
+				 * @brief Method of rolling back the changes of the atomic group marks
+				 * @details The rollback is performed on returning from a recursive call
+				 *          and on cancelling it: the mark cell is a single one for the whole program,
+				 *          and a call that has entered the same atomic group overwrites
+				 *          its value.
+				 * @param mark watermark of the journal of the mark changes
+				 *
+				 * \~
+				 */
+				void rollback(const size_t mark) noexcept;
 			public:
 				/**
 				 * \~russian

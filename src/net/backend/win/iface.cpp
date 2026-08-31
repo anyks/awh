@@ -266,7 +266,7 @@ namespace {
 	 * @return      переведённая запись
 	 *
 	 */
-	std::string __awh_narrow__(const wchar_t * value) noexcept {
+	[[maybe_unused]] std::string __awh_narrow__(const wchar_t * value) noexcept {
 		// Если запись не передана
 		if((value == nullptr) || (value[0] == L'\0'))
 			// Возвращаем пустой результат

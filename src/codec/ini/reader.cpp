@@ -325,6 +325,16 @@ namespace {
 				const size_t count = ((text[offset + 1] == 'x') ? 2 : ((text[offset + 1] == 'u') ? 4 : 8));
 				/**
 				 * Если знаков записи кодового значения не хватает
+				 *
+				 * @warning Заход этот управление ПОЛУЧАЕТ - «k=x\\u12» берёт его, - однако
+				 *          исхода разбора он не меняет: разряды за ним поверяются
+				 *          шестнадцатеричными, и усечённая запись отвергается тем же кодом
+				 *          и ниже. Порчею проверено: заход, обращённый в `if(false)`,
+				 *          `TruncatedCodepointEscape` не роняет. Стоит он чтением, а не
+				 *          исходом - без него разбор читает разряды за концом значения
+				 *
+				 * @note Пересечение трёх прогонов числило строку слепой, покуда усечённой
+				 *       записи не подавал никто; ныне она взята проверкой трижды
 				 */
 				if((offset + 2 + count) > text.length())
 					// Выводим признак неудачного разбора
@@ -1194,71 +1204,12 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	 */
 	const uint8_t kinds = static_cast <uint8_t> (this->_settings.subsections);
 	/**
-	 * Если подраздел отделяется знаком-разделителем
+	 * Если подраздел заключается в кавычки
+	 *
+	 * @note Разбор кавычек ведётся ПРЕЖДЕ разбора точечной цепи: запись «[a.b "origin"]»
+	 *       несёт оба построения разом, и рез по точке первым уносил бы кавычки в имя
 	 */
-	if(kinds & static_cast <uint8_t> (subsection_t::DELIMITED)){
-		{
-			/**
-			 * Граница поиска знака-разделителя имени подраздела
-			 *
-			 * @note При признании обоих построений разом поиск ведётся лишь до открывающей
-			 *       кавычки: знак-разделитель внутри имени, кавычками взятого, есть знак
-			 *       обыкновенный, и резать по нему значило бы рвать имя надвое
-			 */
-			const size_t edge = ((kinds & static_cast <uint8_t> (subsection_t::QUOTED)) ?
-			 content.find('"') : string_view::npos);
-			// Получаем положение знака-разделителя имени подраздела
-			const size_t position = content.substr(0, edge).find(this->_settings.delimiter);
-			/**
-			 * Если знак-разделитель имени подраздела обнаружен
-			 */
-			if(position != string_view::npos){
-				// Количество знаков-разделителей имени подраздела
-				uint32_t depth = 0;
-				/**
-				 * Выполняем перебор знаков имени подраздела
-				 */
-				for(size_t i = position; i < content.length(); i++){
-					/**
-					 * Если очередным знаком является знак-разделитель
-					 */
-					if(content[i] == this->_settings.delimiter)
-						// Выполняем увеличение количества знаков-разделителей
-						depth++;
-				}
-				/**
-				 * Если глубина вложенности подразделов предел настроек превышает
-				 */
-				if(depth >= this->_settings.maxDepth)
-					// Выводим сообщение об ошибке разбора
-					return this->fail(error_t::DEPTH_EXCEEDED, offset, this->_line, 1);
-				/**
-				 * Если имя подраздела за знаком-разделителем пусто
-				 *
-				 * @note Запись «[a.]» от записи «[a]» отличается лишь знаком-разделителем,
-				 *       а разбирается в тот же раздел с пустым подразделом: принять её
-				 *       значило бы потерять этот знак при обратной записи
-				 */
-				if((position + 1) >= content.length())
-					// Выводим сообщение об ошибке разбора
-					return this->fail(error_t::INVALID_SUBSECTION, offset, this->_line, 1);
-				// Запоминаем имя текущего подраздела
-				this->_subsection.assign(content.substr(position + 1));
-				// Получаем имя раздела без имени подраздела
-				content = content.substr(0, position);
-				/**
-				 * Если имя раздела оказалось пустым
-				 */
-				if(content.empty())
-					// Выводим сообщение об ошибке разбора
-					return this->fail(error_t::EMPTY_SECTION, offset, this->_line, 1);
-			}
-		}
-	}
-	/**
-	 * Если подраздел заключается в кавычки и найден он не был
-	 */
-	if((kinds & static_cast <uint8_t> (subsection_t::QUOTED)) && this->_subsection.empty()){
+	if(kinds & static_cast <uint8_t> (subsection_t::QUOTED)){
 		{
 			// Получаем положение открывающей кавычки имени подраздела
 			const size_t position = content.find('"');
@@ -1334,6 +1285,87 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 					return this->fail(error_t::INVALID_SUBSECTION, offset, this->_line, 1);
 				// Получаем имя раздела без имени подраздела
 				content = ::trim(content.substr(0, position));
+			}
+		}
+	}
+	/**
+	 * Если подраздел отделяется знаком-разделителем
+	 */
+	if(kinds & static_cast <uint8_t> (subsection_t::DELIMITED)){
+		{
+			/**
+			 * Граница поиска знака-разделителя имени подраздела
+			 *
+			 * @note При признании обоих построений разом поиск ведётся лишь до открывающей
+			 *       кавычки: знак-разделитель внутри имени, кавычками взятого, есть знак
+			 *       обыкновенный, и резать по нему значило бы рвать имя надвое
+			 */
+			const size_t edge = ((kinds & static_cast <uint8_t> (subsection_t::QUOTED)) ?
+			 content.find('"') : string_view::npos);
+			// Получаем положение знака-разделителя имени подраздела
+			const size_t position = content.substr(0, edge).find(this->_settings.delimiter);
+			/**
+			 * Если знак-разделитель имени подраздела обнаружен
+			 */
+			if(position != string_view::npos){
+				// Количество знаков-разделителей имени подраздела
+				uint32_t depth = 0;
+				/**
+				 * Выполняем перебор знаков имени подраздела
+				 */
+				for(size_t i = position; i < content.length(); i++){
+					/**
+					 * Если очередным знаком является знак-разделитель
+					 */
+					if(content[i] == this->_settings.delimiter)
+						// Выполняем увеличение количества знаков-разделителей
+						depth++;
+				}
+				/**
+				 * Если глубина вложенности подразделов предел настроек превышает
+				 */
+				if(depth >= this->_settings.maxDepth)
+					// Выводим сообщение об ошибке разбора
+					return this->fail(error_t::DEPTH_EXCEEDED, offset, this->_line, 1);
+				/**
+				 * Если имя подраздела за знаком-разделителем пусто
+				 *
+				 * @note Запись «[a.]» от записи «[a]» отличается лишь знаком-разделителем,
+				 *       а разбирается в тот же раздел с пустым подразделом: принять её
+				 *       значило бы потерять этот знак при обратной записи
+				 */
+				if((position + 1) >= content.length())
+					// Выводим сообщение об ошибке разбора
+					return this->fail(error_t::INVALID_SUBSECTION, offset, this->_line, 1);
+				/**
+				 * Если имя подраздела кавычками уже взято
+				 *
+				 * @details Запись «[a.b "origin"]» несёт оба построения разом, и средство
+				 *          `git config` выдаёт её ключом «a.b.origin.имя» - точечная цепь
+				 *          и имя в кавычках складываются в одно имя подраздела. Прежде
+				 *          разбор резал по точке ПЕРВЫМ и клал в имя подраздела «b "origin"»
+				 *          вместе с кавычками: имя выходило небывалым, а сличение с
+				 *          эталоном расходилось на 18 текстах корпуса
+				 */
+				if(!this->_subsection.empty()){
+					// Имя подраздела, кавычками взятое
+					const string quoted(this->_subsection);
+					// Запоминаем точечную цепь именем подраздела
+					this->_subsection.assign(content.substr(position + 1));
+					// Выполняем добавление знака-разделителя к имени подраздела
+					this->_subsection.push_back(this->_settings.delimiter);
+					// Выполняем добавление имени, кавычками взятого
+					this->_subsection.append(quoted);
+				// Запоминаем имя текущего подраздела
+				} else this->_subsection.assign(content.substr(position + 1));
+				// Получаем имя раздела без имени подраздела
+				content = content.substr(0, position);
+				/**
+				 * Если имя раздела оказалось пустым
+				 */
+				if(content.empty())
+					// Выводим сообщение об ошибке разбора
+					return this->fail(error_t::EMPTY_SECTION, offset, this->_line, 1);
 			}
 		}
 	}

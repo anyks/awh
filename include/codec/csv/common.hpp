@@ -500,8 +500,17 @@ namespace awh {
 			 * \~russian
 			 * @brief Знак конца строки собираемого текста
 			 *
+			 * @warning Записанное всяким видом, кроме `CRLF`, читается ТОЛЬКО разбором
+			 * нестрогим: договор знает концом записи одну лишь пару возврата каретки с
+			 * переводом строки, и строгое чтение отвечает на одинокий знак отказом.
+			 * Оговорка эта здесь потому, что виды эти заведены ради обихода, а не ради
+			 * договора: собранное ими законно, но законно оно лишь за пределами договора
+			 *
 			 * \~english
 			 * @brief Line ending character of the text being assembled
+			 * @warning What has been written by any kind other than `CRLF` is read ONLY by the non-strict
+			 * parsing: the contract knows as the end of a record only the pair of the carriage return with
+			 * the line feed, and the strict reading answers a lone character with a refusal.
 			 *
 			 * \~
 			 */

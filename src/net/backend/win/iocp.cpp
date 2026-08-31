@@ -256,6 +256,8 @@
  */
 #include <set>
 #include <ctime>
+#include <algorithm>
+#include <functional>
 #include <cerrno>
 #include <atomic>
 #include <mutex>
@@ -391,6 +393,14 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <net/io.hpp>
+/**
+ * Подключаем модуль волокон
+ *
+ * @details Нужен он выносу блокирующей работы в чужой поток: волокно даёт вызову
+ *          синхронный вид, а цикл событий при этом не стоит
+ *
+ */
+#include <sys/fiber.hpp>
 #include <net/queue.hpp>
 #include <net/backend/win/tunnel.hpp>
 
@@ -1076,7 +1086,7 @@ static int32_t __awh_listen__(const SOCKET sock, const int32_t backlog) noexcept
  * @return     дескриптор принятого подключения
  *
  */
-static SOCKET __awh_accept__(const SOCKET sock, struct sockaddr * addr, int32_t * size) noexcept {
+[[maybe_unused]] static SOCKET __awh_accept__(const SOCKET sock, struct sockaddr * addr, int32_t * size) noexcept {
 	// Выполняем приём ожидающего подключения
 	const SOCKET result = ::accept(sock, addr, size);
 	/**
@@ -1626,7 +1636,7 @@ static int32_t __awh_unlink__(const char * path) noexcept {
  * @return       путь к текущему рабочему каталогу
  *
  */
-static char * __awh_getcwd__(char * buffer, const size_t size) noexcept {
+[[maybe_unused]] static char * __awh_getcwd__(char * buffer, const size_t size) noexcept {
 	// Путь к текущему рабочему каталогу в широкой записи
 	wchar_t path[MAX_PATH + 1] = {0};
 	// Если получить текущий рабочий каталог не удалось
@@ -2175,7 +2185,7 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
  * @return      число принятых октетов, либо -1 при отказе
  *
  */
-static ssize_t readv(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
+[[maybe_unused]] static ssize_t readv(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
 	// Если набор буферов не передан
 	if((iov == nullptr) || (count <= 0))
 		// Выводим признак отказа приёма
@@ -2273,7 +2283,7 @@ static ssize_t __awh_tunnel_read__(const SOCKET sock, const struct iovec * iov) 
  * @return      число отданных октетов, либо -1 при отказе
  *
  */
-static ssize_t writev(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
+[[maybe_unused]] static ssize_t writev(const SOCKET sock, const struct iovec * iov, const int32_t count) noexcept {
 	// Если набор буферов не передан
 	if((iov == nullptr) || (count <= 0))
 		// Выводим признак отказа отдачи
@@ -4715,7 +4725,7 @@ namespace {
 			 * @brief Метод очистки хранилища
 			 *
 			 */
-			void clear() noexcept;
+			[[maybe_unused]] void clear() noexcept;
 		public:
 			/**
 			 * @brief Метод получения итератора на конец хранилища
@@ -5308,6 +5318,18 @@ namespace fs {
  *       пространство учёта, а идти вместе с забвением состояния оно обязано всюду
  *
  */
+/**
+ * @brief Функция снятия записей изменений по дескриптору
+ *
+ * @details Объявлена она здесь, а тело лежит ниже: очередь изменений заводится позже
+ *          забвения дескриптора, откуда её и зовут. Обращение к ней напрямую отсюда
+ *          не собирается вовсе - пространство имён ещё не объявлено
+ *
+ * @param sock дескриптор, чьи записи изменений снимаются
+ *
+ */
+static void __awh_drop_changes__(const net::socket_t sock) noexcept;
+
 namespace kernel {
 	/**
 	 * Используем пространство имён AWH
@@ -5913,7 +5935,8 @@ namespace inflight {
 		SPLICE   = 0x0B, /**< Объединение дескрипторов средствами ядра */
 		CANCEL   = 0x0C, /**< Отмена поданной операции */
 		WAKEUP   = 0x0D, /**< Пробуждение цикла событий */
-		WATCH    = 0x0E  /**< Чтение изменений наблюдаемого каталога */
+		WATCH    = 0x0E, /**< Чтение изменений наблюдаемого каталога */
+		OFFLOAD  = 0x0F  /**< Вынесенная в чужой поток работа */
 	};
 
 	/**
@@ -7847,6 +7870,318 @@ namespace pool {
  * @return       признак того, что приём обслужен родным путём
  *
  */
+/**
+ * @brief Пространство имён вынесенной в чужой поток работы
+ *
+ * @details Заведено оно ради вызовов, какие уходят в ожидание НЕОТМЕНЯЕМОЕ и
+ *          неограниченное сроком. Такой у нас один и он чужой: заведение
+ *          устройства драйвером Wintun изредка не отвечает пять минут - служба
+ *          установки устройств не отзывается, - а срока вызов не принимает и
+ *          отмены не знает. Позванный потоком цикла, он останавливает цикл
+ *          целиком: ни таймеры, ни прочие сокеты не обслуживаются
+ *
+ *          Работа отдаётся СИСТЕМНОМУ пулу потоков, своего не заводится ни
+ *          одного. Ответ приходит завершением на порт, то есть НА СТЕК ЦИКЛА, -
+ *          правило одного направления соблюдено: спит волокно, а будящий его
+ *          отклик спать не вправе
+ *
+ * @note Вне волокна поведение ПРЕЖНЕЕ: ожидание обычное, на событии. Вреда в этом
+ *       нет - цикл в такую пору либо ещё не запущен, либо крутится другим потоком.
+ *       Так первый шаг не трогает ничей горячий путь
+ *
+ * @warning Волокно засыпает лишь тогда, когда вызывающий САМ идёт в волокне:
+ *          `yield` возвращает управление тому, кто волокно разбудил. Оттого
+ *          одного этого пространства мало - чтобы уснуть мог `commit`, позванный
+ *          из отклика цикла, отклики обязаны исполняться в волокнах. Это работа
+ *          отдельная и решается она вместе с наречиями POSIX
+ *
+ */
+namespace offload {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+	/**
+	 * @brief Запись вынесенной работы
+	 *
+	 */
+	struct work_t {
+		// Выполняемая работа
+		function <void ()> task;
+		// Волокно, ждущее исхода, либо пустое значение вне волокна
+		fiber::Fiber * fiber;
+		// Событие завершения для ожидания вне волокна
+		HANDLE event;
+		// Метка записи учёта, какой приходит пробуждение
+		uint64_t token;
+	};
+	/**
+	 * @brief Функция исполнения вынесенной работы потоком пула
+	 *
+	 * @warning Тело это идёт ЧУЖИМ потоком, и трогать учёт движка ему нельзя ничем,
+	 *          кроме подачи завершения: всё прочее живёт без блокировок и рассчитано
+	 *          на один поток
+	 *
+	 * @param context запись вынесенной работы
+	 *
+	 */
+	static void CALLBACK perform([[maybe_unused]] PTP_CALLBACK_INSTANCE instance, PVOID context, [[maybe_unused]] PTP_WORK item) noexcept {
+		// Получаем запись вынесенной работы
+		work_t * work = reinterpret_cast <work_t *> (context);
+		// Если записи вынесенной работы нет
+		if(work == nullptr)
+			// Выходим из функции
+			return;
+		// Если работа задана
+		if(work->task != nullptr)
+			// Выполняем саму работу
+			work->task();
+		/**
+		 * Сообщаем о завершении работы
+		 *
+		 * @note Волокну пробуждение подаётся завершением на порт, чтобы разбудить его
+		 *       СТЕКОМ ЦИКЛА, а не этим потоком: пробуждение чужим потоком нарушило бы
+		 *       однопоточность всего учёта разом
+		 */
+		if(work->fiber != nullptr){
+			// Получаем запись учёта поданной операции
+			::inflight::slot_t * slot = ::inflight::get(work->token);
+			// Если запись учёта жива
+			if(slot != nullptr)
+				// Выполняем подачу завершения на порт
+				::PostQueuedCompletionStatus(::port::handle, 0, 0, &slot->overlapped);
+		// Иначе взводим событие ожидающей стороне
+		} else if(work->event != nullptr)
+			// Выполняем взвод события завершения работы
+			::SetEvent(work->event);
+	}
+	/**
+	 * @brief Функция выноса работы в чужой поток с ожиданием исхода
+	 *
+	 * @param task работа, выносимая в чужой поток
+	 * @param log  объект работы с логами
+	 * @return     признак выполненности работы
+	 *
+	 */
+	static bool run(std::function <void ()> task, const log_t * log) noexcept {
+		// Если работы нет
+		if(task == nullptr)
+			// Выводим отрицательный результат
+			return false;
+		// Заводим запись вынесенной работы
+		work_t work{::move(task), ::fiber::current(), nullptr, ::inflight::INVALID};
+		/**
+		 * Готовим путь ответа
+		 */
+		if(work.fiber != nullptr)
+			// Занимаем запись учёта под вынесенную работу
+			work.token = ::inflight::acquire(::inflight::kind_t::OFFLOAD, net::invalid_socket_t, &work);
+		// Иначе заводим событие завершения работы
+		else work.event = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+		// Если путь ответа завести не удалось
+		if((work.fiber != nullptr) ? (work.token == ::inflight::INVALID) : (work.event == nullptr)){
+			// Записываем ошибку в лог
+			if(log != nullptr)
+				// Выводим в журнал сообщение о невозможности выноса работы
+				log->print("%s: work could not be offloaded, the answer path is not available", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__);
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Заводим работу в системном пуле потоков
+		PTP_WORK item = ::CreateThreadpoolWork(&::offload::perform, &work, nullptr);
+		// Если завести работу в пуле не удалось
+		if(item == nullptr){
+			// Записываем ошибку в лог
+			if(log != nullptr)
+				// Выводим в журнал сообщение о невозможности заведения работы
+				log->print("%s: work could not be submitted to the system thread pool, error %lu", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, ::GetLastError());
+			// Освобождаем заведённый путь ответа
+			if(work.fiber != nullptr)
+				// Освобождаем занятую запись учёта
+				::inflight::release(work.token);
+			// Иначе закрываем заведённое событие
+			else ::CloseHandle(work.event);
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Выполняем подачу работы пулу потоков
+		::SubmitThreadpoolWork(item);
+		/**
+		 * Ждём исхода
+		 */
+		if(work.fiber != nullptr)
+			// Усыпляем волокно: управление уходит циклу, и тот работает как обычно
+			::fiber::yield();
+		// Иначе ждём завершения работы обычным ожиданием
+		else ::WaitForSingleObject(work.event, INFINITE);
+		/**
+		 * Прибираем за собой
+		 *
+		 * @note Ожидание работы пулом обязательно и ПОСЛЕ пробуждения: тело работы
+		 *       вправе ещё не покинуть поток пула, а закрытие работы под ним валит
+		 *       программу
+		 */
+		::WaitForThreadpoolWorkCallbacks(item, FALSE);
+		// Выполняем освобождение работы пула
+		::CloseThreadpoolWork(item);
+		// Если ожидание шло на событии
+		if(work.event != nullptr)
+			// Закрываем заведённое событие
+			::CloseHandle(work.event);
+		// Выводим успешный результат
+		return true;
+	}
+};
+
+/**
+ * @brief Пространство имён пула волокон разбора событий
+ *
+ * @details Разбор ОДНОГО события идёт в волокне из пула. Нужно это затем, чтобы
+ *          отклик, позванный ниже по стеку, был вправе уступить управление: тогда
+ *          блокирующая работа - заведение туннельного устройства, к примеру -
+ *          уходит в чужой поток, волокно засыпает, а цикл продолжает вертеться
+ *
+ * @note Волокно берётся ИЗ ПУЛА, а не заводится на событие. Замерено на стенде
+ *       Windows в сборке Release: круг из пула стоит 111 нс, а заведение волокна
+ *       со сносом - 24 микросекунды, то есть дороже целого сетевого обмена.
+ *       Платим мы при этом не за переключение, а за отведение стека средствами
+ *       системы, и подкладкой этого не исправить
+ *
+ * @warning Волокно, уснувшее посреди разбора, из пула НЕ возвращается: занятость
+ *          с него снимается лишь по окончании работы. Пробуждение приходит
+ *          завершением на порт, то есть стеком цикла
+ *
+ */
+namespace fibers {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+	/**
+	 * @brief Запись волокна пула
+	 *
+	 */
+	struct worker_t {
+		// Признак занятости волокна работой
+		bool busy;
+		// Само волокно
+		::fiber::fiber_t * fiber;
+		// Выполняемая волокном работа
+		function <void ()> job;
+	};
+	// Предельное число волокон в пуле
+	static constexpr size_t LIMIT = 64;
+	// Пул волокон разбора событий
+	static vector <unique_ptr <worker_t>> pool;
+	/**
+	 * @brief Тело волокна пула
+	 *
+	 * @details Волокно живёт от заведения до разбора движка: сделав работу, оно
+	 *          снимает с себя занятость и засыпает до следующей
+	 *
+	 * @param worker запись волокна пула
+	 *
+	 */
+	static void body(worker_t * worker) noexcept {
+		/**
+		 * Работаем, пока волокно будят
+		 */
+		while(worker != nullptr){
+			// Если работа волокну задана
+			if(worker->job != nullptr){
+				// Выполняем саму работу
+				worker->job();
+				// Освобождаем запись работы вместе со всем, что она держит
+				worker->job = nullptr;
+			}
+			// Снимаем с волокна признак занятости
+			worker->busy = false;
+			// Усыпляем волокно до следующей работы
+			::fiber::yield();
+		}
+	}
+	/**
+	 * @brief Функция исполнения работы волокном из пула
+	 *
+	 * @param job работа, исполняемая волокном
+	 * @param log объект работы с логами
+	 * @return    признак того, что работа отдана волокну
+	 *
+	 */
+	static bool run(function <void ()> job, const log_t * log) noexcept {
+		// Если работы нет
+		if(job == nullptr)
+			// Выводим отрицательный результат
+			return false;
+		// Место под свободное волокно пула
+		worker_t * worker = nullptr;
+		/**
+		 * Ищем в пуле волокно, свободное от работы
+		 */
+		for(auto & item : pool){
+			// Если волокно работой не занято
+			if(!item->busy){
+				// Запоминаем найденное волокно
+				worker = item.get();
+				// Выходим из перебора
+				break;
+			}
+		}
+		/**
+		 * Свободного волокна в пуле нет - заводим новое
+		 */
+		if(worker == nullptr){
+			// Если предел пула достигнут
+			if(pool.size() >= LIMIT)
+				// Выводим отрицательный результат
+				return false;
+			// Заводим запись нового волокна пула
+			unique_ptr <worker_t> work(new worker_t{false, nullptr, nullptr});
+			// Запоминаем адрес заведённой записи
+			worker = work.get();
+			// Заводим само волокно
+			work->fiber = ::fiber::spawn([worker]() noexcept {
+				// Выполняем тело волокна пула
+				::fibers::body(worker);
+			}, ::fiber::STACK_SIZE, log);
+			// Если волокно завести не удалось
+			if(work->fiber == nullptr)
+				// Выводим отрицательный результат
+				return false;
+			// Добавляем заведённое волокно в пул
+			pool.push_back(::move(work));
+		}
+		// Задаём волокну работу
+		worker->job = ::move(job);
+		// Отмечаем волокно занятым
+		worker->busy = true;
+		// Выполняем пробуждение волокна
+		::fiber::resume(worker->fiber);
+		// Выводим успешный результат
+		return true;
+	}
+	/**
+	 * @brief Функция разбора пула волокон
+	 *
+	 * @warning Спящее волокно уничтожать нельзя: его кадры не раскручены. Такое
+	 *          волокно оставляется как есть - движок разбирается вместе с процессом
+	 *
+	 */
+	static void clear() noexcept {
+		/**
+		 * Перебираем все волокна пула
+		 */
+		for(auto & item : pool){
+			// Если волокно работой не занято
+			if(!item->busy && (item->fiber != nullptr))
+				// Выполняем уничтожение волокна
+				::fiber::destroy(item->fiber);
+		}
+		// Выполняем очистку пула волокон
+		pool.clear();
+	}
+};
+
 static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result, struct sockaddr * addr, int32_t * length) noexcept {
 	// Выводим признак обслуженности приёма родным путём
 	return ::pool::receive(static_cast <awh::net::socket_t> (sock), buffer, size, result, addr, length);
@@ -8077,11 +8412,33 @@ namespace post {
 			 *       одно, а у запущенного - совсем другое
 			 */
 			::io::node_t * const node = reinterpret_cast <::io::node_t *> (owner);
+			/**
+			 * Отложенная подача бедой НЕ считается и «критично» не пишется
+			 *
+			 * @details Непривязанный дейтаграммный сокет отвечает на подачу приёма
+			 *          кодом 10022, и разбор ниже относит этот случай к заведомо
+			 *          временным: подача откладывается и повторяется, а привязку
+			 *          система ставит сама первой же отправкой. То есть беды нет
+			 *
+			 * @warning Уровень записи обязан отвечать существу дела. Прежде здесь
+			 *          стояло «критично» безусловно, и за прогон набора шесть таких
+			 *          записей уходили в журнал при полном благополучии. Шум этот не
+			 *          безобиден: ровно в нём сегодня и терялся настоящий дефект -
+			 *          подача закрытому описателю писала «критично» на каждом
+			 *          пересоздании устройства, а прогон оставался зелёным
+			 *
+			 * @note Сличается ИМЕННО непривязанность: тот же код на ПРИВЯЗАННОМ сокете
+			 *       временным не считается и пишется «критично» по-прежнему
+			 */
+			const bool deferred = ((error == static_cast <DWORD> (WSAEINVAL)) && socket && !bound);
 			// Записываем ошибку в лог вместе с состоянием описателя и узла
 			::post::log->print(
-				"%s: cannot submit %s on descriptor %llu: %s (гнездо: %s, разновидность: %d, привязан: %s, "
-				"узел: %llu, состояние: %u, вид: %u, тип: %u)",
-				log_t::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock),
+				(deferred ?
+				 "%s: submission of %s on descriptor %llu deferred: %s (гнездо: %s, разновидность: %d, привязан: %s, "
+				 "узел: %llu, состояние: %u, вид: %u, тип: %u)" :
+				 "%s: cannot submit %s on descriptor %llu: %s (гнездо: %s, разновидность: %d, привязан: %s, "
+				 "узел: %llu, состояние: %u, вид: %u, тип: %u)"),
+				(deferred ? log_t::flag_t::WARNING : log_t::flag_t::CRITICAL), ::__AWH_IO_BACKEND__, name, static_cast <uint64_t> (sock),
 				::kernel::message(error).c_str(), (socket ? "да" : "нет"), kind, (bound ? "да" : "нет"),
 				static_cast <uint64_t> ((node != nullptr) ? node->id : 0),
 				static_cast <uint32_t> ((node != nullptr) ? node->state.status : event::status_t::NONE),
@@ -8619,12 +8976,16 @@ namespace post {
 		 *
 		 * @warning Вопрос здесь задан тот же неверный, что стоял у привязки к порту:
 		 *          реестр отвечает «числится ли устройство СЕЙЧАС», а нужен род
-		 *          предмета. Снесено устройство - заслон смолчит, и отмена уйдёт по
-		 *          закрытому описателю. Вреда за этим замером НЕ установлено: запись
-		 *          помечена отменённой выше, а `CancelIoEx` по закрытому описателю
-		 *          отвечает отказом молча и ни на что не влияет. Оттого место
-		 *          оставлено как есть, а не правлено вслед за привязкой: правка без
-		 *          замеренного вреда завела бы вторую разницу в сличение
+		 *          предмета. Снесено устройство - заслон смолчит, и отмена ушла бы по
+		 *          закрытому описателю
+		 *
+		 * @note ИЗМЕРЕНО 31.08.2026, а не предположено: щуп печатал живость описателя
+		 *       на КАЖДОМ проходе этого места. За прогон набора `io` - 460 вызовов
+		 *       отмены по трём видам операций (46 + 8 + 406), и НИ ОДНОГО закрытого
+		 *       описателя. То есть на проходимых путях беда не наступает, и место
+		 *       оставлено как есть намеренно: правка без замеренного вреда завела бы
+		 *       вторую разницу в сличение. Прежде здесь стояло «вреда замером не
+		 *       установлено» - оговорка, замером НЕ подкреплённая, и она заменена
 		 *
 		 * @note Рода узла записи поданной операции не носит - в ней лишь вид самой
 		 *       операции, - и взять его пришлось бы цепочкой через запись учёта
@@ -8756,7 +9117,7 @@ namespace drain {
 	 * @return     наличие исхода, ещё не забранного потребителем
 	 *
 	 */
-	static bool pending(const net::socket_t sock, const void * owner = nullptr) noexcept {
+	[[maybe_unused]] static bool pending(const net::socket_t sock, const void * owner = nullptr) noexcept {
 		// Если состояния отправки по дескриптору нет вовсе
 		if(static_cast <size_t> (sock) >= ::drain::sent.size())
 			// Выводим отсутствие исхода
@@ -9392,6 +9753,26 @@ namespace kernel {
 		if(sock == net::invalid_socket_t)
 			// Выводим отсутствие поданной отмены
 			return false;
+		/**
+		 * Вычищаем из очереди изменений записи по забываемому дескриптору
+		 *
+		 * @details Очередь эта применяется ядру не сразу, а началом ожидания, и записи
+		 *          в ней переживают закрытие своего дескриптора. Применение такой
+		 *          записи заводит подписку ЗАНОВО - с живым владельцем и включённым
+		 *          признаком, - и согласование подаёт ожидание уже закрытому
+		 *          описателю. Забвение без этой чистки отменялось воскрешением
+		 *
+		 * @note Установлено замером 31.08.2026, а не рассуждением: щуп печатал каждый
+		 *       забываемый описатель и состояние записи у согласования. Описатель 640
+		 *       БЫЛ забыт - и сразу вслед за тем согласование шло по нему опять, с
+		 *       владельцем на месте и подпиской включённой. Две прежние мои догадки о
+		 *       причине замер опроверг
+		 *
+		 * @warning Дефект этот проверками НЕ ловился: движок писал «критично» в журнал,
+		 *          а прогон оставался зелёным. Поймало его утверждение, заведённое в
+		 *          проверку пересоздания устройства
+		 */
+		::__awh_drop_changes__(sock);
 		/**
 		 * Снимаем роли закрываемого дескриптора прежде всего прочего
 		 *
@@ -10954,6 +11335,27 @@ namespace kernel {
 		// Снимаем отметку расхождения: согласование выполняется прямо сейчас
 		state.pending = false;
 		/**
+		 * Запись без владельца согласовывать нечего
+		 *
+		 * @details Пустой узел означает, что дескриптор ЗАКРЫТ: путь закрытия забывает
+		 *          владельца и откладывает снятие записи до следующего оборота. Живая
+		 *          же подписка без владельца невозможна - узел берётся из записи
+		 *          изменения при заведении, а пустым поле становится только там
+		 *
+		 * @warning Заслон стоит ЗДЕСЬ, у самого согласования, а не у тех, кто ставит
+		 *          запись в очередь. Входов таких по движку восемь, и заслон у одного
+		 *          из них беды не закрыл: замер показал те же две записи «критично».
+		 *          Место у общего пути не потеряешь, добавив девятый вход
+		 *
+		 * @note Поймано закрепляющим утверждением проверки пересоздания 31.08.2026:
+		 *       «cannot submit read readiness on descriptor N: error 6» и отказ подачи
+		 *       опроса следом - подача уходила ЗАКРЫТОМУ описателю, а проверки при
+		 *       этом оставались зелёными
+		 */
+		if(state.udata == nullptr)
+			// Выводим успешный результат: согласовывать нечего
+			return true;
+		/**
 		 * Если по дескриптору ведётся наложенное подключение - согласование откладывается
 		 *
 		 * @note Ожидание готовности на подключающемся сокете подать нечем: обмен нулевой
@@ -11677,7 +12079,7 @@ namespace kernel {
 	 *          движок обещать не может
 	 *
 	 */
-	static void awaken() noexcept {
+	[[maybe_unused]] static void awaken() noexcept {
 		/**
 		 * Ожидания пробуждения подавать не приходится вовсе
 		 *
@@ -12564,6 +12966,41 @@ namespace local {
  * @brief Инкапсулируем статические функции в пространство имён событий
  *
  */
+/**
+ * @brief Функция снятия записей изменений по дескриптору
+ *
+ * @details Записи эти ядру подаются не сразу, а началом ожидания, и закрытие своего
+ *          дескриптора они переживают. Применение такой записи заводит подписку
+ *          ЗАНОВО - с живым владельцем и включённым признаком, - и согласование
+ *          подаёт ожидание уже закрытому описателю: забвение отменяется воскрешением
+ *
+ * @note Установлено замером 31.08.2026, а не рассуждением: щуп печатал каждый
+ *       забываемый описатель и состояние записи у согласования. Описатель БЫЛ забыт -
+ *       и сразу вслед за тем согласование шло по нему опять. Две прежние догадки о
+ *       причине замер опроверг
+ *
+ * @warning Дефект проверками НЕ ловился: движок писал «критично» в журнал, а прогон
+ *          оставался зелёным. Поймало его утверждение, заведённое в проверку
+ *          пересоздания устройства
+ *
+ * @param sock дескриптор, чьи записи изменений снимаются
+ *
+ */
+static void __awh_drop_changes__(const net::socket_t sock) noexcept {
+	// Если снимать нечего
+	if(::local::change.empty())
+		// Выходим из функции
+		return;
+	// Выполняем снятие всех записей изменений по дескриптору
+	::local::change.erase(
+		std::remove_if(::local::change.begin(), ::local::change.end(), [sock](const ::change::record_t & item) noexcept -> bool {
+			// Выводим признак принадлежности записи забываемому дескриптору
+			return (item.ident == static_cast <uintptr_t> (sock));
+		}),
+		::local::change.end()
+	);
+}
+
 namespace events {
 	/**
 	 * Используем пространство имён AWH
@@ -13869,7 +14306,7 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		static bool empty() noexcept {
+		[[maybe_unused]] static bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
@@ -13880,7 +14317,7 @@ namespace timer {
 		 * @return количество активных таймеров
 		 *
 		 */
-		static size_t size() noexcept {
+		[[maybe_unused]] static size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
@@ -14089,7 +14526,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		[[maybe_unused]] static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -14322,7 +14759,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14352,7 +14789,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14385,7 +14822,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -14421,7 +14858,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -15487,7 +15924,7 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		static bool empty() noexcept {
+		[[maybe_unused]] static bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
@@ -15498,7 +15935,7 @@ namespace timer {
 		 * @return количество активных таймеров
 		 *
 		 */
-		static size_t size() noexcept {
+		[[maybe_unused]] static size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
@@ -15798,7 +16235,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		[[maybe_unused]] static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -15871,6 +16308,8 @@ namespace timer {
 								case static_cast <uint8_t> (event::status_t::NONE):
 									// Устанавливаем статус таймаута в ожидание
 									tm.status = event::status_t::PENDING;
+									// Переход намеренный: только что установленный PENDING обрабатывается тем же кодом
+									[[fallthrough]];
 								// Если таймаут ожидания уже активирован для данного события
 								case static_cast <uint8_t> (event::status_t::PENDING): {
 									// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
@@ -16076,7 +16515,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -16106,7 +16545,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -16139,7 +16578,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -16175,7 +16614,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -41540,7 +41979,79 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Устанавливаем заказанное имя устройства действующим
 								tunnel->iface = tunnel->request;
 							// Выполняем заведение туннельного устройства
-							tunnel->fd = this->_eth.iface.create(event::eth_t::TUN, tunnel->iface);
+							/**
+							 * Заведение устройства выносим в системный пул потоков
+							 *
+							 * @details Драйвер Wintun изредка не отвечает пять минут: служба
+							 *          установки устройств не отзывается, и вызов возвращает
+							 *          код 1753. Срока он не принимает, отменить его нечем.
+							 *          Позванный потоком цикла, он останавливает цикл целиком
+							 *
+							 * @note Вне волокна ожидание ОБЫЧНОЕ, и поведение прежнее: цикл в
+							 *       такую пору либо ещё не запущен, либо крутится другим
+							 *       потоком. Сон же волокна отпирается лишь тогда, когда
+							 *       отклики цикла сами пойдут в волокнах, - это работа
+							 *       отдельная и решается разом с наречиями POSIX
+							 *
+							 * @warning Пока вызов идёт чужим потоком, узел трогать НЕЛЬЗЯ
+							 *          никому: заведение правит имя устройства прямо в узле.
+							 *          Вне волокна это безопасно - вызывающий ждёт и цикл
+							 *          узла не касается. С приходом же волокон здесь
+							 *          понадобится либо запрет на снос узла в эту пору, либо
+							 *          заведение во временное место с переносом по
+							 *          пробуждении
+							 */
+							{
+								// Место под описатель заведённого устройства
+								net::socket_t raised = net::invalid_socket_t;
+								/**
+								 * Имя устройства берётся КОПИЕЙ, а не полем узла
+								 *
+								 * @warning Пока заведение идёт чужим потоком, узел трогать нельзя
+								 *          никому: волокно спит, цикл вертится, и узел вправе быть
+								 *          снесён. Копия и переменные этого кадра живут на стеке
+								 *          волокна и сон переживают, поле же узла - нет
+								 */
+								string device = tunnel->iface;
+								// Выполняем заведение устройства чужим потоком
+								const bool offloaded = ::offload::run([this, &device, &raised]() noexcept {
+									// Выполняем заведение туннельного устройства
+									raised = this->_eth.iface.create(event::eth_t::TUN, device);
+								}, this->_log);
+								/**
+								 * Проверяем, что узел пережил сон волокна
+								 *
+								 * @details Сон отпирает ход цикла, а ход цикла вправе узел снести.
+								 *          Тогда писать в него описатель некуда, а заведённое
+								 *          устройство надо убрать за собой - иначе оно останется в
+								 *          системе ничьим
+								 */
+								if(offloaded){
+									// Выполняем поиск узла в глобальном списке узлов событий
+									auto k = ::__awh_nodes__.find(id);
+									// Если узел снесён либо подменён другим
+									if((k == ::__awh_nodes__.end()) || (k->second.get() != static_cast <::io::node_t *> (tunnel))){
+										// Выводим в журнал сообщение о сносе узла за время заведения
+										this->_log->print("%s: tunnel node is gone while its device was being created, device \"%s\" is removed", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, device.c_str());
+										// Если устройство всё же заведено
+										if(raised != net::invalid_socket_t)
+											// Выполняем снос заведённого устройства
+											this->_eth.iface.destroy(device);
+										// Выводим отрицательный результат
+										return false;
+									}
+									// Устанавливаем имя устройства, каким его завели
+									tunnel->iface = device;
+								}
+								/**
+								 * Если вынести работу не удалось - заводим устройство сами
+								 *
+								 * @note Отказ выноса поводом не заводить устройство НЕ считается:
+								 *       пул потоков вправе отказать нехваткой запасов, а туннель
+								 *       потребителю нужен. Платим за это прежним простоем
+								 */
+								tunnel->fd = (offloaded ? raised : this->_eth.iface.create(event::eth_t::TUN, tunnel->iface));
+							}
 							// Если устройство заведено
 							if(tunnel->fd != net::invalid_socket_t)
 								// Устанавливаем тип очереди туннеля
@@ -45965,7 +46476,8 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									#endif
 								}
 							}
-						}
+						// Прерываем ветвление: отказ семейства IPv4 не должен проваливаться в ветвь IPv6
+						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
@@ -56326,7 +56838,8 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									#endif
 								}
 							}
-						}
+						// Прерываем ветвление: отказ семейства IPv4 не должен проваливаться в ветвь IPv6
+						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
@@ -56626,7 +57139,8 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									#endif
 								}
 							}
-						}
+						// Прерываем ветвление: отказ семейства IPv4 не должен проваливаться в ветвь IPv6
+						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
@@ -65733,6 +66247,62 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
  *
  */
 size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
+	/**
+	 * @brief Глубина возвратного захода в отправку
+	 *
+	 * @details Отправка зовёт отклик записи СИНХРОННО, а отклик вправе долить очередь
+	 *          новой отправкой - и так без конца. Возвратность эта идёт через одно
+	 *          горлышко, оттого и счёт ведётся здесь, а не у отклика: мест, где отклик
+	 *          записи зовётся, полторы сотни
+	 *
+	 * @note Счётчик поточно-местный: отправку вправе звать не только поток цикла
+	 *
+	 */
+	static thread_local uint16_t depth = 0;
+	/**
+	 * @brief Предел возвратного захода в отправку
+	 *
+	 * @warning Взят С ЗАПАСОМ и замером НЕ подтверждён: настоящая глубина срыва зависит
+	 *          от размера кадра и от того, кто ещё лежит на стеке. Предел здесь не
+	 *          средство точности, а средство ГРОМКОСТИ - превратить молчаливый срыв
+	 *          стека в внятный доклад
+	 *
+	 */
+	static constexpr uint16_t DEPTH_LIMIT = 64;
+	/**
+	 * Если возвратный заход зашёл слишком глубоко
+	 *
+	 * @details Прежде здесь ничего не стояло, и долив очереди из отклика записи уходил
+	 *          в бесконечную возвратность и валил стек. Наружу это выглядело кодом 127
+	 *          у собственной программы - сорванным стеком, а не отсутствием библиотек, -
+	 *          и на этом коде уже было потеряно время
+	 *
+	 * @note Отказ здесь договора НЕ нарушает: отправка и так вправе принять меньше
+	 *       заказанного, вплоть до нуля, - потребитель обязан разбирать её ответ
+	 *
+	 * @warning Заслон этот заведён ПРЕЖДЕ волокон, и не случайно: на волокне стек 64 КБ
+	 *          вместо восьми мегабайт потока, срыв придёт вшестеро раньше и с чужой
+	 *          памятью под ногами - то есть будет неотличим от порчи памяти. Правило,
+	 *          нарушение которого молчаливо, заводить нельзя
+	 */
+	if(depth >= DEPTH_LIMIT){
+		// Выводим в журнал сообщение о возвратном заходе в отправку
+		this->_log->print("send re-entered %u times from the write callback, the queue refill must be deferred, not immediate", log_t::flag_t::CRITICAL, static_cast <uint32_t> (depth));
+		// Выводим отсутствие принятых данных
+		return 0;
+	}
+	/**
+	 * @brief Охранник счёта глубины возвратного захода
+	 *
+	 * @note Снятие счёта обязано пройти при ЛЮБОМ выходе, включая выход исключением:
+	 *       иначе один отказ отравил бы отправку навсегда
+	 *
+	 */
+	struct depth_guard_t {
+		uint16_t & value;   // Счётчик глубины
+		explicit depth_guard_t(uint16_t & value) noexcept : value(value) { this->value++; }
+		~depth_guard_t() noexcept { this->value--; }
+	} depth_guard(depth);
 	// Результат работы функции
 	size_t result = 0;
 	/**
@@ -72764,6 +73334,29 @@ bool awh::engine::IO::initialize() noexcept {
 				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::WARNING, ::__awh_strerror__(errno));
 			#endif
+			/**
+			 * Снимаем поднятое разрешение системного таймера: движок не завёлся
+			 *
+			 * @warning Подъём сделан ВЫШЕ обращения к ядру, а снятие живёт лишь в
+			 *          разрушении очереди - того при отказе заведения не будет вовсе.
+			 *          Без этой строки зерно таймера оставалось поднятым до конца жизни
+			 *          процесса, хотя движка нет: настройка процесса переживала движок,
+			 *          её заведший. Система ведёт счёт поднявшим, и непарный подъём
+			 *          держит зерно поднятым за всех
+			 *
+			 * @note Почерк этот у движков разобран отдельно: правка учёта либо настроек
+			 *       ДО обращения к ядру обязана иметь откат на пути отказа. Четыре
+			 *       находки из семи в разборе Event Ports были ровно этого вида
+			 *
+			 * @note Парность подъёма и снятия ИЗМЕРЕНА щупом 31.08.2026: зерно до
+			 *       движка 156250 сотен нс, при живом движке 10000, после разрушения
+			 *       снова 156250. Неизмеримой остаётся лишь сама ветвь отказа -
+			 *       заставить систему отказать в порте завершений нечем, - а
+			 *       устройство, на какое правка опирается, доказано. Без этого замера
+			 *       правка была бы украшением: снятие, само по себе не работающее,
+			 *       на ветви отказа не сработало бы тем более
+			 */
+			::resolution::relax();
 		}
 		/**
 		 * Взводим таймер ядра на ближайший дедлайн. Таймауты ставятся при настройке
@@ -73693,6 +74286,13 @@ bool awh::engine::IO::deinitialize() noexcept {
 		::local::graveyard.clear();
 		// Очищаем список узлов, отложенных текущим оборотом
 		::local::graveyardNext.clear();
+		/**
+		 * Выполняем разбор пула волокон разбора событий
+		 *
+		 * @warning Спящее волокно уничтожению не подлежит: его кадры не раскручены.
+		 *          Такое волокно из пула лишь изымается
+		 */
+		::fibers::clear();
 		// Устанавливаем результат деинициализации в успешный
 		result = ::local::change.empty();
 	}
@@ -74571,6 +75171,32 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Освобождаем запись учёта операции
 						::inflight::release(completion.token);
 					/**
+					 * Пробуждаем волокно, ждущее вынесенной в чужой поток работы
+					 *
+					 * @details Работа исполнена потоком системного пула, а пробуждение
+					 *          приходит сюда - НА СТЕК ЦИКЛА. Правило одного направления
+					 *          тем и соблюдено: спит волокно, а будящая сторона идёт
+					 *          обычным ходом цикла и спать не вправе
+					 *
+					 * @warning Разбирается это ПЕРВЫМ, до всякого обращения к узлу: узла у
+					 *          такой операции нет вовсе, в поле владельца лежит запись
+					 *          вынесенной работы. Прочтя её как узел, получили бы вымысел -
+					 *          промах этот в движке уже был допущен однажды и стоил замера
+					 *
+					 * @note Отмена вынесенной работе не подаётся: отменить вызов драйвера
+					 *       нечем, и ждать его исхода приходится честно
+					 */
+					if(kind == ::inflight::kind_t::OFFLOAD){
+						// Получаем запись вынесенной работы
+						::offload::work_t * work = reinterpret_cast <::offload::work_t *> (owner);
+						// Если запись вынесенной работы жива и волокно её ждёт
+						if((work != nullptr) && (work->fiber != nullptr))
+							// Выполняем пробуждение волокна
+							::fiber::resume(work->fiber);
+						// Переходим к следующему завершению
+						continue;
+					}
+					/**
 					 * Если операция отменена, завершение по ней разбирать нельзя
 					 *
 					 * @note Отмена не отменяет завершения: ядро вправе выполнить операцию
@@ -74733,8 +75359,29 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							state->registered = false;
 							// Снимаем набор признаков, поданный ядру последним
 							state->applied = 0;
-							// Если включённые подписки на дескрипторе остались и учёт согласия не ждёт
-							if((state->enabled != 0) && !state->pending){
+							/**
+							 * Если включённые подписки на дескрипторе остались и учёт согласия не ждёт
+							 *
+							 * @warning Владелец записи спрашивается ЗДЕСЬ ЖЕ и наравне с подписками.
+							 *          Путь закрытия дескриптора забывает узел (`udata = nullptr`) и
+							 *          снимает расхождение, но включённые подписки НЕ гасит - их
+							 *          снимает снос узла оборотом позже. В это окно приходит
+							 *          завершение прекращённого ожидания, и заведение заново
+							 *          смотрело лишь на подписки: описатель возвращался в очередь
+							 *          согласования, а согласование подавало ожидание уже
+							 *          ЗАКРЫТОМУ описателю
+							 *
+							 * @note Поймано закрепляющим утверждением проверки пересоздания
+							 *       31.08.2026: две записи «критично» за прогон - «cannot submit
+							 *       read readiness on descriptor N: error 6» и отказ подачи опроса
+							 *       следом. Чтением места я этого НЕ увидел, хотя разбирал соседнее
+							 *       той же беды: заведение заново лежит от привязки к порту далеко
+							 *
+							 * @note Признак взят устойчивый: у живой подписки владелец есть всегда,
+							 *       а пустым он становится ровно на закрытии. Число же включённых
+							 *       подписок о живости описателя не говорит ничего
+							 */
+							if((state->enabled != 0) && !state->pending && (state->udata != nullptr)){
 								// Отмечаем учёт разошедшимся с ядром
 								state->pending = true;
 								// Ставим дескриптор в очередь согласования: ожидание подадут заново
@@ -74753,7 +75400,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 * @note Установлено следом в памяти: за пришедшей готовностью не
 							 *       следовало ни одного согласования по этому описателю
 							 */
-							if(::__awh_pipe__(static_cast <SOCKET> (state->sock)))
+							if((state->udata != nullptr) && ::__awh_pipe__(static_cast <SOCKET> (state->sock)))
 								// Выполняем согласование учёта с ядром немедленно
 								::kernel::reconcile(* state, this->_log);
 						}
@@ -75254,10 +75901,34 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       выполняется ниже - по факту истечения, а не по факту
 					 *       прихода события
 					 */
-					// Выполняем обработку события
-					if(::io::polling(ev, this, &this->_eth, &this->_addr, this->_fmk, this->_log))
-						// Пропускаем событие
-						continue;
+					/**
+					 * Выполняем обработку события волокном из пула
+					 *
+					 * @details Волокно нужно затем, чтобы отклик, позванный ниже по стеку, был
+					 *          вправе уступить управление: блокирующая работа уходит в чужой
+					 *          поток, волокно засыпает, а цикл продолжает вертеться
+					 *
+					 * @warning Запись события берётся волокном КОПИЕЙ, а не ссылкой: усни оно
+					 *          посреди разбора - оборот цикла пойдёт дальше, и место записи в
+					 *          пачке к мигу пробуждения вправе принадлежать уже другому событию
+					 *
+					 * @note Отказ пула поводом пропустить событие НЕ считается: волокна вправе
+					 *       кончиться, а событие разобрать надо. Разбирается оно тогда прямо,
+					 *       и уступить управление такой отклик не сможет - как было до волокон
+					 */
+					{
+						// Получаем копию записи разбираемого события
+						::change::record_t record = ev;
+						// Выполняем обработку события волокном из пула
+						const bool threaded = ::fibers::run([this, record]() mutable noexcept {
+							// Выполняем обработку события
+							::io::polling(record, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+						}, this->_log);
+						// Если волокна пула кончились - разбираем событие прямо
+						if(!threaded)
+							// Выполняем обработку события
+							::io::polling(ev, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+					}
 				}
 				// Снимаем длину разбираемой пачки: разбор её окончен
 				::__awh_events_ready__ = 0;

@@ -548,6 +548,28 @@ namespace awh {
 			error_t error() const noexcept;
 			/**
 			 * \~russian
+			 * @brief Метод извлечения имени отметки совпадения последнего
+			 *
+			 * @details Имя оставляет глагол «(*MARK:имя)», путь отметивший, чем
+			 *          указывает ветвь выражения, совпадение давшую. Выражение,
+			 *          глаголов отметки не несущее, и совпадение, их не прошедшее,
+			 *          выводят имя пустое.
+			 *
+			 * @return имя отметки совпадения последнего
+			 *
+			 * \~english
+			 * @brief Method of getting the name of the mark of the last match
+			 * @details The name is left by the «(*MARK:name)» verb that marked the path, thereby
+			 *          telling which branch of the expression produced the match. An expression
+			 *          carrying no mark verbs, and a match that passed none of them,
+			 *          yield an empty name.
+			 * @return name of the mark of the last match
+			 *
+			 * \~
+			 */
+			const string & marker() const noexcept;
+			/**
+			 * \~russian
 			 * @brief Метод извлечения смещения ошибки последней сборки
 			 *
 			 * @return смещение ошибки в тексте регулярного выражения

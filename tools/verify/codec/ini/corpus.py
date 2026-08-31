@@ -90,4 +90,48 @@ for index in range(400):
 	with open(os.path.join(root, 'random-%04d.ini' % index), 'w', newline = '', encoding = 'utf-8') as file:
 		file.write(text)
 
+# Порождение текстов по правилам наречия Git
+#
+# Наречие это строже прочих, и корпус выше ему почти весь неведом: средство `git config`
+# отвергало 377 текстов из 434, оставляя сличению 57. Тексты ниже строятся ПО ЕГО
+# правилам - имя раздела из букв, цифр, черты да точки, имя свойства с буквы, разделитель
+# один лишь знак равенства, - и оттого доходят до сличения, а не отсеиваются им
+#
+# Зерно своё и отдельное: порождение выше обязано остаться байт в байт прежним, иначе
+# расхождение, однажды найденное, второй раз не воспроизвести
+sample = random.Random(20260901)
+
+# Имена разделов наречия Git
+GIT_SECTIONS = ['core', 'user', 'remote', 'branch-x', 'a.b']
+
+# Имена подразделов наречия Git
+GIT_SUBSECTIONS = ['origin', 'путь/к/ветви', 'с пробелом', 'a\\"b']
+
+# Имена свойств наречия Git
+GIT_KEYS = ['name', 'autocrlf', 'a-b', 'X']
+
+# Значения свойств наречия Git
+GIT_VALUES = ['', 'value', 'значение', '1', 'true', '"с пробелом"', '"a#b"', '"a;b"',
+ 'a\\tb', '"a\\nb"', '"пусто"', 'a\\\nb']
+
+for index in range(200):
+	lines = []
+	for _ in range(sample.randint(1, 3)):
+		# Заголовок раздела с подразделом ставится изредка: запись эта наречию своя
+		if sample.random() < 0.3:
+			lines.append('[%s "%s"]' % (sample.choice(GIT_SECTIONS), sample.choice(GIT_SUBSECTIONS)))
+		# Заголовок раздела простой
+		else: lines.append('[%s]' % sample.choice(GIT_SECTIONS))
+		for _ in range(sample.randint(1, 4)):
+			# Имя без значения ставится изредка: наречие числит его истиной
+			if sample.random() < 0.15:
+				lines.append('\t%s' % sample.choice(GIT_KEYS))
+			else: lines.append('\t%s = %s' % (sample.choice(GIT_KEYS), sample.choice(GIT_VALUES)))
+		# Примечание ставится изредка
+		if sample.random() < 0.2:
+			lines.append(sample.choice(['# текст', '; текст']))
+	text = '\n'.join(lines) + '\n'
+	with open(os.path.join(root, 'gitlike-%04d.ini' % index), 'w', newline = '', encoding = 'utf-8') as file:
+		file.write(text)
+
 print('Корпус составлен: %s' % root)

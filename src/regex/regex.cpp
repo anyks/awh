@@ -91,6 +91,16 @@ awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
 	return this->_error;
 }
 /**
+ * @brief Метод извлечения имени отметки совпадения последнего
+ *
+ * @return имя отметки совпадения последнего
+ *
+ */
+const string & awh::RegularExpression::marker() const noexcept {
+	// Выводим имя отметки совпадения последнего
+	return engine().marker();
+}
+/**
  * @brief Метод извлечения смещения ошибки последней сборки
  *
  * @return смещение ошибки в тексте регулярного выражения

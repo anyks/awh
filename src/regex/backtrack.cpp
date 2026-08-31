@@ -43,7 +43,7 @@ using namespace awh;
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _nested(0), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
+ _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
 	// Выполняем сброс таблицы принадлежности значений байта классу символов
 	::memset(this->_bytes, 0, sizeof(this->_bytes));
 }
@@ -105,6 +105,33 @@ awh::regex::error_t awh::regex::Backtrack::error() const noexcept {
 	return this->_error;
 }
 /**
+ * @brief Метод извлечения адреса глагола отметки совпадения последнего
+ *
+ * @return адрес глагола отметки совпадения последнего
+ *
+ */
+size_t awh::regex::Backtrack::failed() const noexcept {
+	// Выводим адрес глагола отметки попытки последней
+	return this->_failing;
+}
+/**
+ * @brief Метод извлечения адреса глагола отметки совпадения последнего
+ *
+ * @return адрес глагола отметки совпадения последнего
+ *
+ */
+size_t awh::regex::Backtrack::marked() const noexcept {
+	/**
+	 * Если выражение глаголов отметки не несёт вовсе
+	 */
+	if((this->_program == nullptr) || (this->_program->marker == ~0u) ||
+	   (static_cast <size_t> (this->_program->marker) >= this->_slots.size()))
+		// Выводим отсутствие глагола отметки совпадения
+		return string_view::npos;
+	// Выводим адрес глагола отметки совпадения последнего
+	return this->_slots.at(static_cast <size_t> (this->_program->marker));
+}
+/**
  * @brief Метод сохранения позиции в ячейке захвата
  *
  * @param slot  номер ячейки захвата
@@ -144,6 +171,29 @@ void awh::regex::Backtrack::restore(const size_t mark) noexcept {
 		this->_slots.at(change.slot) = change.value;
 		// Выполняем удаление записи из журнала изменений
 		this->_journal.pop_back();
+	}
+}
+/**
+ * @brief Метод отката изменений отметок атомарных групп
+ *
+ * @param mark отсечка журнала изменений отметок
+ *
+ */
+void awh::regex::Backtrack::rollback(const size_t mark) noexcept {
+	/**
+	 * Выполняем откат изменений отметок в обратном порядке
+	 */
+	while(this->_remarks.size() > mark) {
+		// Получаем последнее изменение отметки атомарной группы
+		const remark_t & remark = this->_remarks.back();
+		/**
+		 * Если ячейка отметки размещена в наборе
+		 */
+		if(static_cast <size_t> (remark.cell) < this->_marks.size())
+			// Выполняем восстановление прежнего значения отметки
+			this->_marks.at(remark.cell) = remark.value;
+		// Выполняем удаление изменения отметки из журнала
+		this->_remarks.pop_back();
 	}
 }
 /**
@@ -407,6 +457,15 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	 *
 	 */
 	const instruction_t * program = instructions.data();
+	/**
+	 * Получаем соглашение о переводе строки исполняемого выражения
+	 *
+	 * @details Соглашение берётся до цикла наравне с прочими полями программы:
+	 *          привязка к границам строк обращается к нему на каждой проверке,
+	 *          а обращение через объект обходилось бы дороже самой проверки.
+	 *
+	 */
+	const newline_t convention = ((this->_program != nullptr) ? this->_program->newline : newline_t::LF);
 	// Получаем размер текста сопоставления
 	const size_t size = this->_text.size();
 	// Получаем размер журнала изменений на входе в исполнение
@@ -456,7 +515,10 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 		 *          проверками - величину, пренебрежимую рядом с самими пределами.
 		 *
 		 */
-		if(((this->_steps & 0xFF) == 0) && ((this->_points.size() > MAX_POINTS) || (this->_frames.size() > MAX_FRAMES) || (this->_journal.size() > MAX_JOURNAL))) {
+		if(((this->_steps & 0xFF) == 0) && ((this->_points.size() > MAX_POINTS) ||
+		   (this->_frames.size() > MAX_FRAMES) || (this->_journal.size() > MAX_JOURNAL) ||
+		   (((this->_points.size() * sizeof(point_t)) + (this->_frames.size() * sizeof(frame_t)) +
+		     (this->_journal.size() * sizeof(change_t))) > this->_memory))) {
 			// Выполняем установку ошибки превышения допустимого объёма работы
 			this->_error = error_t::BUDGET_EXCEEDED;
 			// Выводим результат исполнения программы
@@ -481,6 +543,94 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				/**
 				 * Выполняем завершение сопоставления с успехом
 				 */
+				/**
+				 * Выполняем размещение точки возврата глагола управления
+				 *
+				 * @details Глагол исполнения не правит вовсе, а размещает точку,
+				 *          возврат в которую попытку сопоставления прекращает:
+				 *          глагол отказа целиком прекращает и обход позиций начала,
+				 *          а глаголы переноса задают позицию его продолжения.
+				 *
+				 */
+				case static_cast <uint8_t> (opcode_t::CONTROL): {
+					/**
+					 * Если глагол управления отмечает ветвь именем
+					 *
+					 * @details Глагол пишет адрес свой в ячейку отметки последней,
+					 *          а возврат запись отменяет наравне с ячейками захвата:
+					 *          по совпадении в ячейке остаётся отметка пути,
+					 *          совпадение давшего, а не отметка ветви отвергнутой.
+					 *
+					 */
+					if(instruction.control.type == control_t::MARK) {
+						// Выполняем запоминание адреса глагола отметки в ячейке
+						this->store(instruction.control.cell, static_cast <size_t> (pc));
+						// Выполняем запоминание адреса глагола отметки попытки
+						this->_failing = static_cast <size_t> (pc);
+						// Переходим к следующей инструкции программы
+						pc++;
+						// Продолжаем исполнение программы регулярного выражения
+						continue;
+					}
+					// Выполняем размещение точки возврата глагола управления
+					this->_points.emplace_back();
+					// Выполняем установку номера ячейки отметки ветви охватывающей
+					this->_points.back().cell = instruction.control.cell;
+					// Выполняем установку адреса продолжения исполнения
+					this->_points.back().pc = pc;
+					// Выполняем установку позиции размещения точки возврата
+					this->_points.back().pos = current;
+					// Выполняем установку размера журнала изменений ячеек захвата
+					this->_points.back().journal = this->_journal.size();
+					// Выполняем установку размера журнала изменений отметок
+					this->_points.back().remarks = this->_remarks.size();
+					// Выполняем установку вида глагола управления возвратом
+					this->_points.back().control = (static_cast <uint8_t> (instruction.control.type) + 1);
+					// Переходим к следующей инструкции программы
+					pc++;
+					// Продолжаем исполнение программы регулярного выражения
+					continue;
+				}
+				/**
+				 * Выполняем завершение сопоставления глаголом управления
+				 *
+				 * @details Глагол «(*ACCEPT)» завершает сопоставление в текущей
+				 *          позиции, закрывая группы, захват начавшие и его
+				 *          не завершившие: «x(a(b(*ACCEPT)c)d)e» на тексте
+				 *          «xabcde» даёт совпадение «xab» и группы «ab» и «b»,
+				 *          как то и у эталонной реализации.
+				 *
+				 */
+				case static_cast <uint8_t> (opcode_t::ACCEPT): {
+					// Получаем количество ячеек захвата групп выражения
+					const size_t count = ((static_cast <size_t> (this->_program->captures) + 1) * 2);
+					/**
+					 * Выполняем обход ячеек захвата групп выражения
+					 */
+					for(size_t slot = 1; slot < count; slot += 2) {
+						/**
+						 * Если группа захват начала и его не завершила
+						 */
+						if((this->_slots.at(slot - 1) != string_view::npos) && (this->_slots.at(slot) == string_view::npos))
+							// Выполняем закрытие захвата группы текущей позицией
+							this->store(static_cast <uint32_t> (slot), current);
+					}
+					/**
+					 * Если исполнение обязано завершиться в заданной позиции
+					 */
+					if((bound != string_view::npos) && (current != bound)) {
+						// Выполняем установку флага отказа сопоставления
+						failed = true;
+						// Прекращаем исполнение инструкции программы
+						break;
+					}
+					// Выполняем отказ от точек возврата, накопленных исполнением
+					this->_points.resize(base);
+					// Выполняем установку позиции завершения исполнения программы
+					end = current;
+					// Выводим результат исполнения программы
+					return true;
+				}
 				case static_cast <uint8_t> (opcode_t::MATCH):
 				/**
 				 * Выполняем завершение вложенного исполнения программы
@@ -791,7 +941,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					/**
 					 * Если привязка к позиции в тексте выполняется
 					 */
-					if(assertion(this->_text, this->_start, instruction.assertion.type, instruction.flags, current)) {
+					if(assertion(this->_text, this->_start, instruction.assertion.type, instruction.flags, current, convention)) {
 						// Переходим к следующей инструкции программы
 						pc++;
 						// Продолжаем исполнение программы регулярного выражения
@@ -823,6 +973,12 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					if(cell >= this->_marks.size())
 						// Выполняем расширение набора отметок состояния возврата
 						this->_marks.resize(cell + 1, 0);
+					// Создаём изменение отметки атомарной группы
+					this->_remarks.emplace_back();
+					// Выполняем установку номера ячейки изменённой отметки
+					this->_remarks.back().cell = static_cast <uint32_t> (cell);
+					// Выполняем установку прежнего значения отметки
+					this->_remarks.back().value = this->_marks.at(cell);
 					// Выполняем запоминание глубины набора точек возврата
 					this->_marks.at(cell) = this->_points.size();
 					// Переходим к следующей инструкции программы
@@ -1080,7 +1236,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					/**
 					 * Если допустимая глубина рекурсивных вызовов превышена
 					 */
-					if(depth >= this->_nesting) {
+					if(depth >= this->_deepest) {
 						// Выполняем установку ошибки превышения допустимого объёма работы
 						this->_error = error_t::BUDGET_EXCEEDED;
 						// Выводим результат исполнения программы
@@ -1109,6 +1265,8 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					this->_frames.back().number = instruction.call.number;
 					// Выполняем установку размера журнала изменений ячеек захвата
 					this->_frames.back().journal = this->_journal.size();
+					// Выполняем установку размера журнала изменений отметок
+					this->_frames.back().remarks = this->_remarks.size();
 					// Выполняем установку номера кадра вызывающего подвыражения
 					this->_frames.back().parent = this->_current;
 					// Выполняем установку глубины рекурсивного вызова
@@ -1209,6 +1367,16 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					for(auto & change : this->_undo)
 						// Выполняем восстановление прежнего значения ячейки захвата
 						this->store(change.slot, change.value);
+					/**
+					 * Выполняем откат изменений отметок атомарных групп вызова
+					 *
+					 * @details Вызов входит в те же атомарные группы заново
+					 *          и отметки их перезаписывает; без отката отсечение
+					 *          уровня внешнего брало бы глубину уровня внутреннего
+					 *          и точек возврата не отсекало вовсе.
+					 *
+					 */
+					this->rollback(frame.remarks);
 					/**
 					 * Выполняем учёт отмены захватов в объёме работы сопоставления
 					 *
@@ -1379,6 +1547,62 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 			// Выполняем восстановление состояния захвата групп
 			this->restore(point.journal);
 			/**
+			 * Если точка возврата размещена глаголом управления
+			 *
+			 * @details Возврат в точку означает, что путь, глаголом пройденный,
+			 *          совпадения не дал: попытка сопоставления прекращается,
+			 *          а вид глагола указывает внешнему обходу, как её продолжать.
+			 *
+			 */
+			if(point.control > 0) {
+				/**
+				 * Если глагол переходит к ветви следующей охватывающей группы
+				 *
+				 * @details Отсечение снимает точки, ветвью накопленные, до отметки
+				 *          начала её, а возврат продолжается далее - точкой выбора,
+				 *          отметке предшествующей, сиречь ветвью следующей. Ветви
+				 *          охватывающей не имея, глагол отказывает попытке целиком
+				 *          наравне с глаголом переноса на знак.
+				 *
+				 */
+				if(static_cast <control_t> (point.control - 1) == control_t::THEN) {
+					// Получаем номер ячейки отметки ветви охватывающей
+					const size_t cell = static_cast <size_t> (point.cell);
+					/**
+					 * Если ячейка отметки ветви охватывающей заведена
+					 */
+					if(cell < this->_marks.size()) {
+						// Получаем глубину набора точек возврата начала ветви
+						const size_t mark = this->_marks.at(cell);
+						/**
+						 * Если точки возврата ветвью накоплены
+						 */
+						if(this->_points.size() > mark)
+							// Выполняем отсечение точек возврата, ветвью накопленных
+							this->_points.resize(((mark > base) ? mark : base));
+						// Продолжаем возврат к предшествующей точке возврата
+						continue;
+					}
+				}
+				/**
+				 * Выполняем снятие адреса глагола отметки попытки последней
+				 *
+				 * @details Отказ по глаголу отсечения имени отметки не выводит:
+				 *          правило это снято с эталонной реализации опытом
+				 *          на «a(*MARK:A)(*COMMIT)b».
+				 *
+				 */
+				this->_failing = string_view::npos;
+				// Выполняем установку вида глагола, попытку прекратившего
+				this->_control = point.control;
+				// Выполняем установку позиции продолжения попытки сопоставления
+				this->_resume = point.pos;
+				// Выполняем установку флага исчерпания точек возврата
+				exhausted = true;
+				// Выходим из цикла возврата к сохранённой точке
+				break;
+			}
+			/**
 			 * Если точка возврата исполнение не продолжает
 			 */
 			if(point.frame) {
@@ -1390,9 +1614,12 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 			 *          набор кадров соразмерным исполняемому пути.
 			 *
 			 */
-				if(!this->_frames.empty() && (this->_current == (this->_frames.size() - 1)))
+				if(!this->_frames.empty() && (this->_current == (this->_frames.size() - 1))) {
+					// Выполняем откат изменений отметок отменяемого вызова
+					this->rollback(this->_frames.back().remarks);
 					// Выполняем удаление кадра отменяемого рекурсивного вызова
 					this->_frames.pop_back();
+				}
 				// Выполняем восстановление номера кадра исполняемого вызова
 				this->_current = point.pos;
 				// Продолжаем возврат к предшествующей точке возврата
@@ -1475,6 +1702,36 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	this->_limit = this->_budget;
 	// Выполняем восстановление предельного объёма работы сопоставления
 	this->_budget = this->_ceiling;
+	/**
+	 * Если выражение задаёт предел шагов сопоставления своим указанием
+	 *
+	 * @details Предел, выражением заданный указанием «(*LIMIT_MATCH=N)», предел
+	 *          вызывающей стороны понижает, но не повышает: правило это снято
+	 *          с эталонной реализации.
+	 *
+	 */
+	if(static_cast <size_t> (program.steps) < this->_limit)
+		// Выполняем понижение действующего объёма работы сопоставления
+		this->_limit = static_cast <size_t> (program.steps);
+	/**
+	 * Выполняем установку действующей глубины рекурсивных вызовов
+	 *
+	 * @details Предел, выражением заданный указанием «(*LIMIT_DEPTH=N)», глубину
+	 *          вызывающей стороны понижает наравне с пределом шагов.
+	 *
+	 */
+	this->_deepest = ((static_cast <size_t> (program.depth) < this->_nesting) ?
+	 static_cast <size_t> (program.depth) : this->_nesting);
+	/**
+	 * Выполняем установку действующего предела объёма памяти сопоставления
+	 *
+	 * @details Предел задаётся указанием «(*LIMIT_HEAP=N)» в килобайтах и считается
+	 *          по наборам точек возврата, кадров вызовов и записей журнала - тому,
+	 *          что сопоставление и размещает. Отсутствие предела оставляет
+	 *          предельное значение разрядности, проверкой недостижимое.
+	 *
+	 */
+	this->_memory = ((program.heap < ~0u) ? (static_cast <size_t> (program.heap) * 1024) : numeric_limits <size_t>::max());
 	// Выполняем сброс кода ошибки последней операции
 	this->_error = error_t::NONE;
 	// Выполняем очистку набора границ совпадения и захваченных групп
@@ -1506,6 +1763,19 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	this->_slots.resize((((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells)));
 	// Выполняем очистку набора отметок состояния возврата
 	this->_marks.clear();
+	// Выполняем очистку журнала изменений отметок атомарных групп
+	this->_remarks.clear();
+	/**
+	 * Выполняем сброс состояния глаголов управления возвратом
+	 *
+	 * @details Сброс ведётся сопоставлением всяким, а не попыткою всякой:
+	 *          сопоставление, отбором позиций отвергнутое, попыток не делает
+	 *          вовсе, и состояние сопоставления прежнего осталось бы принятым
+	 *          за состояние нынешнего.
+	 *
+	 */
+	this->_control = 0;
+	this->_failing = string_view::npos;
 	/**
 	 * Выполняем обход позиций начала попытки сопоставления
 	 */
@@ -1609,6 +1879,10 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		 *
 		 */
 		this->_slots.assign(this->_slots.size(), string_view::npos);
+		// Выполняем сброс вида глагола, попытку прекратившего
+		this->_control = 0;
+		// Выполняем сброс адреса глагола отметки попытки последней
+		this->_failing = string_view::npos;
 		/**
 		 * Если попытка сопоставления с текущей позиции выполнена
 		 */
@@ -1633,6 +1907,36 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		if(this->_error != error_t::NONE)
 			// Выводим результат поиска совпадения
 			return false;
+		/**
+		 * Если попытка сопоставления прекращена глаголом управления
+		 *
+		 * @details Глагол отказа целиком обход позиций начала прекращает,
+		 *          а глагол переноса в позицию глагола её и задаёт: перенос
+		 *          назад недопустим, отчего позиция берётся не меньшею текущей
+		 *          с продвижением на знак - иначе обход зациклился бы.
+		 *
+		 */
+		if(this->_control > 0) {
+			// Получаем вид глагола, попытку сопоставления прекратившего
+			const control_t verb = static_cast <control_t> (this->_control - 1);
+			// Выполняем сброс вида глагола, попытку прекратившего
+			this->_control = 0;
+			/**
+			 * Если глагол отказывает сопоставлению целиком
+			 */
+			if(verb == control_t::COMMIT)
+				// Выводим результат поиска совпадения
+				return false;
+			/**
+			 * Если глагол переносит попытку в позицию своего размещения
+			 */
+			if((verb == control_t::SKIP) && (this->_resume > pos)) {
+				// Переходим к позиции размещения глагола управления
+				pos = this->_resume;
+				// Продолжаем обход позиций начала попытки сопоставления
+				continue;
+			}
+		}
 		/**
 		 * Если выражение привязано к началу попытки сопоставления
 		 */

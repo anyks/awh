@@ -526,7 +526,23 @@ namespace awh {
 				STORAGE_EXHAUSTED       = 0x2B, // Разбираемый текст не помещается в разрядность хранилища
 				TOO_MANY_ATTRIBUTES     = 0x2C, // Количество атрибутов у узла превышает допустимое
 				FILE_NOT_READ           = 0x2D, // Файл разметки прочитать не удалось
-				INVALID_NODE            = 0x2E  // Переданный узел дерева непригоден
+				/**
+				 * \~russian
+				 * Переданный узел дерева непригоден
+				 *
+				 * @note Код заведён взамен `INTERNAL`, стоявшего здесь прежде и отправлявшего
+				 *       потребителя искать дефект у нас. Причина непригодности вполне внешняя:
+				 *       узел удержан через перестроение дерева, и клеймо поколения обратило
+				 *       его в непригодный. Полный довод стоит при самом отказе -
+				 *       `Writer::element(const node_t &, const bool)`
+				 *
+				 * \~english
+				 * The passed node of the tree is unsuitable
+				 * @note The code was instituted in place of `INTERNAL` which stood here before
+				 *
+				 * \~
+				 */
+				INVALID_NODE            = 0x2E
 			};
 
 			/**

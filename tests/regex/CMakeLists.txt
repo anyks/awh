@@ -153,6 +153,20 @@ if (${GTest_FOUND})
             find_library(AWH_REFERENCE_LIBRARY NAMES pcre2-8)
         endif()
 
+        # Если эталонная реализация сборке доступна
+        #
+        # Присоединяется эталон ПЕРЕД библиотеками прочими намеренно: среди них
+        # стоит «PCRE_LIBRARY» - библиотека системная, к цели присоединяемая
+        # наследием, - и связывание берёт из двух ту, что в строке раньше.
+        # Оттого сличение шло с системной 10.42, тогда как заголовки брались
+        # от подмодуля 10.48: правила разбора у изданий разные, и расхождение
+        # выходило не нашим изъяном, а разницей изданий. Несогласие заголовка
+        # с библиотекой опасно и само по себе.
+        if (AWH_REFERENCE_LIBRARY AND AWH_REFERENCE_INCLUDE_DIR)
+            # Присоединяем библиотеку эталонной реализации к проверкам
+            target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC ${AWH_REFERENCE_LIBRARY})
+        endif()
+
         # Если нужно собрать и динамическую библиотеку
         if (CMAKE_SHARED_BUILD_LIB)
             target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
@@ -195,9 +209,6 @@ if (${GTest_FOUND})
         if (AWH_REFERENCE_LIBRARY AND AWH_REFERENCE_INCLUDE_DIR)
             # Добавляем каталог заголовочных файлов эталонной реализации
             target_include_directories(${PROJECT_NAME}${POSTFIX} PRIVATE ${AWH_REFERENCE_INCLUDE_DIR})
-
-            # Присоединяем библиотеку эталонной реализации к проверкам
-            target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC ${AWH_REFERENCE_LIBRARY})
 
             # Включаем признак сборки со сличением с эталонной реализацией
             target_compile_definitions(${PROJECT_NAME}${POSTFIX} PRIVATE AWH_TEST_PCRE2)

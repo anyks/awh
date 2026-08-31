@@ -1548,8 +1548,18 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 			break;
 			// Если создаётся интерфейс агрегации каналов
 			case static_cast <uint8_t> (event::eth_t::BOND):
-				// Создаём клонирующий интерфейс LAGG
-				result = ::device::clonable("lagg", name, this->_log);
+				/**
+				 * Создаём клонирующий интерфейс агрегации каналов
+				 *
+				 * @warning Род тут «bond», а НЕ «lagg»: агрегацию каналов Linux зовёт
+				 *          своим именем, и «lagg» - имя из наречия BSD. Устройство
+				 *          заводится сообщением RTM_NEWLINK, где имя драйвера служит
+				 *          родом, и род «lagg» ядро Linux отвергает всегда: такого
+				 *          рода у него нет вовсе. Проверено опросом ядра 6.1 на
+				 *          стенде Debian 31.08.2026 - «bond» в перечне родов есть,
+				 *          «lagg» отсутствует
+				 */
+				result = ::device::clonable("bond", name, this->_log);
 			break;
 			// Если создаётся интерфейс объединения интерфейсов на уровне L2
 			case static_cast <uint8_t> (event::eth_t::BRIDGE):

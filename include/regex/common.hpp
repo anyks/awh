@@ -320,7 +320,85 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			UNCHECKED  = 0x8000
+			UNCHECKED  = 0x8000,
+			/**
+			 * \~russian
+			 * Оптимизации отыскания начала совпадения не применяются
+			 *
+			 * @details Сборка выводит набор допустимых начальных байтов и обязательный
+			 *          литерал совпадения, каковыми сопоставление отсеивает позиции,
+			 *          совпадения дать не способные. Отбор этот исхода не меняет,
+			 *          а меняет одну лишь скорость, и режим снимает его целиком.
+			 *
+			 *          Режим отвечает указанию «(*NO_START_OPT)» эталонной реализации
+			 *          и заведён ради него: своей нужды снимать отбор у модуля нет.
+			 *
+			 * \~english
+			 * The optimizations of finding the start of a match are not applied
+			 * @details The compilation derives the set of admissible starting bytes and the required
+			 *          literal of a match, by which the matching filters out the positions
+			 *          incapable of yielding a match. That filtering does not change the outcome,
+			 *          it changes the speed alone, and the mode removes it entirely.
+			 *          The mode corresponds to the «(*NO_START_OPT)» option of the reference implementation
+			 *          and is declared for its sake: the module has no need of its own to remove the filtering.
+			 *
+			 * \~
+			 */
+			NOSTART    = 0x10000
+		};
+
+		/**
+		 * \~russian
+		 * @brief Вид глагола управления возвратом
+		 *
+		 * @details Глаголы эти правят движком возврата: завершают сопоставление,
+		 *          отсекают точки возврата накопленные и переносят попытку
+		 *          сопоставления. Смысл каждого снят с эталонной реализации опытом.
+		 *
+		 * \~english
+		 * @brief Kind of a backtracking control verb
+		 * @details Those verbs govern the backtracking engine: they finish the matching,
+		 *          cut off the accumulated backtracking points and move the matching
+		 *          attempt. The meaning of each is taken from the reference implementation by experiment.
+		 *
+		 * \~
+		 */
+		enum class control_t : uint8_t {
+			ACCEPT = 0x00, // Завершение сопоставления с успехом в текущей позиции
+			COMMIT = 0x01, // Отказ сопоставления целиком без переноса попытки
+			PRUNE  = 0x02, // Отказ попытки сопоставления с переносом её на знак
+			SKIP   = 0x03, // Отказ попытки с переносом её в позицию глагола
+			THEN   = 0x04, // Переход к ветви следующей охватывающей группы
+			MARK   = 0x05  // Отметка ветви именем, наружу выводимым
+		};
+
+		/**
+		 * \~russian
+		 * @brief Соглашение о переводе строки регулярного выражения
+		 *
+		 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале выражения
+		 *          и правит тремя устройствами: точкой, привязками к границам строк
+		 *          и привязкой конца текста. Последовательность «\\R» от соглашения
+		 *          не зависит вовсе - её охват правится указаниями «(*BSR_*)»
+		 *          отдельно. Правила эти сняты с эталонной реализации опытом.
+		 *
+		 * \~english
+		 * @brief Newline convention of a regular expression
+		 * @details The convention is set by an option of the «(*CRLF)» kind at the start of an expression
+		 *          and governs three things: the dot, the anchors to the line boundaries
+		 *          and the anchor of the end of the text. The «\\R» sequence does not depend
+		 *          on the convention at all — its coverage is governed by the «(*BSR_*)» options
+		 *          separately. Those rules are taken from the reference implementation by experiment.
+		 *
+		 * \~
+		 */
+		enum class newline_t : uint8_t {
+			LF        = 0x00, // Перевод строки, соглашение умолчания
+			CR        = 0x01, // Возврат каретки
+			CRLF      = 0x02, // Пара возврата каретки с переводом строки
+			ANYCRLF   = 0x03, // Возврат каретки, перевод строки либо их пара
+			ANY       = 0x04, // Всякий перевод строки Юникода
+			NUL       = 0x05  // Нулевой знак
 		};
 
 		/**
@@ -340,6 +418,7 @@ namespace awh {
 			ANY         = 0x04, // Любой символ с учётом режима «DOTALL»
 			CODEUNIT    = 0x0E, // Одиночная единица кодирования, последовательность «\C»
 			GRAPHEME    = 0x0F, // Расширенный графемный кластер, последовательность «\X»
+			CONTROL     = 0x10, // Глагол управления возвратом
 			ANCHOR      = 0x05, // Привязка к позиции в тексте
 			CONCAT      = 0x06, // Последовательное сопоставление дочерних узлов
 			ALTERNATE   = 0x07, // Выбор одного из дочерних узлов
@@ -1722,6 +1801,23 @@ namespace awh {
 					// Индекс имени группы в хранилище имён
 					uint32_t name;
 				} backref;
+				/**
+				 * \~russian
+				 * @brief Данные узла глагола управления возвратом
+				 *
+				 * \~english
+				 * @brief Data of a backtracking control verb node
+				 *
+				 * \~
+				 */
+				struct {
+					// Вид глагола управления возвратом
+					control_t type;
+					// Смещение имени отметки в хранилище имён разбора
+					uint32_t offset;
+					// Длина имени отметки в октетах
+					uint32_t length;
+				} control;
 				/**
 				 * \~russian
 				 * @brief Данные узла рекурсивного вызова

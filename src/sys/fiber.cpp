@@ -462,19 +462,49 @@ awh::fiber::state_t awh::fiber::status(const Fiber * fiber) noexcept {
 /**
  * @brief Функция заведения волокна
  *
+ * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
+ *
  * @param task функция, выполняемая волокном
- * @param log  объект работы с логами
  * @param size размер стека волокна в октетах
  * @return     заведённое волокно, либо nullptr при отказе
  *
  */
-awh::fiber::Fiber * awh::fiber::spawn(task_t task, const log_t * log, const size_t size) noexcept {
+awh::fiber::Fiber * awh::fiber::spawn(task_t task, const size_t size) noexcept {
+	// Выводим заведённое волокно
+	return awh::fiber::spawn(task, size, nullptr);
+}
+
+/**
+ * @brief Функция заведения волокна
+ *
+ * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
+ *
+ * @param task функция, выполняемая волокном
+ * @param log  объект работы с логами
+ * @return     заведённое волокно, либо nullptr при отказе
+ *
+ */
+awh::fiber::Fiber * awh::fiber::spawn(task_t task, const log_t * log) noexcept {
+	// Выводим заведённое волокно
+	return awh::fiber::spawn(task, STACK_SIZE, log);
+}
+
+/**
+ * @brief Функция заведения волокна
+ *
+ * @param task функция, выполняемая волокном
+ * @param size размер стека волокна в октетах
+ * @param log  объект работы с логами
+ * @return     заведённое волокно, либо nullptr при отказе
+ *
+ */
+awh::fiber::Fiber * awh::fiber::spawn(task_t task, const size_t size, const log_t * log) noexcept {
 	// Если работа волокна не задана, заводить нечего
 	if(task == nullptr){
 		// Если объект логирования передан
 		if(log != nullptr)
 			// Записываем ошибку в лог
-			log->print("Fiber cannot be spawned without a task", log_t::flag_t::CRITICAL);
+			log->print("Fiber cannot be spawned without a task", log_t::flag_t::WARNING);
 		// Выводим пустой результат
 		return nullptr;
 	}
@@ -681,7 +711,27 @@ bool awh::fiber::destroy(Fiber * fiber) noexcept {
 		// Если объект логирования передан
 		if(fiber->log != nullptr)
 			// Записываем ошибку в лог
-			fiber->log->print("Suspended fiber cannot be destroyed: its frames are not unwound", log_t::flag_t::CRITICAL);
+			fiber->log->print("Suspended fiber cannot be destroyed: its frames are not unwound", log_t::flag_t::WARNING);
+		// Сообщаем, что уничтожение не выполнено
+		return false;
+	}
+	/**
+	 * Если волокно выполняется прямо сейчас, уничтожать его нельзя
+	 *
+	 * @warning Уничтожение снимает отображение стека волокна, а на этом самом стеке
+	 *          лежит кадр текущего вызова: возврат пошёл бы по снятому отображению.
+	 *          Отметка о текущем волокне указывала бы при этом на снесённый объект
+	 *
+	 * @note Достижимо это стало вместе с выводом наружу `current()`: пока указателя
+	 *       на выполняющееся волокно взять было неоткуда, состояние это в уничтожение
+	 *       не попадало вовсе, и проверки не требовалось
+	 *
+	 */
+	if(fiber->state == state_t::RUNNING){
+		// Если объект логирования передан
+		if(fiber->log != nullptr)
+			// Записываем ошибку в лог
+			fiber->log->print("Running fiber cannot be destroyed: its stack is under the caller frame", log_t::flag_t::WARNING);
 		// Сообщаем, что уничтожение не выполнено
 		return false;
 	}

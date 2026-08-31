@@ -136,7 +136,9 @@ namespace awh {
 			RETURN   = 0x11, // Завершение рекурсивного вызова подвыражения
 			CONDITION = 0x12, // Переход по ветвям условного выражения
 			RESUME    = 0x13, // Возврат из рекурсивного вызова подвыражения
-			GRAPHEME  = 0x14  // Сопоставление расширенного графемного кластера
+			GRAPHEME  = 0x14, // Сопоставление расширенного графемного кластера
+			ACCEPT    = 0x15, // Завершение сопоставления с успехом в текущей позиции
+			CONTROL   = 0x16  // Размещение точки возврата глагола управления
 		};
 
 		/**
@@ -357,6 +359,46 @@ namespace awh {
 				} backref;
 				/**
 				 * \~russian
+				 * @brief Операнды инструкции глагола управления возвратом
+				 *
+				 * \~english
+				 * @brief Operands of the instruction of a backtracking control verb
+				 *
+				 * \~
+				 */
+				struct {
+					// Вид глагола управления возвратом
+					control_t type;
+					/**
+					 * \~russian
+					 * Номер ячейки отметки ветви охватывающей группы
+					 *
+					 * @details Ячейка отведена глаголу перехода к ветви следующей:
+					 *          возврат в него отсекает точки, ветвью накопленные,
+					 *          до отметки её начала, отчего возврат продолжается
+					 *          ветвью следующей. Значение недостижимое означает
+					 *          отсутствие ветви охватывающей вовсе - глагол
+					 *          при нём отказывает попытке сопоставления целиком.
+					 *
+					 * \~english
+					 * Number of the mark cell of the branch of the enclosing group
+					 * @details The cell is allotted to the verb of moving to the next branch:
+					 *          backtracking into it cuts off the points accumulated by the branch
+					 *          down to the mark of its beginning, whereby the backtracking continues
+					 *          with the next branch. An unreachable value means
+					 *          the absence of an enclosing branch at all — the verb
+					 *          then refuses the whole matching attempt.
+					 *
+					 * \~
+					 */
+					uint32_t cell;
+					// Смещение имени отметки в хранилище имён
+					uint32_t offset;
+					// Длина имени отметки в октетах
+					uint32_t length;
+				} control;
+				/**
+				 * \~russian
 				 * @brief Операнды инструкции проверки продвижения по тексту
 				 *
 				 * \~english
@@ -536,6 +578,104 @@ namespace awh {
 			uint32_t cells;
 			// Набор режимов компиляции регулярного выражения
 			uint32_t flags;
+			/**
+			 * \~russian
+			 * Наибольшее допустимое количество шагов сопоставления выражения
+			 *
+			 * @details Предел задаётся самим выражением указанием «(*LIMIT_MATCH=N)»
+			 *          и предел вызывающей стороны понижает, но не повышает.
+			 *          Отсутствие предела выражается предельным значением
+			 *          разрядности, а не нулём: нуль есть предел действующий,
+			 *          сопоставление отвергающий первым же шагом, - «(*LIMIT_MATCH=0)»
+			 *          эталон принимает и отвечает исчерпанием предела.
+			 *
+			 * \~english
+			 * Largest admissible number of matching steps of the expression
+			 * @details The limit is set by the expression itself by the «(*LIMIT_MATCH=N)» option
+			 *          and lowers the limit of the calling side but never raises it.
+			 *          The absence of a limit is expressed by the largest value of the type
+			 *          rather than by zero: zero is an effective limit that refuses the matching
+			 *          at the very first step — «(*LIMIT_MATCH=0)» is accepted by the reference
+			 *          and answers with the exhaustion of the limit.
+			 *
+			 * \~
+			 */
+			uint32_t steps;
+			/**
+			 * \~russian
+			 * Наибольшая допустимая глубина рекурсивных вызовов выражения
+			 *
+			 * @details Предел задаётся самим выражением указанием «(*LIMIT_DEPTH=N)»
+			 *          и предел вызывающей стороны понижает, но не повышает.
+			 *          Отсутствие предела выражается предельным значением разрядности
+			 *          наравне с пределом шагов сопоставления.
+			 *
+			 * \~english
+			 * Largest admissible depth of the recursive calls of the expression
+			 * @details The limit is set by the expression itself by the «(*LIMIT_DEPTH=N)» option
+			 *          and lowers the limit of the calling side but never raises it.
+			 *          The absence of a limit is expressed by the largest value of the type
+			 *          along with the limit of the matching steps.
+			 *
+			 * \~
+			 */
+			uint32_t depth;
+			/**
+			 * \~russian
+			 * Наибольший допустимый объём памяти сопоставления выражения в килобайтах
+			 *
+			 * @details Предел задаётся самим выражением указанием «(*LIMIT_HEAP=N)»
+			 *          и считается по наборам точек возврата, кадров вызовов и записей
+			 *          журнала - тому, что сопоставление и размещает. Отсутствие
+			 *          предела выражается предельным значением разрядности.
+			 *
+			 * \~english
+			 * Largest admissible amount of the matching memory of the expression in kibibytes
+			 * @details The limit is set by the expression itself by the «(*LIMIT_HEAP=N)» option
+			 *          and is counted over the sets of the backtracking points, the call frames and the journal
+			 *          entries — over what the matching actually allocates. The absence
+			 *          of a limit is expressed by the largest value of the type.
+			 *
+			 * \~
+			 */
+			uint32_t heap;
+			/**
+			 * \~russian
+			 * Соглашение о переводе строки выражения
+			 *
+			 * @details Соглашение задаётся указанием вида «(*CRLF)» в начале выражения
+			 *          и правит точкой, привязками к границам строк и привязкой конца
+			 *          текста. Соглашением умолчания выступает перевод строки.
+			 *
+			 * \~english
+			 * Newline convention of the expression
+			 * @details The convention is set by an option of the «(*CRLF)» kind at the start of an expression
+			 *          and governs the dot, the anchors to the line boundaries and the anchor of the end
+			 *          of the text. The default convention is the line feed.
+			 *
+			 * \~
+			 */
+			newline_t newline;
+			/**
+			 * \~russian
+			 * Номер ячейки состояния, отметку последнюю хранящей
+			 *
+			 * @details Ячейка ведётся наравне с ячейками захвата: глагол отметки
+			 *          пишет в неё адрес свой, а возврат запись отменяет, отчего
+			 *          по совпадении в ней остаётся отметка пути, совпадение
+			 *          давшего. Значение недостижимое означает выражение,
+			 *          глаголов отметки не несущее вовсе.
+			 *
+			 * \~english
+			 * Number of the state cell that holds the last mark
+			 * @details The cell is maintained along with the capture cells: the mark verb
+			 *          writes its own address into it, whereas backtracking undoes the write, whereby
+			 *          upon a match it holds the mark of the path that produced the match.
+			 *          An unreachable value means an expression that carries no mark verbs at all.
+			 *
+			 * \~
+			 */
+			uint32_t marker;
 			// Набор инструкций программы
 			Sequence <instruction_t> instructions;
 			/**
@@ -569,6 +709,25 @@ namespace awh {
 			Sequence <property_t> properties;
 			// Хранилище последовательностей символов
 			Sequence <uint32_t> strings;
+			/**
+			 * \~russian
+			 * Хранилище имён отметок глаголов управления
+			 *
+			 * @details Имена всех отметок программы лежат сплошным набором октетов,
+			 *          а инструкция глагола ссылается на участок его смещением
+			 *          и длиною наравне с классами символов. Имя выводится наружу
+			 *          по совпадении и указывает ветвь, совпадение давшую.
+			 *
+			 * \~english
+			 * Storage of the names of the marks of the control verbs
+			 * @details The names of all the marks of the program lie in a contiguous set of octets,
+			 *          whereas the instruction of a verb refers to a span of it by an offset
+			 *          and a length, along with the character classes. The name is yielded outward
+			 *          upon a match and tells which branch produced the match.
+			 *
+			 * \~
+			 */
+			Sequence <uint8_t> markers;
 			/**
 			 * \~russian
 			 * Держатель записи хранилища, обозреваемой наборами программы
@@ -665,7 +824,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Program() noexcept : id(0), captures(0), cells(0), flags(0), plain(false), sweeping(false), anchored(false) {}
+			Program() noexcept : id(0), captures(0), cells(0), flags(0), steps(~0u), depth(~0u), heap(~0u), newline(newline_t::LF), marker(~0u), plain(false), sweeping(false), anchored(false) {}
 			/**
 			 * \~russian
 			 * @brief Метод извлечения обзора класса символов программы
@@ -747,6 +906,16 @@ namespace awh {
 				this->cells = 0;
 				// Выполняем сброс набора режимов компиляции
 				this->flags = 0;
+				// Выполняем сброс предела шагов сопоставления выражения
+				this->steps = ~0u;
+				// Выполняем сброс предела глубины рекурсивных вызовов
+				this->depth = ~0u;
+				// Выполняем сброс предела объёма памяти сопоставления
+				this->heap = ~0u;
+				// Выполняем сброс соглашения о переводе строки выражения
+				this->newline = newline_t::LF;
+				// Выполняем сброс номера ячейки отметки последней
+				this->marker = ~0u;
 				// Выполняем сброс набора инструкций программы
 				this->instructions.reset();
 				// Выполняем сброс хранилища ссылок на классы символов
@@ -757,6 +926,8 @@ namespace awh {
 				this->properties.reset();
 				// Выполняем сброс хранилища последовательностей символов
 				this->strings.reset();
+				// Выполняем сброс хранилища имён отметок глаголов управления
+				this->markers.reset();
 				// Выполняем освобождение держателя записи хранилища
 				this->blob.reset();
 				// Выполняем очистку предварительного отбора позиций
@@ -788,6 +959,16 @@ namespace awh {
 				this->cells = 0;
 				// Выполняем сброс набора режимов компиляции
 				this->flags = 0;
+				// Выполняем сброс предела шагов сопоставления выражения
+				this->steps = ~0u;
+				// Выполняем сброс предела глубины рекурсивных вызовов
+				this->depth = ~0u;
+				// Выполняем сброс предела объёма памяти сопоставления
+				this->heap = ~0u;
+				// Выполняем сброс соглашения о переводе строки выражения
+				this->newline = newline_t::LF;
+				// Выполняем сброс номера ячейки отметки последней
+				this->marker = ~0u;
 				// Выполняем очистку набора инструкций программы
 				this->instructions.clear();
 				// Выполняем очистку хранилища ссылок на классы символов
@@ -798,6 +979,8 @@ namespace awh {
 				this->properties.clear();
 				// Выполняем очистку хранилища последовательностей символов
 				this->strings.clear();
+				// Выполняем очистку хранилища имён отметок глаголов управления
+				this->markers.clear();
 				// Выполняем освобождение держателя записи хранилища
 				this->blob.reset();
 				// Выполняем очистку предварительного отбора позиций

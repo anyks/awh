@@ -172,6 +172,7 @@ if (${GTest_FOUND})
                 io/static.cpp
                 io/tunnel.cpp
                 io/parameterized.cpp
+                io/blocking.cpp
             )
         # Если не нужно собрать тесты для работы с модулем ввода-вывода
         else()

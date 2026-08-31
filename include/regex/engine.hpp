@@ -492,6 +492,24 @@ namespace awh {
 				// Код ошибки последней операции движка
 				error_t _error;
 			private:
+				/**
+				 * \~russian
+				 * Имя отметки, совпадением последним оставленной
+				 *
+				 * @details Имя выводится глаголом «(*MARK:имя)», отметившим путь,
+				 *          совпадение давший. Совпадение, глаголов отметки
+				 *          не прошедшее, имя оставляет пустым.
+				 *
+				 * \~english
+				 * Name of the mark left by the last match
+				 * @details The name is yielded by the «(*MARK:name)» verb that marked the path
+				 *          which produced the match. A match that passed no mark verbs
+				 *          leaves the name empty.
+				 *
+				 * \~
+				 */
+				string _marker;
+			private:
 				// Объект журнала событий
 				const log_t * _log;
 			public:
@@ -637,6 +655,26 @@ namespace awh {
 				 * \~
 				 */
 				error_t error() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения имени отметки совпадения последнего
+				 *
+				 * @details Имя оставляет глагол «(*MARK:имя)», путь отметивший:
+				 *          выражение, глаголов отметки не несущее, и совпадение,
+				 *          их не прошедшее, выводят имя пустое.
+				 *
+				 * @return имя отметки совпадения последнего
+				 *
+				 * \~english
+				 * @brief Method of getting the name of the mark of the last match
+				 * @details The name is left by the «(*MARK:name)» verb that marked the path:
+				 *          an expression carrying no mark verbs, and a match that passed
+				 *          none of them, yield an empty name.
+				 * @return name of the mark of the last match
+				 *
+				 * \~
+				 */
+				const string & marker() const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод извлечения текста ошибки последней операции

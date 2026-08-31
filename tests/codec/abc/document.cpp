@@ -494,10 +494,25 @@ TEST(CodecAbcDocument, Extensions) {
 	ASSERT_EQ(root.at(0).type(), abc::type_t::EXTENDED);
 	// Выполняем проверку признака отрицательности величины
 	ASSERT_TRUE(root.at(0).negative());
-	// Выполняем проверку длины октетов величины
-	ASSERT_EQ(root.at(0).data().size(), magnitude.size());
-	// Выполняем проверку содержимого октетов величины
-	ASSERT_EQ(static_cast <uint8_t> (root.at(0).data().at(0)), magnitude.at(0));
+	/**
+	 * Выполняем проверку октетов величины ЦЕЛИКОМ, а не длины их и первого октета
+	 *
+	 * @note Прежде сличались длина да октет нулевой, и читатель, переставивший октеты
+	 *       со второго, прошёл бы зелёным. Опора обязана лежать вне проверяемого, и
+	 *       здесь ею служит сама поданная величина. Найдено 31.08.2026 разбором набора
+	 */
+	{
+		// Октеты величины, снятые с дерева документа
+		const auto & taken = root.at(0).data();
+		// Длина снятых октетов обязана отвечать поданной
+		ASSERT_EQ(taken.size(), magnitude.size());
+		/**
+		 * Выполняем перебор всех октетов величины
+		 */
+		for(size_t i = 0; i < magnitude.size(); i++)
+			// Очередной снятый октет обязан отвечать поданному
+			ASSERT_EQ(static_cast <uint8_t> (taken.at(i)), magnitude.at(i)) << "октет: " << i;
+	}
 	// Выполняем проверку десятичного порядка целого числа
 	ASSERT_EQ(root.at(0).exponent(), 0);
 	// Выполняем проверку вида десятичного числа
@@ -1385,6 +1400,27 @@ TEST(CodecAbcDocument, DuplicateRulesNested){
 	ASSERT_EQ(repeated.root().get("узел").size(), 2u);
 }
 /**
+ * @brief Поданное число вместе с собранной из него записью
+ *
+ * @note Число несётся рядом с записью нарочно: оно и служит ОПОРОЮ ВНЕШНЕЙ при
+ *       сличении слоёв, см. `CodecAbcDocument.LayersAgreeOnNumberEdges`
+ *
+ * @note Тип объявлен в БЕЗЫМЯННОМ пространстве: проверки кодеков собираются одной
+ *       программой, и тип файлового охвата дал бы порчу кучи вдали от места
+ */
+namespace {
+	/**
+	 * Source Структура поданного числа вместе с записью его
+	 */
+	template <typename T>
+	struct Source {
+		// Собранная запись числа
+		const vector <uint8_t> & record;
+		// Само поданное число
+		T value;
+	};
+}
+/**
  * @brief Проверка схождения слоёв на всём наборе краевых чисел
  *
  * @details Проверка `WholeRealMatchesInteger` сличает ДВЕ ЗАПИСИ одного числа внутри
@@ -1404,13 +1440,34 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	 * @param record сличаемая запись числа
 	 * @param title  наименование сличаемой записи
 	 */
-	auto same = [](const vector <uint8_t> & record, const string & title) noexcept -> void {
+	auto same = [](const auto & source, const string & title) noexcept -> void {
+		// Запись, собранная из поданного числа
+		const vector <uint8_t> & record = source.record;
 		// Дерево документа, снятое с поданной записи
 		abc::document_t document(::logger());
 		// Запись обязана сняться деревом
 		ASSERT_TRUE(document.parse(record.data(), record.size())) << title;
 		// Владеющее значение, собранное из того же дерева
 		const abc::value_t value(document.root());
+		/**
+		 * Выполняем сличение снятого с ПОДАННЫМ числом - опорою внешней
+		 *
+		 * @note Сличения слоёв меж собою для поверки НЕ ДОСТАЁТ: оба слоя выведены из
+		 *       ОДНОГО разбора, и ошибись он молча - оба ошибутся одинаково, а проверка
+		 *       зазеленеет на утраченном. Сличалась бы НЕПОДВИЖНОСТЬ, а не верность
+		 *
+		 * @note Признак выведен 31.08.2026 вместе с Василием: опора обязана лежать ВНЕ
+		 *       проверяемого. У него тем же признаком пал доклад «разбор - сборка -
+		 *       разбор, расхождений ноль», где опорою служило то же, что и проверялось
+		 */
+		{
+			// Число, снятое обратно видом поданного
+			decltype(source.value) back = decltype(source.value)();
+			// Снятие обязано быть успешным
+			ASSERT_TRUE(document.root().value(back)) << title;
+			// Снятое обязано отвечать поданному: сличаем печатью ради `nan`
+			ASSERT_EQ(::testing::PrintToString(back), ::testing::PrintToString(source.value)) << title;
+		}
 		/**
 		 * @brief Работа сличения слоёв одним затребованным видом
 		 *
@@ -1452,26 +1509,26 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	 *
 	 * @param value укладываемое дробное число
 	 */
-	auto fractional = [&record](const double value) noexcept -> const vector <uint8_t> & {
+	auto fractional = [&record](const double value) noexcept -> Source <double> {
 		// Выполняем очистку буфера собираемой записи
 		record.clear();
 		// Выполняем укладку записи дробного числа
 		abc::real(record, value);
-		// Выводим собранную запись
-		return record;
+		// Выводим собранную запись вместе с поданным числом
+		return Source <double> {record, value};
 	};
 	/**
 	 * @brief Работа сборки записи целого числа
 	 *
 	 * @param value укладываемое целое число
 	 */
-	auto whole = [&record](const int64_t value) noexcept -> const vector <uint8_t> & {
+	auto whole = [&record](const int64_t value) noexcept -> Source <int64_t> {
 		// Выполняем очистку буфера собираемой записи
 		record.clear();
 		// Выполняем укладку записи целого числа
 		abc::integer(record, value);
-		// Выводим собранную запись
-		return record;
+		// Выводим собранную запись вместе с поданным числом
+		return Source <int64_t> {record, value};
 	};
 	// Выполняем сличение слоёв на числах обыкновенных
 	same(whole(7), "целое семь");
@@ -1501,11 +1558,33 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	same(fractional(- ::ldexp(1.0, 63)), "минус два в шестьдесят третьей");
 	same(fractional(::ldexp(1.0, 70)), "два в семидесятой");
 	same(fractional(numeric_limits <double>::max()), "предел дробного вида");
+	/**
+	 * Наименьшее поднормальное закрепляется ЗАКОННО, хотя память и предупреждает, что
+	 * закреплять поднормальными нельзя: у NetBSD на aarch64 их нет вовсе
+	 *
+	 * @note Предупреждение то относится к кодекам ТЕКСТОВЫМ, где разбор числа ведёт
+	 *       арифметика (`strtod`), а обнуление поднормальных правит именно ею. ABC же
+	 *       несёт разрядную ЗАПИСЬ числа и снимает её обратно `memcpy` - девять октетов,
+	 *       метка и восемь разрядов, - и арифметики над значением не ведёт вовсе
+	 *
+	 * @note Проверено щупом 31.08.2026 приёмом Василия: машина без поднормальных
+	 *       воспроизведена на своей же разрядом `FZ` (24-й) регистра `FPCR`, стенд ARM64
+	 *       не понадобился. Признак печатался рядом с итогом («поднормальные живы: да /
+	 *       НЕТ»), иначе мерилась бы пустота. В обоих случаях число снято ТОЧНО
+	 */
 	same(fractional(numeric_limits <double>::denorm_min()), "наименьшее поднормальное");
 	/**
 	 * Выполняем сличение слоёв на целых у границ разрядной сетки
 	 */
 	same(whole(-1), "целое минус один");
+	/**
+	 * Края у порога 2^53 берутся НЕкруглыми нарочно: выше порога всякое дробное уже
+	 * целое, и на круглых степенях двойки согласие слоёв сходится всегда, ничего не
+	 * поверяя. Указано Василием 31.08.2026
+	 */
+	same(whole(static_cast <uint64_t> ((1ull << 53) + 1)), "два в пятьдесят третьей плюс один целым");
+	same(fractional(static_cast <double> ((1ull << 53) + 1)), "два в пятьдесят третьей плюс один дробным");
+	same(whole(static_cast <uint64_t> ((1ull << 53) - 1)), "два в пятьдесят третьей минус один целым");
 	same(whole(numeric_limits <int64_t>::min()), "нижний предел целого со знаком");
 	same(whole(numeric_limits <int64_t>::max()), "верхний предел целого со знаком");
 }

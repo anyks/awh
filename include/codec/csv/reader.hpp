@@ -249,10 +249,28 @@ namespace awh {
 						 * @note Проверка стоит памяти - разбор удерживает имена, - и
 						 * отключают её там, где заголовок заведомо свой
 						 *
+						 * @warning Отключение есть отказ от платы, а НЕ дозволение повтора: повтор,
+						 * прошедший отключённую проверку, оставляет столбец недостижимым по имени.
+						 * Обращение по имени доходит до ПЕРВОГО столбца с этим именем, прочие же
+						 * достижимы одним лишь номером - молча, без отказа и без признака. Замер:
+						 * заголовок «имя,имя,возраст» при отключённой проверке принимается, столбцов
+						 * выходит три, а `has("имя")` истинен и указывает на нулевой
+						 *
+						 * @note Установка заголовка извне (`document_t::header`) повтор отвергает
+						 *       ВСЕГДА, признака этого не спрашивая: проверка там даровая - она
+						 *       следует из соответствия имён, строимого всё равно, - и платить за
+						 *       неё нечем. Расхождение это намеренное, а не упущение
+						 *
 						 * \~english
 						 * Flag of the check of a repeated declaration of the names of the fields in the header
 						 * @note The check costs memory — the parsing holds the names — and
 						 * it is disabled where the header is known to be one's own
+						 * @warning The disabling is a refusal of the cost and NOT a permission of a repetition:
+						 * a repetition which has passed the disabled check leaves a column unreachable by name.
+						 * The addressing by name reaches the FIRST column with this name, while the others
+						 * are reachable by the index alone — silently, without a refusal and without a sign
+						 * @note The setting of the header from the outside (`document_t::header`) refuses a repetition
+						 *       ALWAYS, without asking this flag: the check there is free, and the divergence is deliberate
 						 *
 						 * \~
 						 */
@@ -322,7 +340,34 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						ESCAPE_UNQUOTED = 0x09
+						ESCAPE_UNQUOTED = 0x09,
+						/**
+						 * \~russian
+						 * Возврат каретки при строгом разборе, запись ещё не завершена
+						 *
+						 * @details Строгий разбор знает концом записи одну лишь пару возврата
+						 * каретки с переводом строки, а потому завершать запись самим возвратом
+						 * каретки не вправе: пара может и не сложиться, и тогда текст выпадает из
+						 * грамматики. Завершение откладывается сюда и совершается лишь по
+						 * приходе перевода строки - иначе отказ приходил бы уже ПОСЛЕ выдачи
+						 * записи, которой в тексте не было
+						 *
+						 * @note Отличается от `AFTER_CR` тем лишь, что там запись уже завершена.
+						 *       Свести их в одно нельзя: разбор нестрогий возврат каретки концом
+						 *       записи признаёт, и откладывать ему нечего
+						 *
+						 * \~english
+						 * Carriage return at the strict parsing, the record is not finished yet
+						 * @details The strict parsing knows as the end of a record only the pair of the carriage
+						 * return with the line feed, and therefore it has no right to finish a record by the carriage
+						 * return itself: the pair may fail to come together, and then the text falls out of
+						 * the grammar. The finishing is postponed to here and is performed only upon
+						 * the arrival of the line feed — otherwise the refusal would come already AFTER the issuance
+						 * of a record which was not in the text
+						 *
+						 * \~
+						 */
+						PENDING_CR = 0x0A
 					};
 					/**
 					 * \~russian

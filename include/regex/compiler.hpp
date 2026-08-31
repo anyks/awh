@@ -258,6 +258,26 @@ namespace awh {
 				// Количество ячеек состояния, размещённых компиляцией
 				uint32_t _cells;
 			private:
+				/**
+				 * \~russian
+				 * Номер ячейки отметки ветви, компилируемой ныне
+				 *
+				 * @details Ячейка отводится ветви выбора, глагол перехода несущей,
+				 *          и достаётся глаголам её: возврат в глагол отсекает
+				 *          точки до отметки начала ветви. Значение недостижимое
+				 *          означает отсутствие ветви охватывающей вовсе.
+				 *
+				 * \~english
+				 * Number of the mark cell of the branch being compiled now
+				 * @details The cell is allotted to a branch of an alternation that carries the verb
+				 *          of moving, and is inherited by its verbs: backtracking into a verb cuts off
+				 *          the points down to the mark of the beginning of the branch. An unreachable value
+				 *          means the absence of an enclosing branch at all.
+				 *
+				 * \~
+				 */
+				uint32_t _branch;
+			private:
 				// Количество ячеек отметки состояния возврата
 				uint32_t _atomics;
 			private:
@@ -682,6 +702,34 @@ namespace awh {
 				bool compileCondition(const node_id_t id) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод извлечения набора номеров одноимённых групп
+				 *
+				 * @details В режиме «DUPNAMES» одно имя объявляется несколькими группами,
+				 *          и ссылка по имени обращается к той из них, что захват выполнила,
+				 *          а условие по имени выполнено при захвате любой из них. Разбор
+				 *          выводит по имени номер первой объявленной, чего для правил
+				 *          этих недостаточно, и построитель размещает по набору номеров
+				 *          цепочку проверок.
+				 *
+				 * @param name индекс имени группы в хранилище имён
+				 * @return     набор номеров одноимённых групп либо ничего
+				 *
+				 * \~english
+				 * @brief Method of getting the set of the numbers of the same-named groups
+				 * @details In the «DUPNAMES» mode one name is declared by several groups,
+				 *          and a reference by name addresses the one of them that performed the capture,
+				 *          whereas a condition by name holds on the capture of any of them. The parsing
+				 *          yields by a name the number of the first declared one, which is not enough for those
+				 *          rules, and the compiler places a chain of checks by
+				 *          the set of the numbers.
+				 * @param name index of the name of the group in the name storage
+				 * @return     set of the numbers of the same-named groups or nothing
+				 *
+				 * \~
+				 */
+				const vector <uint32_t> * duplicates(const uint32_t name) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод компиляции тел рекурсивно вызываемых подвыражений
 				 *
 				 * @details Тела размещаются за основной программой отдельными разделами,
@@ -727,6 +775,27 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t reserve() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки наличия глагола перехода к ветви следующей
+				 *
+				 * @details Ветвь, глагола этого не несущая, отметки начала своего
+				 *          не требует: отметка размещается лишь там, где возврат
+				 *          в глагол её и употребит.
+				 *
+				 * @param id индекс проверяемого узла в арене узлов
+				 * @return   результат проверки наличия глагола перехода
+				 *
+				 * \~english
+				 * @brief Method of checking the presence of the verb of moving to the next branch
+				 * @details A branch that does not carry that verb requires no mark of its beginning:
+				 *          the mark is placed only where backtracking into the verb will use it.
+				 * @param id index of the checked node in the node arena
+				 * @return   result of checking the presence of the verb of moving
+				 *
+				 * \~
+				 */
+				bool moving(const node_id_t id) const noexcept;
 			private:
 				/**
 				 * \~russian
