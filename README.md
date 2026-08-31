@@ -6,16 +6,18 @@
 
 ## Requirements
 
-- [LZ4](https://lz4.org)
-- [Zlib](http://www.zlib.net)
-- [BZip2](http://www.bzip.org)
-- [Brotli](https://brotli.org)
-- [Snappy](https://github.com/google/snappy)
-- [Lizard](https://github.com/inikep/lizard/tree/lizard)
-- [Density](https://github.com/k0dai/density)
-- [ZStandart](https://github.com/facebook/zstd)
-- [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
-- [BoringSSL](https://boringssl.googlesource.com/boringssl)
+| Name | Description |
+|------|-------------|
+| [LZ4](https://lz4.org) | A lossless data compression algorithm whose primary goal is to ensure the highest possible speed for both compression and decompression. It belongs to the LZ77 (Lempel-Ziv) family of methods and operates on byte streams. It was developed by French programmer Yann Collet in 2011. |
+| [Zlib](http://www.zlib.net) | A free, cross-platform library for data compression and decompression. It implements the DEFLATE algorithm, which combines two methods: run-length encoding (LZ77) and Huffman coding. The library is widely used in various software products, operating systems, and embedded systems. |
+| [BZip2](http://www.bzip.org) | A free, open-source command-line data compression utility. It implements an algorithm that combines the Burrows-Wheeler block-sorting transform with Huffman coding. |
+| [Brotli](https://brotli.org) | An open-source lossless data compression algorithm developed by Google. It is designed specifically to speed up web page loading by reducing the size of text resources such as HTML, CSS, JavaScript, JSON, and others. |
+| [Snappy](https://github.com/google/snappy) | A library for fast data compression and decompression developed by Google. Its key feature is its focus on high speed (compression and decompression) rather than achieving the highest possible compression ratio. |
+| [Lizard](https://github.com/inikep/lizard/tree/lizard) | Lizard library is based on frequently used LZ4 library by Yann Collet but the Lizard compression format is not compatible with LZ4. Lizard library is provided as open-source software using BSD 2-Clause license. The high compression/decompression speed is achieved without any SSE and AVX extensions. |
+| [Density](https://github.com/k0dai/density) | Superfast compression library. DENSITY is a free C99, open-source, BSD licensed compression library. It is focused on high-speed compression, at the best ratio possible. All three of DENSITY’s algorithms are currently at the pareto frontier of compression speed vs ratio (cf. here for an independent benchmark). |
+| [ZStandart](https://github.com/facebook/zstd) | A lossless data compression algorithm developed since 2015 by Yann Collet with support from Facebook. The goal is to achieve compression ratios comparable to or superior to the classic deflate algorithm (implemented in Zip, gzip, and others), while achieving higher compression and decompression speeds. |
+| [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma) | A lossless data compression algorithm developed by Igor Pavlov between 1996 and 1998 as part of the 7-Zip archiver project. |
+| [BoringSSL](https://boringssl.googlesource.com/boringssl) | An open-source cryptographic library, a fork of the OpenSSL project maintained by Google. It was created specifically for Google's internal needs: to ensure strong security, simplify the codebase, and speed up development by removing deprecated and unsupported features. |
 
 ## Project goals and features
 
