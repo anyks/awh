@@ -1,0 +1,5 @@
+# Описатели значений AWH: показывают содержимое ссылочных видов вместо голых номеров
+#
+# LLDB читает этот файл лишь с дозволения - однажды выполнить:
+#   echo 'settings set target.load-cwd-lldbinit true' >> ~/.lldbinit
+command script import tools/debug/awh.py

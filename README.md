@@ -1,28 +1,78 @@
-[![ANYKS - WEB HUB](https://raw.githubusercontent.com/anyks/awh/main/img/banner.jpg)](https://anyks.com)
+[![ANYKS - Web Hub](https://raw.githubusercontent.com/anyks/awh/main/img/banner.jpg)](https://anyks.com)
 
-# ANYKS - WEB HUB (AWH) C++
+# ANYKS - Web Hub (AWH) C++
 
-[![License: AWH 1.0](https://img.shields.io/badge/license-AWH%201.0-blue.svg)](LICENSE)
+[![LicenseRef-AWH-1.0](https://img.shields.io/badge/license-AWH%201.0-blue.svg)](LICENSE)
+
+## Requirements
+
+- [LZ4](https://lz4.org)
+- [Zlib](http://www.zlib.net)
+- [BZip2](http://www.bzip.org)
+- [Brotli](https://brotli.org)
+- [Snappy](https://github.com/google/snappy)
+- [Lizard](https://github.com/inikep/lizard/tree/lizard)
+- [Density](https://github.com/k0dai/density)
+- [ZStandart](https://github.com/facebook/zstd)
+- [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
+- [BoringSSL](https://boringssl.googlesource.com/boringssl)
 
 ## Project goals and features
 
-- **HTTP / HTTPS**:   WEB - CLIENT / SERVER.
-- **WS / WSS**:       WebSocket - CLIENT / SERVER.
-- **Proxy**:          HTTP(S) / SOCKS5 PROXY - CLIENT / SERVER.
-- **Compress**:       GZIP / BZIP2 / ZSTD / LZ4 / LZMA / DEFLATE / BROTLI - compression support.
-- **Authentication**: BASIC / DIGEST - authentication support.
+### Supported proxy
+| PROXY       | RFC  |
+|-------------|------|
+| **HTTP(S)** | 7230 |
+| **Socks5**  | 1928 |
 
-## Supported protocols
+### Supported compressors
+| Compressor  | Block  | Stream |
+|-------------|--------|--------|
+| **LZ4**     |  ✅    |  ✅    |
+| **LZMA**    |  ✅    |  ✅    |
+| **ZSTD**    |  ✅    |  ✅    |
+| **GZIP**    |  ✅    |  ✅    |
+| **ZLIB**    |  ✅    |  ✅    |
+| **BZIP2**   |  ✅    |  ✅    |
+| **BROTLI**  |  ✅    |  ✅    |
+| **LIZARD**  |  ✅    |  ✅    |
+| **SNAPPY**  |  ✅    |  ❌    |
+| **DEFLATE** |  ✅    |  ✅    |
+| **DENSITY** |  ✅    |  ❌    |
 
-| PROTOCOL     | RFC  |
-|--------------|------|
-| **HTTP/1.1** | 9112 |
-| **HTTP/2**   | 9113 |
-| **HTTP/3**   | 9114 |
-| **QUIC**     | 9000 |
+### Supported protocols
+| PROTOCOL                   | RFC  |
+|----------------------------|------|
+| **HTTP/1.1**               | 9112 |
+| **HTTP/2**                 | 9113 |
+| **HTTP/3**                 | 9114 |
+| **QUIC**                   | 9000 |
+| **Websocket**              | 6455 |
+| **WebSockets with HTTP/2** | 8441 |
+| **WebSockets with HTTP/3** | 9220 |
 
-## Supported operating systems
+### Supported HTTP authentications
+| Name       | Description |
+|------------|-------------|
+| **HMAC**   | A cryptographic mechanism for verifying the integrity and authenticity of data that uses a combination of a cryptographic hash function and a secret key. It verifies that a message has not been altered during transmission or storage, and that it was sent by a trusted source. |
+| **BASIC**  | A simple method for verifying user authentication when accessing web resources using the HTTP protocol. When using this method, the client (e.g., a browser) transmits the username and password to the server in the header of each HTTP request. |
+| **DIGEST** | An authentication method used in the HTTP protocol to verify user identity. Its key advantage over the simpler Basic Authentication is that the password is not transmitted over the network in cleartext, but is replaced with a cryptographic hash (digest). |
+| **BEARER** | A common method of securing APIs involves the client passing a special token to the server, which then verifies its validity to decide whether to grant access to the resource. The name reflects the concept: access is granted to the person who "bears" the token. |
 
+### Supported codecs
+| Name       | Description                     |
+|------------|---------------------------------|
+| **INI**    | Initialization Container        |
+| **CEF**    | Common Event Format             |
+| **CSV**    | Comma-Separated Values          |
+| **ABC**    | ANYKS Binary Container          |
+| **XML**    | eXtensible Markup Language      |
+| **JSON**   | JavaScript Object Notation      |
+| **YAML**   | YAML Ain't Markup Language      |
+| **TOML**   | Tom’s Obvious, Minimal Language |
+| **Syslog** | System Log Container            |
+
+### Supported operating systems
 | OS                | Engine      | CPU            |
 |-------------------|-------------|----------------|
 | **iOS**           | kqueue      | ARM64          |
@@ -37,19 +87,6 @@
 | **Solaris 11.4**  | event ports | x86_64         |
 | **OpenIndiana**   | event ports | x86_64         |
 | **Windows**       | IOCP        | AMD64 / ARM64  |
-
-## Requirements
-
-- [LZ4](https://lz4.org)
-- [Zlib](http://www.zlib.net)
-- [BZip2](http://www.bzip.org)
-- [Brotli](https://brotli.org)
-- [Snappy](https://github.com/google/snappy)
-- [Lizard](https://github.com/inikep/lizard/tree/lizard)
-- [Density](https://github.com/k0dai/density)
-- [ZStandart](https://github.com/facebook/zstd)
-- [Lempel–Ziv–Markov](https://github.com/hunter-packages/lzma)
-- [BoringSSL](https://boringssl.googlesource.com/boringssl)
 
 ## Build tools
 
