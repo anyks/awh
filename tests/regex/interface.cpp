@@ -1123,3 +1123,123 @@ TEST(Regex, InterfaceMessages) {
 	 */
 	EXPECT_EQ(regex::parser_t::message(static_cast <regex::error_t> (0xFF)), "unknown error");
 }
+/**
+ * @brief Тест отказа сборки выражений негодных
+ *
+ */
+TEST(Regex, InterfaceMalformedCorpus) {
+	/**
+	 * @brief Устройство образца выражения негодного
+	 *
+	 */
+	const struct {
+		// Собираемое регулярное выражение
+		const char * pattern;
+		// Ожидаемый код ошибки сборки
+		regex::error_t error;
+	} SAMPLES[] = {
+		// Свойства Юникода и классы символов POSIX
+		{"\\p{Zzz}", regex::error_t::BAD_PROPERTY},
+		{"[\\p{Zzz}]", regex::error_t::BAD_PROPERTY},
+		{"[[:zzz:]]", regex::error_t::BAD_POSIX_CLASS},
+		{"[[:", regex::error_t::BAD_POSIX_CLASS},
+		{"[[:alpha:", regex::error_t::BAD_POSIX_CLASS},
+		// Диапазоны класса символов
+		{"[z-a]", regex::error_t::BAD_CLASS_RANGE},
+		{"[\\d-z]", regex::error_t::BAD_CLASS_RANGE},
+		{"[a", regex::error_t::UNMATCHED_BRACKET},
+		// Экранированные последовательности
+		{"\\", regex::error_t::TRAILING_BACKSLASH},
+		{"[a\\", regex::error_t::TRAILING_BACKSLASH},
+		{"\\c", regex::error_t::UNKNOWN_ESCAPE},
+		{"\\99", regex::error_t::UNKNOWN_ESCAPE},
+		{"\\x{", regex::error_t::BAD_ESCAPE_HEX},
+		{"\\x{ZZ}", regex::error_t::BAD_ESCAPE_HEX},
+		{"\\o", regex::error_t::BAD_ESCAPE_OCTAL},
+		{"\\o{", regex::error_t::BAD_ESCAPE_OCTAL},
+		{"\\o{9}", regex::error_t::BAD_ESCAPE_OCTAL},
+		{"\\N{ZZ}", regex::error_t::UNSUPPORTED},
+		// Имена именованных групп
+		{"(?<>a)", regex::error_t::BAD_GROUP_NAME},
+		{"(?<1a>b)", regex::error_t::BAD_GROUP_NAME},
+		{"(?<a", regex::error_t::BAD_GROUP_NAME},
+		{"(?'", regex::error_t::BAD_GROUP_NAME},
+		{"(?'name", regex::error_t::BAD_GROUP_NAME},
+		{"(?'1a')", regex::error_t::BAD_GROUP_NAME},
+		{"(?P<", regex::error_t::BAD_GROUP_NAME},
+		{"(?P=zzz", regex::error_t::BAD_GROUP_NAME},
+		{"\\k<", regex::error_t::BAD_GROUP_NAME},
+		{"\\k<>", regex::error_t::BAD_GROUP_NAME},
+		{"\\k{", regex::error_t::BAD_GROUP_NAME},
+		{"\\k'", regex::error_t::BAD_GROUP_NAME},
+		{"\\g<>", regex::error_t::BAD_GROUP_NAME},
+		// Ссылки на группы
+		{"(?<name>a)\\k<other>", regex::error_t::BAD_BACKREFERENCE},
+		{"(?P>zzz)", regex::error_t::BAD_BACKREFERENCE},
+		{"\\g", regex::error_t::BAD_BACKREFERENCE},
+		{"\\g{", regex::error_t::BAD_BACKREFERENCE},
+		{"\\g{0}", regex::error_t::BAD_BACKREFERENCE},
+		{"\\g{99}", regex::error_t::BAD_BACKREFERENCE},
+		{"(?&zzz)", regex::error_t::BAD_BACKREFERENCE},
+		{"(?1)", regex::error_t::BAD_BACKREFERENCE},
+		{"(?99)", regex::error_t::BAD_BACKREFERENCE},
+		// Условные шаблоны
+		{"(?(", regex::error_t::BAD_CONDITION},
+		{"(?()a)", regex::error_t::BAD_GROUP_NAME},
+		{"(?(zzz)a)", regex::error_t::BAD_BACKREFERENCE},
+		{"(?(1a)b)", regex::error_t::BAD_CONDITION},
+		{"(?(?=a)b|c|d)", regex::error_t::BAD_CONDITION},
+		{"(?(<name>)a)", regex::error_t::BAD_BACKREFERENCE},
+		{"(?('name')a)", regex::error_t::BAD_BACKREFERENCE},
+		// Встроенные настройки и устройство группы
+		{"(?i-zz)", regex::error_t::BAD_OPTIONS},
+		{"(?i", regex::error_t::BAD_OPTIONS},
+		{"(?-zzz)", regex::error_t::BAD_OPTIONS},
+		{"(?zz)", regex::error_t::BAD_GROUP_SYNTAX},
+		{"(?", regex::error_t::BAD_GROUP_SYNTAX},
+		{"(?P", regex::error_t::BAD_GROUP_SYNTAX},
+		{"(?+zzz)", regex::error_t::BAD_GROUP_SYNTAX},
+		{"(?~a)", regex::error_t::BAD_GROUP_SYNTAX},
+		{"(?{code})", regex::error_t::BAD_GROUP_SYNTAX},
+		{"(?C1)", regex::error_t::UNSUPPORTED},
+		{"(?R99)", regex::error_t::BAD_RECURSION},
+		// Непарные скобки
+		{"a)", regex::error_t::UNMATCHED_PAREN},
+		{"(a", regex::error_t::UNMATCHED_PAREN},
+		{"(?#", regex::error_t::UNMATCHED_PAREN},
+		{"(?<=a", regex::error_t::UNMATCHED_PAREN},
+		{"(?|", regex::error_t::UNMATCHED_PAREN},
+		// Кванторы повторения
+		{"a{2,1}", regex::error_t::BAD_QUANTIFIER},
+		{"a**", regex::error_t::BAD_QUANTIFIER},
+		{"a{99999999}", regex::error_t::QUANTIFIER_TOO_BIG},
+		{"*a", regex::error_t::QUANTIFIER_NO_ATOM},
+		{"+a", regex::error_t::QUANTIFIER_NO_ATOM},
+		{"?a", regex::error_t::QUANTIFIER_NO_ATOM},
+		{"(*)", regex::error_t::QUANTIFIER_NO_ATOM},
+		{"(?i)*", regex::error_t::QUANTIFIER_NO_ATOM},
+		{"^*", regex::error_t::QUANTIFIER_NO_ATOM},
+		{"|*", regex::error_t::QUANTIFIER_NO_ATOM}
+	};
+	// Создаём объект работы с регулярными выражениями
+	const regexp_t regexp(::logger());
+	/**
+	 * Выполняем обход набора образцов выражений негодных
+	 */
+	for(auto & sample : SAMPLES) {
+		// Выполняем сборку очередного регулярного выражения
+		const auto expression = regexp.build(sample.pattern);
+		// Выполняем проверку отказа сборки регулярного выражения
+		EXPECT_FALSE(expression) << sample.pattern;
+		/**
+		 * Выполняем проверку установки кода ошибки сборки
+		 *
+		 * @details Проверка утверждает не отказ один, а повод его: отказ
+		 *          с кодом чужим доносит потребителю не то, что случилось,
+		 *          и правку выражения его не направляет.
+		 *
+		 */
+		EXPECT_EQ(regexp.error(), sample.error)
+		 << sample.pattern << ": " << regexp.message();
+	}
+}

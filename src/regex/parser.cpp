@@ -1122,6 +1122,8 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 		return false;
 	// Получаем букву экранированной последовательности
 	const char letter = this->_pattern.at(this->_pos);
+	// Получаем смещение экранированной последовательности
+	const size_t offset = (this->_pos - 1);
 	/**
 	 * Определяем букву экранированной последовательности
 	 */
@@ -1228,9 +1230,12 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 					/**
 					 * Если разобранное значение превышает допустимый предел
 					 */
-					if(code > MAX_CODEPOINT)
+					if(code > MAX_CODEPOINT) {
+						// Выполняем установку ошибки некорректной шестнадцатеричной последовательности
+						this->fail(error_t::BAD_ESCAPE_HEX, offset);
 						// Выводим отсутствие кодового значения символа
 						return false;
+					}
 					// Переходим к следующему символу регулярного выражения
 					this->_pos++;
 					// Увеличиваем количество разобранных шестнадцатеричных цифр
@@ -1239,9 +1244,12 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 				/**
 				 * Если последовательность пуста либо не завершена фигурной скобкой
 				 */
-				if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}'))
+				if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')) {
+					// Выполняем установку ошибки некорректной шестнадцатеричной последовательности
+					this->fail(error_t::BAD_ESCAPE_HEX, offset);
 					// Выводим отсутствие кодового значения символа
 					return false;
+				}
 				// Переходим к следующему символу регулярного выражения
 				this->_pos++;
 				// Выводим результат извлечения кодового значения символа
@@ -1276,9 +1284,12 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если последовательность не начинается фигурной скобкой
 			 */
-			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '{'))
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != '{')) {
+				// Выполняем установку ошибки некорректной восьмеричной последовательности
+				this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
 				// Выводим отсутствие кодового значения символа
 				return false;
+			}
 			// Переходим к следующему символу регулярного выражения
 			this->_pos++;
 			// Выполняем сброс кодового значения символа
@@ -1294,9 +1305,12 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 				/**
 				 * Если разобранное значение превышает допустимый предел
 				 */
-				if(code > MAX_CODEPOINT)
+				if(code > MAX_CODEPOINT) {
+					// Выполняем установку ошибки некорректной восьмеричной последовательности
+					this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
 					// Выводим отсутствие кодового значения символа
 					return false;
+				}
 				// Переходим к следующему символу регулярного выражения
 				this->_pos++;
 				// Увеличиваем количество разобранных восьмеричных цифр
@@ -1305,9 +1319,12 @@ bool awh::regex::Parser::readEscapeCode(uint32_t & code) noexcept {
 			/**
 			 * Если последовательность пуста либо не завершена фигурной скобкой
 			 */
-			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}'))
+			if((count == 0) || (this->_pos >= size) || (this->_pattern.at(this->_pos) != '}')) {
+				// Выполняем установку ошибки некорректной восьмеричной последовательности
+				this->fail(error_t::BAD_ESCAPE_OCTAL, offset);
 				// Выводим отсутствие кодового значения символа
 				return false;
+			}
 			// Переходим к следующему символу регулярного выражения
 			this->_pos++;
 			// Выводим результат извлечения кодового значения символа

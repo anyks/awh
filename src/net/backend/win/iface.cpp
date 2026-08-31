@@ -34,6 +34,7 @@
  */
 #include <vector>
 #include <string>
+#include <cstdio>
 #include <cstring>
 
 /**
@@ -73,6 +74,94 @@ static constexpr const char * __AWH_IFACE_BACKEND__ = "MS Windows interface back
  *
  */
 namespace {
+	/**
+	 * @brief Функция опознания устройства, за каким числится адрес
+	 *
+	 * @details Ответ системы «объект уже существует» говорит лишь о занятости адреса, а
+	 *          кем он занят - умалчивает, и разбирать отказ приходилось перебором всех
+	 *          устройств машины руками. Здесь держатель отыскивается обходом таблицы
+	 *          адресов и уходит в тот же доклад: без имени держателя доклад «устройство
+	 *          осталось без адреса» указывает на дефект нашего слоя, тогда как держатель
+	 *          сплошь и рядом оказывается устройством ПРЕЖНЕГО прогона
+	 *
+	 * @note Установлено кругом на стенде Windows 31.08.2026: четыре отказа из пятнадцати
+	 *       прогонов, и всякий раз адрес числился за устройством, заведённым не нами
+	 *
+	 * @warning Таблица берётся системой в отведённой ею же памяти, и освобождать её
+	 *          обязан вызывающий: без `FreeMibTable` утекало бы по таблице на отказ
+	 *
+	 * @param address искомый адрес
+	 * @param family  семейство искомого адреса
+	 * @return        описание держателя адреса либо пустая строка
+	 *
+	 */
+	static std::string __awh_iface_holder__(const SOCKADDR_INET & address, const ADDRESS_FAMILY family) noexcept {
+		// Результат опознания держателя адреса
+		std::string result;
+		// Таблица адресов машины
+		MIB_UNICASTIPADDRESS_TABLE * table = nullptr;
+		// Если получить таблицу адресов не удалось
+		if(::GetUnicastIpAddressTable(family, &table) != NO_ERROR)
+			// Выводим пустой результат опознания
+			return result;
+		/**
+		 * Выполняем перебор всех адресов машины
+		 */
+		for(ULONG i = 0; i < table->NumEntries; i++){
+			// Получаем очередную запись таблицы адресов
+			const MIB_UNICASTIPADDRESS_ROW & row = table->Table[i];
+			// Если семейство адреса записи не совпадает с искомым
+			if(row.Address.si_family != family)
+				// Переходим к следующей записи таблицы
+				continue;
+			// Признак совпадения адреса записи с искомым
+			bool same = false;
+			/**
+			 * Определяем семейство искомого адреса
+			 */
+			switch(static_cast <uint16_t> (family)){
+				// Если искомый адрес принадлежит IPv4
+				case AF_INET:
+					// Выполняем сличение адресов IPv4
+					same = (row.Address.Ipv4.sin_addr.s_addr == address.Ipv4.sin_addr.s_addr);
+				break;
+				// Если искомый адрес принадлежит IPv6
+				case AF_INET6:
+					// Выполняем сличение адресов IPv6
+					same = (::memcmp(&row.Address.Ipv6.sin6_addr, &address.Ipv6.sin6_addr, sizeof(struct in6_addr)) == 0);
+				break;
+			}
+			// Если адрес записи с искомым не совпадает
+			if(!same)
+				// Переходим к следующей записи таблицы
+				continue;
+			/**
+			 * Спрашиваем состояние самого держателя
+			 *
+			 * @note Вопрос этот и решает дело: за ЖИВЫМ чужим устройством адрес числится
+			 *       законно, и отказ верен, а за МЁРТВЫМ он лишь не успел сняться, и это
+			 *       уже свойство системы. Одно состояние DAD их не различает
+			 *
+			 */
+			MIB_IF_ROW2 holder{};
+			// Устанавливаем местный номер держателя адреса
+			holder.InterfaceLuid = row.InterfaceLuid;
+			// Выполняем опрос состояния держателя адреса
+			const bool alive = ((::GetIfEntry2(&holder) == NO_ERROR) && (holder.OperStatus == IfOperStatusUp));
+			// Буфер под описание держателя адреса
+			char buffer[192];
+			// Выполняем сборку описания держателя адреса
+			::snprintf(buffer, sizeof(buffer), "interface %lu, luid %llu, dad state %d, oper status %d, %s", static_cast <unsigned long> (row.InterfaceIndex), static_cast <unsigned long long> (row.InterfaceLuid.Value), static_cast <int32_t> (row.DadState), static_cast <int32_t> (holder.OperStatus), (alive ? "alive" : "not running"));
+			// Запоминаем описание держателя адреса
+			result.assign(buffer);
+			// Завершаем перебор адресов машины
+			break;
+		}
+		// Выполняем освобождение таблицы адресов
+		::FreeMibTable(table);
+		// Выводим результат опознания держателя адреса
+		return result;
+	}
 	/**
 	 * @brief Функция сличения названий сетевых устройств
 	 *
@@ -1108,8 +1197,10 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		if(::GetUnicastIpAddressEntry(&check) == NO_ERROR)
 			// Выводим положительный результат установки
 			return true;
+		// Выполняем опознание устройства, за каким числится адрес
+		const string & holder = ::__awh_iface_holder__(row.Address, row.Address.si_family);
 		// Выводим в журнал сообщение о занятости адреса другим устройством
-		this->_log->print("%s: address is already assigned to another interface, \"%s\" left without it", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		this->_log->print("%s: address is already assigned to another interface (%s), \"%s\" left without it", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, (holder.empty() ? "holder unknown" : holder.c_str()), string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
