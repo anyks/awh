@@ -4,6 +4,7 @@ import os, re, subprocess, sys, json
 OUTPUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp/verify-yaml'
 SRC = os.path.join(OUTPUT, 'corpus')
 EVENTS = os.path.join(OUTPUT, 'events')
+TREE = os.path.join(OUTPUT, 'tree')
 cases = []
 for name in sorted(os.listdir(SRC)):
     if not name.endswith('.yaml'): continue
@@ -65,6 +66,7 @@ for name in sorted(os.listdir(SRC)):
             cases.append((name if i == 0 else '%s:%d' % (name, i), merged))
 
 ok = bad = failok = failbad = skipped = marked = crashed = 0
+treed = treebad = rewbad = 0
 diffs = []
 for label, case in cases:
     body = case.get('yaml')
@@ -108,9 +110,55 @@ for label, case in cases:
     want = want.replace('␣', ' ').replace('—', '').replace('»', '\t').replace('∎', '').replace('↵', '')
     if got.strip() == want.strip(): ok += 1
     else: bad += 1; diffs.append((label, 'РАСХОЖДЕНИЕ', want, got))
+    ##
+    # Сличение дерева и перезаписи его с эталонным деревом набора
+    #
+    # Сличение выше поверяет ЧТЕНИЕ: поток событий, оформление и места их. Дерево же,
+    # чтением собранное, им не поверяется вовсе — а именно деревом пользуется потребитель.
+    # Набор несёт для того эталонную запись JSON, и здесь с нею сличается наше дерево, а
+    # следом — дерево, прочтённое из НАШЕЙ перезаписи: расхождение второго означает, что
+    # запись поменяла смысл. Запись прежде поверялась одними нами, кругом через
+    # собственный разбор, и заблуждение, чтению и записи общее, круг тот переживало
+    #
+    # Случаи со ссылками отсеиваются: ссылка раскрывается при разборе, и дерево
+    # перезаписи законно несёт значение раскрытым, тогда как эталон хранит его ссылкой
+    ##
+    reference = case.get('json')
+    if (reference is not None) and ('&' not in body) and ('*' not in body):
+        treed += 1
+        try:
+            wanted = [json.loads(piece) for piece in reference.strip().split('\n---\n')] if reference.strip() else []
+        except json.JSONDecodeError:
+            wanted = None
+        if wanted is not None:
+            for mode, counter in (('', 'дерево'), ('rewrite', 'перезапись')):
+                probe = subprocess.run([TREE, '/tmp/yts.yaml'] + ([mode] if mode else []),
+                                       capture_output=True, text=True, errors='replace')
+                if probe.returncode != 0:
+                    if mode: rewbad += 1
+                    else: treebad += 1
+                    diffs.append((label, 'ЩУП ДЕРЕВА ОТКАЗАЛ (%s)' % counter, '', probe.stderr[:400]))
+                    break
+                try:
+                    produced = json.loads('[' + probe.stdout.strip().replace('}{', '},{').replace('][', '],[') + ']') \
+                        if probe.stdout.strip() else []
+                except json.JSONDecodeError as error:
+                    if mode: rewbad += 1
+                    else: treebad += 1
+                    diffs.append((label, 'ВЫДАЧА ЩУПА ДЕРЕВА НЕ ЧИТАЕТСЯ (%s)' % counter, '', str(error)))
+                    break
+                if produced != wanted:
+                    if mode: rewbad += 1
+                    else: treebad += 1
+                    diffs.append((label, 'ДЕРЕВО РАЗОШЛОСЬ С ЭТАЛОНОМ (%s)' % counter,
+                                  json.dumps(wanted, ensure_ascii=False)[:600],
+                                  json.dumps(produced, ensure_ascii=False)[:600]))
+                    break
 
 print('всего %d: совпало %d, разошлось %d, отказ верный %d, отказа не дал %d, без эталона %d (падений %d), со знаками-пояснениями %d'
       % (len(cases), ok, bad, failok, failbad, skipped, crashed, marked))
+print('дерево против эталона: сличено %d, РАЗОШЛОСЬ %d, ПЕРЕЗАПИСЬ СМЫСЛ ПОМЕНЯЛА %d'
+      % (treed, treebad, rewbad))
 
 ##
 # Пустой корпус — отказ, а не чистый прогон

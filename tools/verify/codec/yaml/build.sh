@@ -138,5 +138,11 @@ done
 #       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
 $COMPILER $OPTIONS "$ROOT/tools/verify/codec/yaml/events.cpp" $OBJECTS -lz -o "$OUTPUT/events"
 
+# Выполняем сборку щупа сличения дерева
+#
+# @note Щуп этот отдельный, а не признак у щупа событий: сличение по событиям поверяет
+#       чтение, а сличение по дереву - собранное им, и смешивать их в одном выводе нельзя
+$COMPILER $OPTIONS "$ROOT/tools/verify/codec/yaml/tree.cpp" $OBJECTS -lz -o "$OUTPUT/tree"
+
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/events"

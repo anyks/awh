@@ -120,6 +120,7 @@ def main():
 
 	# Счётчики исходов сличения
 	matched = refused = accepted = diverged = broken = 0
+	rewritten = refuted = 0
 	# Счётчики случаев, сличению не подлежащих, и срывов работы щупа
 	unreferenced = crashed = 0
 
@@ -178,6 +179,46 @@ def main():
 				report.append({'случай': label, 'исход': 'дерево разошлось', 'расхождения': diffs})
 			else:
 				matched += 1
+				##
+				# Сличение перезаписи: наш текст читается заново и судится ЭТАЛОНОМ
+				#
+				# Сличение выше поверяет РАЗБОР, а запись поверялась одними нами - кругом
+				# через собственный разбор, - и заблуждение, чтению и записи общее, круг
+				# тот пережило бы. Здесь дерево, прочтённое из НАШЕЙ записи, сличается с
+				# деревом набора: общим у двух путей остаётся один разбор, а он эталоном
+				# и поверен. Расхождение значит, что запись поменяла смысл
+				#
+				# Сличается лишь то, на чём разбор уже сошёлся: расхождение разбора
+				# отчитано выше, и вменять его записи вторым разом нечего
+				##
+				written = subprocess.run([dump, source, 'rewrite'], capture_output = True, text = True)
+				if written.returncode != 0:
+					refuted += 1
+					report.append({'случай': label, 'исход': 'ЗАПИСЬ ОТВЕРГЛА ДЕРЕВО',
+					               'отказ': written.stderr.strip()[:400]})
+				else:
+					mirror = os.path.join(os.path.dirname(source), '.rewrite.toml')
+					with open(mirror, 'w', newline = '', encoding = 'utf-8') as file:
+						file.write(written.stdout)
+					again = subprocess.run([dump, mirror], capture_output = True, text = True)
+					os.unlink(mirror)
+					if again.returncode != 0:
+						rewritten += 1
+						report.append({'случай': label, 'исход': 'ПЕРЕЗАПИСЬ НЕ ЧИТАЕТСЯ ОБРАТНО',
+						               'отказ': again.stderr.strip()[:400]})
+					else:
+						try:
+							mirrored = json.loads(again.stdout)
+						except json.JSONDecodeError as error:
+							rewritten += 1
+							report.append({'случай': label, 'исход': 'выдача щупа не читается',
+							               'отказ': str(error)})
+							continue
+						marks = collate(mirrored, expected)
+						if marks:
+							rewritten += 1
+							report.append({'случай': label, 'исход': 'ПЕРЕЗАПИСЬ СМЫСЛ ПОМЕНЯЛА',
+							               'расхождения': marks})
 
 	# Выполняем перебор всех негодных текстов набора сверки
 	for base, _, files in sorted(os.walk(os.path.join(root, 'invalid'))):
@@ -211,6 +252,8 @@ def main():
 	print('  НЕГОДНЫЙ ТЕКСТ ПРИНЯТ:     %d' % accepted)
 	print('  ДЕРЕВО РАЗОШЛОСЬ:          %d' % diverged)
 	print('  ГОДНЫЙ ТЕКСТ ОТВЕРГНУТ:    %d' % broken)
+	print('  ПЕРЕЗАПИСЬ СМЫСЛ ПОМЕНЯЛА:  %d' % rewritten)
+	print('  ЗАПИСЬ ОТВЕРГЛА ДЕРЕВО:     %d' % refuted)
 	print('  ЩУП СОРВАН СИГНАЛОМ:       %d' % crashed)
 	print('  отсеяно как случаи 1.1.0:  %d' % skipped)
 	print('  годных текстов без эталона: %d' % unreferenced)
@@ -236,7 +279,7 @@ def main():
 
 	# Отказом отвечаем при всяком расхождении: рост совпавших, купленный ослаблением
 	# отказов, ростом не является
-	return 1 if (accepted or diverged or broken or crashed) else 0
+	return 1 if (accepted or diverged or broken or crashed or rewritten or refuted) else 0
 
 
 if __name__ == '__main__':

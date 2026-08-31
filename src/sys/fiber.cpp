@@ -16,7 +16,6 @@
  * @brief Файл реализации модуля волокон
  *
  * @details Подкладок три, и выбираются они по системе:
- *
  *          - ucontext: macOS, FreeBSD, DragonFly, NetBSD, Solaris, illumos, Linux
  *          - родные волокна: MS Windows
  *          - свой переключатель стека: OpenBSD, где ucontext удалён из системы вовсе
@@ -55,11 +54,17 @@
  * Стандартные модули
  */
 #include <new>
+#include <utility>
 
 /**
  * Подключаем заголовочный файл
  */
 #include <sys/fiber.hpp>
+
+/**
+ * Используем стандартное пространство имён
+ */
+using namespace std;
 
 /**
  * Если операционной системой является macOS
@@ -176,7 +181,7 @@ namespace awh {
 		 * @details Сохраняются только те регистры, которые обязан сберечь вызываемый:
 		 *          прочие вызывающая сторона сберегла сама, ещё до входа сюда. Возврат
 		 *          в конце снимает со стека адрес, положенный туда при подготовке, - им
-		 *          и делается первый переход в волокно
+		 *          и делается первый переход в волокно.
 		 *
 		 * @param from куда сложить указатель стека покидаемой стороны
 		 * @param to   указатель стека стороны, на которую выполняется переход
@@ -310,9 +315,9 @@ namespace awh {
 				 *
 				 */
 				Context() noexcept :
-				size(0), task(nullptr),
-				state(fiber::state_t::NONE),
-				stack(nullptr), log(nullptr) {}
+				 size(0), task(nullptr),
+				 state(fiber::state_t::NONE),
+				 stack(nullptr), log(nullptr) {}
 			/**
 			 * Если подкладкой служит ucontext
 			 */
@@ -358,7 +363,7 @@ namespace awh {
 		 *          волокном не является, GetCurrentFiber() отдаёт для него мусор из области
 		 *          потока, а SwitchToFiber() из него не определён вовсе. Замерено на стенде
 		 *          Windows 10 x86-64: без обращения потока проверка падала с нарушением доступа
-		 *          на первом же пробуждении
+		 *          на первом же пробуждении.
 		 *
 		 * @warning Обратно поток не обращается намеренно: волокном он остаётся до своего конца.
 		 *          Обращение туда и обратно на каждом пробуждении стоило бы двух переходов в
@@ -447,7 +452,7 @@ namespace awh {
 		 *
 		 * @details Переключатель заканчивается возвратом, и возврат этот обязан увести
 		 *          управление во вход волокна. Значит на стек кладутся: адрес входа, а
-		 *          под ним - место под сберегаемые регистры, которые переключатель снимет
+		 *          под ним - место под сберегаемые регистры, которые переключатель снимет.
 		 *
 		 * @note Выравнивание: у x86-64 указатель стека при входе в функцию обязан быть
 		 *       сравним с восемью по модулю шестнадцати - оттого над адресом входа
@@ -682,21 +687,7 @@ awh::fiber::Context * awh::fiber::current() noexcept {
 /**
  * @brief Функция заведения волокна
  *
- * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
- *
- * @param task функция, выполняемая волокном
- * @param size размер стека волокна в октетах
- * @return     заведённое волокно, либо nullptr при отказе
- *
- */
-awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept {
-	// Выводим заведённое волокно
-	return awh::fiber::spawn(task, size, nullptr);
-}
-/**
- * @brief Функция заведения волокна
- *
- * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
+ * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
  *
  * @param task функция, выполняемая волокном
  * @param log  объект работы с логами
@@ -706,6 +697,20 @@ awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept
 awh::fiber::Context * awh::fiber::spawn(task_t task, const log_t * log) noexcept {
 	// Выводим заведённое волокно
 	return awh::fiber::spawn(task, STACK_SIZE, log);
+}
+/**
+ * @brief Функция заведения волокна
+ *
+ * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
+ *
+ * @param task функция, выполняемая волокном
+ * @param size размер стека волокна в октетах
+ * @return     заведённое волокно, либо nullptr при отказе
+ *
+ */
+awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept {
+	// Выводим заведённое волокно
+	return awh::fiber::spawn(task, size, nullptr);
 }
 /**
  * @brief Функция заведения волокна
@@ -737,16 +742,16 @@ awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size, const lo
 		// Выводим пустой результат
 		return nullptr;
 	}
-	// Запоминаем работу волокна
-	result->task = task;
 	// Запоминаем объект работы с логами
 	result->log = log;
 	// Запоминаем размер стека волокна
 	result->size = size;
+	// Запоминаем работу волокна
+	result->task = ::move(task);
 	/**
 	 * Если операционной системой является MS Windows
 	 */
-	#if defined(_WIN32) || defined(_WIN64)
+	#if _WIN32 || _WIN64
 		// Стек волокну отводит сама система
 		result->stack = nullptr;
 	/**
@@ -780,12 +785,12 @@ awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size, const lo
 	#if AWH_FIBER_UCONTEXT
 		// Снимаем обстановку волокна
 		::getcontext(&result->context);
-		// Устанавливаем стек волокна
-		result->context.uc_stack.ss_sp = result->stack;
-		// Устанавливаем размер стека волокна
-		result->context.uc_stack.ss_size = size;
 		// Возврата по завершении нет: вход волокна уводит управление сам
 		result->context.uc_link = nullptr;
+		// Устанавливаем размер стека волокна
+		result->context.uc_stack.ss_size = size;
+		// Устанавливаем стек волокна
+		result->context.uc_stack.ss_sp = result->stack;
 		// Устанавливаем вход волокна
 		::makecontext(&result->context, reinterpret_cast <void (*)(void)> (&__awh_fiber_trampoline__), 0);
 	/**

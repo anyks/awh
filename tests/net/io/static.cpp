@@ -87,6 +87,11 @@
 #include "io.hpp"
 
 /**
+ * Подключаем модуль волокон
+ */
+#include <sys/fiber.hpp>
+
+/**
  * Снимаем макросы MS Windows, сталкивающиеся с именами членов перечислений AWH
  *
  * @details Проверка эта пишет «awh::event::error_t::INVALID_SOCKET», а MS Windows
@@ -8292,6 +8297,60 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
  *          дефект у четырёх чужих движков остался бы ненайденным
  *
  */
+/**
+ * @brief Проверка того, что разбор события идёт в волокне
+ *
+ * @details Волокно нужно затем, чтобы отклик был вправе уступить управление:
+ *          блокирующая работа уходит в чужой поток, волокно засыпает, а цикл
+ *          продолжает вертеться. Без этого весь вынос работы становится мёртвым
+ *
+ * @note Проверка эта появилась не от хорошей жизни. Вынос блокирующего заведения
+ *       туннеля был положен так, что путь через волокно НЕ ЗАВОДИЛСЯ никогда, и
+ *       обнаружилось это не набором, а чтением: набор проходил целиком, потому
+ *       что ни одна проверка не утверждала, где именно идёт разбор
+ *
+ */
+#if defined(_WIN32) || defined(_WIN64)
+TEST_F(IoFixture, IoPollingRunsInsideFiberTest){
+	// Признак того, что отклик позвался внутри волокна
+	bool inside = false;
+	// Число срабатываний отклика
+	uint8_t fired = 0;
+	// Добавляем событие интервала
+	const awh::event::id_t interval = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Событие обязано завестись
+	ASSERT_GT(interval, 0u);
+	// Устанавливаем задержку интервала
+	this->_io->setTimeout(interval, awh::event::action_t::NONE, 50);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Выполняем фиксацию настроек события
+	ASSERT_TRUE(this->_io->commit(interval));
+	// Устанавливаем функцию обратного вызова на событие интервала
+	this->_io->on(interval, [&inside, &fired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если статус события успешен
+		if(status == awh::event::status_t::SUCCESS){
+			// Увеличиваем число срабатываний отклика
+			fired++;
+			// Запоминаем, что отклик позвался внутри волокна
+			inside = (awh::fiber::current() != nullptr);
+		}
+	});
+	// Выполняем запуск события
+	ASSERT_TRUE(this->_io->launch(interval));
+	// Запоминаем время начала опроса событий
+	const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(5));
+	// Выполняем опрос событий до первого срабатывания отклика
+	while((fired < 1) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+	// Отклик обязан был сработать, иначе проверка ничего не проверяет
+	ASSERT_GT(fired, 0u) << "отклик не сработал - проверка стала холостой";
+	// Отклик обязан идти внутри волокна
+	ASSERT_TRUE(inside) << "разбор события идёт ВНЕ волокна: уступить управление отклик не сможет, и вынос блокирующей работы мёртв";
+	// Сносим заведённое событие
+	this->_io->destroy(interval);
+}
+#endif
+
 TEST_F(IoFixture, IoSendReentrancyIsLoudTest){
 	// Перечень записей журнала уровня «критично»
 	std::vector <std::string> critical;

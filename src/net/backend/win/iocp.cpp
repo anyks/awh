@@ -76054,14 +76054,46 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Если ближайший дедлайн уже истёк
 						if(::timer::simple::deadline() <= now)
 							// Выполняем обработку отложенных таймеров
-							::timer::simple::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+							/**
+							 * Разбор истёкших сроков идёт волокном из пула
+							 *
+							 * @details Отклик таймера - такой же отклик, и `commit` из него вправе
+							 *          позвать блокирующую работу. Без волокна цикл на ней встал бы,
+							 *          и вынос работы в чужой поток остался бы бесполезен
+							 *
+							 * @note Установлено проверкой `IoPollingRunsInsideFiberTest`: разбор
+							 *       сроков идёт ОТДЕЛЬНЫМ путём от разбора событий, и обёртка
+							 *       одного лишь `::io::polling` его не покрывала
+							 */
+							if(!::fibers::run([this]() noexcept {
+								// Выполняем разбор истёкших сроков ожидания
+								::timer::simple::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+							}, this->_log))
+								// Если волокна пула кончились - разбираем сроки прямо
+								::timer::simple::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 					} break;
 					// Если тип таймера для событий сетевого движка является сложным
 					case static_cast <uint8_t> (event::timer_t::DIFFICULT): {
 						// Если ближайший дедлайн уже истёк
 						if(::timer::difficult::deadline() <= now)
 							// Выполняем обработку отложенных таймеров
-							::timer::difficult::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+							/**
+							 * Разбор истёкших сроков идёт волокном из пула
+							 *
+							 * @details Отклик таймера - такой же отклик, и `commit` из него вправе
+							 *          позвать блокирующую работу. Без волокна цикл на ней встал бы,
+							 *          и вынос работы в чужой поток остался бы бесполезен
+							 *
+							 * @note Установлено проверкой `IoPollingRunsInsideFiberTest`: разбор
+							 *       сроков идёт ОТДЕЛЬНЫМ путём от разбора событий, и обёртка
+							 *       одного лишь `::io::polling` его не покрывала
+							 */
+							if(!::fibers::run([this]() noexcept {
+								// Выполняем разбор истёкших сроков ожидания
+								::timer::difficult::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
+							}, this->_log))
+								// Если волокна пула кончились - разбираем сроки прямо
+								::timer::difficult::examination(event::rate_t::DEFERRED, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 					} break;
 				}
 			}

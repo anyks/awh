@@ -13769,6 +13769,13 @@ namespace timer {
 								case static_cast <uint8_t> (event::status_t::NONE):
 									// Устанавливаем статус таймаута в ожидание
 									tm.status = event::status_t::PENDING;
+								/**
+								 * Переход к следующей ветви НАМЕРЕННЫЙ: только что выставленное
+								 * ожидание обрабатывается тут же, тем же кодом, что и выставленное
+								 * прежде. Помечено, чтобы намерение было видно и разбирающему, и
+								 * сборщику: без пометки это неотличимо от забытого `break`
+								 */
+								[[fallthrough]];
 								// Если таймаут ожидания уже активирован для данного события
 								case static_cast <uint8_t> (event::status_t::PENDING): {
 									// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
@@ -48870,7 +48877,8 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									#endif
 								}
 							}
-						}
+							// Оборот ветви кончается здесь: на пути отказа разбор НЕ переходит к следующему семейству
+						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
@@ -59133,7 +59141,8 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									#endif
 								}
 							}
-						}
+							// Оборот ветви кончается здесь: на пути отказа разбор НЕ переходит к следующему семейству
+						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
@@ -59433,7 +59442,8 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									#endif
 								}
 							}
-						}
+							// Оборот ветви кончается здесь: на пути отказа разбор НЕ переходит к следующему семейству
+						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса

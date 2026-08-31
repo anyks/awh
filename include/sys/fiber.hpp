@@ -162,7 +162,7 @@ namespace awh {
 		 * @brief Функция усыпления текущего волокна
 		 *
 		 * @details Управление возвращается той стороне, которая волокно разбудила.
-		 *          Кадр вызова со всеми его переменными остаётся жив на стеке волокна
+		 *          Кадр вызова со всеми его переменными остаётся жив на стеке волокна.
 		 *
 		 * @note Зовётся ИЗ волокна. Вызов вне волокна не делает ничего
 		 *
@@ -170,7 +170,7 @@ namespace awh {
 		 * @brief Function of putting the current fiber to sleep
 		 *
 		 * @details Control returns to the side which has woken the fiber up. The call
-		 *          frame with all of its variables stays alive on the fiber stack
+		 *          frame with all of its variables stays alive on the fiber stack.
 		 *
 		 * @note Is called FROM a fiber. A call outside of a fiber does nothing
 		 *
@@ -182,7 +182,7 @@ namespace awh {
 		 * @brief Функция пробуждения волокна
 		 *
 		 * @details Управление уходит в волокно и возвращается сюда, когда волокно
-		 *          уснёт снова либо доработает
+		 *          уснёт снова либо доработает.
 		 *
 		 * @param fiber волокно для пробуждения
 		 * @return      результат пробуждения
@@ -191,7 +191,7 @@ namespace awh {
 		 * @brief Function of waking the fiber up
 		 *
 		 * @details Control goes into the fiber and returns here when the fiber falls
-		 *          asleep again or finishes its work
+		 *          asleep again or finishes its work.
 		 *
 		 * @param fiber fiber to wake up
 		 * @return      result of the wake-up
@@ -263,29 +263,7 @@ namespace awh {
 		 * \~russian
 		 * @brief Функция заведения волокна
 		 *
-		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
-		 *
-		 * @param task функция, выполняемая волокном
-		 * @param size размер стека волокна в октетах
-		 * @return     заведённое волокно, либо nullptr при отказе
-		 *
-		 * \~english
-		 * @brief Function of making the fiber
-		 *
-		 * @details The fiber is made SLEEPING: its work begins with the first wake-up
-		 *
-		 * @param task function performed by the fiber
-		 * @param size size of the fiber stack in octets
-		 * @return     made fiber, or nullptr on failure
-		 *
-		 * \~
-		 */
-		ctx_t * spawn(task_t task, const size_t size) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция заведения волокна
-		 *
-		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
+		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
 		 *
 		 * @param task функция, выполняемая волокном
 		 * @param log  объект работы с логами
@@ -294,7 +272,7 @@ namespace awh {
 		 * \~english
 		 * @brief Function of making the fiber
 		 *
-		 * @details The fiber is made SLEEPING: its work begins with the first wake-up
+		 * @details The fiber is made SLEEPING: its work begins with the first wake-up.
 		 *
 		 * @param task function performed by the fiber
 		 * @param log  object of the working with logs
@@ -307,7 +285,29 @@ namespace awh {
 		 * \~russian
 		 * @brief Функция заведения волокна
 		 *
-		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением
+		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
+		 *
+		 * @param task функция, выполняемая волокном
+		 * @param size размер стека волокна в октетах
+		 * @return     заведённое волокно, либо nullptr при отказе
+		 *
+		 * \~english
+		 * @brief Function of making the fiber
+		 *
+		 * @details The fiber is made SLEEPING: its work begins with the first wake-up.
+		 *
+		 * @param task function performed by the fiber
+		 * @param size size of the fiber stack in octets
+		 * @return     made fiber, or nullptr on failure
+		 *
+		 * \~
+		 */
+		ctx_t * spawn(task_t task, const size_t size) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция заведения волокна
+		 *
+		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
 		 *
 		 * @param task функция, выполняемая волокном
 		 * @param size размер стека волокна в октетах
@@ -317,7 +317,7 @@ namespace awh {
 		 * \~english
 		 * @brief Function of making the fiber
 		 *
-		 * @details The fiber is made SLEEPING: its work begins with the first wake-up
+		 * @details The fiber is made SLEEPING: its work begins with the first wake-up.
 		 *
 		 * @param task function performed by the fiber
 		 * @param size size of the fiber stack in octets
