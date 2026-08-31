@@ -246,7 +246,7 @@ namespace {
  *
  */
 awh::codec::ini::Writer::Settings::Settings() noexcept :
- marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), quotes(true), quoting(quoting_t::AUTO),
+ marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), trimSections(true), quotes(true), quoting(quoting_t::AUTO),
  subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), comments(marker_t::BOTH),
  spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
 /**
@@ -287,6 +287,13 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::windows() n
 awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::python() noexcept {
 	// Собираемые настройки записи текста настроек
 	Settings result;
+	/**
+	 * Снимаем отбрасывание читающим пробельной обвязки имени раздела
+	 *
+	 * @note Разбор этого наречия обвязку сохраняет: «[ раздел ]» есть ему имя с
+	 *       пробелами, - и отвергать такое имя записи не за что
+	 */
+	result.trimSections = false;
 	// Устанавливаем запись многострочного значения продолжением отступом
 	result.indents = true;
 	// Устанавливаем запрет свойств, объявленных до первого раздела
@@ -406,8 +413,15 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 	 *
 	 * @note Обвязка эта при чтении отбрасывается, и записанное имя разошлось бы с
 	 *       прочитанным: отвергнуть её лучше, чем молча потерять
+	 *
+	 * @note Имя раздела поверяется лишь при `trimSections`: читающий, обвязку
+	 *       сохраняющий, прочтёт имя как записано, и отвергать его не за что. Таково
+	 *       наречие python - у него `[ раздел ]` есть имя с пробелами, - и круг
+	 *       «чтение - запись» на нём рвался: разбор текст принимал, а запись дерево
+	 *       отвергала. Нашло это сличение перезаписи с эталоном
 	 */
-	if(ascii::isSpace(name.front()) || ascii::isSpace(name.back())){
+	if((section ? this->_settings.trimSections : true) &&
+	   (ascii::isSpace(name.front()) || ascii::isSpace(name.back()))){
 		// Запоминаем код ошибки записи
 		this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
 		// Выполняем вывод сообщения об отказе в лог
@@ -481,8 +495,15 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		}
 		/**
 		 * Если проверяется имя свойства
+		 *
+		 * @note Скобки поверяются лишь при записи перечней: читающий, перечни признающий,
+		 *       числит «имя[]» добавлением к перечню, и имя со скобками разошлось бы с
+		 *       прочитанным. Читающий же, перечней не знающий, прочтёт имя как записано -
+		 *       отвергать его не за что, а круг «чтение - запись» на нём рвался: разбор
+		 *       текст принимал, а запись дерево отвергала пустотой
 		 */
-		else invalid = (invalid || (name[i] == this->_settings.separator) || (name[i] == '[') || (name[i] == ']'));
+		else invalid = (invalid || (name[i] == this->_settings.separator) ||
+		 (this->_settings.arrays && ((name[i] == '[') || (name[i] == ']'))));
 		/**
 		 * Если очередной знак имени недопустим
 		 */

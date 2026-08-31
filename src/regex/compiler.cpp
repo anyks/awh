@@ -1609,48 +1609,32 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 				 *
 				 */
 				if(node.control.type == control_t::MARK) {
+					// Выполняем размещение инструкции глагола отметки имени
+					const address_t address = this->marking(node.control.offset, node.control.length, node.flags);
+					// Выводим результат размещения инструкции глагола отметки имени
+					return (address != INVALID_ADDRESS);
+				}
+				// Адрес инструкции глагола отметки, глаголу предшествующей
+				address_t marker = INVALID_ADDRESS;
+				/**
+				 * Если глагол управления несёт имя отметки и переносом не является
+				 *
+				 * @details Имя у глагола отсечения означает отметку, глаголу
+				 *          предшествующую: она и размещается инструкцией отдельной,
+				 *          а глагол хранит адрес её - им отказ сопоставления имя
+				 *          своё и выводит. Глагол переноса имя толкует ключом
+				 *          розыска, отметки своей не заводя вовсе.
+				 *
+				 */
+				if((node.control.length > 0) && (node.control.type != control_t::SKIP)) {
+					// Выполняем размещение инструкции глагола отметки имени
+					marker = this->marking(node.control.offset, node.control.length, node.flags);
 					/**
-					 * Если ячейка отметки последней ещё не отведена
+					 * Если размещение инструкции глагола отметки не выполнено
 					 */
-					if(this->_program->marker == ~0u)
-						// Выполняем размещение ячейки отметки последней
-						this->_program->marker = this->reserve();
-					// Получаем смещение имени отметки в хранилище имён программы
-					const uint32_t spot = static_cast <uint32_t> (this->_program->markers.size());
-					/**
-					 * Выполняем перенос имени отметки в хранилище имён программы
-					 */
-					for(uint32_t index = 0; index < node.control.length; index++) {
-						/**
-						 * Если имя отметки выходит за пределы хранилища разбора
-						 */
-						if((static_cast <size_t> (node.control.offset) + static_cast <size_t> (index)) >= this->_parser->markers().size()) {
-							// Выполняем установку внутренней ошибки компиляции
-							this->_error = error_t::INTERNAL;
-							// Выводим результат выполнения компиляции
-							return false;
-						}
-						// Выполняем добавление очередного октета имени отметки
-						this->_program->markers.push_back(this->_parser->markers().at(static_cast <size_t> (node.control.offset) + static_cast <size_t> (index)));
-					}
-					// Выполняем размещение инструкции глагола управления возвратом
-					const address_t address = this->emit(opcode_t::CONTROL, node.flags);
-					/**
-					 * Если размещение инструкции не выполнено
-					 */
-					if(address == INVALID_ADDRESS)
+					if(marker == INVALID_ADDRESS)
 						// Выводим результат выполнения компиляции
 						return false;
-					// Выполняем установку вида глагола управления возвратом
-					this->_program->instructions.at(address).control.type = control_t::MARK;
-					// Выполняем установку номера ячейки отметки последней
-					this->_program->instructions.at(address).control.cell = this->_program->marker;
-					// Выполняем установку смещения имени отметки в хранилище имён
-					this->_program->instructions.at(address).control.offset = spot;
-					// Выполняем установку длины имени отметки
-					this->_program->instructions.at(address).control.length = node.control.length;
-					// Выводим результат выполнения компиляции
-					return true;
 				}
 				/**
 				 * Если глагол управления завершает сопоставление с успехом
@@ -1670,6 +1654,17 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 				this->_program->instructions.at(address).control.type = node.control.type;
 				// Выполняем установку номера ячейки отметки ветви охватывающей
 				this->_program->instructions.at(address).control.cell = this->_branch;
+				// Выполняем установку длины имени отметки глагола управления
+				this->_program->instructions.at(address).control.length = node.control.length;
+				/**
+				 * Если глагол управления переносит попытку в положение отметки
+				 */
+				if(node.control.type == control_t::SKIP)
+					// Выполняем установку номера ячейки положения отметки имени
+					this->_program->instructions.at(address).control.offset = ((node.control.length > 0) ?
+					 this->naming(node.control.offset, node.control.length) : ~0u);
+				// Выполняем установку адреса инструкции глагола отметки предшествующей
+				else this->_program->instructions.at(address).control.offset = marker;
 				// Выводим результат выполнения компиляции
 				return true;
 			}
@@ -1725,6 +1720,79 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
  * @return   результат проверки наличия глагола перехода
  *
  */
+/**
+ * @brief Метод проверки наличия глагола управления возвратом
+ *
+ * @param id индекс узла, с которого начинается обход
+ *
+ * @return   результат проверки наличия глагола управления
+ *
+ * @details Глагол отметки исполнения не правит вовсе и наличием не считается:
+ *          отбор позиций начала совпадения при нём остаётся применим целиком.
+ *
+ */
+/**
+ * @brief Метод проверки наличия глагола завершения сопоставления
+ *
+ * @param id индекс узла, с которого начинается обход
+ *
+ * @return   результат проверки наличия глагола завершения
+ *
+ */
+bool awh::regex::Compiler::accepting(const node_id_t id) const noexcept {
+	// Получаем индекс обходимого узла синтаксического дерева
+	node_id_t current = id;
+	/**
+	 * Выполняем обход цепочки узлов синтаксического дерева
+	 */
+	while(current != INVALID_NODE) {
+		// Получаем обходимый узел синтаксического дерева
+		const node_data_t & node = this->node(current);
+		/**
+		 * Если узел является глаголом завершения сопоставления
+		 */
+		if((node.type == node_t::CONTROL) && (node.control.type == control_t::ACCEPT))
+			// Выводим результат проверки наличия глагола завершения
+			return true;
+		/**
+		 * Если вложенная цепочка узлов несёт глагол завершения
+		 */
+		if(this->accepting(node.child))
+			// Выводим результат проверки наличия глагола завершения
+			return true;
+		// Переходим к следующему узлу цепочки
+		current = node.next;
+	}
+	// Выводим результат проверки наличия глагола завершения
+	return false;
+}
+bool awh::regex::Compiler::verbal(const node_id_t id) const noexcept {
+	// Получаем индекс обходимого узла синтаксического дерева
+	node_id_t current = id;
+	/**
+	 * Выполняем обход цепочки узлов синтаксического дерева
+	 */
+	while(current != INVALID_NODE) {
+		// Получаем обходимый узел синтаксического дерева
+		const node_data_t & node = this->node(current);
+		/**
+		 * Если узел является глаголом управления возвратом
+		 */
+		if((node.type == node_t::CONTROL) && (node.control.type != control_t::MARK))
+			// Выводим результат проверки наличия глагола управления
+			return true;
+		/**
+		 * Если вложенная цепочка узлов несёт глагол управления
+		 */
+		if(this->verbal(node.child))
+			// Выводим результат проверки наличия глагола управления
+			return true;
+		// Переходим к следующему узлу цепочки
+		current = node.next;
+	}
+	// Выводим результат проверки наличия глагола управления
+	return false;
+}
 bool awh::regex::Compiler::moving(const node_id_t id) const noexcept {
 	// Получаем индекс обходимого узла синтаксического дерева
 	node_id_t current = id;
@@ -1768,6 +1836,99 @@ uint32_t awh::regex::Compiler::reserve() noexcept {
 	 *
 	 */
 	return (((this->_program->captures + 1) * 2) + (this->_cells++));
+}
+/**
+ * @brief Метод отвода ячейки положения отметки имени
+ *
+ * @param offset смещение имени отметки в хранилище имён разбора
+ * @param length длина имени отметки в октетах
+ *
+ * @return номер ячейки положения отметки имени
+ *
+ * @details Ячейка отводится единожды на имя, а не на глагол: отметки одного
+ *          имени пишут в неё положение своё, отчего розыск глаголом переноса
+ *          находит отметку живую последнюю того имени, а возврат запись
+ *          отменяет наравне с ячейками захвата - отметка, ветвью отвергнутой
+ *          поставленная, розыском не находится.
+ *
+ */
+uint32_t awh::regex::Compiler::naming(const uint32_t offset, const uint32_t length) noexcept {
+	// Выполняем формирование имени отметки
+	const string name(reinterpret_cast <const char *> (this->_parser->markers().data()) + offset, length);
+	// Выполняем поиск ячейки положения отметки имени
+	auto i = this->_named.find(name);
+	/**
+	 * Если ячейка положения отметки имени уже отведена
+	 */
+	if(i != this->_named.end())
+		// Выводим номер отведённой ячейки положения отметки
+		return i->second;
+	// Выполняем отвод ячейки положения отметки имени
+	const uint32_t result = this->reserve();
+	// Выполняем запоминание ячейки положения отметки имени
+	this->_named.emplace(name, result);
+	// Выводим номер отведённой ячейки положения отметки
+	return result;
+}
+/**
+ * @brief Метод размещения инструкции глагола отметки имени
+ *
+ * @param offset смещение имени отметки в хранилище имён разбора
+ * @param length длина имени отметки в октетах
+ * @param flags  флаги размещаемой инструкции
+ *
+ * @return адрес размещённой инструкции глагола отметки
+ *
+ * @details Имя переносится в хранилище имён программы, ячейка отметки последней
+ *          отводится единожды на всё выражение, а ячейка положения - единожды
+ *          на имя: глагол пишет в первую адрес свой, а во вторую положение своё,
+ *          и возврат обе записи отменяет наравне с ячейками захвата.
+ *
+ */
+awh::regex::address_t awh::regex::Compiler::marking(const uint32_t offset, const uint32_t length, const uint32_t flags) noexcept {
+	/**
+	 * Если имя отметки за пределы хранилища разбора выходит
+	 */
+	if((static_cast <size_t> (offset) + static_cast <size_t> (length)) > this->_parser->markers().size()) {
+		// Выполняем установку внутренней ошибки компиляции
+		this->_error = error_t::INTERNAL;
+		// Выводим адрес отсутствующей инструкции
+		return INVALID_ADDRESS;
+	}
+	/**
+	 * Если ячейка отметки последней ещё не отведена
+	 */
+	if(this->_program->marker == ~0u)
+		// Выполняем размещение ячейки отметки последней
+		this->_program->marker = this->reserve();
+	// Выполняем отвод ячейки положения отметки имени
+	const uint32_t cell = this->naming(offset, length);
+	// Получаем смещение имени отметки в хранилище имён программы
+	const uint32_t spot = static_cast <uint32_t> (this->_program->markers.size());
+	/**
+	 * Выполняем перенос имени отметки в хранилище имён программы
+	 */
+	for(uint32_t index = 0; index < length; index++)
+		// Выполняем добавление очередного октета имени отметки
+		this->_program->markers.push_back(this->_parser->markers().at(static_cast <size_t> (offset) + static_cast <size_t> (index)));
+	// Выполняем размещение инструкции глагола управления возвратом
+	const address_t result = this->emit(opcode_t::CONTROL, flags);
+	/**
+	 * Если размещение инструкции не выполнено
+	 */
+	if(result == INVALID_ADDRESS)
+		// Выводим адрес отсутствующей инструкции
+		return INVALID_ADDRESS;
+	// Выполняем установку вида глагола управления возвратом
+	this->_program->instructions.at(result).control.type = control_t::MARK;
+	// Выполняем установку номера ячейки положения отметки имени
+	this->_program->instructions.at(result).control.cell = cell;
+	// Выполняем установку смещения имени отметки в хранилище имён
+	this->_program->instructions.at(result).control.offset = spot;
+	// Выполняем установку длины имени отметки
+	this->_program->instructions.at(result).control.length = length;
+	// Выводим адрес размещённой инструкции глагола отметки
+	return result;
 }
 /**
  * @brief Метод сбора узлов захватывающих групп выражения
@@ -2464,6 +2625,16 @@ bool awh::regex::Compiler::reachable(const address_t address) noexcept {
 			case static_cast <uint8_t> (opcode_t::MARK):
 			case static_cast <uint8_t> (opcode_t::CUT): stack.push_back(current + 1); break;
 			/**
+			 * Выводим неприменимость набора допустимых начальных байтов
+			 *
+			 * @details Глагол завершения сопоставления достижим до поглощения
+			 *          текста, а значит совпадение пустое возможно: байтов
+			 *          начальных у него нет вовсе наравне с совпадением,
+			 *          инструкции совпадения достигшим.
+			 *
+			 */
+			case static_cast <uint8_t> (opcode_t::ACCEPT): return false;
+			/**
 			 * Если достигнуто завершение сопоставления
 			 *
 			 * @details Достижение завершения сопоставления без сопоставления символов
@@ -2961,6 +3132,7 @@ void awh::regex::Compiler::analyze() noexcept {
 	 *          внутри совпадения, и позволяет употребить литерал позиционно.
 	 *
 	 */
+	// Выполняем определение обязательного литерала совпадения и удаления его
 	prefilter.literal = this->required(this->_parser->root(), prefilter.distance);
 	/**
 	 * Если набор допустимых начальных байтов применим
@@ -2973,6 +3145,47 @@ void awh::regex::Compiler::analyze() noexcept {
 	if(prefilter.active)
 		// Выполняем определение ведущего литерала совпадения
 		prefilter.leading = this->leading(this->_parser->root());
+	/**
+	 * Если выражение несёт глагол завершения сопоставления
+	 *
+	 * @details Глагол завершает совпадение там, где стоит, отчего ни литерал
+	 *          обязательный, ни ведущий не обязательны вовсе: «(*ACCEPT)a»
+	 *          на тексте пустом совпадение пустое даёт, а отбор по литералу
+	 *          «a» его отвергал. Набор допустимых начальных байтов
+	 *          неприменим по той же причине - совпадение пустое
+	 *          способно начаться где угодно.
+	 *
+	 */
+	if(this->accepting(this->_parser->root())) {
+		// Выполняем очистку обязательного литерала совпадения
+		prefilter.literal.clear();
+		// Выполняем очистку ведущего литерала совпадения
+		prefilter.leading.clear();
+	/**
+	 * Если выражение несёт глаголы управления возвратом
+	 *
+	 * @details Отбор позиций начала у нас сильнее эталонного, а глагол управления
+	 *          попытку именно в позиции пропущенной и прекратил бы: «aa(*COMMIT)b»
+	 *          на тексте «aaab» совпадения не даёт вовсе, ибо попытка в позиции
+	 *          начальной обход прекращает, а отбор по ведущему литералу «aab»
+	 *          позицию эту пропускал и выдавал совпадение. Средства отбора
+	 *          приводятся здесь к эталонным: остаётся ОДИН начальный байт
+	 *          ведущего литерала - им эталон позиции и отбирает, давая
+	 *          «(*COMMIT)a» на тексте «ba» совпадение, - а литерал
+	 *          обязательный обращается в проверку возможности
+	 *          совпадения, позиций не пропускающую.
+	 *
+	 */
+	} else if(this->verbal(this->_parser->root())) {
+		// Выполняем установку удаления обязательного литерала неограниченного
+		prefilter.distance = string_view::npos;
+		/**
+		 * Если ведущий литерал длиннее одного байта
+		 */
+		if(prefilter.leading.size() > 1)
+			// Выполняем усечение ведущего литерала до байта начального
+			prefilter.leading.erase(1);
+	}
 	// Выполняем завершение формирования отбора позиций сопоставления
 	prefilter.finalize();
 }
@@ -3915,6 +4128,8 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 	this->_cells = 0;
 	// Выполняем сброс количества ячеек отметки состояния возврата
 	this->_atomics = 0;
+	// Выполняем очистку набора ячеек положения отметок имён
+	this->_named.clear();
 	// Выполняем очистку набора инструкций рекурсивного вызова
 	this->_calls.clear();
 	/**

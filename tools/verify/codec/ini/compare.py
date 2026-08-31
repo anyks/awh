@@ -149,6 +149,7 @@ def main():
 
 	for dialect, oracle, listed, folded, sectioned in ORACLES:
 		matched = diverged = refused = skipped = crashed = 0
+		rewritten = unwritten = 0
 		for name in sorted(os.listdir(root)):
 			if not name.endswith('.ini'):
 				continue
@@ -191,6 +192,33 @@ def main():
 				report.append({'наречие': dialect, 'случай': name, 'исход': 'выдача щупа не читается',
 				               'отказ': str(error)})
 				continue
+			# Сличение перезаписи: текст, нами записанный, подаётся эталону
+			#
+			# Сличение выше поверяет РАЗБОР, а запись поверялась одними нами - кругом через
+			# собственный разбор, - и заблуждение, обоим общее, круг тот пережило бы. Здесь
+			# же прочтённое эталоном из НАШЕЙ записи сличается с прочтённым им из текста
+			# исходного: расхождение означает, что запись поменяла смысл
+			#
+			# Сличается лишь то, на чём разбор уже сошёлся: расхождение разбора отчитано
+			# выше, и вменять его записи вторым разом нечего
+			written = subprocess.run([dump, source, dialect, 'rewrite'], capture_output = True, text = True)
+			if (written.returncode == 0) and not collate(produced, expected, listed, folded, sectioned):
+				mirror = os.path.join(root, '.rewrite-%s.ini' % dialect)
+				with open(mirror, 'w', newline = '', encoding = 'utf-8') as file:
+					file.write(written.stdout)
+				# Эталон, перезаписи не осиливший, сличению не годен: своего мнения нет
+				reflected = oracle(mirror)
+				os.unlink(mirror)
+				if reflected is None:
+					unwritten += 1
+					report.append({'наречие': dialect, 'случай': name,
+					               'исход': 'эталон перезаписи не осилил'})
+				else:
+					marks = collate(produced, reflected, listed, folded, sectioned)
+					if marks:
+						rewritten += 1
+						report.append({'наречие': dialect, 'случай': name,
+						               'исход': 'ПЕРЕЗАПИСЬ СМЫСЛ ПОМЕНЯЛА', 'расхождения': marks})
 			diffs = collate(produced, expected, listed, folded, sectioned)
 			if diffs:
 				diverged += 1
@@ -198,15 +226,17 @@ def main():
 				               'расхождения': diffs[:8]})
 			else:
 				matched += 1
-		totals[dialect] = (matched, diverged, refused, skipped, crashed)
+		totals[dialect] = (matched, diverged, refused, skipped, crashed, rewritten, unwritten)
 
-	for dialect, (matched, diverged, refused, skipped, crashed) in totals.items():
+	for dialect, (matched, diverged, refused, skipped, crashed, rewritten, unwritten) in totals.items():
 		print('Наречие %s:' % dialect)
 		print('  разбор совпал:          %d' % matched)
 		print('  РАЗБОР РАЗОШЁЛСЯ:       %d' % diverged)
 		print('  РАЗБОР ОТВЕРГНУТ:       %d' % refused)
 		print('  ЩУП СОРВАН СИГНАЛОМ:    %d' % crashed)
+		print('  ПЕРЕЗАПИСЬ ПОМЕНЯЛА СМЫСЛ: %d' % rewritten)
 		print('  эталон текст не осилил: %d' % skipped)
+		print('  эталон перезаписи не осилил: %d' % unwritten)
 
 	if report:
 		path = os.path.join(root, 'diffs.json')
@@ -227,7 +257,7 @@ def main():
 		return 2
 
 	# Отказом отвечаем при всяком расхождении
-	return 1 if any((d or r or c) for _, d, r, _, c in totals.values()) else 0
+	return 1 if any((d or r or c or w) for _, d, r, _, c, w, _ in totals.values()) else 0
 
 
 if __name__ == '__main__':

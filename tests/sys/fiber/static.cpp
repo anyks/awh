@@ -45,7 +45,7 @@ TEST_F(FiberFixture, FiberSpawnAndDestroyTest){
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Проверяем что заведённое волокно спит, а не работает
-	ASSERT_EQ(fiber::status(worker), fiber::state_t::SUSPENDED);
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::SUSPENDED);
 	// Проверяем что работа волокна до пробуждения НЕ выполнялась
 	ASSERT_FALSE(executed);
 	// Пробуждаем волокно
@@ -53,7 +53,7 @@ TEST_F(FiberFixture, FiberSpawnAndDestroyTest){
 	// Проверяем что работа волокна выполнена
 	ASSERT_TRUE(executed);
 	// Проверяем что волокно доработало
-	ASSERT_EQ(fiber::status(worker), fiber::state_t::FINISHED);
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::FINISHED);
 	// Проверяем что доработавшее волокно уничтожается
 	ASSERT_TRUE(fiber::destroy(worker));
 }
@@ -82,7 +82,7 @@ TEST_F(FiberFixture, FiberKeepsFrameAcrossYieldTest){
 	// Пробуждаем волокно: оно дойдёт до сна и вернёт управление
 	ASSERT_TRUE(fiber::resume(worker));
 	// Проверяем что волокно спит, а не доработало
-	ASSERT_EQ(fiber::status(worker), fiber::state_t::SUSPENDED);
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::SUSPENDED);
 	// Проверяем что итог ещё не собран
 	ASSERT_TRUE(result.empty());
 	// Пробуждаем волокно вновь
@@ -90,7 +90,7 @@ TEST_F(FiberFixture, FiberKeepsFrameAcrossYieldTest){
 	// Проверяем что переменная кадра пережила сон
 	ASSERT_STREQ(result.c_str(), "до-после");
 	// Проверяем что волокно доработало
-	ASSERT_EQ(fiber::status(worker), fiber::state_t::FINISHED);
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::FINISHED);
 	// Уничтожаем волокно
 	ASSERT_TRUE(fiber::destroy(worker));
 }
@@ -130,7 +130,7 @@ TEST_F(FiberFixture, FiberManyYieldsTest){
 	// Добиваем волокно последним пробуждением
 	ASSERT_TRUE(fiber::resume(worker));
 	// Проверяем что волокно доработало
-	ASSERT_EQ(fiber::status(worker), fiber::state_t::FINISHED);
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::FINISHED);
 	// Уничтожаем волокно
 	ASSERT_TRUE(fiber::destroy(worker));
 }
@@ -203,7 +203,7 @@ TEST_F(FiberFixture, FiberSelfDestroyRefusedTest){
 	// Проверяем что после отказа волокно доработало
 	EXPECT_TRUE(survived) << "управление после отказа не вернулось";
 	// Проверяем что волокно доработало и подлежит уничтожению
-	EXPECT_EQ(fiber::status(worker), fiber::state_t::FINISHED);
+	EXPECT_EQ(fiber::state(worker), fiber::state_t::FINISHED);
 	// Уничтожаем волокно снаружи, где это и дозволено
 	EXPECT_TRUE(fiber::destroy(worker));
 }
@@ -240,8 +240,8 @@ TEST_F(FiberFixture, FiberNestedTest){
 	// Пробуждаем внешнее волокно
 	ASSERT_TRUE(fiber::resume(outer));
 	// Проверяем что оба волокна спят
-	ASSERT_EQ(fiber::status(outer), fiber::state_t::SUSPENDED);
-	ASSERT_EQ(fiber::status(inner), fiber::state_t::SUSPENDED);
+	ASSERT_EQ(fiber::state(outer), fiber::state_t::SUSPENDED);
+	ASSERT_EQ(fiber::state(inner), fiber::state_t::SUSPENDED);
 	// Добиваем внутреннее волокно
 	ASSERT_TRUE(fiber::resume(inner));
 	// Добиваем внешнее волокно
@@ -295,7 +295,7 @@ TEST_F(FiberFixture, FiberDestroySuspendedRefusedTest){
  */
 TEST_F(FiberFixture, FiberRefusalsTest){
 	// Проверяем что несуществующее волокно считается доработавшим
-	ASSERT_EQ(fiber::status(nullptr), fiber::state_t::FINISHED);
+	ASSERT_EQ(fiber::state(nullptr), fiber::state_t::FINISHED);
 	// Проверяем что несуществующее волокно не пробуждается
 	ASSERT_FALSE(fiber::resume(nullptr));
 	// Проверяем что несуществующее волокно не уничтожается

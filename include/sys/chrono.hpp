@@ -1079,27 +1079,6 @@ namespace awh {
 			};
 			/**
 			 * \~russian
-			 * @brief Правило раскрытия двузначного года
-			 *
-			 * @details Какому столетию отнести год, записанный двумя разрядами. Единого
-			 *          правила на этот счёт нет: RFC 9110 задаёт скользящее окно от текущего
-			 *          года, POSIX для strptime - неподвижный рубеж между 68 и 69 годами.
-			 *          Оба действуют и оба нужны, поэтому выбор оставлен за вызывающим.
-			 *
-			 * @see century
-			 *
-			 * \~english
-			 * @brief Rule of the expansion of a two-digit year
-			 * @details Which century a year written with two digits should be attributed to. There is no single
-			 *          rule on this account: RFC 9110 sets a sliding window from the current
-			 *          year, POSIX for strptime — an immovable boundary between the years 68 and 69.
-			 *          Both are in force and both are needed, and therefore the choice is left to the caller.
-			 * @see century
-			 *
-			 * \~
-			 */
-			/**
-			 * \~russian
 			 * @brief Запись даты, заданная стандартом
 			 *
 			 * @details Готовые записи действующих стандартов. Формировать и разбирать их

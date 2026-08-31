@@ -281,6 +281,25 @@ namespace awh {
 				// Количество ячеек отметки состояния возврата
 				uint32_t _atomics;
 			private:
+				/**
+				 * \~russian
+				 * Соответствие имён отметок номерам ячеек их положения
+				 *
+				 * @details Ячейка отводится единожды на имя, а не на глагол отметки:
+				 *          отметки одного имени пишут в неё положение своё, отчего
+				 *          розыск глаголом переноса находит отметку живую последнюю
+				 *          того имени.
+				 *
+				 * \~english
+				 * Correspondence of mark names to the numbers of their position cells
+				 * @details The cell is allotted once per name, not per mark verb: the marks
+				 *          of one name write their position into it, whereby the lookup
+				 *          by the moving verb finds the last live mark of that name.
+				 *
+				 * \~
+				 */
+				map <string, uint32_t> _named;
+			private:
 				// Набор адресов инструкций рекурсивного вызова и номеров вызываемых групп
 				vector <pair <address_t, uint32_t>> _calls;
 			private:
@@ -775,6 +794,76 @@ namespace awh {
 				 * \~
 				 */
 				uint32_t reserve() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отвода ячейки положения отметки имени
+				 *
+				 * @param offset смещение имени отметки в хранилище имён разбора
+				 * @param length длина имени отметки в октетах
+				 *
+				 * @return номер ячейки положения отметки имени
+				 *
+				 * \~english
+				 * @brief Method of allotting the position cell of a named mark
+				 * @param offset offset of the mark name in the parsing name storage
+				 * @param length length of the mark name in octets
+				 * @return number of the position cell of the named mark
+				 *
+				 * \~
+				 */
+				uint32_t naming(const uint32_t offset, const uint32_t length) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки наличия глагола управления возвратом
+				 *
+				 * @param id индекс узла, с которого начинается обход
+				 *
+				 * @return   результат проверки наличия глагола управления
+				 *
+				 * \~english
+				 * @brief Method of checking the presence of a backtracking control verb
+				 * @param id index of the node the traversal starts from
+				 * @return   result of checking the presence of a control verb
+				 *
+				 * \~
+				 */
+				bool verbal(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки наличия глагола завершения сопоставления
+				 *
+				 * @param id индекс узла, с которого начинается обход
+				 *
+				 * @return   результат проверки наличия глагола завершения
+				 *
+				 * \~english
+				 * @brief Method of checking the presence of a match-completing verb
+				 * @param id index of the node the traversal starts from
+				 * @return   result of checking the presence of a completing verb
+				 *
+				 * \~
+				 */
+				bool accepting(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод размещения инструкции глагола отметки имени
+				 *
+				 * @param offset смещение имени отметки в хранилище имён разбора
+				 * @param length длина имени отметки в октетах
+				 * @param flags  флаги размещаемой инструкции
+				 *
+				 * @return адрес размещённой инструкции глагола отметки
+				 *
+				 * \~english
+				 * @brief Method of emitting the instruction of a named mark verb
+				 * @param offset offset of the mark name in the parsing name storage
+				 * @param length length of the mark name in octets
+				 * @param flags  flags of the instruction being emitted
+				 * @return address of the emitted instruction of the mark verb
+				 *
+				 * \~
+				 */
+				address_t marking(const uint32_t offset, const uint32_t length, const uint32_t flags) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод проверки наличия глагола перехода к ветви следующей

@@ -1921,6 +1921,86 @@ TEST(CodecIniWriter, TrailingJudgesWrittenNotSettings) {
 	}
 }
 /**
+ * @brief Проверка записи имени свойства со скобками без признания перечней
+ *
+ * @details Запись отвергала имя свойства со скобками всегда, а довод у отказа один:
+ * читающий, перечни признающий, числит «имя[]» добавлением к перечню. Читающий же,
+ * перечней не знающий, прочтёт имя как записано, и отвергать его не за что: круг
+ * «чтение - запись» рвался на тексте, который разбор принимал. Нашло это сличение
+ * перезаписи с эталоном
+ *
+ */
+TEST(CodecIniWriter, BracketedKeyWithoutArrays) {
+	// Настройки дерева настроек
+	ini::document_t::settings_t settings;
+	// Объект дерева настроек
+	ini::document_t document(::logger(), settings);
+	// Выполняем проверку разбора текста настроек
+	ASSERT_TRUE(document.parse("[section]\nkey[] = first\n"));
+	// Получаем перезапись дерева настроек
+	const string written = document.text();
+	// Выполняем проверку того, что запись дерево не отвергла
+	ASSERT_FALSE(written.empty()) << "запись отвергла дерево: " << ini::message(document.error());
+	// Выполняем проверку того, что имя свойства записано вместе со скобками
+	ASSERT_NE(written.find("key[]"), string::npos) << "записано: " << written;
+	// Объект дерева, перезапись читающий обратно
+	ini::document_t back(::logger(), settings);
+	// Выполняем проверку разбора перезаписи
+	ASSERT_TRUE(back.parse(written));
+	// Выполняем проверку имени свойства, круг пережившего
+	ASSERT_EQ(string(back.keys("section").front()), string("key[]"));
+	// Настройки дерева настроек с признанием перечней
+	ini::document_t::settings_t arrayed;
+	// Устанавливаем признание перечней значений разбором
+	arrayed.reader.arrays = true;
+	// Объект дерева настроек с признанием перечней
+	ini::document_t collected(::logger(), arrayed);
+	// Выполняем проверку разбора текста настроек с признанием перечней
+	ASSERT_TRUE(collected.parse("[section]\nkey[] = first\n"));
+	/**
+	 * Выполняем проверку того, что имя со скобками записью отвергается
+	 *
+	 * @note Отказ этот верен: читающий числит «имя[]» добавлением к перечню, и записанное
+	 *       имя разошлось бы с прочитанным
+	 */
+	ASSERT_EQ(string(collected.keys("section").front()), string("key"));
+}
+/**
+ * @brief Проверка записи имени раздела с пробельной обвязкой
+ *
+ * @details Запись отвергала имя раздела с пробельной обвязкой доводом, что читающий её
+ * отбрасывает и записанное разошлось бы с прочитанным. Довод этот верен не для всякого
+ * наречия: разбор наречия python обвязку СОХРАНЯЕТ, и «[ раздел ]» есть ему имя с
+ * пробелами. Круг «чтение - запись» на таком тексте рвался: разбор его принимал, а
+ * запись дерево отвергала пустотой. Нашло это сличение перезаписи с эталоном
+ *
+ */
+TEST(CodecIniWriter, PaddedSectionNameUnderPreservingDialect) {
+	// Настройки дерева настроек наречия python
+	ini::document_t::settings_t settings;
+	// Устанавливаем настройки разбора наречия python
+	settings.reader = ini::reader_t::settings_t::python();
+	// Объект дерева настроек
+	ini::document_t document(::logger(), settings);
+	// Выполняем проверку разбора текста настроек
+	ASSERT_TRUE(document.parse("[ section ]\nkey = value\n"));
+	// Получаем перезапись дерева настроек
+	const string written = document.text();
+	// Выполняем проверку того, что запись дерево не отвергла
+	ASSERT_FALSE(written.empty()) << "запись отвергла дерево: " << ini::message(document.error());
+	// Выполняем проверку того, что имя раздела записано вместе с обвязкой
+	ASSERT_NE(written.find("[ section ]"), string::npos) << "записано: " << written;
+	// Объект дерева, перезапись читающий обратно
+	ini::document_t back(::logger(), settings);
+	// Выполняем проверку разбора перезаписи
+	ASSERT_TRUE(back.parse(written));
+	// Выполняем проверку того, что имя раздела круг пережило
+	ASSERT_EQ(back.sections().size(), static_cast <size_t> (1));
+	// Выполняем проверку имени раздела, круг пережившего
+	ASSERT_EQ(string(back.sections().front().section), string(" section "));
+}
+
+/**
  * @brief Проверка прилипания отказа записи текста настроек
  *
  * @details Запись, однажды отказавшая, дальнейшего содержимого не принимает: прими она

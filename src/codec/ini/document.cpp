@@ -2372,6 +2372,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	result.quotes = (this->_settings.reader.quotes == quote_t::STRIP);
 	// Устанавливаем признак отбрасывания пробельной обвязки значения читающим
 	result.trim = this->_settings.reader.trim;
+	// Устанавливаем отбрасывание читающим пробельной обвязки имени раздела
+	result.trimSections = this->_settings.reader.trimSections;
 	// Устанавливаем признак признания свойств до первого раздела читающим
 	result.global = this->_settings.reader.global;
 	// Устанавливаем признак признания свойства без значения читающим

@@ -3711,12 +3711,43 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		 *
 		 */
 		if((name == "ACCEPT") || (name == "COMMIT") || (name == "PRUNE") || (name == "SKIP") || (name == "THEN")) {
+			// Смещение имени отметки в хранилище имён
+			uint32_t spot = 0;
+			// Длина имени отметки в октетах
+			uint32_t length = 0;
 			/**
 			 * Если глагол управления несёт имя отметки
+			 *
+			 * @details Имя у глагола отсечения означает отметку, глаголу
+			 *          предшествующую: «(*COMMIT:имя)» равен «(*MARK:имя)(*COMMIT)».
+			 *          Глагол переноса имя толкует иначе - ключом розыска отметки
+			 *          живой того имени, отметки своей не заводя вовсе. Имя пустое
+			 *          глагол обращает в безымянный - таково правило эталона,
+			 *          опытом снятое на «a(*SKIP:)b» и «a(*COMMIT:)b».
+			 *
 			 */
-			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':'))
-				// Выводим индекс отсутствующего узла синтаксического дерева
-				return this->fail(error_t::UNSUPPORTED, offset);
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')) {
+				// Переходим к символу за разделителем имени отметки
+				this->_pos++;
+				// Получаем позицию начала имени отметки
+				const size_t begin = this->_pos;
+				/**
+				 * Выполняем поиск завершения имени отметки
+				 */
+				while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+				// Получаем смещение имени отметки в хранилище имён
+				spot = static_cast <uint32_t> (this->_markers.size());
+				/**
+				 * Выполняем размещение имени отметки в хранилище имён
+				 */
+				for(size_t index = begin; index < this->_pos; index++)
+					// Выполняем добавление очередного октета имени отметки
+					this->_markers.push_back(static_cast <uint8_t> (this->_pattern.at(index)));
+				// Получаем длину размещённого имени отметки
+				length = static_cast <uint32_t> (this->_markers.size() - static_cast <size_t> (spot));
+			}
 			/**
 			 * Если глагол управления не завершён закрывающей круглой скобкой
 			 */
@@ -3733,6 +3764,10 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			this->_nodes.at(result).control.type = ((name == "ACCEPT") ? control_t::ACCEPT :
 			 ((name == "COMMIT") ? control_t::COMMIT : ((name == "PRUNE") ? control_t::PRUNE :
 			 ((name == "SKIP") ? control_t::SKIP : control_t::THEN))));
+			// Выполняем установку смещения имени отметки в хранилище имён
+			this->_nodes.at(result).control.offset = spot;
+			// Выполняем установку длины имени отметки
+			this->_nodes.at(result).control.length = length;
 			/**
 			 * Если за глаголом управления следует квантор повторения
 			 */
@@ -3748,16 +3783,44 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 		 * Если глагол управления совпадения не даёт никогда
 		 */
 		if((name == "FAIL") || (name == "F")) {
+			// Смещение имени отметки в хранилище имён
+			uint32_t spot = 0;
+			// Длина имени отметки в октетах
+			uint32_t length = 0;
 			/**
-			 * Выполняем поиск завершения глагола управления
+			 * Если глагол отказа несёт имя отметки
+			 *
+			 * @details Имя означает отметку, глаголу предшествующую, наравне
+			 *          с глаголами отсечения: «(*FAIL:имя)» равен «(*MARK:имя)(*FAIL)»
+			 *          и имя это выводится при отказе сопоставления.
+			 *
 			 */
-			while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
-				// Переходим к следующему символу регулярного выражения
+			if((this->_pos < size) && (this->_pattern.at(this->_pos) == ':')) {
+				// Переходим к символу за разделителем имени отметки
 				this->_pos++;
+				// Получаем позицию начала имени отметки
+				const size_t begin = this->_pos;
+				/**
+				 * Выполняем поиск завершения имени отметки
+				 */
+				while((this->_pos < size) && (this->_pattern.at(this->_pos) != ')'))
+					// Переходим к следующему символу регулярного выражения
+					this->_pos++;
+				// Получаем смещение имени отметки в хранилище имён
+				spot = static_cast <uint32_t> (this->_markers.size());
+				/**
+				 * Выполняем размещение имени отметки в хранилище имён
+				 */
+				for(size_t index = begin; index < this->_pos; index++)
+					// Выполняем добавление очередного октета имени отметки
+					this->_markers.push_back(static_cast <uint8_t> (this->_pattern.at(index)));
+				// Получаем длину размещённого имени отметки
+				length = static_cast <uint32_t> (this->_markers.size() - static_cast <size_t> (spot));
+			}
 			/**
 			 * Если глагол управления не завершён закрывающей круглой скобкой
 			 */
-			if(this->_pos >= size)
+			if((this->_pos >= size) || (this->_pattern.at(this->_pos) != ')'))
 				// Выводим индекс отсутствующего узла синтаксического дерева
 				return this->fail(error_t::UNMATCHED_PAREN, offset);
 			// Переходим к символу за закрывающей круглой скобкой
@@ -3787,8 +3850,22 @@ awh::regex::node_id_t awh::regex::Parser::parseGroup() noexcept {
 			   ((this->_pattern.at(this->_pos) == '{') && this->isQuantifier(this->_pos))))
 				// Выводим индекс отсутствующего узла синтаксического дерева
 				return this->fail(error_t::QUANTIFIER_NO_ATOM, this->_pos);
-			// Выводим индекс сформированного узла синтаксического дерева
-			return result;
+			/**
+			 * Если глагол отказа имени отметки не несёт
+			 */
+			if(length == 0)
+				// Выводим индекс сформированного узла синтаксического дерева
+				return result;
+			// Выполняем создание узла глагола отметки, глаголу отказа предшествующего
+			const node_id_t marker = this->createNode(node_t::CONTROL);
+			// Выполняем установку вида глагола управления возвратом
+			this->_nodes.at(marker).control.type = control_t::MARK;
+			// Выполняем установку смещения имени отметки в хранилище имён
+			this->_nodes.at(marker).control.offset = spot;
+			// Выполняем установку длины имени отметки
+			this->_nodes.at(marker).control.length = length;
+			// Выводим индекс узла последовательного сопоставления отметки и отказа
+			return this->makeList(node_t::CONCAT, vector <node_id_t> {marker, result});
 		}
 		// Выводим индекс отсутствующего узла синтаксического дерева
 		return this->fail(error_t::UNSUPPORTED, offset);
