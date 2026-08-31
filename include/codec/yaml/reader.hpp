@@ -1201,6 +1201,20 @@ namespace awh {
 					bool typing(const string_view text, const style_t style, const size_t column, type_t & type) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод назначения вида пустого значения последнему событию
+					 *
+					 * @details Пустота есть УМОЛЧАНИЕ, и метке типа она уступает: написание
+					 * `foo: !!str` есть по описанию пустая строка, а не пустое значение
+					 *
+					 * \~english
+					 * @brief Method of the assignment of the kind of an empty value to the last event
+					 * @details Emptiness is a DEFAULT, and it yields to a tag
+					 *
+					 * \~
+					 */
+					void emptied() noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод разбора свойств узла, стоящих прежде него
 					 *
 					 * @param line   разбираемая строка

@@ -124,6 +124,14 @@ for label, case in cases:
     # перезаписи законно несёт значение раскрытым, тогда как эталон хранит его ссылкой
     ##
     reference = case.get('json')
+    ##
+    # Запись «json: null» у набора значит ОТСУТСТВИЕ эталона, а не эталон «null»
+    #
+    # Прочитанная как эталон, она давала ложное расхождение: случай SM9W:1 сличался с
+    # деревом «null», хотя эталона у него нет вовсе
+    ##
+    if (reference is not None) and (reference.strip() == 'null'):
+        reference = None
     if (reference is not None) and ('&' not in body) and ('*' not in body):
         treed += 1
         try:

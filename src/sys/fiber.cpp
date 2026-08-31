@@ -447,6 +447,7 @@ namespace awh {
 			// Возвращаем управление разбудившей стороне НАВСЕГДА
 			__awh_fiber_swap__(&finished, fiber->caller);
 		}
+
 		/**
 		 * @brief Функция подготовки стека волокна к первому переходу
 		 *
@@ -510,6 +511,121 @@ namespace awh {
 			return reinterpret_cast <void *> (result);
 		}
 	#endif
+
+	/**
+	 * @brief Функция заведения волокна
+	 *
+	 * @param task функция, выполняемая волокном
+	 * @param size размер стека волокна в октетах
+	 * @param log  объект работы с логами
+	 * @return     заведённое волокно, либо nullptr при отказе
+	 *
+	 */
+	static fiber::ctx_t * __awh_spawn__(fiber::task_t && task, const size_t size, const log_t * log) noexcept {
+		// Если работа волокна не задана, заводить нечего
+		if(task == nullptr){
+			// Если объект логирования передан
+			if(log != nullptr)
+				// Записываем ошибку в лог
+				log->print("Fiber cannot be spawned without a task", log_t::flag_t::WARNING);
+			// Выводим пустой результат
+			return nullptr;
+		}
+		// Заводим волокно
+		fiber::ctx_t * result = new (std::nothrow) fiber::ctx_t();
+		// Если волокно завести не удалось
+		if(result == nullptr){
+			// Если объект логирования передан
+			if(log != nullptr)
+				// Записываем ошибку в лог
+				log->print("Fiber object cannot be allocated", log_t::flag_t::CRITICAL);
+			// Выводим пустой результат
+			return nullptr;
+		}
+		// Запоминаем объект работы с логами
+		result->log = log;
+		// Запоминаем размер стека волокна
+		result->size = size;
+		// Запоминаем работу волокна
+		result->task = ::move(task);
+		/**
+		 * Если операционной системой является MS Windows
+		 */
+		#if _WIN32 || _WIN64
+			// Стек волокну отводит сама система
+			result->stack = nullptr;
+		/**
+		 * Если операционной системой является не MS Windows
+		 */
+		#else
+			/**
+			 * Отводим память под стек волокна отображением
+			 *
+			 * @warning Обычная память из кучи стеком быть не вправе у OpenBSD: там
+			 *          отображение обязано нести признак MAP_STACK
+			 */
+			void * memory = ::mmap(nullptr, size, (PROT_READ | PROT_WRITE), (MAP_PRIVATE | MAP_ANON | MAP_STACK), -1, 0);
+			// Если память под стек отвести не удалось
+			if(memory == MAP_FAILED){
+				// Если объект логирования передан
+				if(log != nullptr)
+					// Записываем ошибку в лог
+					log->print("Fiber stack of %zu bytes cannot be mapped", log_t::flag_t::CRITICAL, size);
+				// Освобождаем волокно
+				delete result;
+				// Выводим пустой результат
+				return nullptr;
+			}
+			// Запоминаем стек волокна
+			result->stack = reinterpret_cast <char *> (memory);
+		#endif
+		/**
+		 * Если подкладкой служит ucontext
+		 */
+		#if AWH_FIBER_UCONTEXT
+			// Снимаем обстановку волокна
+			::getcontext(&result->context);
+			// Возврата по завершении нет: вход волокна уводит управление сам
+			result->context.uc_link = nullptr;
+			// Устанавливаем размер стека волокна
+			result->context.uc_stack.ss_size = size;
+			// Устанавливаем стек волокна
+			result->context.uc_stack.ss_sp = result->stack;
+			// Устанавливаем вход волокна
+			::makecontext(&result->context, reinterpret_cast <void (*)(void)> (&__awh_fiber_trampoline__), 0);
+		/**
+		 * Если подкладкой служат родные волокна системы
+		 */
+		#elif AWH_FIBER_WINAPI
+			// Заводим волокно системы
+			result->handle = ::CreateFiber(size, &__awh_fiber_trampoline__, result);
+			// Если волокно системы завести не удалось
+			if(result->handle == nullptr){
+				// Если объект логирования передан
+				if(log != nullptr)
+					// Записываем ошибку в лог
+					log->print("System fiber cannot be created", log_t::flag_t::CRITICAL);
+				// Освобождаем волокно
+				delete result;
+				// Выводим пустой результат
+				return nullptr;
+			}
+		/**
+		 * Если подкладкой служит свой переключатель стека
+		 */
+		#elif AWH_FIBER_ASM
+			// Получаем вершину стека волокна
+			char * top = (result->stack + size);
+			// Выравниваем вершину стека по шестнадцати октетам
+			top = reinterpret_cast <char *> (reinterpret_cast <uintptr_t> (top) & ~static_cast <uintptr_t> (15));
+			// Готовим стек волокна к первому переходу
+			result->handle = __awh_fiber_prepare__(top);
+		#endif
+		// Отмечаем волокно спящим: работа его начнётся первым пробуждением
+		result->state = fiber::state_t::SUSPENDED;
+		// Выводим заведённое волокно
+		return result;
+	}
 };
 
 /**
@@ -696,7 +812,7 @@ awh::fiber::Context * awh::fiber::current() noexcept {
  */
 awh::fiber::Context * awh::fiber::spawn(task_t task, const log_t * log) noexcept {
 	// Выводим заведённое волокно
-	return awh::fiber::spawn(task, STACK_SIZE, log);
+	return __awh_spawn__(::move(task), STACK_SIZE, log);
 }
 /**
  * @brief Функция заведения волокна
@@ -710,7 +826,7 @@ awh::fiber::Context * awh::fiber::spawn(task_t task, const log_t * log) noexcept
  */
 awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept {
 	// Выводим заведённое волокно
-	return awh::fiber::spawn(task, size, nullptr);
+	return __awh_spawn__(::move(task), size, nullptr);
 }
 /**
  * @brief Функция заведения волокна
@@ -722,109 +838,8 @@ awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept
  *
  */
 awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size, const log_t * log) noexcept {
-	// Если работа волокна не задана, заводить нечего
-	if(task == nullptr){
-		// Если объект логирования передан
-		if(log != nullptr)
-			// Записываем ошибку в лог
-			log->print("Fiber cannot be spawned without a task", log_t::flag_t::WARNING);
-		// Выводим пустой результат
-		return nullptr;
-	}
-	// Заводим волокно
-	ctx_t * result = new (std::nothrow) ctx_t();
-	// Если волокно завести не удалось
-	if(result == nullptr){
-		// Если объект логирования передан
-		if(log != nullptr)
-			// Записываем ошибку в лог
-			log->print("Fiber object cannot be allocated", log_t::flag_t::CRITICAL);
-		// Выводим пустой результат
-		return nullptr;
-	}
-	// Запоминаем объект работы с логами
-	result->log = log;
-	// Запоминаем размер стека волокна
-	result->size = size;
-	// Запоминаем работу волокна
-	result->task = ::move(task);
-	/**
-	 * Если операционной системой является MS Windows
-	 */
-	#if _WIN32 || _WIN64
-		// Стек волокну отводит сама система
-		result->stack = nullptr;
-	/**
-	 * Если операционной системой является не MS Windows
-	 */
-	#else
-		/**
-		 * Отводим память под стек волокна отображением
-		 *
-		 * @warning Обычная память из кучи стеком быть не вправе у OpenBSD: там
-		 *          отображение обязано нести признак MAP_STACK
-		 */
-		void * memory = ::mmap(nullptr, size, (PROT_READ | PROT_WRITE), (MAP_PRIVATE | MAP_ANON | MAP_STACK), -1, 0);
-		// Если память под стек отвести не удалось
-		if(memory == MAP_FAILED){
-			// Если объект логирования передан
-			if(log != nullptr)
-				// Записываем ошибку в лог
-				log->print("Fiber stack of %zu bytes cannot be mapped", log_t::flag_t::CRITICAL, size);
-			// Освобождаем волокно
-			delete result;
-			// Выводим пустой результат
-			return nullptr;
-		}
-		// Запоминаем стек волокна
-		result->stack = reinterpret_cast <char *> (memory);
-	#endif
-	/**
-	 * Если подкладкой служит ucontext
-	 */
-	#if AWH_FIBER_UCONTEXT
-		// Снимаем обстановку волокна
-		::getcontext(&result->context);
-		// Возврата по завершении нет: вход волокна уводит управление сам
-		result->context.uc_link = nullptr;
-		// Устанавливаем размер стека волокна
-		result->context.uc_stack.ss_size = size;
-		// Устанавливаем стек волокна
-		result->context.uc_stack.ss_sp = result->stack;
-		// Устанавливаем вход волокна
-		::makecontext(&result->context, reinterpret_cast <void (*)(void)> (&__awh_fiber_trampoline__), 0);
-	/**
-	 * Если подкладкой служат родные волокна системы
-	 */
-	#elif AWH_FIBER_WINAPI
-		// Заводим волокно системы
-		result->handle = ::CreateFiber(size, &__awh_fiber_trampoline__, result);
-		// Если волокно системы завести не удалось
-		if(result->handle == nullptr){
-			// Если объект логирования передан
-			if(log != nullptr)
-				// Записываем ошибку в лог
-				log->print("System fiber cannot be created", log_t::flag_t::CRITICAL);
-			// Освобождаем волокно
-			delete result;
-			// Выводим пустой результат
-			return nullptr;
-		}
-	/**
-	 * Если подкладкой служит свой переключатель стека
-	 */
-	#elif AWH_FIBER_ASM
-		// Получаем вершину стека волокна
-		char * top = (result->stack + size);
-		// Выравниваем вершину стека по шестнадцати октетам
-		top = reinterpret_cast <char *> (reinterpret_cast <uintptr_t> (top) & ~static_cast <uintptr_t> (15));
-		// Готовим стек волокна к первому переходу
-		result->handle = __awh_fiber_prepare__(top);
-	#endif
-	// Отмечаем волокно спящим: работа его начнётся первым пробуждением
-	result->state = state_t::SUSPENDED;
 	// Выводим заведённое волокно
-	return result;
+	return __awh_spawn__(::move(task), size, log);
 }
 
 /**

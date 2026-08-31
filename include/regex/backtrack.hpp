@@ -418,6 +418,26 @@ namespace awh {
 				// Позиция начала текущей попытки сопоставления
 				size_t _start;
 			private:
+				/**
+				 * \~russian
+				 * Позиция, с которой начата попытка сопоставления нынешняя
+				 *
+				 * @details Глагол переноса с именем, отметку найдя в положении
+				 *          не позднее начала попытки, не правит вовсе: перенос
+				 *          назад зациклил бы обход позиций, а прекращение попытки
+				 *          отняло бы ветви, глаголу не пройденные.
+				 *
+				 * \~english
+				 * Position from which the current matching attempt was started
+				 * @details The moving verb with a name, having found a mark at a position
+				 *          no later than the beginning of the attempt, has no effect at all:
+				 *          moving backwards would loop the position traversal, while terminating
+				 *          the attempt would take away the branches not passed by the verb.
+				 *
+				 * \~
+				 */
+				size_t _attempt;
+			private:
 				// Количество выполненных шагов сопоставления
 				size_t _steps;
 			private:

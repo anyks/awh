@@ -43,7 +43,7 @@ using namespace awh;
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
+ _program(nullptr), _start(0), _attempt(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
 	// Выполняем сброс таблицы принадлежности значений байта классу символов
 	::memset(this->_bytes, 0, sizeof(this->_bytes));
 }
@@ -271,6 +271,8 @@ bool awh::regex::Backtrack::single(const instruction_t & instruction, const size
  *
  */
 bool awh::regex::Backtrack::attempt(const size_t pos) noexcept {
+	// Выполняем установку позиции начала попытки сопоставления нынешней
+	this->_attempt = pos;
 	// Выполняем очистку набора точек возврата
 	this->_points.clear();
 	// Выполняем очистку журнала изменений ячеек захвата
@@ -1615,6 +1617,20 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 * Если отметка имени живой не является
 					 */
 					if((cell >= this->_slots.size()) || (this->_slots.at(cell) == string_view::npos))
+						// Продолжаем возврат к предшествующей точке возврата
+						continue;
+					/**
+					 * Если отметка имени лежит не позднее начала попытки
+					 *
+					 * @details Перенос назад зациклил бы обход позиций, а прекращение
+					 *          попытки отняло бы ветви, глаголу не пройденные: эталон
+					 *          глагол в этом случае пропускает вовсе. Расхождение
+					 *          вышло на «(*THEN:метка)[^\8](*SKIP:метка)\h|\E»,
+					 *          где эталон совпадение пустое ветвью второю
+					 *          в позиции начальной и находит.
+					 *
+					 */
+					if(this->_slots.at(cell) <= this->_attempt)
 						// Продолжаем возврат к предшествующей точке возврата
 						continue;
 					// Выполняем установку позиции продолжения попытки сопоставления

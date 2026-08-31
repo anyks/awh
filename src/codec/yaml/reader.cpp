@@ -1403,7 +1403,7 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 			// Выводим признак неудачного закрытия документа
 			return false;
 		// Устанавливаем вид пустого значения последнему событию
-		this->_staged.back().type = type_t::NUL;
+		this->emptied();
 		/**
 		 * Устанавливаем место пустого значения там, где оно ожидалось
 		 *
@@ -1445,7 +1445,7 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 				// Выводим признак неудачного закрытия документа
 				return false;
 			// Устанавливаем вид пустого значения последнему событию
-			this->_staged.back().type = type_t::NUL;
+			this->emptied();
 		}
 	}
 	/**
@@ -1468,7 +1468,7 @@ bool awh::codec::yaml::Reader::finish(const size_t column) noexcept {
 			// Выводим признак неудачного закрытия документа
 			return false;
 		// Устанавливаем вид пустого значения последнему событию
-		this->_staged.back().type = type_t::NUL;
+		this->emptied();
 	}
 	/**
 	 * Если закрыть открытые уровни вложенности не удалось
@@ -1932,6 +1932,42 @@ void awh::codec::yaml::Reader::attach(item_t & item) noexcept {
 		// Выполняем сброс метки типа, узла своего дождавшейся
 		this->_tag.clear();
 	}
+}
+/**
+ * @brief Метод назначения вида пустого значения последнему событию
+ *
+ * @details Значение, содержимого не имеющее, пустым является по умолчанию - но не тогда,
+ * когда метка типа сказала иное: написание `foo: !!str` есть по описанию пустая СТРОКА,
+ * а не пустое значение. Разрешение по метке ведёт `typing()`, и назначение пустоты
+ * поверх него метку затирало: набор сверки давал `{"foo": ""}`, а дерево - `{"foo": null}`
+ *
+ * @note Мест назначения десять, и стояло в них назначение безусловное. Свести их в одно
+ *       место пришлось затем, что довод у всех один и тот же: пустота есть УМОЛЧАНИЕ, а
+ *       умолчание метке уступает. Нашло это сличение дерева с эталонным деревом набора -
+ *       поток событий метку нёс верно, и сличение по событиям порока не видело
+ *
+ */
+void awh::codec::yaml::Reader::emptied() noexcept {
+	/**
+	 * Если последнему событию метка типа СТАНДАРТНАЯ предпослана
+	 *
+	 * @note Метка своя - местная либо чужого объявления - вида не задаёт: разрешать её
+	 *       читающему нечем, и пустота под нею остаётся пустотою. Написание
+	 *       `- !<tag:x,2000:mine>` тому порукой - проверка `EmptyRewrite` держит его
+	 *       пустым, - а `foo: !!str` есть по описанию пустая строка
+	 */
+	if(this->_staged.back().tag.length > STANDARD_TAG.size()){
+		// Получаем запись метки типа, событию предпосланной
+		const string_view tag(this->_storage.data() + this->_staged.back().tag.offset, this->_staged.back().tag.length);
+		/**
+		 * Если метка типа началом своим описанию отвечает
+		 */
+		if(tag.compare(0, STANDARD_TAG.size(), STANDARD_TAG) == 0)
+			// Выходим из функции, вид меткою разрешённый сохраняя
+			return;
+	}
+	// Устанавливаем вид пустого значения последнему событию
+	this->_staged.back().type = type_t::NUL;
 }
 /**
  * @brief Метод разрешения вида скалярного значения
@@ -2860,7 +2896,7 @@ bool awh::codec::yaml::Reader::content(const string_view line, const size_t offs
 				// Выводим признак неудачного разбора содержимого
 				return false;
 			// Устанавливаем вид пустого имени последнему событию
-			this->_staged.back().type = type_t::NUL;
+			this->emptied();
 		}
 		/**
 		 * Если двоеточие есть ответ вопросу, имя объявившему
@@ -4841,7 +4877,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 					// Выводим признак неудачного разбора построения
 					return false;
 				// Устанавливаем вид пустого значения последнему событию
-				this->_staged.back().type = type_t::NUL;
+				this->emptied();
 				// Запоминаем признак наполнения открытого построения
 				bracket.filled = true;
 				// Запоминаем признак того, что запись построения начата
@@ -4895,7 +4931,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 							// Выводим признак неудачного разбора построения
 							return false;
 						// Устанавливаем вид пустого значения последнему событию
-						this->_staged.back().type = type_t::NUL;
+						this->emptied();
 					}
 				}
 				/**
@@ -4933,7 +4969,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 						// Выводим признак неудачного разбора построения
 						return false;
 					// Устанавливаем вид пустого значения последнему событию
-					this->_staged.back().type = type_t::NUL;
+					this->emptied();
 					// Выполняем постановку события закрытия отображения об одной паре
 					this->emit(event_t::MAPPING_END, offset);
 					// Выполняем сброс признака отображения об одной паре
@@ -5046,7 +5082,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 						// Выводим признак неудачного разбора построения
 						return false;
 					// Устанавливаем вид пустого значения последнему событию
-					this->_staged.back().type = type_t::NUL;
+					this->emptied();
 					/**
 					 * Если запись перечня отображением об одной паре объявлена
 					 *
@@ -5232,7 +5268,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 					// Выводим признак неудачного разбора построения
 					return false;
 				// Устанавливаем вид пустого значения последнему событию
-				this->_staged.back().type = type_t::NUL;
+				this->emptied();
 			}
 			/**
 			 * Если запись перечня отображением об одной паре объявлена
@@ -5263,7 +5299,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 						// Выводим признак неудачного разбора построения
 						return false;
 					// Устанавливаем вид пустого значения последнему событию
-					this->_staged.back().type = type_t::NUL;
+					this->emptied();
 				}
 				// Выполняем постановку события закрытия отображения об одной паре
 				this->emit(event_t::MAPPING_END, offset);
@@ -5306,7 +5342,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 					// Выводим признак неудачного разбора построения
 					return false;
 				// Устанавливаем вид пустого значения последнему событию
-				this->_staged.back().type = type_t::NUL;
+				this->emptied();
 			}
 			/**
 			 * Если запись перечня отображением об одной паре объявлена
@@ -5337,7 +5373,7 @@ bool awh::codec::yaml::Reader::flowing(const string_view line, size_t & offset) 
 						// Выводим признак неудачного разбора построения
 						return false;
 					// Устанавливаем вид пустого значения последнему событию
-					this->_staged.back().type = type_t::NUL;
+					this->emptied();
 				}
 				// Выполняем постановку события закрытия отображения об одной паре
 				this->emit(event_t::MAPPING_END, offset);
@@ -6164,7 +6200,7 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 			// Выводим признак неудачного разбора строки
 			return false;
 		// Устанавливаем вид пустого значения последнему событию
-		this->_staged.back().type = type_t::NUL;
+		this->emptied();
 		/**
 		 * Устанавливаем место пустого значения там, где оно ожидалось
 		 *
@@ -6212,7 +6248,7 @@ bool awh::codec::yaml::Reader::record(const string_view line) noexcept {
 				// Выводим признак неудачного разбора строки
 				return false;
 			// Устанавливаем вид пустого значения последнему событию
-			this->_staged.back().type = type_t::NUL;
+			this->emptied();
 			// Устанавливаем место пустого значения там, где оно ожидалось
 			this->_staged.back().location.offset = this->_awaiting.offset;
 			// Устанавливаем строку пустого значения там, где оно ожидалось
