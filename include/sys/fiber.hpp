@@ -71,12 +71,12 @@ namespace awh {
 		 * @brief Прототип класса волокна
 		 *
 		 */
-		class Fiber;
+		class Context;
 		/**
-		 * @brief Тип волокна
+		 * @brief Тип контекста волокна
 		 *
 		 */
-		using fiber_t = Fiber;
+		using ctx_t = Context;
 		/**
 		 * @brief Тип функции, выполняемой волокном
 		 *
@@ -111,7 +111,7 @@ namespace awh {
 		 * @return     заведённое волокно, либо nullptr при отказе
 		 *
 		 */
-		fiber_t * spawn(task_t task, const size_t size) noexcept;
+		ctx_t * spawn(task_t task, const size_t size) noexcept;
 		/**
 		 * @brief Функция заведения волокна
 		 *
@@ -122,7 +122,7 @@ namespace awh {
 		 * @return     заведённое волокно, либо nullptr при отказе
 		 *
 		 */
-		fiber_t * spawn(task_t task, const log_t * log) noexcept;
+		ctx_t * spawn(task_t task, const log_t * log) noexcept;
 		/**
 		 * @brief Функция заведения волокна
 		 *
@@ -134,14 +134,14 @@ namespace awh {
 		 * @return     заведённое волокно, либо nullptr при отказе
 		 *
 		 */
-		fiber_t * spawn(task_t task, const size_t size = STACK_SIZE, const log_t * log = nullptr) noexcept;
+		ctx_t * spawn(task_t task, const size_t size = STACK_SIZE, const log_t * log = nullptr) noexcept;
 		/**
 		 * @brief Функция получения волокна, в котором идёт выполнение
 		 *
 		 * @return волокно, либо nullptr, если выполнение идёт вне волокна
 		 *
 		 */
-		fiber_t * current() noexcept;
+		ctx_t * current() noexcept;
 		/**
 		 * @brief Функция усыпления текущего волокна
 		 *
@@ -162,7 +162,7 @@ namespace awh {
 		 * @return      результат пробуждения
 		 *
 		 */
-		bool resume(fiber_t * fiber) noexcept;
+		bool resume(ctx_t * fiber) noexcept;
 		/**
 		 * @brief Функция получения состояния волокна
 		 *
@@ -170,7 +170,7 @@ namespace awh {
 		 * @return      состояние волокна
 		 *
 		 */
-		state_t status(const fiber_t * fiber) noexcept;
+		state_t status(const ctx_t * fiber) noexcept;
 		/**
 		 * @brief Функция уничтожения волокна
 		 *
@@ -181,7 +181,7 @@ namespace awh {
 		 * @return      результат уничтожения
 		 *
 		 */
-		bool destroy(fiber_t * fiber) noexcept;
+		bool destroy(ctx_t * fiber) noexcept;
 	};
 };
 

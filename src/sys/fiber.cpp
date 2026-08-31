@@ -219,7 +219,7 @@
  * @brief Класс волокна
  *
  */
-class awh::fiber::Fiber {
+class awh::fiber::Context {
 	public:
 		// Состояние волокна
 		fiber::state_t state;
@@ -262,7 +262,7 @@ class awh::fiber::Fiber {
 		 * @brief Конструктор
 		 *
 		 */
-		Fiber() noexcept :
+		Context() noexcept :
 		 state(fiber::state_t::NONE), log(nullptr), stack(nullptr), size(0)
 		#if AWH_FIBER_WINAPI
 			, handle(nullptr), caller(nullptr)
@@ -275,7 +275,7 @@ class awh::fiber::Fiber {
 /**
  * Волокно, в котором идёт выполнение, своё у каждого потока
  */
-static thread_local awh::fiber::Fiber * __awh_fiber_current__ = nullptr;
+static thread_local awh::fiber::ctx_t * __awh_fiber_current__ = nullptr;
 
 /**
  * Если подкладкой служат родные волокна системы
@@ -309,7 +309,7 @@ static thread_local awh::fiber::Fiber * __awh_fiber_current__ = nullptr;
  * @param fiber волокно, работу которого следует выполнить
  *
  */
-static void __awh_fiber_body__(awh::fiber::Fiber * fiber) noexcept {
+static void __awh_fiber_body__(awh::fiber::ctx_t * fiber) noexcept {
 	// Если работа волокна задана
 	if(fiber->task != nullptr)
 		// Выполняем работу волокна
@@ -330,7 +330,7 @@ static void __awh_fiber_body__(awh::fiber::Fiber * fiber) noexcept {
 	 */
 	static void __awh_fiber_trampoline__() noexcept {
 		// Получаем волокно, в котором идёт выполнение
-		awh::fiber::Fiber * fiber = __awh_fiber_current__;
+		awh::fiber::ctx_t * fiber = __awh_fiber_current__;
 		// Выполняем работу волокна
 		__awh_fiber_body__(fiber);
 		// Возвращаем управление разбудившей стороне НАВСЕГДА
@@ -348,7 +348,7 @@ static void __awh_fiber_body__(awh::fiber::Fiber * fiber) noexcept {
 	 */
 	static VOID CALLBACK __awh_fiber_trampoline__(LPVOID param){
 		// Получаем волокно
-		awh::fiber::Fiber * fiber = reinterpret_cast <awh::fiber::Fiber *> (param);
+		awh::fiber::ctx_t * fiber = reinterpret_cast <awh::fiber::ctx_t *> (param);
 		// Выполняем работу волокна
 		__awh_fiber_body__(fiber);
 		// Возвращаем управление разбудившей стороне НАВСЕГДА
@@ -364,7 +364,7 @@ static void __awh_fiber_body__(awh::fiber::Fiber * fiber) noexcept {
 	 */
 	extern "C" void __awh_fiber_start__(void) noexcept {
 		// Получаем волокно, в котором идёт выполнение
-		awh::fiber::Fiber * fiber = __awh_fiber_current__;
+		awh::fiber::ctx_t * fiber = __awh_fiber_current__;
 		// Выполняем работу волокна
 		__awh_fiber_body__(fiber);
 		// Место под указатель стека, который больше не понадобится
@@ -442,7 +442,7 @@ static void __awh_fiber_body__(awh::fiber::Fiber * fiber) noexcept {
  * @return волокно, либо nullptr, если выполнение идёт вне волокна
  *
  */
-awh::fiber::Fiber * awh::fiber::current() noexcept {
+awh::fiber::Context * awh::fiber::current() noexcept {
 	// Выводим волокно, в котором идёт выполнение
 	return __awh_fiber_current__;
 }
@@ -454,7 +454,7 @@ awh::fiber::Fiber * awh::fiber::current() noexcept {
  * @return      состояние волокна
  *
  */
-awh::fiber::state_t awh::fiber::status(const Fiber * fiber) noexcept {
+awh::fiber::state_t awh::fiber::status(const ctx_t * fiber) noexcept {
 	// Выводим состояние волокна, считая несуществующее доработавшим
 	return ((fiber != nullptr) ? fiber->state : state_t::FINISHED);
 }
@@ -469,7 +469,7 @@ awh::fiber::state_t awh::fiber::status(const Fiber * fiber) noexcept {
  * @return     заведённое волокно, либо nullptr при отказе
  *
  */
-awh::fiber::Fiber * awh::fiber::spawn(task_t task, const size_t size) noexcept {
+awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept {
 	// Выводим заведённое волокно
 	return awh::fiber::spawn(task, size, nullptr);
 }
@@ -484,7 +484,7 @@ awh::fiber::Fiber * awh::fiber::spawn(task_t task, const size_t size) noexcept {
  * @return     заведённое волокно, либо nullptr при отказе
  *
  */
-awh::fiber::Fiber * awh::fiber::spawn(task_t task, const log_t * log) noexcept {
+awh::fiber::Context * awh::fiber::spawn(task_t task, const log_t * log) noexcept {
 	// Выводим заведённое волокно
 	return awh::fiber::spawn(task, STACK_SIZE, log);
 }
@@ -498,7 +498,7 @@ awh::fiber::Fiber * awh::fiber::spawn(task_t task, const log_t * log) noexcept {
  * @return     заведённое волокно, либо nullptr при отказе
  *
  */
-awh::fiber::Fiber * awh::fiber::spawn(task_t task, const size_t size, const log_t * log) noexcept {
+awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size, const log_t * log) noexcept {
 	// Если работа волокна не задана, заводить нечего
 	if(task == nullptr){
 		// Если объект логирования передан
@@ -509,7 +509,7 @@ awh::fiber::Fiber * awh::fiber::spawn(task_t task, const size_t size, const log_
 		return nullptr;
 	}
 	// Заводим волокно
-	Fiber * result = new (std::nothrow) Fiber();
+	ctx_t * result = new (std::nothrow) ctx_t();
 	// Если волокно завести не удалось
 	if(result == nullptr){
 		// Если объект логирования передан
@@ -611,13 +611,13 @@ awh::fiber::Fiber * awh::fiber::spawn(task_t task, const size_t size, const log_
  * @return      результат пробуждения
  *
  */
-bool awh::fiber::resume(Fiber * fiber) noexcept {
+bool awh::fiber::resume(ctx_t * fiber) noexcept {
 	// Если волокна нет, либо оно уже доработало, либо уже выполняется
 	if((fiber == nullptr) || (fiber->state == state_t::FINISHED) || (fiber->state == state_t::RUNNING))
 		// Сообщаем, что будить нечего
 		return false;
 	// Запоминаем волокно, из которого идёт пробуждение
-	Fiber * previous = __awh_fiber_current__;
+	ctx_t * previous = __awh_fiber_current__;
 	// Отмечаем волокно выполняющимся
 	fiber->state = state_t::RUNNING;
 	// Отмечаем волокно текущим
@@ -657,7 +657,7 @@ bool awh::fiber::resume(Fiber * fiber) noexcept {
  */
 void awh::fiber::yield() noexcept {
 	// Получаем волокно, в котором идёт выполнение
-	Fiber * fiber = __awh_fiber_current__;
+	ctx_t * fiber = __awh_fiber_current__;
 	// Если выполнение идёт вне волокна, усыплять нечего
 	if(fiber == nullptr)
 		// Выходим, так как вызов сделан вне волокна
@@ -696,7 +696,7 @@ void awh::fiber::yield() noexcept {
  * @return      результат уничтожения
  *
  */
-bool awh::fiber::destroy(Fiber * fiber) noexcept {
+bool awh::fiber::destroy(ctx_t * fiber) noexcept {
 	// Если уничтожать нечего
 	if(fiber == nullptr)
 		// Сообщаем, что уничтожение не выполнено

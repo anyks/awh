@@ -7909,7 +7909,7 @@ namespace offload {
 		// Выполняемая работа
 		function <void ()> task;
 		// Волокно, ждущее исхода, либо пустое значение вне волокна
-		fiber::Fiber * fiber;
+		fiber::ctx_t * fiber;
 		// Событие завершения для ожидания вне волокна
 		HANDLE event;
 		// Метка записи учёта, какой приходит пробуждение
@@ -8065,7 +8065,7 @@ namespace fibers {
 		// Признак занятости волокна работой
 		bool busy;
 		// Само волокно
-		::fiber::fiber_t * fiber;
+		::fiber::ctx_t * fiber;
 		// Выполняемая волокном работа
 		function <void ()> job;
 	};

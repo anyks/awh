@@ -38,7 +38,7 @@ TEST_F(FiberFixture, FiberSpawnAndDestroyTest){
 	// Признак того, что работа волокна выполнялась
 	bool executed = false;
 	// Заводим волокно
-	fiber::Fiber * worker = fiber::spawn([&executed]() noexcept -> void {
+	fiber::ctx_t * worker = fiber::spawn([&executed]() noexcept -> void {
 		// Отмечаем работу волокна выполненной
 		executed = true;
 	}, this->_log.get());
@@ -69,7 +69,7 @@ TEST_F(FiberFixture, FiberKeepsFrameAcrossYieldTest){
 	// Итог, собираемый волокном по обе стороны сна
 	std::string result = "";
 	// Заводим волокно
-	fiber::Fiber * worker = fiber::spawn([&result]() noexcept -> void {
+	fiber::ctx_t * worker = fiber::spawn([&result]() noexcept -> void {
 		// Заводим переменную кадра ДО сна
 		const std::string before = "до";
 		// Усыпляем волокно
@@ -105,7 +105,7 @@ TEST_F(FiberFixture, FiberManyYieldsTest){
 	// Счётчик пройденных кругов
 	uint16_t counter = 0;
 	// Заводим волокно
-	fiber::Fiber * worker = fiber::spawn([&counter]() noexcept -> void {
+	fiber::ctx_t * worker = fiber::spawn([&counter]() noexcept -> void {
 		/**
 		 * Проходим заданное количество кругов сна
 		 */
@@ -141,11 +141,11 @@ TEST_F(FiberFixture, FiberManyYieldsTest){
  */
 TEST_F(FiberFixture, FiberCurrentTest){
 	// Волокно, увиденное изнутри работы
-	fiber::Fiber * inside = nullptr;
+	fiber::ctx_t * inside = nullptr;
 	// Проверяем что вне волокна текущего волокна нет
 	ASSERT_EQ(fiber::current(), nullptr);
 	// Заводим волокно
-	fiber::Fiber * worker = fiber::spawn([&inside]() noexcept -> void {
+	fiber::ctx_t * worker = fiber::spawn([&inside]() noexcept -> void {
 		// Запоминаем волокно, увиденное изнутри
 		inside = fiber::current();
 	}, this->_log.get());
@@ -188,7 +188,7 @@ TEST_F(FiberFixture, FiberSelfDestroyRefusedTest){
 	// Признак того, что волокно доработало до конца после отказа
 	bool survived = false;
 	// Заводим волокно, которое пробует уничтожить само себя
-	fiber::Fiber * worker = fiber::spawn([&refused, &survived]() noexcept -> void {
+	fiber::ctx_t * worker = fiber::spawn([&refused, &survived]() noexcept -> void {
 		// Пробуем уничтожить волокно, в котором сами же и выполняемся
 		refused = !fiber::destroy(fiber::current());
 		// Отмечаем, что управление вернулось и работа продолжилась
@@ -212,7 +212,7 @@ TEST_F(FiberFixture, FiberNestedTest){
 	// Роспись порядка, в котором шло выполнение
 	std::string sign = "";
 	// Внутреннее волокно
-	fiber::Fiber * inner = fiber::spawn([&sign]() noexcept -> void {
+	fiber::ctx_t * inner = fiber::spawn([&sign]() noexcept -> void {
 		// Отмечаем вход во внутреннее волокно
 		sign.append("[внутреннее:вход]");
 		// Усыпляем внутреннее волокно
@@ -223,7 +223,7 @@ TEST_F(FiberFixture, FiberNestedTest){
 	// Проверяем что внутреннее волокно заведено
 	ASSERT_NE(inner, nullptr);
 	// Внешнее волокно
-	fiber::Fiber * outer = fiber::spawn([&sign, inner]() noexcept -> void {
+	fiber::ctx_t * outer = fiber::spawn([&sign, inner]() noexcept -> void {
 		// Отмечаем вход во внешнее волокно
 		sign.append("[внешнее:вход]");
 		// Пробуждаем внутреннее волокно
@@ -271,7 +271,7 @@ TEST_F(FiberFixture, FiberSpawnWithoutTaskTest){
  */
 TEST_F(FiberFixture, FiberDestroySuspendedRefusedTest){
 	// Заводим волокно
-	fiber::Fiber * worker = fiber::spawn([]() noexcept -> void {
+	fiber::ctx_t * worker = fiber::spawn([]() noexcept -> void {
 		// Усыпляем волокно
 		fiber::yield();
 	}, this->_log.get());
@@ -312,7 +312,7 @@ TEST_F(FiberFixture, FiberResumeFinishedRefusedTest){
 	// Счётчик выполнений работы волокна
 	uint8_t counter = 0;
 	// Заводим волокно
-	fiber::Fiber * worker = fiber::spawn([&counter]() noexcept -> void {
+	fiber::ctx_t * worker = fiber::spawn([&counter]() noexcept -> void {
 		// Считаем выполнение работы волокна
 		counter++;
 	}, this->_log.get());
@@ -361,7 +361,7 @@ TEST_F(FiberFixture, FiberManyAliveTest){
 	// Количество одновременно живущих волокон
 	constexpr size_t COUNT = 64;
 	// Набор заведённых волокон
-	std::vector <fiber::Fiber *> workers;
+	std::vector <fiber::ctx_t *> workers;
 	// Набор итогов, собранных волокнами
 	std::vector <size_t> results(COUNT, 0);
 	/**
@@ -369,7 +369,7 @@ TEST_F(FiberFixture, FiberManyAliveTest){
 	 */
 	for(size_t i = 0; i < COUNT; i++){
 		// Заводим очередное волокно
-		fiber::Fiber * worker = fiber::spawn([&results, i]() noexcept -> void {
+		fiber::ctx_t * worker = fiber::spawn([&results, i]() noexcept -> void {
 			// Усыпляем волокно
 			fiber::yield();
 			// Собираем итог: каждое волокно пишет СВОЁ число

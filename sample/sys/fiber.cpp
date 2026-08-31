@@ -44,7 +44,7 @@ class Executor {
 		// Идентификатор события клиента
 		event::id_t _client;
 		// Волокно, в котором идут синхронные на вид обмены
-		fiber::Fiber * _fiber;
+		fiber::ctx_t * _fiber;
 	private:
 		// Ответ, полученный на последний запрос
 		std::string _answer;
