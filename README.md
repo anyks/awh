@@ -75,6 +75,41 @@
 | **OpenIndiana**   | event ports | x86_64         |
 | **Windows**       | IOCP        | AMD64 / ARM64  |
 
+### Supported tunnel devices
+
+Which kind of tunnel device is created on which operating system, and how.
+
+| OS                        | TUN (raw IP, L3)                       | TAP (Ethernet frames, L2)         | GIF  | GRE  |
+|---------------------------|----------------------------------------|-----------------------------------|------|------|
+| **macOS / iOS**           | `utun` via `PF_SYSTEM` control socket  | `/dev/tapN` — third party driver  |  ✅  |  ✅  |
+| **FreeBSD / DragonFly**   | `/dev/tun` cloning device              | `/dev/tap` cloning device         |  ✅  |  ✅  |
+| **NetBSD / OpenBSD**      | `/dev/tunN` probed one by one          | `/dev/tapN` probed one by one     |  ✅  |  ✅  |
+| **Linux / Android**       | `/dev/net/tun`, `IFF_TUN`              | `/dev/net/tun`, `IFF_TAP`         |  ❌  |  ✅  |
+| **Solaris / OpenIndiana** | `/dev/net/<name>`, created beforehand  | same device, same call            |  ❌  |  ❌  |
+| **Windows**               | Wintun, falls back to tap-windows6     | tap-windows6 only                 |  ❌  |  ❌  |
+
+Notes worth knowing before you use them:
+
+* **macOS has no TAP device in the stock system.** `/dev/tapN` appears only when a third party driver
+  (`tuntaposx` and the like) is installed, so TAP there is an option, not a given.
+* **FreeBSD and DragonFly clone**: opening `/dev/tun` hands out a free unit on its own. NetBSD and
+  OpenBSD have no cloning device at all, so a free unit is found by opening `/dev/tun0`, `/dev/tun1`
+  and so on until one of them gives in.
+* **Solaris and illumos have no tunnel devices of their own.** A data link is created beforehand by the
+  machine administrator (see *Prepare a tunnel device* below) and the module only opens it. The link
+  carries **L2 frames in both cases** — these systems do not split L3 from L2 the way BSD does — so
+  building and stripping the frame header, and answering address resolution, is on the engine. The same
+  holds on top of `tap-windows6` on MS Windows.
+* **Windows carries no driver of its own.** Neither `wintun.dll` nor the OpenVPN driver ships with the
+  framework; the user installs one. A missing Wintun is an ordinary state, not a failure — the module
+  moves on to `tap-windows6`, and only when neither is present does it refuse. L2 frames are carried by
+  `tap-windows6` alone; L3 packets are carried by both, and Wintun is preferred, its exchange going
+  through a ring in memory shared with the driver, without entering the kernel per packet.
+* **`GIF` on Linux is refused by the kernel**: the device is created by `RTM_NEWLINK` with the driver
+  name as its kind, and Linux knows no kind called `gif` — it uses `sit` and `ip6tnl` for the same
+  encapsulations. `GRE` is a valid kind there and works.
+* **Solaris and illumos refuse `GIF` and `GRE`** outright, and MS Windows creates TUN and TAP only.
+
 ## Requirements
 
 | Name | Description |
