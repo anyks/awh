@@ -293,7 +293,7 @@ namespace awh {
 	#endif
 
 	/**
-	 * @brief Класс волокна
+	 * @brief Класс контекста волокна
 	 *
 	 */
 	class fiber::Context {

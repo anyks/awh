@@ -491,13 +491,21 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
  *
  */
 void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t & source) const noexcept {
-	// Если адрес сети либо описание источника не переданы
-	if((net == nullptr) || (source.ip == nullptr) || (net->size != source.ip->size)){
-		// Выполняем подбор устройства без оглядки на сеть
-		this->fillSource(event::node_t::NONE, source);
-		// Выходим из функции
+	/**
+	 * Несличимая пара источника и сети отвечает пустотой
+	 *
+	 * @warning Прежде здесь стоял подбор устройства БЕЗ ОГЛЯДКИ на сеть, и он расходился
+	 *          с наречиями POSIX: те при несовпадении размеров просто выходят, ничего не
+	 *          заполняя (bsd/addr.cpp:820, gnu/addr.cpp:787, sun/addr.cpp:1065). Спросив
+	 *          источник IPv4 по сети IPv6, потребитель получал название устройства,
+	 *          подобранного по чему угодно, и принимал его за ответ о СВОЕЙ сети.
+	 *          Проверка AddressFillSourceMismatchedKindTest ловит это лишь на машине,
+	 *          где устройство подходящего семейства вообще есть, - оттого стенд x86-64
+	 *          молчал, а ARM64 отказал
+	 */
+	if((net == nullptr) || (source.ip == nullptr) || (net->size != source.ip->size))
+		// Заполнять источник несличимой парой нечем
 		return;
-	}
 	/**
 	 * Неназначенный адрес устройству не принадлежит
 	 *

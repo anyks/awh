@@ -96,10 +96,10 @@ namespace awh {
 	namespace fiber {
 		/**
 		 * \~russian
-		 * @brief Прототип класса волокна
+		 * @brief Прототип класса контекста волокна
 		 *
 		 * \~english
-		 * @brief Prototype of the fiber class
+		 * @brief Prototype of the fiber context class
 		 *
 		 * \~
 		 */

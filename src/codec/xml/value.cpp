@@ -29,6 +29,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstdio>
 #include <cmath>
 #include <limits>
 #include <atomic>
@@ -1214,6 +1215,7 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 	 *          перечня сдвигает номера ВСЕХ узлов, следующих за ним, и отображение стало
 	 *          бы указывать мимо
 	 */
+	::fprintf(stderr, "[ЩУП] detached(%zu): последний=%s отображение=%s\n", index, (trailing?"да":"нет"), (this->_indexed?"построено":"НЕТ"));
 	if(!trailing || !this->_indexed){
 		// Выполняем сброс отображения имён вложенных узлов
 		this->reindex();
@@ -1268,8 +1270,7 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 		// Выходим из метода
 		return;
 	}
-	// Выполняем учёт снятия очередного одноимённого узла разметки
-	i->second.count--;
+	::fprintf(stderr, "[ЩУП] ветвь учёта снятия ДОСТИГНУТА, count был %u\n", i->second.count); /* ЩУП: учёт снят */
 }
 /**
  * @brief Метод установки объекта ведения журнала работы

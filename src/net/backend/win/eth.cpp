@@ -59,7 +59,14 @@ using namespace std;
  * @brief Название бэкенда для записей в журнале
  *
  */
-static constexpr const char * __AWH_ETH_BACKEND__ = "MS Windows ETH backend";
+/**
+ * @note Метка употребляется лишь в ветвях `#else`, то есть в сборке БЕЗ `DEBUG_MODE`:
+ *       при включённой отладке записи ведёт `debug()`, называющий место сам. Оттого
+ *       в отладочной сборке метка законно остаётся невостребованной, и clang честно
+ *       жалуется на неё [-Wunused-const-variable]. Убирать метку нельзя - в выпускной
+ *       сборке она нужна
+ */
+[[maybe_unused]] static constexpr const char * __AWH_ETH_BACKEND__ = "MS Windows ETH backend";
 
 /**
  * @brief Инкапсулируем состояние слоя в пространство имён
