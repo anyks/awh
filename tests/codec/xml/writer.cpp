@@ -1859,3 +1859,39 @@ TEST(CodecXmlWriter, StaleNodeIsNotAnInternalDefect){
 		ASSERT_EQ(writer.error(), xml::error_t::NONE);
 	}
 }
+
+
+/**
+ * @brief Проверка того, что запись разметки метки порядка байтов не ставит
+ *
+ * @details Признака такого у записи нет вовсе, и обещание это закрепляется здесь оттого,
+ *          что отсутствие настройки само по себе ничего не обещает: метка могла бы
+ *          ставиться безусловно. Кодек таблицы CSV признак такой имеет, и расхождение
+ *          намеренно
+ *
+ */
+TEST(CodecXmlWriter, ByteOrderMarkIsNeverEmitted) {
+	/**
+	 * Выполняем перебор всех видов оформления собираемого текста
+	 */
+	for(const xml::format_t format : {xml::format_t::COMPACT, xml::format_t::PRETTY}){
+		// Настройки записи текста разметки
+		xml::writer_t::settings_t settings;
+		// Устанавливаем проверяемый вид оформления текста
+		settings.format = format;
+		// Объект записи текста разметки
+		xml::writer_t writer(::logger());
+		// Выполняем установку настроек записи
+		writer.settings(settings);
+		// Выполняем запись объявления разметки
+		ASSERT_TRUE(writer.declaration());
+		// Выполняем запись узла с содержимым
+		ASSERT_TRUE(writer.element("а", "текст"));
+		// Получаем собранный текст разметки
+		const string text = writer.text();
+		// Выполняем проверку того, что текст начинается разметкой, а не меткой
+		EXPECT_EQ(text.front(), '<');
+		// Выполняем проверку отсутствия метки порядка байтов
+		EXPECT_NE(text.compare(0, 3, "\xEF\xBB\xBF"), 0);
+	}
+}

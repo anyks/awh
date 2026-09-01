@@ -177,8 +177,21 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		/**
 		 * Если сборка выражения в режиме порождения машинного кода не ведётся
 		 */
+		/**
+		 * @details Признаки берутся у ПРОГРАММЫ собранной, а не у сборки заказанной:
+		 *          указания начала выражения - «(*NOTEMPTY)» и «(*NOTEMPTY_ATSTART)» -
+		 *          признаки эти ставят разбором, и у заказчика сборки их нет вовсе.
+		 *          Прежде здесь стояли признаки заказанные, отчего выражение
+		 *          с указанием таким получало сопоставитель машинного кода,
+		 *          пустое совпадение не отбрасывающий: «(*NOTEMPTY_ATSTART)||»
+		 *          на тексте «aa» давало совпадение в позиции первой,
+		 *          а не второй.
+		 *
+		 */
 		if(((flags & static_cast <uint32_t> (flag_t::JIT)) == 0) ||
-		 ((flags & (static_cast <uint32_t> (flag_t::ANCHORED) | static_cast <uint32_t> (flag_t::NOTEMPTY))) != 0) ||
+		 ((expression.forward.flags & (static_cast <uint32_t> (flag_t::ANCHORED) |
+		  static_cast <uint32_t> (flag_t::NOTEMPTY) |
+		  static_cast <uint32_t> (flag_t::ATSTART))) != 0) ||
 		 expression.forward.plain)
 			// Выходим из порождения сопоставителя выражения
 			return;
@@ -435,7 +448,8 @@ bool awh::regex::Engine::test(const expression_t & expression, string_view text,
 	 *          исполнением без возврата.
 	 *
 	 */
-	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY))
+	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) ||
+	 hasFlag(expression.forward.flags, flag_t::ATSTART))
 		// Выводим результат сопоставления исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, this->_spare);
 	/**
@@ -654,7 +668,8 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *          продолжая сопоставление состояниями меньшего приоритета.
 	 *
 	 */
-	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY))
+	if(hasFlag(expression.forward.flags, flag_t::NOTEMPTY) ||
+	 hasFlag(expression.forward.flags, flag_t::ATSTART))
 		// Выводим результат сопоставления исполнением без возврата
 		return this->_pike.exec(expression.forward, text, start, captures);
 	/**

@@ -212,12 +212,36 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 		// Сообщаем, что заголовок не снят
 		return false;
 	}
-	// Выполняем установку старшей версии вида записи
-	this->version = group;
-	// Выполняем снятие младшей версии вида записи
-	this->revision = octets[5];
 	// Выполняем снятие разрядов свойств контейнера
-	this->flags = static_cast <uint16_t> (abc::gather(octets + 6, 2));
+	const uint16_t flags = static_cast <uint16_t> (abc::gather(octets + 6, 2));
+	/**
+	 * Если разряды свойств контейнера несут неведомое.
+	 *
+	 * Сличение это равняется на то же сличение у разрядов кадра и у свойств строки
+	 * оглавления: поле приходит с провода и обязано быть опознано. Неведомый разряд
+	 * без него принимался бы молча, а тело толковалось бы мимо объявленного им -
+	 * так, необъявленная зашифрованность прочлась бы сырыми октетами. Занимаются
+	 * разряды эти подъёмом СТАРШЕЙ версии вида записи, как и всякое поле впрок
+	 */
+	if((flags & static_cast <uint16_t> (~(
+	 static_cast <uint16_t> (flag_t::CANONICAL) | static_cast <uint16_t> (flag_t::COMPRESSED) |
+	 static_cast <uint16_t> (flag_t::ENCRYPTED) | static_cast <uint16_t> (flag_t::SIGNED) |
+	 static_cast <uint16_t> (flag_t::PAGED) | static_cast <uint16_t> (flag_t::STREAM)))) != 0){
+		// Выполняем установку кода отказа вида записи
+		error = error_t::INVALID_VERSION;
+		// Сообщаем, что заголовок не снят
+		return false;
+	}
+	/**
+	 * Выполняем установку снятых полей заголовка ПОСЛЕ всех сличений: заголовок,
+	 * отвергнутый на полпути, обязан остаться нетронутым целиком, иначе потребитель,
+	 * не поверивший выдачу, читал бы поля наполовину снятые, наполовину прежние
+	 */
+	this->version = group;
+	// Выполняем установку младшей версии вида записи
+	this->revision = octets[5];
+	// Выполняем установку разрядов свойств контейнера
+	this->flags = flags;
 	// Выполняем снятие признака владельца контейнера
 	::memcpy(this->owner, octets + 8, OWNER_LENGTH);
 	// Выполняем снятие вида содержимого контейнера
@@ -229,9 +253,28 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	// Выполняем снятие количества записей в теле контейнера
 	this->records = abc::gather(octets + 40, 8);
 	// Выполняем снятие смещения оглавления
-	this->index = abc::gather(octets + 48, 8);
+	const uint64_t index = abc::gather(octets + 48, 8);
 	// Выполняем снятие смещения подписи
-	this->signature = abc::gather(octets + 56, 8);
+	const uint64_t signature = abc::gather(octets + 56, 8);
+	/**
+	 * Если объявленные смещения оглавления либо подписи лежат ВНУТРИ заголовка.
+	 *
+	 * Ноль у обоих означает отсутствие, и годится он признаком по доводу: заголовок
+	 * занимает первые `HEADER_LENGTH` октетов контейнера, и меньшим смещение быть не
+	 * может. Довод этот ничем не поверялся, а поле приходит с провода: объявленное
+	 * смещение внутри заголовка уводило бы чтение кадра на сам заголовок
+	 */
+	if(((index != 0) && (index < static_cast <uint64_t> (HEADER_LENGTH))) ||
+	 ((signature != 0) && (signature < static_cast <uint64_t> (HEADER_LENGTH)))){
+		// Выполняем установку кода отказа вида записи
+		error = error_t::INVALID_VERSION;
+		// Сообщаем, что заголовок не снят
+		return false;
+	}
+	// Выполняем установку смещения оглавления
+	this->index = index;
+	// Выполняем установку смещения подписи
+	this->signature = signature;
 	// Выполняем снятие отпечатка открытого ключа
 	::memcpy(this->fingerprint, octets + 64, FINGERPRINT_LENGTH);
 	// Выполняем снятие поколения записи контейнера

@@ -29,6 +29,10 @@
  */
 #include <gtest/gtest.h>
 #include <codec/abc/common.hpp>
+#include <codec/abc/header.hpp>
+#include <codec/abc/chunk.hpp>
+#include <codec/abc/index.hpp>
+#include <codec/abc/signature.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
@@ -86,41 +90,39 @@ TEST(CodecAbcCommon, Messages) {
 	/**
 	 * Коды отказов разбора записи документа
 	 */
-	const vector <abc::error_t> errors = {
-		abc::error_t::NONE, abc::error_t::INTERNAL, abc::error_t::UNEXPECTED_EOF,
-		abc::error_t::UNKNOWN_TAG, abc::error_t::RESERVED_TAG, abc::error_t::INVALID_LENGTH,
-		abc::error_t::INVALID_ENCODING,
-		abc::error_t::NUMBER_OUT_OF_RANGE, abc::error_t::INVALID_BIGNUM,
-		abc::error_t::INVALID_DECIMAL, abc::error_t::UNBALANCED_BREAK,
-		abc::error_t::MISSING_VALUE, abc::error_t::DUPLICATE_KEY,
-		abc::error_t::DEPTH_EXCEEDED, abc::error_t::STRING_TOO_LONG,
-		abc::error_t::BLOB_TOO_LONG, abc::error_t::TOO_MANY_NODES,
-		abc::error_t::TRAILING_OCTETS, abc::error_t::EMPTY_RECORD,
-		abc::error_t::OVERFLOW_LIMIT, abc::error_t::INVALID_KEY, abc::error_t::UNORDERED_KEY,
-		abc::error_t::INDEFINITE_REFUSED, abc::error_t::UNBALANCED_CONTAINER,
-		abc::error_t::CONTAINER_OVERFLOW, abc::error_t::INVALID_MAGIC,
-		abc::error_t::INVALID_VERSION, abc::error_t::INVALID_CHECKSUM,
-		abc::error_t::TRUNCATED_HEADER, abc::error_t::TRUNCATED_CHUNK,
-		abc::error_t::INVALID_CHUNK, abc::error_t::COMPRESSION_FAILED,
-		abc::error_t::ENCRYPTION_FAILED
-	};
-	// Набор уже встреченных описаний кодов отказов
+	/**
+	 * Перебор ведётся ЧИСЛАМИ от нуля до последнего кода перечня, а не рукописным
+	 * списком: список от перечня отстаёт молча. Здесь он и отстал - кончался он кодом
+	 * `ENCRYPTION_FAILED`, а пять кодов за ним (`REFUSED_SIGNATURE`, `SIGNING_FAILED`,
+	 * `INVALID_SEGMENT`, `INVALID_EXTENSION`, `NON_MINIMAL_TAG`) не сличались НИ РАЗУ
+	 */
 	unordered_set <string> seen;
 	/**
-	 * Выполняем перебор всех кодов отказов разбора
+	 * Выполняем перебор всех кодов отказов перечня
 	 */
-	for(const abc::error_t error : errors){
+	for(uint16_t code = 0; code <= static_cast <uint16_t> (abc::error_t::NON_MINIMAL_TAG); code++){
 		// Выполняем получение описания кода отказа
-		const char * message = abc::message(error);
+		const char * message = abc::message(static_cast <abc::error_t> (code));
 		// Выполняем проверку, что описание кода отказа выдано
-		ASSERT_NE(message, nullptr) << "код отказа: " << static_cast <uint32_t> (error);
+		ASSERT_NE(message, nullptr) << "код отказа: " << code;
 		// Выполняем проверку, что описание кода отказа не пусто
-		ASSERT_NE(strlen(message), 0u) << "код отказа: " << static_cast <uint32_t> (error);
+		EXPECT_NE(strlen(message), 0u) << "код отказа: " << code;
 		// Выполняем проверку, что объявленный код не выдаёт описания неизвестного
-		ASSERT_STRNE(message, "unknown error") << "код отказа: " << static_cast <uint32_t> (error);
+		EXPECT_STRNE(message, "unknown error") << "код отказа: " << code;
 		// Выполняем проверку, что описание кода отказа не повторяется
-		ASSERT_TRUE(seen.emplace(message).second) << "описание повторяется: " << message;
+		EXPECT_TRUE(seen.emplace(message).second) << "код отказа: " << code
+			<< ", описание повторяется: " << message;
 	}
+	/**
+	 * Выполняем проверку границы перебора ЗАМЕРОМ: код, стоящий сразу за последним,
+	 * обязан выдавать описание неизвестного
+	 *
+	 * @note Утверждение это стережёт САМУ ПРОВЕРКУ: заведи перечень новый код за
+	 *       `NON_MINIMAL_TAG` - и перебор выше его не достанет, ибо граница названа
+	 *       именем. Сличать границу глазом дороже, чем одним сличением числа
+	 */
+	ASSERT_STREQ(abc::message(static_cast <abc::error_t> (
+	 static_cast <uint16_t> (abc::error_t::NON_MINIMAL_TAG) + 1)), "unknown error");
 }
 /**
  * @brief Проверка названий видов узлов документа
@@ -452,4 +454,107 @@ TEST(CodecAbcCommon, FitMatchesWidth) {
 			            (value >= (static_cast <uint64_t> (1) << ((width / 2) * 8)))) << "значение: " << value;
 		}
 	}
+}
+/**
+ * @brief Проверка величин, составляющих договор с носителем
+ *
+ * @details Величины эти суть САМ ДОГОВОР: смена любой из них обращает прежние контейнеры
+ *          в нечитаемые. Проверки же по всему набору пользуются ИМЕНАМИ их, а не числами,
+ *          и оттого смена величины проходит по набору ЗЕЛЁНОЙ: и укладка, и снятие
+ *          двигаются согласно, круговой ход сходится, а носитель со старыми контейнерами
+ *          остаётся за бортом молча
+ *
+ * @note Из девяти величин закреплены числами были ТРИ - длина заголовка опознания, длина
+ *       признака владельца и длина отпечатка ключа. Шесть прочих не были закреплены ничем
+ *       (замер 01.09.2026), и проверка эта заведена ради них
+ *
+ * @note Величины сличаются с ЛИТЕРАЛАМИ намеренно: сличение с именем было бы тождеством
+ *       самому себе. Здесь тот же довод, что у раскладки заголовка по октетам, - число
+ *       обязано стоять записанным дважды, иначе смена его нигде не отзовётся
+ *
+ */
+TEST(CodecAbcCommon, WireConstants) {
+	// Длина заголовка опознания контейнера в октетах
+	EXPECT_EQ(abc::HEADER_LENGTH, 96u);
+	// Длина признака владельца контейнера в октетах
+	EXPECT_EQ(abc::OWNER_LENGTH, 16u);
+	// Длина отпечатка открытого ключа владельца в октетах
+	EXPECT_EQ(abc::FINGERPRINT_LENGTH, 16u);
+	// Длина заголовка кадра в октетах
+	EXPECT_EQ(abc::CHUNK_HEADER, 32u);
+	// Смещение контрольной суммы в заголовке кадра
+	EXPECT_EQ(abc::CHUNK_DIGEST, 24u);
+	// Смещение разрядов свойств в заголовке кадра
+	EXPECT_EQ(abc::CHUNK_FLAGS, 1u);
+	// Разряд объявления кадра мусором
+	EXPECT_EQ(abc::CHUNK_WASTE, 0x02);
+	// Длина строки оглавления в октетах
+	EXPECT_EQ(abc::ENTRY_LENGTH, 24u);
+	// Длина заголовка записи подписи в октетах
+	EXPECT_EQ(abc::SIGNATURE_HEADER, 8u);
+	// Длина свёртки дерева в октетах
+	EXPECT_EQ(abc::DIGEST_LENGTH, 32u);
+	// Наибольшая подробность метки, несущая само значение
+	EXPECT_EQ(abc::INLINE_LIMIT, 0x17);
+	/**
+	 * Величины эти обязаны быть согласны между собою: сумма и её место обязаны
+	 * умещаться в заголовке кадра, а запас за ними - существовать
+	 */
+	EXPECT_EQ(abc::CHUNK_DIGEST + 8u, abc::CHUNK_HEADER);
+	// Разряды свойств кадра обязаны лежать внутри заголовка его
+	EXPECT_LT(abc::CHUNK_FLAGS, abc::CHUNK_HEADER);
+	// Свёртка заголовка контейнера обязана быть последними восемью октетами его
+	EXPECT_GT(abc::HEADER_LENGTH, 8u);
+	/**
+	 * Величины перечней, ложащиеся в ведущий октет записи, суть тот же договор с
+	 * носителем: смена любой из них обращает всякую прежнюю запись в иную. Сличаются
+	 * они с ЛИТЕРАЛАМИ по тому же доводу - проверки набора употребляют их ПО ИМЕНАМ,
+	 * и смена величины двигает укладку со снятием согласно
+	 */
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::UNSIGNED), 0x00);
+	// Крупный вид записи отрицательного числа
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::NEGATIVE), 0x01);
+	// Крупный вид записи строки
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::STRING), 0x02);
+	// Крупный вид записи двоичных данных
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::BLOB), 0x03);
+	// Крупный вид записи массива
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::ARRAY), 0x04);
+	// Крупный вид записи отображения
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::MAP), 0x05);
+	// Крупный вид записи одиночного значения
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::SINGLE), 0x06);
+	// Крупный вид записи расширения
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::EXTEND), 0x07);
+	// Подробность записи пустого значения
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::NUL), 0x00);
+	// Подробность записи лжи
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::FALSE), 0x01);
+	// Подробность записи истины
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::TRUE), 0x02);
+	// Подробность записи дробного одинарной точности
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::FLOAT), 0x03);
+	// Подробность записи дробного двойной точности
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::DOUBLE), 0x04);
+	// Подробность записи отметки времени
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::TIME), 0x05);
+	// Подробность записи опознавателя
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::UUID), 0x06);
+	// Подробность конца вместимого неопределённой длины
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::BREAK), 0x1F);
+	// Подробность записи целого любой ширины
+	EXPECT_EQ(static_cast <uint8_t> (abc::extend_t::BIGNUM), 0x00);
+	// Подробность записи десятичного числа
+	EXPECT_EQ(static_cast <uint8_t> (abc::extend_t::DECIMAL), 0x01);
+	// Подробность записи открытого расширения
+	EXPECT_EQ(static_cast <uint8_t> (abc::extend_t::CUSTOM), 0x02);
+	// Подробность записи вместимого с объявленным размахом
+	EXPECT_EQ(static_cast <uint8_t> (abc::extend_t::SPANNED), 0x03);
+	/**
+	 * Крупный вид записи обязан умещаться в три старших разряда ведущего октета, а
+	 * конец вместимого - совпадать с подробностью неопределённой длины
+	 */
+	EXPECT_EQ(static_cast <uint8_t> (abc::group_t::EXTEND), 0x07);
+	// Наибольшая подробность метки обязана лежать ниже ведомых ширин
+	EXPECT_LT(abc::INLINE_LIMIT, static_cast <uint8_t> (abc::single_t::BREAK));
 }

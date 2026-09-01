@@ -41,6 +41,35 @@
 #include <net/eth/sctp.hpp>
 
 /**
+ * Признак современного набора вызовов приёма метаданных SCTP
+ *
+ * @details Признак этот заведён ОДИН на весь модуль намеренно: подписка на метаданные и
+ *          способ их чтения обязаны выбираться одним и тем же условием. Порознь они
+ *          разошлись, и разошлись молча.
+ *
+ * @warning Дефект, ради которого признак заведён (найден 01.09.2026 на стенде OpenWRT
+ *          25.12.5, musl): подписка стояла под `defined(SCTP_RECVRCVINFO)`, а чтение -
+ *          под `defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)`. Условия эти
+ *          РАЗНЫЕ: `SCTP_RECVRCVINFO` приходит макросом из ядерного `<linux/sctp.h>`, а
+ *          `SCTP_RECVV_RCVINFO` заведён ПЕРЕЧИСЛЕНИЕМ в заголовке lksctp-tools, и
+ *          препроцессор перечислений не видит. Выходило, что модуль просил ядро слать
+ *          метаданные НОВЫМ видом (`SCTP_RCVINFO`), а читал ПРЕЖНИМ вызовом
+ *          `sctp_recvmsg`, понимающим только `SCTP_SNDRCV`. Метаданные доставлялись
+ *          исправно, но в непонятом виде: номер потока приходил нулём при вполне
+ *          работающем обмене.
+ *
+ * @note Доказано щупом на чистом API: один и тот же обмен даёт `sinfo_stream=3` без
+ *       `SCTP_RECVRCVINFO` и `sinfo_stream=0` с ним, при неизменном всём остальном
+ */
+#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+	// Современный набор вызовов приёма метаданных доступен
+	#define AWH_SCTP_RECV_MODERN 1
+#else
+	// Современного набора вызовов приёма метаданных нет
+	#define AWH_SCTP_RECV_MODERN 0
+#endif
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -1366,13 +1395,54 @@ bool awh::eth::Stream_Control_Transmission_Protocol::partial() const noexcept {
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::socket_t sock, const bool mode) const noexcept {
 	/**
-	 * Если система несёт подписку на метаданные принимаемых сообщений
+	 * Если система несёт СОВРЕМЕННЫЙ набор вызовов приёма метаданных
+	 *
+	 * @warning Условие здесь обязано совпадать с условием выбора способа чтения в
+	 *          receive(), оттого оба и взяты из одного признака AWH_SCTP_RECV_MODERN.
+	 *          Просить у ядра новый вид метаданных, читая их прежним вызовом, - значит
+	 *          получать их исправно и не понимать: разбор подробностей у признака
 	 */
-	#if defined(SCTP_RECVRCVINFO)
+	#if AWH_SCTP_RECV_MODERN
 		// Значение режима подписки на метаданные
 		const int32_t value = static_cast <int32_t> (mode);
 		// Выполняем установку режима подписки на метаданные
 		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_RECVRCVINFO, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
+			// Выводим сообщение об ошибке
+			this->_log->print("SCTP receive info: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Выводим положительный результат
+		return true;
+	/**
+	 * Если читаем мы прежним вызовом, то и подписку ставим прежнюю
+	 *
+	 * @details Просьба потребителя одна: «выдавай метаданные вместе с данными». Вид
+	 *          подписки - подробность способа чтения, и разница эта потребителя не
+	 *          касается. Прежний вызов sctp_recvmsg понимает метаданные вида
+	 *          SCTP_SNDRCV, а их приносит признак sctp_data_io_event у SCTP_EVENTS.
+	 *
+	 * @note Прочие подписки читаются и возвращаются на место: набор событий у сокета
+	 *       общий, и трогать чужие поля здесь нельзя
+	 */
+	#elif defined(SCTP_EVENTS)
+		// Объект подписки на события SCTP
+		struct sctp_event_subscribe subscribe;
+		// Выполняем обнуление объекта подписки на события
+		::memset(&subscribe, 0, sizeof(subscribe));
+		// Размер объекта подписки на события
+		socklen_t length = sizeof(subscribe);
+		// Выполняем чтение текущей подписки, чтобы не сбить чужие события
+		if(::getsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, &length) != 0){
+			// Выводим сообщение об ошибке
+			this->_log->print("SCTP receive info: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Устанавливаем режим выдачи метаданных вместе с данными
+		subscribe.sctp_data_io_event = static_cast <uint8_t> (mode);
+		// Выполняем установку режима подписки на метаданные
+		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe)) != 0){
 			// Выводим сообщение об ошибке
 			this->_log->print("SCTP receive info: %s", log_t::flag_t::WARNING, ::strerror(errno));
 			// Выводим отрицательный результат
@@ -1454,7 +1524,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 	/**
 	 * Если система несёт современный набор вызовов
 	 */
-	#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+	#if AWH_SCTP_RECV_MODERN
 		// Буфер принимаемых данных
 		struct iovec iov{};
 		// Устанавливаем буфер принимаемых данных

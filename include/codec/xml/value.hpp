@@ -1658,6 +1658,36 @@ namespace awh {
 					bool load(const string & filename) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод разбора текста разметки из файла с заданными настройками
+					 *
+					 * @details Настройки те же, что у разбора текста, и слушаются одинаково:
+					 * вход файловый и вход текстовый суть два входа к ОДНОМУ разбору, и
+					 * пределы, оберегающие его, обязаны быть достижимы с обоих
+					 *
+					 * @warning Перегрузка эта заведена 01.09.2026: прежде файловый вход
+					 *          настроек не принимал вовсе и разбирал текст умолчаниями, оттого
+					 *          пределы имени, глубины и количества сущностей на нём были
+					 *          недостижимы. Соседние кодеки рамки перегрузку эту несли, а
+					 *          разметка - нет
+					 *
+					 * @param filename адрес разбираемого файла
+					 * @param settings настройки разбора текста разметки
+					 * @return         признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of the parsing of a text of a markup from a file with the given settings
+					 * @details The settings are the same as at the parsing of a text and are obeyed alike:
+					 * the file input and the text input are two inputs to ONE parsing, and the limits
+					 * fencing it are to be reachable from both
+					 * @param filename address of the file being parsed
+					 * @param settings settings of the parsing of the text of the markup
+					 * @return         sign of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool load(const string & filename, const reader_t::settings_t & settings) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод перезаписи значения в текст разметки
 					 *
 					 * @param format вид записи собираемого текста
@@ -1710,6 +1740,34 @@ namespace awh {
 					 * \~
 					 */
 					bool save(const string & filename, const format_t format = format_t::COMPACT) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи значения в файл с заданными настройками сборки
+					 *
+					 * @details Настройки те же, что у выдачи текста, и слушаются одинаково:
+					 * выдача в строку и запись в файл суть две двери к ОДНОЙ сборке, и
+					 * настройки её обязаны быть достижимы с обеих
+					 *
+					 * @warning Перегрузка эта заведена 01.09.2026: прежде дверь файловая
+					 *          принимала лишь ВИД оформления, а прочие настройки сборки -
+					 *          уклад экранирования, обращение с негодной последовательностью,
+					 *          пределы записи - на ней были недостижимы. Замер: значение
+					 *          «{"a":"/"}» укладом `SOLIDUS` выдавало в строку «{"a":"\\/"}»,
+					 *          а в файл - «{"a":"/"}»
+					 *
+					 * @param filename адрес записываемого файла
+					 * @param settings настройки сборки текста
+					 * @return         признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of the writing of a value into a file with the given settings of the assembly
+					 * @param filename address of the file being written
+					 * @param settings settings of the assembly of the text
+					 * @return         sign of the success of the writing
+					 *
+					 * \~
+					 */
+					bool save(const string & filename, const writer_t::settings_t & settings) const noexcept;
 				public:
 					/**
 					 * \~russian

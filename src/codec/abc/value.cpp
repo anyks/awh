@@ -1865,6 +1865,39 @@ void awh::codec::abc::Value::setLogger(const log_t * log) noexcept {
 	this->_log = log;
 }
 /**
+ * @brief Метод сборки записи из владеющего значения затребованными настройками сборки
+ *
+ * @param result   собранная запись
+ * @param error    код отказа, если сборка не удалась
+ * @param settings настройки сборки записи
+ * @return         признак успешности сборки
+ *
+ */
+bool awh::codec::abc::Value::dump(vector <uint8_t> & result, error_t & error,
+ const writer_t::settings_t & settings) const noexcept {
+	// Выполняем очистку буфера собираемой записи
+	result.clear();
+	// Выполняем сброс кода отказа сборки записи
+	error = error_t::NONE;
+	// Сборщик бинарной записи
+	writer_t writer(this->_log);
+	// Выполняем установку затребованных настроек сборки записи
+	writer.settings(settings);
+	/**
+	 * Если укладка значения в собираемую запись отвечена отказом
+	 */
+	if(!this->compose(writer)){
+		// Выполняем перенос повода отказа от сборки записи
+		error = writer.error();
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	}
+	// Выполняем выдачу собранной записи
+	result = writer.record();
+	// Сообщаем об успешности сборки записи
+	return true;
+}
+/**
  * @brief Метод сборки записи из владеющего значения
  *
  * @return собранная запись

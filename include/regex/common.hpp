@@ -344,7 +344,28 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			NOSTART    = 0x10000
+			NOSTART    = 0x10000,
+			/**
+			 * \~russian
+			 * Пустое совпадение в позиции начала попытки совпадением не считается
+			 *
+			 * @details Режим запрещает совпадение пустое одною лишь позицией начала
+			 *          поиска, тогда как режим «NOTEMPTY» запрещает его всюду:
+			 *          «(*NOTEMPTY_ATSTART)a*» на тексте «b» даёт совпадение
+			 *          пустое в позиции первой, а не отказ. Режим отвечает
+			 *          указанию «(*NOTEMPTY_ATSTART)» эталонной реализации.
+			 *
+			 * \~english
+			 * An empty match at the position of the start of the attempt is not counted as a match
+			 * @details The mode forbids an empty match at the search start position alone,
+			 *          whereas the «NOTEMPTY» mode forbids it everywhere:
+			 *          «(*NOTEMPTY_ATSTART)a*» on the text «b» yields an empty match
+			 *          at the first position rather than a refusal. The mode corresponds
+			 *          to the «(*NOTEMPTY_ATSTART)» option of the reference implementation.
+			 *
+			 * \~
+			 */
+			ATSTART    = 0x20000
 		};
 
 		/**
@@ -480,7 +501,9 @@ namespace awh {
 			NAMED       = 0x01, // Именованная захватывающая группа
 			NONCAPTURE  = 0x02, // Группа без захвата
 			ATOMIC      = 0x03, // Атомарная группа, запрещающая возврат внутрь себя
-			RESET       = 0x04  // Группа со сбросом нумерации ветвей, конструкция «(?|...)»
+			RESET       = 0x04, // Группа со сбросом нумерации ветвей, конструкция «(?|...)»
+			SCRIPT      = 0x05, // Прогон письменности, конструкция «(*sr:...)»
+			SCRIPT_ONCE = 0x06  // Прогон письменности атомарный, конструкция «(*asr:...)»
 		};
 
 		/**
@@ -496,7 +519,9 @@ namespace awh {
 			AHEAD        = 0x00, // Положительная опережающая проверка
 			AHEAD_NEG    = 0x01, // Отрицательная опережающая проверка
 			BEHIND       = 0x02, // Положительная ретроспективная проверка
-			BEHIND_NEG   = 0x03  // Отрицательная ретроспективная проверка
+			BEHIND_NEG   = 0x03, // Отрицательная ретроспективная проверка
+			AHEAD_FREE   = 0x04, // Не отсекающая опережающая проверка
+			BEHIND_FREE  = 0x05  // Не отсекающая ретроспективная проверка
 		};
 
 		/**

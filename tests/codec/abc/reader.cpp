@@ -1004,11 +1004,11 @@ TEST(CodecAbcReader, CanonicalRefusal){
 	 * взят ОТКАЗ, и он поверяется ниже отдельно. Прочие четыре записи от правила этого
 	 * не зависят вовсе
 	 */
-	ASSERT_EQ(digest(strict, false), abc::error_t::NONE);
-	ASSERT_EQ(digest(unordered, false), abc::error_t::NONE);
-	ASSERT_EQ(digest(duplicate, false), abc::error_t::NONE);
-	ASSERT_EQ(digest(wide, false), abc::error_t::NONE);
-	ASSERT_EQ(digest(indefinite, false), abc::error_t::NONE);
+	EXPECT_EQ(digest(strict, false), abc::error_t::NONE);
+	EXPECT_EQ(digest(unordered, false), abc::error_t::NONE);
+	EXPECT_EQ(digest(duplicate, false), abc::error_t::NONE);
+	EXPECT_EQ(digest(wide, false), abc::error_t::NONE);
+	EXPECT_EQ(digest(indefinite, false), abc::error_t::NONE);
 	/**
 	 * Повтор имени поля отвергается УМОЛЧАНИЕМ вне строгого вида
 	 *
@@ -1016,19 +1016,19 @@ TEST(CodecAbcReader, CanonicalRefusal){
 	 * одного из двух значений означал бы потерю данных, а повтор имени есть приём
 	 * путаницы разборов. Прочие четыре записи повтора не несут и умолчанием проходят
 	 */
-	ASSERT_EQ(digest(duplicate, false, abc::duplicate_t::REFUSE), abc::error_t::DUPLICATE_KEY);
-	ASSERT_EQ(digest(strict, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
-	ASSERT_EQ(digest(unordered, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
-	ASSERT_EQ(digest(wide, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
-	ASSERT_EQ(digest(indefinite, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
+	EXPECT_EQ(digest(duplicate, false, abc::duplicate_t::REFUSE), abc::error_t::DUPLICATE_KEY);
+	EXPECT_EQ(digest(strict, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
+	EXPECT_EQ(digest(unordered, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
+	EXPECT_EQ(digest(wide, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
+	EXPECT_EQ(digest(indefinite, false, abc::duplicate_t::REFUSE), abc::error_t::NONE);
 	/**
 	 * Строгим видом принимается лишь строгая запись, прочие отвергаются по своему поводу
 	 */
-	ASSERT_EQ(digest(strict, true), abc::error_t::NONE);
-	ASSERT_EQ(digest(unordered, true), abc::error_t::UNORDERED_KEY);
-	ASSERT_EQ(digest(duplicate, true), abc::error_t::UNORDERED_KEY);
-	ASSERT_EQ(digest(wide, true), abc::error_t::NON_MINIMAL_TAG);
-	ASSERT_EQ(digest(indefinite, true), abc::error_t::INDEFINITE_REFUSED);
+	EXPECT_EQ(digest(strict, true), abc::error_t::NONE);
+	EXPECT_EQ(digest(unordered, true), abc::error_t::UNORDERED_KEY);
+	EXPECT_EQ(digest(duplicate, true), abc::error_t::UNORDERED_KEY);
+	EXPECT_EQ(digest(wide, true), abc::error_t::NON_MINIMAL_TAG);
+	EXPECT_EQ(digest(indefinite, true), abc::error_t::INDEFINITE_REFUSED);
 }
 /**
  * @brief Проверка поверки повтора имени поля на широком отображении
@@ -2525,5 +2525,116 @@ TEST(CodecAbcReader, CustomExtensionRefusals){
 		abc::put(data, abc::group_t::STRING, 0);
 		// Отказ обязан быть объявлен повреждением записи расширения
 		ASSERT_EQ(digest(data), abc::error_t::INVALID_EXTENSION);
+	}
+}
+/**
+ * @brief Проверка согласия посредника ширины с решением самого разбора
+ *
+ * @details `width` есть открытый посредник, судящий о годности подробности метки. Судья
+ *          он ЕДИНСТВЕННЫЙ: разбор доходит до него через `take`, и своего списка ширин у
+ *          разбора нет. Проверка эта закрепляет единственность - расхождение станет
+ *          возможным в тот день, когда у разбора заведётся свой разбор подробности, и
+ *          расхождение это будет молчаливым: у обоих судей порознь ничего не сломается
+ *
+ * @note Первая редакция объявляла двух судей независимыми, и это было НЕВЕРНО. Замер:
+ *       подмена ширины у посредника (два октета объявлены четырьмя) меняет и измеренную
+ *       разбором ширину - четыре против двух. Один судья, а не два
+ *
+ * @note Ширина здесь ИЗМЕРЯЕТСЯ разбором, а не берётся у посредника: перебором
+ *       наращивается число ведомых октетов, покуда разбор не примет запись, и принятое
+ *       им число сличается с объявленным. Взять ширину у посредника и укоротить запись
+ *       на октет НЕДОСТАТОЧНО - проба такая проходит зелёной при завышенной ширине, ибо
+ *       лишние октеты разбираются самостоятельными значениями. Опыт этот поставлен:
+ *       посредник, объявляющий четыре октета вместо двух, укорочение переживал
+ *
+ * @note Опора - САМ РАЗБОР, а не рукописный список ширин: список сличал бы посредника с
+ *       представлением о нём, и оба могли бы разойтись с кодеком разом. Проверка
+ *       `CodecAbcCommon.DetailWidth` именно такова и заменить эту собою не может
+ *
+ */
+TEST(CodecAbcReader, DetailWidthAgreesWithReader) {
+	/**
+	 * @brief Функция снятия количества событий разбора поданной записи
+	 *
+	 * @param record разбираемая запись
+	 * @param error  код отказа разбора
+	 * @return       количество вычерпанных событий разбора
+	 *
+	 */
+	auto events = [](const vector <uint8_t> & record, abc::error_t & error) noexcept -> size_t {
+		// Разбиратель поданной записи
+		abc::reader_t reader(::logger());
+		// Выполняем подачу записи целиком
+		(void) reader.feed(record.data(), record.size(), true);
+		// Количество вычерпанных событий разбора
+		size_t result = 0;
+		/**
+		 * Выполняем вычерпывание событий разбора
+		 */
+		while(reader.next())
+			// Выполняем учёт вычерпанного события разбора
+			result++;
+		// Выполняем снятие кода отказа разбора
+		error = reader.error();
+		// Выводим количество вычерпанных событий разбора
+		return result;
+	};
+	// Код отказа разбора
+	abc::error_t error = abc::error_t::NONE;
+	// Запись одного значения, вмещённого самой меткой
+	vector <uint8_t> single;
+	// Выполняем укладку метки беззнакового числа, несущей само значение
+	abc::mark(single, abc::group_t::UNSIGNED, 0x00);
+	// Количество событий разбора записи одного значения
+	const size_t alone = events(single, error);
+	// Запись одного значения обязана разбираться без отказа
+	ASSERT_EQ(error, abc::error_t::NONE);
+	/**
+	 * Выполняем перебор всех подробностей метки
+	 */
+	for(uint8_t detail = 0; detail < 0x20; detail++){
+		// Ширина ведомой записи в октетах
+		uint8_t width = 0xFF;
+		// Выполняем снятие суждения посредника о подробности метки
+		const bool led = abc::width(detail, width);
+		// Измеренная разбором ширина ведомой записи
+		size_t measured = 9;
+		/**
+		 * Выполняем наращивание ведомых октетов, покуда разбор не примет запись
+		 * ОДНИМ значением: принятое им число октетов и есть ширина настоящая
+		 */
+		for(size_t count = 0; count < 9; count++){
+			// Собираемая запись беззнакового числа
+			vector <uint8_t> record;
+			// Выполняем укладку метки с поверяемой подробностью
+			abc::mark(record, abc::group_t::UNSIGNED, detail);
+			/**
+			 * Выполняем укладку ведомых октетов записи
+			 */
+			for(size_t i = 0; i < count; i++)
+				// Выполняем укладку очередного ведомого октета
+				record.push_back(0x00);
+			// Количество событий разбора собранной записи
+			const size_t taken = events(record, error);
+			// Если запись разобрана без отказа ровно одним значением
+			if((error == abc::error_t::NONE) && (taken == alone)){
+				// Выполняем установку измеренной ширины ведомой записи
+				measured = count;
+				// Прекращаем наращивание ведомых октетов
+				break;
+			}
+		}
+		/**
+		 * Разбор обязан принимать запись тогда и только тогда, когда посредник
+		 * счёл подробность годной
+		 */
+		EXPECT_EQ(measured < 9, led) << "подробность: " << static_cast <uint32_t> (detail);
+		// Если подробность годной не признана, сличать ширину не с чем
+		if(!led)
+			// Переходим к следующей подробности метки
+			continue;
+		// Измеренная разбором ширина обязана отвечать объявленной посредником
+		EXPECT_EQ(measured, static_cast <size_t> (width))
+			<< "подробность: " << static_cast <uint32_t> (detail);
 	}
 }

@@ -1031,6 +1031,38 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 				if(instruction.look.least > instruction.look.most)
 					// Выводим результат проверки правильности программы
 					return false;
+				/**
+				 * Если ячейка позиции начала не отсекающей проверки не заведена
+				 */
+				if((instruction.look.atomic == 0) && (static_cast <size_t> (instruction.look.cell) >=
+				 (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells))))
+					// Выводим результат проверки правильности программы
+					return false;
+			} break;
+			/**
+			 * Если инструкция проверяет прогон письменности
+			 */
+			case static_cast <uint8_t> (opcode_t::SCRIPT): {
+				/**
+				 * Если ячейка позиции начала прогона письменности не заведена
+				 */
+				if(static_cast <size_t> (instruction.save.slot) >=
+				 (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells)))
+					// Выводим результат проверки правильности программы
+					return false;
+			} break;
+			/**
+			 * Если инструкция восстанавливает позицию начала не отсекающей проверки
+			 */
+			case static_cast <uint8_t> (opcode_t::RESET): {
+				/**
+				 * Если ячейка позиции начала проверки либо адрес продолжения несообразны
+				 */
+				if((static_cast <size_t> (instruction.reset.cell) >=
+				 (((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells))) ||
+				 !inside(instruction.reset.target))
+					// Выводим результат проверки правильности программы
+					return false;
 			} break;
 			/**
 			 * Если инструкция выполняет рекурсивный вызов подвыражения
@@ -1764,7 +1796,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		 */
 		if(((expression->forward.flags & static_cast <uint32_t> (flag_t::JIT)) != 0) &&
 		 ((expression->forward.flags & (static_cast <uint32_t> (flag_t::ANCHORED) |
-		  static_cast <uint32_t> (flag_t::NOTEMPTY))) == 0) &&
+		  static_cast <uint32_t> (flag_t::NOTEMPTY) | static_cast <uint32_t> (flag_t::ATSTART))) == 0) &&
 		 !expression->forward.plain) {
 			// Создаём сопоставитель выражения в виде порождённого машинного кода
 			expression->machine = make_shared <codegen_t> (this->_log);

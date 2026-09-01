@@ -1175,6 +1175,37 @@ namespace awh {
 					[[nodiscard]] bool dump(vector <uint8_t> & result, error_t & error) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод сборки записи из владеющего значения затребованными настройками
+					 *
+					 * @details Вид этот заведён СИММЕТРИИ РАДИ с `parse(buffer, size, settings)`:
+					 * разбор настройки принимал, а сборка их не принимала вовсе, и строгий вид
+					 * записи, порог укладки ссылкой, объявление размаха и запрет повторяющихся
+					 * имён через `dump` были НЕДОСТИЖИМЫ. Дорога через `compose(writer)` их даёт,
+					 * но требует завести сборщик самому
+					 *
+					 * @warning Строгий вид тут не прихоть: подпись контейнера считается по
+					 * ОКТЕТАМ, и запись, собранная без строгого вида, октет в октет не
+					 * повторяется. Кому нужна повторимость - тому нужны эти настройки
+					 *
+					 * @param result   собранная запись
+					 * @param error    код отказа, если сборка не удалась
+					 * @param settings настройки сборки записи
+					 * @return         признак успешности сборки
+					 *
+					 * \~english
+					 * @brief Method of the assembling of a record from an owning value by the demanded settings
+					 * @details This kind is introduced FOR THE SAKE OF THE SYMMETRY with `parse(buffer, size, settings)`
+					 * @param result assembled record
+					 * @param error code of the refusal if the assembling has not succeeded
+					 * @param settings settings of the assembling of the record
+					 * @return sign of the success of the assembling
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool dump(vector <uint8_t> & result, error_t & error,
+					 const writer_t::settings_t & settings) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод переноса владеющего значения в дерево документа
 					 *
 					 * @details Работа эта заведена ЕДИНООБРАЗИЯ РАДИ: у прочих кодеков она
@@ -1197,6 +1228,19 @@ namespace awh {
 					 *
 					 * @param document дерево документа, куда переносится значение
 					 * @return         признак успешности переноса
+					 *
+					 *
+					 * @details **Круг этот идёт УМОЛЧАНИЯМИ обеих настроек**: укладка ведётся настройками
+					 * сборки по умолчанию, разбор - настройками разбора по умолчанию, и подать свои через
+					 * эту дверь нельзя. Отсюда следствие, видимое наружу: значение, несущее строку с
+					 * негодной последовательностью UTF-8, переносом ОТВЕРГАЕТСЯ - поверка кодировки у
+					 * сборки объявлена умолчанием. Замерено 01.09.2026 и закреплено проверкой
+					 * `CodecAbcValue.GraftUsesDefaultSettings`
+					 *
+					 * @note Дорога настраиваемая складывается из тех же двух половин, взятых порознь:
+					 * `dump(result, error, settings)` со своими настройками сборки и `Document::parse(...,
+					 * settings)` со своими настройками разбора. Ею и переносят то, что умолчаниям не
+					 * отвечает
 					 *
 					 * \~english
 					 * @brief Method of the transfer of an owning value into a tree of a document

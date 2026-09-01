@@ -118,6 +118,29 @@ def main():
 	# Количество случаев, отсеянных как случаи иного описания
 	skipped = 0
 
+	##
+	# Негодные случаи, принимаемые НАМЕРЕННО, с доводом при каждом
+	#
+	# Набор сверки числит негодным всё, что не есть UTF-8, а кодек кодировку определяет и
+	# принимает не одну её - решение это владельца, а не упущение. Прежде случай этот
+	# ложился в счётчик «НЕГОДНЫЙ ТЕКСТ ПРИНЯТ» и краснел при всяком прогоне, доводом
+	# своим нигде не сопровождаемый: красное число, дефектом не являющееся, читается
+	# либо дефектом, либо шумом, и оба чтения вредны
+	#
+	# @note Список этот - не глушитель: принятие числится отдельным счётчиком, и ОТКАЗ
+	#       на таком случае считается находкой ровно так же, как принятие на прочих
+	##
+	DELIBERATE = {
+		'invalid/encoding/utf16-bom.toml':
+			'кодировка UTF-16 опознаётся меткою порядка байтов и принимается намеренно; '
+			'соседние utf16-comment и utf16-key метки не несут, опознать их нечем, и они '
+			'отвергаются - граница решения проходит ровно по опознаваемости',
+	}
+	# Количество негодных случаев, принятых намеренно
+	deliberate = 0
+	# Перечень намеренных случаев, разбором ОТВЕРГНУТЫХ
+	unexpected = []
+
 	# Счётчики исходов сличения
 	matched = refused = accepted = diverged = broken = 0
 	rewritten = refuted = 0
@@ -134,10 +157,19 @@ def main():
 				continue
 			source = os.path.join(base, name)
 			label = os.path.relpath(source, root)
-			# Случаи иного описания отсеиваются перечнем
-			if (allowed is not None) and (label not in allowed):
-				skipped += 1
-				continue
+			##
+			# Случай иного описания отсеивается лишь ОТКАЗОМ разбора
+			#
+			# Прежде он отсеивался целиком, по одной принадлежности перечню, и с ним
+			# уходило сличение, вполне посильное: из 58 отсеянных случаев разбор принимал
+			# 47, и все 47 с эталоном сходились. Отсев по принадлежности прятал их за
+			# счётчиком, читавшимся как «нам это не по описанию»
+			#
+			# @note Извиняется здесь ровно отказ: случай, описанием 1.1.0 введённый,
+			#       кодеку 1.0.0 отвергать законно. Расхождение же дерева не извиняется
+			#       ничем: коли текст принят, дерево обязано отвечать эталону
+			##
+			outsider = ((allowed is not None) and (label not in allowed))
 			target = source[:-5] + '.json'
 			##
 			# Описания без эталона сличать нечем
@@ -162,6 +194,10 @@ def main():
 				continue
 			# Если разбор отверг годный текст
 			if run.returncode != 0:
+				# Отказ на случае иного описания законен и находкою не является
+				if outsider:
+					skipped += 1
+					continue
 				broken += 1
 				report.append({'случай': label, 'исход': 'годный текст отвергнут', 'отказ': run.stderr.strip()})
 				continue
@@ -238,12 +274,21 @@ def main():
 				               'исход': 'щуп сорван сигналом %d' % (-run.returncode),
 				               'отказ': run.stderr.strip()[:400]})
 				continue
+			label = os.path.relpath(source, root)
 			# Если разбор верно отверг негодный текст
 			if run.returncode == 1:
+				# Случай, намеренно принимаемый, отказом отвечать не должен
+				if label in DELIBERATE:
+					unexpected.append(label)
+					report.append({'случай': label, 'исход': 'НАМЕРЕННЫЙ СЛУЧАЙ ОТВЕРГНУТ',
+					               'довод': DELIBERATE[label], 'отказ': run.stderr.strip()[:400]})
+					continue
 				refused += 1
+			elif label in DELIBERATE:
+				deliberate += 1
 			else:
 				accepted += 1
-				report.append({'случай': os.path.relpath(source, root), 'исход': 'негодный текст принят',
+				report.append({'случай': label, 'исход': 'негодный текст принят',
 				               'выдача': run.stdout.strip()[:400]})
 
 	print('Всего случаев: %d' % (matched + diverged + broken + refused + accepted + crashed))
@@ -255,6 +300,9 @@ def main():
 	print('  ПЕРЕЗАПИСЬ СМЫСЛ ПОМЕНЯЛА:  %d' % rewritten)
 	print('  ЗАПИСЬ ОТВЕРГЛА ДЕРЕВО:     %d' % refuted)
 	print('  ЩУП СОРВАН СИГНАЛОМ:       %d' % crashed)
+	print('  принято намеренно:         %d' % deliberate)
+	if unexpected:
+		print('  НАМЕРЕННЫЙ СЛУЧАЙ ОТВЕРГНУТ: %d' % len(unexpected))
 	print('  отсеяно как случаи 1.1.0:  %d' % skipped)
 	print('  годных текстов без эталона: %d' % unreferenced)
 
@@ -279,7 +327,7 @@ def main():
 
 	# Отказом отвечаем при всяком расхождении: рост совпавших, купленный ослаблением
 	# отказов, ростом не является
-	return 1 if (accepted or diverged or broken or crashed or rewritten or refuted) else 0
+	return 1 if (accepted or diverged or broken or crashed or rewritten or refuted or unexpected) else 0
 
 
 if __name__ == '__main__':

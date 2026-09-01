@@ -349,6 +349,34 @@ namespace awh {
 						 * \~
 						 */
 						bool trimSections;
+						/**
+						 * \~russian
+						 * Флаг поверки имён строгою грамматикой наречия
+						 *
+						 * @details Умолчанием имя раздела и имя свойства грамматикой не
+						 * поверяются вовсе: наречия INI расходятся в них слишком широко.
+						 * Наречие Git же строит имя раздела из букв, цифр, черты и точки, а
+						 * имя свойства - из буквы первым знаком и далее из букв, цифр и
+						 * черты. Записи «[a b]», «[a_b]», «k_2 = v» и «1k = v» средство
+						 * «git config» отвергает, а чтение без поверки принимало их все
+						 *
+						 * @warning Имя подраздела грамматике этой не подлежит: в кавычках
+						 * оно вольно, и «[a "любое имя"]» средство принимает
+						 *
+						 * \~english
+						 * Flag of the verification of the names by the strict grammar of the dialect
+						 * @details By default the name of a section and the name of a property are not verified
+						 * by a grammar at all: the dialects of INI diverge in them too widely.
+						 * The Git dialect however builds the name of a section out of the letters, the digits, the dash
+						 * and the dot, while the name of a property — out of a letter as the first character and further
+						 * out of the letters, the digits and the dash. The records «[a b]», «[a_b]», «k_2 = v» and «1k = v»
+						 * the «git config» tool rejects while the reading without the verification accepted all of them
+						 * @warning The name of a subsection is not subject to this grammar: within the quotes
+						 * it is free, and «[a "any name"]» the tool accepts
+						 *
+						 * \~
+						 */
+						bool strictNames;
 						// Флаг разбора управляющих последовательностей в значении свойства
 						bool escapes;
 						// Флаг склеивания строк, продолженных знаком обратной косой черты
@@ -388,9 +416,33 @@ namespace awh {
 						bool emitComments;
 						// Флаг выдачи пустых строк отдельным событием
 						bool emitBlanks;
-						// Наибольшая допустимая длина логической строки в байтах
+						/**
+						 * \~russian
+						 * Наибольшая допустимая длина логической строки в байтах
+						 *
+						 * @note Значение в ноль значит «без предела»: длина не поверяется вовсе
+						 *
+						 * \~english
+						 * Largest admissible length of a logical line in bytes
+						 * @note A value of zero means «without a limit»: the length is not verified at all
+						 *
+						 * \~
+						 */
 						uint32_t maxLine;
-						// Наибольшая допустимая длина имени раздела или свойства в байтах
+						/**
+						 * \~russian
+						 * Наибольшая допустимая длина имени раздела или свойства в байтах
+						 *
+						 * @note Значение в ноль значит «без предела»: длина не поверяется вовсе.
+						 * Уклад этот один у разбора, у правки дерева и у записи
+						 *
+						 * \~english
+						 * Largest admissible length of the name of a section or of a property in bytes
+						 * @note A value of zero means «without a limit»: the length is not verified at all.
+						 * This convention is one and the same for the parsing, for the editing of the tree and for the writing
+						 *
+						 * \~
+						 */
 						uint32_t maxName;
 						/**
 						 * \~russian
@@ -409,7 +461,26 @@ namespace awh {
 						 * \~
 						 */
 						uint32_t maxDepth;
-						// Наибольшее допустимое количество строк продолжения у одной записи
+						/**
+						 * \~russian
+						 * Наибольшее допустимое количество строк продолжения у одной записи
+						 *
+						 * @warning Уклад нуля здесь ИНОЙ, нежели у `maxLine` и `maxName`: нуль
+						 * значит не «без предела», а запрет продолжений вовсе - первая же
+						 * склеенная строка отвергается. Уклад этот один с укладом `maxDepth`,
+						 * где нуль запрещает подразделы: пределы, считающие вложенность,
+						 * нулём запрещают её, а пределы длины нулём снимаются
+						 *
+						 * \~english
+						 * Largest admissible number of the lines of a continuation of one record
+						 * @warning The convention of zero here is DIFFERENT from that of `maxLine` and `maxName`: zero
+						 * means not «without a limit» but a prohibition of the continuations altogether - the very first
+						 * glued line is rejected. This convention is one and the same with the convention of `maxDepth`,
+						 * where zero prohibits the subsections: the limits that count the nesting prohibit it by zero,
+						 * while the limits of the length are lifted by zero
+						 *
+						 * \~
+						 */
 						uint32_t maxContinuation;
 						// Кодировка, навязанная извне вопреки метке порядка байтов
 						encoding_t encoding;

@@ -201,6 +201,68 @@ namespace awh {
 		bool resume(ctx_t * fiber) noexcept;
 		/**
 		 * \~russian
+		 * @brief Функция получения признака роспуска текущего волокна
+		 *
+		 * @note Зовётся ИЗ волокна. Вне волокна отвечает ложью
+		 *
+		 * @return признак того, что волокно распущено и обязано выйти
+		 *
+		 * \~english
+		 * @brief Function of getting the dismissal flag of the current fiber
+		 *
+		 * @note Is called FROM a fiber. Outside of a fiber it answers with a lie
+		 *
+		 * @return flag that the fiber is dismissed and must leave
+		 *
+		 * \~
+		 */
+		bool dismissed() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция роспуска волокна
+		 *
+		 * @details Взводит признак роспуска и будит волокно, чтобы то вышло само.
+		 *          Тело волокна обязано спрашивать `dismissed()` там, где оно засыпает,
+		 *          и по взведённому признаку возвращать управление, а не засыпать снова.
+		 *
+		 * @details Роспуск заведён оттого, что уничтожить спящее волокно НЕЛЬЗЯ: кадры
+		 *          его не раскручены. Единственный способ довести спящее волокно до
+		 *          состояния, в котором его дозволено уничтожить, - разбудить и дать
+		 *          выйти. Без этого приёма всякий потребитель заводит признак роспуска
+		 *          сам, и сколько потребителей - столько и способов разбора.
+		 *
+		 * @note Волокно, тело которого признак не спрашивает, роспуск переживёт спящим:
+		 *       ответом будет отказ, и это не молчаливая неудача, а сведения потребителю
+		 *
+		 * @param fiber волокно для роспуска
+		 * @return      признак того, что волокно доработало и его дозволено уничтожить
+		 *
+		 * \~english
+		 * @brief Function of dismissing the fiber
+		 *
+		 * @details Raises the dismissal flag and wakes the fiber up, so that it leaves by
+		 *          itself. The body of the fiber must ask `dismissed()` where it falls
+		 *          asleep, and return control on the raised flag instead of sleeping again.
+		 *
+		 * @details The dismissal is made because destroying a sleeping fiber is NOT
+		 *          ALLOWED: its frames are not unwound. The only way to bring a sleeping
+		 *          fiber into the state where destroying it is allowed is to wake it up
+		 *          and let it leave. Without this the every consumer makes the dismissal
+		 *          flag on its own, and there are as many ways of the disposal as there
+		 *          are consumers.
+		 *
+		 * @note A fiber whose body does not ask the flag survives the dismissal sleeping:
+		 *       the answer is a refusal, and that is not a silent failure but the
+		 *       information for the consumer
+		 *
+		 * @param fiber fiber to dismiss
+		 * @return      flag that the fiber has finished and is allowed to be destroyed
+		 *
+		 * \~
+		 */
+		bool dismiss(ctx_t * fiber) noexcept;
+		/**
+		 * \~russian
 		 * @brief Функция уничтожения волокна
 		 *
 		 * @warning Уничтожать волокно, которое ещё спит, НЕЛЬЗЯ: его кадры не
@@ -209,6 +271,14 @@ namespace awh {
 		 * @warning Уничтожать волокно, которое выполняется прямо сейчас, тоже НЕЛЬЗЯ:
 		 *          уничтожение снимает отображение его стека, а на этом самом стеке
 		 *          лежит кадр вызывающего - возврат пошёл бы по снятому отображению
+		 *
+		 * @note Отказ выводится ТОЛЬКО кодом возврата, в журнал модуль здесь не пишет
+		 *       и указателя на журнал дольше заведения не хранит. Причина такова:
+		 *       уничтожение идёт при сносе того, чему волокно принадлежало, и журнал к
+		 *       этому мигу бывает снесён раньше волокна - запись отказа шла бы по
+		 *       снесённому объекту. Отказ обязан оставаться отказом, даже когда вокруг
+		 *       всё сносится. Причину отказа звавший узнаёт вызовом `state()`, а
+		 *       спящее волокно доводит до уничтожимого вызовом `dismiss()`
 		 *
 		 * @param fiber волокно для уничтожения
 		 * @return      результат уничтожения
@@ -222,6 +292,16 @@ namespace awh {
 		 * @warning Destroying a fiber which is running right now is NOT ALLOWED either:
 		 *          the destruction unmaps its stack, while the frame of the caller lies
 		 *          on that very stack - the return would go over the unmapped memory
+		 *
+		 * @note The refusal is reported ONLY by the return code, the module does not
+		 *       write to the log here and does not keep the pointer to the log longer
+		 *       than the making. The reason is this: the destruction goes on the disposal
+		 *       of what the fiber belonged to, and by that moment the log happens to be
+		 *       disposed of earlier than the fiber - writing the refusal would go over
+		 *       the disposed object. A refusal must stay a refusal even when everything
+		 *       around is being disposed of. The caller learns the reason of the refusal
+		 *       by the `state()` call, and brings a sleeping fiber into the destroyable
+		 *       one by the `dismiss()` call
 		 *
 		 * @param fiber fiber to destroy
 		 * @return      result of the destruction

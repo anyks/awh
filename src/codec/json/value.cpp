@@ -1765,6 +1765,18 @@ bool awh::codec::json::Value::parse(const string & text, const document_t::setti
  *
  */
 bool awh::codec::json::Value::load(const string & filename) noexcept {
+	// Выводим итог разбора файла документа с умолчательными настройками
+	return this->load(filename, document_t::settings_t());
+}
+/**
+ * @brief Метод разбора текста документа из файла с заданными настройками
+ *
+ * @param filename адрес разбираемого файла
+ * @param settings настройки разбора текста документа
+ * @return         признак успешности разбора
+ *
+ */
+bool awh::codec::json::Value::load(const string & filename, const document_t::settings_t & settings) noexcept {
 	// Документ, разбирающий текст файла
 	/**
 	 * Заводимое дерево значения
@@ -1774,6 +1786,8 @@ bool awh::codec::json::Value::load(const string & filename) noexcept {
 	 *       дереву напрямую
 	 */
 	document_t document(this->_log);
+	// Выполняем установку настроек разбора текста документа
+	document.settings(settings);
 	/**
 	 * Если разбор текста файла завершился отказом
 	 */
@@ -1856,6 +1870,22 @@ string awh::codec::json::Value::dump(const writer_t::settings_t & settings) cons
  *
  */
 bool awh::codec::json::Value::save(const string & filename, const format_t format) const noexcept {
+	// Настройки сборки текста с затребованным видом оформления
+	writer_t::settings_t settings;
+	// Устанавливаем затребованный вид оформления текста
+	settings.format = format;
+	// Выводим итог записи значения в файл с настройками сборки
+	return this->save(filename, settings);
+}
+/**
+ * @brief Метод записи значения в файл с заданными настройками сборки
+ *
+ * @param filename адрес записываемого файла
+ * @param settings настройки сборки текста
+ * @return         признак успешности записи
+ *
+ */
+bool awh::codec::json::Value::save(const string & filename, const writer_t::settings_t & settings) const noexcept {
 	/**
 	 * Получаем собранный текст значения
 	 *
@@ -1865,7 +1895,7 @@ bool awh::codec::json::Value::save(const string & filename, const format_t forma
 	 * последовательности UTF-8 при правиле `REFUSE` сносило прежнее содержимое файла
 	 * начисто. Разметка XML тем же порядком уже пользуется
 	 */
-	const string text = this->dump(format);
+	const string text = this->dump(settings);
 	/**
 	 * Если собранный текст значения пуст
 	 *

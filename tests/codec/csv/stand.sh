@@ -33,6 +33,12 @@
 #   CXX        — собиратель, по умолчанию «c++»
 #   GTEST_ROOT — корень набора GoogleTest, по умолчанию «/usr»
 #   FLAGS      — добавочные ключи сборки
+#   ZLIB       — способ связывания с zlib, по умолчанию «-lz»
+#
+# @note Переменная ZLIB заведена ради систем, где разделяемая библиотека негодна
+#       связыванию: у OpenWRT на musl «-lz» отвечает «file in wrong format» у всех
+#       трёх разделяемых видов, а статическая «/usr/lib/libz.a» связывается
+#       исправно. Звать там: ZLIB=/usr/lib/libz.a
 #
 
 # Прекращаем работу при первом же отказе
@@ -49,6 +55,9 @@ GTEST="${GTEST_ROOT:-/usr}"
 
 # Получаем собиратель
 COMPILER="${CXX:-c++}"
+
+# Получаем способ связывания с библиотекой сжатия
+ZLIB="${ZLIB:--lz}"
 
 # Собираем ключи сборки стенда
 OPTIONS="-O2 -std=c++17 -I$ROOT/include -I$GTEST/include $FLAGS"
@@ -165,7 +174,7 @@ done
 # @note Объектные файлы перечисляются поимённо, а не маскою: посторонний объектный файл,
 #       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
 #       повтором имён
-$COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread $SYSTEM_LIBS -lz -o "$OUTPUT/csv-tests"
+$COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread $SYSTEM_LIBS $ZLIB -o "$OUTPUT/csv-tests"
 
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/csv-tests"

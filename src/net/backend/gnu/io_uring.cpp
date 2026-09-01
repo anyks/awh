@@ -5120,6 +5120,30 @@ namespace pool {
 		::pool::fetched.at(static_cast <size_t> (sock)).armed = value;
 	}
 	/**
+	 * @brief Функция сброса записи пула принятого по дескриптору
+	 *
+	 * @details Зовётся при закрытии дескриптора: номер его система выдаст повторно,
+	 *          и остаток чужой очереди с признаком заведённого приёма достался бы
+	 *          новому сокету
+	 *
+	 * @param sock дескриптор, чья запись сбрасывается
+	 *
+	 */
+	static void release(const net::socket_t sock) noexcept {
+		// Если дескриптор за пределами пула, сбрасывать нечего
+		if((sock < 0) || (static_cast <size_t> (sock) >= ::pool::fetched.size()))
+			// Выходим, так как записи по дескриптору нет
+			return;
+		// Получаем запись пула по дескриптору
+		fetched_t & record = ::pool::fetched.at(static_cast <size_t> (sock));
+		// Снимаем признак заведённого в кольце приёма
+		record.armed = false;
+		// Опустошаем очередь принятого
+		record.queue.clear();
+		// Сбрасываем указатель на первую непрочитанную запись
+		record.first = 0;
+	}
+	/**
 	 * @brief Функция заведения кольца буферов
 	 *
 	 * @details Зовётся лениво, при первой надобности. Неудача заведения не есть
@@ -7969,6 +7993,21 @@ namespace kernel {
 		 *       дескриптора, закрытого до первого применения
 		 */
 		::kernel::__purge__(sock);
+		/**
+		 * Сбрасываем запись пула принятого по дескриптору
+		 *
+		 * @warning Пул этот проиндексирован НОМЕРОМ дескриптора, а номера система
+		 *          выдаёт повторно: закрытый сокет отдаёт свой номер следующему.
+		 *          Запись, пережившая закрытие, достаётся чужому сокету вместе с
+		 *          признаком заведённого приёма и остатком очереди - и прямое чтение
+		 *          по новому сокету получает отказ за чужое исчерпание
+		 *
+		 * @note Это тот же род беды, что и записи очереди изменений, пережившие
+		 *       закрытие: состояние, привязанное к номеру, обязано сниматься там же,
+		 *       где номер освобождается
+		 *
+		 */
+		::pool::release(sock);
 		// Выполняем поиск записи учёта по дескриптору
 		auto i = ::kernel::registry.find(sock);
 		// Если записи учёта по дескриптору нет, забывать нечего
@@ -8558,9 +8597,23 @@ namespace kernel {
 		 *       и уступает ему приём. Установлено прогоном: набор вставал на
 		 *       `IoTCPSplicePairTest`
 		 */
+		/**
+		 * @brief Пригодность узла к упреждающему приёму кольцом
+		 *
+		 * @warning Режим блокировки проверяется ОБЯЗАТЕЛЬНО: упреждающий приём отдаёт
+		 *          сокет ядру, и прямое чтение по нему получает отказ EAGAIN от
+		 *          `::pool::receive`. На неблокирующем узле это верно, а на
+		 *          блокирующем - подмена договора: пользователь просил ожидание, а
+		 *          получил отказ, да ещё и лишился таймаутов приёма и отправки,
+		 *          которые ядро блюдёт только для блокирующих сокетов
+		 *
+		 * @note Блокирующий узел читается прямым вызовом, как ему и положено
+		 *
+		 */
+		const bool nonBlocking = ((node != nullptr) && ((node->state.options & event::options::NO_IO_BLOCK) || (node->state.options & event::options::SM_IO_BLOCK)));
 		const bool suitable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
-			exchanging && !limited && (node->state.type == event::type_t::STREAM) &&
+			exchanging && !limited && nonBlocking && (node->state.type == event::type_t::STREAM) &&
 			(node->state.protocol != event::protocol_t::SCTP) && !::splicing::eligible(node, &joined)
 		);
 		/**
@@ -8617,7 +8670,7 @@ namespace kernel {
 		));
 		const bool receivable = (
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN)) &&
-			receiving && !limited && (node->state.type == event::type_t::DATAGRAM) &&
+			receiving && !limited && nonBlocking && (node->state.type == event::type_t::DATAGRAM) &&
 			(node->state.protocol != event::protocol_t::SCTP)
 		);
 		const bool fetching = ((suitable || receivable) && ::pool::create(log));

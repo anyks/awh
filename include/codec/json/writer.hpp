@@ -684,10 +684,36 @@ namespace awh {
 					 *       возможности узнать причину вовсе. Запись разметки XML отдаёт код
 					 *       отказа с самого начала, и расходиться с нею здесь нечем
 					 *
+					 * @note Отказ записи МЕСТНЫЙ, а не терминальный: объект остаётся годным,
+					 *       отвергнутая работа не оставляет в собранном тексте никакого следа,
+					 *       и следующая работа принимается как ни в чём не бывало. Отвергнутое
+					 *       значение при имени поля оставляет имя ЖДАТЬ значения, и годное
+					 *       значение вправе стать на место отвергнутого
+					 *
+					 * @warning Отсюда следует, что возврат КАЖДОЙ работы записи обязан
+					 *          проверяться. Звучащий, не проверивший ни одного, соберёт текст
+					 *          безупречный видом и неверный по существу: замер 01.09.2026 -
+					 *          отказ значению при имени поля «б» и последующая запись пары «в»
+					 *          дают `{"а":"годное","б":"третье"}`, где значение село на ЧУЖОЕ
+					 *          имя, а имя «в» исчезло. Текст этот разбирается обратно без
+					 *          единого возражения
+					 *
+					 * @note Запись разметки XML поступает здесь ИНАЧЕ: отказ там терминален и
+					 *       закрывает запись до самой очистки. Расхождение это намеренно и
+					 *       закреплено проверками обоих кодеков - `MalformedRefuse` здесь и
+					 *       `TakeClosedByRefusal` у разметки, - а в описании настоящего
+					 *       кодека не значилось вовсе
+					 *
 					 * \~english
 					 * @brief Method of getting the error code of the writing
 					 *
 					 * @return error code of the last operation of the writing
+					 *
+					 * @note The refusal of the writing is LOCAL rather than terminal: the object remains
+					 *       usable, and a refused operation leaves no trace in the collected text
+					 * @warning It follows that the return of EVERY operation of the writing must be checked:
+					 *          the caller who has checked none will assemble a text flawless in appearance
+					 *          and wrong in essence
 					 *
 					 * \~
 					 */

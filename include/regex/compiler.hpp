@@ -45,6 +45,15 @@
  *          проходить ряд подходящих символов одним ходом взамен исполнения трёх
  *          инструкций на каждый символ, что измерением даёт ещё четверть.
  *
+ *          <b>Отказ от точек возврата прогона письменности атомарного размещается
+ *          ПЕРЕД проверкою прогона, а не за нею.</b> Порядок выглядит обратным:
+ *          проверка есть часть прогона, и отсекать точки прежде неё - значит
+ *          лишить её отступления. Того эталон и требует: прогон атомарный
+ *          обёртке «(?>(*sr:...))» не равен - «(*asr:.*)» на тексте «αа»
+ *          отказывает в позиции первой и совпадение находит со второй,
+ *          тогда как обёртка отступает телом и даёт «α». Правило снято
+ *          опытом, решение закреплено тестом «Regex.InterfaceScriptRuns».
+ *
  * \~english
  * @brief Header file of the compilation of regular expressions — the Compiler class, which converts
  *        a syntax tree into a program of a nondeterministic finite automaton
@@ -73,6 +82,15 @@
  *          once at compilation. The mark allows backtracking execution
  *          to walk a run of matching characters in one move instead of executing three
  *          instructions per every character, which by measurement gives another quarter.
+ *
+ *          <b>The giving up of the backtracking points of an atomic script run is placed
+ *          BEFORE the check of the run rather than after it.</b> The order looks reversed:
+ *          the check is a part of the run, and cutting off the points before it means
+ *          depriving it of a retreat. That is what the reference requires: an atomic run
+ *          is not equal to the wrapper «(?>(*sr:...))» — «(*asr:.*)» on the text «αа»
+ *          refuses at the first position and finds the match from the second,
+ *          whereas the wrapper retreats through the body and yields «α». The rule was taken
+ *          by experiment, the decision is pinned by the test «Regex.InterfaceScriptRuns».
  *
  * \~
  *
@@ -830,6 +848,22 @@ namespace awh {
 				bool verbal(const node_id_t id) const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод проверки зависимости пустого сопоставления от состояния
+				 *
+				 * @param id индекс узла, с которого начинается обход
+				 *
+				 * @return   результат проверки зависимости от состояния
+				 *
+				 * \~english
+				 * @brief Method of checking whether an empty match depends on the state
+				 * @param id index of the node the traversal starts from
+				 * @return   result of checking the dependence on the state
+				 *
+				 * \~
+				 */
+				bool stateful(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод проверки наличия глагола завершения сопоставления
 				 *
 				 * @param id индекс узла, с которого начинается обход
@@ -851,6 +885,7 @@ namespace awh {
 				 * @param offset смещение имени отметки в хранилище имён разбора
 				 * @param length длина имени отметки в октетах
 				 * @param flags  флаги размещаемой инструкции
+				 * @param named  признак открытия имени розыску глаголом переноса
 				 *
 				 * @return адрес размещённой инструкции глагола отметки
 				 *
@@ -863,7 +898,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				address_t marking(const uint32_t offset, const uint32_t length, const uint32_t flags) noexcept;
+				address_t marking(const uint32_t offset, const uint32_t length, const uint32_t flags, const bool named) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод проверки наличия глагола перехода к ветви следующей

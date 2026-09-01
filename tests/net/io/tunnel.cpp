@@ -52,6 +52,8 @@
  */
 #include <chrono>
 #include <string>
+#include <memory>
+#include <vector>
 
 /**
  * Для операционной системы MS Windows
@@ -86,6 +88,11 @@
  *
  */
 #include <sys/macro_push.hpp>
+
+/**
+ * Подключаем модуль волокон
+ */
+#include <sys/fiber.hpp>
 
 /**
  * @brief Адреса концов испытуемого туннеля
@@ -2584,13 +2591,20 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 *          пересоздание устройства - обычное течение работы, и записей о беде
 		 *          оно не порождает ни у одного наречия
 		 */
-		std::vector <std::string> critical;
+		/**
+		 * @warning Перечень держится общим владением и захватывается ЗНАЧЕНИЕМ, а не
+		 *          ссылкой: подписка на журнал переживает тело проверки, а движок
+		 *          пишет в журнал и при разрушении - из деструктора. Захват по ссылке
+		 *          стоил обвала из `~IO()` через `Interface::destroy`
+		 *
+		 */
+		const auto critical = std::make_shared <std::vector <std::string>> ();
 		// Подписываемся на записи журнала
-		this->_log->subscribe([&critical](const awh::log_t::flag_t flag, const std::string_view text) noexcept {
+		this->_log->subscribe([critical](const awh::log_t::flag_t flag, const std::string_view text) noexcept {
 			// Если запись сообщает о беде
 			if(flag == awh::log_t::flag_t::CRITICAL)
 				// Запоминаем запись для разбора
-				critical.emplace_back(text);
+				critical->emplace_back(text);
 		});
 		// Выполняем инициализацию движка
 		ASSERT_TRUE(this->_io->initialize());
@@ -2695,11 +2709,11 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			// Собираем пойманные записи в одно сообщение об отказе
 			std::string reported;
 			// Выполняем перебор всех пойманных записей
-			for(const auto & item : critical)
+			for(const auto & item : * critical)
 				// Добавляем очередную запись в сообщение об отказе
 				reported.append("\n  ").append(item);
 			// Записей уровня «критично» пересоздание порождать не вправе
-			ASSERT_TRUE(critical.empty()) << "пересоздание устройства дало " << critical.size()
+			ASSERT_TRUE(critical->empty()) << "пересоздание устройства дало " << critical->size()
 				<< " записей уровня «критично»:" << reported;
 		}
 	}
@@ -3074,6 +3088,157 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		// Адрес ушедшего работника обязан быть снят его деструктором
 		ASSERT_TRUE(owner.empty()) << "работник ушёл, а адрес " << WORKER_LOCAL << " остался числиться за устройством «" << owner << "»";
 	}
+#endif
+
+/**
+ * @brief Проверка заведения туннеля ИЗ ОТКЛИКА цикла
+ *
+ * @details Заведение туннельного устройства блокирующее: драйвер Wintun изредка
+ *          не отвечает пять минут. Оттого оно выносится в системный пул потоков,
+ *          а вызывающее волокно засыпает и цикл продолжает вертеться. Путь этот
+ *          отпирается ТОЛЬКО когда отклик идёт в волокне
+ *
+ * @note Проверка эта берёт ветвь, которой не брала ни одна другая: во всех прочих
+ *       проверках туннеля `commit` зовётся из тела проверки, то есть ВНЕ волокна,
+ *       и уходит прежним, блокирующим путём. Ветвь выноса прожила мёртвой ровно
+ *       потому, что её никто не брал
+ *
+ */
+#if defined(_WIN32) || defined(_WIN64)
+TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
+	// Если надзорных прав у процесса нет
+	if(!tunnelPrivileged())
+		// Пропускаем проверку
+		GTEST_SKIP() << "заведение туннельного устройства требует надзорных прав";
+	// Если окружение к заведению туннеля не готово
+	if(!tunnelReady(1))
+		// Пропускаем проверку
+		GTEST_SKIP() << "связи под туннели не заведены распорядителем машины";
+	// Закрепляем драйвер устройств туннеля
+	tunnelPinDriver(this->_io.get(), tunnel_driver_t::TAP);
+	/**
+	 * Перечень записей журнала, собранных за время проверки
+	 *
+	 * @warning Держится он общим владением и захватывается ЗНАЧЕНИЕМ, а не ссылкой:
+	 *          подписка на журнал переживает тело проверки, а движок пишет в журнал
+	 *          и при разрушении - из деструктора. Захват по ссылке дал бы обращение
+	 *          к снесённой переменной, и это здесь уже случалось: обвал приходил из
+	 *          `~IO()` через `Interface::destroy`
+	 *
+	 */
+	const auto journal = std::make_shared <std::vector <std::string>> ();
+	// Подписываемся на записи журнала: отказ обязан быть слышен
+	this->_log->subscribe([journal]([[maybe_unused]] const awh::log_t::flag_t flag, const std::string_view text) noexcept {
+		// Запоминаем запись для разбора
+		journal->emplace_back(text);
+	});
+	// Признак того, что отклик позвался внутри волокна
+	bool inside = false;
+	// Признак согласия движка завести устройство из отклика
+	bool raised = false;
+	// Признак начала работы отклика: заслон от повторного захода
+	bool started = false;
+	/**
+	 * Признак ОКОНЧАНИЯ работы отклика
+	 *
+	 * @warning Выходить из опроса надо по окончанию, а не по началу. Отклик заводит
+	 *          устройство чужим потоком и на этом ЗАСЫПАЕТ; пробуждение приходит
+	 *          завершением на порт, то есть следующим оборотом цикла. Выйди опрос
+	 *          по началу работы - оборотов больше не будет, будить волокно станет
+	 *          нечем, и отказ выглядел бы дефектом движка. Промах этот здесь уже
+	 *          был допущен однажды
+	 *
+	 */
+	bool handled = false;
+	// Признаки согласия движка на каждом шаге настройки
+	bool options = false, address = false, target = false;
+	// Опознаватель узла туннеля, заведённого откликом
+	awh::event::id_t tid = 0;
+	// Добавляем событие интервала
+	const awh::event::id_t interval = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Событие обязано завестись
+	ASSERT_GT(interval, 0u);
+	// Устанавливаем задержку интервала
+	this->_io->setTimeout(interval, awh::event::action_t::NONE, 50);
+	// Выполняем инициализацию движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Выполняем фиксацию настроек события интервала
+	ASSERT_TRUE(this->_io->commit(interval));
+	/**
+	 * Отклик заводит туннель ИЗ ЦИКЛА - то есть ровно так, как это делает
+	 * настоящий потребитель, а не тело проверки
+	 */
+	this->_io->on(interval, [this, &inside, &raised, &handled, &started, &tid, &options, &address, &target]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если статус события не успешен либо отклик уже отработал
+		if((status != awh::event::status_t::SUCCESS) || started)
+			// Выходим из отклика
+			return;
+		// Отмечаем отклик начавшим работу
+		started = true;
+		// Запоминаем, идёт ли отклик внутри волокна
+		inside = (awh::fiber::current() != nullptr);
+		// Заводим узел туннеля
+		tid = this->_io->event(awh::event::node_t::TUNNEL, awh::event::family_t::IPV4);
+		// Если узел туннеля не заведён
+		if(tid == 0){
+			// Отмечаем отклик отработавшим
+			handled = true;
+			// Выходим из отклика
+			return;
+		}
+		// Устанавливаем опции события туннеля
+		options = this->_io->setOptions(tid, awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC);
+		// Устанавливаем адреса концов туннеля
+		address = this->_io->setAddress(tid, awh::event::address_t::IPV4, TUNNEL_LOCAL);
+		target = this->_io->setTarget(tid, TUNNEL_PEER);
+		// Выполняем фиксацию настроек туннеля прямо из отклика
+		raised = this->_io->commit(tid);
+		// Отмечаем отклик отработавшим: до сюда управление доходит уже ПОСЛЕ сна волокна
+		handled = true;
+	});
+	// Выполняем запуск события интервала
+	ASSERT_TRUE(this->_io->launch(interval));
+	// Определяем срок ожидания отработки отклика
+	const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(30));
+	// Выполняем опрос событий до отработки отклика
+	while(!handled && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+	// Отклик обязан был отработать, иначе проверка ничего не проверяет
+	ASSERT_TRUE(handled) << "отклик не сработал - проверка стала холостой";
+	// Отклик обязан идти внутри волокна
+	ASSERT_TRUE(inside) << "отклик идёт ВНЕ волокна: вынос заведения устройства в чужой поток не отпирается";
+	// Узел туннеля обязан был завестись
+	ASSERT_GT(tid, 0u) << "движок не записал узел туннеля из отклика";
+	/**
+	 * Опыт сличения: тот же узел, но фиксация ИЗ ТЕЛА проверки
+	 *
+	 * @note Сличение это отделяет одну разницу от другой. Пройди фиксация здесь и
+	 *       откажи в отклике - виновата обстановка вызова, а не узел и не окружение
+	 */
+	const bool outside = (raised ? false : this->_io->commit(tid));
+	/**
+	 * Устройство обязано было завестись
+	 *
+	 * @note Это и есть суть проверки: заведение прошло ЧУЖИМ потоком, волокно на
+	 *       нём уснуло, пробуждение пришло завершением на порт, и кадр вызова
+	 *       пережил сон вместе со всеми своими переменными
+	 */
+	ASSERT_TRUE(raised) << "устройство не заведено из отклика: путь выноса работы в чужой поток неисправен"
+		<< " (опции=" << options << ", адрес=" << address << ", цель=" << target << ")"
+		<< ", из тела проверки=" << outside
+		<< "\nЗаписи журнала (" << journal->size() << "):\n" << [&journal]() noexcept -> std::string {
+			// Место под свод записей журнала
+			std::string result;
+			// Выполняем перебор всех записей журнала
+			for(const auto & item : * journal)
+				// Дополняем свод очередной записью
+				result.append("  ").append(item).append("\n");
+			// Выводим собранный свод
+			return result;
+		}();
+	// Сносим заведённые узлы
+	this->_io->destroy(tid);
+	this->_io->destroy(interval);
+}
 #endif
 
 /**

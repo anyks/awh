@@ -4152,3 +4152,67 @@ TEST(CodecYamlValue, LayersExtractNumberAlike) {
 		ASSERT_EQ(static_cast <uint32_t> (second), probe.narrow) << probe.text;
 	}
 }
+/**
+ * @brief Проверка того, что отказ переноса называет свою причину
+ *
+ * @details `graft()` берёт причину отказа у копии дерева и передаёт её дереву
+ *          исходному - без того потребитель остался бы с отказом без причины. Два
+ *          отказа самой укладки причины не называли вовсе, и `error()` отвечал
+ *          «ошибок не обнаружено» при истинном отказе: ложь хуже молчания, ибо
+ *          потребитель по ней заключил бы об удаче
+ *
+ * @note Оба отказа намеренны и описаны при самом методе: имя, косую черту несущее,
+ *       путём указывало бы на узел чужой, а имя, вторично встреченное, путём не
+ *       выражается вовсе - путь ведёт к первому вхождению всегда
+ *
+ */
+TEST(CodecYamlValue, GraftRefusalNamesItsCause) {
+	{
+		// Настройки дерева документа
+		yaml::document_t::settings_t settings;
+		// Удерживаем все пары с повторяющимся именем
+		settings.duplicates = yaml::duplicate_t::KEEP;
+		// Дерево документа
+		yaml::document_t document(::logger());
+		// Выполняем установку настроек дерева документа
+		document.settings(settings);
+		// Выполняем проверку успешности разбора текста документа
+		ASSERT_TRUE(document.parse("b: 1\nb: 2\n"));
+		// Дерево документа, куда переносится значение
+		yaml::document_t target(::logger());
+		// Выполняем установку настроек дерева переноса
+		target.settings(settings);
+		// Выполняем проверку успешности разбора пустого отображения
+		ASSERT_TRUE(target.parse("{}"));
+		// Выполняем проверку отказа переноса значения с повторяющимся именем
+		ASSERT_FALSE(yaml::value_t(document.root()).graft(target));
+		// Выполняем проверку того, что причина отказа названа
+		ASSERT_EQ(target.error(), yaml::error_t::DUPLICATE_KEY);
+	}{
+		// Дерево документа
+		yaml::document_t document(::logger());
+		// Выполняем проверку успешности разбора текста документа
+		ASSERT_TRUE(document.parse("\"a/b\": 1\n"));
+		// Дерево документа, куда переносится значение
+		yaml::document_t target(::logger());
+		// Выполняем проверку успешности разбора пустого отображения
+		ASSERT_TRUE(target.parse("{}"));
+		// Выполняем проверку отказа переноса значения с косою чертою в имени
+		ASSERT_FALSE(yaml::value_t(document.root()).graft(target));
+		// Выполняем проверку того, что причина отказа названа
+		ASSERT_EQ(target.error(), yaml::error_t::INVALID_PATH);
+	}{
+		// Дерево документа
+		yaml::document_t document(::logger());
+		// Выполняем проверку успешности разбора текста документа
+		ASSERT_TRUE(document.parse("a: 1\n"));
+		// Дерево документа, куда переносится значение
+		yaml::document_t target(::logger());
+		// Выполняем проверку успешности разбора пустого отображения
+		ASSERT_TRUE(target.parse("{}"));
+		// Выполняем проверку успешности переноса годного значения
+		ASSERT_TRUE(yaml::value_t(document.root()).graft(target));
+		// Выполняем проверку того, что удача причины не называет
+		ASSERT_EQ(target.error(), yaml::error_t::NONE);
+	}
+}

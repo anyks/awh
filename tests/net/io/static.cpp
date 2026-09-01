@@ -87,11 +87,6 @@
 #include "io.hpp"
 
 /**
- * Подключаем модуль волокон
- */
-#include <sys/fiber.hpp>
-
-/**
  * Снимаем макросы MS Windows, сталкивающиеся с именами членов перечислений AWH
  *
  * @details Проверка эта пишет «awh::event::error_t::INVALID_SOCKET», а MS Windows
@@ -106,6 +101,11 @@
  *
  */
 #include <sys/macro_push.hpp>
+
+/**
+ * Подключаем модуль волокон
+ */
+#include <sys/fiber.hpp>
 
 
 /**
@@ -8309,6 +8309,10 @@ TEST_F(IoFixture, IoFsForeignRenameTest){
  *       обнаружилось это не набором, а чтением: набор проходил целиком, потому
  *       что ни одна проверка не утверждала, где именно идёт разбор
  *
+ * @warning Заслон системы здесь ПОСТОЯННЫЙ, а не временный. Решением владельца
+ *          волокна заведены только у наречия IOCP: у наречий POSIX нет вызова,
+ *          которого ждём мы, и платить волокном за каждое событие там не за что
+ *
  */
 #if defined(_WIN32) || defined(_WIN64)
 TEST_F(IoFixture, IoPollingRunsInsideFiberTest){
@@ -8351,15 +8355,147 @@ TEST_F(IoFixture, IoPollingRunsInsideFiberTest){
 }
 #endif
 
+/**
+ * @brief Проверка того, что прямое чтение блюдёт срок ожидания приёма
+ *
+ * @details Движок ведёт упреждающий приём: операция чтения подаётся ядру заранее.
+ *          Пока она взведена, читать сокет напрямую нельзя - ядро уже владеет им,
+ *          и низкий уровень отвечает `EAGAIN`. Но пользователь, заведший сокет
+ *          БЛОКИРУЮЩИМ, зовёт `recv` в полном праве и ждать готов
+ *
+ * @note Проверка эта заведена по наводке Гриши: у наречия io_uring расхождение
+ *       двух способов чтения за один сокет обернулось отказом эхо-запроса, и
+ *       `EAGAIN` приходил на сокете, где ему взяться неоткуда. Устройство заслона
+ *       у нас одинаковое, и принимать на слово «у тебя такого нет» нельзя
+ *
+ */
+TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
+	// Порт обмена
+	const uint16_t listenPort = ::port();
+	// Признак доставки данных серверу
+	std::atomic_bool delivered(false);
+	// Признак согласия движка на прямое чтение
+	std::atomic_bool accepted(false);
+	// Опознаватель принятого сервером узла
+	std::atomic <awh::event::id_t> accession(0);
+	// Сообщение, отправляемое серверу
+	const std::string message = "AWH direct recv on blocking socket";
+	// Получаем пару событий для обмена по протоколу TCP
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Выполняем проверку, что события созданы
+	for(uint8_t i = 0; i < 2; i++)
+		ASSERT_GT(events[i], 0u);
+	// Устанавливаем порт назначения клиенту и порт источника серверу
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], listenPort));
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], listenPort));
+	// Выполняем инициализацию движка
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Признаки узлов НАМЕРЕННО без `NO_IO_BLOCK`: сокеты остаются блокирующими,
+	 * как и задумано умолчанием движка. Ради этого проверка и заведена
+	 */
+	const uint16_t options = (
+		awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE |
+		awh::event::options::REUSE_ADDR | awh::event::options::CLOSE_ON_EXEC |
+		awh::event::options::TCP_NO_DELAY
+	);
+	for(uint8_t i = 0; i < 2; i++)
+		ASSERT_TRUE(this->_io->setOptions(events[i], options));
+	// Устанавливаем адрес прослушивания серверу
+	ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова принятия подключения
+	this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([&delivered, &accession, options, this](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
+		// Принятому узлу признаки ставятся те же, блокирующие
+		EXPECT_TRUE(this->_io->setOptions(cid, options));
+		// Запоминаем опознаватель принятого узла
+		accession.store(cid);
+		// Устанавливаем функцию обратного вызова получения данных
+		this->_io->on(cid, [&delivered]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Отмечаем доставку данных серверу
+			delivered.store(true);
+		});
+	}));
+	// Выполняем закрепление настроек сервера и его запуск
+	ASSERT_TRUE(this->_io->commit(events[1]));
+	ASSERT_TRUE(this->_io->listen(events[1], 100));
+	ASSERT_TRUE(this->_io->launch(events[1]));
+	// Устанавливаем адрес и цель клиенту
+	ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+	ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова подключения клиента
+	this->_io->on(events[0], static_cast <awh::engine::callback::connect_t> ([&message, this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Если подключение удалось, отправляем сообщение серверу
+		if(ok)
+			// Выполняем отправку сообщения серверу
+			this->_io->send(eid, message.c_str(), message.size());
+	}));
+	// Выполняем закрепление настроек клиента, подключение и запуск
+	ASSERT_TRUE(this->_io->commit(events[0]));
+	ASSERT_TRUE(this->_io->connect(events[0]));
+	ASSERT_TRUE(this->_io->launch(events[0]));
+	// Определяем срок ожидания доставки
+	const auto deadline = (std::chrono::steady_clock::now() + std::chrono::seconds(10));
+	// Выполняем опрос событий до доставки данных серверу
+	while(!delivered.load() && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+	// Данные обязаны были дойти, иначе проверка ничего не проверяет
+	ASSERT_TRUE(delivered.load()) << "данные до сервера не дошли - проверка стала холостой";
+	// Опознаватель принятого узла обязан быть известен
+	ASSERT_GT(accession.load(), 0u) << "сервер не принял подключение";
+	/**
+	 * Зовём прямое чтение на узле, которому движок ведёт упреждающий приём
+	 *
+	 * @note Здесь и стоит вопрос: согласованы ли два способа чтения за один сокет.
+	 *       Отрицательный ответ сам по себе дефектом НЕ является - данных к этому
+	 *       мигу может и не быть. Дефектом был бы отказ по `EAGAIN` на сокете,
+	 *       заведённом блокирующим, и его ловит утверждение о журнале ниже
+	 */
+	/**
+	 * Ставим узлу срок ожидания приёма
+	 *
+	 * @note Срок этот движок отсчитывает САМ - так и записано в договоре `io.hpp`,
+	 *       и настройкой `SO_RCVTIMEO` он не является. Проверкой выясняется, кроет
+	 *       ли он прямое чтение по требованию или только разбор по готовности
+	 */
+	this->_io->setTimeout(accession.load(), awh::event::action_t::READ, 2000);
+	// Запоминаем время захода в прямое чтение
+	const auto entered = std::chrono::steady_clock::now();
+	// Выполняем прямое чтение узла
+	accepted.store(this->_io->recv(accession.load()));
+	// Считаем, сколько прямое чтение занимало
+	const auto spent = std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - entered).count();
+	/**
+	 * Прямое чтение обязано вернуться в пределах выставленного срока
+	 *
+	 * @note Утверждается здесь не удача чтения, а САМ ВОЗВРАТ: данных к этому мигу
+	 *       может и не быть, и отрицательный ответ законен. Незаконно бессрочное
+	 *       ожидание при выставленном сроке - тогда обещание системы не работает
+	 */
+	ASSERT_LT(spent, 6000) << "прямое чтение не вернулось за выставленный срок в 2000 мс (потрачено "
+		<< spent << " мс): срок ожидания приёма на этом пути не действует";
+
+	// Сносим заведённые узлы
+	for(uint8_t i = 0; i < 2; i++)
+		this->_io->destroy(events[i]);
+}
+
 TEST_F(IoFixture, IoSendReentrancyIsLoudTest){
-	// Перечень записей журнала уровня «критично»
-	std::vector <std::string> critical;
+	/**
+	 * Перечень записей журнала уровня «критично»
+	 *
+	 * @warning Держится он общим владением и захватывается ЗНАЧЕНИЕМ, а не ссылкой:
+	 *          подписка на журнал переживает тело проверки, а движок пишет в журнал
+	 *          и при разрушении - из деструктора. Захват по ссылке дал бы обращение
+	 *          к снесённой переменной; в соседней проверке туннеля это уже стоило
+	 *          обвала из `~IO()` через `Interface::destroy`
+	 *
+	 */
+	const auto critical = std::make_shared <std::vector <std::string>> ();
 	// Подписываемся на записи журнала
-	this->_log->subscribe([&critical](const awh::log_t::flag_t flag, const std::string_view text) noexcept {
+	this->_log->subscribe([critical](const awh::log_t::flag_t flag, const std::string_view text) noexcept {
 		// Если запись сообщает о беде
 		if(flag == awh::log_t::flag_t::CRITICAL)
 			// Запоминаем запись для разбора
-			critical.emplace_back(text);
+			critical->emplace_back(text);
 	});
 	// Заводим узел пользовательского события
 	const awh::event::id_t eid = this->_io->event(awh::event::node_t::NOTIFY, awh::event::family_t::USER);
@@ -8392,7 +8528,7 @@ TEST_F(IoFixture, IoSendReentrancyIsLoudTest){
 		// Признак найденного доклада о возвратном заходе
 		bool reported = false;
 		// Выполняем перебор всех пойманных записей
-		for(const auto & item : critical){
+		for(const auto & item : * critical){
 			// Если запись сообщает о возвратном заходе в отправку
 			if(item.find("re-entered") != std::string::npos){
 				// Запоминаем найденный доклад
@@ -8403,7 +8539,7 @@ TEST_F(IoFixture, IoSendReentrancyIsLoudTest){
 		}
 		// Доклад о возвратном заходе обязан быть
 		ASSERT_TRUE(reported) << "возвратность оборвана МОЛЧА: достигнутая глубина " << reached
-			<< ", записей «критично» " << critical.size();
+			<< ", записей «критично» " << critical->size();
 	}
 	// Сносим заведённый узел
 	this->_io->destroy(eid);

@@ -2164,6 +2164,613 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 	#endif
 }
 /**
+ * @brief Функция сличения проверок окружения с эталонной реализацией
+ *
+ * @details Проверки окружения выводят выражение из регулярного подмножества
+ *          и исполняются одним лишь путём с возвратом. Порождение это берёт
+ *          тела длины постоянной, переменной и неограниченной, обрамляет их
+ *          проверками всех четырёх видов и вложенными парами их, приписывает
+ *          кванторы и хвосты. Сличаются не одни границы совпадения, но и ВСЕ
+ *          захваты: порядок перебора длин ретроспективной проверки исход её
+ *          не правит - она нулевой ширины, - а захваты тела правит целиком,
+ *          и разница эта иначе осталась бы незамеченной.
+ *
+ * @param samples количество сличаемых образцов
+ * @param seed    зерно порождения образцов сличения
+ *
+ */
+void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t seed) noexcept(false) {
+	/**
+	 * Если сборка выполняется со сличением с эталонной реализацией
+	 */
+	#if defined(AWH_TEST_PCRE2)
+		/**
+		 * @brief Набор тел проверок окружения
+		 *
+		 */
+		static const char * BODIES[] = {
+			"a", "ab", "a|bb", "a|b", "a{2}", "a{1,2}", "[ab]", "\\w", "a*", "a+",
+			"(a)", "(?:ab|c)", "\\d{1,3}", "abc", "x?", "(?<in>b)", "a\\K", "^a", "a$",
+			"(a)\\1", "\\1", "(a)(b)", "(?:(a)|(b))", "(a)?b", "\\k<in>"
+		};
+		/**
+		 * @brief Набор обрамлений проверками окружения
+		 *
+		 */
+		static const char * LOOKS[] = {
+			"(?=%s)", "(?!%s)", "(?<=%s)", "(?<!%s)", "(?>%s)", "(?:%s)",
+			"(?=(?:%s))", "(?<=(?<=%s))", "(?=(?<=%s))", "(?<=(?=%s))", "(?!(?!%s))",
+			"(?*%s)", "(?<*%s)", "(?*(?:%s))", "(?*(?*%s))", "(?=(?*%s))", "(?*(?=%s))",
+			"(*pla:%s)", "(*nla:%s)", "(*plb:%s)", "(*nlb:%s)", "(*napla:%s)", "(*naplb:%s)",
+			"(*atomic:%s)", "(*positive_lookahead:%s)", "(*non_atomic_positive_lookahead:%s)"
+		};
+		/**
+		 * @brief Набор кванторов повторения
+		 *
+		 */
+		static const char * QUANTS[] = {"", "*", "+", "?", "{1,2}", "*+", "??"};
+		/**
+		 * @brief Набор хвостов, проверке приписываемых
+		 *
+		 */
+		static const char * TAILS[] = {
+			"", "a", "b", "(a)", "\\w", ".", "$", "\\b", "c*", "(?<in>a)", "(a)\\1"
+		};
+		/**
+		 * @brief Набор текстов сопоставления
+		 *
+		 */
+		static const char * TEXTS[] = {
+			"a", "ab", "abc", "b", "ba", "aab", "", "x", "aa", "abab", "cab", "bba"
+		};
+		// Получаем количества составных частей порождения
+		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		const size_t looks = (sizeof(LOOKS) / sizeof(LOOKS[0]));
+		const size_t quants = (sizeof(QUANTS) / sizeof(QUANTS[0]));
+		const size_t tails = (sizeof(TAILS) / sizeof(TAILS[0]));
+		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
+		// Создаём объект работы с регулярными выражениями
+		regexp_t regexp(::logger());
+		// Создаём генератор порождения образцов сличения
+		mt19937 gen(seed);
+		// Количество сличённых образцов
+		size_t checked = 0;
+		/**
+		 * Выполняем обход набора образцов сличения
+		 */
+		for(size_t sample = 0; sample < samples; sample++) {
+			// Порождаемое регулярное выражение
+			string pattern;
+			// Получаем количество составных частей выражения
+			const size_t parts = (1 + (gen() % 2));
+			/**
+			 * Выполняем сборку выражения из составных частей
+			 */
+			for(size_t part = 0; part < parts; part++) {
+				// Получаем обрамление проверкою окружения
+				const string look(LOOKS[gen() % looks]);
+				// Получаем позицию подстановки тела проверки
+				const size_t spot = look.find("%s");
+				// Выполняем обрамление тела проверкою окружения
+				pattern.append(look.substr(0, spot)).append(BODIES[gen() % bodies]).append(look.substr(spot + 2));
+				// Выполняем добавление квантора повторения
+				pattern.append(QUANTS[gen() % quants]);
+				// Выполняем добавление хвоста выражения
+				pattern.append(TAILS[gen() % tails]);
+			}
+			// Код ошибки сборки эталонного регулярного выражения
+			int code = 0;
+			// Смещение ошибки сборки эталонного регулярного выражения
+			PCRE2_SIZE spot = 0;
+			// Выполняем сборку эталонного регулярного выражения
+			pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern.c_str()),
+			 pattern.size(), 0, &code, &spot, nullptr);
+			// Выполняем сборку регулярного выражения движком
+			const auto expression = regexp.build(pattern);
+			// Получаем вердикт сборки регулярного выражения движком
+			const bool built = static_cast <bool> (expression);
+			// Выполняем сличение вердиктов сборки выражения
+			ASSERT_EQ(built, (reference != nullptr)) << "«" << pattern << "»";
+			/**
+			 * Если выражение собрано не обеими сторонами
+			 */
+			if(!built)
+				// Переходим к следующему образцу сличения
+				continue;
+			// Получаем текст сопоставления образца
+			const string text = TEXTS[gen() % texts];
+			// Выполняем размещение набора границ эталонного совпадения
+			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
+			// Выполняем сопоставление эталонного регулярного выражения
+			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			// Получаем набор границ эталонного совпадения
+			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
+			// Получаем вердикт эталонного сопоставления
+			const bool expected = (result > 0);
+			// Набор границ совпадения и захваченных групп
+			vector <pair <size_t, size_t>> obtained;
+			// Получаем вердикт сопоставления движком
+			const bool matched = regexp.match(text, expression, obtained);
+			// Увеличиваем количество сличённых образцов
+			checked++;
+			/**
+			 * Если вердикты сопоставления расходятся
+			 */
+			if(matched != expected) {
+				// Выполняем освобождение набора границ эталонного совпадения
+				::pcre2_match_data_free(data);
+				// Выполняем освобождение эталонного регулярного выражения
+				::pcre2_code_free(reference);
+				// Выполняем сличение вердиктов сопоставления
+				ASSERT_EQ(matched, expected) << "«" << pattern << "» на тексте «" << text << "»";
+			}
+			/**
+			 * Если совпадение обеими сторонами найдено
+			 */
+			if(expected) {
+				// Получаем количество границ эталонного совпадения
+				const size_t count = static_cast <size_t> (result);
+				// Получаем границы эталонного совпадения
+				const size_t begin = static_cast <size_t> (bounds[0]);
+				const size_t finish = static_cast <size_t> (bounds[1]);
+				// Границы захваченных групп эталонного совпадения
+				vector <pair <size_t, size_t>> captures;
+				/**
+				 * Выполняем сбор границ захваченных групп эталонного совпадения
+				 */
+				for(size_t group = 1; (group < count) && (group < obtained.size()); group++) {
+					// Выполняем добавление границ очередной захваченной группы
+					captures.emplace_back(
+					 ((bounds[group * 2] == PCRE2_UNSET) ? string::npos : static_cast <size_t> (bounds[group * 2])),
+					 ((bounds[(group * 2) + 1] == PCRE2_UNSET) ? string::npos : static_cast <size_t> (bounds[(group * 2) + 1]))
+					);
+				}
+				// Выполняем освобождение набора границ эталонного совпадения
+				::pcre2_match_data_free(data);
+				// Выполняем освобождение эталонного регулярного выражения
+				::pcre2_code_free(reference);
+				// Выполняем сличение начальной границы совпадения
+				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте «" << text << "»";
+				// Выполняем сличение конечной границы совпадения
+				ASSERT_EQ(obtained.front().second, finish) << "«" << pattern << "» на тексте «" << text << "»";
+				/**
+				 * Выполняем сличение границ захваченных групп
+				 */
+				for(size_t group = 0; group < captures.size(); group++) {
+					// Выполняем сличение начальной границы захваченной группы
+					ASSERT_EQ(obtained.at(group + 1).first, captures.at(group).first)
+					 << "«" << pattern << "» на тексте «" << text << "», группа " << (group + 1);
+					// Выполняем сличение конечной границы захваченной группы
+					ASSERT_EQ(obtained.at(group + 1).second, captures.at(group).second)
+					 << "«" << pattern << "» на тексте «" << text << "», группа " << (group + 1);
+				}
+			// Иначе выполняем освобождение набора границ и выражения
+			} else {
+				// Выполняем освобождение набора границ эталонного совпадения
+				::pcre2_match_data_free(data);
+				// Выполняем освобождение эталонного регулярного выражения
+				::pcre2_code_free(reference);
+			}
+		}
+		// Выполняем проверку сличения образцов
+		EXPECT_GT((checked * 2), samples);
+	#endif
+}
+/**
+ * @brief Функция сличения прогонов письменности с эталонной реализацией
+ *
+ * @details Прогон письменности сводит письменности сопоставленного текста
+ *          пересечением наборов, и правило это одним лишь путём с возвратом
+ *          и исполняется: порождение собирает прогоны из тел, обрамлений
+ *          и хвостов, сопоставляя их текстами письменностей вперемешку.
+ *
+ * @param samples количество сличаемых образцов
+ * @param seed    зерно порождения образцов сличения
+ *
+ */
+void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t seed) noexcept(false) {
+	/**
+	 * Если сборка выполняется со сличением с эталонной реализацией
+	 */
+	#if defined(AWH_TEST_PCRE2)
+		/**
+		 * @brief Набор тел прогонов письменности
+		 *
+		 */
+		static const char * BODIES[] = {
+			".+", ".*", ".{1,3}", "\\X+", "\\w+", "[^!]+", ".+?", "\\p{L}+",
+			"(?:.|.)+", ".{2}", "\\d+", "[\\p{L}\\p{N}]+", ".", "..", "..."
+		};
+		/**
+		 * @brief Набор обрамлений прогонами письменности
+		 *
+		 */
+		static const char * LOOKS[] = {
+			"(*sr:%s)", "(*asr:%s)", "(*script_run:%s)", "(*atomic_script_run:%s)",
+			"(*sr:(%s))", "(*asr:(%s))", "(?:(*sr:%s))", "(*sr:(*sr:%s))",
+			"(*sr:%s)?", "(?=(*sr:%s))", "(*sr:%s|x)"
+		};
+		/**
+		 * @brief Набор кванторов повторения
+		 *
+		 */
+		static const char * QUANTS[] = {""};
+		/**
+		 * @brief Набор хвостов, прогону приписываемых
+		 *
+		 */
+		static const char * TAILS[] = {"", "!", ".*", "$", "\\z", "x?"};
+		/**
+		 * @brief Набор текстов сопоставления
+		 *
+		 * @details Тексты собраны письменностями вперемешку: латиница с греческим,
+		 *          кириллица с латиницей, письменности восточноазиатские в
+		 *          сочетаниях допустимых и недопустимых, цифры наборов
+		 *          разных да знаки письменности общей.
+		 *
+		 * @note Связка деванагари «согласный - соединитель - согласный» сюда
+		 *       НЕ включена: правило «GB9c» стандарта UAX #29 эталон
+		 *       не применяет, отчего «\\X» даёт кластеры разной длины.
+		 *       Расхождение это описано отступлением намеренным
+		 *       и сличением прогонов письменности не проверяется.
+		 *
+		 */
+		static const char * TEXTS[] = {
+			"a1", "1a", "a_b", "a b", "a\u03b1", "\u03b1\u0430", "\u65e5\u3054",
+			"\u65e5\ud55c", "\u3054\ud55c", "\u65e5\u30fb\u3054", "\u0661\u0662",
+			"12", "1\u0662", "\u0639\u0661", "abc", "\u65e5\u672c\u8a9e", "\u00e0",
+			"\u0300a", "a\u30fbb", "\u0639\u0627", "\u0430\u0431\u0432", "a", "",
+			"!", "a!b", "\u03b1\u03b2\u03b3", "\u4e00\u30a2", "1\u0430",
+			"\u05d0a", "\u0928\u093f"
+		};
+				// Получаем количества составных частей порождения
+		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		const size_t looks = (sizeof(LOOKS) / sizeof(LOOKS[0]));
+		const size_t quants = (sizeof(QUANTS) / sizeof(QUANTS[0]));
+		const size_t tails = (sizeof(TAILS) / sizeof(TAILS[0]));
+		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
+		// Создаём объект работы с регулярными выражениями
+		regexp_t regexp(::logger());
+		// Создаём генератор порождения образцов сличения
+		mt19937 gen(seed);
+		// Количество сличённых образцов
+		size_t checked = 0;
+		/**
+		 * Выполняем обход набора образцов сличения
+		 */
+		for(size_t sample = 0; sample < samples; sample++) {
+			// Порождаемое регулярное выражение
+			string pattern("(*UTF)");
+			// Получаем количество составных частей выражения
+			const size_t parts = (1 + (gen() % 2));
+			/**
+			 * Выполняем сборку выражения из составных частей
+			 */
+			for(size_t part = 0; part < parts; part++) {
+				// Получаем обрамление проверкою окружения
+				const string look(LOOKS[gen() % looks]);
+				// Получаем позицию подстановки тела проверки
+				const size_t spot = look.find("%s");
+				// Выполняем обрамление тела проверкою окружения
+				pattern.append(look.substr(0, spot)).append(BODIES[gen() % bodies]).append(look.substr(spot + 2));
+				// Выполняем добавление квантора повторения
+				pattern.append(QUANTS[gen() % quants]);
+				// Выполняем добавление хвоста выражения
+				pattern.append(TAILS[gen() % tails]);
+			}
+			// Код ошибки сборки эталонного регулярного выражения
+			int code = 0;
+			// Смещение ошибки сборки эталонного регулярного выражения
+			PCRE2_SIZE spot = 0;
+			// Выполняем сборку эталонного регулярного выражения
+			pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern.c_str()),
+			 pattern.size(), 0, &code, &spot, nullptr);
+			// Выполняем сборку регулярного выражения движком
+			const auto expression = regexp.build(pattern);
+			// Получаем вердикт сборки регулярного выражения движком
+			const bool built = static_cast <bool> (expression);
+			// Выполняем сличение вердиктов сборки выражения
+			ASSERT_EQ(built, (reference != nullptr)) << "«" << pattern << "»";
+			/**
+			 * Если выражение собрано не обеими сторонами
+			 */
+			if(!built)
+				// Переходим к следующему образцу сличения
+				continue;
+			// Получаем текст сопоставления образца
+			const string text = TEXTS[gen() % texts];
+			// Выполняем размещение набора границ эталонного совпадения
+			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
+			// Выполняем сопоставление эталонного регулярного выражения
+			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			// Получаем набор границ эталонного совпадения
+			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
+			// Получаем вердикт эталонного сопоставления
+			const bool expected = (result > 0);
+			// Набор границ совпадения и захваченных групп
+			vector <pair <size_t, size_t>> obtained;
+			// Получаем вердикт сопоставления движком
+			const bool matched = regexp.match(text, expression, obtained);
+			// Увеличиваем количество сличённых образцов
+			checked++;
+			/**
+			 * Если вердикты сопоставления расходятся
+			 */
+			if(matched != expected) {
+				// Выполняем освобождение набора границ эталонного совпадения
+				::pcre2_match_data_free(data);
+				// Выполняем освобождение эталонного регулярного выражения
+				::pcre2_code_free(reference);
+				// Выполняем сличение вердиктов сопоставления
+				ASSERT_EQ(matched, expected) << "«" << pattern << "» на тексте «" << text << "»";
+			}
+			/**
+			 * Если совпадение обеими сторонами найдено
+			 */
+			if(expected) {
+				// Получаем количество границ эталонного совпадения
+				const size_t count = static_cast <size_t> (result);
+				// Получаем границы эталонного совпадения
+				const size_t begin = static_cast <size_t> (bounds[0]);
+				const size_t finish = static_cast <size_t> (bounds[1]);
+				// Границы захваченных групп эталонного совпадения
+				vector <pair <size_t, size_t>> captures;
+				/**
+				 * Выполняем сбор границ захваченных групп эталонного совпадения
+				 */
+				for(size_t group = 1; (group < count) && (group < obtained.size()); group++) {
+					// Выполняем добавление границ очередной захваченной группы
+					captures.emplace_back(
+					 ((bounds[group * 2] == PCRE2_UNSET) ? string::npos : static_cast <size_t> (bounds[group * 2])),
+					 ((bounds[(group * 2) + 1] == PCRE2_UNSET) ? string::npos : static_cast <size_t> (bounds[(group * 2) + 1]))
+					);
+				}
+				// Выполняем освобождение набора границ эталонного совпадения
+				::pcre2_match_data_free(data);
+				// Выполняем освобождение эталонного регулярного выражения
+				::pcre2_code_free(reference);
+				// Выполняем сличение начальной границы совпадения
+				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте «" << text << "»";
+				// Выполняем сличение конечной границы совпадения
+				ASSERT_EQ(obtained.front().second, finish) << "«" << pattern << "» на тексте «" << text << "»";
+				/**
+				 * Выполняем сличение границ захваченных групп
+				 */
+				for(size_t group = 0; group < captures.size(); group++) {
+					// Выполняем сличение начальной границы захваченной группы
+					ASSERT_EQ(obtained.at(group + 1).first, captures.at(group).first)
+					 << "«" << pattern << "» на тексте «" << text << "», группа " << (group + 1);
+					// Выполняем сличение конечной границы захваченной группы
+					ASSERT_EQ(obtained.at(group + 1).second, captures.at(group).second)
+					 << "«" << pattern << "» на тексте «" << text << "», группа " << (group + 1);
+				}
+			// Иначе выполняем освобождение набора границ и выражения
+			} else {
+				// Выполняем освобождение набора границ эталонного совпадения
+				::pcre2_match_data_free(data);
+				// Выполняем освобождение эталонного регулярного выражения
+				::pcre2_code_free(reference);
+			}
+		}
+		// Выполняем проверку сличения образцов
+		EXPECT_GT((checked * 2), samples);
+	#endif
+}
+/**
+ * @brief Функция проверки условия внутри ретроспективной проверки
+ *
+ * @param pattern сличаемое регулярное выражение
+ *
+ * @return        результат проверки наличия условия внутри проверки
+ *
+ * @details Эталонная реализация ретроспективную проверку, условие несущую,
+ *          сопоставляет с позиции «текущая минус наименьшая длина» и КОНЦА
+ *          сопоставления тела не сверяет вовсе: «(?<=x(?(1)a))(b)» на тексте
+ *          «xyb» она принимает, хотя тело «x» кончается позицией первой,
+ *          а не второй. Расхождение это описано отступлением намеренным,
+ *          и образцы такие сличению не подлежат - молчаливым послаблением
+ *          оно не прикрывается.
+ *
+ *          Отбор ведётся по выражению целиком, а не по телу проверки: условие
+ *          вправе лежать и в группе, проверкою вызываемой, - образец
+ *          «(?<=(?+1)){1,2}((?(1)a))*+» тому свидетель.
+ *
+ */
+bool conditioned(const string & pattern) noexcept {
+	/**
+	 * Если выражение ретроспективной проверки не несёт
+	 */
+	if((pattern.find("(?<=") == string::npos) && (pattern.find("(?<!") == string::npos) &&
+	 (pattern.find("(?<*") == string::npos) && (pattern.find("lookbehind:") == string::npos) &&
+	 (pattern.find("(*plb:") == string::npos) && (pattern.find("(*nlb:") == string::npos) &&
+	 (pattern.find("(*naplb:") == string::npos))
+		// Выводим результат отсутствия условия при ретроспективной проверке
+		return false;
+	// Выводим результат проверки наличия условия в выражении
+	return (pattern.find("(?(") != string::npos);
+}
+/**
+ * @brief Функция сличения вызовов подпрограмм и условий с эталонной реализацией
+ *
+ * @details Вызовы подпрограмм, рекурсия, условные выражения и притяжательные
+ *          кванторы исполняются одним лишь путём с возвратом и разбору
+ *          основному не подлежат вовсе: порождение это собирает выражение
+ *          из тел, вызовов, условий и обрамлений, кванторами их приписывая.
+ *
+ * @param samples количество сличаемых образцов
+ * @param seed    зерно порождения образцов сличения
+ *
+ */
+void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t seed) noexcept(false) {
+	/**
+	 * Если сборка выполняется со сличением с эталонной реализацией
+	 */
+	#if defined(AWH_TEST_PCRE2)
+		/**
+		 * @brief Набор тел, подпрограммно вызываемых
+		 *
+		 */
+		static const char * BODIES[] = {
+			"a", "ab", "[ab]", "\\w", "a|b", "ab?", "a+", "(?:ab)", "\\d", "x"
+		};
+		/**
+		 * @brief Набор вызовов подпрограмм и рекурсии
+		 *
+		 */
+		static const char * CALLS[] = {
+			"(?R)", "(?1)", "(?2)", "(?0)", "(?+1)", "(?-1)", "(?&имя)", "(?P>имя)", "(?3)"
+		};
+		/**
+		 * @brief Набор условных выражений
+		 *
+		 */
+		static const char * CONDS[] = {
+			"(?(1)a|b)", "(?(2)a|b)", "(?(1)a)", "(?(<имя>)a|b)", "(?('имя')a|b)",
+			"(?(R)a|b)", "(?(R1)a|b)", "(?(R&имя)a|b)", "(?(?=a)b|c)", "(?(?<=a)b|c)",
+			"(?(DEFINE)(?<имя>ab))", "(?(0)a|b)", "(?(99)a|b)"
+		};
+		/**
+		 * @brief Набор кванторов повторения, притяжательные в том числе
+		 *
+		 */
+		static const char * QUANTS[] = {
+			"", "*", "+", "?", "*+", "++", "?+", "{2}", "{1,2}", "{1,2}+", "*?", "+?"
+		};
+		/**
+		 * @brief Набор обрамлений составных частей выражения
+		 *
+		 */
+		static const char * WRAPS[] = {
+			"(%s)", "(?<имя>%s)", "(?:%s)", "(?>%s)", "(?=%s)", "(?<=%s)", "%s"
+		};
+		/**
+		 * @brief Набор текстов сопоставления
+		 *
+		 */
+		static const char * TEXTS[] = {
+			"a", "ab", "aab", "abab", "", "b", "x", "aaa", "abc", "ba", "aba", "0", "a0"
+		};
+		// Получаем количества составных частей порождения
+		const size_t bodies = (sizeof(BODIES) / sizeof(BODIES[0]));
+		const size_t calls = (sizeof(CALLS) / sizeof(CALLS[0]));
+		const size_t conds = (sizeof(CONDS) / sizeof(CONDS[0]));
+		const size_t quants = (sizeof(QUANTS) / sizeof(QUANTS[0]));
+		const size_t wraps = (sizeof(WRAPS) / sizeof(WRAPS[0]));
+		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
+		// Создаём объект работы с регулярными выражениями
+		regexp_t regexp(::logger());
+		// Создаём генератор порождения образцов сличения
+		mt19937 gen(seed);
+		// Количество сличённых образцов
+		size_t checked = 0;
+		/**
+		 * Выполняем обход набора образцов сличения
+		 */
+		for(size_t sample = 0; sample < samples; sample++) {
+			// Порождаемое регулярное выражение
+			string pattern;
+			// Получаем количество составных частей выражения
+			const size_t parts = (1 + (gen() % 3));
+			/**
+			 * Выполняем сборку выражения из составных частей
+			 */
+			for(size_t part = 0; part < parts; part++) {
+				// Составная часть порождаемого выражения
+				string piece;
+				/**
+				 * Определяем вид составной части выражения
+				 */
+				switch(gen() % 4) {
+					// Выполняем установку тела, подпрограммно вызываемого
+					case 0: piece.assign(BODIES[gen() % bodies]); break;
+					// Выполняем установку вызова подпрограммы
+					case 1: piece.assign(CALLS[gen() % calls]); break;
+					// Выполняем установку условного выражения
+					case 2: piece.assign(CONDS[gen() % conds]); break;
+					// Выполняем установку тела, подпрограммно вызываемого
+					case 3: piece.assign(BODIES[gen() % bodies]); break;
+				}
+				// Получаем обрамление составной части выражения
+				const string wrap(WRAPS[gen() % wraps]);
+				// Получаем позицию подстановки составной части
+				const size_t spot = wrap.find("%s");
+				// Выполняем обрамление составной части выражения
+				pattern.append(wrap.substr(0, spot)).append(piece).append(wrap.substr(spot + 2));
+				// Выполняем добавление квантора повторения
+				pattern.append(QUANTS[gen() % quants]);
+			}
+			// Код ошибки сборки эталонного регулярного выражения
+			int code = 0;
+			// Смещение ошибки сборки эталонного регулярного выражения
+			PCRE2_SIZE spot = 0;
+			// Выполняем сборку эталонного регулярного выражения
+			pcre2_code * reference = ::pcre2_compile(reinterpret_cast <PCRE2_SPTR> (pattern.c_str()),
+			 pattern.size(), 0, &code, &spot, nullptr);
+			// Выполняем сборку регулярного выражения движком
+			const auto expression = regexp.build(pattern);
+			// Получаем вердикт сборки регулярного выражения движком
+			const bool built = static_cast <bool> (expression);
+			/**
+			 * Если выражение несёт условие внутри ретроспективной проверки
+			 */
+			if(conditioned(pattern)) {
+				/**
+				 * Если эталонное выражение собрано
+				 */
+				if(reference != nullptr)
+					// Выполняем освобождение эталонного регулярного выражения
+					::pcre2_code_free(reference);
+				// Переходим к следующему образцу сличения
+				continue;
+			}
+			// Выполняем сличение вердиктов сборки выражения
+			ASSERT_EQ(built, (reference != nullptr)) << "«" << pattern << "»";
+			/**
+			 * Если выражение собрано не обеими сторонами
+			 */
+			if(!built)
+				// Переходим к следующему образцу сличения
+				continue;
+			// Получаем текст сопоставления образца
+			const string text = TEXTS[gen() % texts];
+			// Выполняем размещение набора границ эталонного совпадения
+			pcre2_match_data * data = ::pcre2_match_data_create_from_pattern(reference, nullptr);
+			// Выполняем сопоставление эталонного регулярного выражения
+			const int result = ::pcre2_match(reference, reinterpret_cast <PCRE2_SPTR> (text.c_str()), text.size(), 0, 0, data, nullptr);
+			// Получаем набор границ эталонного совпадения
+			PCRE2_SIZE * bounds = ::pcre2_get_ovector_pointer(data);
+			// Получаем вердикт эталонного сопоставления
+			const bool expected = (result > 0);
+			// Получаем границы эталонного совпадения
+			const size_t begin = (expected ? static_cast <size_t> (bounds[0]) : 0);
+			const size_t finish = (expected ? static_cast <size_t> (bounds[1]) : 0);
+			// Выполняем освобождение набора границ эталонного совпадения
+			::pcre2_match_data_free(data);
+			// Выполняем освобождение эталонного регулярного выражения
+			::pcre2_code_free(reference);
+			// Набор границ совпадения и захваченных групп
+			vector <pair <size_t, size_t>> obtained;
+			// Получаем вердикт сопоставления движком
+			const bool matched = regexp.match(text, expression, obtained);
+			// Увеличиваем количество сличённых образцов
+			checked++;
+			// Выполняем сличение вердиктов сопоставления
+			ASSERT_EQ(matched, expected) << "«" << pattern << "» на тексте «" << text << "»";
+			/**
+			 * Если совпадение обеими сторонами найдено
+			 */
+			if(expected) {
+				// Выполняем сличение начальной границы совпадения
+				ASSERT_EQ(obtained.front().first, begin) << "«" << pattern << "» на тексте «" << text << "»";
+				// Выполняем сличение конечной границы совпадения
+				ASSERT_EQ(obtained.front().second, finish) << "«" << pattern << "» на тексте «" << text << "»";
+			}
+		}
+		// Выполняем проверку сличения образцов
+		EXPECT_GT((checked * 5), samples);
+	#endif
+}
+/**
  * @brief Функция сличения кванторов повторения с эталонной реализацией
  *
  * @details Основное порождение кванторы берёт девятью видами готовыми, тогда
@@ -2514,7 +3121,20 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		 */
 		static const char * SETTINGS[] = {
 			"(?i)", "(?-i)", "(?s)", "(?-s)", "(?m)", "(?-m)", "(?x)", "(?-x)",
-			"(?U)", "(?-U)", "(?n)", "(?^)", "(?^i)", "(?^s)", "(?im)", "(?i-s)"
+			"(?U)", "(?-U)", "(?n)", "(?^)", "(?^i)", "(?^s)", "(?im)", "(?i-s)",
+			/**
+			 * Указания начала выражения
+			 *
+			 * @details Указания эти стоят лишь в начале выражения, отчего
+			 *          порождение ставит их первою частью: вторая часть
+			 *          с указанием таким выражение отвергает - у обеих
+			 *          сторон разом, отчего вердикты сборки сходятся.
+			 *
+			 */
+			"(*NOTEMPTY)", "(*NOTEMPTY_ATSTART)", "(*NO_DOTSTAR_ANCHOR)",
+			"(*NO_AUTO_POSSESS)", "(*NO_START_OPT)", "(*NO_JIT)", "(*UTF)",
+			"(*UCP)", "(*LF)", "(*CR)", "(*CRLF)", "(*ANYCRLF)", "(*ANY)",
+			"(*BSR_ANYCRLF)", "(*BSR_UNICODE)", "(*LIMIT_MATCH=1000)"
 		};
 		/**
 		 * @brief Набор областей действия внутристрочных признаков
@@ -2684,6 +3304,54 @@ TEST(Regex, ReferenceEscapes) {
 TEST(Regex, DISABLED_ReferenceEscapesThorough) {
 	// Выполняем сличение последовательностей на наборе образцов расширенном
 	escapes(300000, 20260919);
+}
+/**
+ * @brief Сличение проверок окружения с эталонной реализацией
+ *
+ */
+/**
+ * @brief Проверка сличения прогонов письменности с эталонной реализацией
+ *
+ */
+TEST(Regex, ReferenceScriptRuns) {
+	// Выполняем сличение прогонов письменности на наборе образцов
+	runs(20000, 20260923);
+}
+/**
+ * @brief Проверка сличения прогонов письменности числом образцов наибольшим
+ *
+ */
+TEST(Regex, DISABLED_ReferenceScriptRunsThorough) {
+	// Выполняем сличение прогонов письменности числом образцов наибольшим
+	runs(500000, 20260923);
+}
+TEST(Regex, ReferenceLookarounds) {
+	// Выполняем сличение проверок окружения на наборе образцов
+	lookarounds(20000, 20260922);
+}
+/**
+ * @brief Сличение проверок окружения, полное
+ *
+ */
+TEST(Regex, DISABLED_ReferenceLookaroundsThorough) {
+	// Выполняем сличение проверок окружения на наборе образцов расширенном
+	lookarounds(300000, 20260923);
+}
+/**
+ * @brief Сличение вызовов подпрограмм и условий с эталонной реализацией
+ *
+ */
+TEST(Regex, ReferenceSubroutines) {
+	// Выполняем сличение вызовов подпрограмм и условий на наборе образцов
+	subroutines(20000, 20260920);
+}
+/**
+ * @brief Сличение вызовов подпрограмм и условий, полное
+ *
+ */
+TEST(Regex, DISABLED_ReferenceSubroutinesThorough) {
+	// Выполняем сличение вызовов и условий на наборе образцов расширенном
+	subroutines(300000, 20260921);
 }
 /**
  * @brief Сличение кванторов повторения с эталонной реализацией

@@ -138,7 +138,9 @@ namespace awh {
 			RESUME    = 0x13, // Возврат из рекурсивного вызова подвыражения
 			GRAPHEME  = 0x14, // Сопоставление расширенного графемного кластера
 			ACCEPT    = 0x15, // Завершение сопоставления с успехом в текущей позиции
-			CONTROL   = 0x16  // Размещение точки возврата глагола управления
+			CONTROL   = 0x16, // Размещение точки возврата глагола управления
+			RESET     = 0x17, // Восстановление позиции сопоставления из ячейки
+			SCRIPT    = 0x18  // Проверка прогона письменности от позиции из ячейки
 		};
 
 		/**
@@ -483,6 +485,48 @@ namespace awh {
 					 * \~
 					 */
 					address_t alternate;
+					/**
+					 * \~russian
+					 * Флаг отсечения точек возврата, накопленных телом проверки
+					 *
+					 * @details Проверка окружения обыкновенная атомарна: точки возврата,
+					 *          телом её накопленные, отсекаются выполнением проверки,
+					 *          отчего отказ последующего текста тела не пересопоставляет.
+					 *          Проверка не отсекающая точки сохраняет, отчего отказ
+					 *          последующего текста продолжается перебором тела.
+					 *          Хранится байтом по той же причине, что и признак отрицания
+					 *
+					 * \~english
+					 * Flag of cutting off the backtracking points accumulated by the body of the check
+					 * @details An ordinary lookaround check is atomic: the backtracking points
+					 *          accumulated by its body are cut off by the fulfilment of the check,
+					 *          whereby a failure of the following text does not rematch the body.
+					 *          A non-atomic check keeps the points, whereby a failure
+					 *          of the following text continues with a walk over the body.
+					 *          Stored as a byte for the same reason as the negation indication
+					 *
+					 * \~
+					 */
+					uint8_t atomic;
+					/**
+					 * \~russian
+					 * Номер ячейки позиции начала не отсекающей проверки
+					 *
+					 * @details Ячейка отведена проверке не отсекающей: тело её исполняется
+					 *          не отдельным запуском, а продолжением исполнения текущего,
+					 *          отчего позиция начала проверки обязана пережить тело.
+					 *          Значение недостижимое означает проверку обыкновенную
+					 *
+					 * \~english
+					 * Number of the cell of the starting position of a non-atomic check
+					 * @details The cell is allotted to a non-atomic check: its body is executed
+					 *          not as a separate run but as a continuation of the current one,
+					 *          whereby the starting position of the check must outlive the body.
+					 *          An unreachable value means an ordinary check
+					 *
+					 * \~
+					 */
+					uint32_t cell;
 				} look;
 				/**
 				 * \~russian
@@ -499,6 +543,40 @@ namespace awh {
 					// Номер группы вызываемого подвыражения
 					uint32_t number;
 				} call;
+				/**
+				 * \~russian
+				 * @brief Операнды инструкции восстановления позиции сопоставления
+				 *
+				 * \~english
+				 * @brief Operands of the instruction restoring the matching position
+				 *
+				 * \~
+				 */
+				struct {
+					// Номер ячейки позиции начала не отсекающей проверки
+					uint32_t cell;
+					// Адрес инструкции, следующей за проверкой окружения
+					address_t target;
+					/**
+					 * \~russian
+					 * Флаг проверки текста, предшествующего позиции сопоставления
+					 *
+					 * @note Хранится байтом по той же причине, что и признак отрицания:
+					 *       тело ретроспективной проверки обязано завершиться
+					 *       в позиции её начала, тогда как телу опережающей
+					 *       проверки позиция завершения безразлична
+					 *
+					 * \~english
+					 * Flag of checking the text preceding the matching position
+					 * @note Stored as a byte for the same reason as the negation indication:
+					 *       the body of a lookbehind check must end
+					 *       at the position of its beginning, whereas for the body of a lookahead
+					 *       check the ending position is immaterial
+					 *
+					 * \~
+					 */
+					uint8_t backward;
+				} reset;
 				/**
 				 * \~russian
 				 * @brief Операнды инструкции перехода по ветвям условного выражения

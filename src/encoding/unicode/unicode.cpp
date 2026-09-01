@@ -143,6 +143,69 @@ namespace {
  * @return     идентификатор общей категории символа
  *
  */
+/**
+ * @brief Функция извлечения набора письменностей символа
+ *
+ * @param code   кодовое значение символа
+ * @param output набор номеров письменностей символа
+ * @param size   размер набора номеров письменностей
+ *
+ * @return       количество письменностей, в набор выведенных
+ *
+ */
+size_t awh::unicode::scripts(const uint32_t code, uint16_t * output, const size_t size) noexcept {
+	// Количество письменностей, в набор выведенных
+	size_t result = 0;
+	/**
+	 * Если набор номеров письменностей не задан
+	 */
+	if((output == nullptr) || (size == 0))
+		// Выводим количество письменностей, в набор выведенных
+		return result;
+	// Выполняем поиск диапазона расширений, содержащего кодовое значение
+	const size_t index = search(EXTENSIONS, EXTENSIONS_COUNT, code, 0, EXTENSIONS_COUNT);
+	/**
+	 * Если диапазон расширений, содержащий кодовое значение, обнаружен
+	 */
+	if(index < EXTENSIONS_COUNT) {
+		// Получаем смещение набора письменностей расширения
+		const uint32_t * offset = (EXTENSION_OFFSETS + EXTENSIONS[index].value);
+		/**
+		 * Выполняем обход набора письменностей расширения
+		 */
+		for(size_t i = (* offset); EXTENSION_SETS[i] != EXTENSION_END; i++) {
+			/**
+			 * Если набор номеров письменностей исчерпан
+			 */
+			if(result >= size)
+				// Выводим количество письменностей, в набор выведенных
+				return result;
+			// Выполняем добавление письменности расширения в набор
+			output[result++] = EXTENSION_SETS[i];
+		}
+		// Выводим количество письменностей, в набор выведенных
+		return result;
+	}
+	// Выполняем поиск диапазона письменностей, содержащего кодовое значение
+	const size_t spot = search(SCRIPTS, SCRIPTS_COUNT, code, 0, SCRIPTS_COUNT);
+	/**
+	 * Если диапазон письменностей, содержащий кодовое значение, обнаружен
+	 */
+	if(spot < SCRIPTS_COUNT)
+		// Выполняем добавление письменности символа в набор
+		output[result++] = SCRIPTS[spot].value;
+	/**
+	 * Если письменность символа не задана вовсе
+	 *
+	 * @details Символ неназначенный отведён номером, следующим за письменностями
+	 *          заданными: прогон письменности им прерывается наравне
+	 *          с письменностью несовместимой.
+	 *
+	 */
+	else output[result++] = static_cast <uint16_t> (SCRIPTS_UNKNOWN);
+	// Выводим количество письменностей, в набор выведенных
+	return result;
+}
 uint16_t awh::unicode::general(const uint32_t code) noexcept {
 	// Выполняем поиск диапазона, содержащего кодовое значение символа
 	const size_t index = search(CATEGORIES, CATEGORIES_COUNT, code, 0, CATEGORIES_COUNT);

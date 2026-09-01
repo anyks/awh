@@ -177,6 +177,93 @@ $ sudo apt install git cmake g++ libgtest-dev libgmock-dev        # Debian, Ubun
 > The command above was verified on Fedora 42 aarch64; the Debian one lists the packages
 > that carry the same libraries and has not been run on a stand.
 
+### OpenWRT
+
+For OpenWRT we ship a **prebuilt library**, and that is the way we recommend. The steps
+below are for those who want to build AWH from the sources on the device itself. They were
+run on OpenWRT 25.12.5, x86-64, kernel 6.12, GCC 14.3.0, musl.
+
+OpenWRT is a Linux, but it is not an ordinary one, and three of its traits change the
+preparation. None of them is a fault of the distribution: all three follow from its aim of
+fitting into a router.
+
+**First: the shared libraries from `apk` cannot be linked against.** To save space OpenWRT
+strips the section header table off them entirely (`readelf -h` shows
+`Number of section headers: 0`). At run time they load fine — the program headers are
+enough for that — but the linker answers `error adding symbols: file in wrong format`.
+There are no `-dev` packages carrying headers either. So `apk` serves for ready-made
+programs, while **every library you build against has to be taken as sources**.
+
+**Second: several tools taken for granted are absent.** Install what is missing:
+
+```bash
+$ apk add bash make git-http coreutils-install coreutils-realpath patch perl python3 pkgconf
+$ ln -sf /usr/bin/pkgconf /usr/bin/pkg-config
+$ printf '#!/bin/sh\ngrep -c ^processor /proc/cpuinfo\n' > /usr/bin/nproc && chmod +x /usr/bin/nproc
+```
+
+BusyBox stands in for the GNU tools, and for most of them it is enough — but not for all.
+`bash` is needed because `sh/build_third_party.sh` runs under it, `git-http` adds the HTTPS
+support that the base `git` package leaves out, `install` and `realpath` are called by the
+dependency scripts to lay out what they have built, and `pkg-config` is named `pkgconf`
+there. Install them in one go rather than meeting them one at a time: each of them stops
+the dependency build where it is missing.
+
+> `nproc` is absent as well, and its absence does not break anything: the build has a guard
+> that falls back to a single job. It does finish that way, only slowly — the shim above
+> lets an eight-core device use all eight.
+
+> Absent as well, and harmless: `nohup` (a backgrounded job silently fails to start — use a
+> plain `&` with a redirect), `whereis` (only the clang lookup uses it, and the fallback to
+> `gcc` is the right answer here anyway), `libtool` (only the macOS framework build needs
+> it), `od` and `sftp-server` — without the last one `scp` does not work at all, so copy
+> files by a stream instead: `ssh device 'cat > /path' < file`.
+
+**Third: CMake and GoogleTest are not in the repositories.** Build CMake from its own
+sources first, in the usual way:
+
+```bash
+$ ./bootstrap --parallel=8 -- -DCMAKE_USE_OPENSSL=OFF && make -j8 && make install
+```
+
+GoogleTest comes after it, and it is worth building **with** that fresh CMake rather than
+by hand: the unit tests ask for the `GTest::gmock` target, and a hand-made `libgtest.a`
+carries neither GoogleMock nor the package files that define those targets.
+
+```bash
+$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_GMOCK=ON ..
+$ make -j8 && make install
+```
+
+> The CMake `bootstrap` stops with `-lrt: No such file`. This is a trait of musl rather
+> than of CMake: `librt`, `libpthread`, `libdl` and `libm` are built into `libc` there and
+> no separate archives exist, while the build recipes ask for them anyway. Empty stubs
+> settle it: `ar rcs /usr/lib/librt.a` and the same for the other three names.
+
+**SCTP.** AWH links `libsctp` on Linux unconditionally, and `include/net/net.hpp` includes
+`netinet/sctp.h` directly, so the library has to be present. The kernel carries SCTP, and
+the packages exist:
+
+```bash
+$ apk add kmod-sctp libsctp sctp-tools
+```
+
+The shared `libsctp` that comes with them cannot be linked against, by the first trait
+above, so build a static one from the sources of the same version. There are no autotools
+on the device, but they are not needed — the header needs no substitutions and the eight
+library sources compile directly:
+
+```bash
+$ wget https://github.com/sctp/lksctp-tools/archive/refs/tags/v1.0.21.tar.gz
+$ tar xzf v1.0.21.tar.gz && cd lksctp-tools-1.0.21
+$ cp src/include/netinet/sctp.h.in /usr/include/netinet/sctp.h
+$ cd src/lib && echo "#define HAVE_ATTRIBUTE_SYMVER 0" > config.h
+$ gcc -c -O2 -fPIC -I../include -I. *.c && ar rcs /usr/lib/libsctp.a *.o
+```
+
+> Remove the shared `/usr/lib/libsctp.so` afterwards, or the linker picks it instead of the
+> static archive and fails on the wrong format again.
+
 ## To build and launch the project
 
 ### To clone the project

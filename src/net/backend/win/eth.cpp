@@ -246,7 +246,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Unsupported protocol for checksum calculation", log_t::flag_t::CRITICAL);
+					this->_log->print("%s: unsupported protocol for checksum calculation", log_t::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
 				#endif
 				// Выводим пустой результат
 				return result;
@@ -334,7 +334,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Unsupported address family for checksum calculation", log_t::flag_t::CRITICAL);
+				this->_log->print("%s: unsupported address family for checksum calculation", log_t::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
 			#endif
 			// Выводим пустой результат
 			return result;
@@ -369,7 +369,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__, error.what());
 		#endif
 	}
 	// Возвращаем результат

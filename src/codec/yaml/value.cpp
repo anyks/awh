@@ -1968,9 +1968,18 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 				 * Если имя очередной пары пусто вовсе либо косую черту несёт
 				 */
 				if((i >= this->_names.size()) || this->_names.at(i).empty() ||
-				   (this->_names.at(i).find('/') != string::npos))
+				   (this->_names.at(i).find('/') != string::npos)){
+					/**
+					 * Запоминаем код отказа переноса дереву укладки
+					 *
+					 * @note Без него отказ выходил молчаливым: `graft()` берёт причину у
+					 *       копии дерева, а укладка её не называла вовсе, и потребитель
+					 *       получал ложь при истинном отказе - «ошибок не обнаружено»
+					 */
+					document._error = error_t::INVALID_PATH;
 					// Выводим признак неудачного переноса
 					return false;
+				}
 				/**
 				 * Если имя очередной пары отображения встречено вторично
 				 *
@@ -1980,9 +1989,12 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 				 *       пару, и потеря та была бы невидима: перезапись выглядела бы верной,
 				 *       недоставало бы лишь строки. Нашёл это ворошитель круговым переносом
 				 */
-				if(!laid.emplace(this->_names.at(i)).second)
+				if(!laid.emplace(this->_names.at(i)).second){
+					// Запоминаем код отказа переноса дереву укладки
+					document._error = error_t::DUPLICATE_KEY;
 					// Выводим признак неудачного переноса
 					return false;
+				}
 				/**
 				 * Если перенести очередную пару отображения не удалось
 				 */

@@ -1055,15 +1055,82 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 	// Определяем приоритет ветви продолжения повторения
 	const bool greedy = (node.repeat.greed != greed_t::LAZY);
 	/**
+	 * Определяем допустимость пустого сопоставления повторяемого элемента
+	 *
+	 * @details Сторож продвижения ставится лишь повторению НЕОГРАНИЧЕННОМУ:
+	 *          он бесконечность и стережёт. Повторение ограниченное проходы
+	 *          свои делает все, пустоты не считая: «((?(1)a)){1,2}+» на тексте
+	 *          «aab» даёт «a» - проход первый пуст, а второй, условие уже
+	 *          выполняющий, эталон делает, - тогда как «((?(1)a))+»
+	 *          на том же тексте даёт совпадение пустое.
+	 *
+	 *          Сторож ставится лишь телу, чья пустота ЗАВИСИТ от состояния:
+	 *          условию, ссылке на захват и вызову подпрограммы. Телу прочему
+	 *          он излишен - пустое в проходе первом, оно пусто и в проходе
+	 *          втором, и сторож повторения его же и завершает. Излишний
+	 *          сторож при этом отнимал бы охват у кодогенерации:
+	 *          проверка продвижения вне повторения ей неприменима.
+	 *
+	 */
+	const bool empty = ((node.repeat.max == UNBOUNDED) && this->_full &&
+	 !advancing(child) && this->stateful(child));
+	// Набор адресов проверок продвижения обязательных повторений
+	vector <address_t> guards;
+	/**
 	 * Выполняем размещение обязательных повторений элемента выражения
+	 *
+	 * @details Повторение обязательное сторожа продвижения требует наравне
+	 *          с необязательным: проход, пустым оказавшийся, повторение
+	 *          ЗАВЕРШАЕТ, а не просто вновь не повторяется. Выражение
+	 *          «((?(1)a))+» на тексте «aaa» даёт совпадение пустое:
+	 *          проход первый пуст, ибо группа захвата не завершила,
+	 *          и повторение на том и кончается - прохода второго,
+	 *          условие уже выполняющего, эталон не делает вовсе.
+	 *
 	 */
 	for(uint32_t i = 0; i < least; i++) {
+		// Номер ячейки позиции начала обязательного повторения
+		uint32_t cell = ~0u;
+		/**
+		 * Если повторяется элемент, допускающий пустое сопоставление
+		 */
+		if(empty) {
+			// Выполняем размещение ячейки позиции начала повторения
+			cell = this->reserve();
+			// Выполняем размещение инструкции сохранения позиции начала повторения
+			const address_t save = this->emit(opcode_t::SAVE, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(save == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку номера ячейки позиции начала повторения
+			this->_program->instructions.at(save).save.slot = cell;
+		}
 		/**
 		 * Если компиляция повторяемого элемента выражения не выполнена
 		 */
 		if(!this->compileNode(child))
 			// Выводим результат выполнения компиляции
 			return false;
+		/**
+		 * Если повторяется элемент, допускающий пустое сопоставление
+		 */
+		if(empty) {
+			// Выполняем размещение инструкции проверки продвижения по тексту
+			const address_t progress = this->emit(opcode_t::PROGRESS, node.flags);
+			/**
+			 * Если размещение инструкции не выполнено
+			 */
+			if(progress == INVALID_ADDRESS)
+				// Выводим результат выполнения компиляции
+				return false;
+			// Выполняем установку номера ячейки позиции начала повторения
+			this->_program->instructions.at(progress).progress.cell = cell;
+			// Выполняем добавление адреса проверки продвижения обязательного повторения
+			guards.push_back(progress);
+		}
 	}
 	/**
 	 * Если число повторений элемента выражения не ограничено
@@ -1150,6 +1217,12 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 		this->_program->instructions.at(split).split.first = (greedy ? body : this->position());
 		// Выполняем установку адреса ветви завершения повторения
 		this->_program->instructions.at(split).split.second = (greedy ? this->position() : body);
+		/**
+		 * Выполняем установку адресов завершения обязательных повторений
+		 */
+		for(auto & address : guards)
+			// Выполняем установку адреса завершения повторения
+			this->_program->instructions.at(address).progress.target = this->position();
 		// Выводим результат выполнения компиляции
 		return true;
 	}
@@ -1204,6 +1277,12 @@ bool awh::regex::Compiler::compileIteration(const node_id_t id) noexcept {
 	}
 	// Выполняем усечение сберегательного ряда до отметки основания
 	this->_exits.resize(base);
+	/**
+	 * Выполняем установку адресов завершения обязательных повторений
+	 */
+	for(auto & address : guards)
+		// Выполняем установку адреса завершения повторения
+		this->_program->instructions.at(address).progress.target = this->position();
 	// Выводим результат выполнения компиляции
 	return true;
 }
@@ -1375,6 +1454,95 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 			 *          что недостижимо исполнением без возврата.
 			 *
 			 */
+			if((node.group.type == group_t::SCRIPT) || (node.group.type == group_t::SCRIPT_ONCE)) {
+				/**
+				 * Если выполняется компиляция регулярного подмножества
+				 *
+				 * @details Прогон письменности сводит письменности сопоставленного
+				 *          текста пересечением наборов, а такого учёта проход
+				 *          детерминированный не ведёт вовсе.
+				 *
+				 */
+				if(!this->_full) {
+					// Выполняем установку ошибки неподдерживаемой конструкции
+					this->_error = error_t::UNSUPPORTED;
+					// Выводим результат выполнения компиляции
+					return false;
+				}
+				// Определяем атомарность прогона письменности
+				const bool once = (node.group.type == group_t::SCRIPT_ONCE);
+				// Номер ячейки отметки состояния возврата прогона атомарного
+				const uint32_t mark = (once ? this->_atomics++ : 0);
+				/**
+				 * Если прогон письменности является атомарным
+				 */
+				if(once) {
+					// Выполняем размещение инструкции запоминания состояния возврата
+					const address_t address = this->emit(opcode_t::MARK, node.flags);
+					/**
+					 * Если размещение инструкции не выполнено
+					 */
+					if(address == INVALID_ADDRESS)
+						// Выводим результат выполнения компиляции
+						return false;
+					// Выполняем установку номера ячейки отметки состояния возврата
+					this->_program->instructions.at(address).atomic.cell = mark;
+				}
+				// Выполняем размещение ячейки позиции начала прогона письменности
+				const uint32_t cell = this->reserve();
+				// Выполняем размещение инструкции сохранения позиции начала прогона
+				const address_t begin = this->emit(opcode_t::SAVE, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(begin == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку ячейки позиции начала прогона письменности
+				this->_program->instructions.at(begin).save.slot = cell;
+				/**
+				 * Если компиляция тела прогона письменности не выполнена
+				 */
+				if(!this->compileChain(node.child))
+					// Выводим результат выполнения компиляции
+					return false;
+				/**
+				 * Если прогон письменности является атомарным
+				 *
+				 * @details Отказ от точек возврата размещается ПЕРЕД проверкой
+				 *          прогона, а не за нею: прогон атомарный отказом
+				 *          проверки тела не пересопоставляет вовсе, отчего
+				 *          «(*asr:.*)» на тексте «αа» отказывает в позиции
+				 *          первой, тогда как «(?>(*sr:.*))» даёт совпадение
+				 *          «α». Правило снято с эталонной реализации опытом:
+				 *          прогон атомарный обёртке атомарной не равен.
+				 *
+				 */
+				if(once) {
+					// Выполняем размещение инструкции отказа от точек возврата
+					const address_t cut = this->emit(opcode_t::CUT, node.flags);
+					/**
+					 * Если размещение инструкции не выполнено
+					 */
+					if(cut == INVALID_ADDRESS)
+						// Выводим результат выполнения компиляции
+						return false;
+					// Выполняем установку номера ячейки отметки состояния возврата
+					this->_program->instructions.at(cut).atomic.cell = mark;
+				}
+				// Выполняем размещение инструкции проверки прогона письменности
+				const address_t check = this->emit(opcode_t::SCRIPT, node.flags);
+				/**
+				 * Если размещение инструкции не выполнено
+				 */
+				if(check == INVALID_ADDRESS)
+					// Выводим результат выполнения компиляции
+					return false;
+				// Выполняем установку ячейки позиции начала прогона письменности
+				this->_program->instructions.at(check).save.slot = cell;
+				// Выводим результат выполнения компиляции
+				return true;
+			}
 			if(node.group.type == group_t::ATOMIC) {
 				/**
 				 * Если выполняется компиляция регулярного подмножества
@@ -1610,7 +1778,7 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 				 */
 				if(node.control.type == control_t::MARK) {
 					// Выполняем размещение инструкции глагола отметки имени
-					const address_t address = this->marking(node.control.offset, node.control.length, node.flags);
+					const address_t address = this->marking(node.control.offset, node.control.length, node.flags, true);
 					// Выводим результат размещения инструкции глагола отметки имени
 					return (address != INVALID_ADDRESS);
 				}
@@ -1628,7 +1796,7 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 				 */
 				if((node.control.length > 0) && (node.control.type != control_t::SKIP)) {
 					// Выполняем размещение инструкции глагола отметки имени
-					marker = this->marking(node.control.offset, node.control.length, node.flags);
+					marker = this->marking(node.control.offset, node.control.length, node.flags, false);
 					/**
 					 * Если размещение инструкции глагола отметки не выполнено
 					 */
@@ -1766,6 +1934,47 @@ bool awh::regex::Compiler::accepting(const node_id_t id) const noexcept {
 	// Выводим результат проверки наличия глагола завершения
 	return false;
 }
+/**
+ * @brief Метод проверки зависимости пустого сопоставления от состояния
+ *
+ * @param id индекс узла, с которого начинается обход
+ *
+ * @return   результат проверки зависимости от состояния
+ *
+ * @details Пустота тела зависит от состояния там, где стоит условие, ссылка
+ *          на захваченную группу либо вызов подпрограммы: проход первый
+ *          у них пуст, а второй уже нет. Тело прочее пустоты своей
+ *          от прохода к проходу не меняет.
+ *
+ */
+bool awh::regex::Compiler::stateful(const node_id_t id) const noexcept {
+	// Получаем индекс обходимого узла синтаксического дерева
+	node_id_t current = id;
+	/**
+	 * Выполняем обход цепочки узлов синтаксического дерева
+	 */
+	while(current != INVALID_NODE) {
+		// Получаем обходимый узел синтаксического дерева
+		const node_data_t & node = this->node(current);
+		/**
+		 * Если узел пустоту свою от состояния получает
+		 */
+		if((node.type == node_t::CONDITION) || (node.type == node_t::BACKREF) ||
+		   (node.type == node_t::RECURSE))
+			// Выводим результат проверки зависимости от состояния
+			return true;
+		/**
+		 * Если вложенная цепочка узлов от состояния зависит
+		 */
+		if(this->stateful(node.child))
+			// Выводим результат проверки зависимости от состояния
+			return true;
+		// Переходим к следующему узлу цепочки
+		current = node.next;
+	}
+	// Выводим результат проверки зависимости от состояния
+	return false;
+}
 bool awh::regex::Compiler::verbal(const node_id_t id) const noexcept {
 	// Получаем индекс обходимого узла синтаксического дерева
 	node_id_t current = id;
@@ -1876,16 +2085,19 @@ uint32_t awh::regex::Compiler::naming(const uint32_t offset, const uint32_t leng
  * @param offset смещение имени отметки в хранилище имён разбора
  * @param length длина имени отметки в октетах
  * @param flags  флаги размещаемой инструкции
+ * @param named  признак открытия имени розыску глаголом переноса
  *
  * @return адрес размещённой инструкции глагола отметки
  *
  * @details Имя переносится в хранилище имён программы, ячейка отметки последней
  *          отводится единожды на всё выражение, а ячейка положения - единожды
  *          на имя: глагол пишет в первую адрес свой, а во вторую положение своё,
- *          и возврат обе записи отменяет наравне с ячейками захвата.
+ *          и возврат обе записи отменяет наравне с ячейками захвата. Ячейка
+ *          положения отводится лишь отметке настоящей: имя, глаголу отсечения
+ *          приписанное, эталон розыску глаголом переноса не открывает.
  *
  */
-awh::regex::address_t awh::regex::Compiler::marking(const uint32_t offset, const uint32_t length, const uint32_t flags) noexcept {
+awh::regex::address_t awh::regex::Compiler::marking(const uint32_t offset, const uint32_t length, const uint32_t flags, const bool named) noexcept {
 	/**
 	 * Если имя отметки за пределы хранилища разбора выходит
 	 */
@@ -1902,7 +2114,7 @@ awh::regex::address_t awh::regex::Compiler::marking(const uint32_t offset, const
 		// Выполняем размещение ячейки отметки последней
 		this->_program->marker = this->reserve();
 	// Выполняем отвод ячейки положения отметки имени
-	const uint32_t cell = this->naming(offset, length);
+	const uint32_t cell = (named ? this->naming(offset, length) : ~0u);
 	// Получаем смещение имени отметки в хранилище имён программы
 	const uint32_t spot = static_cast <uint32_t> (this->_program->markers.size());
 	/**
@@ -2611,7 +2823,26 @@ bool awh::regex::Compiler::reachable(const address_t address) noexcept {
 			 *          вовсе, проходя текст попыткой в каждой позиции.
 			 *
 			 */
-			case static_cast <uint8_t> (opcode_t::LOOK): stack.push_back(instruction.look.target); break;
+			case static_cast <uint8_t> (opcode_t::LOOK): {
+				// Выполняем обход продолжения за проверкой окружения
+				stack.push_back(instruction.look.target);
+				/**
+				 * Если проверка окружения ветвь невыполнения несёт
+				 *
+				 * @details Проверка, условием служащая, ветвями разделяет
+				 *          сопоставление надвое, и совпадение способно начаться
+				 *          байтами обеих: обход ветви невыполнения отнимал
+				 *          у выражения «(?(?=a)b|c)» позиции, буквою «c»
+				 *          начинающиеся, и совпадения на тексте «c»
+				 *          не находилось вовсе.
+				 *
+				 */
+				if(instruction.look.alternate != INVALID_ADDRESS)
+					// Выполняем обход ветви невыполнения проверки окружения
+					stack.push_back(instruction.look.alternate);
+				// Переходим к следующей инструкции обхода
+				break;
+			}
 			/**
 			 * Отметки атомарной группы текста не поглощают
 			 *
@@ -2966,7 +3197,9 @@ void awh::regex::Compiler::condense() noexcept {
 	 *          последовательности находит её в любой позиции текста.
 	 *
 	 */
-	if(((program.flags & static_cast <uint32_t> (flag_t::ANCHORED)) != 0) || ((program.flags & static_cast <uint32_t> (flag_t::NOTEMPTY)) != 0))
+	if(((program.flags & static_cast <uint32_t> (flag_t::ANCHORED)) != 0) ||
+	 ((program.flags & (static_cast <uint32_t> (flag_t::NOTEMPTY) |
+	  static_cast <uint32_t> (flag_t::ATSTART))) != 0))
 		// Выходим из метода распознавания выражения
 		return;
 	/**
@@ -3741,9 +3974,20 @@ bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) 
 	// Получаем узел проверки окружения
 	const node_data_t & node = this->node(id);
 	// Определяем направление проверки окружения
-	const bool backward = ((node.look.type == look_t::BEHIND) || (node.look.type == look_t::BEHIND_NEG));
+	const bool backward = ((node.look.type == look_t::BEHIND) || (node.look.type == look_t::BEHIND_NEG) ||
+	 (node.look.type == look_t::BEHIND_FREE));
 	// Определяем знак проверки окружения
 	const bool negative = ((node.look.type == look_t::AHEAD_NEG) || (node.look.type == look_t::BEHIND_NEG));
+	/**
+	 * Определяем отсечение точек возврата, накопленных телом проверки
+	 *
+	 * @details Проверка не отсекающая исполняется продолжением исполнения текущего,
+	 *          а не запуском отдельным: точки возврата, телом её накопленные,
+	 *          переживают выполнение проверки, отчего отказ последующего
+	 *          текста продолжается перебором тела.
+	 *
+	 */
+	const bool atomic = ((node.look.type != look_t::AHEAD_FREE) && (node.look.type != look_t::BEHIND_FREE));
 	/**
 	 * Если длина ретроспективной проверки не ограничена
 	 *
@@ -3768,6 +4012,10 @@ bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) 
 		return false;
 	// Выполняем установку знака проверки окружения
 	this->_program->instructions.at(address).look.negative = negative;
+	// Выполняем установку отсечения точек возврата, накопленных телом проверки
+	this->_program->instructions.at(address).look.atomic = static_cast <uint8_t> (atomic);
+	// Выполняем размещение ячейки позиции начала не отсекающей проверки
+	this->_program->instructions.at(address).look.cell = (atomic ? ~0u : this->reserve());
 	// Выполняем установку направления проверки окружения
 	this->_program->instructions.at(address).look.backward = backward;
 	// Выполняем установку наименьшей длины проверяемой последовательности
@@ -3785,9 +4033,35 @@ bool awh::regex::Compiler::compileLook(const node_id_t id, address_t & address) 
 		// Выводим результат выполнения компиляции
 		return false;
 	/**
+	 * Если завершается тело проверки не отсекающей
+	 *
+	 * @details Тело проверки обыкновенной завершается инструкцией возврата:
+	 *          исполняется оно запуском отдельным, и возврат его прекращает.
+	 *          Тело же проверки не отсекающей исполняется продолжением
+	 *          исполнения текущего, отчего завершение его обязано
+	 *          восстановить позицию начала проверки и продолжить
+	 *          исполнение за нею, точек возврата не отсекая.
+	 *
+	 */
+	if(!atomic) {
+		// Выполняем размещение инструкции восстановления позиции сопоставления
+		const address_t restore = this->emit(opcode_t::RESET, node.flags);
+		/**
+		 * Если размещение инструкции не выполнено
+		 */
+		if(restore == INVALID_ADDRESS)
+			// Выводим результат выполнения компиляции
+			return false;
+		// Выполняем установку ячейки позиции начала не отсекающей проверки
+		this->_program->instructions.at(restore).reset.cell = this->_program->instructions.at(address).look.cell;
+		// Выполняем установку направления не отсекающей проверки
+		this->_program->instructions.at(restore).reset.backward = static_cast <uint8_t> (backward);
+		// Выполняем установку адреса продолжения за проверкой окружения
+		this->_program->instructions.at(restore).reset.target = this->position();
+	/**
 	 * Если размещение инструкции завершения проверки не выполнено
 	 */
-	if(this->emit(opcode_t::RETURN, node.flags) == INVALID_ADDRESS)
+	} else if(this->emit(opcode_t::RETURN, node.flags) == INVALID_ADDRESS)
 		// Выводим результат выполнения компиляции
 		return false;
 	// Выполняем установку адреса продолжения за проверкой окружения
@@ -3946,9 +4220,26 @@ bool awh::regex::Compiler::compileCondition(const node_id_t id) noexcept {
 	/**
 	 * Если условие задано проверкой окружения
 	 */
-	if(assertion != INVALID_ADDRESS)
+	if(assertion != INVALID_ADDRESS) {
+		/**
+		 * Если условие задано проверкой не отсекающей
+		 *
+		 * @details Проверка не отсекающая исполняется продолжением исполнения
+		 *          текущего, и отказ тела её передаётся точкам возврата, а не
+		 *          инструкции проверки: ветвь невыполненного условия при
+		 *          этом недостижима, отчего условием такая проверка
+		 *          служить не вправе.
+		 *
+		 */
+		if(this->_program->instructions.at(assertion).look.atomic == 0) {
+			// Выполняем установку ошибки недопустимого условного выражения
+			this->_error = error_t::BAD_CONDITION;
+			// Выводим результат выполнения компиляции
+			return false;
+		}
 		// Выполняем установку адреса ветви невыполнения проверки окружения
 		this->_program->instructions.at(assertion).look.alternate = this->position();
+	}
 	// Выполняем установку адреса ветви невыполненного условия
 	else this->_program->instructions.at(condition).condition.negative = this->position();
 	/**

@@ -609,7 +609,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 		 */
 		for(PIP_ADAPTER_UNICAST_ADDRESS address = adapter->FirstUnicastAddress; address != nullptr; address = address->Next){
 			// Если адрес устройства не задан
-			if((address->Address.lpSockaddr == nullptr))
+			if(address->Address.lpSockaddr == nullptr)
 				// Переходим к следующему адресу
 				continue;
 			/**

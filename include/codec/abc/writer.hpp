@@ -276,6 +276,13 @@ namespace awh {
 						 * @note Ноль признаком отсутствия годится: перед размахом лежит хотя бы
 						 * метка расширения, и нулевым смещение его быть не может никогда
 						 *
+						 * @note Довод этот поверяется лишь у вместимого, ОТКРЫВАЮЩЕГО запись:
+						 * там метка расширения ложится на смещение ноль, а размах - на единицу,
+						 * и всякое смещение больше того довода не поверяет вовсе. Закреплено
+						 * проверкой `CodecAbcWriter.SpannedAtRecordStart` (01.09.2026); прежде
+						 * проверки размаха открывали запись отображением, и наименьшее смещение
+						 * места размаха у них было велико
+						 *
 						 * \~english
 						 * Offset of the set aside place of the record of the span, zero — the span is not declared
 						 * @note Zero is fit as a sign of an absence: before the span there lies at least the tag

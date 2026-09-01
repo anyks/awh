@@ -409,7 +409,7 @@ namespace {
  */
 awh::codec::ini::Reader::Settings::Settings() noexcept :
  comments(marker_t::BOTH), separators(separator_t::EQUALS), duplicates(duplicate_t::LAST),
- quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false), spacedComments(true), greedySections(false), trimSections(true),
+ quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false), spacedComments(true), greedySections(false), trimSections(true), strictNames(false),
  escapes(false), continuations(false), indents(false), valueless(false), arrays(false),
  sensitive(false), sensitiveSections(false), trim(true), global(true), emitComments(true), emitBlanks(false),
  maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH), maxContinuation(MAX_CONTINUATION),
@@ -542,6 +542,20 @@ awh::codec::ini::Reader::Settings awh::codec::ini::Reader::Settings::git() noexc
 	result.comments = marker_t::BOTH;
 	// Устанавливаем признаваемые знаки разделителя имени и значения
 	result.separators = separator_t::EQUALS;
+	/**
+	 * Поверка имён строгою грамматикой наречия НЕ включается умолчанием
+	 *
+	 * @details Наречие это грамматике своей не следует, и включение поверки здесь было
+	 *          бы правкою, потребителю видной: имя из знаков письменностей мира средство
+	 *          «git config» отвергает, а мы его принимаем и записываем. Включив поверку
+	 *          одному лишь чтению, я развёл бы чтение с записью - ровно тот порок, какой
+	 *          закрывал весь круг, - а включив обоим, отверг бы записи, набором
+	 *          проверок нарочно поверяемые. Решение за владельцем; признак заведён и
+	 *          работает, включается настройкою
+	 *
+	 * @note Мера расхождения снята: из 377 текстов корпуса, средством «git config» не
+	 *       осиленных, чтение наше принимает 376
+	 */
 	// Устанавливаем обращение с повторным объявлением свойства
 	result.duplicates = duplicate_t::MERGE;
 	// Устанавливаем обращение с кавычками вокруг значения
@@ -1143,6 +1157,19 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 	 */
 	string_view content = (this->_settings.trimSections ?
 	 ::trim(line.substr(1, close - 1)) : line.substr(1, close - 1));
+	/**
+	 * Если объявление раздела поверяется строгою грамматикой наречия
+	 *
+	 * @details Грамматика эта обвязки не отбрасывает, а отвергает: средство «git config»
+	 *          записи «[ раздел ]» не принимает вовсе. Отбрасывание же принимало её
+	 *          молча, и наречие выходило шире образца
+	 *
+	 * @note Поверка ведётся ДО разбора имени подраздела: обвязка стоит по краям всего
+	 *       объявления, а не одного лишь имени раздела
+	 */
+	if(this->_settings.strictNames && (content.length() != (close - 1)))
+		// Выводим сообщение об ошибке разбора
+		return this->fail(error_t::INVALID_SECTION, offset, this->_line, 1);
 	// Получаем остаток строки за закрывающей квадратной скобкой
 	const string_view tail = ::trim(line.substr(close + 1));
 	/**
@@ -1367,6 +1394,30 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 					// Выводим сообщение об ошибке разбора
 					return this->fail(error_t::EMPTY_SECTION, offset, this->_line, 1);
 			}
+		}
+	}
+	/**
+	 * Если имя раздела поверяется строгою грамматикой наречия
+	 *
+	 * @details Наречие Git имя раздела строит из букв, цифр, черты и точки - и ничего
+	 *          более: запись «[a b]» средство «git config» отвергает, требуя «[a "b"]»,
+	 *          а «[a_b]» отвергает вовсе. Чтение, грамматики не поверяющее, принимало
+	 *          и то, и другое, и наречие выходило шире своего образца
+	 *
+	 * @note Имя подраздела грамматике этой не подлежит: в кавычках оно вольно, и
+	 *       «[a "любое имя"]» средство принимает
+	 */
+	if(this->_settings.strictNames){
+		/**
+		 * Выполняем перебор всех знаков имени раздела
+		 */
+		for(size_t i = 0; i < content.length(); i++){
+			/**
+			 * Если знак имени раздела грамматике наречия не отвечает
+			 */
+			if(!ascii::isAlnum(content[i]) && (content[i] != '-') && (content[i] != '.'))
+				// Выводим сообщение об ошибке разбора
+				return this->fail(error_t::INVALID_SECTION, offset, this->_line, 1);
 		}
 	}
 	// Запоминаем имя текущего раздела
@@ -1901,6 +1952,36 @@ bool awh::codec::ini::Reader::assign(const string_view line, const size_t offset
 	if((this->_settings.maxName > 0) && (key.length() > this->_settings.maxName))
 		// Выводим сообщение об ошибке разбора
 		return this->fail(error_t::NAME_TOO_LONG, offset, this->_line, 1);
+	/**
+	 * Если имя свойства поверяется строгою грамматикой наречия
+	 *
+	 * @details Наречие Git имя свойства строит из буквы первым знаком, а далее из букв,
+	 *          цифр и черты - и ничего более: записи «k_2 = v», «k.2 = v» и «1k = v»
+	 *          средство «git config» отвергает. Чтение, грамматики не поверяющее,
+	 *          принимало их именем свойства - и наречие выходило шире своего образца
+	 *
+	 * @note Отказ выдаётся кодом `INVALID_KEY`: имя содержит знаки, наречием не
+	 *       признаваемые, и это ровно тот смысл, какой код несёт
+	 */
+	if(this->_settings.strictNames){
+		/**
+		 * Если первый знак имени свойства буквою не является
+		 */
+		if(!ascii::isAlpha(key.front()))
+			// Выводим сообщение об ошибке разбора
+			return this->fail(error_t::INVALID_KEY, offset, this->_line, 1);
+		/**
+		 * Выполняем перебор всех знаков имени свойства
+		 */
+		for(size_t i = 1; i < key.length(); i++){
+			/**
+			 * Если знак имени свойства грамматике наречия не отвечает
+			 */
+			if(!ascii::isAlnum(key[i]) && (key[i] != '-'))
+				// Выводим сообщение об ошибке разбора
+				return this->fail(error_t::INVALID_KEY, offset, this->_line, 1);
+		}
+	}
 	/**
 	 * Выполняем перебор знаков имени свойства
 	 */

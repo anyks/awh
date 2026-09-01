@@ -290,6 +290,124 @@ TEST_F(FiberFixture, FiberDestroySuspendedRefusedTest){
 }
 
 /**
+ * @brief Тест роспуска спящего волокна
+ *
+ * @details Уничтожить спящее волокно нельзя: кадры его не раскручены. Роспуск -
+ *          единственный способ довести спящее волокно до уничтожимого состояния:
+ *          взводится признак, волокно будится и выходит само
+ *
+ */
+TEST_F(FiberFixture, FiberDismissSuspendedTest){
+	// Счётчик оборотов тела волокна
+	uint32_t rounds = 0;
+	// Заводим волокно, спрашивающее признак роспуска на каждом обороте
+	fiber::ctx_t * worker = fiber::spawn([&rounds]() noexcept -> void {
+		/**
+		 * Выполняем работу, пока волокно не распущено
+		 */
+		while(!fiber::dismissed()){
+			// Считаем оборот
+			rounds++;
+			// Усыпляем волокно
+			fiber::yield();
+		}
+	}, this->_log.get());
+	// Проверяем что волокно заведено
+	ASSERT_NE(worker, nullptr);
+	// Прокручиваем тело волокна трижды
+	for(uint32_t i = 0; i < 3; i++)
+		// Пробуждаем волокно
+		ASSERT_TRUE(fiber::resume(worker));
+	// Проверяем что тело отработало ровно три оборота
+	ASSERT_EQ(rounds, static_cast <uint32_t> (3));
+	// Проверяем что волокно спит
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::SUSPENDED);
+	// Проверяем что спящее волокно уничтожить нельзя
+	ASSERT_FALSE(fiber::destroy(worker));
+	// Проверяем что роспуск довёл волокно до уничтожимого состояния
+	ASSERT_TRUE(fiber::dismiss(worker));
+	// Проверяем что тело больше не отработало ни одного оборота
+	ASSERT_EQ(rounds, static_cast <uint32_t> (3));
+	// Проверяем что волокно доработало
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::FINISHED);
+	// Проверяем что распущенное волокно уничтожается
+	ASSERT_TRUE(fiber::destroy(worker));
+}
+
+/**
+ * @brief Тест отказа роспуска волокна, не спрашивающего признак
+ *
+ * @details Роспуск не вправе выходить молчаливой неудачей: тело, признак не
+ *          спрашивающее, уснёт снова и останется спящим - и уничтожать его
+ *          по-прежнему нельзя. Потребитель обязан узнать об этом кодом возврата
+ *
+ */
+TEST_F(FiberFixture, FiberDismissIgnoredRefusedTest){
+	// Заводим волокно, признак роспуска не спрашивающее вовсе
+	fiber::ctx_t * worker = fiber::spawn([]() noexcept -> void {
+		/**
+		 * Засыпаем без конца, признака роспуска не спрашивая
+		 */
+		while(true)
+			// Усыпляем волокно
+			fiber::yield();
+	}, this->_log.get());
+	// Проверяем что волокно заведено
+	ASSERT_NE(worker, nullptr);
+	// Пробуждаем волокно: оно дойдёт до сна
+	ASSERT_TRUE(fiber::resume(worker));
+	// Проверяем что роспуск отвечает отказом
+	ASSERT_FALSE(fiber::dismiss(worker));
+	// Проверяем что волокно так и осталось спящим
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::SUSPENDED);
+	// Проверяем что уничтожить его по-прежнему нельзя
+	ASSERT_FALSE(fiber::destroy(worker));
+}
+
+/**
+ * @brief Тест признака роспуска вне волокна
+ *
+ */
+TEST_F(FiberFixture, FiberDismissedOutsideTest){
+	// Проверяем что вне волокна признак роспуска отвечает ложью
+	ASSERT_FALSE(fiber::dismissed());
+	// Проверяем что роспуск несуществующего волокна отвечает отказом
+	ASSERT_FALSE(fiber::dismiss(nullptr));
+}
+
+/**
+ * @brief Тест роспуска волокна изнутри его самого
+ *
+ * @details Будить выполняющееся волокно отсюда нельзя: переход шёл бы в стек, на
+ *          котором лежит кадр этого самого вызова. Признак взводится, ответом идёт
+ *          отказ, а выходит тело само - уже после возврата из роспуска
+ *
+ */
+TEST_F(FiberFixture, FiberSelfDismissTest){
+	// Признак того, что тело волокна увидело роспуск
+	bool noticed = false;
+	// Волокно, распускающее само себя
+	fiber::ctx_t * worker = nullptr;
+	// Заводим волокно
+	worker = fiber::spawn([&worker, &noticed]() noexcept -> void {
+		// Проверяем что роспуск изнутри отвечает отказом: волокно ещё выполняется
+		EXPECT_FALSE(fiber::dismiss(worker));
+		// Запоминаем, увидело ли тело свой роспуск
+		noticed = fiber::dismissed();
+	}, this->_log.get());
+	// Проверяем что волокно заведено
+	ASSERT_NE(worker, nullptr);
+	// Пробуждаем волокно: оно распустит само себя и выйдет
+	ASSERT_TRUE(fiber::resume(worker));
+	// Проверяем что тело увидело свой роспуск
+	ASSERT_TRUE(noticed);
+	// Проверяем что волокно доработало
+	ASSERT_EQ(fiber::state(worker), fiber::state_t::FINISHED);
+	// Проверяем что доработавшее волокно уничтожается
+	ASSERT_TRUE(fiber::destroy(worker));
+}
+
+/**
  * @brief Тест отказов на неверных доводах
  *
  */

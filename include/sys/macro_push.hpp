@@ -135,6 +135,10 @@
 #pragma push_macro("SS")
 #pragma push_macro("DS")
 #pragma push_macro("GS")
+#pragma push_macro("CS5")
+#pragma push_macro("CS6")
+#pragma push_macro("CS7")
+#pragma push_macro("CS8")
 
 #undef TEXT
 #undef CALLBACK
@@ -184,3 +188,40 @@
 #undef SS
 #undef DS
 #undef GS
+
+/**
+ * \~russian
+ * Имена размеров знака у настроек последовательной связи
+ *
+ * @details Заголовок <termios.h> заводит макросами имена CS5, CS6, CS7 и CS8, задающие
+ *          число разрядов в знаке у последовательного порта. Имена эти совпадают с
+ *          членами перечисления dscp_t, где CS означает совсем иное - класс обслуживания
+ *          пакета по RFC 2474
+ *
+ * @note Столкновение это скрытое: дерево собирается лишь потому, что <termios.h> в него
+ *       никто не включает. У потребителя же библиотеки, работающего с последовательным
+ *       портом, объявление `CS5 = 0x28` обратилось бы в `(0000000) = 0x28` - ровно тот же
+ *       отказ, каким встречает MS Windows своё DELETE
+ *
+ * @note Снят и CS8, какого у перечисления сейчас нет: по доводу выше снятие временное и
+ *       ничего не стоит, а имя из того же ряда
+ *
+ * \~english
+ * Names of the character sizes of the settings of the serial link
+ * @details The <termios.h> header introduces as macros the names CS5, CS6, CS7 and CS8, setting
+ *          the number of the bits in a character of a serial port. Those names coincide with
+ *          the members of the dscp_t enumeration, where CS means something entirely different — the class
+ *          of the service of a packet by RFC 2474
+ * @note This collision is hidden: the tree builds only because nobody includes <termios.h>
+ *       into it. At the consumer of the library working with a serial
+ *       port, the declaration `CS5 = 0x28` would turn into `(0000000) = 0x28` — exactly the same
+ *       failure with which MS Windows meets its own DELETE
+ * @note CS8 is removed as well, the one the enumeration does not have right now: by the argument above the removal is temporary and
+ *       costs nothing, while the name is from the same row
+ *
+ * \~
+ */
+#undef CS5
+#undef CS6
+#undef CS7
+#undef CS8

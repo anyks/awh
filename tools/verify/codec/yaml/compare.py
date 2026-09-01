@@ -66,7 +66,7 @@ for name in sorted(os.listdir(SRC)):
             cases.append((name if i == 0 else '%s:%d' % (name, i), merged))
 
 ok = bad = failok = failbad = skipped = marked = crashed = 0
-treed = treebad = rewbad = 0
+treed = treebad = rewbad = declared = 0
 diffs = []
 for label, case in cases:
     body = case.get('yaml')
@@ -120,8 +120,12 @@ for label, case in cases:
     # запись поменяла смысл. Запись прежде поверялась одними нами, кругом через
     # собственный разбор, и заблуждение, чтению и записи общее, круг тот переживало
     #
-    # Случаи со ссылками отсеиваются: ссылка раскрывается при разборе, и дерево
-    # перезаписи законно несёт значение раскрытым, тогда как эталон хранит его ссылкой
+    # Случаи со ссылками прежде отсеивались доводом, что эталон-де хранит значение
+    # ссылкою, а дерево наше - раскрытым. Довод оказался ложен: запись «json» набора
+    # ссылки РАСКРЫВАЕТ, и сличать такие случаи можно наравне с прочими. Отсев уносил
+    # 32 случая, имеющих эталон, и прятал за собою настоящий порок: метка, ИМЕНИ пары
+    # предпосланная, документом не запоминалась вовсе, и ссылка на неё давала отказ на
+    # тексте, договору отвечающем (HMQ5 - пример 6.23 самого описания)
     ##
     reference = case.get('json')
     ##
@@ -132,7 +136,7 @@ for label, case in cases:
     ##
     if (reference is not None) and (reference.strip() == 'null'):
         reference = None
-    if (reference is not None) and ('&' not in body) and ('*' not in body):
+    if reference is not None:
         treed += 1
         try:
             wanted = [json.loads(piece) for piece in reference.strip().split('\n---\n')] if reference.strip() else []
@@ -143,6 +147,18 @@ for label, case in cases:
                 probe = subprocess.run([TREE, '/tmp/yts.yaml'] + ([mode] if mode else []),
                                        capture_output=True, text=True, errors='replace')
                 if probe.returncode != 0:
+                    ##
+                    # Отказ по построению, ещё не заведённому, находкою не является
+                    #
+                    # Составные имена пар дерево не строит, и отказ на них объявлен при
+                    # самом чтении: ось событий числит такой случай «отказом верным», и
+                    # ось дерева обязана числить его так же - иначе один и тот же
+                    # объявленный пробел читался бы находкою на одной оси и порядком на
+                    # другой. Счёт ведётся отдельный: отказ этот не глушится, а называется
+                    ##
+                    if 'составное имя пары' in probe.stderr:
+                        declared += 1
+                        break
                     if mode: rewbad += 1
                     else: treebad += 1
                     diffs.append((label, 'ЩУП ДЕРЕВА ОТКАЗАЛ (%s)' % counter, '', probe.stderr[:400]))
@@ -165,8 +181,9 @@ for label, case in cases:
 
 print('всего %d: совпало %d, разошлось %d, отказ верный %d, отказа не дал %d, без эталона %d (падений %d), со знаками-пояснениями %d'
       % (len(cases), ok, bad, failok, failbad, skipped, crashed, marked))
-print('дерево против эталона: сличено %d, РАЗОШЛОСЬ %d, ПЕРЕЗАПИСЬ СМЫСЛ ПОМЕНЯЛА %d'
-      % (treed, treebad, rewbad))
+print('дерево против эталона: сличено %d, РАЗОШЛОСЬ %d, ПЕРЕЗАПИСЬ СМЫСЛ ПОМЕНЯЛА %d, '
+      'отказ по незаведённому построению %d'
+      % (treed - declared, treebad, rewbad, declared))
 
 ##
 # Пустой корпус — отказ, а не чистый прогон

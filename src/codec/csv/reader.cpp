@@ -141,6 +141,8 @@ bool awh::codec::csv::Reader::fail(const error_t error, const location_t & locat
 		this->_position.line = location.line;
 		// Запоминаем положение в строке, в котором произошла ошибка
 		this->_position.column = location.column;
+		// Запоминаем место обнаружения отказа отдельным полем
+		this->_errorLocation = location;
 		/**
 		 * Если объект для работы с логами установлен
 		 *
@@ -1939,6 +1941,8 @@ void awh::codec::csv::Reader::reset() noexcept {
 	this->_state = state_t::RECORD_START;
 	// Сбрасываем код ошибки разбора
 	this->_error = error_t::NONE;
+	// Сбрасываем место обнаружения отказа разбора
+	this->_errorLocation = location_t();
 	// Сбрасываем кодировку исходного текста
 	this->_encoding = encoding_t::NONE;
 	// Устанавливаем разделитель полей, заданный настройками
@@ -2384,7 +2388,7 @@ const awh::codec::csv::location_t & awh::codec::csv::Reader::location() const no
  */
 const awh::codec::csv::location_t & awh::codec::csv::Reader::errorLocation() const noexcept {
 	// Выводим положение обнаруженного отказа в исходном тексте
-	return this->_position;
+	return this->_errorLocation;
 }
 /**
  * @brief Метод получения кода ошибки разбора

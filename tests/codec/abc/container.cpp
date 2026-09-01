@@ -1026,8 +1026,15 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 	abc::header_t header;
 	// Выполняем снятие заголовка опознания собранного контейнера
 	ASSERT_TRUE(header.unpack(origin.data(), origin.size(), error)) << "код отказа: " << abc::message(error);
-	// Выполняем проверку того, что место подписи заголовком объявлено
-	ASSERT_GT(header.signature, 0ull);
+	/**
+	 * Выполняем проверку того, что место подписи заголовком объявлено.
+	 *
+	 * Сличается оно с ДЛИНОЙ ЗАГОЛОВКА, а не с нулём: ноль годится признаком
+	 * отсутствия подписи по доводу «заголовок занимает первые `HEADER_LENGTH`
+	 * октетов, и меньшим смещение быть не может», и поверять надобно сам довод.
+	 * Сличение с нулём переживает подпись, объявленную внутри заголовка
+	 */
+	ASSERT_GE(header.signature, static_cast <uint64_t> (abc::HEADER_LENGTH));
 	/**
 	 * Выполняем проверку отказа поверки на пустых октетах
 	 */
@@ -1209,6 +1216,128 @@ TEST_F(ContainerFixture, FailuresReachLogger) {
 		ASSERT_EQ(payload, item);
 		// Выполняем проверку того, что записей журнала не появилось
 		ASSERT_TRUE(records.empty()) << "успешная работа оставила запись: " << records.front();
+	}
+}
+
+/**
+ * @brief Проверка того, что оглавление и подпись лежат ЗА телом контейнера
+ *
+ * @details Заголовок объявляет длину тела, смещение оглавления и смещение подписи
+ *          тремя ОТДЕЛЬНЫМИ полями, и связь их нигде не поверяется при снятии.
+ *          Связь эта не свободна: довод поля `index` гласит «оглавление лежит ЗА
+ *          телом», а выборка записи (`Fetcher::open`) на нём и стоит - длину кадра
+ *          оглавления она поверяет полем `extent` заголовка, полагая, что кадр по
+ *          смещению `index` и есть кадр оглавления. Проверка эта закрепляет довод
+ *          на СБОРЩИКЕ: смещения обязаны сходиться в единую раскладку
+ *
+ * @note Сличение ведётся с выведенными смещениями, а не с числами: числа сложились
+ *       бы из тех же полей и совпали бы при любой их порче
+ *
+ */
+TEST_F(ContainerFixture, LayoutOffsetsFollowBody) {
+	/**
+	 * @brief Функция поверки раскладки собранного контейнера
+	 *
+	 * @param buffer октеты собранного контейнера
+	 * @param signed_ признак подписанного контейнера
+	 *
+	 */
+	const auto examine = [](const vector <uint8_t> & buffer, const bool signed_) noexcept -> void {
+		// Заголовок опознания собранного контейнера
+		abc::header_t header;
+		// Код отказа снятия заголовка опознания
+		abc::error_t error = abc::error_t::NONE;
+		// Выполняем снятие заголовка опознания собранного контейнера
+		ASSERT_TRUE(header.unpack(buffer.data(), buffer.size(), error))
+			<< "код отказа: " << abc::message(error);
+		/**
+		 * Выполняем проверку того, что оглавление лежит СРАЗУ за телом контейнера
+		 */
+		ASSERT_EQ(header.index, static_cast <uint64_t> (abc::HEADER_LENGTH) + header.length)
+			<< "оглавление легло не за телом контейнера";
+		/**
+		 * Выполняем проверку того, что кадр оглавления умещается в собранных октетах.
+		 *
+		 * Длина кадра складывается из заголовка кадра и объявленной заголовком
+		 * контейнера длины содержимого его
+		 */
+		ASSERT_LE(header.index + static_cast <uint64_t> (abc::CHUNK_HEADER) +
+		 static_cast <uint64_t> (header.extent), static_cast <uint64_t> (buffer.size()))
+			<< "кадр оглавления вышел за собранные октеты";
+		/**
+		 * Если контейнер подписан, подпись обязана лечь СРАЗУ за кадром оглавления
+		 */
+		if(signed_){
+			// Выполняем проверку того, что подпись лежит за кадром оглавления
+			ASSERT_EQ(header.signature, header.index +
+			 static_cast <uint64_t> (abc::CHUNK_HEADER) + static_cast <uint64_t> (header.extent))
+				<< "подпись легла не за кадром оглавления";
+			// Выполняем проверку того, что запись подписи умещается в собранных октетах
+			ASSERT_LT(header.signature, static_cast <uint64_t> (buffer.size()))
+				<< "запись подписи вышла за собранные октеты";
+		/**
+		 * Если контейнер не подписан, смещение подписи обязано быть снято
+		 */
+		} else {
+			// Выполняем проверку того, что смещение подписи снято
+			ASSERT_EQ(header.signature, 0u) << "неподписанный контейнер объявил место подписи";
+			// Выполняем проверку того, что октеты кончаются кадром оглавления
+			ASSERT_EQ(header.index + static_cast <uint64_t> (abc::CHUNK_HEADER) +
+			 static_cast <uint64_t> (header.extent), static_cast <uint64_t> (buffer.size()))
+				<< "за оглавлением неподписанного контейнера остались октеты";
+		}
+	};
+	/**
+	 * Выполняем поверку раскладки контейнера БЕЗ подписи
+	 */
+	{
+		// Сборщик контейнера
+		abc::assembler_t assembler(this->_log.get());
+		// Выполняем объявление сжатия собираемого контейнера
+		assembler.compressor(this->_compressor.get());
+		/**
+		 * Выполняем внесение череды записей в собираемый контейнер
+		 */
+		for(size_t i = 0; i < 8; i++){
+			// Выполняем сборку очередной записи
+			const vector <uint8_t> item = record(string{"запись раскладки "} + to_string(i));
+			// Выполняем внесение очередной записи в собираемый контейнер
+			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+				<< "код отказа: " << abc::message(assembler.error());
+		}
+		// Буфер собранного контейнера
+		vector <uint8_t> buffer;
+		// Выполняем завершение сборки контейнера
+		ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
+		// Выполняем поверку раскладки собранного контейнера
+		examine(buffer, false);
+	}
+	/**
+	 * Выполняем поверку раскладки ПОДПИСАННОГО контейнера
+	 */
+	{
+		// Выполняем заведение ключа владельца контейнера
+		ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
+		// Сборщик контейнера
+		abc::assembler_t assembler(this->_log.get());
+		// Выполняем объявление подписи собираемого контейнера
+		assembler.sign(this->_crypto.get(), "владелец");
+		/**
+		 * Выполняем внесение череды записей в собираемый контейнер
+		 */
+		for(size_t i = 0; i < 8; i++){
+			// Выполняем сборку очередной записи
+			const vector <uint8_t> item = record(string{"подписанная запись раскладки "} + to_string(i));
+			// Выполняем внесение очередной записи в собираемый контейнер
+			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+				<< "код отказа: " << abc::message(assembler.error());
+		}
+		// Буфер собранного контейнера
+		vector <uint8_t> buffer;
+		// Выполняем завершение сборки контейнера
+		ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
+		// Выполняем поверку раскладки собранного контейнера
+		examine(buffer, true);
 	}
 }
 

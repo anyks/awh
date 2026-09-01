@@ -2920,6 +2920,18 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
  *
  */
 bool awh::codec::xml::Value::load(const string & filename) noexcept {
+	// Выводим итог разбора файла разметки с умолчательными настройками
+	return this->load(filename, reader_t::settings_t());
+}
+/**
+ * @brief Метод разбора текста разметки из файла с заданными настройками
+ *
+ * @param filename адрес разбираемого файла
+ * @param settings настройки разбора текста разметки
+ * @return         признак успешности разбора
+ *
+ */
+bool awh::codec::xml::Value::load(const string & filename, const reader_t::settings_t & settings) noexcept {
 	// Открываем файл разметки для чтения
 	ifstream file(filename, ios::binary);
 	/**
@@ -3002,7 +3014,7 @@ bool awh::codec::xml::Value::load(const string & filename) noexcept {
 		return false;
 	}
 	// Выводим признак успешности разбора собранного текста
-	return this->parse(text);
+	return this->parse(text, settings);
 }
 /**
  * @brief Метод перезаписи значения в текст разметки
@@ -3078,8 +3090,24 @@ string awh::codec::xml::Value::dump(const writer_t::settings_t & settings) const
  *
  */
 bool awh::codec::xml::Value::save(const string & filename, const format_t format) const noexcept {
+	// Настройки сборки текста с затребованным видом оформления
+	writer_t::settings_t settings;
+	// Устанавливаем затребованный вид оформления текста
+	settings.format = format;
+	// Выводим итог записи значения в файл с настройками сборки
+	return this->save(filename, settings);
+}
+/**
+ * @brief Метод записи значения в файл с заданными настройками сборки
+ *
+ * @param filename адрес записываемого файла
+ * @param settings настройки сборки текста
+ * @return         признак успешности записи
+ *
+ */
+bool awh::codec::xml::Value::save(const string & filename, const writer_t::settings_t & settings) const noexcept {
 	// Получаем собранный текст значения
-	const string text = this->dump(format);
+	const string text = this->dump(settings);
 	/**
 	 * Если собрать текст значения не удалось
 	 */

@@ -7673,3 +7673,281 @@ TEST(CodecXmlReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		}
 	}
 }
+
+/**
+ * @brief Проверка кода отказа, возводимого каждым пределом разбора
+ *
+ * @details Четыре предела разметки отвечают своим кодом, а `maxEvent` - ЕДИНСТВЕННЫЙ
+ *          из одиннадцати пределов трёх кодеков, у какого своего кода нет: он отвечает
+ *          общим `OVERFLOW_LIMIT`. Расхождение это оговорено у самой настройки
+ *
+ * @note Щуп первой редакции мерил `maxEntities` встроенными сущностями («&lt;») и
+ *       получал отсутствие отказа. Предел считает сущности ОБЪЯВЛЕННЫЕ, и встроенных
+ *       не видит вовсе: неверен был щуп, а не кодек
+ *
+ */
+TEST(CodecXmlReader, LimitsRaiseTheirOwnCodes) {
+	const auto code = [](const string & text, const xml::reader_t::settings_t & settings) noexcept -> uint32_t {
+		xml::reader_t reader(::logger(), settings);
+		reader.feed(text.data(), text.size(), true);
+		while(reader.next()) ;
+		return static_cast <uint32_t> (reader.error());
+	};
+	{
+		xml::reader_t::settings_t s;
+		s.maxDepth = 2;
+		ASSERT_EQ(code("<a><b><c><d/></c></b></a>", s), static_cast <uint32_t> (xml::error_t::DEPTH_EXCEEDED));
+	}
+	{
+		xml::reader_t::settings_t s;
+		s.maxName = 3;
+		ASSERT_EQ(code("<abcdef/>", s), static_cast <uint32_t> (xml::error_t::NAME_TOO_LONG));
+	}
+	{
+		xml::reader_t::settings_t s;
+		s.maxAttributes = 1;
+		ASSERT_EQ(code("<a x=\"1\" y=\"2\"/>", s), static_cast <uint32_t> (xml::error_t::TOO_MANY_ATTRIBUTES));
+	}
+	{
+		xml::reader_t::settings_t s;
+		s.maxEvent = 4;
+		ASSERT_EQ(code("<a>ааааааааааа</a>", s), static_cast <uint32_t> (xml::error_t::OVERFLOW_LIMIT));
+	}
+	{
+		xml::reader_t::settings_t s;
+		s.maxEntities = 2;
+		ASSERT_EQ(code("<!DOCTYPE a [<!ENTITY p \"1\"><!ENTITY q \"2\"><!ENTITY r \"3\">]><a/>", s), static_cast <uint32_t> (xml::error_t::ENTITY_COUNT_EXCEEDED));
+	}
+}
+
+
+
+/**
+ * @brief Проверка места отказа: оно не зависит от нарезки и пусто при успехе
+ *
+ * @details Место отказа выдаётся посредником `errorLocation()`, а НЕ `location()`:
+ *          последний несёт место текущего события и с местом отказа расходится
+ *          законно - у текста «<a x=1/>» отказ стоит на 5, а событие на 0
+ *
+ */
+TEST(CodecXmlReader, ErrorLocationIsIndependentOfChunking) {
+	/**
+	 * @brief Метод разбора текста с выдачей места отказа
+	 *
+	 * @param text разбираемый текст разметки
+	 * @param step размер куска подачи, ноль - подача целиком
+	 * @return     место обнаружения отказа разбора
+	 *
+	 */
+	const auto locate = [](const string & text, const size_t step) noexcept -> xml::location_t {
+		// Чтение текста разметки
+		xml::reader_t reader(::logger());
+		// Если подача идёт текстом целиком
+		if(step == 0)
+			// Выполняем подачу текста разметки целиком
+			reader.feed(text.data(), text.size(), true);
+		// Если подача идёт кусками
+		else {
+			// Выполняем перебор всех кусков подаваемого текста
+			for(size_t i = 0; i < text.size(); i += step){
+				// Размер подаваемого куска текста
+				const size_t size = ((i + step) < text.size() ? step : (text.size() - i));
+				// Выполняем подачу очередного куска текста
+				reader.feed(text.data() + i, size, ((i + size) >= text.size()));
+				// Выполняем перебор всех событий разбора
+				while(reader.next()) ;
+			}
+		}
+		// Выполняем перебор всех оставшихся событий разбора
+		while(reader.next()) ;
+		// Выводим место обнаружения отказа разбора
+		return reader.errorLocation();
+	};
+	/**
+	 * Выполняем проверку независимости места отказа от нарезки текста
+	 */
+	{
+		// Проверяемые тексты и ожидаемые смещения отказа в них
+		const struct { const char * text; uint64_t offset; } probes[] = {
+			{"<a><b></c></a>", 6}, {"<a>\n<b>\n</a>", 8}, {"<a x=1/>", 5},
+			{"<a>&nope;</a>", 9}, {"<a/>x", 4}
+		};
+		// Выполняем перебор всех проверяемых текстов
+		for(const auto & probe : probes){
+			// Место отказа при подаче текста целиком
+			const xml::location_t whole = locate(probe.text, 0);
+			// Место отказа при подаче текста по одному байту
+			const xml::location_t parts = locate(probe.text, 1);
+			// Выполняем проверку указания места на виновный знак
+			EXPECT_EQ(whole.offset, probe.offset);
+			// Выполняем проверку совпадения места при обеих подачах
+			EXPECT_EQ(whole.offset, parts.offset);
+			// Выполняем проверку совпадения номера строки при обеих подачах
+			EXPECT_EQ(whole.line, parts.line);
+			// Выполняем проверку совпадения положения в строке при обеих подачах
+			EXPECT_EQ(whole.column, parts.column);
+		}
+	}
+	/**
+	 * Выполняем проверку пустоты места отказа при разборе без отказа
+	 */
+	{
+		// Место разбора текста, отказа не вызвавшего
+		const xml::location_t clean = locate("<a><b/></a>", 0);
+		// Выполняем проверку пустоты смещения места отказа
+		EXPECT_EQ(clean.offset, xml::NO_OFFSET);
+		// Выполняем проверку пустоты номера строки места отказа
+		EXPECT_EQ(clean.line, 0u);
+	}
+}
+
+/**
+ * @brief Проверка области предела количества сущностей
+ *
+ * @details Предел считает сущности, ОБЪЯВЛЕННЫЕ описанием типа документа, и только их.
+ *          Встроенных сущностей разметки он не видит вовсе, и текст, составленный из них
+ *          одних, не отвергается никогда - сколько бы их ни было и каким бы малым ни был
+ *          предел
+ *
+ * @note Утверждение это внесено в договор 01.09.2026 по замеру и прежде держалось лишь
+ *       записью. Проверка заведена оттого, что зелёное само по себе ничего не говорит:
+ *       щуп, случайно мерящий не ту величину, отчитался бы тем же
+ *
+ */
+TEST(CodecXmlReader, EntityLimitCountsDeclaredOnly) {
+	/**
+	 * @brief Метод разбора текста разметки с выдачей кода отказа
+	 *
+	 * @param text  разбираемый текст разметки
+	 * @param limit предел количества объявленных сущностей
+	 * @return      код отказа разбора текста
+	 *
+	 */
+	const auto code = [](const string & text, const uint32_t limit) noexcept -> xml::error_t {
+		// Настройки разбора текста разметки
+		xml::reader_t::settings_t settings;
+		// Выполняем указание предела количества объявленных сущностей
+		settings.maxEntities = limit;
+		// Чтение текста разметки
+		xml::reader_t reader(::logger(), settings);
+		// Выполняем подачу текста разметки целиком
+		reader.feed(text.data(), text.size(), true);
+		// Выполняем перебор всех событий разбора
+		while(reader.next()) ;
+		// Выводим код отказа разбора текста
+		return reader.error();
+	};
+	/**
+	 * Выполняем проверку слепоты предела к встроенным сущностям разметки
+	 */
+	{
+		// Выполняем проверку принятия четырёх встроенных сущностей при пределе в одну
+		ASSERT_EQ(code("<a>&lt;&gt;&amp;&quot;</a>", 1), xml::error_t::NONE);
+		// Выполняем проверку принятия их же при пределе, меньше какого не бывает
+		ASSERT_EQ(code("<a>&lt;&gt;&amp;&quot;&apos;</a>", 1), xml::error_t::NONE);
+	}
+	/**
+	 * Выполняем проверку точности предела на объявленных сущностях
+	 */
+	{
+		// Описание типа документа с двумя объявленными сущностями
+		const string two = "<!DOCTYPE a [<!ENTITY p \"1\"><!ENTITY q \"2\">]><a/>";
+		// Описание типа документа с тремя объявленными сущностями
+		const string three = "<!DOCTYPE a [<!ENTITY p \"1\"><!ENTITY q \"2\"><!ENTITY r \"3\">]><a/>";
+		// Выполняем проверку принятия количества, пределу равного
+		ASSERT_EQ(code(two, 2), xml::error_t::NONE);
+		// Выполняем проверку отказа количеству, предел превысившему
+		ASSERT_EQ(code(three, 2), xml::error_t::ENTITY_COUNT_EXCEEDED);
+	}
+	/**
+	 * Выполняем проверку того, что встроенные сущности к объявленным не приплюсовываются
+	 *
+	 * @note Проверка эта отделяет слепоту предела от простого запаса: будь встроенные
+	 *       сочтены наравне, объявленные две вместе с четырьмя встроенными предел в две
+	 *       превысили бы
+	 */
+	{
+		// Текст с двумя объявленными сущностями и четырьмя встроенными
+		const string mixed = "<!DOCTYPE a [<!ENTITY p \"1\"><!ENTITY q \"2\">]><a>&lt;&gt;&amp;&quot;</a>";
+		// Выполняем проверку принятия текста при пределе в две сущности
+		ASSERT_EQ(code(mixed, 2), xml::error_t::NONE);
+	}
+}
+
+TEST(CodecXmlReader, ProbeSurprisingCodes) {
+	const char * texts[] = {
+		"<a></b>", "<a>", "</a>", "<a/><b/>", "<a x/>", "<a x=y/>", "<a x='1' x='2'/>",
+		"<a>&#xZ;</a>", "<a>&#;</a>", "<a><!-- -- --></a>", "<a><![CDATA[]]]]></a>",
+		"<?xml version='2.0'?><a/>", "<?XML version='1.0'?><a/>", "<a>]]></a>", "text<a/>",
+		"<a:b/>", "<a xmlns:xml='x'/>", "<!DOCTYPE a><b/>", "<a>&#x110000;</a>"
+	};
+	for(const char * text : texts){
+		xml::reader_t reader(::logger());
+		reader.feed(text, ::strlen(text), true);
+		while(reader.next()) ;
+		::printf("ЩУП %-28s -> 0x%02X %s\n", text, static_cast <uint32_t> (reader.error()),
+			xml::message(reader.error()));
+	}
+}
+
+/**
+ * @brief Проверка того, что разбор по описанию типа документа НЕ поверяет
+ *
+ * @details Решение это объявлено намеренным в разделе «Намеренные решения» договора, и
+ *          там же сказано, что всякое из решений закреплено испытанием. Для ЭТОГО решения
+ *          испытания не было: замер 01.09.2026 нашёл лишь упоминания в записках соседних
+ *          проверок, а сличения поведения - ни одного
+ *
+ * @note Взяты пять видов несоответствия описанию, и всякий обязан быть ПРИНЯТ: имя корня,
+ *       описанию противное; узел, содержательной моделью не дозволенный; отсутствие
+ *       обязательного атрибута; содержимое у узла, объявленного пустым; атрибут, вовсе не
+ *       объявленный. Правильность ПОСТРОЕНИЯ при том проверяется наравне с прочим - здесь
+ *       снимается именно поверка СООТВЕТСТВИЯ, а не разбор описания
+ *
+ * @warning Поверка по описанию, по схеме XSD либо по договору RelaxNG есть работа
+ *          отдельная. Заведи её кто-нибудь внутри разбора - и проверка эта покраснеет
+ *          пятью утверждениями сразу, что и требуется: решение владельца меняется
+ *          осознанно, а не по дороге
+ *
+ */
+TEST(CodecXmlReader, DocumentTypeIsParsedButNotValidated) {
+	/**
+	 * @brief Метод разбора текста разметки с выдачей кода отказа
+	 *
+	 * @param text разбираемый текст разметки
+	 * @return     код отказа разбора текста
+	 *
+	 */
+	const auto code = [](const char * text) noexcept -> xml::error_t {
+		// Чтение текста разметки
+		xml::reader_t reader(::logger());
+		// Выполняем подачу текста разметки целиком
+		reader.feed(text, ::strlen(text), true);
+		// Выполняем перебор всех событий разбора
+		while(reader.next()) ;
+		// Выводим код отказа разбора текста
+		return reader.error();
+	};
+	// Выполняем проверку принятия корня, имени в описании типа противного
+	EXPECT_EQ(code("<!DOCTYPE a><b/>"), xml::error_t::NONE);
+	// Выполняем проверку принятия узла, содержательной моделью не дозволенного
+	EXPECT_EQ(code("<!DOCTYPE a [<!ELEMENT a (b)>]><a><c/></a>"), xml::error_t::NONE);
+	// Выполняем проверку принятия узла без обязательного по описанию атрибута
+	EXPECT_EQ(code("<!DOCTYPE a [<!ATTLIST a x CDATA #REQUIRED>]><a/>"), xml::error_t::NONE);
+	// Выполняем проверку принятия содержимого у узла, объявленного пустым
+	EXPECT_EQ(code("<!DOCTYPE a [<!ELEMENT a EMPTY>]><a>текст</a>"), xml::error_t::NONE);
+	// Выполняем проверку принятия атрибута, описанием не объявленного
+	EXPECT_EQ(code("<!DOCTYPE a [<!ATTLIST a x CDATA #IMPLIED>]><a y=\'1\'/>"), xml::error_t::NONE);
+	/**
+	 * Выполняем проверку того, что правильность ПОСТРОЕНИЯ при этом проверяется
+	 *
+	 * @note Утверждение это стоит здесь сторожем: без него проверка выше неотличима от
+	 *       разбора, не проверяющего вовсе ничего
+	 */
+	{
+		// Выполняем проверку отказа на несовпадение меток при том же описании типа
+		EXPECT_EQ(code("<!DOCTYPE a><a></b>"), xml::error_t::MISMATCHED_TAG);
+		// Выполняем проверку отказа на ошибочное построение самого описания типа
+		EXPECT_EQ(code("<!DOCTYPE ><a/>"), xml::error_t::INVALID_DOCTYPE);
+	}
+}

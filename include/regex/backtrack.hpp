@@ -55,6 +55,20 @@
  *          и даёт расхождения с эталонной реализацией на трети выражений
  *          с классами.
  *
+ *          <b>Не отсекающая проверка окружения исполняется продолжением исполнения
+ *          текущего, а не запуском вложенным.</b> Проверка обыкновенная атомарна:
+ *          тело её исполняется запуском отдельным, и точки возврата, телом
+ *          накопленные, снимаются вместе с ним. Проверка же не отсекающая -
+ *          «(?*...)» и «(?<*...)» - требует обратного: отказ последующего
+ *          текста обязан продолжаться перебором тела. Такого запуском
+ *          вложенным не выразить вовсе, отчего тело исполняется
+ *          в наборе точек общем, а завершается инструкцией
+ *          восстановления позиции. Перебор длин проверки
+ *          ретроспективной держится живым точкою особой -
+ *          признаком перебора в поле ряда позиций.
+ *          Решение закреплено тестом
+ *          «Regex.InterfaceNonAtomicLookarounds».
+ *
  * \~english
  * @brief Header file of the execution of regular expressions with backtracking — the Backtrack class,
  *        which executes the program by a single state while saving backtracking points,
@@ -92,6 +106,20 @@
  *          is able to coincide with the address of a class of another one. Giving up the cancellation was tried
  *          and yields divergences from the reference implementation on a third of the expressions
  *          with classes.
+ *
+ *          <b>A non-atomic lookaround check is executed as a continuation of the current
+ *          run rather than as a nested run.</b> An ordinary check is atomic:
+ *          its body is executed as a separate run, and the backtracking points
+ *          accumulated by the body are removed together with it. A non-atomic check —
+ *          «(?*...)» and «(?<*...)» — requires the opposite: a failure of the following
+ *          text must continue with a walk over the body. That cannot be expressed
+ *          by a nested run at all, whereby the body is executed
+ *          in the common set of points and ends with an instruction
+ *          restoring the position. The walk over the lengths of a lookbehind
+ *          check is kept alive by a special point — by a flag
+ *          of the walk in the field of the run of positions.
+ *          The decision is pinned by the test
+ *          «Regex.InterfaceNonAtomicLookarounds».
  *
  * \~
  *
@@ -360,6 +388,31 @@ namespace awh {
 					 * \~
 					 */
 					uint8_t control;
+					/**
+					 * \~russian
+					 * Флаг перебора длин не отсекающей ретроспективной проверки
+					 *
+					 * @details Проверка ретроспективная сопоставляется отступом назад
+					 *          на длину проверяемой последовательности, и длины её
+					 *          перебираются от наибольшей. Проверка обыкновенная
+					 *          перебирает их запуском вложенным, тогда как проверка
+					 *          не отсекающая обязана держать перебор живым и после
+					 *          выполнения своего: точка с установленным флагом
+					 *          длину очередную и несёт - в поле ряда позиций
+					 *
+					 * \~english
+					 * Flag of the walk over the lengths of a non-atomic lookbehind check
+					 * @details A lookbehind check is matched at an offset backwards
+					 *          by the length of the checked sequence, and its lengths
+					 *          are walked from the largest. An ordinary check
+					 *          walks them by a nested run, whereas a non-atomic
+					 *          check must keep the walk alive even after
+					 *          its own fulfilment: a point with the flag set
+					 *          carries the current length — in the field of the run of positions
+					 *
+					 * \~
+					 */
+					uint8_t seek;
 					// Номер ячейки отметки ветви охватывающей группы глагола перехода
 					uint32_t cell;
 					/**
@@ -372,7 +425,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Point() noexcept : frame(false), pc(0), pos(0), journal(0), span(0), control(0), cell(0) {}
+					Point() noexcept : frame(false), pc(0), pos(0), journal(0), span(0), control(0), seek(0), cell(0) {}
 				} point_t;
 			private:
 				/**
@@ -437,6 +490,7 @@ namespace awh {
 				 * \~
 				 */
 				size_t _attempt;
+
 			private:
 				// Количество выполненных шагов сопоставления
 				size_t _steps;

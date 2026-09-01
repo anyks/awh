@@ -1942,7 +1942,7 @@ static int32_t msync(void * address, [[maybe_unused]] const size_t length, [[may
  * @return       число отданных октетов, либо -1 при отказе
  *
  */
-static inline ssize_t send(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
+[[maybe_unused]] static inline ssize_t send(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags) noexcept {
 	// Выводим итог отдачи данных в сокет
 	return static_cast <ssize_t> (::__awh_send__(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags));
 }
@@ -1957,7 +1957,7 @@ static inline ssize_t send(const SOCKET sock, const void * buffer, const size_t 
  * @return       число принятых октетов, либо -1 при отказе
  *
  */
-static inline ssize_t recv(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
+[[maybe_unused]] static inline ssize_t recv(const SOCKET sock, void * buffer, const size_t size, const int32_t flags) noexcept {
 	// Выводим итог приёма данных из сокета
 	return static_cast <ssize_t> (::__awh_recv__(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags));
 }
@@ -1978,7 +1978,7 @@ static inline ssize_t recv(const SOCKET sock, void * buffer, const size_t size, 
  *       как она шла бы у систем POSIX, чьё имя посредник и носит
  *
  */
-static inline ssize_t sendto(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length) noexcept {
+[[maybe_unused]] static inline ssize_t sendto(const SOCKET sock, const void * buffer, const size_t size, const int32_t flags, const struct sockaddr * addr, const socklen_t length) noexcept {
 	// Выводим итог отдачи дейтаграммы по адресу
 	return static_cast <ssize_t> (::__awh_sendto__(sock, reinterpret_cast <const char *> (buffer), static_cast <int32_t> (size), flags, addr, static_cast <int32_t> (length), nullptr, awh::event::family_t::NONE, 0));
 }
@@ -1995,7 +1995,7 @@ static inline ssize_t sendto(const SOCKET sock, const void * buffer, const size_
  * @return       число принятых октетов, либо -1 при отказе
  *
  */
-static inline ssize_t recvfrom(const SOCKET sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, socklen_t * length) noexcept {
+[[maybe_unused]] static inline ssize_t recvfrom(const SOCKET sock, void * buffer, const size_t size, const int32_t flags, struct sockaddr * addr, socklen_t * length) noexcept {
 	// Выводим итог приёма дейтаграммы с адресом отправителя
 	return static_cast <ssize_t> (::__awh_recvfrom__(sock, reinterpret_cast <char *> (buffer), static_cast <int32_t> (size), flags, addr, reinterpret_cast <int32_t *> (length)));
 }
@@ -8064,8 +8064,6 @@ namespace fibers {
 	struct worker_t {
 		// Признак занятости волокна работой
 		bool busy;
-		// Признак роспуска: волокно обязано доработать и уйти
-		bool stop;
 		// Само волокно
 		::fiber::ctx_t * fiber;
 		// Выполняемая волокном работа
@@ -8082,8 +8080,21 @@ namespace fibers {
 	 *
 	 */
 	static constexpr size_t STACK = 0x100000;
-	// Пул волокон разбора событий
-	static vector <unique_ptr <worker_t>> pool;
+	/**
+	 * @brief Пул волокон разбора событий
+	 *
+	 * @warning Пул принадлежит ПОТОКУ, а не процессу. Волокно у MS Windows - вещь
+	 *          потока: заведённое одним потоком, оно не может быть разбужено другим,
+	 *          и `SwitchToFiber` на чужое волокно не определён вовсе. Цикл же вправе
+	 *          вестись несколькими потоками разом - так устроены проверки фасадов,
+	 *          ведущие сервер своим потоком
+	 *
+	 * @note Установлено обвалом: набор `proto` валился внутри `fiber::yield` на
+	 *       проверке, где сервер идёт отдельным потоком, а общий на процесс пул
+	 *       выдавал ему чужие волокна
+	 *
+	 */
+	static thread_local vector <unique_ptr <worker_t>> pool;
 	/**
 	 * @brief Тело волокна пула
 	 *
@@ -8098,13 +8109,16 @@ namespace fibers {
 		 * Работаем, пока волокно будят и не распустили
 		 *
 		 * @details Выход из тела ОБЯЗАТЕЛЕН: спящее волокно уничтожению не подлежит,
-		 *          и без выхода пул пережил бы движок вместе с журналом, на который
-		 *          волокно ссылается. Установлено обвалом: `destroy` отказывал
-		 *          уничтожить спящее волокно и писал отказ в журнал уже снесённой
-		 *          обстановки проверки
+		 *          и без выхода пул пережил бы движок вместе со всем, на что волокно
+		 *          ссылается. Установлено обвалом: `destroy` отказывал уничтожить
+		 *          спящее волокно и писал отказ в журнал уже снесённой обстановки
+		 *
+		 * @note Признак роспуска спрашивается у САМОГО модуля волокон, а не заводится
+		 *       здесь своим полем: иначе всякий потребитель изобретал бы его по-своему,
+		 *       и пятеро наречий разошлись бы не устройством, а повадкой
 		 *
 		 */
-		while((worker != nullptr) && !worker->stop){
+		while((worker != nullptr) && !::fiber::dismissed()){
 			// Если работа волокну задана
 			if(worker->job != nullptr){
 				// Выполняем саму работу
@@ -8154,7 +8168,7 @@ namespace fibers {
 				// Выводим отрицательный результат
 				return false;
 			// Заводим запись нового волокна пула
-			unique_ptr <worker_t> work(new worker_t{false, false, nullptr, nullptr});
+			unique_ptr <worker_t> work(new worker_t{false, nullptr, nullptr});
 			// Запоминаем адрес заведённой записи
 			worker = work.get();
 			// Заводим само волокно
@@ -8211,21 +8225,23 @@ namespace fibers {
 				// Пропускаем текущее волокно
 				continue;
 			}
+			/**
+			 * Распускаем волокно и уничтожаем его, если оно доработало
+			 *
+			 * @note Роспуск отвечает признаком того, что волокно ДОРАБОТАЛО и
+			 *       уничтожение дозволено. Спящее волокно уничтожать нельзя: кадры
+			 *       его не раскручены, - и модуль этого не допустит сам
+			 */
+			if(((*i)->fiber != nullptr) && !::fiber::dismiss((*i)->fiber)){
+				// Переходим к следующему волокну пула
+				++i;
+				// Волокно не доработало - из пула его не изымаем
+				continue;
+			}
 			// Если волокно заведено
-			if((*i)->fiber != nullptr){
-				/**
-				 * Распускаем волокно и будим его, чтобы оно доработало
-				 *
-				 * @note Уничтожению подлежит лишь доработавшее волокно: у спящего кадры
-				 *       не раскручены. Оттого сперва роспуск с пробуждением, и только
-				 *       затем уничтожение
-				 */
-				(*i)->stop = true;
-				// Выполняем пробуждение волокна на выход
-				::fiber::resume((*i)->fiber);
+			if((*i)->fiber != nullptr)
 				// Выполняем уничтожение доработавшего волокна
 				::fiber::destroy((*i)->fiber);
-			}
 			// Выполняем удаление записи волокна из пула
 			i = pool.erase(i);
 		}
@@ -9611,7 +9627,7 @@ namespace kernel {
 	 *       дедлайнов: обе они уже заняты и означают другое
 	 *
 	 */
-	static void * const watcher = reinterpret_cast <void *> (2);
+	[[maybe_unused]] static void * const watcher = reinterpret_cast <void *> (2);
 
 	/**
 	 * @brief Заведённые подписки по дескрипторам
@@ -42750,9 +42766,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если разделитель найден
 																if(pos != string::npos){
 																	// Получаем название файла unix-сокета
-																	sockname = ::move(unixsocket.substr(pos + 1));
+																	sockname = unixsocket.substr(pos + 1);
 																	// Устанавливаем полный путь к файлу unix-сокета
-																	fullpath = ::move(unixsocket.substr(0, pos + 1));
+																	fullpath = unixsocket.substr(0, pos + 1);
 																// Если разделитель не найден
 																} else {
 																	// Устанавливаем название файла unix-сокета
@@ -42779,7 +42795,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																for(;;){
 																	// Создаём адрес unix-сокета клиента
-																	filename = ::move(this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str()));
+																	filename = this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str());
 																	// Если длина имени файла превышает допустимую
 																	if(filename.length() > sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)){
 																		// Если установлена функция обратного вызова
@@ -46551,7 +46567,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
@@ -48521,7 +48537,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										tunnel->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									tunnel->target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48563,7 +48579,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										tunnel->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									tunnel->target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -48615,7 +48631,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										mediator->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес в хост
-									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48657,7 +48673,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										mediator->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес в хост
-									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -48767,7 +48783,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										client->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48816,7 +48832,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										client->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -48926,7 +48942,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										server->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48975,7 +48991,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										server->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -51769,7 +51785,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
@@ -51829,7 +51845,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
@@ -51930,7 +51946,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
@@ -51994,7 +52010,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
@@ -52275,7 +52291,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										tunnel->source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										tunnel->source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -52346,7 +52362,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Устанавливаем полученный IP-адрес хоста в источник сетевого адреса посредника
-										mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -52744,7 +52760,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										tunnel->source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										tunnel->source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -52815,7 +52831,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Устанавливаем полученный IP-адрес в хост посредника
-										mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -56913,7 +56929,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
@@ -57214,7 +57230,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров

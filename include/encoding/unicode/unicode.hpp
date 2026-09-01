@@ -235,6 +235,40 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ uint16_t bidirectional(const uint32_t code) noexcept;
 		/**
 		 * \~russian
+		 * @brief Функция извлечения набора письменностей символа
+		 *
+		 * @details Набор выводится расширением письменности символа, а при отсутствии
+		 *          расширения - единственной его письменностью. Номера выводятся
+		 *          без основания идентификаторов письменностей, отчего сличаются
+		 *          между собою напрямую. Набор нужен прогону письменности:
+		 *          он сводит письменности прогона пересечением наборов.
+		 *
+		 * @param code   кодовое значение символа
+		 * @param output набор номеров письменностей символа
+		 * @param size   размер набора номеров письменностей
+		 *
+		 * @return       количество письменностей, в набор выведенных
+		 *
+		 * \~english
+		 * @brief Function extracting the set of scripts of a character
+		 *
+		 * @details The set is output as the script extension of the character, and in the absence
+		 *          of an extension — as its single script. The numbers are output
+		 *          without the base of the script identifiers, whereby they are compared
+		 *          with one another directly. The set is needed by a script run:
+		 *          it reduces the scripts of the run by an intersection of the sets.
+		 *
+		 * @param code   character code value
+		 * @param output set of the numbers of the scripts of the character
+		 * @param size   size of the set of the numbers of the scripts
+		 *
+		 * @return       number of scripts output into the set
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t scripts(const uint32_t code, uint16_t * output, const size_t size) noexcept;
+		/**
+		 * \~russian
 		 * @brief Функция простого приведения регистра символа
 		 *
 		 * @details Приведение выполняется по таблице простого приведения регистра

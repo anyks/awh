@@ -41,6 +41,7 @@
 #include <vector>
 #include <cstdint>
 #include <string_view>
+#include <unordered_set>
 #include <unordered_map>
 
 /**
@@ -316,6 +317,34 @@ namespace awh {
 			private:
 				// Набор отложенных ссылок на именованные группы
 				vector <deferred_t> _deferred;
+			private:
+				/**
+				 * \~russian
+				 * Набор ретроспективных проверок, длину коих даёт вызов подпрограммы
+				 *
+				 * @details Длина вызова берётся длиною вызываемой группы, а группа
+				 *          вправе объявляться и позже проверки: длина таких проверок
+				 *          вычисляется по завершении разбора наравне со ссылками
+				 *          отложенными. Хранится индекс узла проверки и смещение
+				 *          её в выражении - им отказ и выводится.
+				 *
+				 * \~english
+				 * Set of lookbehinds whose length is given by a subroutine call
+				 * @details The length of a call is taken as the length of the called group,
+				 *          and the group may be declared later than the lookbehind: the length
+				 *          of such lookbehinds is computed after parsing completes, on a par with
+				 *          deferred references. The node index of the lookbehind and its offset
+				 *          in the pattern are stored — the refusal is reported with it.
+				 *
+				 * \~
+				 */
+				vector <pair <node_id_t, size_t>> _behinds;
+			private:
+				// Набор номеров групп, длина каких вычисляется ныне
+				mutable unordered_set <uint32_t> _calling;
+			private:
+				// Признак вычисления длины с разрешением вызовов подпрограмм
+				bool _resolving;
 			private:
 				// Соответствие имён групп их номерам
 				unordered_map <string, vector <uint32_t>> _groups;
@@ -1001,6 +1030,38 @@ namespace awh {
 				 * \~
 				 */
 				node_id_t makeList(const node_t type, const vector <node_id_t> & items, const size_t from = 0) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки наличия вызова подпрограммы либо ссылки на захват
+				 *
+				 * @param id индекс узла, с которого начинается обход
+				 *
+				 * @return   результат проверки наличия вызова либо ссылки
+				 *
+				 * \~english
+				 * @brief Method of checking the presence of a subroutine call or a backreference
+				 * @param id index of the node the traversal starts from
+				 * @return   result of checking the presence of a subroutine call
+				 *
+				 * \~
+				 */
+				bool referring(const node_id_t id) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод поиска узла захватывающей группы по её номеру
+				 *
+				 * @param number номер разыскиваемой захватывающей группы
+				 *
+				 * @return       индекс узла захватывающей группы
+				 *
+				 * \~english
+				 * @brief Method of searching for a capturing group node by its number
+				 * @param number number of the capturing group being searched for
+				 * @return       index of the capturing group node
+				 *
+				 * \~
+				 */
+				node_id_t grouping(const uint32_t number) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод создания узла рекурсивного вызова

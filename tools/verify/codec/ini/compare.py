@@ -149,6 +149,7 @@ def main():
 
 	for dialect, oracle, listed, folded, sectioned in ORACLES:
 		matched = diverged = refused = skipped = crashed = 0
+		wider = narrower = 0
 		rewritten = unwritten = 0
 		for name in sorted(os.listdir(root)):
 			if not name.endswith('.ini'):
@@ -166,6 +167,25 @@ def main():
 			expected = oracle(source)
 			if expected is None:
 				skipped += 1
+				##
+				# Разбор текста, эталоном не осиленного, всё же ведётся - ради счёта
+				#
+				# Сличать тут нечего: своего мнения у эталона нет. Но молчание о целой
+				# доле корпуса читается как «разобрано всё»: текстов таких у наречия Git
+				# больше, чем сличённых. Счёт делит их надвое - принятые нами и
+				# отвергнутые, - и доля принятых есть мера того, насколько мы шире
+				# образца. Мера эта сама по себе не приговор: чтение вправе быть шире
+				# там, где наречие того требует, - но расти она не должна незаметно
+				##
+				run = subprocess.run([dump, source, dialect], capture_output = True, text = True)
+				if run.returncode == 0:
+					wider += 1
+				elif run.returncode < 0:
+					crashed += 1
+					report.append({'наречие': dialect, 'случай': name,
+					               'исход': 'щуп сорван сигналом %d на тексте, эталоном не осиленном' % (-run.returncode),
+					               'отказ': run.stderr.strip()[:400]})
+				else: narrower += 1
 				continue
 			run = subprocess.run([dump, source, dialect], capture_output = True, text = True)
 			##
@@ -226,16 +246,16 @@ def main():
 				               'расхождения': diffs[:8]})
 			else:
 				matched += 1
-		totals[dialect] = (matched, diverged, refused, skipped, crashed, rewritten, unwritten)
+		totals[dialect] = (matched, diverged, refused, skipped, crashed, rewritten, unwritten, wider, narrower)
 
-	for dialect, (matched, diverged, refused, skipped, crashed, rewritten, unwritten) in totals.items():
+	for dialect, (matched, diverged, refused, skipped, crashed, rewritten, unwritten, wider, narrower) in totals.items():
 		print('Наречие %s:' % dialect)
 		print('  разбор совпал:          %d' % matched)
 		print('  РАЗБОР РАЗОШЁЛСЯ:       %d' % diverged)
 		print('  РАЗБОР ОТВЕРГНУТ:       %d' % refused)
 		print('  ЩУП СОРВАН СИГНАЛОМ:    %d' % crashed)
 		print('  ПЕРЕЗАПИСЬ ПОМЕНЯЛА СМЫСЛ: %d' % rewritten)
-		print('  эталон текст не осилил: %d' % skipped)
+		print('  эталон текст не осилил: %d (из них приняли мы %d, отвергли %d)' % (skipped, wider, narrower))
 		print('  эталон перезаписи не осилил: %d' % unwritten)
 
 	if report:
@@ -257,7 +277,7 @@ def main():
 		return 2
 
 	# Отказом отвечаем при всяком расхождении
-	return 1 if any((d or r or c or w) for _, d, r, _, c, w, _ in totals.values()) else 0
+	return 1 if any((d or r or c or w) for _, d, r, _, c, w, _, _, _ in totals.values()) else 0
 
 
 if __name__ == '__main__':

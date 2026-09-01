@@ -57,6 +57,10 @@
  *
  * \~
  */
+#pragma pop_macro("CS8")
+#pragma pop_macro("CS7")
+#pragma pop_macro("CS6")
+#pragma pop_macro("CS5")
 #pragma pop_macro("GS")
 #pragma pop_macro("DS")
 #pragma pop_macro("SS")
