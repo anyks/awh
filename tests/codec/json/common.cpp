@@ -145,7 +145,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::STORAGE_EXHAUSTED) + 1)), "unknown error");
+	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::UNCLOSED_OBJECT) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(json::message(static_cast <json::error_t> (0xFF)), "unknown error");
 }

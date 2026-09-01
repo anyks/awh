@@ -144,7 +144,7 @@ namespace {
  *
  */
 awh::codec::abc::Storage::Storage(const log_t * log) noexcept :
- _stream(nullptr), _length(0), _error(error_t::NONE), _log(log) {}
+ _sync(sync_t::FULL), _stream(nullptr), _length(0), _error(error_t::NONE), _log(log) {}
 /**
  * @brief Деструктор
  *
@@ -345,7 +345,17 @@ bool awh::codec::abc::Storage::flush() noexcept {
 	 *       и отказ его означает лишь недоступность полного сброса, а не потерю записи
 	 */
 	#elif defined(__APPLE__) || defined(__MACH__)
-		const int flushed = ((::fcntl(descriptor, F_FULLFSYNC, 0) == -1) ? ::fsync(descriptor) : 0);
+		/**
+		 * Полный сброс делается ЛИШЬ по затребованному способу
+		 *
+		 * @note Способ этот - настройка потребителя, а не признак системы: цена полного
+		 *       сброса замерена и высока (43 мкс против 4604 мкс на круг, 02.09.2026), и
+		 *       выбор между обещанием пережить обрыв ПИТАНИЯ и обещанием пережить обрыв
+		 *       ПРОГРАММЫ принадлежит тому, кто знает цену своим данным. Умолчанием
+		 *       взято первое: умолчание держит обещание, а не быстроту
+		 */
+		const int flushed = ((this->_sync == sync_t::FULL) ?
+		 ((::fcntl(descriptor, F_FULLFSYNC, 0) == -1) ? ::fsync(descriptor) : 0) : ::fsync(descriptor));
 	#else
 		const int flushed = ::fsync(descriptor);
 	#endif
@@ -357,6 +367,26 @@ bool awh::codec::abc::Storage::flush() noexcept {
 	}
 	// Выводим признак успешного сброса
 	return true;
+}
+/**
+ * @brief Метод установки способа сброса записанного на носитель
+ *
+ * @param value устанавливаемый способ сброса
+ *
+ */
+void awh::codec::abc::Storage::sync(const sync_t value) noexcept {
+	// Выполняем установку способа сброса записанного на носитель
+	this->_sync = value;
+}
+/**
+ * @brief Метод извлечения способа сброса записанного на носитель
+ *
+ * @return способ сброса записанного на носитель
+ *
+ */
+awh::codec::abc::Storage::sync_t awh::codec::abc::Storage::sync() const noexcept {
+	// Выводим способ сброса записанного на носитель
+	return this->_sync;
 }
 /**
  * @brief Метод выдачи работы чтения октетов контейнера

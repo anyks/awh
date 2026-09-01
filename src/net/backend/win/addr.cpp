@@ -51,6 +51,17 @@
 #include <vector>
 #include <cstring>
 #include <shared_mutex>
+#include <net/backend/win/tunnel.hpp>
+/**
+ * @brief Средства блокировок фреймворка
+ *
+ * @note Замок берётся свой, а не стандартный: стандартный, захваченный в миг
+ *       ветвления процесса, остаётся в потомке замкнутым навсегда - владелец в
+ *       потомок не переходит, и отпереть его некому. AWH ветвится кластером, и
+ *       такой замок остановил бы потомка намертво
+ *
+ */
+#include <sys/locker.hpp>
 
 /**
  * Подключаем единую точку подключения системных заголовков MS Windows
@@ -114,9 +125,49 @@ namespace {
 		outward_t() noexcept : filled(false), deadline(0), address{}, mac{} {}
 	};
 	// Замок, оберегающий запомненные сведения
-	static std::shared_mutex __awh_outward_mutex__;
+	/**
+	 * @brief Состояние блокировок, погашенное при заведении
+	 *
+	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
+	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
+	 *          за захват замка на каждом обращении незачем
+	 *
+	 * @note Гашение стоит здесь, а не отдельной строкой рядом с объявлением: на уровне
+	 *       пространства имён оператор не пишется вовсе - там разрешены одни объявления.
+	 *       Собственный конструктор - единственное место, где гашение оказывается ЧАСТЬЮ
+	 *       заведения замка и не зависит ни от чего постороннего
+	 *
+	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
+	 *
+	 */
+	template <typename MutexType = std::mutex>
+	struct muted_state_t : public awh::lock_state_t <MutexType> {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		muted_state_t() noexcept {
+			// Гасим замок при заведении
+			this->enabled = false;
+		}
+	};
+		static muted_state_t <std::shared_mutex> __awh_outward_mutex__;
+	/**
+	 * @brief Признак безопасной работы с потоками
+	 *
+	 * @details Умолчание ОТКЛЮЧЕНО намеренно: работа в один поток - обычный расклад,
+	 *          и платить за захват замка на каждом обращении незачем
+	 *
+	 * @note Лежит здесь, а не в `eth.cpp`, как лежал прежде: замок, каким он
+	 *       распоряжается, живёт в этом же файле, а из чужой единицы трансляции
+	 *       включить его нечем. Тем же порядком устроены и наречия POSIX -
+	 *       `bsd/addr.cpp:556`, `gnu/addr.cpp:516`
+	 *
+	 */
+	static awh::event::mode_t __awh_thread_safety__ = awh::event::mode_t::DISABLED;
 	// Запомненные сведения порознь для IPv4 и IPv6
 	static outward_t __awh_outward__[2];
+
 	/**
 	 * @brief Функция сличения названий сетевых устройств
 	 *
@@ -268,7 +319,7 @@ namespace {
 			// Выводим признак неуспешного восстановления
 			return false;
 		// Блокируем запомненные сведения на чтение
-		const std::shared_lock <std::shared_mutex> lock(::__awh_outward_mutex__);
+		const awh::locker_t <std::shared_mutex> lock(::__awh_outward_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Получаем запись, отвечающую семейству адресов
 		const outward_t & outward = ::__awh_outward__[source.ip->size == 16];
 		// Если запись не заполнена либо устарела
@@ -302,7 +353,7 @@ namespace {
 			// Выходим из функции
 			return;
 		// Блокируем запомненные сведения на запись
-		const std::lock_guard <std::shared_mutex> lock(::__awh_outward_mutex__);
+		const awh::locker_t <std::shared_mutex> lock(::__awh_outward_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Получаем запись, отвечающую семейству адресов
 		outward_t & outward = ::__awh_outward__[source.ip->size == 16];
 		// Запоминаем название сетевого устройства
@@ -879,4 +930,22 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			}
 		} break;
 	}
+}
+
+/**
+ * @brief Метод установки режима безопасной работы с потоками
+ *
+ * @warning Прежде обращение это лежало в `eth.cpp` и ставило один признак, не включая
+ *          НИЧЕГО: замок склада внешних адресов живёт здесь, и из той единицы
+ *          трансляции добраться до него было нечем. Склад оставался без замка при
+ *          всяком положении переключателя
+ *
+ * @param mode устанавливаемый режим безопасной работы с потоками
+ *
+ */
+void awh::eth::Network_Address::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Приводим замок склада внешних адресов к установленному режиму
+	::__awh_outward_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }

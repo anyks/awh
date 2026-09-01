@@ -246,7 +246,7 @@ namespace {
  *
  */
 awh::codec::ini::Writer::Settings::Settings() noexcept :
- marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), trimSections(true), quotes(true), quoting(quoting_t::AUTO),
+ marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), trimSections(true), greedySections(false), quotes(true), quoting(quoting_t::AUTO),
  subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), comments(marker_t::BOTH),
  spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
 /**
@@ -294,6 +294,13 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Writer::Settings::python() no
 	 *       пробелами, - и отвергать такое имя записи не за что
 	 */
 	result.trimSections = false;
+	/**
+	 * Устанавливаем розыск читающим закрывающей скобки до последней в строке
+	 *
+	 * @note Разбор этого наречия берёт имя раздела до последней скобки: «[x[]]» есть ему
+	 *       имя «x[]», - и отвергать такое имя записи не за что
+	 */
+	result.greedySections = true;
 	// Устанавливаем запись многострочного значения продолжением отступом
 	result.indents = true;
 	// Устанавливаем запрет свойств, объявленных до первого раздела
@@ -479,8 +486,25 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		 * Если проверяется имя раздела
 		 */
 		if(section){
-			// Дополняем признак недопустимости знаками квадратных скобок и кавычки
-			invalid = (invalid || (name[i] == '[') || (name[i] == ']') || (name[i] == '"'));
+			/**
+			 * Дополняем признак недопустимости знаками квадратных скобок и кавычки
+			 *
+			 * @note Скобки поверяются толкованием читающего: читающий жадный берёт имя до
+			 *       ПОСЛЕДНЕЙ скобки в строке, и «[x[]]» есть ему имя «x[]» - записанное
+			 *       имя с прочитанным совпадает, и отвергать его не за что. Круг «чтение -
+			 *       запись» на нём рвался: наречие python текст принимало, а запись дерево
+			 *       отвергала пустотой
+			 *
+			 * @note Запрет снимается со скобок ОБЕИХ и на любом месте имени, первое
+			 *       включая: жадный розыск доводит имя до последней скобки строки, и
+			 *       объявление «[[a]]» есть ему имя «[a]». Проверено кругом «правка -
+			 *       запись - чтение» на именах «x[]», «[a», «[a]», «a]», «]a[» и «a[b»:
+			 *       все шесть возвращаются знак в знак. Оговорка о недопустимости
+			 *       открывающей скобки первым знаком стояла здесь догадкою и снята
+			 *       замером
+			 */
+			invalid = (invalid || (name[i] == '"') ||
+			 (!this->_settings.greedySections && ((name[i] == '[') || (name[i] == ']'))));
 			/**
 			 * Если подраздел отделяется знаком-разделителем
 			 *

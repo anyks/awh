@@ -1208,7 +1208,7 @@ namespace awh {
 						// Выходим из метода размещения записи
 						return;
 					// Выполняем размещение записи в конце набора
-					new (const_cast <T *> (this->_records) + this->_count) T(forward <Args> (args)...);
+					new (const_cast <T *> (this->_records) + this->_count) T(std::forward <Args> (args)...);
 					// Выполняем увеличение количества записей набора
 					this->_count++;
 				}

@@ -1162,6 +1162,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/regex/storage.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/grok/table.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/grok/grok.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/numeric.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/xml/reader.cpp"

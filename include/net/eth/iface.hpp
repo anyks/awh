@@ -285,6 +285,41 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @details Включает защиту учёта связей, розданных туннелям процесса, от
+				 * одновременного обращения из разных потоков
+				 *
+				 * @warning Настройка эта **общая на весь процесс**, а не своя у каждого
+				 * объекта: выставленная через один объект, она действует на все. По
+				 * умолчанию защита **выключена** - в расчёте на однопоточную работу, -
+				 * и включать её следует до того, как заработает второй поток
+				 *
+				 * @note Защищать на разных системах приходится РАЗНОЕ, и там, где общего
+				 * учёта у модуля нет вовсе, вызов ничего не делает. Настройка от этого не
+				 * теряет смысла: она общая для всех систем, а не своя у каждой
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 *
+				 * \~english
+				 * @brief Method of setting the thread safety of the work
+				 * @details Switches on the protection of the registry of links handed out to the tunnels of the
+				 * process from a simultaneous address from different threads
+				 * @warning This setting is a **common one for the whole process**, and not its own for every
+				 * object: set through one object, it is in force for all of them. By
+				 * default the protection is **switched off** — with the reckoning on a single-threaded work, —
+				 * and it should be switched on before the second thread starts working
+				 * @note What has to be protected differs from system to system, and where the module keeps no
+				 * common registry at all, the call does nothing. The setting does not lose its meaning because of
+				 * that: it is common for all the systems, and not its own for each of them
+				 * @param mode flag of the thread safety mode
+				 *
+				 * \~
+				 */
+				void threadSafety(const bool mode) noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод удаления сетевого интерфейса
 				 *
 				 * @details Убирает устройство из системы.

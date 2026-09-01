@@ -159,6 +159,9 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/charset.cpp" -o "$OUTPUT/charset.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp" -o "$OUTPUT/charset-table.o"
 
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/numeric.cpp" -o "$OUTPUT/codec-numeric.o"
+OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
+
 # Выполняем перебор всех частей кодека CSV
 for PART in common encoding reader writer document; do
 	# Выполняем сборку очередной части кодека CSV

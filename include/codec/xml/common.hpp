@@ -1205,9 +1205,13 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод разбора числа из содержимого разметки
 			 *
-			 * @details Разбор ведётся с проверкой выхода за пределы запрошенного типа:
-			 * значение, в тип не помещающееся, отвергается, а не усекается молча. Тип
-			 * определяется запрошенным типом результата, отдельного указания не требуя
+			 * @details Пробельная обвязка отбрасывается, а вид разбора решается ЗАПИСЬЮ,
+			 * а не затребованным видом: `1e2` и `300.5` извлекаются и целым, округляясь по
+			 * правилам приведения, а запись, в разрядность не вмещающаяся, выдаётся пределом
+			 * затребованного вида. Уклад этот повторяет договор извлечения кодека JSON знак
+			 * в знак и заведён решением владельца от 01.09.2026, снявшим расхождение двух
+			 * дверей разметки по четырём правилам разом. Записи `nan` и `inf` числом не
+			 * считаются. Затребованный вид отдельного указания не требует
 			 *
 			 * @note Переменная-приёмник при ОТКАЗЕ не трогается вовсе и сохраняет то, что
 			 *       несла до вызова. Уклад этот един у всех трёх кодеков и снят замером
@@ -1228,104 +1232,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			bool numeric(const string_view text, T & result) noexcept {
-				/**
-				 * \~russian
-				 * Если запрошено логическое значение
-				 *
-				 * @note Сличение ведётся прежде целых чисел намеренно: логический тип
-				 *       языком причислен к целым, и без этого «true» бы отвергалось
-				 *
-				 * \~english
-				 * If a logical value has been requested
-				 * @note The comparison is conducted before the integers deliberately: the logical type
-				 *       is reckoned among the integer ones by the language, and without this «true» would be rejected
-				 *
-				 * \~
-				 */
-				if constexpr(is_same <T, bool>::value)
-					// Выполняем разбор логического значения
-					return boolean(text, result);
-				/**
-				 * Если запрошено число с плавающей точкой
-				 */
-				else if constexpr(is_floating_point <T>::value) {
-					// Значение числа с плавающей точкой наибольшей точности
-					double value = 0.;
-					/**
-					 * Если разбор числа с плавающей точкой выполнить не удалось
-					 */
-					if(!real(text, value))
-						// Выводим признак неудачного разбора
-						return false;
-					/**
-					 * \~russian
-					 * Если разобранное число за пределы запрошенного типа выходит
-					 *
-					 * @note Проверка ведётся лишь для конечных значений: бесконечность
-					 *       записана в исходном тексте намеренно и усечением не является
-					 *
-					 * \~english
-					 * If the parsed number goes beyond the limits of the requested type
-					 * @note The check is conducted only for the finite values: an infinity is
-					 *       written in the source text deliberately and is not a truncation
-					 *
-					 * \~
-					 */
-					if((sizeof(T) < sizeof(double)) && (value == value) && ((value > 0. ? value : -value) > static_cast <double> (numeric_limits <T>::max())) &&
-					   ((value > 0. ? value : -value) < numeric_limits <double>::infinity()))
-						// Выводим признак неудачного разбора
-						return false;
-					// Запоминаем разобранное число
-					result = static_cast <T> (value);
-					// Выводим признак успешного разбора
-					return true;
-				/**
-				 * Если запрошено целое число без знака
-				 */
-				} else if constexpr(is_unsigned <T>::value) {
-					// Значение целого числа без знака наибольшей разрядности
-					uint64_t value = 0;
-					/**
-					 * Если разбор целого числа выполнить не удалось
-					 */
-					if(!integer(text, value))
-						// Выводим признак неудачного разбора
-						return false;
-					/**
-					 * Если разобранное число за пределы запрошенного типа выходит
-					 */
-					if(value > static_cast <uint64_t> (numeric_limits <T>::max()))
-						// Выводим признак неудачного разбора
-						return false;
-					// Запоминаем разобранное число
-					result = static_cast <T> (value);
-					// Выводим признак успешного разбора
-					return true;
-				/**
-				 * Если запрошено целое число со знаком
-				 */
-				} else {
-					// Значение целого числа со знаком наибольшей разрядности
-					int64_t value = 0;
-					/**
-					 * Если разбор целого числа выполнить не удалось
-					 */
-					if(!integer(text, value))
-						// Выводим признак неудачного разбора
-						return false;
-					/**
-					 * Если разобранное число за пределы запрошенного типа выходит
-					 */
-					if((value > static_cast <int64_t> (numeric_limits <T>::max())) || (value < static_cast <int64_t> (numeric_limits <T>::min())))
-						// Выводим признак неудачного разбора
-						return false;
-					// Запоминаем разобранное число
-					result = static_cast <T> (value);
-					// Выводим признак успешного разбора
-					return true;
-				}
-			}
+			__AWH_SHARED_EXPORT__ bool numeric(const string_view text, T & result) noexcept;
 		};
 	};
 };

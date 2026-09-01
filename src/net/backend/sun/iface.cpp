@@ -104,6 +104,7 @@ static constexpr const char * __AWH_IFACE_BACKEND__ = "Sun Solaris interface bac
  *       имени связи, отводимой под туннель
  */
 #include <sys/lib.hpp>
+#include <sys/locker.hpp>
 
 /**
  * @brief Функция перевода строки в нижний регистр на этапе сборки
@@ -1208,8 +1209,31 @@ namespace iface {
 	 * @note Замок кладётся вокруг перечня, а не вокруг перебора целиком: перебор ходит
 	 *       к системе за адресом связи, и держать замок всё это время незачем
 	 *
+	 * @warning Замок берётся ИМЕННО состоянием блокировок фреймворка, а не голым
+	 *          `std::mutex`. Довод не в единообразии: фреймворк ветвится (кластер), а
+	 *          голый мьютекс переживает `fork` в том виде, в каком его застало
+	 *          ветвление. Захваченный чужим потоком, он достаётся потомку захваченным
+	 *          навсегда - потока, способного его отпустить, в потомке нет. Состояние
+	 *          блокировок помнит номер процесса и заводит мьютекс заново, обнаружив
+	 *          ветвление, и оно же умеет блокировки отключать
+	 *
 	 */
-	static std::mutex __AWH_IFACE_TUNNEL_LOCK__;
+	static awh::lock_state_t <std::mutex> __AWH_IFACE_TUNNEL_LOCK__;
+
+	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 * @note По умолчанию защита ВЫКЛЮЧЕНА - в расчёте на однопоточную работу, - ровно
+	 *       как это сделано у записей об адресах с выходом во внешнюю сеть
+	 *
+	 */
+	static awh::event::mode_t __AWH_IFACE_TUNNEL_SAFETY__ = awh::event::mode_t::DISABLED;
+
+	/**
+	 * @brief Признак выполненной одноразовой настройки блокировки
+	 *
+	 */
+	static std::once_flag __AWH_IFACE_TUNNEL_ONCE__;
 
 	/**
 	 * @brief Перечень связей, розданных туннелям этого процесса
@@ -1226,7 +1250,7 @@ namespace iface {
 	 */
 	static bool occupy(const string & name) noexcept {
 		// Выполняем блокировку перечня розданных связей
-		const std::lock_guard <std::mutex> lock(::iface::__AWH_IFACE_TUNNEL_LOCK__);
+		const awh::locker_t <> lock(::iface::__AWH_IFACE_TUNNEL_LOCK__);
 		// Выводим признак того, что связь прежде роздана не была
 		return ::iface::__AWH_IFACE_TUNNEL_TAKEN__.emplace(name).second;
 	};
@@ -1239,7 +1263,7 @@ namespace iface {
 	 */
 	static void release(const string & name) noexcept {
 		// Выполняем блокировку перечня розданных связей
-		const std::lock_guard <std::mutex> lock(::iface::__AWH_IFACE_TUNNEL_LOCK__);
+		const awh::locker_t <> lock(::iface::__AWH_IFACE_TUNNEL_LOCK__);
 		// Освобождаем связь в перечне розданных
 		::iface::__AWH_IFACE_TUNNEL_TAKEN__.erase(name);
 	};
@@ -3928,13 +3952,33 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 	return result;
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ *
+ */
+void awh::eth::Interface::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	::iface::__AWH_IFACE_TUNNEL_SAFETY__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Активируем работу мьютекса блокировки потока при работе с учётом розданных связей
+	::iface::__AWH_IFACE_TUNNEL_LOCK__.enabled = (::iface::__AWH_IFACE_TUNNEL_SAFETY__ == event::mode_t::ENABLED);
+}
+/**
  * @brief Конструктор
  *
  * @param fmk объект фреймворка
  * @param log объект работы с логами
  *
  */
-awh::eth::Interface::Interface(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Interface::Interface(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+	/**
+	 * Выполняем одноразовую настройку блокировки для всех экземпляров класса
+	 */
+	std::call_once(::iface::__AWH_IFACE_TUNNEL_ONCE__, []() noexcept {
+		// Активируем работу мьютекса блокировки потока при работе с учётом розданных связей
+		::iface::__AWH_IFACE_TUNNEL_LOCK__.enabled = (::iface::__AWH_IFACE_TUNNEL_SAFETY__ == event::mode_t::ENABLED);
+	});
+}
 /**
  * @brief Деструктор
  *

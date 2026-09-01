@@ -3274,6 +3274,34 @@ size_t awh::regex::Codegen::guard(const instruction_t & instruction) noexcept {
 	return result;
 }
 /**
+ * @brief Метод сборки набора адресов обстановки исполнения
+ *
+ */
+void awh::regex::Codegen::binding() noexcept {
+	// Выполняем размещение набора адресов обстановки исполнения
+	this->_context.assign((SLOT_TABLES + this->_offsets.size()), nullptr);
+	/**
+	 * Выполняем обход смещений значений хранилища обстановки
+	 */
+	for(size_t i = SLOT_TABLES; i < this->_context.size(); i++)
+		// Выполняем установку адреса значения хранилища
+		this->_context.at(i) = (this->_members.data() + this->_offsets.at(i - SLOT_TABLES));
+	// Выполняем установку адреса предварительного отбора позиций
+	this->_context.at(SLOT_PREFILTER) = &this->_prefilter;
+	// Выполняем установку адреса подпрограммы отбора позиций
+	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
+	// Выполняем установку адреса подпрограммы проверки возможности совпадения
+	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
+	// Выполняем установку адреса подпрограммы отбора позиции по литералу
+	this->_context.at(SLOT_BOUNDING) = reinterpret_cast <const void *> (&bounding);
+	// Выполняем установку адреса подпрограммы проверки привязки к позиции
+	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&asserting);
+	// Выполняем установку адреса подпрограммы прохода ряда повторения
+	this->_context.at(SLOT_SCANNING) = reinterpret_cast <const void *> (&scanning);
+	// Выполняем установку адреса подпрограммы отбора по набору начальных байтов
+	this->_context.at(SLOT_SCATTERING) = reinterpret_cast <const void *> (&scattering);
+}
+/**
  * @brief Метод проверки применимости кодогенерации к программе
  *
  * @param program проверяемая программа регулярного выражения
@@ -7506,23 +7534,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          перемещает их в памяти, отчего адрес, взятый прежде, обесценивается.
 	 *
 	 */
-	for(size_t i = SLOT_TABLES; i < this->_context.size(); i++)
-		// Выполняем установку адреса значения хранилища
-		this->_context.at(i) = (this->_members.data() + this->_offsets.at(i - SLOT_TABLES));
-	// Выполняем установку адреса предварительного отбора позиций
-	this->_context.at(SLOT_PREFILTER) = &this->_prefilter;
-	// Выполняем установку адреса подпрограммы отбора позиций
-	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
-	// Выполняем установку адреса подпрограммы проверки возможности совпадения
-	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
-	// Выполняем установку адреса подпрограммы отбора позиции по литералу
-	this->_context.at(SLOT_BOUNDING) = reinterpret_cast <const void *> (&bounding);
-	// Выполняем установку адреса подпрограммы проверки привязки к позиции
-	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&asserting);
-	// Выполняем установку адреса подпрограммы прохода ряда повторения
-	this->_context.at(SLOT_SCANNING) = reinterpret_cast <const void *> (&scanning);
-	// Выполняем установку адреса подпрограммы отбора по набору начальных байтов
-	this->_context.at(SLOT_SCATTERING) = reinterpret_cast <const void *> (&scattering);
+	this->binding();
 	/**
 	 * Если размещение порождённого машинного кода не выполнено
 	 */
@@ -7707,8 +7719,16 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 		return false;
 	// Получаем признак проверки возможности совпадения перед сопоставлением
 	const uint8_t marks = static_cast <uint8_t> (data[offset++]);
-	// Получаем признак проверки возможности совпадения
-	const bool feasible = ((marks & 0x01) != 0);
+	/**
+	 * Получаем признак проверки возможности совпадения
+	 *
+	 * @details Имя признака расходится с именем поля намеренно: подпрограмма
+	 *          проверки возможности совпадения зовётся «feasible», и признак,
+	 *          её имя перекрывший, обращал «&feasible» в адрес переменной
+	 *          стека, гнездом обстановки исполнения принимаемый.
+	 *
+	 */
+	const bool possible = ((marks & 0x01) != 0);
 	// Получаем признак отодвигания начала поиска обязательным литералом
 	const bool skipping = ((marks & 0x02) != 0);
 	/**
@@ -7853,33 +7873,13 @@ bool awh::regex::Codegen::restore(string_view data, size_t & offset, const progr
 	// Выполняем установку предварительного отбора позиций
 	this->_prefilter = program.prefilter;
 	// Выполняем установку признака проверки возможности совпадения
-	this->_feasible = feasible;
+	this->_feasible = possible;
 	// Выполняем установку признака отодвигания начала поиска
 	this->_skipping = skipping;
 	// Выполняем установку способа отбора позиций начала попытки сопоставления
 	this->_filter = static_cast <filter_t> (filtering);
-	// Выполняем размещение набора адресов обстановки исполнения
-	this->_context.assign((SLOT_TABLES + this->_offsets.size()), nullptr);
-	/**
-	 * Выполняем сборку набора адресов обстановки исполнения
-	 */
-	for(size_t i = SLOT_TABLES; i < this->_context.size(); i++)
-		// Выполняем установку адреса значения хранилища
-		this->_context.at(i) = (this->_members.data() + this->_offsets.at(i - SLOT_TABLES));
-	// Выполняем установку адреса предварительного отбора позиций
-	this->_context.at(SLOT_PREFILTER) = &this->_prefilter;
-	// Выполняем установку адреса подпрограммы отбора позиций
-	this->_context.at(SLOT_SEEKING) = reinterpret_cast <const void *> (&seeking);
-	// Выполняем установку адреса подпрограммы проверки возможности совпадения
-	this->_context.at(SLOT_FEASIBLE) = reinterpret_cast <const void *> (&feasible);
-	// Выполняем установку адреса подпрограммы отбора позиции по литералу
-	this->_context.at(SLOT_BOUNDING) = reinterpret_cast <const void *> (&bounding);
-	// Выполняем установку адреса подпрограммы проверки привязки к позиции
-	this->_context.at(SLOT_ASSERTING) = reinterpret_cast <const void *> (&asserting);
-	// Выполняем установку адреса подпрограммы прохода ряда повторения
-	this->_context.at(SLOT_SCANNING) = reinterpret_cast <const void *> (&scanning);
-	// Выполняем установку адреса подпрограммы отбора по набору начальных байтов
-	this->_context.at(SLOT_SCATTERING) = reinterpret_cast <const void *> (&scattering);
+	// Выполняем сборку набора адресов обстановки исполнения
+	this->binding();
 	/**
 	 * Если размещение порождённого машинного кода не выполнено
 	 */

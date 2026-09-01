@@ -139,6 +139,9 @@
 #pragma push_macro("CS6")
 #pragma push_macro("CS7")
 #pragma push_macro("CS8")
+#pragma push_macro("PRIVATE")
+#pragma push_macro("SHARED")
+#pragma push_macro("SUSPENDED")
 
 #undef TEXT
 #undef CALLBACK
@@ -225,3 +228,40 @@
 #undef CS6
 #undef CS7
 #undef CS8
+
+/**
+ * \~russian
+ * Имена признаков отображения и состояния у Sun Solaris и illumos
+ *
+ * @details Заголовок <sys/mman.h> у Sun Solaris и illumos заводит макросами PRIVATE и
+ *          SHARED - собственные признаки отображения памяти поверх обычных MAP_PRIVATE и
+ *          MAP_SHARED, - раскрывая их в 0x20 и 0x10. Имя SUSPENDED приходит из набора
+ *          заголовков работы с процессами и нитями и всплывает лишь при их совместном
+ *          включении. Все три совпадают с членами перечислений AWH: PRIVATE - с
+ *          cryptography::key_t (вид ключа), SHARED - с locker_t::mode_t (разделённая
+ *          блокировка), SUSPENDED - с fiber::state_t (волокно спит на своём стеке)
+ *
+ * @note Столкновение это скрытое и системно-зависимое: PRIVATE и SHARED отказывали и на
+ *       Solaris, и на OpenIndiana, а SUSPENDED - лишь на OpenIndiana, где набор
+ *       подключаемых заголовков сложился шире. Снятие временное и ничего не стоит - по
+ *       тому же доводу, что и ряды выше
+ *
+ * \~english
+ * Names of the mapping flags and of the state of Sun Solaris and illumos
+ * @details The <sys/mman.h> header of Sun Solaris and illumos introduces as macros PRIVATE and
+ *          SHARED — its own memory-mapping flags on top of the ordinary MAP_PRIVATE and
+ *          MAP_SHARED — expanding them into 0x20 and 0x10. The name SUSPENDED comes from the set
+ *          of the headers for working with processes and threads and surfaces only upon their joint
+ *          inclusion. All three coincide with the members of the AWH enumerations: PRIVATE — with
+ *          cryptography::key_t (a kind of a key), SHARED — with locker_t::mode_t (a shared
+ *          lock), SUSPENDED — with fiber::state_t (the fiber sleeps on its own stack)
+ * @note This collision is hidden and system-dependent: PRIVATE and SHARED failed on both
+ *       Solaris and OpenIndiana, while SUSPENDED — only on OpenIndiana, where the set of
+ *       the included headers turned out wider. The removal is temporary and costs nothing — by
+ *       the same argument as the rows above
+ *
+ * \~
+ */
+#undef PRIVATE
+#undef SHARED
+#undef SUSPENDED

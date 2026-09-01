@@ -390,6 +390,10 @@ const char * awh::codec::ini::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::STORAGE_EXHAUSTED):
 			// Выводим описание кода ошибки
 			return "the text does not fit the width of the parser storage";
+		// Если значение такого вида запись INI выразить не может
+		case static_cast <uint8_t> (error_t::UNREPRESENTABLE_VALUE):
+			// Выводим описание кода ошибки
+			return "the value cannot be expressed by the INI notation";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

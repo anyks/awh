@@ -57,6 +57,9 @@
  *
  * \~
  */
+#pragma pop_macro("SUSPENDED")
+#pragma pop_macro("SHARED")
+#pragma pop_macro("PRIVATE")
 #pragma pop_macro("CS8")
 #pragma pop_macro("CS7")
 #pragma pop_macro("CS6")

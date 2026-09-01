@@ -35,6 +35,7 @@
  */
 #include <gtest/gtest.h>
 #include <codec/json/json.hpp>
+#include <codec/csv/csv.hpp>
 #include <codec/xml/xml.hpp>
 #include <codec/yaml/yaml.hpp>
 #include <codec/toml/toml.hpp>
@@ -199,6 +200,42 @@ namespace {
 		return true;
 	}
 	/**
+	 * @brief Метод извлечения числа из записи кодеком CSV
+	 *
+	 * @details Кодек этот в сличение включён с 01.09.2026: прежде договор извлечения у
+	 * него был свой - отказ там, где число теряется, - и сличать его с прочими было
+	 * незачем. Решением владельца он приведён к общему договору рамки, и с той поры
+	 * расходиться ему с соседями нечем
+	 *
+	 * @note Своих видов у таблицы нет вовсе: запись кладётся полем, и вид её решается
+	 *       самой записью при извлечении - ровно как у разметки
+	 *
+	 * @param record  подаваемая запись числа
+	 * @param outcome собираемый итог извлечения
+	 * @return        признак того, что запись кодеком разобрана
+	 *
+	 */
+	static bool viaCsv(const string & record, outcome_t & outcome) noexcept {
+		// Настройки контейнера таблицы
+		csv::document_t::settings_t settings;
+		// Отключаем ожидание заголовка
+		settings.reader.header = csv::header_t::NONE;
+		// Дерево таблицы CSV
+		csv::document_t document(::logger(), settings);
+		/**
+		 * Если разбор записи завершился отказом
+		 */
+		if(!document.parse(record + "\r\n"))
+			// Выводим признак того, что запись кодеком не разобрана
+			return false;
+		// Выполняем извлечение записи числом дробным
+		outcome.extracted = document.numeric(0, size_t(0), outcome.real);
+		// Выполняем извлечение записи числом целым
+		outcome.wholed = document.numeric(0, size_t(0), outcome.whole);
+		// Выводим признак того, что запись кодеком разобрана
+		return true;
+	}
+	/**
 	 * @brief Метод извлечения числа из записи кодеком XML
 	 *
 	 * @note Своих видов у разметки нет вовсе: запись кладётся содержимым узла, и
@@ -350,7 +387,7 @@ TEST(CodecContract, NumberExtraction) {
 	// Перечень кодеков, чьи договоры сличаются
 	const vector <pair <string, function <bool (const string &, outcome_t &)>>> codecs = {
 		{"JSON", viaJson}, {"XML", viaXml}, {"YAML", viaYaml},
-		{"TOML", viaToml}, {"INI", viaIni}
+		{"TOML", viaToml}, {"INI", viaIni}, {"CSV", viaCsv}
 	};
 	/**
 	 * Выполняем перебор всех подаваемых записей
@@ -430,7 +467,7 @@ TEST(CodecContract, NumberRefusal) {
 	// Перечень кодеков, чьи договоры сличаются
 	const vector <pair <string, function <bool (const string &, outcome_t &)>>> codecs = {
 		{"JSON", viaJson}, {"XML", viaXml}, {"YAML", viaYaml},
-		{"TOML", viaToml}, {"INI", viaIni}
+		{"TOML", viaToml}, {"INI", viaIni}, {"CSV", viaCsv}
 	};
 	/**
 	 * Выполняем перебор всех подаваемых записей

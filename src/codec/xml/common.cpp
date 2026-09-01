@@ -24,6 +24,7 @@
  */
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
+#include <codec/numeric.hpp>
 #include <codec/xml/common.hpp>
 
 /**
@@ -644,3 +645,38 @@ bool awh::codec::xml::boolean(const string_view text, bool & result) noexcept {
 	// Выводим признак неудачного разбора
 	return false;
 }
+/**
+ * @brief Шаблонный метод извлечения числа из содержимого разметки затребованным видом
+ *
+ * @details Разбор ведётся общим для всех кодеков рамки местом: договор извлечения един,
+ * и держаться он обязан в одном написании. Прежде разбор был написан у разметки дважды -
+ * у дерева документа и у самостоятельного значения, - и написания расходились по четырём
+ * правилам разом: пробельная обвязка, записи `nan` и `inf`, показатель степени при
+ * извлечении целым и запись, в разрядность не вмещающаяся. Сведены они решением владельца
+ * от 01.09.2026
+ *
+ * @tparam T      затребованный вид числа
+ * @param  text   разбираемое содержимое
+ * @param  result ссылка на результат разбора
+ * @return        признак успешного разбора
+ *
+ */
+template <typename T>
+bool awh::codec::xml::numeric(const string_view text, T & result) noexcept {
+	// Выводим признак успешности извлечения числа общим для кодеков местом
+	return awh::codec::numeric <T> (text, result);
+}
+/**
+ * Выполняем явное создание тел разбора числа по всем поддерживаемым видам
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <bool> (const string_view, bool &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int8_t> (const string_view, int8_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int16_t> (const string_view, int16_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int32_t> (const string_view, int32_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int64_t> (const string_view, int64_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint8_t> (const string_view, uint8_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint16_t> (const string_view, uint16_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint32_t> (const string_view, uint32_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint64_t> (const string_view, uint64_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <float> (const string_view, float &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <double> (const string_view, double &) noexcept;

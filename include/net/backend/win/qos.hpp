@@ -140,6 +140,28 @@ namespace awh {
 		namespace qos {
 			/**
 			 * \~russian
+			 * @brief Функция установки режима безопасной работы с потоками
+			 *
+			 * @details Замки модуля по умолчанию ПОГАШЕНЫ: работа в один поток -
+			 *          обычный расклад, и платить за захват на каждом обращении
+			 *          незачем. Включаются они этим обращением
+			 *
+			 * @param mode устанавливаемый режим безопасной работы с потоками
+			 *
+			 * \~english
+			 * @brief Function of setting the mode of the thread-safe work
+			 *
+			 * @details The locks of the module are MUTED by default: the work in a
+			 *          single thread is the usual case, and there is no reason to pay
+			 *          for the capture at every call. They are enabled by this call
+			 *
+			 * @param mode the mode of the thread-safe work to set
+			 *
+			 * \~
+			 */
+			void threadSafety(const bool mode) noexcept;
+			/**
+			 * \~russian
 			 * @brief Функция установки класса обслуживания сокету
 			 *
 			 * @details Если назначение сокету уже известно - он соединён, - отметка

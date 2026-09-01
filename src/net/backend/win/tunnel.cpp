@@ -25,10 +25,21 @@
  * Стандартные заголовочные файлы
  */
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 #include <cstring>
 #include <unordered_map>
+/**
+ * @brief Средства блокировок фреймворка
+ *
+ * @note Замок берётся свой, а не стандартный: стандартный, захваченный в миг
+ *       ветвления процесса, остаётся в потомке замкнутым навсегда - владелец в
+ *       потомок не переходит, и отпереть его некому. AWH ветвится кластером, и
+ *       такой замок остановил бы потомка намертво
+ *
+ */
+#include <sys/locker.hpp>
 
 /**
  * Подключаем заголовочный файл модуля
@@ -164,9 +175,47 @@ namespace {
 		 pending(false), overlapped{} {}
 	};
 	// Замок, оберегающий реестр заведённых устройств
-	static std::mutex __awh_mutex__;
+	/**
+	 * @brief Состояние блокировок, погашенное при заведении
+	 *
+	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
+	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
+	 *          за захват замка на каждом обращении незачем
+	 *
+	 * @note Гашение стоит здесь, а не отдельной строкой рядом с объявлением: на уровне
+	 *       пространства имён оператор не пишется вовсе - там разрешены одни объявления.
+	 *       Собственный конструктор - единственное место, где гашение оказывается ЧАСТЬЮ
+	 *       заведения замка и не зависит ни от чего постороннего
+	 *
+	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
+	 *
+	 */
+	template <typename MutexType = std::mutex>
+	struct muted_state_t : public awh::lock_state_t <MutexType> {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		muted_state_t() noexcept {
+			// Гасим замок при заведении
+			this->enabled = false;
+		}
+	};
+		static muted_state_t <std::shared_mutex> __awh_mutex__;
 	// Реестр заведённых туннельных устройств
 	static std::unordered_map <awh::net::socket_t, entry_t> __awh_registry__;
+
+	/**
+	 * @brief Признак безопасной работы с потоками
+	 *
+	 * @details Умолчание здесь ОТКЛЮЧЕНО намеренно: работа в один поток - обычный
+	 *          расклад, и платить за захват замка на каждом обращении незачем.
+	 *          Включается признак принудительно, обращением `threadSafety`
+	 *
+	 */
+	static awh::event::mode_t __awh_thread_safety__ = awh::event::mode_t::DISABLED;
+
+
 	/**
 	 * @brief Функция подключения библиотеки драйвера Wintun
 	 *
@@ -645,12 +694,30 @@ namespace {
  * @return       результат выполнения сообщения
  *
  */
+
+/**
+ * @brief Функция установки режима безопасной работы с потоками
+ *
+ * @details Замки модуля по умолчанию ПОГАШЕНЫ: работа в один поток - обычный расклад,
+ *          и платить за захват на каждом обращении незачем. Включаются они отсюда,
+ *          тем же порядком, каким это сделано у наречий POSIX
+ *
+ * @param mode устанавливаемый режим безопасной работы с потоками
+ *
+ */
+void awh::win::tunnel::threadSafety(const bool mode) noexcept {
+	// Запоминаем режим безопасной работы с потоками
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Приводим замок к установленному режиму
+	::__awh_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
+
 bool awh::win::tunnel::configure(const net::socket_t sock, const uint32_t local, const uint32_t remote, const log_t * log) noexcept {
 	// Дескриптор устройства, каким оно заведено драйвером tap-windows6
 	HANDLE handle = INVALID_HANDLE_VALUE;
 	{
 		// Выполняем блокировку реестра заведённых устройств
-		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск устройства в реестре
 		auto i = ::__awh_registry__.find(sock);
 		// Если устройство в реестре не значится
@@ -883,7 +950,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 	// Запоминаем название заведённого устройства
 	name = entry.name;
 	// Выполняем блокировку реестра заведённых устройств
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем занесение устройства в реестр
 	::__awh_registry__.emplace(result, ::std::move(entry));
 	// Выводим дескриптор заведённого устройства
@@ -902,7 +969,7 @@ bool awh::win::tunnel::destroy(const net::socket_t sock, const log_t * log) noex
 	entry_t entry;
 	{
 		// Выполняем блокировку реестра заведённых устройств
-		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск устройства в реестре
 		auto i = ::__awh_registry__.find(sock);
 		// Если устройство в реестре не значится
@@ -1011,7 +1078,7 @@ bool awh::win::tunnel::available(const driver_t driver) noexcept {
  */
 awh::net::socket_t awh::win::tunnel::find(const string & name) noexcept {
 	// Выполняем блокировку реестра заведённых устройств
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 	/**
 	 * Выполняем перебор всех заведённых туннельных устройств
 	 */
@@ -1033,7 +1100,7 @@ awh::net::socket_t awh::win::tunnel::find(const string & name) noexcept {
  */
 bool awh::win::tunnel::exists(const net::socket_t sock) noexcept {
 	// Выполняем блокировку реестра заведённых устройств
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим признак наличия устройства в реестре
 	return (::__awh_registry__.find(sock) != ::__awh_registry__.end());
 }
@@ -1046,7 +1113,7 @@ bool awh::win::tunnel::exists(const net::socket_t sock) noexcept {
  */
 awh::win::tunnel::driver_t awh::win::tunnel::driver(const net::socket_t sock) noexcept {
 	// Выполняем блокировку реестра заведённых устройств
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем поиск устройства в реестре
 	auto i = ::__awh_registry__.find(sock);
 	// Выводим драйвер, каким устройство заведено
@@ -1061,7 +1128,7 @@ awh::win::tunnel::driver_t awh::win::tunnel::driver(const net::socket_t sock) no
  */
 string awh::win::tunnel::name(const net::socket_t sock) noexcept {
 	// Выполняем блокировку реестра заведённых устройств
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем поиск устройства в реестре
 	auto i = ::__awh_registry__.find(sock);
 	// Выводим название туннельного устройства
@@ -1076,7 +1143,7 @@ string awh::win::tunnel::name(const net::socket_t sock) noexcept {
  */
 HANDLE awh::win::tunnel::event(const net::socket_t sock) noexcept {
 	// Выполняем блокировку реестра заведённых устройств
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем поиск устройства в реестре
 	auto i = ::__awh_registry__.find(sock);
 	// Если устройство в реестре не значится
@@ -1115,7 +1182,7 @@ int64_t awh::win::tunnel::read(const net::socket_t sock, void * buffer, const si
 	entry_t entry;
 	{
 		// Выполняем блокировку реестра заведённых устройств
-		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск устройства в реестре
 		auto i = ::__awh_registry__.find(sock);
 		// Если устройство в реестре не значится
@@ -1169,7 +1236,7 @@ int64_t awh::win::tunnel::read(const net::socket_t sock, void * buffer, const si
 	 *       поданности приёма живёт в реестре, и копия его теряет
 	 *
 	 */
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем поиск устройства в реестре
 	auto i = ::__awh_registry__.find(sock);
 	// Если устройство в реестре не значится
@@ -1239,7 +1306,7 @@ int64_t awh::win::tunnel::write(const net::socket_t sock, const void * buffer, c
 	entry_t entry;
 	{
 		// Выполняем блокировку реестра заведённых устройств
-		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск устройства в реестре
 		auto i = ::__awh_registry__.find(sock);
 		// Если устройство в реестре не значится

@@ -66,6 +66,7 @@ using namespace std;
  *       жалуется на неё [-Wunused-const-variable]. Убирать метку нельзя - в выпускной
  *       сборке она нужна
  */
+
 [[maybe_unused]] static constexpr const char * __AWH_ETH_BACKEND__ = "MS Windows ETH backend";
 
 /**
@@ -74,7 +75,6 @@ using namespace std;
  */
 namespace {
 	// Режим безопасности работы потоков
-	awh::event::mode_t __awh_thread_safety__ = awh::event::mode_t::DISABLED;
 
 	/**
 	 * @brief Заголовок сегмента TCP в наименьшем виде
@@ -460,16 +460,6 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 
 
 
-/**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- *
- */
-void awh::eth::Network_Address::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности потоков
-	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
-}
 
 
 /**

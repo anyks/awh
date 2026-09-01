@@ -226,8 +226,20 @@ namespace {
 		static std::unordered_map <pid_t, Child> __awh_children__;
 		// Очередь завершившихся процессов, ожидающих разбора в петле событий
 		static std::deque <pid_t> __awh_finished__;
-		// Замок доступа к спискам дочерних процессов
-		static std::mutex __awh_children_mutex__;
+		/**
+		 * @brief Замок доступа к спискам дочерних процессов
+		 *
+		 * @warning Замок этот гасить НЕЛЬЗЯ, и переключателя `threadSafety` у него нет
+		 *          намеренно: отклик `Cluster::child` система зовёт из своего пула
+		 *          потоков, и он кладёт завершившийся процесс в очередь ровно тогда,
+		 *          когда цикл событий её разбирает. Это не опережающая осторожность,
+		 *          а два настоящих потока, и работа тут никогда не бывает однопоточной
+		 *
+		 * @note Оттого замок и оставлен ВКЛЮЧЁННЫМ - состояние блокировок заводится
+		 *       включённым, и здесь это то, что нужно
+		 *
+		 */
+		static awh::lock_state_t <> __awh_children_mutex__;
 	};
 #endif
 
@@ -958,13 +970,27 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 		 */
 		const string & pipe = this->_io->getTarget(events[1]);
 		// Если имя канала обмена сообщениями получено
-		if(!pipe.empty()){
-			// Передаём имя канала порождаемому процессу через окружение
-			if(!::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", this->_fmk->convert(pipe).c_str()))
-				// Записываем ошибку в лог
-				this->_log->print("Cluster worker pipe name could not be passed to the child process", log_t::flag_t::CRITICAL);
-		// Если имя канала обмена сообщениями получить не удалось
-		} else this->_log->print("Cluster worker pipe name could not be obtained", log_t::flag_t::CRITICAL);
+		/**
+		 * Имя канала обязано дойти до порождаемого процесса
+		 *
+		 * @warning Прежде оба отказа лишь заносились в журнал, а порождение шло дальше:
+		 *          работник поднимался, не находил имени канала в своём окружении и
+		 *          оставался ЖИВЫМ, но глухим - обмен сообщениями с мастером у него не
+		 *          заводился вовсе. Мастер же считал его исправным работником и слал
+		 *          ему задания в никуда
+		 *
+		 */
+		if(pipe.empty() || !::SetEnvironmentVariableW(L"AWH_CLUSTER_PIPE", this->_fmk->convert(pipe).c_str())){
+			// Записываем ошибку в лог
+			this->_log->print("Cluster worker pipe name %s, the worker is not spawned", log_t::flag_t::CRITICAL,
+			 (pipe.empty() ? "could not be obtained" : "could not be passed to the child process"));
+			// Уничтожаем оба конца канала обмена сообщениями
+			this->_io->destroy(events[1]);
+			// Уничтожаем событие родительского процесса
+			this->_io->destroy(events[0]);
+			// Возвращаем результат отсутствия созданного воркера
+			return family_t::NONE;
+		}
 		// Уничтожаем событие дочернего процесса: унаследовать его порождённый процесс не может
 		this->_io->destroy(events[1]);
 		/**
@@ -1056,6 +1082,22 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			while((rounds++ < 200) && !::WaitNamedPipeW(channel.c_str(), 0))
 				// Выполняем холостой оборот цикла событий
 				this->_io->poll(0);
+			/**
+			 * Исчерпание оборотов ожидания обязано быть слышно
+			 *
+			 * @warning Прежде цикл этот исчерпывался МОЛЧА, и порождение шло дальше по
+			 *          неготовому каналу: работник поднимался, подключиться не мог, а в
+			 *          журнале не оставалось ничего. Отличить это от исправной работы
+			 *          было нечем
+			 *
+			 * @note Порождение при этом не обрывается: канал вправе поспеть и позже,
+			 *       а обрыв стоил бы работника там, где всё обошлось бы. Запись же
+			 *       даёт разбирающему зацепку
+			 *
+			 */
+			if(rounds > 200)
+				// Записываем предупреждение в лог
+				this->_log->print("Cluster worker pipe was not ready after %u rounds, the worker is spawned anyway", log_t::flag_t::WARNING, static_cast <uint32_t> (rounds - 1));
 		}
 		// Выполняем порождение дочернего процесса
 		const pid_t pid = this->execute();
@@ -1196,11 +1238,35 @@ pid_t awh::unit::Cluster::execute() noexcept {
 		 * Извещение однократное: WT_EXECUTEONLYONCE снимает подписку после первого
 		 * срабатывания, а завершиться процесс может лишь однажды
 		 */
-		if(!::RegisterWaitForSingleObject(&child.wait, info.hProcess, &cluster_t::child, reinterpret_cast <PVOID> (static_cast <uintptr_t> (pid)), INFINITE, WT_EXECUTEONLYONCE))
+		/**
+		 * Наблюдение за завершением обязано быть заведено
+		 *
+		 * @warning Прежде отказ лишь заносился в журнал, а процесс всё равно попадал в
+		 *          список наблюдаемых с ПУСТЫМ описателем ожидания и возобновлялся.
+		 *          Узнать о его гибели было тогда нечем: отклик `child` не звался
+		 *          никогда, разбор завершения не шёл, замена упавшего работника не
+		 *          выполнялась. Мастер продолжал считать работника живым, а кластер
+		 *          молча редел
+		 *
+		 * @note Порождённый процесс здесь снимается принудительно: он остановлен
+		 *       (`CREATE_SUSPENDED`) и работать ещё не начинал, а оставлять его без
+		 *       надзора хуже, чем не порождать вовсе
+		 *
+		 */
+		if(!::RegisterWaitForSingleObject(&child.wait, info.hProcess, &cluster_t::child, reinterpret_cast <PVOID> (static_cast <uintptr_t> (pid)), INFINITE, WT_EXECUTEONLYONCE)){
 			// Записываем ошибку в лог
-			this->_log->print("Child process [%d] termination watch could not be registered", log_t::flag_t::CRITICAL, pid);
+			this->_log->print("Child process [%d] termination watch could not be registered, the process is terminated", log_t::flag_t::CRITICAL, pid);
+			// Снимаем порождённый процесс, работать он ещё не начинал
+			::TerminateProcess(info.hProcess, static_cast <UINT> (EXIT_FAILURE));
+			// Закрываем дескриптор объекта процесса
+			::CloseHandle(info.hProcess);
+			// Закрываем дескриптор основного потока порождённого процесса
+			::CloseHandle(info.hThread);
+			// Возвращаем признак отсутствия порождённого процесса
+			return 0;
+		}
 		// Выполняем блокировку замка доступа к спискам дочерних процессов
-		const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+		const awh::locker_t <> lock(::__awh_children_mutex__);
 		// Добавляем процесс в список наблюдаемых
 		::__awh_children__.emplace(pid, child);
 	}
@@ -1451,7 +1517,7 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 		std::deque <pid_t> finished;
 		{
 			// Выполняем блокировку замка доступа к спискам дочерних процессов
-			const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+			const awh::locker_t <> lock(::__awh_children_mutex__);
 			// Забираем всю очередь завершившихся процессов
 			finished.swap(::__awh_finished__);
 		}
@@ -1463,9 +1529,13 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 		for(const pid_t pid : finished){
 			// Код завершения процесса
 			DWORD status = static_cast <DWORD> (EXIT_FAILURE);
+			// Описатель снимаемого ожидания завершения процесса
+			HANDLE wait = nullptr;
+			// Дескриптор объекта завершившегося процесса
+			HANDLE process = nullptr;
 			{
 				// Выполняем блокировку замка доступа к спискам дочерних процессов
-				const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+				const awh::locker_t <> lock(::__awh_children_mutex__);
 				// Выполняем поиск завершившегося процесса среди наблюдаемых
 				auto i = ::__awh_children__.find(pid);
 				// Если наблюдаемый процесс найден
@@ -1481,17 +1551,35 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 					 * одном потоке. Без этого дескрипторы закрывались бы под работающим
 					 * извещением
 					 */
-					if(i->second.wait != nullptr)
-						// Снимаем ожидание завершения процесса
-						::UnregisterWaitEx(i->second.wait, INVALID_HANDLE_VALUE);
-					// Если дескриптор объекта процесса получен
-					if(i->second.process != nullptr)
-						// Закрываем дескриптор объекта процесса
-						::CloseHandle(i->second.process);
+					// Снимаем описатель ожидания завершения процесса
+					wait = i->second.wait;
+					// Снимаем дескриптор объекта завершившегося процесса
+					process = i->second.process;
 					// Удаляем процесс из списка наблюдаемых
 					::__awh_children__.erase(i);
 				}
 			}
+			/**
+			 * Ожидание снимается ВНЕ замка
+			 *
+			 * @warning Снятие с доводом `INVALID_HANDLE_VALUE` не возвращается, покуда не
+			 *          отработают уже начатые извещения, а извещает система откликом
+			 *          `child`, который берёт ЭТОТ ЖЕ замок. Снимай ожидание под замком -
+			 *          и отклик, поднятый пулом потоков по другому процессу, встанет на
+			 *          замке, а снятие встанет на отклике: заклинивание намертво. Тем
+			 *          вероятнее оно, чем больше процессов кластера завершается разом
+			 *
+			 * @note Запись из списка к этому времени уже изъята, и описатели эти
+			 *       принадлежат нам одним: тронуть их больше некому
+			 *
+			 */
+			if(wait != nullptr)
+				// Снимаем ожидание завершения процесса
+				::UnregisterWaitEx(wait, INVALID_HANDLE_VALUE);
+			// Если дескриптор объекта процесса получен
+			if(process != nullptr)
+				// Закрываем дескриптор объекта процесса
+				::CloseHandle(process);
 			// Выполняем обработку завершившегося процесса
 			this->process(pid, static_cast <int32_t> (status));
 		}
@@ -1552,7 +1640,7 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
 void __stdcall awh::unit::Cluster::child(void * ctx, [[maybe_unused]] uint8_t timeout) noexcept {
 	{
 		// Выполняем блокировку замка доступа к спискам дочерних процессов
-		const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
+		const awh::locker_t <> lock(::__awh_children_mutex__);
 		// Добавляем завершившийся процесс в очередь ожидающих разбора
 		::__awh_finished__.push_back(static_cast <pid_t> (reinterpret_cast <uintptr_t> (ctx)));
 	}
@@ -2718,26 +2806,38 @@ awh::unit::Cluster::~Cluster() noexcept {
 		}
 		// Если разрушаемый объект является текущим зарегистрированным кластером
 		if(::__awh_cluster__ == this){
+			// Список наблюдаемых процессов, снятый для устранения
+			std::unordered_map <pid_t, Child> children;
 			{
 				// Выполняем блокировку замка доступа к спискам дочерних процессов
-				const std::lock_guard <std::mutex> lock(::__awh_children_mutex__);
-				/**
-				 * Снимаем наблюдение за всеми оставшимися дочерними процессами
-				 */
-				for(auto & [pid, child] : ::__awh_children__){
-					// Снимаем ожидание завершения процесса, дождавшись начатых извещений
-					if(child.wait != nullptr)
-						// Снимаем ожидание завершения процесса
-						::UnregisterWaitEx(child.wait, INVALID_HANDLE_VALUE);
-					// Если дескриптор объекта процесса получен
-					if(child.process != nullptr)
-						// Закрываем дескриптор объекта процесса
-						::CloseHandle(child.process);
-				}
-				// Очищаем список наблюдаемых процессов
-				::__awh_children__.clear();
+				const awh::locker_t <> lock(::__awh_children_mutex__);
+				// Снимаем список наблюдаемых процессов целиком
+				children.swap(::__awh_children__);
 				// Очищаем очередь завершившихся процессов
 				::__awh_finished__.clear();
+			}
+			/**
+			 * Ожидания снимаются ВНЕ замка
+			 *
+			 * @warning Довод тот же, что и у разбора завершившегося процесса: снятие с
+			 *          `INVALID_HANDLE_VALUE` не возвращается, покуда не отработают уже
+			 *          начатые извещения, а отклик `child` берёт этот же замок. Здесь
+			 *          заклинивание вероятнее всего: разрушение кластера снимает ожидания
+			 *          РАЗОМ по всем процессам, и любой отклик, поднятый в это время,
+			 *          останавливает всё
+			 *
+			 * @note Список к этому времени снят целиком и принадлежит нам одним
+			 *
+			 */
+			for(auto & [pid, child] : children){
+				// Снимаем ожидание завершения процесса, дождавшись начатых извещений
+				if(child.wait != nullptr)
+					// Снимаем ожидание завершения процесса
+					::UnregisterWaitEx(child.wait, INVALID_HANDLE_VALUE);
+				// Если дескриптор объекта процесса получен
+				if(child.process != nullptr)
+					// Закрываем дескриптор объекта процесса
+					::CloseHandle(child.process);
 			}
 			/**
 			 * Закрываем объект задания

@@ -25,7 +25,18 @@
  * Стандартные заголовочные файлы
  */
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
+/**
+ * @brief Средства блокировок фреймворка
+ *
+ * @note Замок берётся свой, а не стандартный: стандартный, захваченный в миг
+ *       ветвления процесса, остаётся в потомке замкнутым навсегда - владелец в
+ *       потомок не переходит, и отпереть его некому. AWH ветвится кластером, и
+ *       такой замок остановил бы потомка намертво
+ *
+ */
+#include <sys/locker.hpp>
 
 /**
  * Подключаем заголовочный файл модуля
@@ -104,8 +115,37 @@ namespace {
 		 */
 		entry_t() noexcept : dscp(awh::event::dscp_t::CS0), flow(0) {}
 	};
-	// Замок, оберегающий реестр отмеченных сокетов
-	static std::mutex __awh_mutex__;
+	/**
+	 * @brief Шаблон состояния блокировок, погашенного при заведении
+	 *
+	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
+	 */
+	template <typename MutexType = std::mutex>
+	/**
+	 * @brief Состояние блокировок, погашенное при заведении
+	 *
+	 * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
+	 *          своего конструктора. Работа же в один поток - обычный расклад, и платить
+	 *          за захват замка на каждом обращении незачем
+	 *
+	 * @note Гашение стоит здесь, а не отдельной строкой рядом с объявлением: на уровне
+	 *       пространства имён оператор не пишется вовсе - там разрешены одни объявления.
+	 *       Собственный конструктор - единственное место, где гашение оказывается ЧАСТЬЮ
+	 *       заведения замка и не зависит ни от чего постороннего
+	 *
+	 * @tparam MutexType вид мьютекса, каким состояние распоряжается
+	 *
+	 */
+	struct muted_state_t : public awh::lock_state_t <MutexType> {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		muted_state_t() noexcept {
+			// Гасим замок при заведении
+			this->enabled = false;
+		}
+	};
 	/**
 	 * @brief Замок, оберегающий открытие работы с подсистемой
 	 *
@@ -114,9 +154,22 @@ namespace {
 	 *          повторный захват
 	 *
 	 */
-	static std::mutex __awh_guard__;
-	// Реестр отмеченных сокетов
-	static std::unordered_map <awh::net::socket_t, entry_t> __awh_registry__;
+	static muted_state_t <> __awh_guard__;
+	/**
+	 * @brief Замок, оберегающий реестр отмеченных сокетов
+	 *
+	 * @warning Замок этот ОТДЕЛЬНЫЙ от оберегающего открытие работы с подсистемой намеренно:
+	 *          открытие работы спрашивается и из-под замка реестра, и без него, и
+	 *          общий замок дал бы повторный захват
+	 */
+	static muted_state_t <std::shared_mutex> __awh_mutex__;
+	/**
+	 * @brief Реестр отмеченных сокетов
+	 *
+	 * @details Реестр этот нужен для того, чтобы при соединении сокета
+	 *          применить к нему запомненную отметку. Без реестра отметка, запомненная намерением, терялась бы и не применялась.
+	 */
+	static unordered_map <awh::net::socket_t, entry_t> __awh_registry__;
 	/**
 	 * @brief Функция открытия работы с подсистемой качества обслуживания
 	 *
@@ -143,7 +196,7 @@ namespace {
 		 *          описателе и получал отказ на ровном месте
 		 *
 		 */
-		const std::lock_guard <std::mutex> lock(::__awh_guard__);
+		const awh::locker_t <> lock(::__awh_guard__);
 		// Если попытка открытия уже выполнялась
 		if(attempted)
 			// Выводим набор вызовов, если открытие удалось
@@ -270,6 +323,22 @@ namespace {
 };
 
 /**
+ * @brief Функция установки режима безопасной работы с потоками
+ *
+ * @details Замки модуля по умолчанию ПОГАШЕНЫ: работа в один поток - обычный расклад,
+ *          и платить за захват на каждом обращении незачем. Включаются они отсюда,
+ *          тем же порядком, каким это сделано у наречий POSIX
+ *
+ * @param mode устанавливаемый режим безопасной работы с потоками
+ *
+ */
+void awh::win::qos::threadSafety(const bool mode) noexcept {
+	// Приводим замок к установленному режиму
+	::__awh_mutex__.enabled = mode;
+	// Приводим замок к установленному режиму
+	::__awh_guard__.enabled = mode;
+}
+/**
  * @brief Функция установки класса обслуживания сокету
  *
  * @param sock отмечаемый сокет
@@ -293,7 +362,7 @@ bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp, con
 	entry.dscp = dscp;
 	{
 		// Выполняем блокировку реестра отмеченных сокетов
-		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		const locker_t <std::shared_mutex> lock(::__awh_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск сокета в реестре
 		auto i = ::__awh_registry__.find(sock);
 		// Если сокет в реестре уже значится
@@ -334,7 +403,7 @@ bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp, con
 	// Запоминаем номер заведённого потока
 	entry.flow = flow;
 	// Выполняем блокировку реестра отмеченных сокетов
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const locker_t <std::shared_mutex> lock(::__awh_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем занесение сокета в реестр
 	::__awh_registry__[sock] = entry;
 	// Выводим положительный результат установки
@@ -352,7 +421,7 @@ bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp, con
  */
 awh::event::dscp_t awh::win::qos::mark(const net::socket_t sock) noexcept {
 	// Выполняем блокировку реестра отмеченных сокетов
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const locker_t <std::shared_mutex> lock(::__awh_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем поиск сокета в реестре
 	auto i = ::__awh_registry__.find(sock);
 	// Выводим запрошенный класс обслуживания
@@ -371,7 +440,7 @@ bool awh::win::qos::apply(const net::socket_t sock, const log_t * log) noexcept 
 	event::dscp_t dscp = event::dscp_t::CS0;
 	{
 		// Выполняем блокировку реестра отмеченных сокетов
-		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		const locker_t <std::shared_mutex> lock(::__awh_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск сокета в реестре
 		auto i = ::__awh_registry__.find(sock);
 		// Если сокет в реестре не значится либо поток на нём уже заведён
@@ -388,7 +457,7 @@ bool awh::win::qos::apply(const net::socket_t sock, const log_t * log) noexcept 
 		// Выводим отрицательный результат применения
 		return false;
 	// Выполняем блокировку реестра отмеченных сокетов
-	const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+	const locker_t <std::shared_mutex> lock(::__awh_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем поиск сокета в реестре
 	auto i = ::__awh_registry__.find(sock);
 	// Если сокет в реестре значится
@@ -410,7 +479,7 @@ bool awh::win::qos::release(const net::socket_t sock) noexcept {
 	QOS_FLOWID flow = 0;
 	{
 		// Выполняем блокировку реестра отмеченных сокетов
-		const std::lock_guard <std::mutex> lock(::__awh_mutex__);
+		const locker_t <std::shared_mutex> lock(::__awh_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск сокета в реестре
 		auto i = ::__awh_registry__.find(sock);
 		// Если сокет в реестре не значится

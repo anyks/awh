@@ -62,6 +62,7 @@ machine/param.h sys/event.h sys/sysctl.h sys/user.h sys/cpuset.h
 sys/epoll.h sys/inotify.h sys/eventfd.h sys/signalfd.h sys/timerfd.h
 linux/if_packet.h linux/netlink.h linux/rtnetlink.h netinet/sctp.h
 netpacket/packet.h sys/prctl.h sys/syscall.h sys/vfs.h ucred.h sys/ucred.h
+winsock2.h ws2tcpip.h windows.h winbase.h winnt.h
 """.split()
 
 # Выражение выборки тела перечисления и его членов

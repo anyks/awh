@@ -1363,6 +1363,33 @@ namespace awh {
 				 * \~
 				 */
 				size_t spreader() noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод сборки набора адресов обстановки исполнения
+				 *
+				 * @details Обстановка собирается ОДНИМ местом намеренно: заполняли
+				 *          её порождение и восстановление порознь, двумя списками
+				 *          слово в слово одинаковыми, и согласие их держалось лишь
+				 *          на внимательности пишущего. Расхождение уже случилось -
+				 *          признак, имя подпрограммы перекрывший, обратил адрес
+				 *          её в адрес переменной стека у одного из двух. Общий
+				 *          метод обращает такое расхождение невозможным.
+				 *          Зовётся он ПОСЛЕ размещения хранилища значений: перенос
+				 *          хранилища в памяти обесценивает адреса, прежде взятые.
+				 *
+				 * \~english
+				 * @brief Method of assembling the set of execution context addresses
+				 * @details The context is assembled by a SINGLE place deliberately: the
+				 *          generation and the restoration filled it apart, by two lists
+				 *          identical word for word, and their agreement rested on the
+				 *          attentiveness of the writer alone. Called AFTER the placement
+				 *          of the value storage: moving the storage in memory invalidates
+				 *          the addresses taken before.
+				 *
+				 * \~
+				 */
+				void binding() noexcept;
 			public:
 				/**
 				 * \~russian

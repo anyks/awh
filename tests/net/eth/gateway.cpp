@@ -830,4 +830,41 @@ TEST_F(EthFixture, GatewayMismatchedKindTest){
 		// Подбор по несличимой паре обязан отвечать отказом
 		ASSERT_FALSE(this->_eth->gateway.get(route));
 	}
+	/**
+	 * Прокладка и снос обязаны отвечать отказом по той же паре
+	 *
+	 * @details Проверка эта стояла у одного лишь подбора, тогда как эталонные наречия
+	 *          POSIX ставят её во всех трёх обращениях. У наречия MS Windows её не было
+	 *          ни у прокладки, ни у сноса: пара из назначения IPv4 и шлюза IPv6
+	 *          переносилась без возражений, и несовпадение вскрывалось лишь ядром
+	 *
+	 */
+	{
+		// Маршрут, каким ведётся проверка
+		awh::eth::gateway_t::route_t route{};
+		// Заводим шлюз маршрута семейства IPv4
+		route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Заводим адрес назначения маршрута семейства IPv6
+		route.destination = std::make_unique <awh::net::addr_net_ipv6_t> ();
+		// Устанавливаем название устройства маршрута
+		route.ifname = "lo";
+		// Прокладка по несличимой паре обязана отвечать отказом
+		ASSERT_FALSE(this->_eth->gateway.add(route));
+		// Снос по несличимой паре обязан отвечать отказом
+		ASSERT_FALSE(this->_eth->gateway.remove(route));
+	}
+	{
+		// Маршрут, каким ведётся проверка
+		awh::eth::gateway_t::route_t route{};
+		// Заводим шлюз маршрута семейства IPv6
+		route.gateway = std::make_unique <awh::net::addr_net_ipv6_t> ();
+		// Заводим адрес назначения маршрута семейства IPv4
+		route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Устанавливаем название устройства маршрута
+		route.ifname = "lo";
+		// Прокладка по несличимой паре обязана отвечать отказом
+		ASSERT_FALSE(this->_eth->gateway.add(route));
+		// Снос по несличимой паре обязан отвечать отказом
+		ASSERT_FALSE(this->_eth->gateway.remove(route));
+	}
 }

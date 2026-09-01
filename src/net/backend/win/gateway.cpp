@@ -397,9 +397,12 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 	 *          проверкой GatewayMismatchedKindTest
 	 */
 	if((route.gateway != nullptr) && (route.destination != nullptr) &&
-	   (route.gateway->size != route.destination->size))
+	   (route.gateway->size != route.destination->size)){
+		// Выводим в журнал сообщение о несличимой паре адресов
+		this->_log->print("%s: destination and gateway belong to different address families", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
 		// Работать с маршрутом по несличимой паре нечем
 		return false;
+	}
 	/**
 	 * Непереданный адрес назначения заводится сам
 	 *
@@ -553,6 +556,26 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
  *
  */
 bool awh::eth::Gateway::add(const route_t & route) const noexcept {
+	/**
+	 * Пара адресов обязана быть сличимой
+	 *
+	 * @warning Проверка эта стояла у `get`, а у `add` и `remove` её не было, тогда как
+	 *          эталонные наречия POSIX ставят её во ВСЕХ ТРЁХ обращениях
+	 *          (`bsd/gateway.cpp` 406, 1004, 1542). Пара из назначения IPv4 и шлюза
+	 *          IPv6 переносилась при этом без единого возражения: оба конца пути
+	 *          собирались порознь и каждый ложился в объединение верно, а несовпадение
+	 *          семейств вскрывалось лишь ядром - отказом, по какому не понять, что
+	 *          именно не так
+	 *
+	 */
+	if((route.gateway != nullptr) && (route.destination != nullptr) &&
+	   (route.gateway->size != route.destination->size)){
+		// Выводим в журнал сообщение о несличимой паре адресов
+		this->_log->print("%s: destination and gateway belong to different address families", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		// Работать с маршрутом по несличимой паре нечем
+		return false;
+	}
+
 	// Если адрес назначения не передан
 	if(route.destination == nullptr){
 		// Выводим в журнал сообщение о непереданном адресе назначения
@@ -615,6 +638,26 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
  *
  */
 bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
+	/**
+	 * Пара адресов обязана быть сличимой
+	 *
+	 * @warning Проверка эта стояла у `get`, а у `add` и `remove` её не было, тогда как
+	 *          эталонные наречия POSIX ставят её во ВСЕХ ТРЁХ обращениях
+	 *          (`bsd/gateway.cpp` 406, 1004, 1542). Пара из назначения IPv4 и шлюза
+	 *          IPv6 переносилась при этом без единого возражения: оба конца пути
+	 *          собирались порознь и каждый ложился в объединение верно, а несовпадение
+	 *          семейств вскрывалось лишь ядром - отказом, по какому не понять, что
+	 *          именно не так
+	 *
+	 */
+	if((route.gateway != nullptr) && (route.destination != nullptr) &&
+	   (route.gateway->size != route.destination->size)){
+		// Выводим в журнал сообщение о несличимой паре адресов
+		this->_log->print("%s: destination and gateway belong to different address families", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		// Работать с маршрутом по несличимой паре нечем
+		return false;
+	}
+
 	// Если адрес назначения не передан
 	if(route.destination == nullptr){
 		// Выводим в журнал сообщение о непереданном адресе назначения
@@ -635,12 +678,27 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	}
 	// Устанавливаем длину префикса пути
 	row.DestinationPrefix.PrefixLength = route.prefix;
-	// Если шлюз пути передан
-	if(route.gateway != nullptr)
-		// Выполняем перенос шлюза пути
-		::__awh_to_sockaddr__(route.gateway.get(), row.NextHop);
+	/**
+	 * Если шлюз пути передан - переносим его в снимаемую запись
+	 *
+	 * @warning Итог переноса прежде НЕ проверялся вовсе, тогда как обращение add тот же
+	 *          перенос проверяет и отказом на него отвечает. Шлюз неподдерживаемого
+	 *          вида оставлял `NextHop` обнулённым, и снятие уходило системе не с тем
+	 *          шлюзом, какой просили снять: система сличает записи целиком, и обнулённый
+	 *          шлюз отвечает записи со шлюзом пустым - то есть пути НЕПОСРЕДСТВЕННОМУ.
+	 *          Просьба снять путь через шлюз оборачивалась снятием пути прямого
+	 *
+	 */
+	if(route.gateway != nullptr){
+		// Если перенести шлюз пути не удалось
+		if(!::__awh_to_sockaddr__(route.gateway.get(), row.NextHop)){
+			// Выводим в журнал сообщение о неподдерживаемом виде адреса
+			this->_log->print("%s: only IPv4 and IPv6 gateways are supported", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			// Выводим отрицательный результат снятия
+			return false;
+		}
 	// Если шлюз пути не передан
-	else row.NextHop.si_family = row.DestinationPrefix.Prefix.si_family;
+	} else row.NextHop.si_family = row.DestinationPrefix.Prefix.si_family;
 	// Если устройство пути найти не удалось
 	if(!::__awh_ifluid__(route.ifname, row.InterfaceLuid)){
 		// Выводим в журнал сообщение о ненайденном устройстве

@@ -170,6 +170,12 @@ const char * awh::codec::json::message(const error_t error) noexcept {
 		// Если разбираемый текст не помещается в разрядность хранилища
 		case error_t::STORAGE_EXHAUSTED:
 			return "the text does not fit the width of the parser storage";
+		// Если массив не закрыт до конца текста
+		case error_t::UNCLOSED_ARRAY:
+			return "unclosed array";
+		// Если объект не закрыт до конца текста
+		case error_t::UNCLOSED_OBJECT:
+			return "unclosed object";
 		// Если корень документа уже несёт значение
 		case error_t::MULTIPLE_ROOTS:
 			return "the document root already holds a value";

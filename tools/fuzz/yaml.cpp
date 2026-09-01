@@ -71,35 +71,6 @@ static bool multibyte(const std::string & text) noexcept {
 	// Сообщаем о том, что текст многобайтовою кодировкою не опознаётся
 	return false;
 }
-/**
- * @brief Метод проверки присутствия возврата каретки одинокого в тексте
- *
- * @param text текст, проверке подлежащий
- * @return     признак присутствия возврата каретки одинокого
- *
- * @warning Обход дефекта ИЗВЕСТНОГО, а не свойство языка: описание YAML 1.2 числит возврат
- *          одинокий переводом строки наравне с «\n» и «\r\n», а чтение его переводом не
- *          считает. Оттого написание «- \r\r\n» отдаёт запись со значением «\r», а усечённое
- *          «- \r» - запись пустую; метка же «&ab\ru» вбирает возврат в имя своё, и запись
- *          отвергает дерево по праву, отдавая перезапись пустую. Обе проверки эти оттого
- *          гасятся, покуда правка чтения отложена: она ломает независимость
- *          разбора от нарезки на куски, и решение о ней за владельцем. Обход снять ВМЕСТЕ с правкою чтения
- */
-static bool lonesome(const std::string & text) noexcept {
-	/**
-	 * Выполняем перебор всех знаков текста
-	 */
-	for(size_t i = 0; i < text.size(); i++){
-		/**
-		 * Если знак есть возврат каретки, за которым перевод строки не стоит
-		 */
-		if((text.at(i) == '\r') && (((i + 1) >= text.size()) || (text.at(i + 1) != '\n')))
-			// Сообщаем о присутствии возврата каретки одинокого
-			return true;
-	}
-	// Сообщаем об отсутствии возврата каретки одинокого
-	return false;
-}
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -231,8 +202,6 @@ namespace {
 		uint64_t tailed;
 		// Количество круговых ходов, директивою наречия обойдённых
 		uint64_t undirected;
-		// Количество круговых ходов, возвратом каретки одиноким обойдённых
-		uint64_t lonesome;
 		// Количество сличений записи свежей с записью, прежней подачей занятой
 		uint64_t transcribed;
 		// Количество попыток кругового переноса значения в дерево
@@ -245,7 +214,7 @@ namespace {
 		 */
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0), chunked(0), transcoded(0), unconverted(0), trees(0), kept(0), pruned(0),
-		 mirrored(0), circling(0), edited(0), assembled(0), restyled(0), recycled(0), tailed(0), undirected(0), lonesome(0), transcribed(0), taken(0), grafts(0), grafted(0) {}
+		 mirrored(0), circling(0), edited(0), assembled(0), restyled(0), recycled(0), tailed(0), undirected(0), transcribed(0), taken(0), grafts(0), grafted(0) {}
 	} totals;
 
 	/**
@@ -2392,7 +2361,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				 *       исходный текст меняет, и сличение перезаписей звало бы это
 				 *       расхождением при настройках, оформление сохраняющих
 				 */
-				if(parsed && !keeping && !::lonesome(text) && !(yaml::value_t(tailed.root()) == yaml::value_t(document.root()))){
+				if(parsed && !keeping && !(yaml::value_t(tailed.root()) == yaml::value_t(document.root()))){
 					// Выводим сообщение о расхождении деревьев написаний
 					::fprintf(stderr, "yaml fuzz: trailing newline changes tree, settings %s\n",
 					 described(settings).c_str());
@@ -2524,14 +2493,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					unbound.maxDepth = 0;
 					// Выполняем снятие предела длины скалярного значения
 					unbound.maxScalar = 0;
-					/**
-					 * @warning Тексты с возвратом каретки одиноким обходятся: чтение переводом
-					 *          строки его не числит и вбирает в значение, отчего перезапись
-					 *          снятого значения читается обратно значением иным. Проверено
-					 *          подменою возврата: тот же текст, где «\r\t» обращён в «\t»,
-					 *          круг проходит. Обход снять ВМЕСТЕ с правкою чтения
-					 */
-					if(!::lonesome(text) && (!circled.parse(taken.dump(), unbound) || !(circled == taken))){
+					if(!circled.parse(taken.dump(), unbound) || !(circled == taken)){
 						// Выводим сообщение о нарушении кругового хода
 						::fprintf(stderr, "yaml fuzz: taken value round trip broken, settings %s\n",
 							described(settings).c_str());
@@ -2793,21 +2755,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 					 *       Круговой ход тут теряет вид значения не по дефекту записи, а по
 					 *       самой схеме, и требовать от него равенства деревьев нельзя
 					 */
-					/**
-					 * @warning Обходится тут и текст, возврат каретки одинокий имеющий: чтение
-					 *          переводом строки его не числит и вбирает в значение либо в имя
-					 *          метки, отчего запись дерево отвергает по праву, а перезапись
-					 *          выходит то пустою, то от исходного дерева отличной. Обход снять
-					 *          ВМЕСТЕ с правкою чтения (смотри `lonesome`)
-					 */
-					if((writing.schema == yaml::schema_t::FAILSAFE) || ::lonesome(text)){
+					if(writing.schema == yaml::schema_t::FAILSAFE)
 						// Выполняем учёт обойдённого кругового хода
 						totals.undirected++;
-						// Если обход вызван возвратом каретки одиноким
-						if(::lonesome(text))
-							// Выполняем учёт кругового хода, возвратом обойдённого
-							totals.lonesome++;
-					}
 					// Если схема пустоту выразить способна
 					else {
 					// Устанавливаем построение вместилищ наудачу
@@ -3429,7 +3379,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено, %llu однобайтовых отсеяно), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено, из них %llu возвратом), %llu recycled (%llu хвостом), %llu grafts (%llu refused), %llu transcribed, %llu circling%s\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено, %llu однобайтовых отсеяно), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled (%llu хвостом), %llu grafts (%llu refused), %llu transcribed, %llu circling%s\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
@@ -3441,7 +3391,6 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.assembled),
 		static_cast <unsigned long long> (totals.restyled),
 		static_cast <unsigned long long> (totals.undirected),
-		static_cast <unsigned long long> (totals.lonesome),
 		static_cast <unsigned long long> (totals.recycled),
 		static_cast <unsigned long long> (totals.tailed),
 		static_cast <unsigned long long> (totals.grafted),

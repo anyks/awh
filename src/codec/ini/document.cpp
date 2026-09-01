@@ -223,9 +223,15 @@ bool awh::codec::ini::Document::acceptable(const string_view name, const bool se
 		 *       Правило одно с правилом записи: там скобки ограждены признаком `arrays`.
 		 *       Рвался на этом перенос значения в дерево: разбор текст принимал, а
 		 *       `graft()` отказывал именем. Нашёл это ворошитель учётом отказов переноса
+		 *
+		 * @note Скобки в имени РАЗДЕЛА поверяются признаком `greedySections`: читающий
+		 *       жадный берёт имя до последней скобки в строке, и «[x[]]» есть ему имя
+		 *       «x[]» - записанное имя с прочитанным совпадает. Читающий же, берущий
+		 *       первую, прочтёт «x[» с лишним хвостом. Правило одно с правилом записи
 		 */
 		bool invalid = ((name[i] == '\n') || (name[i] == '\r') ||
-		                (section || this->_settings.reader.arrays ? ((name[i] == '[') || (name[i] == ']')) : false) ||
+		                (section ? (!this->_settings.reader.greedySections && ((name[i] == '[') || (name[i] == ']'))) :
+		                 (this->_settings.reader.arrays ? ((name[i] == '[') || (name[i] == ']')) : false)) ||
 		                (!section && (i == 0) && commented(name[i], this->_settings.reader.comments)));
 		/**
 		 * Если читающий признаёт примечание в конце строки
@@ -2389,6 +2395,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	result.trim = this->_settings.reader.trim;
 	// Устанавливаем отбрасывание читающим пробельной обвязки имени раздела
 	result.trimSections = this->_settings.reader.trimSections;
+	// Устанавливаем розыск читающим закрывающей скобки до последней в строке
+	result.greedySections = this->_settings.reader.greedySections;
 	// Устанавливаем признак признания свойств до первого раздела читающим
 	result.global = this->_settings.reader.global;
 	// Устанавливаем признак признания свойства без значения читающим

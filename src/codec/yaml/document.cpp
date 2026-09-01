@@ -51,6 +51,92 @@ using namespace awh::codec::yaml;
  */
 namespace {
 	/**
+	 * @brief Функция розыска ближайшего конца строки вперёд по удержанному тексту
+	 *
+	 * @param source удержанный исходный текст
+	 * @param from   смещение, с какого розыск ведётся
+	 * @return       смещение знака конца строки либо `npos`, если его нет
+	 *
+	 * @details Описание YAML 1.2 числит концом строки правилом `b-char` три написания:
+	 * перевод строки, возврат каретки с переводом за ним и возврат каретки одинокий.
+	 * Чтение с ними так и обходится, а удержание строило строки розыском одного лишь
+	 * перевода - и возврат одинокий сливал две строки в одну: текст `a: 1\rb: 2`
+	 * перезаписывался как `a: 1b: 2`, а обратное чтение давало дерево иное
+	 *
+	 * @note Договор смещений тот же, что у `find('\n')`: конец строки занимает здесь
+	 *       ОДИН байт при любом из трёх написаний - возврат одинокий ровно так же, как
+	 *       перевод, - и вся счётная обвязка мест розыска остаётся неизменной
+	 */
+	static size_t forward(const string & source, const size_t from) noexcept {
+		/**
+		 * Выполняем перебор знаков текста от заданного смещения
+		 */
+		for(size_t i = from; i < source.size(); i++){
+			/**
+			 * Если знак есть перевод строки
+			 */
+			if(source.at(i) == '\n')
+				// Выводим смещение знака конца строки
+				return i;
+			/**
+			 * Если знак есть возврат каретки, за которым перевод строки не стоит
+			 */
+			if((source.at(i) == '\r') && (((i + 1) >= source.size()) || (source.at(i + 1) != '\n')))
+				// Выводим смещение знака конца строки
+				return i;
+		}
+		// Выводим отсутствие конца строки
+		return string::npos;
+	}
+	/**
+	 * @brief Функция розыска ближайшего конца строки назад по удержанному тексту
+	 *
+	 * @param source удержанный исходный текст
+	 * @param from   смещение, с какого розыск ведётся назад включительно
+	 * @return       смещение знака конца строки либо `npos`, если его нет
+	 *
+	 * @note Договор смещений тот же, что у `rfind('\n')`: розыск включает сам знак,
+	 *       на какой смещение указывает, а смещение за краем текста сводится к
+	 *       последнему знаку его
+	 */
+	static size_t backward(const string & source, const size_t from) noexcept {
+		/**
+		 * Если удержанный текст пуст вовсе
+		 */
+		if(source.empty())
+			// Выводим отсутствие конца строки
+			return string::npos;
+		// Смещение, с какого розыск ведётся
+		size_t i = ((from >= source.size()) ? (source.size() - 1) : from);
+		/**
+		 * Выполняем перебор знаков текста назад от заданного смещения
+		 */
+		while(true){
+			/**
+			 * Если знак есть перевод строки
+			 */
+			if(source.at(i) == '\n')
+				// Выводим смещение знака конца строки
+				return i;
+			/**
+			 * Если знак есть возврат каретки, за которым перевод строки не стоит
+			 */
+			if((source.at(i) == '\r') && (((i + 1) >= source.size()) || (source.at(i + 1) != '\n')))
+				// Выводим смещение знака конца строки
+				return i;
+			/**
+			 * Если начало текста достигнуто
+			 */
+			if(i == 0)
+				// Выходим из перебора знаков текста
+				break;
+			// Выполняем переход к предыдущему знаку текста
+			i--;
+		}
+		// Выводим отсутствие конца строки
+		return string::npos;
+	}
+	/**
 	 * @brief Функция проверки знака на пробельность
 	 *
 	 * @details Возврат каретки числится пробельным наравне с пробелом и знаком
@@ -510,7 +596,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 			// Выводим смещение, записи в исходном тексте не имеющее
 			return NO_ORIGIN;
 		// Разыскиваем перевод строки, событию предшествующий
-		const size_t position = this->_source.rfind('\n', ((offset > 0) ? (offset - 1) : 0));
+		const size_t position = ::backward(this->_source, ((offset > 0) ? (offset - 1) : 0));
 		/**
 		 * Выводим смещение начала строки, событием занятой
 		 *
@@ -1162,7 +1248,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					 */
 					if(offset <= this->_source.size()){
 						// Разыскиваем конец строки, скобкою закрывающей занятой
-						const size_t position = this->_source.find('\n', offset);
+						const size_t position = ::forward(this->_source, offset);
 						// Запоминаем конец строки границею записи поточного построения
 						this->_nodes.at(index).edge = static_cast <uint32_t> ((position == string::npos) ?
 						 this->_source.size() : (position + 1));
@@ -1826,6 +1912,46 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 	 *       строкой либо примечанием, а те отступа своего держать не обязаны
 	 */
 	const uint32_t own = this->leading(first);
+	/**
+	 * Если собственная строка первого узла за границею записи пролёта стоит
+	 *
+	 * @details Пролёт обязан нести запись самого узла, а не одно лишь предисловие его:
+	 * начало берётся с пустых строк да примечаний, над узлом стоявших, а граница - началом
+	 * записи узла следующего. Граница, собственной строки не достигшая, значит, что записи
+	 * своей узел в пролёт не отдал вовсе, и дословный перенос выдал бы одно предисловие -
+	 * запись узла пропала бы молча
+	 *
+	 * @warning Написание ` \n...:\n---\n- x` тем и теряло пару `...` при заведении пары
+	 *          новой: пролёт её выходил пустою строкою, а сама пара из текста исчезала.
+	 *          Наружу это всплывало обратным чтением - дерево держало две пары, а текст
+	 *          отдавал одну
+	 *
+	 * @note Отказ отсылает пролёт сборке заново: вид записи теряется, содержимое выходит
+	 *       верным. Сторож этот равнозначен сторожам ниже - все они судят о пригодности
+	 *       пролёта дословному переносу
+	 */
+	if((own != NO_ORIGIN) && (own >= edge))
+		// Выводим признак неудачной дословной записи пролёта
+		return false;
+	/**
+	 * Начало собственной строки последнего узла пролёта
+	 *
+	 * @note Сличается он с границею по той же причине, что и первый: пролёт из нескольких
+	 *       узлов обязан нести запись КАЖДОГО из них, а достаточно сличить крайние -
+	 *       записи узлов промежуточных лежат меж ними по устройству
+	 */
+	const uint32_t ending = ((last != first) ? this->leading(last) : own);
+	/**
+	 * Если собственная строка последнего узла за границею записи пролёта стоит
+	 *
+	 * @warning Написание `:\n...:\n---\n- x` тем и теряло пару `...` при заведении пары
+	 *          новой: граница пролёта совпадала с началом записи её, и пролёт нёс одну лишь
+	 *          пару первую, а вторая из текста исчезала. Дерево держало три пары, а
+	 *          обратное чтение находило две
+	 */
+	if((ending != NO_ORIGIN) && (ending >= edge))
+		// Выводим признак неудачной дословной записи пролёта
+		return false;
 	// Разыскиваем конец отступа собственной строки первого узла
 	size_t position = ((own != NO_ORIGIN) ? own : origin);
 	// Запоминаем начало отступа собственной строки первого узла
@@ -1852,6 +1978,30 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 	if(entry && ((position >= edge) || (this->_source.at(position) != '-') ||
 	   (((position + 1) < edge) && (this->_source.at(position + 1) != ' ') &&
 	    (this->_source.at(position + 1) != '\t') && (this->_source.at(position + 1) != '\n'))))
+		// Выводим признак неудачной дословной записи пролёта
+		return false;
+	/**
+	 * Если пролёт открывается вместилищем, черты своей не имеющим
+	 *
+	 * @details Вместилище, значением записи перечня стоящее строкою ниже черты её, записи
+	 * своей собственной не имеет вовсе: запись его начинается там же, где запись первого
+	 * ребёнка его. Черта, проверкою выше найденная, принадлежит тогда РЕБЁНКУ, а не
+	 * вместилищу, и проверка та обманывается ею - пролёт уходит дословно, теряя и черту
+	 * объемлющей записи, и метку типа вместилища. Написание `- !<t>\n -` тем и
+	 * перезаписывалось как `-`: уровень вложенности и метка пропадали оба
+	 *
+	 * @warning Проверка сличает записи, а не строки: вместилище, черту свою имеющее,
+	 *          начинается прежде первого ребёнка своего хотя бы на длину черты. Равенство
+	 *          же значит, что своей записи у него нет
+	 *
+	 * @note Отказ отсылает пролёт сборке заново - вид записи теряется, а содержимое
+	 *       выходит верным. Наружу это не всплывало, покуда пролёт объемлющий накрывал
+	 *       вместилище целиком: обман виден лишь тогда, когда вместилище переписывается
+	 *       само по себе. Нашёл это ворошитель правкой дерева, а свело к нему снятие
+	 *       повторяющегося имени пары - оно и разрывает пролёт объемлющий
+	 */
+	if(entry && ((first + 1) < this->_nodes.size()) && (this->_nodes.at(first).extent() > 1) &&
+	   (this->_nodes.at(first + 1).origin == this->_nodes.at(first).origin))
 		// Выводим признак неудачной дословной записи пролёта
 		return false;
 	// Выводим признак дословной записи пролёта исходными байтами
@@ -2003,7 +2153,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 					// Выходим из перебора пустых строк
 					break;
 				// Разыскиваем начало строки, разбираемой записи предшествующей
-				const size_t position = this->_source.rfind('\n', (offset - 2));
+				const size_t position = ::backward(this->_source, (offset - 2));
 				// Получаем начало предшествующей строки
 				const size_t start = ((position == string::npos) ? 0 : (position + 1));
 				/**
@@ -2122,7 +2272,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 				// Выходим из перебора строк, документу предшествующих
 				break;
 			// Разыскиваем начало строки, документу предшествующей
-			const size_t position = this->_source.rfind('\n', (offset - 2));
+			const size_t position = ::backward(this->_source, (offset - 2));
 			// Получаем начало предшествующей строки
 			const size_t start = ((position == string::npos) ? 0 : (position + 1));
 			// Смещение первого непробельного знака предшествующей строки
@@ -2200,7 +2350,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 		 */
 		if((own != NO_ORIGIN) && ((letter >= this->_source.size()) || (this->_source.at(letter) != '-'))){
 			// Разыскиваем конец собственной строки перечня
-			const size_t position = this->_source.find('\n', own);
+			const size_t position = ::forward(this->_source, own);
 			/**
 			 * Если собственная строка перечня концом своим оканчивается
 			 *
@@ -2250,7 +2400,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			if((this->_nodes.at(child).origin != NO_ORIGIN) && (this->_nodes.at(child).origin >= 2) &&
 			   (static_cast <size_t> (this->_nodes.at(child).origin) <= this->_source.size())){
 				// Разыскиваем конец строки, записи ребёнка предшествующей
-				const size_t closes = this->_source.rfind('\n', (static_cast <size_t> (this->_nodes.at(child).origin) - 2));
+				const size_t closes = ::backward(this->_source, (static_cast <size_t> (this->_nodes.at(child).origin) - 2));
 				// Получаем начало строки, записи ребёнка предшествующей
 				const size_t heading = ((closes == string::npos) ? 0 : (closes + 1));
 				// Смещение первого непробельного знака предшествующей строки
@@ -2332,7 +2482,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 *       эта черте и принадлежит целиком - вместе с меткою да меткой типа,
 			 *       за чертою стоящими
 			 */
-			const size_t ending = this->_source.rfind('\n', (origin - 1));
+			const size_t ending = ::backward(this->_source, (origin - 1));
 			/**
 			 * Получаем начало строки, записи ребёнка предшествующей
 			 *
@@ -2341,7 +2491,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 *       нулём, границы записи не достигая - перенос черты не состоялся бы вовсе
 			 */
 			const size_t opened = ((ending == string::npos) ? 0 :
-			 (((ending == 0) ? 0 : (this->_source.rfind('\n', (ending - 1)) + 1))));
+			 (((ending == 0) ? 0 : (::backward(this->_source, (ending - 1)) + 1))));
 			// Получаем начало строки черты, меткою порядка байтов ограниченное
 			const size_t start = ((opened < this->_prologue) ? this->_prologue : opened);
 			/**
@@ -2394,7 +2544,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 */
 			for(size_t j = opening; j < start;){
 				// Разыскиваем знак конца очередной строки промежутка
-				const size_t breaking = this->_source.find('\n', j);
+				const size_t breaking = ::forward(this->_source, j);
 				// Получаем конец очередной строки промежутка
 				const size_t finish = ((breaking == string::npos) || (breaking > start) ? start : breaking);
 				// Смещение первого непробельного знака очередной строки
@@ -2541,7 +2691,7 @@ void awh::codec::yaml::Document::spread() noexcept {
 			 */
 			const size_t finish = (((closing > 0) && (this->_source.at(closing - 1) == '\n')) ? (closing - 1) : closing);
 			// Разыскиваем начало последней строки содержимого документа
-			const size_t position = ((finish > 0) ? this->_source.rfind('\n', (finish - 1)) : string::npos);
+			const size_t position = ((finish > 0) ? ::backward(this->_source, (finish - 1)) : string::npos);
 			// Получаем начало последней строки содержимого документа
 			const size_t start = ((position == string::npos) ? 0 : (position + 1));
 			// Смещение первого непробельного знака последней строки
@@ -2676,7 +2826,7 @@ uint32_t awh::codec::yaml::Document::trailing(const uint32_t root) const noexcep
 		}
 	}
 	// Разыскиваем начало строки, за собственной стоящей
-	size_t position = this->_source.find('\n', static_cast <size_t> (own));
+	size_t position = ::forward(this->_source, static_cast <size_t> (own));
 	/**
 	 * Если собственная строка узла переводом не закрыта
 	 */
@@ -2692,7 +2842,7 @@ uint32_t awh::codec::yaml::Document::trailing(const uint32_t root) const noexcep
 	 */
 	while(position < this->_source.size()){
 		// Разыскиваем знак конца очередной строки
-		const size_t breaking = this->_source.find('\n', position);
+		const size_t breaking = ::forward(this->_source, position);
 		// Получаем конец очередной строки без перевода, её завершающего
 		const size_t finish = ((breaking == string::npos) ? this->_source.size() : breaking);
 		// Смещение первого непробельного знака очередной строки
@@ -2763,7 +2913,7 @@ uint32_t awh::codec::yaml::Document::leading(const uint32_t index) const noexcep
 	 */
 	while(offset < this->_source.size()){
 		// Разыскиваем знак конца очередной строки
-		const size_t position = this->_source.find('\n', offset);
+		const size_t position = ::forward(this->_source, offset);
 		// Получаем конец очередной строки
 		const size_t edge = ((position == string::npos) ? this->_source.size() : position);
 		// Смещение первого непробельного знака очередной строки
@@ -3448,7 +3598,7 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 	const uint32_t heading = this->leading(index);
 	// Разыскиваем начало строки, глубину записи задающей
 	const size_t opened = ((heading != NO_ORIGIN) && (heading <= latest) ? static_cast <size_t> (heading) :
-	 ((latest == 0) ? 0 : (this->_source.rfind('\n', (latest - 1)) + 1)));
+	 ((latest == 0) ? 0 : (::backward(this->_source, (latest - 1)) + 1)));
 	// Смещение первого непробельного знака строки
 	size_t letter = opened;
 	/**
@@ -3516,7 +3666,7 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 			indent = (dashed - opened);
 	}
 	// Разыскиваем конец строки, наибольшим началом записи занятой
-	size_t position = this->_source.find('\n', latest);
+	size_t position = ::forward(this->_source, latest);
 	/**
 	 * Если конец записи, узлом наперёд ведомый, строки той ниже стоит
 	 *
@@ -3614,7 +3764,7 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 				// Выходим из добора строк записи
 				break;
 			// Запоминаем конец строки, за пустыми стоящей, концом записи
-			position = this->_source.find('\n', beyond);
+			position = ::forward(this->_source, beyond);
 			// Выполняем переход к следующей строке добора
 			continue;
 		}
@@ -3625,7 +3775,7 @@ uint32_t awh::codec::yaml::Document::closing(const uint32_t index, const uint32_
 			// Выходим из добора строк записи
 			break;
 		// Запоминаем конец следующей строки концом записи
-		position = this->_source.find('\n', next);
+		position = ::forward(this->_source, next);
 	}
 	/**
 	 * Выводим смещение за концом последней строки записи
