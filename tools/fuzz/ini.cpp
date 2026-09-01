@@ -2381,6 +2381,30 @@ namespace {
 }
 
 /**
+ * @brief Признак сборки под надзирателями памяти
+ *
+ * @details Надзиратели есть не всюду: у OpenWRT с musl тел их нет вовсе, и сборщик
+ *          ворошителя, пробою это установив, собирает без них - о том он и говорит
+ *          при сборке. Но отчёт ПРОГОНА о том молчал, а именно отчёт и переносится в
+ *          записи: чистая кампания без надзирателей доказывает равенство поведения, а
+ *          не чистоту памяти, и разницу эту надо видеть в самой строке отчёта
+ *
+ * @note Признаки эти ставит сам собиратель: `__SANITIZE_ADDRESS__` у GCC,
+ *       `__has_feature(address_sanitizer)` у Clang
+ */
+#if defined(__has_feature)
+	#if __has_feature(address_sanitizer)
+		#define AWH_FUZZ_SANITIZED 1
+	#endif
+#endif
+#if !defined(AWH_FUZZ_SANITIZED) && defined(__SANITIZE_ADDRESS__)
+	#define AWH_FUZZ_SANITIZED 1
+#endif
+#if !defined(AWH_FUZZ_SANITIZED)
+	#define AWH_FUZZ_SANITIZED 0
+#endif
+
+/**
  * @brief Функция запуска приложения
  *
  * @param argc длина массива параметров
@@ -2807,7 +2831,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed, %llu mirrored\n",
+		"ini fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed, %llu mirrored%s\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),
@@ -2819,7 +2843,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.transcoded),
 		static_cast <unsigned long long> (totals.untranscodable),
 		static_cast <unsigned long long> (totals.transcribed),
-		static_cast <unsigned long long> (totals.mirrored)
+		static_cast <unsigned long long> (totals.mirrored),
+		(AWH_FUZZ_SANITIZED ? "" : " [БЕЗ НАДЗИРАТЕЛЕЙ]")
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

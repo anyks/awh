@@ -1057,9 +1057,17 @@ TEST_F(SignatureFixture, HashKindMustMatchSignatureKind) {
 		abc::sign_t taken;
 		// Запись обязана сниматься согласно совместности объявленной пары
 		EXPECT_EQ(abc::unpack(record.data(), record.size(), taken, error), probe.accept) << probe.name;
-		// Если запись обязана отвечаться отказом
-		if(!probe.accept)
+		/**
+		 * Если запись обязана отвечаться отказом
+		 *
+		 * @note Скобки обязательны, а не украшают: утверждение развёртывается в `if` со
+		 *       своим `else`, и без скобок он повисает на этом условии. Нынешнему коду
+		 *       вреда нет, но `else`, дописанный сюда потом, привяжется НЕ К ЭТОМУ `if`.
+		 *       Ловится собирателем GNU (`-Wdangling-else`), собиратель clang молчит
+		 */
+		if(!probe.accept){
 			// Отказ обязан быть именно о повреждённой записи подписи
 			EXPECT_EQ(error, abc::error_t::INVALID_SIGNATURE) << probe.name;
+		}
 	}
 }

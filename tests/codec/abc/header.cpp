@@ -672,9 +672,17 @@ TEST(CodecAbcHeader, OffsetsInsideHeaderRefused) {
 		abc::header_t taken;
 		// Заголовок обязан сниматься согласно годности объявленных смещений
 		EXPECT_EQ(taken.unpack(record.data(), record.size(), error), probe.accept) << probe.name;
-		// Если заголовок обязан отвечаться отказом
-		if(!probe.accept)
+		/**
+		 * Если заголовок обязан отвечаться отказом
+		 *
+		 * @note Скобки обязательны, а не украшают: утверждение развёртывается в `if` со
+		 *       своим `else`, и без скобок он повисает на этом условии. Нынешнему коду
+		 *       вреда нет, но `else`, дописанный сюда потом, привяжется НЕ К ЭТОМУ `if`.
+		 *       Ловится собирателем GNU (`-Wdangling-else`), собиратель clang молчит
+		 */
+		if(!probe.accept){
 			// Отказ обязан быть именно о виде записи
 			EXPECT_EQ(error, abc::error_t::INVALID_VERSION) << probe.name;
+		}
 	}
 }

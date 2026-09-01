@@ -1973,6 +1973,30 @@ namespace {
 }
 
 /**
+ * @brief Признак сборки под надзирателями памяти
+ *
+ * @details Надзиратели есть не всюду: у OpenWRT с musl тел их нет вовсе, и сборщик
+ *          ворошителя, пробою это установив, собирает без них - о том он и говорит
+ *          при сборке. Но отчёт ПРОГОНА о том молчал, а именно отчёт и переносится в
+ *          записи: чистая кампания без надзирателей доказывает равенство поведения, а
+ *          не чистоту памяти, и разницу эту надо видеть в самой строке отчёта
+ *
+ * @note Признаки эти ставит сам собиратель: `__SANITIZE_ADDRESS__` у GCC,
+ *       `__has_feature(address_sanitizer)` у Clang
+ */
+#if defined(__has_feature)
+	#if __has_feature(address_sanitizer)
+		#define AWH_FUZZ_SANITIZED 1
+	#endif
+#endif
+#if !defined(AWH_FUZZ_SANITIZED) && defined(__SANITIZE_ADDRESS__)
+	#define AWH_FUZZ_SANITIZED 1
+#endif
+#if !defined(AWH_FUZZ_SANITIZED)
+	#define AWH_FUZZ_SANITIZED 0
+#endif
+
+/**
  * @brief Функция запуска приложения
  *
  * @param argc длина массива параметров
@@ -3405,7 +3429,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено, %llu однобайтовых отсеяно), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено, из них %llu возвратом), %llu recycled (%llu хвостом), %llu grafts (%llu refused), %llu transcribed, %llu circling\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено, %llu однобайтовых отсеяно), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено, из них %llu возвратом), %llu recycled (%llu хвостом), %llu grafts (%llu refused), %llu transcribed, %llu circling%s\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),
@@ -3423,7 +3447,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.grafted),
 		static_cast <unsigned long long> (totals.grafts - totals.grafted),
 		static_cast <unsigned long long> (totals.transcribed),
-		static_cast <unsigned long long> (totals.circling));
+		static_cast <unsigned long long> (totals.circling),
+		(AWH_FUZZ_SANITIZED ? "" : " [БЕЗ НАДЗИРАТЕЛЕЙ]"));
 	// Выводим код успешного выхода из приложения
 	return EXIT_SUCCESS;
 }

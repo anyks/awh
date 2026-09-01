@@ -615,9 +615,9 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	// Включаем поддержание подключения в живых
 	settings.onoff = 1;
 	// Устанавливаем время простоя подключения в миллисекундах
-	settings.keepalivetime = static_cast <ULONG> ((idle > 0) ? (idle * 1000) : 7200000);
+	settings.keepalivetime = static_cast <ULONG> ((idle > 0) ? (static_cast <ULONG> (idle) * 1000UL) : 7200000UL);
 	// Устанавливаем промежуток между попытками в миллисекундах
-	settings.keepaliveinterval = static_cast <ULONG> ((intvl > 0) ? (intvl * 1000) : 1000);
+	settings.keepaliveinterval = static_cast <ULONG> ((intvl > 0) ? (static_cast <ULONG> (intvl) * 1000UL) : 1000UL);
 	// Количество байт, отданных управляющим вызовом
 	DWORD returned = 0;
 	// Если настройки поддержания подключения применить не удалось
@@ -1415,8 +1415,16 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			}
 			// Строй чтения встречного конца канала
 			DWORD mode = PIPE_READMODE_MESSAGE;
-			// Переводим встречный конец канала в строй сообщений
-			::SetNamedPipeHandleState(client, &mode, nullptr, nullptr);
+			/**
+			 * Переводим встречный конец канала в строй сообщений
+			 *
+			 * @note Отказ здесь не смертелен, но оглашается: канал заведён строем сообщений,
+			 *       и встречный конец, оставшийся строем октетов, читал бы поток без границ
+			 *       сообщений - расхождение это всплыло бы далеко от места
+			 */
+			if(!::SetNamedPipeHandleState(client, &mode, nullptr, nullptr))
+				// Записываем ошибку в лог
+				this->_log->print("%s: named pipe could not be switched to message mode, error %lu", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
 			// Выдаём имя заведённого канала вызывающей стороне
 			name = this->_fmk->convert(pipe);
 			// Запоминаем сторону канала, ожидающую подключения

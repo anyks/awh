@@ -2097,6 +2097,20 @@ static ssize_t __awh_pipe_transfer__(const SOCKET sock, void * buffer, const siz
 	 *       система по его завершении
 	 */
 	static thread_local HANDLE signal = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+	/**
+	 * Если событие потока завести не удалось
+	 *
+	 * @warning Без этой проверки пустое значение уходило в пометку младшим разрядом ниже,
+	 *          и обмен получал описателем событие с номером 1: система отвечала невнятным
+	 *          отказом, а `ResetEvent` молчал вовсе. Путь горячий, и разбираться в таком
+	 *          отказе пришлось бы долго
+	 */
+	if(signal == nullptr){
+		// Переносим код отказа заведения события в errno
+		errno = ENOMEM;
+		// Выводим признак отказа обмена
+		return -1;
+	}
 	// Описание наложенного обмена
 	OVERLAPPED overlapped{};
 	/**
@@ -8200,6 +8214,15 @@ namespace fibers {
 	 *
 	 */
 	static void clear() noexcept {
+		/**
+		 * @warning Разбор снимает волокна ТОГО ПОТОКА, который его позвал: пул объявлен
+		 *          переменной потока (`thread_local`). Требование это НЕСУЩЕЕ - позови
+		 *          `deinitialize` не тот поток, что вёл цикл, и волокна цикла остались бы
+		 *          жить вместе со ссылками на журнал, а это ровно тот обвал (код 139),
+		 *          ради которого разбор и заведён. Сейчас условие соблюдено устройством:
+		 *          настройка и цикл идут последовательно одним потоком, из чужого потока
+		 *          приходит только остановка
+		 */
 		// Получаем волокно, в котором идёт выполнение
 		::fiber::ctx_t * inside = ::fiber::current();
 		/**
@@ -11855,6 +11878,23 @@ namespace kernel {
 				 *       вправе исчезнуть сам
 				 */
 				case static_cast <uint32_t> (WSAENOTSOCK):
+				/**
+				 * Недействительный описатель сокета
+				 *
+				 * @warning Код этот перечню окончательных отказов не принадлежал, тогда
+				 *          как перевод отказов в понятия POSIX выше по файлу разводит
+				 *          его и `WSAENOTSOCK` в ОДНО значение `EBADF`: то есть модуль
+				 *          сам считает их одним и тем же, а разбор отказов подачи
+				 *          считал первый окончательным, а второй незнакомым. Незнакомый
+				 *          же уходит в ветвь по умолчанию, где подача повторяется до
+				 *          64 раз, и всё это время потребитель числит событие живым,
+				 *          хотя описателя у ядра уже нет
+				 *
+				 * @note Недействительный описатель заново не оживёт - тот же довод, по
+				 *       какому окончательным признан `WSAENOTSOCK`
+				 *
+				 */
+				case static_cast <uint32_t> (WSAEBADF):
 				case static_cast <uint32_t> (ERROR_INVALID_HANDLE): {
 					// Записываем ошибку в лог
 					log->print("%s: event poll submission rejected: ident=%llu, events=0x%x: %s", log_t::flag_t::CRITICAL,
@@ -42796,8 +42836,21 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																for(;;){
 																	// Создаём адрес unix-сокета клиента
 																	filename = this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str());
-																	// Если длина имени файла превышает допустимую
-																	if(filename.length() > sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)){
+																	/**
+																	 * Если длина имени файла превышает допустимую
+																	 *
+																	 * @warning Сличение НЕСТРОГОЕ: в поле нужно место ещё и под завершающий
+																	 *          нуль. Прежде стояло `>`, и длина, равная размеру поля,
+																	 *          проходила: `strncpy` ниже копировал ровно `sizeof(sun_path)`
+																	 *          октетов, нуля НЕ дописывал, а следующий за ним `strlen` уходил
+																	 *          за границу поля и отдавал в `bind` завышенный размер. Соседние
+																	 *          места файла стерегут через `<` и потому верны
+																	 *
+																	 * @note Меряется поле `client`, а не `server`: копирование ниже идёт
+																	 *       именно в него. Размер у них один, но сторож обязан называть то
+																	 *       поле, которое стережёт
+																	 */
+																	if(filename.length() >= sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path)){
 																		// Если установлена функция обратного вызова
 																		if(client->callbacks.status != nullptr)
 																			// Вызываем функцию обратного вызова об ошибке отказа
@@ -42894,7 +42947,17 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Удаляем созданный временный файл unix-сокета
 																	::unlink(filename.c_str());
 																	// Копируем установленный адрес клиента
-																	::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, filename.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path), filename.length()));
+																	/**
+																	 * Зануляем поле пути прежде копирования
+																	 *
+																	 * @note Завершающий нуль здесь обязателен: размер объекта сокета ниже
+																	 *       берётся через `strlen`, и без нуля тот ушёл бы за границу поля.
+																	 *       Сторож выше длину уже ограничил, но опора на один лишь сторож
+																	 *       хрупка - зануление делает запись верной само по себе
+																	 */
+																	::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
+																	// Копируем установленный адрес клиента
+																	::memcpy(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, filename.c_str(), filename.length());
 																	// Получаем размер объекта сокета
 																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
 																	// Выполняем бинд сокета клиента на адрес unix-сокета
@@ -72701,6 +72764,17 @@ void awh::engine::IO::clear() noexcept {
 				break;
 			// Выполняем пинок цикла для обработки отложенных пользовательских событий
 			(void) this->kick();
+			/**
+			 * Исчерпание предела оглашается, а не проглатывается
+			 *
+			 * @warning Молчание здесь означало бы ровно тот случай, ради которого ожидание
+			 *          и заведено: охранники ресурс ещё не отпустили, а узлы сносятся всё
+			 *          равно. Сноса это не отменяет - без предела разбор встал бы навсегда,
+			 *          - но знать о нём владелец обязан
+			 */
+			if(attempt == (0x20 - 1))
+				// Выводим в журнал сообщение о неснятых узлах
+				this->_log->print("%s: %zu deletion rounds were not enough, nodes are removed while their guards still hold resources", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <size_t> (0x20));
 		}
 		/**
 		 * Выполняем перебор всех активных узлов
@@ -74087,6 +74161,17 @@ bool awh::engine::IO::deinitialize() noexcept {
 				break;
 			// Выполняем пинок цикла для обработки отложенных пользовательских событий
 			(void) this->kick();
+			/**
+			 * Исчерпание предела оглашается, а не проглатывается
+			 *
+			 * @warning Молчание здесь означало бы ровно тот случай, ради которого ожидание
+			 *          и заведено: охранники ресурс ещё не отпустили, а узлы сносятся всё
+			 *          равно. Сноса это не отменяет - без предела разбор встал бы навсегда,
+			 *          - но знать о нём владелец обязан
+			 */
+			if(attempt == (0x20 - 1))
+				// Выводим в журнал сообщение о неснятых узлах
+				this->_log->print("%s: %zu deletion rounds were not enough, nodes are removed while their guards still hold resources", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <size_t> (0x20));
 		}
 	}
 	// Если после деинициализации остались активные узлы
@@ -75537,7 +75622,17 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 									 *       подключении не знает, и опции слушающего сокета на него не
 									 *       наследуются вовсе
 									 */
-									::setsockopt(static_cast <SOCKET> (peer), SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&sockOf), static_cast <int32_t> (sizeof(sockOf)));
+									/**
+									 * Отказ этого шага оглашается, а не проглатывается
+									 *
+									 * @note Шаг обязателен: без него принятый сокет не наследует свойств
+									 *       слушающего, и `getpeername`, `getsockname` и плавное закрытие
+									 *       отвечают ему невнятно. Отказ редок, а разбор его без сообщения
+									 *       стоил бы долгих поисков далеко от места
+									 */
+									if(::setsockopt(static_cast <SOCKET> (peer), SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, reinterpret_cast <const char *> (&sockOf), static_cast <int32_t> (sizeof(sockOf))) != 0)
+										// Выводим в журнал сообщение о неудавшемся наследовании свойств
+										this->_log->print("%s: accepted socket %d did not inherit the listening socket properties: %s", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <int32_t> (peer), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
 									// Адрес принятого подключения
 									struct sockaddr_storage source{};
 									// Адреса сторон принятого подключения, добываемые из буфера
@@ -75610,7 +75705,15 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							 */
 							if(completion.res >= 0)
 								// Выполняем перенос сведений о подключении в сокет
-								::setsockopt(static_cast <SOCKET> (sockOf), SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0);
+								/**
+								 * Отказ этого шага оглашается, а не проглатывается
+								 *
+								 * @note Шаг обязателен после `ConnectEx`: без него сокет остаётся
+								 *       полузаведённым, и обращения к его именам отвечают отказом
+								 */
+								if(::setsockopt(static_cast <SOCKET> (sockOf), SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, nullptr, 0) != 0)
+									// Выводим в журнал сообщение о незавершённом заведении подключения
+									this->_log->print("%s: connected socket %d was not updated after the overlapped connect: %s", log_t::flag_t::WARNING, ::__AWH_IO_BACKEND__, static_cast <int32_t> (sockOf), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
 							// Получаем запись учёта подписки по дескриптору
 							signalData = ::kernel::subscription(sockOf);
 							// Если подписка по дескриптору заведена

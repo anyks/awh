@@ -2115,3 +2115,87 @@ TEST_F(EditorFixture, LayoutOffsetsFollowBody) {
 		examine(cleaned.data, length, true, this->_log.get());
 	}
 }
+
+/**
+ * @brief Проверка того, что снятие срока ИЗ РАБОТЫ ЗАПИСИ не валит правку
+ *
+ * @details Самочинная фиксация по сроку идёт СВОИМ потоком, а работа записи октетов
+ *          отдана потребителем - и зовётся она тем самым потоком. Потребителю
+ *          естественно снять самочинную фиксацию оттуда же: «легло на носитель - более
+ *          не отбивай». Снятие это уходит в остановку отбоя срока, а остановка прежде
+ *          дожидалась конца своего потока - того самого, из какого зван вызов. Ожидание
+ *          себя самого стандарт запрещает, отказ его есть исключение, а остановка
+ *          объявлена `noexcept`: работа снималась целиком
+ *
+ * @note Проверка эта - о ПУТИ ПОТРЕБИТЕЛЯ, а не о отбое срока: сам отбой закреплён
+ *       проверками `CodecAbcSchedule.StopFromCallbackDoesNotAbort` и
+ *       `RestartAfterStopFromCallbackSurvives`. Здесь же закрепляется, что путь этот
+ *       достижим из работы, какую потребитель ПИШЕТ САМ, а не выдуман щупом
+ *
+ * @warning Утверждается не одно доживание до конца: фиксация обязана состояться, срок
+ *          обязан быть снят, и вторая фиксация обязана не наступить. Утверждай проверка
+ *          одно доживание, её прошло бы и снятие, ничего не снявшее
+ *
+ */
+TEST_F(EditorFixture, DroppingDeadlineFromTheSinkSurvives) {
+	// Носитель, несущий правимый контейнер
+	Medium medium;
+	// Выполняем сборку контейнера с одной записью
+	this->build(medium, {"первая"});
+	// Правщик контейнера
+	abc::editor_t editor(this->_log.get());
+	// Количество обращений к работе записи октетов
+	atomic <size_t> writes(0);
+	// Признак снятого срока самочинной фиксации
+	atomic <bool> dropped(false);
+	/**
+	 * Выполняем открытие контейнера работами чтения и записи, где ЗАПИСЬ снимает срок
+	 */
+	ASSERT_TRUE(editor.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+		// Выполняем чтение затребованных октетов контейнера
+		return medium.read(offset, size, result);
+	}, [&medium, &editor, &writes, &dropped](const uint64_t offset, const void * buffer, const size_t size) noexcept -> bool {
+		// Выполняем учёт обращения к работе записи октетов
+		writes++;
+		/**
+		 * Если срок самочинной фиксации ещё не снят, снимаем его ОТСЮДА
+		 */
+		if(!dropped.exchange(true)){
+			// Получаем настройки правки контейнера
+			abc::editor_t::settings_t settings = editor.settings();
+			// Выполняем снятие способа самочинной фиксации
+			settings.mode = abc::editor_t::mode_t::MANUAL;
+			// Выполняем установку настроек правки контейнера
+			editor.settings(settings);
+		}
+		// Выполняем запись поданных октетов контейнера
+		return medium.write(offset, buffer, size);
+	}, static_cast <uint64_t> (medium.data.size()))) << "код отказа: " << abc::message(editor.error());
+	// Получаем настройки правки контейнера
+	abc::editor_t::settings_t settings = editor.settings();
+	// Выполняем установку способа фиксации своим потоком
+	settings.mode = abc::editor_t::mode_t::THREAD;
+	// Выполняем установку срока самочинной фиксации
+	settings.delay = 30;
+	// Выполняем установку настроек правки контейнера
+	editor.settings(settings);
+	// Выполняем сборку дописываемой записи
+	const vector <uint8_t> item = abc::value_t(string{"вторая"}).dump();
+	// Выполняем дописывание записи в конец контейнера
+	ASSERT_TRUE(editor.append(item.data(), item.size(), abc::payload_t::TEXT))
+		<< "код отказа: " << abc::message(editor.error());
+	// Выполняем ожидание, многократно превышающее срок самочинной фиксации
+	this_thread::sleep_for(chrono::milliseconds(250));
+	// Выполняем проверку того, что работа записи звана, то есть фиксация состоялась
+	ASSERT_GT(writes.load(), 0ul) << "самочинная фиксация не состоялась";
+	// Выполняем проверку того, что срок снят работой записи
+	ASSERT_TRUE(dropped.load()) << "работа записи срока не снимала";
+	// Выполняем проверку того, что способ фиксации снят
+	ASSERT_EQ(editor.settings().mode, abc::editor_t::mode_t::MANUAL);
+	// Выполняем получение количества обращений к работе записи
+	const size_t counted = writes.load();
+	// Выполняем ожидание, многократно превышающее срок самочинной фиксации
+	this_thread::sleep_for(chrono::milliseconds(150));
+	// Выполняем проверку того, что снятый срок более не отбивается
+	ASSERT_EQ(writes.load(), counted) << "снятый срок продолжил отбиваться";
+}
