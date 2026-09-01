@@ -108,7 +108,14 @@ if [ "$(uname -s)" != "Darwin" ]; then
 	printf '#include <zlib.h>\nint main(void){ return (zlibVersion() == 0); }\n' > "$PROBE.c"
 	if ! $CXX -x c "$PROBE.c" -lz -o "$PROBE" > /dev/null 2>&1; then
 		for STATIC in /usr/lib/libz.a /usr/lib64/libz.a /usr/local/lib/libz.a; do
-			if [ -f "$STATIC" ] && $CXX -x c "$PROBE.c" "$STATIC" -o "$PROBE" > /dev/null 2>&1; then
+			##
+			# Признак «-x none» обязателен ПЕРЕД архивом
+			#
+			# Ключ «-x c» правит вид ВСЕХ доводов последующих, и архив попадал
+			# собирателю исходником на языке C: проба отказывала разбором
+			# двоичного тела, а не связыванием
+			##
+			if [ -f "$STATIC" ] && $CXX -x c "$PROBE.c" -x none "$STATIC" -o "$PROBE" > /dev/null 2>&1; then
 				echo "zlib: разделяемая связыванию не поддалась, взята $STATIC"
 				LIBZ="$STATIC"
 				break

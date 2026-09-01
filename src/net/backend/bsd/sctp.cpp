@@ -39,6 +39,30 @@
 #include <net/eth/sctp.hpp>
 
 /**
+ * Признак современного набора вызовов приёма метаданных SCTP
+ *
+ * @details Признак заведён ОДИН на весь модуль намеренно: подписка на метаданные и
+ *          способ их чтения обязаны выбираться одним и тем же условием.
+ *
+ * @warning У FreeBSD оба имени приходят макросами, и условия совпадают - здесь и
+ *          сейчас расхождения нет. Признак заведён не ради нынешней беды, а ради
+ *          того, чтобы её нельзя было внести: в наречии Linux условия эти РАЗОШЛИСЬ
+ *          и разошлись МОЛЧА. Там `SCTP_RECVRCVINFO` приходит макросом из ядерного
+ *          заголовка, а `SCTP_RECVV_RCVINFO` заведён перечислением в заголовке
+ *          lksctp-tools, какого препроцессор не видит вовсе. Выходило, что модуль
+ *          просит у ядра метаданные новым видом, а читает прежним вызовом: номер
+ *          потока приходил нулём при вполне исправном обмене. Найдено 01.09.2026,
+ *          подробности в `src/net/backend/AUDIT-FINDINGS.md`
+ */
+#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+	// Современный набор вызовов приёма метаданных доступен
+	#define AWH_SCTP_RECV_MODERN 1
+#else
+	// Современного набора вызовов приёма метаданных нет
+	#define AWH_SCTP_RECV_MODERN 0
+#endif
+
+/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -1288,9 +1312,12 @@ bool awh::eth::Stream_Control_Transmission_Protocol::partial() const noexcept {
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::socket_t sock, const bool mode) const noexcept {
 	/**
-	 * Если система несёт подписку на метаданные принимаемых сообщений
+	 * Если система несёт СОВРЕМЕННЫЙ набор вызовов приёма метаданных
+	 *
+	 * @warning Условие здесь обязано совпадать с условием выбора способа чтения в
+	 *          receive(), оттого оба и взяты из одного признака AWH_SCTP_RECV_MODERN
 	 */
-	#if defined(SCTP_RECVRCVINFO)
+	#if AWH_SCTP_RECV_MODERN
 		// Значение режима подписки на метаданные
 		const int32_t value = static_cast <int32_t> (mode);
 		// Выполняем установку режима подписки на метаданные
@@ -1376,7 +1403,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
 	/**
 	 * Если система несёт современный набор вызовов
 	 */
-	#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+	#if AWH_SCTP_RECV_MODERN
 		// Буфер принимаемых данных
 		struct iovec iov{};
 		// Устанавливаем буфер принимаемых данных

@@ -8404,7 +8404,7 @@ TEST_F(IoFixture, IoDirectRecvHonoursReadTimeoutTest){
 	// Устанавливаем адрес прослушивания серверу
 	ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
 	// Устанавливаем функцию обратного вызова принятия подключения
-	this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([&delivered, &accession, options, this](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
+	this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([&delivered, &accession, this](const awh::event::id_t, const awh::event::id_t cid) noexcept -> void {
 		// Принятому узлу признаки ставятся те же, блокирующие
 		EXPECT_TRUE(this->_io->setOptions(cid, options));
 		// Запоминаем опознаватель принятого узла

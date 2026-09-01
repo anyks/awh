@@ -120,6 +120,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Policy of the behaviour on an overflow of the queue of the asynchronous output
+			 *
 			 * @note the values coincide with awh::Screen::overflow_t for a direct conversion
 			 *
 			 * \~
@@ -187,6 +188,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Payload class
+			 *
 			 * @details The payload is built at the moment of the logging call and holds the text of the message, the date of the building and the flag of the type of the message.
 			 *
 			 * \~
@@ -209,6 +211,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Move assignment operator of the parameters of the payload
+					 *
 					 * @param payload payload object to move
 					 * @return        the current payload object
 					 *
@@ -224,6 +227,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Copy assignment operator of the parameters of the payload
+					 *
 					 * @param payload payload object to copy
 					 * @return        the current payload object
 					 *
@@ -240,6 +244,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Comparison operator
+					 *
 					 * @param payload payload object to compare with
 					 * @return        result of the comparison
 					 *
@@ -255,6 +260,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Move constructor
+					 *
 					 * @param payload payload object to move
 					 *
 					 * \~
@@ -268,6 +274,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Copy constructor
+					 *
 					 * @param payload payload object to copy
 					 *
 					 * \~
@@ -308,6 +315,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Base abstract sink of the log output
+			 *
 			 * @details A sink of the log output may be implemented as a console output,
 			 *          a write into a file, a send into SysLog or a hand-over into a callback function.
 			 *
@@ -326,6 +334,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the payload into the sink
+					 *
 					 * @param payload payload object
 					 *
 					 * \~
@@ -340,6 +349,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param log logging object
 					 *
 					 * \~
@@ -365,7 +375,8 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Sink of the log output into the console
-			 * @details The sink of the log output into the console may be implemented as the standard output (stdout) or the standard error stream (stderr).
+			 *
+			 * @details Sink of the log output into the console may be implemented as the standard output (stdout) or the standard error stream (stderr).
 			 *
 			 * \~
 			 */
@@ -379,6 +390,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the payload into the console
+					 *
 					 * @param payload payload object
 					 *
 					 * \~
@@ -393,6 +405,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param log logging object
 					 *
 					 * \~
@@ -418,6 +431,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Sink of the log output into a file
+			 *
 			 * @details The sink of the log output into a file may be implemented as a write into the specified file with the possibility of rotation and of the removal of the outdated archives.
 			 *
 			 * \~
@@ -474,6 +488,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of building a unique name of a log archive
+					 *
 					 * @return path to the archive file, guaranteed not to conflict with the existing ones
 					 *
 					 * \~
@@ -488,6 +503,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of writing the payload into a file
+					 *
 					 * @param payload payload object
 					 *
 					 * \~
@@ -502,6 +518,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param log logging object
 					 *
 					 * \~
@@ -527,6 +544,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Sink of the sending of the logs into SysLog
+			 *
 			 * @details The sink of the sending of the logs into SysLog may be implemented as the sending of messages into the system journal.
 			 *
 			 * \~
@@ -541,6 +559,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of sending the payload into SysLog
+					 *
 					 * @param payload payload object
 					 *
 					 * \~
@@ -555,6 +574,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param log logging object
 					 *
 					 * \~
@@ -580,6 +600,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Sink of the hand-over of the logs into a callback function
+			 *
 			 * @details The sink of the hand-over of the logs into a callback function may be implemented as a call of a user function that will handle the payload.
 			 *
 			 * \~
@@ -594,6 +615,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Method of handing the payload over into the callback function
+					 *
 					 * @param payload payload object
 					 *
 					 * \~
@@ -608,6 +630,7 @@ namespace awh {
 					 *
 					 * \~english
 					 * @brief Constructor
+					 *
 					 * @param log logging object
 					 *
 					 * \~
@@ -689,10 +712,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Callback function that fires on the appearance of a log
+			 *
 			 * @details The callback function must be set from the outside through setCallback()
 			 *          and fire in the context of the thread that called the debug() method.
 			 *          If the callback function is not set, the payload
 			 *          will be handed over into the sinks of the log output (console, file, SysLog) according to the current list of modes.
+			 *
 			 * @param flag    flag of the type of the logging
 			 * @param message text description of the payload
 			 *
@@ -711,6 +736,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of determining the number of arguments
+			 *
 			 * @tparam TupType type of the arguments
 			 *
 			 * \~
@@ -725,6 +751,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of determining the number of arguments
+			 *
 			 * @param args arguments to determine their number of
 			 * @return     number of the found arguments
 			 *
@@ -744,6 +771,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of building the string of the arguments
+			 *
 			 * @tparam TupType type of the arguments
 			 * @tparam I       list of the sequence
 			 *
@@ -759,6 +787,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the string of the arguments
+			 *
 			 * @param args arguments to build the string from
 			 * @return     the built string of the arguments
 			 *
@@ -784,6 +813,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the input parameters for the serialiser
+			 *
 			 * @tparam TupType type of the arguments
 			 *
 			 * \~
@@ -798,6 +828,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of serialising the input arguments
+			 *
 			 * @param args arguments to serialise
 			 * @return     the built string of the arguments
 			 *
@@ -828,6 +859,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of checking whether the log output is allowed for the specified flag
+			 *
 			 * @param flag flag of the type of the logging
 			 * @return     result of checking the correspondence to the logging level
 			 *
@@ -844,6 +876,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of clearing a string of the formatting characters
+			 *
 			 * @param text text to clear
 			 * @return     the cleared text
 			 *
@@ -859,6 +892,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of routing the payload into the sinks (synchronously or asynchronously)
+			 *
 			 * @param payload payload object
 			 *
 			 * \~
@@ -873,6 +907,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of receiving the data
+			 *
 			 * @param payload payload object
 			 *
 			 * \~
@@ -888,12 +923,13 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the component of the address of a file
+			 *
 			 * @param filename address where the file is located
 			 * @return         parameters of the component (address, name of the file without the extension)
 			 *
 			 * \~
 			 */
-			std::pair <string, string> components(string_view filename) const noexcept;
+			pair <string, string> components(string_view filename) const noexcept;
 		private:
 			/**
 			 * \~russian
@@ -905,6 +941,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of building the resulting string of the log
+			 *
 			 * @param payload payload object
 			 * @param colored whether the colour formatting characters should be added
 			 * @return        the built string of the log
@@ -922,6 +959,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of outputting text information into the console or into a file
+			 *
 			 * @tparam T    type of the input arguments of the function
 			 * @tparam Args list of the incoming arguments
 			 *
@@ -940,6 +978,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param method name of the called method
 			 * @param params parameters passed into the method
@@ -987,6 +1026,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of outputting text information into the console or into a file
+			 *
 			 * @tparam T    type of the input arguments of the function
 			 * @tparam Args list of the incoming arguments
 			 *
@@ -1005,6 +1045,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param method name of the called method
 			 * @param params parameters passed into the method
@@ -1052,6 +1093,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of outputting text information into the console or into a file
+			 *
 			 * @tparam T type of the input arguments of the function
 			 *
 			 * \~
@@ -1069,6 +1111,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param method name of the called method
 			 * @param params parameters passed into the method
@@ -1115,6 +1158,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Template of the method of outputting text information into the console or into a file
+			 *
 			 * @tparam T type of the input arguments of the function
 			 *
 			 * \~
@@ -1132,6 +1176,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param method name of the called method
 			 * @param params parameters passed into the method
@@ -1180,6 +1225,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param flag   flag of the type of the logging
 			 *
@@ -1195,6 +1241,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param flag   flag of the type of the logging
 			 *
@@ -1212,6 +1259,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param flag   flag of the type of the logging
 			 * @param args   list of the arguments for the substitution
@@ -1229,6 +1277,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of outputting text information into the console or into a file
+			 *
 			 * @param format format of the output string
 			 * @param flag   flag of the type of the logging
 			 * @param args   list of the arguments for the substitution
@@ -1245,6 +1294,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the thread safety of the work
+			 *
 			 * @param mode flag of the thread safety mode
 			 *
 			 * \~
@@ -1259,6 +1309,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the set format of the log
+			 *
 			 * @return format of the log to get
 			 *
 			 * \~
@@ -1272,6 +1323,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the format of the date and time for the log output
+			 *
 			 * @param format format of the date and time for the log output
 			 *
 			 * \~
@@ -1286,6 +1338,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of getting the set modes of the log output
+			 *
 			 * @return list of the modes of the log output
 			 *
 			 * \~
@@ -1299,6 +1352,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of adding the modes of the log output
+			 *
 			 * @param mode list of the modes of the log output
 			 *
 			 * \~
@@ -1313,6 +1367,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the name of the service for the log output
+			 *
 			 * @param name name of the service for the log output
 			 *
 			 * \~
@@ -1326,6 +1381,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the flag of the asynchronous mode of the work
+			 *
 			 * @param mode flag of the asynchronous mode of the work
 			 *
 			 * \~
@@ -1339,6 +1395,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the maximum size of the log file
+			 *
 			 * @param size maximum size of the log file
 			 *
 			 * \~
@@ -1352,6 +1409,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the size of the text for the building of the separator
+			 *
 			 * @param size size of the text for the building of the separator
 			 *
 			 * \~
@@ -1365,6 +1423,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the logging level
+			 *
 			 * @param level logging level to set
 			 *
 			 * \~
@@ -1378,6 +1437,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the maximum size of the queue of the asynchronous output
+			 *
 			 * @param size maximum size of the queue (0 — without a limit)
 			 *
 			 * \~
@@ -1391,6 +1451,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the maximum number of the kept log archives
+			 *
 			 * @param count maximum number of the archives (0 — without a limit)
 			 *
 			 * \~
@@ -1404,6 +1465,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the file for saving the logs
+			 *
 			 * @param filename path to the file for saving the logs
 			 *
 			 * \~
@@ -1417,6 +1479,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the separator of the logging messages
+			 *
 			 * @param sep separator to set
 			 *
 			 * \~
@@ -1430,6 +1493,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of setting the policy of the behaviour on an overflow of the queue of the asynchronous output
+			 *
 			 * @param overflow policy of the behaviour on an overflow of the queue
 			 *
 			 * \~
@@ -1444,6 +1508,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Method of subscribing to the log events
+			 *
 			 * @param callback callback function
 			 *
 			 * \~
@@ -1459,6 +1524,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
+			 *
 			 * @param fmk      framework object
 			 * @param filename path to the file for saving the logs
 			 *

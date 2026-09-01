@@ -233,7 +233,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 	 * @param result    буфер собранного контейнера
 	 * @return          признак успешной сборки контейнера
 	 */
-	auto assemble = [this](abc::assembler_t & assembler, const vector <string> & texts,
+	auto assemble = [](abc::assembler_t & assembler, const vector <string> & texts,
 	 vector <uint8_t> & result) noexcept -> bool {
 		/**
 		 * Выполняем внесение всех записей в собираемый контейнер

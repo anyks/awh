@@ -45,6 +45,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+
+/**
+ * Подключаем заголовочный файл выдачи пути во временном каталоге системы
+ */
+#include "../temporary.hpp"
 #include <codec/json/json.hpp>
 
 /**
@@ -56,6 +61,55 @@
  *
  */
 namespace {
+	/**
+	 * @brief Сторож временного файла проверки
+	 *
+	 * @details Сторож сносит файл ДВАЖДЫ: при заведении и при разрушении. Второй снос
+	 * убирает за собою мусор, а первый - существеннее: файл, переживший прогон упавший
+	 * либо прерванный, читается проверкою следующего прогона как СВОЙ, и та зеленеет,
+	 * ничего не записав. Замер 01.09.2026: при полностью выключенной записи в файл
+	 * проверка «CodecCsvDocument.File» с подложенным файлом от прошлого прогона проходит
+	 *
+	 * @note Снос в деструкторе обязателен и по второму доводу: всякий «ASSERT_*» уходит из
+	 *       проверки ВОЗВРАТОМ, и снос, писанный последнею строкою тела, при отказе не
+	 *       исполняется вовсе - ровно так же, как не исполнялось снятие настройки процесса
+	 *
+	 */
+	class Scratch {
+		private:
+			// Путь к временному файлу проверки
+			std::string _path;
+		public:
+			/**
+			 * @brief Метод получения пути к временному файлу
+			 *
+			 * @return путь к временному файлу проверки
+			 *
+			 */
+			const std::string & path() const noexcept {
+				// Выводим путь к временному файлу проверки
+				return this->_path;
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param name имя временного файла проверки
+			 *
+			 */
+			explicit Scratch(const std::string & name) noexcept : _path(temporary(name)) {
+				// Выполняем снос файла, оставшегося от прогона прежнего
+				::remove(this->_path.c_str());
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Scratch() noexcept {
+				// Выполняем снос временного файла проверки
+				::remove(this->_path.c_str());
+			}
+	};
 	/**
 	 * @brief Объект журнала проверок с отключённым выводом
 	 *
@@ -719,7 +773,10 @@ TEST(CodecJsonDocument, File) {
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Адрес файла документа
-	const string filename = "codec_json_document_test.json";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("codec_json_document_test.json");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	// Выполняем запись документа в файл
 	ASSERT_TRUE(doc.save(filename, json::format_t::PRETTY));
 	// Объект документа для чтения записанного файла
@@ -763,7 +820,10 @@ TEST(CodecJsonDocument, Chunks) {
 	// Выполняем разбор текста документа целиком
 	ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 	// Адрес файла документа
-	const string filename = "codec_json_document_chunks.json";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("codec_json_document_chunks.json");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	// Открываем файл документа для записи
 	ofstream file(filename, ios::binary | ios::trunc);
 	// Выполняем проверку открытия файла документа
@@ -1435,6 +1495,10 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
  *
  */
 TEST(CodecJsonDocument, UncoveredRefusals) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("uncovered-broken.json");
+	// Сторож временного файла проверки
+	const Scratch scratch1("uncovered-missing.json");
 	/**
 	 * Указатель, ведущий сквозь недействительное звено, обрывается недействительной ссылкой
 	 *
@@ -1478,7 +1542,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 	 */
 	{
 		// Имя файла с негодным текстом документа
-		const string filename("uncovered-broken.json");
+		const string filename(scratch0.path());
 		{
 			// Открываем файл для записи негодного текста документа
 			ofstream file(filename, ios::binary | ios::trunc);
@@ -1498,7 +1562,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 		// Объект второго дерева документа
 		json::document_t other(::logger());
 		// Выполняем проверку отказа чтения отсутствующего файла
-		ASSERT_FALSE(other.load("uncovered-missing.json"));
+		ASSERT_FALSE(other.load(scratch1.path()));
 	}
 }
 
@@ -1793,7 +1857,10 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 		}
 	} guard;
 	// Адрес файла, в который ведётся запись документа
-	const string filename = "./awh-codec-json-write-failure.json";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("awh-codec-json-write-failure.json");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 /**
  * Для операционной системы MS Windows
  */
@@ -1972,6 +2039,8 @@ TEST(CodecJsonDocument, NumberCheckJudgesMagnitudeNotPrecision) {
  *
  */
 TEST(CodecJsonDocument, LoggerSetAfterCreation) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("json-нет-такого-файла.json");
 	// Собираемые сообщения журнала
 	vector <string> messages;
 	// Объект журнала с перехватом вывода
@@ -1987,13 +2056,13 @@ TEST(CodecJsonDocument, LoggerSetAfterCreation) {
 		// Документ значений без объекта ведения журнала работы
 		json::document_t document(nullptr);
 		// Выполняем проверку отказа чтения несуществующего файла документа
-		ASSERT_FALSE(document.load("./json-нет-такого-файла.json"));
+		ASSERT_FALSE(document.load(scratch0.path()));
 		// Выполняем проверку молчания журнала, покуда он не установлен
 		ASSERT_TRUE(messages.empty());
 		// Выполняем установку объекта ведения журнала работы
 		document.setLogger(&log);
 		// Выполняем проверку отказа чтения несуществующего файла документа
-		ASSERT_FALSE(document.load("./json-нет-такого-файла.json"));
+		ASSERT_FALSE(document.load(scratch0.path()));
 		// Выполняем проверку оглашения отказа в журнале
 		ASSERT_FALSE(messages.empty());
 		// Выполняем проверку упоминания причины отказа в сообщении
@@ -2158,7 +2227,10 @@ TEST(CodecJsonDocument, FormatTakenFromSettings){
 	// Выполняем проверку того, что довод настройку перекрывает
 	ASSERT_EQ(doc.dump(json::format_t::COMPACT).find('\n'), string::npos);
 	// Адрес файла, в какой записывается документ
-	const string output = "./awh_json_format_settings.json";
+	// Сторож временного файла проверки
+	const Scratch scratch_output("awh_json_format_settings.json");
+	// Путь к временному файлу проверки
+	const string & output = scratch_output.path();
 	// Выполняем проверку сохранения документа в файл
 	ASSERT_TRUE(doc.save(output));
 	// Объект документа, прочитанного обратно
@@ -2182,11 +2254,36 @@ TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
 	json::document_t doc(::logger());
 	// Выполняем проверку отказа чтения каталога
 	ASSERT_FALSE(doc.load("."));
-	// Выполняем проверку кода отказа чтения
-	ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_READ);
+	/**
+	 * Выполняем проверку кода отказа чтения каталога
+	 *
+	 * @note Код причины у систем РАЗНЫЙ, и это не послабление. У POSIX `fopen` каталог
+	 *       ОТКРЫВАЕТ, и отказ приходит на чтении - причиной служит `FILE_NOT_READ`;
+	 *       MS Windows открыть каталог не даёт вовсе, и отказ приходит на открытии -
+	 *       `FILE_NOT_OPENED`. Требуемое же у обеих систем одно и то же и утверждается
+	 *       одинаково строго: каталог за пустой файл не выдаётся, а причина отказа
+	 *       называется точным кодом, а не «одним из двух»
+	 *
+	 * @warning Различение отказа доступа от отказа по содержимому, ради какого проверка
+	 *          и заведена, под MS Windows кодом НЕ выражается: отсутствующий файл даёт
+	 *          там тот же `FILE_NOT_OPENED`. Различение это - свойство POSIX, а не
+	 *          обещание кодека, и утверждается ниже лишь под POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем проверку кода отказа чтения каталога у систем POSIX
+		ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_READ);
+	#else
+		// Выполняем проверку кода отказа открытия каталога у MS Windows
+		ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_OPENED);
+	#endif
 	// Выполняем проверку отказа чтения отсутствующего файла
 	ASSERT_FALSE(doc.load("./нет-такого-файла-документа.json"));
-	// Выполняем проверку того, что отказ этот отличен от отказа чтения каталога
+	/**
+	 * Выполняем проверку кода отказа чтения отсутствующего файла
+	 *
+	 * @note У POSIX код этот ОТЛИЧЕН от кода отказа чтения каталога, и в том вся суть
+	 *       проверки; у MS Windows он тот же, и различения там нет - довод выше
+	 */
 	ASSERT_EQ(doc.error(), json::error_t::FILE_NOT_OPENED);
 }
 /**
@@ -2404,7 +2501,7 @@ TEST(CodecJsonDocument, HaltedStreamIsNotRefusal){
 	// Количество выданных обработчику документов
 	size_t delivered = 0;
 	// Выполняем проверку успеха разбора, прекращённого обработчиком
-	ASSERT_TRUE(doc.parse(text, [&delivered](const json::document_t::value_t & value) noexcept -> bool {
+	ASSERT_TRUE(doc.parse(text, [&delivered](const json::document_t::value_t &) noexcept -> bool {
 		// Выполняем учёт выданного документа
 		delivered++;
 		// Прекращаем выдачу на пятидесятом документе
@@ -2426,7 +2523,7 @@ TEST(CodecJsonDocument, HaltedStreamIsNotRefusal){
 		// Количество выданных обработчику документов
 		size_t issued = 0;
 		// Выполняем проверку отказа разбора потока с негодным документом
-		ASSERT_FALSE(doc.parse("{\"а\":1}\n{\"б\":нечто}\n", [&issued](const json::document_t::value_t & value) noexcept -> bool {
+		ASSERT_FALSE(doc.parse("{\"а\":1}\n{\"б\":нечто}\n", [&issued](const json::document_t::value_t &) noexcept -> bool {
 			// Выполняем учёт выданного документа
 			issued++;
 			// Выводим признак продолжения разбора
@@ -2744,10 +2841,12 @@ TEST(CodecJsonDocument, TwoNumberKindsDivergeOnUnfittableNumbers) {
  *
  */
 TEST(CodecJsonDocument, FileInputObeysTheSettings) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("awh-json-settings-input.json");
 	// Разбираемый текст документа со строкой длиннее предела
 	const string text = "[\"ааааааааааааааааааааа\"]";
 	// Адрес временного файла документа
-	const string path = "/tmp/awh-json-settings-input.json";
+	const string path = scratch0.path();
 	/**
 	 * Выполняем запись разбираемого текста во временный файл
 	 */
@@ -2863,8 +2962,35 @@ TEST(CodecJsonDocument, RawRecordIsDeafToTheSettings) {
  *          и доказывается, что настройка легла
  */
 TEST(CodecJsonDocument, NumberRoundTripIsDeafToTheRoundingMode) {
-	// Прежний режим округления
-	const int previous = ::fegetround();
+	/**
+	 * @brief Сторож режима округления
+	 *
+	 * @details Режим округления - настройка ПРОЦЕССА, и снимать её обязательно: всякий
+	 * «ASSERT_*» уходит из проверки возвратом, и строка возврата режима в конце тела не
+	 * исполнилась бы вовсе. Отказ здесь отравил бы ОСТАТОК прогона, а отказы те легли бы
+	 * на проверки соседние, ни в чём не повинные
+	 *
+	 * @note Довод и устройство взяты у сторожа предела размера файла в этом же наборе:
+	 *       правило одно на всякую настройку процесса, какой проверка касается
+	 *
+	 */
+	struct Guard {
+		// Прежний режим округления
+		int mode;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Guard() noexcept : mode(::fegetround()) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Guard() noexcept {
+			// Выполняем возврат прежнего режима округления
+			::fesetround(this->mode);
+		}
+	} guard;
 	// Проверяемые режимы округления
 	const int modes[] = {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO};
 	// Разбираемый текст документа с числами, к округлению чувствительными
@@ -2904,8 +3030,6 @@ TEST(CodecJsonDocument, NumberRoundTripIsDeafToTheRoundingMode) {
 		// Выполняем сличение текста записи с эталонным
 		else EXPECT_EQ(result, standard);
 	}
-	// Выполняем возврат прежнего режима округления
-	::fesetround(previous);
 	// Выполняем проверку зрячести: хотя бы один режим обязан менять исход
 	ASSERT_TRUE(sighted) << "ни один режим округления исхода не изменил: замер пуст";
 }

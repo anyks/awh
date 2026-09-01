@@ -40,6 +40,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+
+/**
+ * Подключаем заголовочный файл выдачи пути во временном каталоге системы
+ */
+#include "../temporary.hpp"
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
@@ -57,6 +62,55 @@
  *
  */
 namespace {
+	/**
+	 * @brief Сторож временного файла проверки
+	 *
+	 * @details Сторож сносит файл ДВАЖДЫ: при заведении и при разрушении. Второй снос
+	 * убирает за собою мусор, а первый - существеннее: файл, переживший прогон упавший
+	 * либо прерванный, читается проверкою следующего прогона как СВОЙ, и та зеленеет,
+	 * ничего не записав. Замер 01.09.2026: при полностью выключенной записи в файл
+	 * проверка «CodecCsvDocument.File» с подложенным файлом от прошлого прогона проходит
+	 *
+	 * @note Снос в деструкторе обязателен и по второму доводу: всякий «ASSERT_*» уходит из
+	 *       проверки ВОЗВРАТОМ, и снос, писанный последнею строкою тела, при отказе не
+	 *       исполняется вовсе - ровно так же, как не исполнялось снятие настройки процесса
+	 *
+	 */
+	class Scratch {
+		private:
+			// Путь к временному файлу проверки
+			std::string _path;
+		public:
+			/**
+			 * @brief Метод получения пути к временному файлу
+			 *
+			 * @return путь к временному файлу проверки
+			 *
+			 */
+			const std::string & path() const noexcept {
+				// Выводим путь к временному файлу проверки
+				return this->_path;
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param name имя временного файла проверки
+			 *
+			 */
+			explicit Scratch(const std::string & name) noexcept : _path(temporary(name)) {
+				// Выполняем снос файла, оставшегося от прогона прежнего
+				::remove(this->_path.c_str());
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Scratch() noexcept {
+				// Выполняем снос временного файла проверки
+				::remove(this->_path.c_str());
+			}
+	};
 	/**
 	 * @brief Объект журнала проверок с отключённым выводом
 	 *
@@ -1401,6 +1455,10 @@ TEST(CodecJsonValue, PathNestingLimit) {
  *
  */
 TEST(CodecJsonValue, UntouchedSurface) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("awh-value-probe.json");
+	// Сторож временного файла проверки
+	const Scratch scratch1("awh-нет-такого-файла.json");
 	// Собираемое значение дерева
 	json::value_t source;
 	// Выполняем заведение поля дерева
@@ -1410,19 +1468,17 @@ TEST(CodecJsonValue, UntouchedSurface) {
 	// Выполняем проверку отсутствия незаведённого поля
 	ASSERT_FALSE(source.contains("нет"));
 	// Выполняем запись дерева в файл
-	ASSERT_TRUE(source.save("./awh-value-probe.json"));
+	ASSERT_TRUE(source.save(scratch0.path()));
 	// Значение, читаемое из файла
 	json::value_t loaded;
 	// Выполняем чтение дерева из файла
-	ASSERT_TRUE(loaded.load("./awh-value-probe.json"));
+	ASSERT_TRUE(loaded.load(scratch0.path()));
 	// Выполняем проверку того, что прочитанное совпадает с записанным
 	ASSERT_TRUE(loaded == source);
-	// Выполняем снос записанного файла
-	::remove("./awh-value-probe.json");
 	// Значение, читаемое из отсутствующего файла
 	json::value_t missing;
 	// Выполняем проверку того, что чтение отсутствующего файла отвергается
-	ASSERT_FALSE(missing.load("./awh-нет-такого-файла.json"));
+	ASSERT_FALSE(missing.load(scratch1.path()));
 	// Выполняем проверку того, что значение после отказа чтения неопределённо
 	ASSERT_FALSE(missing.valid());
 	// Выполняем проверку названия вида значения
@@ -1701,6 +1757,8 @@ TEST(CodecJsonValue, RefusalSurface) {
  *          лишь на переборе состава, вдали от места
  */
 TEST(CodecJsonValue, ComparisonAndAssignment) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("no-such-file-awh-json-value.json");
 	/**
 	 * Расхождение сличения по трём поводам
 	 */
@@ -1765,7 +1823,7 @@ TEST(CodecJsonValue, ComparisonAndAssignment) {
 		// Выполняем создание объекта дерева
 		json::value_t value;
 		// Выполняем проверку отклонения чтения несуществующего файла
-		ASSERT_FALSE(value.load("/tmp/no-such-file-awh-json-value.json"));
+		ASSERT_FALSE(value.load(scratch0.path()));
 		// Выполняем разбор текста дерева
 		ASSERT_TRUE(value.parse("[1]"));
 		// Выполняем проверку отклонения записи в несуществующий каталог
@@ -2994,7 +3052,10 @@ TEST(CodecJsonValue, SaveFailureIsNotSuccess) {
 		}
 	};
 	// Адрес файла документа
-	const string filename = "./json-value-write-failure.json";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("json-value-write-failure.json");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	{
 		// Сторож предельного размера файла процесса
 		Guard guard;
@@ -3038,7 +3099,10 @@ TEST(CodecJsonValue, RefusalChannelSpeaks){
 	 */
 	{
 		// Адрес файла, в который ведётся запись
-		const string filename = "./awh-json-refusal.json";
+		// Сторож временного файла проверки
+		const Scratch scratch_filename("awh-json-refusal.json");
+		// Путь к временному файлу проверки
+		const string & filename = scratch_filename.path();
 		/**
 		 * Кладём в файл здоровое значение
 		 */
@@ -3601,8 +3665,10 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
  *
  */
 TEST(CodecJsonValue, EverySettingsDoorIsOpen) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("awh-json-doors-test.json");
 	// Адрес временного файла документа
-	const string path = "/tmp/awh-json-doors-test.json";
+	const string path = scratch0.path();
 	/**
 	 * @brief Метод чтения содержимого временного файла
 	 *

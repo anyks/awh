@@ -603,13 +603,23 @@ TEST_F(EthFixture, SocketEcnDeliveryTest){
 	 */
 	#elif _WIN32 || _WIN64
 		/**
-		 * Служебные сообщения гнезда снимаются здесь через recvmsg, а средства этого у
-		 * MS Windows нет: отвечает ему там WSARecvMsg, добываемый у гнезда отдельным
-		 * запросом расширения. Переписывать проверку на него до поры не на чем -
-		 * слой гнёзд у MS Windows пока заглушки, и trafficInfoGeneration там ничего
-		 * не включает. Пропуск снимается вместе с этим слоем
+		 * Препятствие здесь ОДНО и оно устройственное: проверка снимает служебные
+		 * сообщения глобальным `recvmsg` при `struct msghdr` и `CMSG_*`, а у MS Windows
+		 * ни того, ни другого нет вовсе - отвечает им `WSARecvMsg`, добываемый у гнезда
+		 * отдельным запросом расширения. Посредник `recvmsg` у наречия IOCP есть
+		 * (`src/net/backend/win/iocp.cpp:651`), но он статический и живёт внутри движка:
+		 * единице трансляции проверки он недоступен
+		 *
+		 * @warning Прежний довод пропуска - «слой гнёзд у MS Windows пока заглушки, и
+		 *          trafficInfoGeneration там ничего не включает» - УСТАРЕЛ и был неверен
+		 *          на 01.09.2026: `trafficInfoGeneration` у наречия Windows выставляет
+		 *          IP_RECVTTL, IP_PKTINFO и IP_RECVTOS настоящими вызовами
+		 *          (`src/net/backend/win/socket.cpp:1987`), заглушкой не является, а
+		 *          доставка метки ECN на датаграмму под MS Windows доказана отдельным
+		 *          щупом. Пропуск снимается не «слоем гнёзд», а посредником msghdr,
+		 *          доступным проверкам
 		 */
-		GTEST_SKIP() << "the socket layer for MS Windows is not implemented yet";
+		GTEST_SKIP() << "MS Windows has no recvmsg/msghdr available to the test unit (WSARecvMsg is engine-internal)";
 	#else
 	// Создаём UDP сокет получателя
 	auto rx = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);

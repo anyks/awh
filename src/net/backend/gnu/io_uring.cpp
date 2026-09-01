@@ -37384,7 +37384,7 @@ namespace io {
 										// Устанавливаем полученный MAC-адрес в объект события
 										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
-										const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+										const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
@@ -37459,7 +37459,7 @@ namespace io {
 									// Устанавливаем полученный IP-адрес
 									const_cast <net_addr_t *> (addr)->v4(trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
-									const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+									const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 									// Если адрес находится в чёрном списке
 									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
@@ -37582,7 +37582,7 @@ namespace io {
 										// Устанавливаем полученный MAC-адрес в объект события
 										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
-										const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+										const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
@@ -37657,7 +37657,7 @@ namespace io {
 									// Устанавливаем полученный IP-адрес
 									const_cast <net_addr_t *> (addr)->source(src.ip.get(), net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
-									const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+									const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 									// Если адрес находится в чёрном списке
 									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
@@ -39063,7 +39063,7 @@ namespace io {
 					// Для семейства UNIX-доменных сокетов
 					case static_cast <uint8_t> (event::family_t::UDS): {
 						// Получаем путь UDS-сокета сервера к которому мы подключились
-						string address = ::move(::fs::unixSocketAddress(::trust_cast <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size));
+						string address = ::fs::unixSocketAddress(::trust_cast <struct sockaddr_un> (origin->endpoint.client), origin->endpoint.size);
 						// Если адрес UDS-сокета не пустой
 						if(!address.empty()){
 							// Выполняем инициализацию объекта хоста UDS-сокета
@@ -39143,7 +39143,7 @@ namespace io {
 								// Устанавливаем полученный MAC-адрес в объект события
 								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
-								const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+								const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 								// Если адрес находится в чёрном списке
 								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
@@ -39210,7 +39210,7 @@ namespace io {
 							// Устанавливаем полученный IP-адрес
 							const_cast <net_addr_t *> (addr)->v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
-							const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+							const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 							// Если адрес находится в чёрном списке
 							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
@@ -39310,7 +39310,7 @@ namespace io {
 								// Устанавливаем полученный MAC-адрес в объект события
 								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
-								const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+								const string mac = static_cast <string> (* const_cast <net_addr_t *> (addr));
 								// Если адрес находится в чёрном списке
 								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
@@ -39377,7 +39377,7 @@ namespace io {
 							// Устанавливаем полученный IP-адрес
 							const_cast <net_addr_t *> (addr)->source(src.ip.get(), net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
-							const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+							const string ip = static_cast <string> (* const_cast <net_addr_t *> (addr));
 							// Если адрес находится в чёрном списке
 							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
@@ -45087,9 +45087,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если разделитель найден
 																if(pos != string::npos){
 																	// Получаем название файла unix-сокета
-																	sockname = ::move(unixsocket.substr(pos + 1));
+																	sockname = unixsocket.substr(pos + 1);
 																	// Устанавливаем полный путь к файлу unix-сокета
-																	fullpath = ::move(unixsocket.substr(0, pos + 1));
+																	fullpath = unixsocket.substr(0, pos + 1);
 																// Если разделитель не найден
 																} else {
 																	// Устанавливаем название файла unix-сокета
@@ -45116,7 +45116,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																for(;;){
 																	// Создаём адрес unix-сокета клиента
-																	filename = ::move(this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str()));
+																	filename = this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str());
 																	// Если длина имени файла превышает допустимую
 																	if(filename.length() > sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)){
 																		// Если установлена функция обратного вызова
@@ -48955,7 +48955,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
@@ -50880,7 +50880,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										tunnel->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									tunnel->target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -50922,7 +50922,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										tunnel->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									tunnel->target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -50974,7 +50974,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										mediator->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес в хост
-									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -51016,7 +51016,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										mediator->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес в хост
-									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -51126,7 +51126,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										client->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -51175,7 +51175,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										client->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -51285,7 +51285,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										server->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -51334,7 +51334,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										server->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -54132,7 +54132,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
@@ -54192,7 +54192,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
@@ -54293,7 +54293,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
@@ -54357,7 +54357,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
@@ -54638,7 +54638,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										tunnel->source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										tunnel->source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -54709,7 +54709,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Устанавливаем полученный IP-адрес хоста в источник сетевого адреса посредника
-										mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -55107,7 +55107,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										tunnel->source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										tunnel->source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -55178,7 +55178,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Устанавливаем полученный IP-адрес в хост посредника
-										mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -55247,7 +55247,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									// Устанавливаем полученный IPv6-адрес
 									if(this->_addr.parse(value, net_addr_t::type_t::IPV6)){
 										// Извлекаем полученный IPv6-адрес
-										auto addr = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+										auto addr = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 										// Если адрес равен нулю и узел является клиентом
 										if((result = (::memcmp(&addr[0], ::__awh_zero_ipv6__, 16) == 0))){
 											// Устанавливаем тип адреса
@@ -55286,7 +55286,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 *       адрес тем же способом
 										 *
 										 */
-										net::src_t src(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+										net::src_t src(this->_addr.source(net_addr_t::endian_t::LITTLE));
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
@@ -55409,7 +55409,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									// Устанавливаем полученный IPv6-адрес
 									if(this->_addr.parse(value, net_addr_t::type_t::IPV6)){
 										// Извлекаем полученный IPv6-адрес
-										auto addr = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+										auto addr = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 										// Если адрес равен нулю и узел является клиентом
 										if((result = (::memcmp(&addr[0], ::__awh_zero_ipv6__, 16) == 0))){
 											// Устанавливаем тип адреса
@@ -59219,7 +59219,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
@@ -59520,7 +59520,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров

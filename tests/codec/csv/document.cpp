@@ -49,6 +49,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+
+/**
+ * Подключаем заголовочный файл выдачи пути во временном каталоге системы
+ */
+#include "../temporary.hpp"
 #include <codec/csv/csv.hpp>
 #include <sys/log.hpp>
 
@@ -61,6 +66,82 @@
  *
  */
 namespace {
+	/**
+	 * @brief Сторож временного файла проверки
+	 *
+	 * @details Сторож сносит файл ДВАЖДЫ: при заведении и при разрушении. Второй снос
+	 * убирает за собою мусор, а первый - существеннее: файл, переживший прогон упавший
+	 * либо прерванный, читается проверкою следующего прогона как СВОЙ, и та зеленеет,
+	 * ничего не записав. Замер 01.09.2026: при полностью выключенной записи в файл
+	 * проверка «CodecCsvDocument.File» с подложенным файлом от прошлого прогона проходит
+	 *
+	 * @note Снос в деструкторе обязателен и по второму доводу: всякий «ASSERT_*» уходит из
+	 *       проверки ВОЗВРАТОМ, и снос, писанный последнею строкою тела, при отказе не
+	 *       исполняется вовсе - ровно так же, как не исполнялось снятие настройки процесса
+	 *
+	 */
+	/**
+	 * @brief Запись содержимого во временный файл по готовому пути
+	 *
+	 * @details Посредник этот отличается от общего «temporary» тем, что путь ему подаётся
+	 * ГОТОВЫМ - тем, какой уже держит сторож временного файла. Общий посредник принимает
+	 * ИМЯ и путь собирает сам, и подача ему пути дала бы путь двойной
+	 *
+	 * @param  path    путь к временному файлу
+	 * @param  content записываемое содержимое
+	 * @return         путь к записанному временному файлу
+	 *
+	 */
+	const std::string & filled(const std::string & path, const std::string & content) noexcept {
+		// Открываем временный файл на запись
+		FILE * file = ::fopen(path.c_str(), "wb");
+		/**
+		 * Если временный файл открыть удалось
+		 */
+		if(file != nullptr){
+			// Выполняем запись содержимого во временный файл
+			::fwrite(content.data(), 1, content.size(), file);
+			// Выполняем закрытие временного файла
+			::fclose(file);
+		}
+		// Выводим путь к записанному временному файлу
+		return path;
+	}
+	class Scratch {
+		private:
+			// Путь к временному файлу проверки
+			std::string _path;
+		public:
+			/**
+			 * @brief Метод получения пути к временному файлу
+			 *
+			 * @return путь к временному файлу проверки
+			 *
+			 */
+			const std::string & path() const noexcept {
+				// Выводим путь к временному файлу проверки
+				return this->_path;
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param name имя временного файла проверки
+			 *
+			 */
+			explicit Scratch(const std::string & name) noexcept : _path(temporary(name)) {
+				// Выполняем снос файла, оставшегося от прогона прежнего
+				::remove(this->_path.c_str());
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Scratch() noexcept {
+				// Выполняем снос временного файла проверки
+				::remove(this->_path.c_str());
+			}
+	};
 	/**
 	 * @brief Объект журнала проверок с отключённым выводом
 	 *
@@ -495,7 +576,10 @@ TEST(CodecCsvDocument, File) {
 	// Выполняем проверку содержимого поля прочитанной таблицы
 	ASSERT_EQ(document.get(2, size_t(1)), "2");
 	// Адрес файла, в какой записывается таблица
-	const string output = "./awh_csv_file_out.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_output("awh_csv_file_out.csv");
+	// Путь к временному файлу проверки
+	const string & output = scratch_output.path();
 	// Выполняем запись таблицы в файл
 	ASSERT_TRUE(document.save(output));
 	// Объект контейнера полученной обратно таблицы
@@ -517,10 +601,12 @@ TEST(CodecCsvDocument, File) {
  *
  */
 TEST(CodecCsvDocument, FileMissing) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("awh_csv_missing.csv");
 	// Объект контейнера таблицы
 	csv::document_t document(::logger());
 	// Выполняем проверку отказа чтения отсутствующего файла таблицы
-	ASSERT_FALSE(document.load("./awh_csv_missing.csv"));
+	ASSERT_FALSE(document.load(scratch0.path()));
 }
 
 /**
@@ -582,6 +668,8 @@ TEST(CodecCsvDocument, CallbackStop) {
  *
  */
 TEST(CodecCsvDocument, CallbackFile) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("awh_csv_stream.csv");
 	// Текст записываемой временной таблицы
 	string text = "name,value\r\n";
 	/**
@@ -591,7 +679,7 @@ TEST(CodecCsvDocument, CallbackFile) {
 		// Выполняем добавление очередной записи в текст временной таблицы
 		text.append("row" + to_string(i) + ",\"многострочное\nзначение " + to_string(i) + "\"\r\n");
 	// Выполняем запись временного файла таблицы
-	const string & filename = temporary("awh_csv_stream.csv", text);
+	const string & filename = filled(scratch0.path(), text);
 	// Количество записей, выданных обработчику
 	size_t count = 0;
 	// Объект контейнера таблицы
@@ -651,7 +739,7 @@ TEST(CodecCsvDocument, HeaderRefill) {
 	// Выполняем проверку того, что имена первого круга разыскиваются
 	ASSERT_TRUE(document.has("первое"));
 	// Выполняем проверку номера столбца по имени первого круга
-	ASSERT_EQ(document.column("третье"), 2);
+	ASSERT_EQ(document.column("третье"), 2u);
 	// Выполняем долив записи к таблице
 	document.append(vector <string> {"a", "b", "c"});
 	// Выполняем объявление заголовка второго круга именами другими
@@ -659,7 +747,7 @@ TEST(CodecCsvDocument, HeaderRefill) {
 	// Выполняем проверку того, что имена второго круга разыскиваются
 	ASSERT_TRUE(document.has("пятое"));
 	// Выполняем проверку номера столбца по имени второго круга
-	ASSERT_EQ(document.column("шестое"), 2);
+	ASSERT_EQ(document.column("шестое"), 2u);
 	/**
 	 * Выполняем проверку того, что имён первого круга более нет
 	 *
@@ -837,7 +925,10 @@ TEST(CodecCsvDocument, WriteFailureIsNotSuccess) {
 		}
 	} guard;
 	// Адрес файла, в который ведётся запись таблицы
-	const string filename = "./awh-codec-csv-write-failure.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("awh-codec-csv-write-failure.csv");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	// Выполняем снос прежнего файла таблицы
 	::remove(filename.c_str());
 	// Выполняем проверку отказа записи усечённого файла таблицы
@@ -961,7 +1052,10 @@ TEST(CodecCsvDocument, LargeTableSurvivesRoundTrip) {
 	// Выполняем проверку количества собранных записей
 	ASSERT_EQ(document.rows(), static_cast <size_t> (20000));
 	// Адрес файла таблицы
-	const string filename = "./csv-large-round-trip.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("csv-large-round-trip.csv");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	// Выполняем проверку записи таблицы в файл
 	ASSERT_TRUE(document.save(filename));
 	// Полученная обратным чтением таблица значений
@@ -1060,6 +1154,8 @@ TEST(CodecCsvDocument, EmptyTextParsedWholly) {
  *
  */
 TEST(CodecCsvDocument, MissingCallbackRefused) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("csv-нет-такого-файла.csv");
 	// Таблица значений
 	csv::document_t document(::logger());
 	// Пустой обработчик записей таблицы
@@ -1069,11 +1165,11 @@ TEST(CodecCsvDocument, MissingCallbackRefused) {
 	// Выполняем проверку кода отказа разбора
 	ASSERT_EQ(document.error(), csv::error_t::INTERNAL);
 	// Выполняем проверку отказа чтения файла таблицы без обработчика
-	ASSERT_FALSE(document.read("./csv-нет-такого-файла.csv", empty));
+	ASSERT_FALSE(document.read(scratch0.path(), empty));
 	// Выполняем проверку кода отказа чтения
 	ASSERT_EQ(document.error(), csv::error_t::INTERNAL);
 	// Выполняем проверку отказа чтения отсутствующего файла таблицы годным обработчиком
-	ASSERT_FALSE(document.read("./csv-нет-такого-файла.csv", [](const vector <string_view> &) noexcept -> bool {
+	ASSERT_FALSE(document.read(scratch0.path(), [](const vector <string_view> &) noexcept -> bool {
 		// Выводим признак продолжения чтения
 		return true;
 	}));
@@ -1150,7 +1246,10 @@ TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
 	 */
 	ASSERT_EQ(document.error(), csv::error_t::FIELD_TOO_LONG);
 	// Адрес файла таблицы
-	const string filename = "./csv-malformed-callback.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("csv-malformed-callback.csv");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	{
 		// Поток записи файла таблицы
 		ofstream file(filename, ios::binary);
@@ -1214,7 +1313,10 @@ TEST(CodecCsvDocument, CallbackStopsFileReading) {
 	// Таблица значений
 	csv::document_t document(::logger());
 	// Адрес файла таблицы
-	const string filename = "./csv-callback-stop-file.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("csv-callback-stop-file.csv");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	{
 		// Поток записи файла таблицы
 		ofstream file(filename, ios::binary);
@@ -1377,7 +1479,10 @@ TEST(CodecCsvDocument, UnwritableFieldStopsEveryOutput){
 		// Выполняем проверку того, что выдача текста отказала пустою строкою
 		ASSERT_TRUE(document.text().empty()) << uint32_t(heading);
 		// Адрес файла, в какой записывается таблица
-		const string output = "./awh_csv_unwritable.csv";
+		// Сторож временного файла проверки
+		const Scratch scratch_output("awh_csv_unwritable.csv");
+		// Путь к временному файлу проверки
+		const string & output = scratch_output.path();
 		// Выполняем проверку отказа сохранения таблицы в файл
 		ASSERT_FALSE(document.save(output)) << uint32_t(heading);
 		// Выполняем снос оставленного файла
@@ -1452,7 +1557,10 @@ TEST(CodecCsvDocument, RefusedParsingLeavesNothing){
  */
 TEST(CodecCsvDocument, RefusedSavingKeepsTargetIntact){
 	// Адрес файла, куда ведётся запись таблицы
-	const string filename = "./csv-atomic-save.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("csv-atomic-save.csv");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	// Прежнее содержимое цели
 	const string previous = "ЦЕННЫЕ,ДАННЫЕ\r\n";
 	{
@@ -1504,11 +1612,36 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 	csv::document_t doc(::logger());
 	// Выполняем проверку отказа чтения каталога
 	ASSERT_FALSE(doc.load("."));
-	// Выполняем проверку кода отказа чтения
-	ASSERT_EQ(doc.error(), csv::error_t::FILE_NOT_READ);
+	/**
+	 * Выполняем проверку кода отказа чтения каталога
+	 *
+	 * @note Код причины у систем РАЗНЫЙ, и это не послабление. У POSIX `fopen` каталог
+	 *       ОТКРЫВАЕТ, и отказ приходит на чтении - причиной служит `FILE_NOT_READ`;
+	 *       MS Windows открыть каталог не даёт вовсе, и отказ приходит на открытии -
+	 *       `FILE_NOT_OPENED`. Требуемое же у обеих систем одно и то же и утверждается
+	 *       одинаково строго: каталог за пустой файл не выдаётся, а причина отказа
+	 *       называется точным кодом, а не «одним из двух»
+	 *
+	 * @warning Различение отказа доступа от отказа по содержимому, ради какого проверка
+	 *          и заведена, под MS Windows кодом НЕ выражается: отсутствующий файл даёт
+	 *          там тот же `FILE_NOT_OPENED`. Различение это - свойство POSIX, а не
+	 *          обещание кодека, и утверждается ниже лишь под POSIX
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем проверку кода отказа чтения каталога у систем POSIX
+		ASSERT_EQ(doc.error(), csv::error_t::FILE_NOT_READ);
+	#else
+		// Выполняем проверку кода отказа открытия каталога у MS Windows
+		ASSERT_EQ(doc.error(), csv::error_t::FILE_NOT_OPENED);
+	#endif
 	// Выполняем проверку отказа чтения отсутствующего файла
 	ASSERT_FALSE(doc.load("./нет-такого-файла-таблицы.csv"));
-	// Выполняем проверку того, что отказ этот отличен от отказа чтения каталога
+	/**
+	 * Выполняем проверку кода отказа чтения отсутствующего файла
+	 *
+	 * @note У POSIX код этот ОТЛИЧЕН от кода отказа чтения каталога, и в том вся суть
+	 *       проверки; у MS Windows он тот же, и различения там нет - довод выше
+	 */
 	ASSERT_EQ(doc.error(), csv::error_t::FILE_NOT_OPENED);
 }
 /**
@@ -1685,7 +1818,10 @@ TEST(CodecCsvDocument, RefusalChannelSpeaksOnWriting){
 	// Выполняем проверку того, что причина отказа названа
 	ASSERT_EQ(doc.error(), csv::error_t::UNWRITABLE_FIELD);
 	// Адрес файла, в который ведётся запись
-	const string filename = "./awh-csv-refusal.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("awh-csv-refusal.csv");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	// Выполняем проверку отказа записи таблицы в файл
 	ASSERT_FALSE(doc.save(filename));
 	// Выполняем проверку того, что причина отказа названа
@@ -1856,7 +1992,10 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
 	 */
 	{
 		// Адрес временного файла таблицы
-		const string filename = "./csv-handler-header.csv";
+		// Сторож временного файла проверки
+		const Scratch scratch_filename("csv-handler-header.csv");
+		// Путь к временному файлу проверки
+		const string & filename = scratch_filename.path();
 		/**
 		 * Выполняем запись текста таблицы в файл
 		 */
@@ -2492,7 +2631,10 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
  */
 TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 	// Адрес временного файла таблицы
-	const string filename = "./csv-paths-agreement.csv";
+	// Сторож временного файла проверки
+	const Scratch scratch_filename("csv-paths-agreement.csv");
+	// Путь к временному файлу проверки
+	const string & filename = scratch_filename.path();
 	/**
 	 * @brief Метод сличения приговоров всех четырёх путей подачи
 	 *
@@ -2694,10 +2836,12 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
  *
  */
 TEST(CodecCsvDocument, FileInputObeysTheSettings) {
+	// Сторож временного файла проверки
+	const Scratch scratch0("awh-csv-settings-input.csv");
 	// Разбираемый текст таблицы с полем длиннее предела
 	const string text = string(20, 'a') + "\r\n";
 	// Адрес временного файла таблицы
-	const string path = "/tmp/awh-csv-settings-input.csv";
+	const string path = scratch0.path();
 	/**
 	 * Выполняем запись разбираемого текста во временный файл
 	 */
@@ -2872,8 +3016,35 @@ TEST(CodecCsvDocument, IntegerRefusesLossOnMachineWithoutSubnormals) {
  * @warning Проба ЗРЯЧЕСТИ стоит внутри перебора: режим, не легший, дал бы то же зелёное
  */
 TEST(CodecCsvDocument, NumberExtractionIsDeafToTheRoundingMode) {
-	// Прежний режим округления
-	const int previous = ::fegetround();
+	/**
+	 * @brief Сторож режима округления
+	 *
+	 * @details Режим округления - настройка ПРОЦЕССА, и снимать её обязательно: всякий
+	 * «ASSERT_*» уходит из проверки возвратом, и строка возврата режима в конце тела не
+	 * исполнилась бы вовсе. Отказ здесь отравил бы ОСТАТОК прогона, а отказы те легли бы
+	 * на проверки соседние, ни в чём не повинные
+	 *
+	 * @note Довод и устройство взяты у сторожа предела размера файла в этом же наборе:
+	 *       правило одно на всякую настройку процесса, какой проверка касается
+	 *
+	 */
+	struct Guard {
+		// Прежний режим округления
+		int mode;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Guard() noexcept : mode(::fegetround()) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Guard() noexcept {
+			// Выполняем возврат прежнего режима округления
+			::fesetround(this->mode);
+		}
+	} guard;
 	// Проверяемые режимы округления
 	const int modes[] = {FE_TONEAREST, FE_UPWARD, FE_DOWNWARD, FE_TOWARDZERO};
 	// Разбираемый текст таблицы с числами, к округлению чувствительными
@@ -2928,8 +3099,6 @@ TEST(CodecCsvDocument, NumberExtractionIsDeafToTheRoundingMode) {
 		// Выполняем сличение разрядов с эталонными
 		else EXPECT_EQ(current, standard);
 	}
-	// Выполняем возврат прежнего режима округления
-	::fesetround(previous);
 	// Выполняем проверку зрячести: хотя бы один режим обязан менять исход
 	ASSERT_TRUE(sighted) << "ни один режим округления исхода не изменил: замер пуст";
 }

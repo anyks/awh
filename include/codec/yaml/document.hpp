@@ -1023,7 +1023,7 @@ namespace awh {
 							 * \~
 							 */
 							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
-							 _doc(doc), _index(index), _bound(bound), _stamp((doc != nullptr) ? doc->_generation : 0) {}
+							 _doc(doc), _index(index), _stamp((doc != nullptr) ? doc->_generation : 0), _bound(bound) {}
 					} value_t;
 					/**
 					 * Открываем ссылке доступ к внутреннему устройству документа

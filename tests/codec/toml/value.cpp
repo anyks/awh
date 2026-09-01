@@ -26,6 +26,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+
+/**
+ * Подключаем заголовочный файл выдачи пути во временном каталоге системы
+ */
+#include "../temporary.hpp"
 #include <codec/toml/toml.hpp>
 #include <sys/log.hpp>
 
@@ -2561,7 +2566,7 @@ TEST(CodecTomlValue, ParseLoadSaveRefusals) {
 	 */
 	{
 		// Имя временного файла с содержимым негодным
-		const string filename = "/tmp/awh-toml-value-refusal.txt";
+		const string filename = temporary("awh-toml-value-refusal.txt");
 		// Поток записи временного файла
 		ofstream file(filename, ios::binary | ios::trunc);
 		// Выполняем проверку того, что временный файл открыт
@@ -3355,7 +3360,7 @@ TEST(CodecTomlValue, DumpSkipsHolesAndRefusesUndefined) {
 		// Выполняем проверку того, что снятое значение пусто
 		ASSERT_TRUE(value.dump().empty());
 		// Выполняем проверку отказа записи такого значения в файл
-		ASSERT_FALSE(value.save("/tmp/awh-toml-value-undefined.toml"));
+		ASSERT_FALSE(value.save(temporary("awh-toml-value-undefined.toml")));
 	}
 	/**
 	 * Выполняем проверку пропуска дыры при снятии значения

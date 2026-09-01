@@ -24,6 +24,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+
+/**
+ * Подключаем заголовочный файл выдачи пути во временном каталоге системы
+ */
+#include "../temporary.hpp"
 #include <codec/ini/ini.hpp>
 #include <sys/log.hpp>
 
@@ -2070,7 +2075,7 @@ TEST(CodecIniValue, ParseLoadSaveRefusals) {
 	 */
 	{
 		// Имя временного файла с содержимым негодным
-		const string filename = "/tmp/awh-ini-value-refusal.txt";
+		const string filename = temporary("awh-ini-value-refusal.txt");
 		// Поток записи временного файла
 		ofstream file(filename, ios::binary | ios::trunc);
 		// Выполняем проверку того, что временный файл открыт

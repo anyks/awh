@@ -428,7 +428,7 @@ void awh::Logging::FileSink::retention() const noexcept {
 		// Выходим из метода
 		return;
 	// Список найденных архивов (путь, время модификации)
-	vector <std::pair <string, uintmax_t>> archives;
+	vector <pair <string, uintmax_t>> archives;
 	/**
 	 * Для операционной системы MS Windows
 	 */
@@ -992,9 +992,9 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
  * @return         параметры компонента (адрес, название файла без расширения)
  *
  */
-std::pair <string, string> awh::Logging::components(string_view filename) const noexcept {
+pair <string, string> awh::Logging::components(string_view filename) const noexcept {
 	// Переменная результата
-	std::pair <string, string> result;
+	pair <string, string> result;
 	// Если адрес передан
 	if(!filename.empty()){
 		// Позиция разделителя каталога и расширения файла

@@ -405,10 +405,6 @@
 		#define AWH_SCTP_TAIL_OFFSET(type, field) sizeof(struct type)
 		#define AWH_SCTP_TAIL(ptr, type, field) (reinterpret_cast <const uint8_t *> (ptr) + sizeof(struct type))
 /**
- * Если операционной системой является NetBSD либо OpenBSD
- */
-
-/**
  * @brief Тип служебного сообщения, которым система выдаёт класс обслуживания принятого пакета
  *
  * @details Имя у этого типа не общее для всех систем. macOS и FreeBSD выдают класс
@@ -436,7 +432,12 @@
 	 */
 	#define AWH_CMSG_RECVTOS IP_RECVTOS
 /**
- * Если операционной системой является NetBSD либо OpenBSD
+ * Если имени IP_RECVTOS система не несёт
+ *
+ * @note Ветвление идёт по наличию ИМЕНИ, а не по названию системы, оттого и
+ *       пояснение названо условием. Прежде здесь стояло «Если операционной системой
+ *       является NetBSD либо OpenBSD» - след копирования с наречия BSD, помечавший
+ *       ЖИВУЮ здесь ветвь заведомо чужой системой
  */
 #else
 	/**
@@ -7684,7 +7685,8 @@ namespace timer {
 		 *          огрублённые - CLOCK_MONOTONIC_FAST, - и берутся они там, где
 		 *          зернистость их не превышает отдаваемой миллисекунды
 		 *
-		 * @note Раздел этот собирается ТОЛЬКО у FreeBSD, и это намеренно. У Sun
+		 * @note Выбора здесь НЕТ вовсе, и это намеренно: раздел с огрублёнными часами
+		 *       живёт в наречии BSD, где он и собирается у FreeBSD. У Sun
 		 *       Solaris с illumos огрублённых часов нет вовсе - CLOCK_HIGHRES там
 		 *       лишь другое имя для CLOCK_MONOTONIC, проверено по заголовку
 		 *       sys/time_impl.h на обеих системах, - и выбирать было бы не из чего.
@@ -12965,9 +12967,6 @@ namespace io {
 						}
 					}
 				} break;
-				/**
-				 * Для операционной системы FreeBSD
-				 */
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Если событие является неблокирующим
@@ -17715,11 +17714,8 @@ namespace io {
 					if(server->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова об ошибке отказа
 						server->callbacks.status(server->id, event::status_t::FAILURE);
-					/**
-					 * Для остальных операционных систем
-					 */
-						// Устанавливаем текст ошибки
-						const string error = "Only RAW and DATAGRAM socket types are supported for server nodes";
+					// Устанавливаем текст ошибки
+					const string error = "Only RAW and DATAGRAM socket types are supported for server nodes";
 					// Если установлена функция обратного вызова
 					if(server->callbacks.error != nullptr)
 						// Вызываем функцию обратного вызова ошибки события
@@ -18753,9 +18749,6 @@ namespace io {
 							}
 						}
 					} break;
-					/**
-					 * Для операционной системы FreeBSD
-					 */
 						// Если событие принадлежит к типу SEQPACKET
 						case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 							// Размер данных для извлечения из очереди
@@ -23370,9 +23363,6 @@ namespace io {
 						}
 					}
 				} break;
-				/**
-				 * Для операционной системы FreeBSD
-				 */
 					// Если событие принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						// Если событие является неблокирующим
@@ -32995,9 +32985,6 @@ namespace io {
 								} break;
 							}
 						} break;
-						/**
-						 * Для операционной системы FreeBSD
-						 */
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								/**
@@ -35047,9 +35034,6 @@ namespace io {
 						 * Определяем тип сокета
 						 */
 						switch(static_cast <uint8_t> (server->state.type)){
-							/**
-							 * Для операционной системы FreeBSD
-							 */
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET):
 							// Если событие принадлежит к типу STREAM
@@ -35065,14 +35049,8 @@ namespace io {
 								if(server->callbacks.status != nullptr)
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
-								/**
-								 * Для операционной системы FreeBSD
-								 */
-									// Устанавливаем текст ошибки
-									const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
-								/**
-								 * Для остальных операционных систем
-								 */
+								// Устанавливаем текст ошибки
+								const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -35193,24 +35171,6 @@ namespace io {
 		uint32_t result = 0x2400;
 		// Размер получаемого значения
 		size_t length = sizeof(result);
-		/**
-		 * Если операционной системой является NetBSD либо OpenBSD
-		 *
-		 * @details Настройки с именем «net.inet.udp.maxdgram» у этих систем нет, а
-		 *          предел одной дейтаграммы задаётся размером буфера отправки -
-		 *          «net.inet.udp.sendspace». Дейтаграмма крупнее его отвергается
-		 *          целиком с отказом о слишком длинном сообщении, то есть буфер этот
-		 *          и есть предел
-		 *
-		 * @note Обращение идёт числовым указателем настройки, а не именем: разрешения
-		 *       имён у OpenBSD нет вовсе - функции sysctlbyname там не существует
-		 *
-		 * @warning Совпадение значения этой настройки со значением по умолчанию (9216
-		 *          октетов на обеих системах) - совпадение и есть, а не замена чтению.
-		 *          Настройка задаётся управляющим машиной, и полагаться на её
-		 *          неизменность нельзя
-		 *
-		 */
 		/**
 		 * Если операционной системой является Sun Solaris либо illumos
 		 *
@@ -42416,9 +42376,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 * Определяем тип сокета
 														 */
 														switch(static_cast <uint8_t> (client->state.type)){
-															/**
-															 * Для операционной системы FreeBSD
-															 */
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															// Если событие принадлежит к типу STREAM
@@ -42449,9 +42406,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Если разделитель найден
 																if(pos != string::npos){
 																	// Получаем название файла unix-сокета
-																	sockname = ::move(unixsocket.substr(pos + 1));
+																	sockname = unixsocket.substr(pos + 1);
 																	// Устанавливаем полный путь к файлу unix-сокета
-																	fullpath = ::move(unixsocket.substr(0, pos + 1));
+																	fullpath = unixsocket.substr(0, pos + 1);
 																// Если разделитель не найден
 																} else {
 																	// Устанавливаем название файла unix-сокета
@@ -42478,7 +42435,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																 */
 																for(;;){
 																	// Создаём адрес unix-сокета клиента
-																	filename = ::move(this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str()));
+																	filename = this->_fmk->format("%scid%zu_%s", fullpath.c_str(), index + 1, sockname.c_str());
 																	// Если длина имени файла превышает допустимую
 																	if(filename.length() > sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)){
 																		// Если установлена функция обратного вызова
@@ -44377,9 +44334,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 * Определяем тип сокета
 														 */
 														switch(static_cast <uint8_t> (server->state.type)){
-															/**
-															 * Для операционной системы FreeBSD
-															 */
 																// Если событие принадлежит к типу SEQPACKET
 																case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															// Если событие принадлежит к типу STREAM
@@ -45727,9 +45681,6 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				tunnel->queue.clear();
 				// Если процесс является родительским
 				if(::__awh_pid__ == ::getpid()){
-					/**
-					 * Для операционной системы FreeBSD
-					 */
 				}
 				// Если действующий дескриптор присутствует
 				if(tunnel->fd != net::invalid_socket_t){
@@ -46501,7 +46452,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
@@ -48426,7 +48377,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										tunnel->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									tunnel->target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48468,7 +48419,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										tunnel->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									tunnel->target = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -48520,7 +48471,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										mediator->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес в хост
-									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48562,7 +48513,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										mediator->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес в хост
-									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -48672,7 +48623,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										client->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48721,7 +48672,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										client->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (client->target.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -48831,7 +48782,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv4
 										server->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv4-адресу
@@ -48880,7 +48831,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										// Устанавливаем тип адреса как IPv6
 										server->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
-									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+									awh_cast <net::attr_net_t *> (server->host.get())->ip = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Выводим результат
 									return true;
 								// Если адрес не соответствует IPv6-адресу
@@ -51678,7 +51629,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
@@ -51738,7 +51689,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
@@ -51839,7 +51790,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
@@ -51903,7 +51854,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Временный объект для извлечения сетевого интерфейса
 													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													src.mac = ::move(this->_addr.source());
+													src.mac = this->_addr.source();
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
@@ -52184,7 +52135,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										tunnel->source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										tunnel->source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -52255,7 +52206,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Устанавливаем полученный IP-адрес хоста в источник сетевого адреса посредника
-										mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv4-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -52653,7 +52604,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										tunnel->state.address = address;
 										// Устанавливаем полученный IP-адрес в источник сетевого адреса туннеля
-										tunnel->source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										tunnel->source = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -52724,7 +52675,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Устанавливаем тип адреса
 										mediator->state.address = address;
 										// Устанавливаем полученный IP-адрес в хост посредника
-										mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+										mediator->host = this->_addr.source(net_addr_t::endian_t::LITTLE);
 									// Если адрес не соответствует IPv6-адресу
 									} else {
 										// Если установлена функция обратного вызова
@@ -56765,7 +56716,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
@@ -57066,7 +57017,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									// Устанавливаем префикс сети
 									addr->prefix = ip->prefix;
 									// Получаем значение IP-адреса сети в формате little-endian
-									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
+									addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
 									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
@@ -61313,16 +61264,10 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 										result = isSetup;
 								}
 							} break;
-							/**
-							 * Для операционной системы FreeBSD
-							 */
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 									// Если протокол интернета установлен не как SCTP
 									if(i->second->state.protocol != event::protocol_t::SCTP){
-										/**
-										 * Для операционной системы FreeBSD
-										 */
 											// Если опция передана как TCP_CORKING
 											if(event::options::TCP_CORKING & options){
 												// Активируем алгоритм TCP/CORK
@@ -62195,9 +62140,6 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 														else i->second->state.options ^= event::options::TCP_CORKING;
 													}
 												} break;
-												/**
-												 * Для операционной системы FreeBSD
-												 */
 													// Если событие принадлежит к типу SEQPACKET
 													case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 														// Устанавливаем или снимаем режим алгоритма TCP/CORK
@@ -62257,9 +62199,6 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 													else i->second->state.options ^= event::options::TCP_NO_DELAY;
 												}
 											} break;
-											/**
-											 * Для операционной системы FreeBSD
-											 */
 												// Если событие принадлежит к типу SEQPACKET
 												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Устанавливаем или снимаем алгоритм Нейгла для TCP сокета
@@ -65401,9 +65340,6 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 										server->state.status = event::status_t::INITIAL;
 									}
 								} break;
-								/**
-								 * Для операционной системы FreeBSD
-								 */
 									// Если событие принадлежит к типу SEQPACKET
 									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 										// Если протокол интернета установлен как SCTP
@@ -72883,9 +72819,6 @@ void awh::engine::IO::clear() noexcept {
 						tunnel->queue.clear();
 						// Если процесс является родительским
 						if(::__awh_pid__ == ::getpid()){
-							/**
-							 * Для операционной системы FreeBSD
-							 */
 						}
 						// Если дескриптор сокета действительный
 						if(tunnel->fd != net::invalid_socket_t){
@@ -76884,9 +76817,6 @@ awh::engine::IO::~IO() noexcept {
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 					// Если процесс является родительским
 					if(::__awh_pid__ == ::getpid()){
-						/**
-						 * Для операционной системы FreeBSD
-						 */
 					}
 					// Если дескриптор сокета инициализирован
 					if(tunnel->fd != net::invalid_socket_t){

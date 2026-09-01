@@ -761,7 +761,7 @@ void awh::codec::xml::Document::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Document::Document(const log_t * log) noexcept : _stamp(0), _error(error_t::NONE), _log(log) {}
+awh::codec::xml::Document::Document(const log_t * log) noexcept : _error(error_t::NONE), _log(log), _stamp(0) {}
 /**
  * @brief Метод установки объекта ведения журнала работы
  *
