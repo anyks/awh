@@ -4718,8 +4718,9 @@ namespace local {
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Формируем список результатов установки
 					/**
+					 * Активируем пользовательское событие Kqueue
+					 *
 					 * @note Пакет отправляется без списка результатов: с флагом EV_RECEIPT
 					 *       ядро копирует в пользовательскую память по структуре на каждую
 					 *       запись пакета, а на нагруженном сервере пакет собирается из
@@ -4736,7 +4737,6 @@ namespace local {
 					 *       после чего опрос очереди блокируется навсегда.
 					 *
 					 */
-					// Активируем пользовательское событие Kqueue
 					if(!(result = (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), nullptr, 0, nullptr) != net::invalid_socket_t))){
 						// Формируем список результатов установки
 						::local::result.resize(::local::change.size());
@@ -4748,9 +4748,6 @@ namespace local {
 							item.flags |= EV_RECEIPT;
 						// Выполняем повторную установку записей пакета
 						if((result = (::kevent(::__awh_kq__, &::local::change[0], ::local::change.size(), &::local::result[0], ::local::result.size(), nullptr) != net::invalid_socket_t))){
-							/**
-							 * Перебираем все результаты установки записей пакета
-							 */
 							// Записи, отвергнутые по причине временной: их подаём заново
 							vector <struct kevent> retry;
 							/**
@@ -4766,12 +4763,14 @@ namespace local {
 									// Получаем узел, которому принадлежит отвергнутая запись
 									::io::node_t * owner = (((::io::living.count(item.udata) > 0) && (item.udata != ::local::internal)) ? reinterpret_cast <::io::node_t *> (item.udata) : nullptr);
 									// Записываем ошибку в лог
-									log->print("Event change rejected: ident=%llu, filter=%d, flags=0x%x, %s (node: id=%u, type=%u, status=%u)", log_t::flag_t::WARNING,
-									 static_cast <uint64_t> (item.ident), static_cast <int32_t> (item.filter), static_cast <uint32_t> (item.flags),
-									 ::strerror(reason),
-									 (owner != nullptr ? owner->id : 0u),
-									 (owner != nullptr ? static_cast <uint32_t> (owner->state.node) : 0xFFu),
-									 (owner != nullptr ? static_cast <uint32_t> (owner->state.status) : 0xFFu));
+									log->print("Event change rejected: ident=%llu, filter=%d, flags=0x%x, %s (node: id=%u, type=%u, status=%u)",
+										log_t::flag_t::WARNING,
+										static_cast <uint64_t> (item.ident), static_cast <int32_t> (item.filter), static_cast <uint32_t> (item.flags),
+										::strerror(reason),
+										(owner != nullptr ? owner->id : 0u),
+										(owner != nullptr ? static_cast <uint32_t> (owner->state.node) : 0xFFu),
+										(owner != nullptr ? static_cast <uint32_t> (owner->state.status) : 0xFFu)
+									);
 									/**
 									 * Определяем, временен отказ или окончателен
 									 *
@@ -4789,6 +4788,7 @@ namespace local {
 									 *          У epoll этот же дефект был закрыт прежде, а до
 									 *          kqueue разбор не дошёл; вскрыт он сличением с
 									 *          движком MS Windows, где Андрей нашёл ту же ветвь
+									 *
 									 */
 									switch(reason){
 										/**
@@ -4798,9 +4798,23 @@ namespace local {
 										 *       хоронил бы событие ровно тогда, когда система под
 										 *       нагрузкой. Горячего цикла не выходит: пачка
 										 *       отправляется единожды за оборот опроса
+										 *
 										 */
 										case ENOMEM:
+										/**
+										 * Если ENOBUFS определён, обрабатываем его как ENOMEM
+										 */
 										#if defined(ENOBUFS)
+											/**
+											 * @note ENOBUFS - отказ, аналогичный ENOMEM, но для
+											 *       сетевых подписок. В ядре FreeBSD он не встречается,
+											 *       но в ядре OpenBSD - встречается, и потому его
+											 *       следует обрабатывать. В ядре OpenBSD он не
+											 *       встречается на файловых подписках, но в ядре FreeBSD
+											 *       - встречается, и потому его следует обрабатывать
+											 *       там
+											 *
+											 */
 											case ENOBUFS:
 										#endif
 										{
@@ -4817,6 +4831,7 @@ namespace local {
 										 * @note Приходит он на снятие подписки, какой у ядра уже
 										 *       нет, - состояние это и есть желаемое. Ни повтора,
 										 *       ни сноса узла оно не требует
+										 *
 										 */
 										case ENOENT: break;
 										/**
@@ -4826,27 +4841,43 @@ namespace local {
 										 * @details Повторять по ним обращение бессмысленно:
 										 *          недействительный описатель заново не оживёт, а
 										 *          описатель, наблюдения не терпящий, не станет
-										 *          терпеть его и позже
+										 *          терпеть его и позже.
+										 *
 										 */
 										case EBADF:
 										case EPERM:
 										case EINVAL:
 										case ESRCH:
 										/**
-										 * @note Коды эти добавлены ПО ЗАМЕРУ, а не по догадке:
-										 *       щуп на четырёх системах kqueue показал, что
-										 *       фильтр, роду описателя неприменимый, отвергается
-										 *       по договору - `EVFILT_VNODE` на сокете даёт
-										 *       EINVAL всюду, а `EVFILT_VNODE` на `/dev/null` у
-										 *       FreeBSD даёт ENOTSUP (45). Без этой ветви такой
-										 *       отказ проваливался бы мимо ОБЕИХ: ни повтора,
-										 *       ни доклада, ни сноса - то есть ровно то молчание,
-										 *       ради устранения которого разбор и заводится
+										 * Если ENOTSUP определён, обрабатываем его как EINVAL
 										 */
 										#if defined(ENOTSUP)
+											/**
+											 * @note Коды эти добавлены ПО ЗАМЕРУ, а не по догадке:
+											 *       щуп на четырёх системах kqueue показал, что
+											 *       фильтр, роду описателя неприменимый, отвергается
+											 *       по договору - `EVFILT_VNODE` на сокете даёт
+											 *       EINVAL всюду, а `EVFILT_VNODE` на `/dev/null` у
+											 *       FreeBSD даёт ENOTSUP (45). Без этой ветви такой
+											 *       отказ проваливался бы мимо ОБЕИХ: ни повтора,
+											 *       ни доклада, ни сноса - то есть ровно то молчание,
+											 *       ради устранения которого разбор и заводится
+											 *
+											 */
 											case ENOTSUP:
 										#endif
+										/**
+										 * Если EOPNOTSUPP определён, обрабатываем его как ENOTSUP
+										 */
 										#if defined(EOPNOTSUPP) && (!defined(ENOTSUP) || (EOPNOTSUPP != ENOTSUP))
+											/**
+											 * @note EOPNOTSUPP - отказ, аналогичный ENOTSUP, но для сокетов.
+											 *       В ядре FreeBSD он не встречается, но в ядре OpenBSD - встречается,
+											 *       и потому его следует обрабатывать.
+											 *       В ядре OpenBSD он не встречается на файловых подписках,
+											 *       но в ядре FreeBSD - встречается, и потому его следует обрабатывать там
+											 *
+											 */
 											case EOPNOTSUPP:
 										#endif
 										{
@@ -4870,6 +4901,7 @@ namespace local {
 							 *
 							 * @note Пачка ниже очищается целиком, оттого удержанное переносится в
 							 *       неё после очистки - иначе оно ушло бы вместе с прочим
+							 *
 							 */
 							if(!retry.empty())
 								// Запоминаем записи, подлежащие повторной подаче
@@ -4887,6 +4919,7 @@ namespace local {
 				 *
 				 * @note Делается это ПОСЛЕ очистки: очистка сносит пачку целиком, и
 				 *       удержанное ушло бы вместе с прочим
+				 *
 				 */
 				if(!::local::repeat.empty()){
 					// Переносим удержанные записи обратно в пачку

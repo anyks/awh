@@ -4487,7 +4487,7 @@ TEST(CodecXmlValue, RefusalChannelSpeaks){
 		// Выполняем проверку того, что причина отказа записи названа
 		ASSERT_EQ(value.error(), xml::error_t::MISSING_ROOT);
 		// Выполняем проверку того, что файла запись не завела
-		ASSERT_NE(::access(scratch.path(), F_OK), 0);
+		ASSERT_NE(::access(scratch.path().c_str(), F_OK), 0);
 	}
 	/**
 	 * Очистка значения код отказа отпускает
