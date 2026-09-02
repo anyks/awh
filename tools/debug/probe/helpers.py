@@ -43,6 +43,15 @@ def check(debugger, command, result, internal_dict):
 		('shared_target есть', awh.shared_target(member('owned')) is not None, True),
 		('shared_target пуст', awh.shared_target(member('empty')), 0),
 		('число элементов вектора', member('numbers').GetNumChildren(), 5),
+		# storage_slice режет БАЙТЫ: у кириллицы знак занимает два, и кусок с середины
+		# должен лечь по границе знаков, а не сдвинуться
+		('storage_slice середина', awh.storage_slice(member('small'), 2, 4), 'ри'),
+		('storage_slice начало', awh.storage_slice(member('small'), 0, 2), 'Ю'),
+		('storage_slice за концом', awh.storage_slice(member('small'), 100, 4), None),
+		# queue_head/queue_summary читают структуру очереди по именам полей
+		('queue_head к выдаче', awh.queue_head(member('queue'), 0), 40),
+		('queue_summary', awh.queue_summary(member('queue'), None),
+			'очередь, записей: 4, область: 200 Б, к выдаче: 40 Б'),
 	]
 	bad = 0
 	for name, got, expect in cases:

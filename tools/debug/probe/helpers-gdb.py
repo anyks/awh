@@ -49,6 +49,15 @@ cases = [
 	('atomic_value false', awh.atomic_value(probe['lowered']), 0),
 	('map_count', awh.map_count(probe['pairs']), 3),
 	('count_of вектора', awh.count_of(probe['numbers']), 5),
+	# storage_slice режет БАЙТЫ по памяти: кусок с середины кириллицы должен лечь
+	# по границе знаков
+	('storage_slice середина', awh.storage_slice(probe['small'], 2, 4), 'ри'),
+	('storage_slice начало', awh.storage_slice(probe['small'], 0, 2), 'Ю'),
+	('storage_slice за концом', awh.storage_slice(probe['small'], 100, 4), None),
+	# Очередь у GDB заведена классом QueueBox: сверяем к выдаче и краткий вид
+	('queue_head к выдаче', awh.QueueBox(probe['queue']).head(0), 40),
+	('queue_summary', awh.QueueBox(probe['queue']).to_string(),
+		'очередь, записей: 4, область: 200 Б, к выдаче: 40 Б'),
 ]
 bad = 0
 for name, got, expect in cases:

@@ -49,6 +49,12 @@
 #include <unistd.h>
 
 /**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
+ */
+#include "push.hpp"
+
+/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -850,5 +856,10 @@ namespace awh {
 	 */
 	using locker_t = Locker <MutexType>;
 };
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include "pop.hpp"
 
 #endif // __AWH_LOCKER__

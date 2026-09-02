@@ -6,7 +6,7 @@
 
 ## Project goals and features
 
-### Supported proxy
+### Implemented proxy
 | PROXY       | RFC  |
 |-------------|------|
 | **HTTP(S)** | 7230 |
@@ -27,7 +27,7 @@
 | **DEFLATE** |  ✅    |  ✅    |
 | **DENSITY** |  ✅    |  ❌    |
 
-### Supported protocols
+### Implemented protocols
 | PROTOCOL                   | RFC  |
 |----------------------------|------|
 | **HTTP/1.1**               | 9112 |
@@ -38,7 +38,7 @@
 | **WebSockets with HTTP/2** | 8441 |
 | **WebSockets with HTTP/3** | 9220 |
 
-### Supported HTTP authentications
+### Implemented HTTP authentications
 | Name       | Description |
 |------------|-------------|
 | **HMAC**   | A cryptographic mechanism for verifying the integrity and authenticity of data that uses a combination of a cryptographic hash function and a secret key. It verifies that a message has not been altered during transmission or storage, and that it was sent by a trusted source. |
@@ -46,7 +46,7 @@
 | **DIGEST** | An authentication method used in the HTTP protocol to verify user identity. Its key advantage over the simpler Basic Authentication is that the password is not transmitted over the network in cleartext, but is replaced with a cryptographic hash (digest). |
 | **BEARER** | A common method of securing APIs involves the client passing a special token to the server, which then verifies its validity to decide whether to grant access to the resource. The name reflects the concept: access is granted to the person who "bears" the token. |
 
-### Supported codecs
+### Implemented codecs
 | Name       | Description                     |
 |------------|---------------------------------|
 | **INI**    | Initialization Container        |

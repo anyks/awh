@@ -47,9 +47,9 @@
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
- * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
  */
-#include "../../sys/macro_push.hpp"
+#include "../../sys/push.hpp"
 
 /**
  * \~russian
@@ -1362,6 +1362,19 @@ namespace awh {
 					bool flowing(const string_view line, size_t & offset) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод свёртки логической строки в собираемое простое значение
+					 *
+					 * @param text сворачиваемая логическая строка
+					 *
+					 * \~english
+					 * @brief Method of the folding of a logical line into the plain value being collected
+					 * @param text logical line being folded
+					 *
+					 * \~
+					 */
+					void folded(const string_view text) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод откладывания выдачи простого значения
 					 *
 					 * @details Простое значение, добежавшее до конца строки, вправе
@@ -1695,8 +1708,8 @@ namespace awh {
 };
 
 /**
- * Возвращаем снятые ранее макросы
+ * Возвращаем макросы, снятые в начале файла
  */
-#include "../../sys/macro_pop.hpp"
+#include "../../sys/pop.hpp"
 
 #endif // __AWH_CODEC_YAML_READER__

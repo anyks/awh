@@ -48,9 +48,9 @@
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
- * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
  */
-#include "../../sys/macro_push.hpp"
+#include "../../sys/push.hpp"
 
 /**
  * \~russian
@@ -244,6 +244,28 @@ namespace awh {
 						uint32_t tagged;
 						/**
 						 * \~russian
+						 * Смещение имени метки, ИМЕНИ ПАРЫ предпосланной, в хранилище знаков
+						 *
+						 * @details Метка эта принадлежит имени пары, а не значению её: написание
+						 * `&m a: b` метит запись `a`, и держать её вместе с меткою значения нельзя -
+						 * они разные. Узла же у имени пары дерево не держит вовсе, оттого метка
+						 * его и кладётся сюда, к узлу самой пары
+						 *
+						 * @warning Прежде метка эта отбрасывалась: держать её было негде. Ссылка на
+						 * неё разрешалась записью имени, а вот ПЕРЕЗАПИСЬ её теряла - и текст,
+						 * собранный заново, нёс ссылку на метку, ни разу не объявленную
+						 *
+						 * \~english
+						 * Offset of the name of the anchor placed before the NAME OF A PAIR in the storage of characters
+						 * @details The anchor belongs to the name of a pair rather than to its value
+						 *
+						 * \~
+						 */
+						uint32_t keyAnchor;
+						// Длина имени метки, имени пары предпосланной, в байтах
+						uint32_t keyAnchored;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -252,7 +274,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Properties() noexcept : anchor(0), anchored(0), tag(0), tagged(0) {}
+						Properties() noexcept : anchor(0), anchored(0), tag(0), tagged(0), keyAnchor(0), keyAnchored(0) {}
 					} props_t;
 					/**
 					 * \~russian
@@ -2078,8 +2100,8 @@ namespace awh {
 };
 
 /**
- * Возвращаем снятые ранее макросы
+ * Возвращаем макросы, снятые в начале файла
  */
-#include "../../sys/macro_pop.hpp"
+#include "../../sys/pop.hpp"
 
 #endif // __AWH_CODEC_YAML_DOCUMENT__

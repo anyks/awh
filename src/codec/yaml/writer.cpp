@@ -249,6 +249,8 @@ void awh::codec::yaml::Writer::clear() noexcept {
 	this->_levels.clear();
 	// Выполняем сброс имени метки, узла своего ожидающей
 	this->_anchor.clear();
+	// Выполняем сброс имени метки, имени пары предпосылаемой
+	this->_keyAnchor.clear();
 	// Выполняем сброс метки типа, узла своего ожидающей
 	this->_tag.clear();
 	// Выполняем сброс отступа, следующему вместилищу назначенного
@@ -1446,6 +1448,12 @@ bool awh::codec::yaml::Writer::close() noexcept {
  * @return     признак успешной записи имени пары
  *
  */
+bool awh::codec::yaml::Writer::key(const string & name, const string & anchor) noexcept {
+	// Запоминаем имя метки, имени пары предпосылаемой
+	this->_keyAnchor.assign(anchor);
+	// Выполняем запись имени пары отображения
+	return this->key(name);
+}
 bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой
@@ -1492,6 +1500,26 @@ bool awh::codec::yaml::Writer::key(const string & name) noexcept {
 		return this->refuse(error_t::UNEXPECTED_CONTENT);
 	// Выполняем добавление разделителя записей перед именем пары
 	this->spaced();
+	/**
+	 * Если имени пары предпослана метка
+	 *
+	 * @note Пишется она здесь, а не накопителем `_anchor`: накопитель тот ждёт узла своего,
+	 *       а узлом пары является ЗНАЧЕНИЕ её - метка ушла бы за двоеточие и пометила бы
+	 *       не ту запись. Написание `&m a: b` обращалось тем в `a: &m b`, и ссылка вела
+	 *       к значению вместо имени
+	 */
+	if(!this->_keyAnchor.empty()){
+		// Выполняем добавление знака метки
+		this->_result.push_back('&');
+		// Выполняем добавление имени метки
+		this->_result.append(this->_keyAnchor);
+		// Выполняем сброс имени метки, имени пары дождавшейся
+		this->_keyAnchor.clear();
+		// Запоминаем признак открытой строки
+		this->_hanging = true;
+		// Выполняем добавление разделителя записей перед именем пары
+		this->spaced();
+	}
 	/**
 	 * Получаем ограду, какою обносится имя пары
 	 *

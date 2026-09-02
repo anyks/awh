@@ -87,7 +87,7 @@
  *       MS Windows заводят макросами имена, какие движок называет своими членами
  *
  */
-#include <sys/macro_push.hpp>
+#include <sys/push.hpp>
 
 /**
  * Подключаем модуль волокон
@@ -3026,7 +3026,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		// Сведения о порождённом процессе
 		PROCESS_INFORMATION process{};
 		// Выполняем порождение работника
-		ASSERT_TRUE(::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят macro_push.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process)) << "порождение работника не удалось";
+		ASSERT_TRUE(::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят push.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process)) << "порождение работника не удалось";
 		/**
 		 * Ожидаем завершения работника предельным сроком
 		 *
@@ -3242,7 +3242,6 @@ TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
 #endif
 
 /**
- * @brief Снятие защиты объявлений от макросов операционной системы
- *
+ * Возвращаем макросы, снятые в начале файла
  */
-#include <sys/macro_pop.hpp>
+#include <sys/pop.hpp>

@@ -76,6 +76,12 @@
 #include "log.hpp"
 
 /**
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
+ */
+#include "push.hpp"
+
+/**
  * awh пространство имён
  */
 namespace awh {
@@ -409,5 +415,10 @@ namespace awh {
 		ctx_t * spawn(task_t task, const size_t size = STACK_SIZE, const log_t * log = nullptr) noexcept;
 	};
 };
+
+/**
+ * Возвращаем макросы, снятые в начале файла
+ */
+#include "pop.hpp"
 
 #endif // __AWH_FIBER__

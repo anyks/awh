@@ -41,9 +41,9 @@
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
- * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
  */
-#include "../sys/macro_push.hpp"
+#include "../sys/push.hpp"
 
 /**
  * \~russian
@@ -87,7 +87,7 @@ namespace awh {
 		 *          нетребовательно и предсказуемо на любых объёмах. Сложный отсчёт
 		 *          устроен на двоичной куче и разбитой на части таблице ячеек и
 		 *          заводится **без единого обращения к куче**, отчего на больших
-		 *          количествах отсчётов оказывается кратно быстрее
+		 *          количествах отсчётов оказывается кратно быстрее.
 		 *
 		 * @note По умолчанию движок берёт **простой** отсчёт, хотя по всем замерам
 		 *       сложный его превосходит. Выбор этот намеренный: умолчания
@@ -97,13 +97,15 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the events
+		 *
 		 * @details Chooses the arrangement on which the engine holds the counts of the time.
 		 *          The simple count is arranged on an ordered set and on a dictionary: the starting
 		 *          of every count costs a couple of addresses to the heap, but in exchange the arrangement
 		 *          is undemanding and predictable at any volumes. The complex count is
 		 *          arranged on a binary heap and on a table of the cells broken into the parts and
 		 *          is started **without a single address to the heap**, and therefore at large
-		 *          numbers of the counts turns out to be multiply faster
+		 *          numbers of the counts turns out to be multiply faster.
+		 *
 		 * @note By default the engine takes the **simple** count, although by all the measurements
 		 *       the complex one surpasses it. This choice is a deliberate one: the defaults
 		 *       are reckoned on the weakest systems and on the most common cases, and the one
@@ -124,7 +126,7 @@ namespace awh {
 		 * @details Отвечает на вопрос, что именно с узлом произошло. Набор общий на
 		 *          все виды узлов, но приложима к каждому лишь своя часть: сетевому
 		 *          узлу достаются чтение, запись, приём подключения и отключение, а
-		 *          файловому - изменение, удаление, переименование и правка признаков
+		 *          файловому - изменение, удаление, переименование и правка признаков.
 		 *
 		 * @note Отзыв доступа стоит особняком: он приходит не от правки файла, а от
 		 *       исчезновения самой опоры под ним - файл удалён или носитель отключён.
@@ -133,10 +135,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Actions of the events
+		 *
 		 * @details Answers the question what exactly has happened to a node. The set is common for
 		 *          all the kinds of the nodes, but only its own part is applicable to each: a network
 		 *          node gets the reading, the writing, the acceptance of a connection and the disconnection, and
-		 *          a file one — the change, the removal, the renaming and the correction of the signs
+		 *          a file one — the change, the removal, the renaming and the correction of the signs.
+		 *
 		 * @note The revocation of the access stands apart: it comes not from a correction of a file, but from
 		 *       the disappearance of the very support under it — the file is removed or the medium is disconnected.
 		 *       Continuing the observation of such a node is meaningless, the node should be
@@ -168,7 +172,7 @@ namespace awh {
 		 * @details Узел - это то, за чем движок наблюдает: подключение, файл,
 		 *          каталог, отсчёт времени. Вид узла определяет, какие обратные
 		 *          связи к нему приложимы и какие действия он порождает, поэтому
-		 *          задаётся он при заведении узла и потом не меняется
+		 *          задаётся он при заведении узла и потом не меняется.
 		 *
 		 *          Виды делятся на несколько семейств. Сетевые - `CLIENT`, `SERVER`,
 		 *          `PEER`, `ORIGIN` - разнятся тем, кто заводит подключение и кто его
@@ -176,7 +180,7 @@ namespace awh {
 		 *          файловой системе. Временные - `TIMEOUT` и `INTERVAL` - различаются
 		 *          тем, срабатывает отсчёт единожды или повторяется. Прочие -
 		 *          `IPC`, `NOTIFY`, `TUNNEL`, `MEDIATOR` - служат межпроцессному
-		 *          взаимодействию, пробуждению цикла и работе с туннелями
+		 *          взаимодействию, пробуждению цикла и работе с туннелями.
 		 *
 		 * @note Обратная связь, к виду узла неприложимая, тихо не подключается: движок
 		 *       заносит в журнал предупреждение и продолжает работу. Отсутствие
@@ -184,17 +188,20 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the nodes
+		 *
 		 * @details A node is that which the engine observes: a connection, a file,
 		 *          a directory, a count of the time. The kind of a node determines which callbacks
 		 *          are applicable to it and which actions it generates, and therefore
-		 *          it is set at the starting of the node and does not change afterwards
+		 *          it is set at the starting of the node and does not change afterwards.
+		 *
 		 *          The kinds are divided into several families. The network ones — `CLIENT`, `SERVER`,
 		 *          `PEER`, `ORIGIN` — differ by who starts the connection and who
 		 *          accepts it. The file ones — `FILE`, `DIR` — observe the changes in
 		 *          the file system. The time ones — `TIMEOUT` and `INTERVAL` — differ
 		 *          by whether the count triggers once or repeats. The others —
 		 *          `IPC`, `NOTIFY`, `TUNNEL`, `MEDIATOR` — serve the interprocess
-		 *          communication, the awakening of the loop and the work with the tunnels
+		 *          communication, the awakening of the loop and the work with the tunnels.
+		 *
 		 * @note A callback not applicable to the kind of a node is not quietly connected: the engine
 		 *       enters a warning into the log and continues the work. The absence of
 		 *       the calls of a callback is therefore worth looking for in the log first
@@ -225,18 +232,20 @@ namespace awh {
 		 *          наблюдение: обычным файлом, каталогом, символической ссылкой,
 		 *          именованным каналом, сокетом или узлом устройства. Приходит
 		 *          значение вместе с известием об изменении - там, где важно не
-		 *          только что запись изменилась, но и что она собой представляет
+		 *          только что запись изменилась, но и что она собой представляет.
 		 *
 		 * @note Набор этот описывает запись в файловой системе и с видами узлов
 		 *       движка не связан, хотя названия и перекликаются
 		 *
 		 * \~english
 		 * @brief Types of the virtual nodes
+		 *
 		 * @details Reports what the record of the file system being observed
 		 *          has turned out to be: an ordinary file, a directory, a symbolic link,
 		 *          a named pipe, a socket or a node of a device. The value comes
 		 *          together with the notice of a change — where it is important not
-		 *          only that the record has changed, but what it represents as well
+		 *          only that the record has changed, but what it represents as well.
+		 *
 		 * @note This set describes a record in the file system and is not connected with the kinds of the nodes
 		 *       of the engine, although the names do echo each other
 		 *
@@ -259,7 +268,7 @@ namespace awh {
 		 *
 		 * @details Указывает, какой из адресов узла запрашивается или выставляется:
 		 *          у одного подключения их несколько - свой адрес, адрес другого
-		 *          конца, аппаратный адрес устройства, путь к местному сокету
+		 *          конца, аппаратный адрес устройства, путь к местному сокету.
 		 *
 		 * @note Приложимость видов зависит от узла: у местного сокета есть путь, но
 		 *       нет адреса сети, а у сетевого подключения наоборот. Запрос
@@ -267,9 +276,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the addresses of the events
+		 *
 		 * @details Specifies which of the addresses of a node is requested or set out:
 		 *          one connection has several of them — its own address, the address of the other
-		 *          end, the hardware address of the device, the path to the local socket
+		 *          end, the hardware address of the device, the path to the local socket.
+		 *
 		 * @note The applicability of the kinds depends on the node: a local socket has a path, but
 		 *       has no address of the network, and a network connection is the other way round. A request of
 		 *       an unsuitable kind gives a negative result, this is not considered an error
@@ -295,7 +306,7 @@ namespace awh {
 		 *          проводному и беспроводному, - а часть существует лишь в ядре:
 		 *          туннели, переносящие пакеты одной сети внутри другой, устройства
 		 *          логической сегментации, объединение нескольких устройств в одно и
-		 *          мост, сводящий их на канальном уровне
+		 *          мост, сводящий их на канальном уровне.
 		 *
 		 * @note Туннельные устройства делятся по уровню, на котором работают: одни
 		 *       переносят готовые пакеты, другие - кадры вместе с аппаратными
@@ -303,12 +314,14 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the network interfaces
+		 *
 		 * @details The kinds of the network devices which the engine tells apart at
 		 *          the polling of the system. A part of them answers to a real equipment —
 		 *          a wired and a wireless one, — and a part exists only in the kernel:
 		 *          the tunnels carrying the packets of one network inside another one, the devices
 		 *          of the logical segmentation, the joining of several devices into one and
-		 *          the bridge bringing them together at the link level
+		 *          the bridge bringing them together at the link level.
+		 *
 		 * @note The tunnel devices are divided by the level they work at: some
 		 *       carry the ready packets, the others — the frames together with the hardware
 		 *       addresses. This difference is essential: through the first ones a bridge cannot be built
@@ -335,7 +348,7 @@ namespace awh {
 		 * @details Признаки состояния и настроек сетевого устройства, какими их
 		 *          сообщает система: поднято ли устройство, передаёт ли оно данные
 		 *          сейчас, принимает ли рассылку на группу и широковещание, отключено
-		 *          ли разрешение аппаратных адресов
+		 *          ли разрешение аппаратных адресов.
 		 *
 		 * @note Поднятое устройство и работающее - разные признаки. Первый означает,
 		 *       что устройство включено настройкой, второй - что связь на нём есть в
@@ -347,14 +360,17 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Flags of the network interfaces
+		 *
 		 * @details The signs of the state and of the settings of a network device, as they are
 		 *          reported by the system: whether the device is brought up, whether it transmits the data
 		 *          now, whether it accepts the multicast to a group and the broadcast, whether the resolution
-		 *          of the hardware addresses is switched off
+		 *          of the hardware addresses is switched off.
+		 *
 		 * @note A brought up device and a working one are different signs. The first one means
 		 *       that the device is switched on by a setting, the second one — that the link on it is present in
 		 *       reality. A cable pulled out of a brought up device will remove the second
 		 *       sign, but not the first one
+		 *
 		 * @note The values of this set are not the digits of a binary word, but the ordinal
 		 *       numbers, and adding them bitwise is not allowed, despite the name
 		 *
@@ -383,7 +399,7 @@ namespace awh {
 		 *          отдаёт их обратно. Из самого события - значит, отправка сорвалась
 		 *          при обращении к сокету. Из очереди события - значит, данные
 		 *          сорваться ещё не успели: они дожидались своей очереди в накопителе,
-		 *          а подключение закрылось раньше
+		 *          а подключение закрылось раньше.
 		 *
 		 * @note Различать эти два случая стоит при повторной отправке. Данные из
 		 *       очереди сеть не видела вовсе и отправить их заново безопасно, а по
@@ -391,11 +407,13 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Modes of the errors of the sending of the data
+		 *
 		 * @details Specifies where the unsent data has returned from, when the engine
 		 *          gives it back. From the event itself — it means the sending has broken down
 		 *          at the address to the socket. From the queue of the event — it means the data has not managed
 		 *          to break down yet: it was waiting for its turn in the accumulator,
-		 *          and the connection has closed earlier
+		 *          and the connection has closed earlier.
+		 *
 		 * @note Telling these two cases apart is worthwhile at a repeated sending. The data from
 		 *       the queue the network has not seen at all and sending it anew is safe, and by
 		 *       the data from the event it is impossible to say how much has reached the other side
@@ -415,7 +433,7 @@ namespace awh {
 		 * @details Задаёт, кому предназначен пакет. Одному указанному узлу - обычная
 		 *          передача. Группе подписавшихся - рассылка, при которой сеть сама
 		 *          размножает пакет по ветвям и доставляет лишь туда, где есть
-		 *          подписчики. Всем узлам сегмента - широковещание
+		 *          подписчики. Всем узлам сегмента - широковещание.
 		 *
 		 * @note Рассылка на группу и широковещание требуют, чтобы сокет был к ним
 		 *       заранее подготовлен, и за пределы своего сегмента без поддержки со
@@ -424,10 +442,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the transmission of the packets
+		 *
 		 * @details Sets whom a packet is meant for. To one specified node — the ordinary
 		 *          transmission. To a group of the subscribed ones — the multicast, at which the network itself
 		 *          multiplies the packet over the branches and delivers it only there, where there are
-		 *          subscribers. To all the nodes of the segment — the broadcast
+		 *          subscribers. To all the nodes of the segment — the broadcast.
+		 *
 		 * @note The multicast to a group and the broadcast require the socket to be
 		 *       prepared for them in advance, and do not go beyond their own segment without the support from
 		 *       the side of the network. The broadcast does not exist at IPv6 at all —
@@ -451,12 +471,12 @@ namespace awh {
 		 *          отбрасывается. Служит счётчик двум целям: обрывает пакеты,
 		 *          заплутавшие в кольцевом маршруте, и **ограничивает область
 		 *          распространения** - последнее важно для рассылки на группу, где
-		 *          счётчик задаёт, насколько далеко разойдётся объявление
+		 *          счётчик задаёт, насколько далеко разойдётся объявление.
 		 *
 		 *          Значения перечисления - это именованные пороги, отвечающие
 		 *          привычным рубежам: не покидать хост, не покидать подсеть,
 		 *          оставаться внутри организации, региона, материка либо идти без
-		 *          ограничения
+		 *          ограничения.
 		 *
 		 * @note Пороги эти условны и жёсткой границе не отвечают: число переходов
 		 *       до узла зависит от устройства сети, а не от расстояния. Опираться на
@@ -464,16 +484,19 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Maximum number of the hops a packet may pass through
+		 *
 		 * @details Sets how many routers a packet is allowed to pass. Every
 		 *          one met decreases the counter by one, and a packet that has exhausted it
 		 *          is discarded. The counter serves two goals: it breaks off the packets
 		 *          that have strayed into a circular route, and **limits the area
 		 *          of the propagation** — the latter is important for the multicast to a group, where
-		 *          the counter sets how far an announcement will spread
+		 *          the counter sets how far an announcement will spread.
+		 *
 		 *          The values of the enumeration are the named thresholds answering
 		 *          to the customary boundaries: not to leave the host, not to leave the subnet,
 		 *          to remain inside the organization, the region, the continent or to go without
-		 *          a limitation
+		 *          a limitation.
+		 *
 		 * @note These thresholds are conditional and do not answer to a strict boundary: the number of the hops
 		 *       to a node depends on the arrangement of the network, and not on the distance. It is worth relying on
 		 *       them as on an approximate boundary, and not as on an exact one
@@ -524,11 +547,13 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Statuses of the events
+		 *
 		 * @details The enumeration serves two tasks at once, and this is worth keeping in mind.
 		 *          A part of the values are the internal states of the life cycle of an event,
 		 *          by which the engine decides which call is allowed to the event now. A part
 		 *          comes outwards, into the `status_t` callback function, as a message
 		 *          about what is happening. Some values do both.
+		 *
 		 *          **The life cycle.** `NONE` — the event is started by the `event()` call, but is not
 		 *          set up. `INITIAL` — the settings are fixed by the `commit()` call.
 		 *          `SUCCESS` — a `connect()` or a `listen()` is performed. `LAUNCHED` and
@@ -537,6 +562,7 @@ namespace awh {
 		 *          `CANCELLED` — the connection is broken by the `disconnect()` call. `GARBAGE` and
 		 *          `DESTROYED` — the event is marked for the release, which is postponed for two
 		 *          turns of the loop.
+		 *
 		 *          **The messages outwards.** `CONNECTED` and `RECONNECTED` — the connection
 		 *          is established or restored. `ACCEPTED` — an incoming one is accepted.
 		 *          `PAUSED` and `RESUMED` — the reading is paused or returned.
@@ -544,6 +570,7 @@ namespace awh {
 		 *          the completion. `REBIRTHED` — the descriptor is recreated by the `rebirth()` call.
 		 *          `QUEUE_OVERFLOW` and `QUEUE_AVAILABLE` — the queue of the sending has overflowed
 		 *          or there is room in it again.
+		 *
 		 * @note The `SUCCESS` value has two roles, and they should not be confused. For the nodes
 		 *       of the connections this is the state «connected or listening». And for
 		 *       the **timer nodes** it is exactly with this value that the message about
@@ -589,7 +616,7 @@ namespace awh {
 		 *          пересозданию. `PACKET_TOO_BIG` относится к одной записи, а не к
 		 *          соединению: его лечит уменьшение порции. `INSUFFICIENT_RES` -
 		 *          исчерпание ресурсов, чаще всего дескрипторов, и с ним разумно
-		 *          снизить нагрузку, а не повторять
+		 *          снизить нагрузку, а не повторять.
 		 *
 		 * @note Пока функция обратного вызова ошибок не установлена, движок печатает
 		 *       ошибки сам. С её установкой печать прекращается, и весь разбор
@@ -597,9 +624,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the errors of the events
+		 *
 		 * @details Come into the `error_t` callback function together with a text
 		 *          description. The text is fit for a log, and the decisions should be taken
 		 *          by the code: the description is taken from the system and depends on it as well.
+		 *
 		 *          Telling them apart is convenient by what should be done next. `INVALID`,
 		 *          `NOT_FOUND` and `ALREADY_EXISTS` mean an error of the calling side —
 		 *          a wrong state of the event, a wrong identifier, a repeated action;
@@ -608,7 +637,8 @@ namespace awh {
 		 *          recreation. `PACKET_TOO_BIG` concerns one record, and not
 		 *          the connection: a decrease of the portion cures it. `INSUFFICIENT_RES` —
 		 *          the exhaustion of the resources, most often of the descriptors, and with it it is reasonable
-		 *          to lower the load, and not to repeat
+		 *          to lower the load, and not to repeat.
+		 *
 		 * @note While the callback function of the errors is not set, the engine prints
 		 *       the errors itself. With its setting the printing stops, and the whole handling
 		 *       passes over to the calling side
@@ -638,11 +668,11 @@ namespace awh {
 		 *          без дробления. Размер этот определяется самым узким участком
 		 *          маршрута и заранее неизвестен: пакет крупнее либо дробится, либо
 		 *          отбрасывается с уведомлением, по которому отправитель и понимает,
-		 *          что хватил лишку
+		 *          что хватил лишку.
 		 *
 		 *          Режимы разнятся тем, насколько деятельно ведётся поиск и насколько
 		 *          резко размер снижается при неудачах: от полного отказа от поиска до
-		 *          отправки пробных пакетов и подстройки по отклику сети
+		 *          отправки пробных пакетов и подстройки по отклику сети.
 		 *
 		 * @note Поддержка режимов **зависит от системы**, и одинакового поведения
 		 *       всюду ждать не следует: часть режимов на отдельных системах
@@ -650,14 +680,17 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Modes of the discovery of the MTU
+		 *
 		 * @details Sets how the largest size of a packet passing over a path
 		 *          without a fragmentation should be found out. That size is determined by the narrowest section of
 		 *          the route and is unknown in advance: a larger packet is either fragmented, or
 		 *          discarded with a notification, by which the sender understands
-		 *          that it has overshot
+		 *          that it has overshot.
+		 *
 		 *          The modes differ by how actively the search is performed and how
 		 *          sharply the size is lowered at the failures: from a full refusal from the search to
-		 *          the sending of the probe packets and the adjustment by the response of the network
+		 *          the sending of the probe packets and the adjustment by the response of the network.
+		 *
 		 * @note The support of the modes **depends on the system**, and the same behaviour
 		 *       everywhere should not be expected: a part of the modes at some systems
 		 *       is brought to the nearest available one
@@ -684,45 +717,55 @@ namespace awh {
 		 * @details Пометка в заголовке пакета, которой отправитель заявляет о нужном
 		 *          качестве обслуживания. Сеть, настроенная эту пометку различать,
 		 *          раскладывает пакеты по очередям: чувствительные к задержке
-		 *          пропускает вперёд, объёмные придерживает при заторе
+		 *          пропускает вперёд, объёмные придерживает при заторе.
 		 *
 		 *          Значения разбиты на семейства. Простые разряды приоритета -
 		 *          восемь ступеней от обычного трафика до управления самой сетью.
 		 *          Гарантированная экспедиция - разряды, где первое число задаёт
 		 *          очередь, а второе вероятность отбрасывания при заторе. Ускоренная
 		 *          пересылка - отдельный разряд для передачи голоса и видео, где
-		 *          задержка и её разброс дороже потерь
+		 *          задержка и её разброс дороже потерь.
 		 *
 		 * @warning Пометка эта - **просьба, а не обязательство**. За пределами
 		 *          управляемой сети её обычно либо не замечают, либо сбрасывают, и
 		 *          опираться на неё в открытой сети не следует
 		 *
+		 * @warning Имена CS5, CS6, CS7 заняты макросами <termios.h>, где они задают число
+		 *          разрядов в знаке у последовательного порта. Имена эти взяты из RFC 2474
+		 *          и переименованию не подлежат, оттого снимаются на время объявлений парой
+		 *          sys/push.hpp и sys/pop.hpp - вместе с CS8, какого здесь нет,
+		 *          но какой из того же ряда. Кто называет члены эти у себя, тот защищает
+		 *          свой файл той же парой; закреплено это проверкой tests/net/eth/socket.cpp,
+		 *          куда <termios.h> подключён намеренно
+		 *
 		 * \~english
 		 * @brief Differentiated services code point
+		 *
 		 * @details A mark in the header of a packet by which the sender declares the needed
 		 *          quality of the service. A network set up to tell this mark apart
 		 *          lays the packets out into the queues: the ones sensitive to the delay
-		 *          it lets ahead, the voluminous ones it holds back at a congestion
+		 *          it lets ahead, the voluminous ones it holds back at a congestion.
+		 *
 		 *          The values are broken into the families. The simple digits of the priority —
 		 *          eight steps from the ordinary traffic to the control of the network itself.
 		 *          The assured forwarding — the digits where the first number sets the
 		 *          queue, and the second one the probability of the discarding at a congestion. The expedited
 		 *          forwarding — a separate digit for the transmission of the voice and of the video, where
 		 *          the delay and its spread are dearer than the losses
+		 *
 		 * @warning This mark is a **request, and not an obligation**. Beyond
 		 *          a managed network it is usually either not noticed, or reset, and
 		 *          relying on it in an open network is not advisable
 		 *
+		 * @warning The names CS5, CS6, CS7 are taken by the macros of <termios.h>, where they set the number
+		 *          of the digits in the sign at a serial port. These names are taken from RFC 2474
+		 *          and are not subject to renaming, and therefore they are removed for the time of the declarations by a pair
+		 *          of sys/push.hpp and sys/pop.hpp — together with CS8, which is not here,
+		 *          but which is of the same series. Whoever names these members in his own code, protects
+		 *          his file by the same pair; this is fixed by the check tests/net/eth/socket.cpp,
+		 *          where <termios.h> is intentionally included
+		 *
 		 * \~
-		 */
-		/**
-		 * @warning Имена CS5, CS6, CS7 заняты макросами <termios.h>, где они задают число
-		 *          разрядов в знаке у последовательного порта. Имена эти взяты из RFC 2474
-		 *          и переименованию не подлежат, оттого снимаются на время объявлений парой
-		 *          sys/macro_push.hpp и sys/macro_pop.hpp - вместе с CS8, какого здесь нет,
-		 *          но какой из того же ряда. Кто называет члены эти у себя, тот защищает
-		 *          свой файл той же парой; закреплено это проверкой tests/net/eth/socket.cpp,
-		 *          куда <termios.h> подключён намеренно
 		 */
 		enum class dscp_t : uint8_t {
 			CS0  = 0x00, // По умолчанию (обычный трафик)
@@ -760,6 +803,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Values of the Explicit Congestion Notification (ECN) field
+		 *
 		 * @details The lower two bits of the TOS byte (IPv4) and of the Traffic Class one (IPv6),
 		 *          by which the routers signal about a congestion of the path,
 		 *          without discarding the packet (RFC 3168 §5).
@@ -782,7 +826,7 @@ namespace awh {
 		 *          дорога задержка: обмен короткими сообщениями, отклик на нажатие,
 		 *          передача звука. Отложенная накапливает мелкие порции и отправляет
 		 *          их вместе, отчего доля служебных заголовков падает, а
-		 *          пропускная способность растёт
+		 *          пропускная способность растёт.
 		 *
 		 * @note Придержанная порция уходит не по воле отправителя, а по истечении
 		 *       короткого срока или по приходу подтверждения. Отложенный режим потому
@@ -791,12 +835,14 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Modes of the limitation of the speed of the events
+		 *
 		 * @details Sets whether the data should be given into the network at once or held back. The instant
 		 *          sending pushes out every portion immediately — that is how it is needed where
 		 *          the delay is dear: the exchange of the short messages, the response to a keypress,
 		 *          the transmission of the sound. The postponed one accumulates the small portions and sends
 		 *          them together, and therefore the share of the service headers falls, and
-		 *          the bandwidth grows
+		 *          the bandwidth grows.
+		 *
 		 * @note A held back portion goes not by the will of the sender, but at the expiration of
 		 *       a short term or at the arrival of an acknowledgement. The postponed mode therefore
 		 *       adds a delay imperceptible at a streaming transmission and quite
@@ -817,7 +863,7 @@ namespace awh {
 		 * @details Указывает, о чьей стороне подключения идёт речь - о нашей или о
 		 *          той. Свойства подключения у двух концов свои, и опрашивать их
 		 *          приходится порознь: этим значением и задаётся, чьи именно
-		 *          запрашиваются
+		 *          запрашиваются.
 		 *
 		 * @note Пользуются им пока лишь свойства подключений SCTP, где набор
 		 *       разрешённых частей сообщения у каждой стороны свой и договориться о
@@ -825,10 +871,12 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Origin of the events
+		 *
 		 * @details Specifies whose side of a connection is meant — ours or
 		 *          that one. The properties of a connection are their own at the two ends, and they have to
 		 *          be polled separately: by this value it is set whose exactly
-		 *          are requested
+		 *          are requested.
+		 *
 		 * @note So far only the properties of the SCTP connections use it, where the set
 		 *       of the allowed parts of a message is its own at every side and the sides must agree about
 		 *       it in advance
@@ -847,17 +895,19 @@ namespace awh {
 		 * @details Обычный переключатель на два положения: включить или отключить.
 		 *          Пользуются им там, где настройка сводится к одному этому выбору -
 		 *          вступление в группу рассылки и выход из неё, разрешение и запрет
-		 *          отдельного действия у узла
+		 *          отдельного действия у узла.
 		 *
 		 * @note Значения по умолчанию здесь нет, и «включено» стоит первым не как
 		 *       умолчание, а лишь по порядку перечисления
 		 *
 		 * \~english
 		 * @brief Modes of the events
+		 *
 		 * @details An ordinary switch with two positions: to switch on or to switch off.
 		 *          It is used where a setting comes down to this one choice —
 		 *          the entry into a multicast group and the exit from it, the permission and the prohibition of
-		 *          a separate action at a node
+		 *          a separate action at a node.
+		 *
 		 * @note There is no value by default here, and «switched on» stands first not as
 		 *       a default, but only by the order of the enumeration
 		 *
@@ -876,12 +926,12 @@ namespace awh {
 		 *          означает ожидание ответа: предел отсчитывается от отправки запроса
 		 *          и истекает, если ответ не пришёл. Многоразовый означает надзор за
 		 *          простоем: предел взводится заново после каждой порции данных и
-		 *          истекает лишь тогда, когда подключение молчит слишком долго
+		 *          истекает лишь тогда, когда подключение молчит слишком долго.
 		 *
 		 *          Разница видна на долгих обменах. Одноразовый режим оборвёт
 		 *          подключение, по которому данные идут дольше отведённого предела,
 		 *          даже если идут они непрерывно. Многоразовый такое подключение
-		 *          сохранит и оборвёт лишь замолчавшее
+		 *          сохранит и оборвёт лишь замолчавшее.
 		 *
 		 * @note По умолчанию берётся одноразовый режим - тот, что отвечает обмену
 		 *       «запрос-ответ». Для подписок, потоков и долгих загрузок его следует
@@ -890,15 +940,18 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Modes of the use of the events
+		 *
 		 * @details Sets how the limit of the waiting at the reading should be understood. The single-use mode
 		 *          means the waiting for an answer: the limit is counted from the sending of a request
 		 *          and expires if the answer has not come. The multiple-use one means the supervision over
 		 *          an idling: the limit is raised anew after every portion of the data and
-		 *          expires only when the connection is silent for too long
+		 *          expires only when the connection is silent for too long.
+		 *
 		 *          The difference is seen at the long exchanges. The single-use mode will break off
 		 *          a connection over which the data goes longer than the allotted limit,
 		 *          even if it goes continuously. The multiple-use one will preserve such a connection
-		 *          and will break off only a silent one
+		 *          and will break off only a silent one.
+		 *
 		 * @note By default the single-use mode is taken — the one that answers the exchange
 		 *       «request-answer». For the subscriptions, the streams and the long downloads it should
 		 *       be changed to the multiple-use one, otherwise the limit of the waiting will break off a sound
@@ -918,7 +971,7 @@ namespace awh {
 		 *
 		 * @details Указывает, какое из двух направлений ограничивается: исходящее -
 		 *          то, что уходит от нас, - или входящее. Направления ограничиваются
-		 *          порознь, и предел, выставленный одному, другого не касается
+		 *          порознь, и предел, выставленный одному, другого не касается.
 		 *
 		 * @note Ограничение входящего направления работает иначе исходящего:
 		 *       отправку мы придерживаем сами, а на приёме придержать можем лишь
@@ -927,9 +980,11 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Modes of the limitation of the bandwidth of the events
+		 *
 		 * @details Specifies which of the two directions is limited: the outgoing one —
 		 *          that which goes away from us, — or the incoming one. The directions are limited
-		 *          separately, and a limit set out to one does not concern the other one
+		 *          separately, and a limit set out to one does not concern the other one.
+		 *
 		 * @note The limitation of the incoming direction works otherwise than of the outgoing one:
 		 *       the sending we hold back ourselves, and at the reception we can hold back only
 		 *       the reading out of the socket, and therefore the data accumulates in the receiving accumulator, and
@@ -948,7 +1003,7 @@ namespace awh {
 		 *
 		 * @details Задаёт, каким способом узел решает, пускать ли подключение.
 		 *          Чёрный список запрещает перечисленное и разрешает всё прочее,
-		 *          белый - наоборот, разрешает только перечисленное
+		 *          белый - наоборот, разрешает только перечисленное.
 		 *
 		 * @note Пустой список проверку **отключает**, а не запирает узел: пустой
 		 *       белый список разрешает всех, а не отвергает всех. Списки потому
@@ -960,13 +1015,16 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the control lists of the events
+		 *
 		 * @details Sets by which way a node decides whether a connection should be let in.
 		 *          A black list forbids what is enumerated and allows everything else,
-		 *          a white one — the other way round, allows only what is enumerated
+		 *          a white one — the other way round, allows only what is enumerated.
+		 *
 		 * @note An empty list **switches the check off**, and does not lock the node: an empty
 		 *       white list allows everyone, and does not reject everyone. The lists are therefore
 		 *       safe to start in advance and to fill as needed, but an
 		 *       accidental emptying of a white list removes the limitation silently as well
+		 *
 		 * @note These lists are both checked, and the black one has the upper hand: a node that has got into
 		 *       both lists at once is rejected
 		 *
@@ -984,11 +1042,11 @@ namespace awh {
 		 *
 		 * @details Задаёт, в какую сторону перекладываются данные при сращивании двух
 		 *          подключений. Сращивание нужно посредникам: принятые от одной
-		 *          стороны данные переливаются другой без разбора их содержимого
+		 *          стороны данные переливаются другой без разбора их содержимого.
 		 *
 		 *          Направление определяется тем, кто источник, а кто приёмник. Прямое
 		 *          ведёт от подключения, к которому применён вызов, к указанному;
-		 *          обратное - наоборот
+		 *          обратное - наоборот.
 		 *
 		 * @note Сращивание **одностороннее**. Для сквозного обмена его следует
 		 *       завести дважды, в оба направления, иначе данные пойдут только в одну
@@ -996,12 +1054,15 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Flag of the direction of the transmission of the data
+		 *
 		 * @details Sets in which direction the data is shifted at the splicing of two
 		 *          connections. The splicing is needed by the mediators: the data accepted from one
-		 *          side is poured over into the other one without the parsing of its content
+		 *          side is poured over into the other one without the parsing of its content.
+		 *
 		 *          The direction is determined by who is the source, and who is the receiver. The direct one
 		 *          leads from the connection the call is applied to, to the specified one;
-		 *          the reverse one — the other way round
+		 *          the reverse one — the other way round.
+		 *
 		 * @note The splicing is a **one-way** one. For a through exchange it should be
 		 *       started twice, in both directions, otherwise the data will go only in one
 		 *       direction
@@ -1036,12 +1097,12 @@ namespace awh {
 		 * @details Задаёт, по каким правилам ведётся обмен. Вместе с семейством
 		 *          адресов и видом сокета образует тройку, полностью описывающую
 		 *          узел, - и не всякое их сочетание существует: потоковый обмен
-		 *          неразлучен с надёжной доставкой, дейтаграммный с ненадёжной
+		 *          неразлучен с надёжной доставкой, дейтаграммный с ненадёжной.
 		 *
 		 *          Помимо привычных протоколов сети сюда входят два особых значения -
 		 *          файл и каталог. Наблюдение за файловой системой устроено движком
 		 *          теми же средствами, что и сетевые подключения, и вид наблюдаемого
-		 *          задаётся здесь же
+		 *          задаётся здесь же.
 		 *
 		 * @note Протоколы эти - равноправные участники, и выделенного среди них нет.
 		 *       Хранить в узле следует само значение, а не признак вида «это ли
@@ -1049,14 +1110,17 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the protocols of the sockets
+		 *
 		 * @details Sets by which rules the exchange is performed. Together with the family of
 		 *          the addresses and the kind of the socket it forms a triple fully describing
 		 *          a node, — and not every combination of them exists: the stream exchange
-		 *          is inseparable from the reliable delivery, the datagram one from the unreliable one
+		 *          is inseparable from the reliable delivery, the datagram one from the unreliable one.
+		 *
 		 *          Besides the customary protocols of the network two special values enter here —
 		 *          a file and a directory. The observation of the file system is arranged by the engine
 		 *          by the same means as the network connections, and the kind of what is observed
-		 *          is set right here
+		 *          is set right here.
+		 *
 		 * @note These protocols are equal participants, and there is no distinguished one among them.
 		 *       The value itself should be held in a node, and not a sign of the kind «is this
 		 *       such-and-such a protocol»: the latter breaks at the addition of a new one
@@ -1084,7 +1148,7 @@ namespace awh {
 		 *          адресу IPv4 или IPv6, местное - по пути в файловой системе, прочие
 		 *          - вовсе не адресом: канал, наблюдение за файловой системой и
 		 *          отсчёт времени сокетами в привычном смысле не являются, но движком
-		 *          обслуживаются наравне с ними
+		 *          обслуживаются наравне с ними.
 		 *
 		 * @note Семейство определяет и вид адреса, какой узел примет. Адрес IPv4,
 		 *       переданный узлу семейства IPv6, будет отвергнут - если только он не
@@ -1092,11 +1156,13 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Families of the sockets
+		 *
 		 * @details Sets by which way a node is addressed. The network families — by
 		 *          an IPv4 or an IPv6 address, the local one — by a path in the file system, the others
 		 *          — not by an address at all: a pipe, the observation of the file system and
 		 *          a count of the time are not sockets in the customary sense, but are served by the engine
-		 *          on a par with them
+		 *          on a par with them.
+		 *
 		 * @note The family determines the kind of the address a node will accept as well. An IPv4 address
 		 *       passed to a node of the IPv6 family will be rejected — unless it is
 		 *       wrapped into the mapped form `::FFFF:x.x.x.x`
@@ -1125,7 +1191,7 @@ namespace awh {
 		 *          границы, но ни доставки, ни порядка не обещает. Сокет
 		 *          последовательных пакетов сочетает то и другое - границы
 		 *          сохраняются, доставка надёжна. Сырой сокет отдаёт пакеты вместе с
-		 *          заголовками и требует особых прав
+		 *          заголовками и требует особых прав.
 		 *
 		 * @warning Отсутствие границ у потокового обмена - источник самой частой
 		 *          ошибки при работе с сетью: считать, что одному вызову отправки
@@ -1134,6 +1200,7 @@ namespace awh {
 		 *
 		 * \~english
 		 * @brief Types of the sockets
+		 *
 		 * @details Sets the arrangement of the exchange. A stream socket gives a continuous
 		 *          sequence of the bytes without the internal boundaries: what is sent by one
 		 *          record may come by several and the other way round, and therefore the boundaries
@@ -1141,7 +1208,8 @@ namespace awh {
 		 *          boundaries, but promises neither the delivery nor the order. A socket
 		 *          of the sequential packets combines both — the boundaries
 		 *          are preserved, the delivery is reliable. A raw socket gives back the packets together with
-		 *          the headers and requires special rights
+		 *          the headers and requires special rights.
+		 *
 		 * @warning The absence of the boundaries at a stream exchange is the source of the most frequent
 		 *          error at the work with the network: it is not allowed to consider that one call of the sending
 		 *          answers to one call of the reception. The accepted data should be
@@ -1192,7 +1260,7 @@ namespace awh {
 			 * @brief Опция отложенной отправки TCP пакетов
 			 *
 			 * @details Смысл её - придержать отправку, накапливая мелкие записи до полного
-			 *          сегмента, пока придержка не будет снята
+			 *          сегмента, пока придержка не будет снята.
 			 *
 			 * @warning Имя намеренно расходится с системным TCP_CORK: у Solaris и Linux то
 			 *          занято макросом из netinet/tcp.h, и препроцессор, разбирающий текст
@@ -1210,17 +1278,21 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Option of the postponed sending of the TCP packets
+			 *
 			 * @details Its point is to hold back the sending, accumulating the small records up to a full
-			 *          segment, until the holding back is removed
+			 *          segment, until the holding back is removed.
+			 *
 			 * @warning The name deliberately diverges from the system TCP_CORK: at Solaris and Linux that one
 			 *          is taken by a macro from netinet/tcp.h, and the preprocessor, parsing the text
 			 *          before the language, turned the declaration into an assignment to a number — the build answered with
 			 *          a refusal «expected unqualified-id before numeric constant». To remove
 			 *          a foreign macro for the sake of one's own name would mean changing the environment
 			 *          of the consumer of the header, and therefore the name diverges, and not the environment
+			 *
 			 * @note This device is already accepted in the set: the neighbour is called TCP_NO_DELAY, and not
 			 *       by the system TCP_NODELAY, and for the same reason. It is verified by an experiment on seven
 			 *       systems that the name TCP_CORKING is taken by none of them
+			 *
 			 * @see The setting itself the backend substitutes by the system: TCP_NOPUSH at BSD and macOS,
 			 *      and at NetBSD — the removal of TCP_NODELAY
 			 *
@@ -1254,7 +1326,7 @@ namespace awh {
 			 * @details Событие с этой опцией после обрыва не уничтожается, а поднимается
 			 *          заново: пересоздаётся сокет, переустанавливаются опции, заново
 			 *          проходятся фиксация, подключение и запуск. Идентификатор события и
-			 *          все внесённые в него настройки при этом сохраняются
+			 *          все внесённые в него настройки при этом сохраняются.
 			 *
 			 * @note Опция **включает** переподключение, а разрешает его действие
 			 *       `action_t::RECONNECT`: нужны оба. Задержка задаётся `setTimeout()` с
@@ -1270,18 +1342,22 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Option of the independent reconnection of an event
+			 *
 			 * @details An event with this option after a break is not destroyed, but is raised
 			 *          anew: the socket is recreated, the options are reset, the fixation,
 			 *          the connection and the launch are passed anew. The identifier of the event and
-			 *          all the settings entered into it are at that preserved
+			 *          all the settings entered into it are at that preserved.
+			 *
 			 * @note The option **switches on** the reconnection, and its action is allowed by
 			 *       `action_t::RECONNECT`: both are needed. The delay is set by `setTimeout()` with
 			 *       the action `RECONNECT`, at a zero value five seconds are taken
+			 *
 			 * @warning The option has no relation to `SO_KEEPALIVE`, although formerly it was called
 			 *          `KEEPALIVE`, by which it misled absolutely everyone. The probes
 			 *          of the liveness of a connection are switched on by the separate `keepAlive()` method,
 			 *          taking their own count, idle and interval. Here, though,
 			 *          the matter is about the persistence of the **event**, and not of the connection
+			 *
 			 * @see AUTO_FOLLOW — the same property for a node of the file system
 			 *
 			 * \~
@@ -1294,7 +1370,7 @@ namespace awh {
 			 * @details Событие файловой системы с этой опцией при новом чтении продолжает
 			 *          с сохранённого места: смещение в файле и время последней правки не
 			 *          сбрасываются, и вызывающему достаётся лишь дописанное с прошлого
-			 *          раза. Без опции файл читается всякий раз сначала
+			 *          раза. Без опции файл читается всякий раз сначала.
 			 *
 			 * @note Это **то же самое** значение, что и `AUTO_RECONNECT`, а не отдельная
 			 *       опция: свойство у них одно - движок сам продолжает работу события
@@ -1317,10 +1393,12 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Option of the independent continuation of the reading of a file
+			 *
 			 * @details An event of the file system with this option at a new reading continues
 			 *          from the saved place: the offset in the file and the time of the last correction are not
 			 *          reset, and the caller gets only what has been appended since the previous
-			 *          time. Without the option the file is read from the beginning every time
+			 *          time. Without the option the file is read from the beginning every time.
+			 *
 			 * @note This is the **very same** value as `AUTO_RECONNECT`, and not a separate
 			 *       option: their property is one — the engine continues the work of an event by itself
 			 *       after it has been interrupted, — and only the outcomes by the kind of
@@ -1332,9 +1410,11 @@ namespace awh {
 			 *       a foreign name would confuse for no reason. The same device is used by
 			 *       `htons` and `ntohs` — the action is one, the names are two, because
 			 *       they are read in different places
+			 *
 			 * @warning A common value is obliged to remain such. Divide them by different
 			 *          bits — and the last free one (`0x20`) will go, the only reserve for
 			 *          an option that will be needed by the nodes of all the kinds at once
+			 *
 			 * @see AUTO_RECONNECT — the same property for a node of a client
 			 *
 			 * \~
@@ -1482,6 +1562,7 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Option of the immediate break of the connection at the closing of the socket
+			 *
 			 * @details The ordinary closing of a connection is performed by an exchange of the farewells:
 			 *          the closing side sends a FIN, waits for a FIN from the neighbour
 			 *          and acknowledges it. The side that has closed first is obliged
@@ -1491,10 +1572,12 @@ namespace awh {
 			 *          absorb the belated duplicates of the segments, so that they would not
 			 *          get into a new connection with the same quadruple, and to be able to
 			 *          repeat the acknowledgement if the neighbour has lost the farewell.
+			 *
 			 *          The option replaces this order with an immediate break: the connection
 			 *          is torn by an RST segment, there is no exchange of the farewells, the socket goes
 			 *          right into the CLOSED state, and TIME_WAIT arises at neither
 			 *          of the sides. The port is released at once.
+			 *
 			 *          It is conceived for two cases. The first one — for a side opening
 			 *          the short-lived connections in a stream: each of them parks
 			 *          a dynamic port for thirty seconds, and the pool of such ports
@@ -1503,6 +1586,7 @@ namespace awh {
 			 *          a server resetting the connections deliberately: a refusal by
 			 *          the excess of a limit, a break of an uninvited client. To pay for such
 			 *          a reset by thirty seconds of an occupied quadruple is pointless.
+			 *
 			 * @note The option is unsafe by construction and is therefore not switched on by
 			 *       default. Everything that has remained in the queue of the sending is discarded
 			 *       without an attempt of the delivery. The neighbour receives a sign of a reset of the connection
@@ -1511,6 +1595,7 @@ namespace awh {
 			 *       is removed for the sake of which TIME_WAIT exists: a belated
 			 *       duplicate of an old connection may be delivered into a new one with the
 			 *       same quadruple of the addresses
+			 *
 			 * @note The digit is the last one: the field of the options of an event is a sixteen bit one and
 			 *       is exhausted by this option. The next one will require its widening
 			 *
@@ -1524,6 +1609,6 @@ namespace awh {
 /**
  * Возвращаем макросы, снятые в начале файла
  */
-#include "../sys/macro_pop.hpp"
+#include "../sys/pop.hpp"
 
 #endif // __AWH_EVENTS__

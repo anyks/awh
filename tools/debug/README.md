@@ -256,13 +256,16 @@ without a process to debug». Сличать вывод описателя с о
 
 Помощники читают внутренности библиотеки стандарта, а отказ такого чтения выходит нулём
 либо мусором соседних байтов — не ошибкой. Оттого заведён щуп `probe/`, ставящий известные
-значения и сличающий с ними одиннадцать путей чтения:
+значения и сличающий с ними шестнадцать путей чтения. Точку останова ставить на строку
+`return` в конце `main` (не на вызов `printf`: та встаёт в самой функции библиотеки, где
+`probe` уже не виден, и всё читается нулём):
 
 ```sh
 c++ -std=c++20 -g -O0 -o /tmp/helpers tools/debug/probe/helpers.cpp
+LN=$(grep -n "return 0;" tools/debug/probe/helpers.cpp | cut -d: -f1)
 lldb -b -o "command script import tools/debug/awh.py" \
      -o "command script import tools/debug/probe/helpers.py" \
-     -o "b helpers.cpp:42" -o run -o checkhelpers /tmp/helpers
+     -o "b helpers.cpp:$LN" -o run -o checkhelpers /tmp/helpers
 ```
 
 Под GDB тот же щуп собирается из ТОГО ЖЕ `helpers.cpp` — сличение двух редакций на одном
@@ -270,20 +273,29 @@ lldb -b -o "command script import tools/debug/awh.py" \
 
 ```sh
 g++ -std=c++20 -g -O0 -o /tmp/helpers tools/debug/probe/helpers.cpp
-gdb -q -batch -ex "frame N" -ex "source tools/debug/probe/helpers-gdb.py" /tmp/helpers core
+LN=$(grep -n "return 0;" tools/debug/probe/helpers.cpp | cut -d: -f1)
+gdb -q -batch -ex "b helpers.cpp:$LN" -ex run \
+    -ex "source tools/debug/probe/helpers-gdb.py" -ex quit /tmp/helpers
 ```
 
 Ответ — таблица «ожидалось / получено» и счёт расхождений.
 
 | редакция | библиотека | проверок | расхождений |
 |---|---|---|---|
-| LLDB, macOS | libc++ | 11 | 0 |
-| GDB, Astra Linux | libstdc++ | 9 | 0 |
+| LLDB, macOS | libc++ | 16 | 0 |
+| GDB, Fedora 44 | libstdc++ | 14 | 0 |
 
 Расхождение в числе проверок не случайно: у редакции для GDB нет своего помощника умного
 указателя — тот читается прямо в описателе выражения, — и покрыть его щупом покамест
-нечем. Пути `storage_slice` и `queue_head` не покрыты ни у одной редакции: им нужен не
-щуп общего вида, а настоящее вместилище AWH.
+нечем. Пути `storage_slice` (нарезка байтов хранилища, проверяется на кириллице — знак в
+два байта, и кусок с середины обязан лечь по границе) и `queue_head`/`queue_summary`
+(чтение очереди по именам полей) покрыты мимикрией очереди в щупе: имена полей `_range`,
+`_buffer`, `_max` точны, и помощнику она неотличима от настоящей `awh::Queue`.
+
+Живой запуск требует `ptrace`. У усиленных дистрибутивов он заперт: Astra ставит
+`ptrace_scope=3` (необратимо до перезагрузки), и там gdb трассировать не может вовсе —
+проверять либо по core-файлу, либо на обычном стенде, где `ptrace_scope` 0 или 1
+(Fedora, Debian, Ubuntu). У Astra эта таблица снималась чтением core-файла.
 
 ## Что проверено
 

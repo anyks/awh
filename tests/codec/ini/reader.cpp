@@ -37,9 +37,9 @@
 
 /**
  * Снимаем на время реализации макросы, чьи имена заняты
- * членами перечислений AWH (возвращает их macro_pop.hpp в конце файла)
+ * членами перечислений AWH (возвращает их pop.hpp в конце файла)
  */
-#include <sys/macro_push.hpp>
+#include <sys/push.hpp>
 #include <sys/log.hpp>
 
 /**
@@ -1021,7 +1021,7 @@ TEST(CodecIniReader, DecodingPrefix) {
 /**
  * Возвращаем макросы, снятые в начале файла
  */
-#include <sys/macro_pop.hpp>
+#include <sys/pop.hpp>
 /**
  * @brief Проверка изъятия разобранного начала текста настроек
  *

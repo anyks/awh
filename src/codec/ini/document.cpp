@@ -27,10 +27,10 @@
 #include <codec/ini/document.hpp>
 
 /**
- * Снимаем на время реализации макросы, чьи имена заняты
- * членами перечислений AWH (возвращает их macro_pop.hpp в конце файла)
+ * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
  */
-#include <sys/macro_push.hpp>
+#include <sys/push.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -2667,4 +2667,4 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <double> (d
 /**
  * Возвращаем макросы, снятые в начале файла
  */
-#include <sys/macro_pop.hpp>
+#include <sys/pop.hpp>

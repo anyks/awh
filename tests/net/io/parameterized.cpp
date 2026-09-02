@@ -77,7 +77,7 @@
  *
  * @details Проверка эта пишет «awh::event::error_t::INVALID_SOCKET», а MS Windows
  *          заводит имя INVALID_SOCKET макросом. Заголовки AWH защищают **свои**
- *          объявления парой macro_push.hpp и macro_pop.hpp, но возвращают макросы
+ *          объявления парой push.hpp и pop.hpp, но возвращают макросы
  *          следом - тем они и оставляют их тому, кто ими пользуется по делу. Потому
  *          всякий, кто называет такие члены в **своём** коде, защищает свой файл
  *          той же парой, и проверка эта не исключение
@@ -86,8 +86,7 @@
  *       нужны самим заголовкам MS Windows, и снимать их прежде подключения нельзя
  *
  */
-#include <sys/macro_push.hpp>
-
+#include <sys/push.hpp>
 
 /**
  * @brief Параметры теста выполнения пингования
@@ -900,7 +899,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			// Сведения о порождённом процессе
 			PROCESS_INFORMATION process{};
 			// Выполняем порождение работника
-			const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят macro_push.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process);
+			const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят push.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process);
 			// Работник обязан быть порождён
 			ASSERT_TRUE(spawned) << "Дочерний процесс создать не удалось";
 			// Отсчёт времени ожидания доклада
@@ -2186,6 +2185,6 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, IoIPCTestParameterizedFixture,
 );
 
 /**
- * Возвращаем снятые макросы MS Windows
+ * Возвращаем макросы, снятые в начале файла
  */
-#include <sys/macro_pop.hpp>
+#include <sys/pop.hpp>

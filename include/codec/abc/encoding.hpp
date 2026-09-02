@@ -46,8 +46,9 @@
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
  */
-#include "../../sys/macro_push.hpp"
+#include "../../sys/push.hpp"
 
 /**
  * \~russian
@@ -416,8 +417,8 @@ namespace awh {
 };
 
 /**
- * Возвращаем снятые ранее макросы
+ * Возвращаем макросы, снятые в начале файла
  */
-#include "../../sys/macro_pop.hpp"
+#include "../../sys/pop.hpp"
 
 #endif // __AWH_CODEC_ABC_ENCODING__

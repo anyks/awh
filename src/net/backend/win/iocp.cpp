@@ -1094,8 +1094,8 @@ static int32_t __awh_listen__(const SOCKET sock, const int32_t backlog) noexcept
 	 * Если принять подключение не удалось
 	 *
 	 * @note Признак негодного дескриптора пишется приведением, а не именем
-	 *       `INVALID_SOCKET`: имя это движок снимает парой macro_push.hpp и
-	 *       macro_pop.hpp - оно сталкивается с именем члена перечисления AWH
+	 *       `INVALID_SOCKET`: имя это движок снимает парой push.hpp и
+	 *       pop.hpp - оно сталкивается с именем члена перечисления AWH
 	 */
 	if(result == static_cast <SOCKET> (~static_cast <SOCKET> (0)))
 		// Переносим код отказа обращения в errno

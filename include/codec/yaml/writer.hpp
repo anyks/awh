@@ -44,9 +44,9 @@
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
- * членами перечислений ниже (возвращает их macro_pop.hpp в конце файла)
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
  */
-#include "../../sys/macro_push.hpp"
+#include "../../sys/push.hpp"
 
 /**
  * \~russian
@@ -271,6 +271,8 @@ namespace awh {
 					vector <level_t> _levels;
 					// Имя метки, узлу предпосланной, ожидающее узла своего
 					string _anchor;
+					// Имя метки, ИМЕНИ ПАРЫ предпосылаемой
+					string _keyAnchor;
 					// Метка типа, узлу предпосланная, ожидающая узла своего
 					string _tag;
 					// Признак того, что имя пары записано, а значение её ещё нет
@@ -588,6 +590,28 @@ namespace awh {
 					 * \~
 					 */
 					bool key(const string & name) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи имени пары отображения с меткою, ему предпосланной
+					 *
+					 * @details Метка эта принадлежит ИМЕНИ пары, а не значению её: написание
+					 * `&m a: b` метит запись `a`. Метка значения ставится обычным способом -
+					 * методом @c anchor, - и путать их нельзя: ссылка на метку имени и ссылка
+					 * на метку значения ведут к разным записям
+					 *
+					 * @param name   записываемое имя пары отображения
+					 * @param anchor метка, имени пары предпосылаемая
+					 * @return       признак успешной записи имени пары
+					 *
+					 * \~english
+					 * @brief Method of the writing of the name of a pair of a mapping with an anchor placed before it
+					 * @param name name of the pair of the mapping being written
+					 * @param anchor anchor being placed before the name of the pair
+					 * @return sign of the successful writing of the name of the pair
+					 *
+					 * \~
+					 */
+					bool key(const string & name, const string & anchor) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи метки, следующему узлу предпосылаемой
@@ -1147,8 +1171,8 @@ namespace awh {
 };
 
 /**
- * Возвращаем снятые ранее макросы
+ * Возвращаем макросы, снятые в начале файла
  */
-#include "../../sys/macro_pop.hpp"
+#include "../../sys/pop.hpp"
 
 #endif // __AWH_CODEC_YAML_WRITER__

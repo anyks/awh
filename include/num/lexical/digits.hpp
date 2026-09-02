@@ -48,9 +48,9 @@
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты
- * именами, применяемыми ниже (возвращает их macro_pop.hpp в конце файла)
+ * членами перечислений ниже (возвращает их pop.hpp в конце файла)
  */
-#include "../../sys/macro_push.hpp"
+#include "../../sys/push.hpp"
 
 /**
  * \~russian
@@ -1010,6 +1010,6 @@ namespace awh {
 /**
  * Возвращаем макросы, снятые в начале файла
  */
-#include "../../sys/macro_pop.hpp"
+#include "../../sys/pop.hpp"
 
 #endif // __AWH_LEXICAL_DIGITS__

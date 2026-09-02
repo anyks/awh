@@ -35,7 +35,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if defined(_WIN32) || defined(_WIN64)
+#if _WIN32 || _WIN64
 
 	/**
 	 * \~russian
@@ -44,14 +44,15 @@
 	 * @details Версия задаётся до подключения системных заголовков: от неё зависит состав
 	 *          объявлений. Windows 10 выбрана затем, что кластеру нужны объекты задания
 	 *          с завершением по закрытию, ожидание объектов из системного пула потоков и
-	 *          именованные каналы с отказом удалённым клиентам
+	 *          именованные каналы с отказом удалённым клиентам.
 	 *
 	 * \~english
 	 * @brief Lowest supported version of the operating system — Windows 10
+	 *
 	 * @details The version is set before the inclusion of the system headers: the composition of the
 	 *          declarations depends on it. Windows 10 is chosen because the cluster needs job objects
 	 *          with termination on close, the waiting for objects from the system thread pool and
-	 *          named pipes with a refusal to remote clients
+	 *          named pipes with a refusal to remote clients.
 	 *
 	 * \~
 	 */
@@ -65,13 +66,14 @@
 	 *
 	 * @details Снимает подключение подсистем, каких библиотеке не требуется — графики,
 	 *          звука, буфера обмена, оболочки. Заодно убирает часть засорения
-	 *          пространства имён макросами
+	 *          пространства имён макросами.
 	 *
 	 * \~english
 	 * @brief Trimming of the composition of the windows.h header
+	 *
 	 * @details It removes the inclusion of the subsystems the library does not need — graphics,
 	 *          sound, clipboard, shell. At the same time it removes part of the pollution
-	 *          of the namespace by macros
+	 *          of the namespace by macros.
 	 *
 	 * \~
 	 */
@@ -84,12 +86,13 @@
 	 * @brief Запрет макросов min и max
 	 *
 	 * @details Без него заголовки MS Windows заводят min и max макросами, и обращения
-	 *          вида std::min<T>(a, b) перестают разбираться
+	 *          вида std::min<T>(a, b) перестают разбираться.
 	 *
 	 * \~english
 	 * @brief Prohibition of the min and max macros
+	 *
 	 * @details Without it the MS Windows headers introduce min and max as macros, and references
-	 *          of the std::min<T>(a, b) form stop being parsed
+	 *          of the std::min<T>(a, b) form stop being parsed.
 	 *
 	 * \~
 	 */
@@ -106,12 +109,12 @@
 	 *          перечислений AWH. Пользоваться им, однако, нельзя - проверено опытом:
 	 *          модуль fmk обращается к шрифту консоли через CONSOLE_FONT_INFOEX,
 	 *          SetCurrentConsoleFontEx и FF_DONTCARE, а последняя есть постоянная GDI,
-	 *          и с выключателем сборка отвечает отказом
+	 *          и с выключателем сборка отвечает отказом.
 	 *
-	 *          Столкновения снимает не выключатель, а пара sys/macro_push.hpp и
-	 *          sys/macro_pop.hpp в самих заголовках AWH: она срабатывает при любом
+	 *          Столкновения снимает не выключатель, а пара sys/push.hpp и
+	 *          sys/pop.hpp в самих заголовках AWH: она срабатывает при любом
 	 *          порядке подключения, тогда как выключатель действует лишь когда
-	 *          windows.h подключается впервые
+	 *          windows.h подключается впервые.
 	 *
 	 * @note Выключателем NO_STRICT, отменяющим макрос STRICT, пользоваться тоже не
 	 *       следует: он превращает раздельные типы дескрипторов в общий void *, то есть
@@ -119,16 +122,19 @@
 	 *
 	 * \~english
 	 * @brief The GDI graphics subsystem is not switched off
+	 *
 	 * @details The NOGDI switch suggests itself: the wingdi.h header introduces the macros ERROR,
 	 *          ALTERNATE and TRANSPARENT, and all three collide with the names of the members
 	 *          of the AWH enumerations. Using it, however, is impossible — checked by experience:
 	 *          the fmk module refers to the console font through CONSOLE_FONT_INFOEX,
 	 *          SetCurrentConsoleFontEx and FF_DONTCARE, and the last one is a GDI constant,
-	 *          and with the switch the build answers with a failure
-	 *          The collisions are removed not by the switch but by the pair sys/macro_push.hpp and
-	 *          sys/macro_pop.hpp in the AWH headers themselves: it works at any
+	 *          and with the switch the build answers with a failure.
+	 *
+	 *          The collisions are removed not by the switch but by the pair sys/push.hpp and
+	 *          sys/pop.hpp in the AWH headers themselves: it works at any
 	 *          order of inclusion, whereas the switch takes effect only when
-	 *          windows.h is included for the first time
+	 *          windows.h is included for the first time.
+	 *
 	 * @note The NO_STRICT switch, which cancels the STRICT macro, should not be used
 	 *       either: it turns the separate handle types into a common void *, that is,
 	 *       it weakens the type checking
@@ -147,6 +153,7 @@
 	 *
 	 * \~english
 	 * System header files
+	 *
 	 * @note The order is mandatory: winsock2.h is included strictly before windows.h, otherwise
 	 *       windows.h will drag in the outdated winsock.h and the socket declarations will collide.
 	 *       The ws2def.h header is not self-sufficient and requires the basic
@@ -167,35 +174,39 @@
 	 * @details Снятия здесь нет намеренно, хотя напрашивается: системные заголовки
 	 *          заводят макросами обычные английские слова - DELETE, ERROR, STRICT,
 	 *          NO_ERROR, TEXT и прочие, - и те сталкиваются с именами членов
-	 *          перечислений AWH
+	 *          перечислений AWH.
 	 *
 	 *          Снимать их здесь и не нужно, и вредно. Не нужно потому, что заголовок
 	 *          этот подключается лишь из файлов реализации, а заголовки AWH защищают
-	 *          свои объявления сами - парой sys/macro_push.hpp и sys/macro_pop.hpp,
-	 *          снимающей имена на время объявлений и возвращающей их следом
+	 *          свои объявления сами - парой sys/push.hpp и sys/pop.hpp,
+	 *          снимающей имена на время объявлений и возвращающей их следом.
 	 *
 	 *          Вредно потому, что файлы реализации макросами этими пользуются по делу:
 	 *          модуль procre сличает итог вызовов MS Windows с NO_ERROR. Снятие
 	 *          отняло бы у них имена, какими они вправе пользоваться - ровно то, в чём
-	 *          упрекаем сами заголовки MS Windows
+	 *          упрекаем сами заголовки MS Windows.
 	 *
 	 * @note Проверено опытом: сборка с постоянным снятием отвечала отказом
 	 *       "'NO_ERROR' was not declared in this scope" в четырёх местах src/sys/procre.cpp
 	 *
 	 * \~english
 	 * @brief On the removal of the MS Windows macros
+	 *
 	 * @details There is no removal here deliberately, although it suggests itself: the system headers
 	 *          introduce ordinary English words as macros — DELETE, ERROR, STRICT,
 	 *          NO_ERROR, TEXT and others — and those collide with the names of the members
-	 *          of the AWH enumerations
+	 *          of the AWH enumerations.
+	 *
 	 *          Removing them here is both unnecessary and harmful. Unnecessary because this header
 	 *          is included only from the implementation files, while the AWH headers protect
-	 *          their declarations themselves — by the pair sys/macro_push.hpp and sys/macro_pop.hpp,
-	 *          which removes the names for the duration of the declarations and brings them back afterwards
+	 *          their declarations themselves — by the pair sys/push.hpp and sys/pop.hpp,
+	 *          which removes the names for the duration of the declarations and brings them back afterwards.
+	 *
 	 *          Harmful because the implementation files use those macros for a reason:
 	 *          the procre module compares the outcome of the MS Windows calls against NO_ERROR. A removal
 	 *          would take away from them the names they are entitled to use — exactly what we
-	 *          reproach the MS Windows headers themselves for
+	 *          reproach the MS Windows headers themselves for.
+	 *
 	 * @note Checked by experience: a build with a permanent removal answered with the failure
 	 *       "'NO_ERROR' was not declared in this scope" in four places of src/sys/procre.cpp
 	 *
