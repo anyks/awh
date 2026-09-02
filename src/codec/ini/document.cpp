@@ -2356,6 +2356,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	result.delimiter = this->_settings.reader.delimiter;
 	// Устанавливаем признание примечания в конце строки читающим
 	result.inlineComments = this->_settings.reader.inlineComments;
+	// Устанавливаем требование читающим пробела перед знаком примечания
+	result.spacedComments = this->_settings.reader.spacedComments;
 	// Устанавливаем знаки, признаваемые читающим началом примечания
 	result.comments = this->_settings.reader.comments;
 	// Устанавливаем запись управляющих последовательностей в значении
@@ -2375,6 +2377,8 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	if(this->_settings.reader.comments == marker_t::HASH)
 		// Устанавливаем знак начала примечания
 		result.marker = '#';
+	// Устанавливаем знаки, признаваемые читающим разделителем имени и значения
+	result.separators = this->_settings.reader.separators;
 	/**
 	 * Если разделителем имени и значения читающим признаётся лишь двоеточие
 	 */

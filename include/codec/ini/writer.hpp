@@ -318,6 +318,22 @@ namespace awh {
 						bool greedySections;
 						/**
 						 * \~russian
+						 * Знаки, признаваемые читающим разделителем имени и значения
+						 *
+						 * @note Задаёт не запись разделителя, а толкование его читающим:
+						 * пишется знак один - `separator`, - а признавать читающий вправе
+						 * оба, и имя свойства, второй из них несущее, досталось бы ему
+						 * разрезанным. Признак этот и `separator` расходятся намеренно
+						 *
+						 * \~english
+						 * Characters recognized by a reader as the separator of a name and a value
+						 * @note Gives the treatment of the separator by the reader, not the writing of it
+						 *
+						 * \~
+						 */
+						separator_t separators;
+						/**
+						 * \~russian
 						 * Признак того, что читающий снимает кавычки со значения
 						 *
 						 * @note Задаёт не запись кавычек, а толкование их читающим: значение,
@@ -387,6 +403,22 @@ namespace awh {
 						 * \~
 						 */
 						bool inlineComments;
+						/**
+						 * \~russian
+						 * Признак того, что читающий требует пробела перед знаком примечания
+						 *
+						 * @note Задаёт не запись примечаний, а толкование их читающим: наречие
+						 * Git пробела не требует, и знак примечания обрывает у него имя ГДЕ
+						 * УГОДНО - имя `k#v` есть ему имя `k` с примечанием. Признак этот
+						 * решает о допустимости знака примечания внутри имени
+						 *
+						 * \~english
+						 * Flag of the reader requiring a space before a comment character
+						 * @note Gives the treatment of the comments by the reader, not the writing of them
+						 *
+						 * \~
+						 */
+						bool spacedComments;
 						/**
 						 * \~russian
 						 * Знаки, которые читающий признаёт началом примечания

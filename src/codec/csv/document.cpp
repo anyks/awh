@@ -318,6 +318,13 @@ bool awh::codec::csv::Document::parse(const string_view text) noexcept {
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
 		this->_error = reader.error();
@@ -380,6 +387,33 @@ bool awh::codec::csv::Document::parse(const string_view text, const settings_t &
 bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	// Выполняем очистку таблицы
 	this->clear();
+
+	/**
+	 * Если адрес указывает на каталог
+	 *
+	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
+	 *       какими отзывается файл пустой. Без этой проверки разбор таблицы принимал бы
+	 *       каталог за файл пустой и отвечал бы на него не тем доводом, а разбор таблицы -
+	 *       и вовсе УСПЕХОМ, отдавая таблицу без записей
+	 *
+	 * @note Распознавание идёт ДО открытия потока намеренно, и порядок этот держит
+	 *       договор одним на все системы. У MS Windows каталог не открывается ВОВСЕ:
+	 *       поток отвечает отказом с кодом 13, и распознавание, стоящее после открытия,
+	 *       там мёртво - каталог отвечал бы кодом отказа ОТКРЫТИЯ вместо кода отказа
+	 *       чтения. Замерено на стенде Windows 11 ARM64
+	 */
+	if(::directory(filename)){
+		// Запоминаем код отказа чтения файла таблицы
+		this->_error = error_t::FILE_NOT_READ;
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		// Выводим признак неудачного чтения
+		return false;
+	}
 	// Открываем файл таблицы для чтения
 	ifstream file(filename, ios::binary);
 	/**
@@ -396,26 +430,6 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
-		// Выводим признак неудачного чтения
-		return false;
-	}
-	/**
-	 * Если адрес указывает на каталог
-	 *
-	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
-	 *       какими отзывается файл пустой. Без этой проверки разбор таблицы принимал бы
-	 *       каталог за файл пустой и отвечал бы на него не тем доводом, а разбор таблицы -
-	 *       и вовсе УСПЕХОМ, отдавая таблицу без записей
-	 */
-	if(::directory(filename)){
-		// Запоминаем код отказа чтения файла таблицы
-		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
 		return false;
 	}
@@ -478,6 +492,13 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
 		this->_error = reader.error();
@@ -641,6 +662,32 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		// Выводим признак неудачного чтения
 		return false;
 	}
+	/**
+	 * Если адрес указывает на каталог
+	 *
+	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
+	 *       какими отзывается файл пустой. Без этой проверки разбор таблицы принимал бы
+	 *       каталог за файл пустой и отвечал бы на него не тем доводом, а разбор таблицы -
+	 *       и вовсе УСПЕХОМ, отдавая таблицу без записей
+	 *
+	 * @note Распознавание идёт ДО открытия потока намеренно, и порядок этот держит
+	 *       договор одним на все системы. У MS Windows каталог не открывается ВОВСЕ:
+	 *       поток отвечает отказом с кодом 13, и распознавание, стоящее после открытия,
+	 *       там мёртво - каталог отвечал бы кодом отказа ОТКРЫТИЯ вместо кода отказа
+	 *       чтения. Замерено на стенде Windows 11 ARM64
+	 */
+	if(::directory(filename)){
+		// Запоминаем код отказа чтения файла таблицы
+		this->_error = error_t::FILE_NOT_READ;
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		// Выводим признак неудачного чтения
+		return false;
+	}
 	// Открываем файл таблицы для чтения
 	ifstream file(filename, ios::binary);
 	/**
@@ -657,26 +704,6 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
-		// Выводим признак неудачного чтения
-		return false;
-	}
-	/**
-	 * Если адрес указывает на каталог
-	 *
-	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
-	 *       какими отзывается файл пустой. Без этой проверки разбор таблицы принимал бы
-	 *       каталог за файл пустой и отвечал бы на него не тем доводом, а разбор таблицы -
-	 *       и вовсе УСПЕХОМ, отдавая таблицу без записей
-	 */
-	if(::directory(filename)){
-		// Запоминаем код отказа чтения файла таблицы
-		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
 		return false;
 	}
@@ -756,6 +783,13 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
 		this->_error = reader.error();
@@ -853,6 +887,13 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 	 *       её не вмещает, - а разбор при этом отказа не знает вовсе и отдал бы `NONE`,
 	 *       затерев отказ сборки. Так же поступает и сборка дерева JSON
 	 */
+	/**
+	 * Запоминаем кодировку, какою исходный текст таблицы прочитан
+	 *
+	 * @note Кодировка снимается и при отказе: чтение живёт лишь внутри разбора, и
+	 *       спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = reader.encoding();
 	if(this->_error == error_t::NONE){
 		// Запоминаем код ошибки разбора
 		this->_error = reader.error();
@@ -1106,6 +1147,16 @@ const awh::codec::csv::location_t & awh::codec::csv::Document::errorLocation() c
 	return this->_location;
 }
 /**
+ * @brief Метод извлечения кодировки исходного текста таблицы
+ *
+ * @return кодировка исходного текста таблицы
+ *
+ */
+awh::codec::csv::encoding_t awh::codec::csv::Document::encoding() const noexcept {
+	// Выводим кодировку, какою исходный текст таблицы прочитан
+	return this->_encoding;
+}
+/**
  * @brief Метод получения количества записей таблицы
  *
  * @return количество записей таблицы
@@ -1114,6 +1165,21 @@ const awh::codec::csv::location_t & awh::codec::csv::Document::errorLocation() c
 size_t awh::codec::csv::Document::rows() const noexcept {
 	// Выводим количество записей таблицы
 	return this->_records.size();
+}
+/**
+ * @brief Метод проверки таблицы на пустоту
+ *
+ * @return признак отсутствия содержимого в таблице
+ *
+ */
+bool awh::codec::csv::Document::empty() const noexcept {
+	/**
+	 * Выводим признак отсутствия содержимого в таблице
+	 *
+	 * @note Заголовок учитывается наравне с записями: таблица, несущая один лишь
+	 *       заголовок, записывается непустым текстом, и звать её пустой было бы ложью
+	 */
+	return (this->_records.empty() && this->_header.empty());
 }
 /**
  * @brief Метод получения количества столбцов таблицы
@@ -1618,6 +1684,16 @@ void awh::codec::csv::Document::append(const vector <string_view> & fields) noex
  *
  */
 string awh::codec::csv::Document::text() const noexcept {
+	// Выводим собранный текст таблицы
+	return this->dump();
+}
+/**
+ * @brief Метод сборки текста таблицы
+ *
+ * @return собранный текст таблицы
+ *
+ */
+string awh::codec::csv::Document::dump() const noexcept {
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
 	/**
@@ -1716,6 +1792,8 @@ void awh::codec::csv::Document::clear() noexcept {
 	this->_error = error_t::NONE;
 	// Сбрасываем положение ошибки в исходном тексте
 	this->_location = location_t();
+	// Сбрасываем кодировку прочитанного текста таблицы
+	this->_encoding = encoding_t::NONE;
 	// Очищаем хранилище знаков полей таблицы
 	this->_storage.clear();
 	// Очищаем хранилище имён столбцов
@@ -1801,3 +1879,4 @@ awh::codec::csv::Document::Document(const log_t * log) noexcept :
 awh::codec::csv::Document::Document(const log_t * log, const settings_t & settings) noexcept :
  _log(log),
  _settings(settings), _error(error_t::NONE), _opened(false) {}
+

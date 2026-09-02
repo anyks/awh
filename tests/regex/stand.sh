@@ -143,7 +143,8 @@ SUPPORT="$ROOT/src/sys/log.cpp $ROOT/src/sys/fmk.cpp $ROOT/src/sys/chrono.cpp \
  $ROOT/src/encoding/charset/*.cpp $ROOT/src/alloc/*.cpp $CAPTURE"
 SOURCES="$ROOT/tests/main.cpp $ROOT/tests/regex/*.cpp \
  $ROOT/src/regex/*.cpp $ROOT/src/regex/grok/*.cpp \
- $ROOT/src/encoding/unicode/*.cpp $ROOT/src/codec/json/*.cpp $SUPPORT"
+ $ROOT/src/encoding/unicode/*.cpp $ROOT/src/codec/json/*.cpp \
+ $ROOT/src/codec/numeric.cpp $SUPPORT"
 ##
 # Признак «AWH_REGEX_PROBING» обязателен: без него набор недосчитывается путей
 #

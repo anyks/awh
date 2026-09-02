@@ -147,6 +147,14 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp
 # Выполняем сборку точки входа набора замеров
 $COMPILER $OPTIONS -c "$ROOT/benchmark/main.cpp" -o "$OUTPUT/main.o"
 
+# Выполняем сборку общего для кодеков извлечения числа
+#
+# @note Место это общее у всех кодеков рамки с 01.09.2026: разбор записи числа и
+#       приведение его к затребованному виду держатся там, и без него стенд не
+#       связывается - у кодека остаются несозданные тела шаблонов извлечения
+$COMPILER $OPTIONS -c "$ROOT/src/codec/numeric.cpp" -o "$OUTPUT/codec-numeric.o"
+OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
+
 # Выполняем перебор всех частей кодека CSV
 for PART in common encoding reader writer document; do
 	# Выполняем сборку очередной части кодека CSV

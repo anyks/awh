@@ -1314,7 +1314,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool verbatim(writer_t & writer, const uint32_t first, const uint32_t last, const bool entry) const noexcept;
+					bool verbatim(writer_t & writer, const uint32_t first, const uint32_t last, const bool entry, const bool gapped) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод сборки детей вместилища пролётами нетронутых
@@ -1329,7 +1329,24 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void children(writer_t & writer, const uint32_t index) const noexcept;
+					bool enter(writer_t & writer, const uint32_t index) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод выдачи предисловия узла дословными исходными байтами
+					 *
+					 * @param writer сборка текста
+					 * @param index  номер узла, предисловие какого выдаётся
+					 * @param gapped признак разрыва удержанного текста перед записью узла
+					 *
+					 * \~english
+					 * @brief Method of the output of the preface of a node by the verbatim source bytes
+					 * @param writer assembling of the text
+					 * @param index index of the node whose preface is being output
+					 * @param gapped sign of the gap of the retained text before the record of the node
+					 *
+					 * \~
+					 */
+					void preamble(writer_t & writer, const uint32_t index, const bool gapped) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения начала собственной строки узла
@@ -1628,7 +1645,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					void produce(writer_t & writer, const uint32_t index, const bool preface = true) const noexcept;
+					void produce(writer_t & writer, const uint32_t index, const bool preface = true, const bool gapped = false) const noexcept;
 				public:
 					/**
 					 * \~russian

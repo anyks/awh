@@ -139,6 +139,10 @@ namespace {
 		uint64_t builds;
 		// Количество значений, привитых обратно в дерево разметки
 		uint64_t grafts;
+		// Количество узлов, снесённых из дерева разметки по пути
+		uint64_t removals;
+		// Количество узлов, сброшенных в дереве разметки по пути
+		uint64_t resets;
 		/**
 		 * @brief Конструктор
 		 *
@@ -146,7 +150,7 @@ namespace {
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
 		 events(0), trees(0), rewrites(0), intact(0), accepted(0),
-		 values(0), builds(0), grafts(0) {}
+		 values(0), builds(0), grafts(0), removals(0), resets(0) {}
 	/**
 	 * Учёт проделанной работы
 	 *
@@ -2011,6 +2015,62 @@ namespace {
 							// Выводим результат проверки дерева разметки
 							return false;
 						}
+						// Получаем путь к привитому узлу дерева разметки
+						const string path = (string("/host/") + string(host.element().first().name().local));
+						/**
+						 * Если сброс содержимого привитого узла завершился отказом
+						 *
+						 * @note Сброс обязан оставить сам узел на месте, лишив его одного лишь
+						 *       содержимого: имя и свойства узла сброс не трогает вовсе
+						 */
+						if(!host.reset(path)){
+							// Выводим сообщение об отказе сброса содержимого узла
+							::fprintf(stderr, "xml fuzz: node reset refused\n  путь [%s]\n", path.c_str());
+							// Выводим исходный текст разметки
+							dump(text);
+							// Выводим результат проверки дерева разметки
+							return false;
+						}
+						// Увеличиваем счёт сброшенных узлов
+						totals.resets++;
+						/**
+						 * Если сброшенный узел место своё утратил либо содержимое сохранил
+						 */
+						if(!host.has(path) || host.at(path).first().valid()){
+							// Выводим сообщение о расхождении сброса содержимого узла
+							::fprintf(stderr, "xml fuzz: node reset differs\n  запись [%s]\n", host.dump().c_str());
+							// Выводим исходный текст разметки
+							dump(text);
+							// Выводим результат проверки дерева разметки
+							return false;
+						}
+						/**
+						 * Если снос сброшенного узла завершился отказом
+						 *
+						 * @note Снос обязан убрать сам узел: опрос наличия его отвечает
+						 *       отсутствием - тем он и отличен от сброса
+						 */
+						if(!host.erase(path)){
+							// Выводим сообщение об отказе сноса узла
+							::fprintf(stderr, "xml fuzz: node removal refused\n  путь [%s]\n", path.c_str());
+							// Выводим исходный текст разметки
+							dump(text);
+							// Выводим результат проверки дерева разметки
+							return false;
+						}
+						// Увеличиваем счёт снесённых узлов
+						totals.removals++;
+						/**
+						 * Если снесённый узел в дереве уцелел
+						 */
+						if(host.has(path) || host.element().first().valid()){
+							// Выводим сообщение о расхождении сноса узла
+							::fprintf(stderr, "xml fuzz: node removal differs\n  запись [%s]\n", host.dump().c_str());
+							// Выводим исходный текст разметки
+							dump(text);
+							// Выводим результат проверки дерева разметки
+							return false;
+						}
 					}
 				}
 				// Выполняем запись владеющего значения в текст
@@ -2614,7 +2674,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"xml fuzz: seed=%u, %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted, %llu values, %llu builds, %llu grafts\n",
+		"xml fuzz: seed=%u, %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted, %llu values, %llu builds, %llu grafts, %llu resets, %llu removals\n",
 		seed,
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
@@ -2626,7 +2686,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.intact),
 		static_cast <unsigned long long> (totals.values),
 		static_cast <unsigned long long> (totals.builds),
-		static_cast <unsigned long long> (totals.grafts)
+		static_cast <unsigned long long> (totals.grafts),
+		static_cast <unsigned long long> (totals.resets), static_cast <unsigned long long> (totals.removals)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

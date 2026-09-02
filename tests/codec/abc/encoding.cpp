@@ -288,7 +288,7 @@ TEST(CodecAbcEncoding, SingleValues) {
 	 * Разновидности одиночного значения
 	 */
 	const vector <abc::single_t> singles = {
-		abc::single_t::NUL, abc::single_t::FALSE, abc::single_t::TRUE,
+		abc::single_t::NUL, abc::single_t::NO, abc::single_t::YES,
 		abc::single_t::TIME, abc::single_t::UUID, abc::single_t::BREAK
 	};
 	/**

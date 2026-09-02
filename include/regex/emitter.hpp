@@ -520,6 +520,31 @@ namespace awh {
 				 */
 				size_t _stamp;
 			private:
+				/**
+				 * \~russian
+				 * Количество мест кадра вызова, входом отведённых
+				 *
+				 * @details Место кадра адресуется номером, а размер кадра
+				 *          вычисляется порождением по числу мест, каким оно
+				 *          пользуется. Связи между ними не было никакой:
+				 *          номер, размер кадра превышающий, писался бы за
+				 *          кадр молча, портя стек вызывающего. Ограждение
+				 *          обращает такую запись отказом порождения.
+				 *          Нулевое количество мест ограждения не выполняет -
+				 *          так стоит до размещения входа.
+				 *
+				 * \~english
+				 * The number of the slots of the call frame allocated by the prologue
+				 * @details A slot of the frame is addressed by number, and the size of
+				 *          the frame is computed by the generation from the number of slots
+				 *          it uses. There was no tie between them: a number exceeding
+				 *          the size of the frame would be written past the frame silently,
+				 *          corrupting the stack of the caller.
+				 *
+				 * \~
+				 */
+				size_t _seats;
+			private:
 				// Положения меток в порождаемой последовательности команд
 				vector <size_t> _labels;
 			private:

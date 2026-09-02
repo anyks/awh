@@ -230,7 +230,7 @@ TEST(CodecAbcReader, Scalars) {
 	// Выполняем сброс состояния разбора
 	reader.reset();
 	// Выполняем укладку логического значения
-	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::TRUE));
+	abc::mark(data, abc::group_t::SINGLE, static_cast <uint8_t> (abc::single_t::YES));
 	// Выполняем сбор всех событий разбора
 	events = collect(data, 0, reader);
 	// Выполняем проверку собранной последовательности событий
@@ -2636,5 +2636,234 @@ TEST(CodecAbcReader, DetailWidthAgreesWithReader) {
 		// Измеренная разбором ширина обязана отвечать объявленной посредником
 		EXPECT_EQ(measured, static_cast <size_t> (width))
 			<< "подробность: " << static_cast <uint32_t> (detail);
+	}
+}
+/**
+ * @brief Проверка того, что пропущенное вместимое неопределённой длины закрывается
+ *
+ * @details Вместимое неопределённой длины закрывается МЕТКОЮ конца, а не исчерпанием
+ * значений, тогда как пропуск объявляет значения исчерпанными и уводит разбор ЗА метку.
+ * Звено такого вместимого оставалось висеть открытым: корневое пропущенное обрывало
+ * документ недоразобранным - `UNEXPECTED_EOF` там, где запись цела, - а вложенное
+ * приписывало себе значения, стоящие ЗА ним
+ *
+ * @note Своя сборка размаха неопределённому вместимому не объявляет вовсе, оттого запись
+ * здесь кладётся руками: метка размаха перед неопределённым вместимым по виду записи
+ * законна, а запись приходит ИЗВНЕ
+ *
+ */
+TEST(CodecAbcReader, SkippedIndefiniteContainerCloses){
+	// Собираемая последовательность событий разбора
+	vector <abc::event_t> events;
+	/**
+	 * @brief Работа разбора записи с пропуском первого встреченного отображения
+	 *
+	 * @param record разбираемая запись
+	 * @param events собираемая последовательность событий разбора
+	 * @return       признак успешности разбора
+	 *
+	 */
+	auto walk = [](const vector <uint8_t> & record, vector <abc::event_t> & events) noexcept -> bool {
+		// Разбиратель бинарной записи
+		abc::reader_t reader(::logger());
+		// Выполняем установку обработчика прямой выдачи событий разбора
+		reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
+			// Выполняем получение собираемой последовательности событий разбора
+			vector <abc::event_t> & events = (* reinterpret_cast <vector <abc::event_t> *> (context));
+			// Выполняем учёт принятого события разбора
+			events.push_back(event);
+			// Если встречено начало отображения, требуем пропуска его целиком
+			if(event == abc::event_t::MAP_BEGIN)
+				// Пропуск объявленного размахом вместимого обязан быть принят
+				(void) reader.skip();
+		}, & events);
+		// Выводим признак успешности разбора поданной записи
+		return reader.feed(record.data(), record.size(), true);
+	};
+	/**
+	 * @brief Работа приписывания записи размаха впереди вместимого
+	 *
+	 * @param body тело вместимого, какому размах объявляется
+	 * @return     запись вместе с объявленным размахом
+	 *
+	 */
+	auto spanned = [](const vector <uint8_t> & body) noexcept -> vector <uint8_t> {
+		// Собираемая запись вместе с объявленным размахом
+		vector <uint8_t> result;
+		// Выполняем укладку метки объявленного размаха вместимого
+		result.push_back(static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::EXTEND) << 5) |
+		 static_cast <uint8_t> (abc::extend_t::SPANNED)));
+		/**
+		 * Выполняем укладку записи размаха вместимого младшим октетом вперёд
+		 */
+		for(size_t i = 0; i < abc::SPAN_LENGTH; i++)
+			// Выполняем укладку очередного октета записи размаха
+			result.push_back(static_cast <uint8_t> ((body.size() >> (i * 8)) & 0xFFu));
+		// Выполняем укладку тела вместимого
+		result.insert(result.end(), body.begin(), body.end());
+		// Выводим собранную запись
+		return result;
+	};
+	// Отображение неопределённой длины с одной парой: метка, имя `a`, значение 1, конец
+	const vector <uint8_t> body = {
+		static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::MAP) << 5) |
+		 static_cast <uint8_t> (abc::single_t::BREAK)),
+		static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::STRING) << 5) | 0x01u), 'a',
+		static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::UNSIGNED) << 5) | 0x01u),
+		static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::SINGLE) << 5) |
+		 static_cast <uint8_t> (abc::single_t::BREAK))
+	};
+	/**
+	 * Пропущенное вместимое стоит корнем записи
+	 */
+	{
+		// Выполняем разбор записи с пропуском корневого отображения
+		ASSERT_TRUE(walk(spanned(body), events));
+		// Событий обязано выйти ровно четыре: начало, конец, документ и конец записи
+		ASSERT_EQ(events.size(), static_cast <size_t> (4));
+		// Первым обязано стоять начало отображения
+		ASSERT_EQ(events.at(0), abc::event_t::MAP_BEGIN);
+		// Пропущенное отображение обязано закрыться, а не остаться висеть открытым
+		ASSERT_EQ(events.at(1), abc::event_t::MAP_END);
+		// Документ обязан быть объявлен завершённым
+		ASSERT_EQ(events.at(2), abc::event_t::DOCUMENT);
+		// Запись обязана быть объявлена разобранной до конца
+		ASSERT_EQ(events.at(3), abc::event_t::FINISH);
+	}
+	/**
+	 * Пропущенное вместимое стоит первым значением массива
+	 */
+	{
+		// Выполняем очистку собранной последовательности событий разбора
+		events.clear();
+		// Запись пропускаемого отображения вместе с объявленным размахом
+		const vector <uint8_t> inner = spanned(body);
+		// Собираемая запись массива из двух значений
+		vector <uint8_t> record;
+		// Выполняем укладку метки массива из двух значений
+		record.push_back(static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::ARRAY) << 5) | 0x02u));
+		// Выполняем укладку пропускаемого отображения первым значением массива
+		record.insert(record.end(), inner.begin(), inner.end());
+		// Выполняем укладку числа вторым значением массива
+		record.push_back(static_cast <uint8_t> ((static_cast <uint8_t> (abc::group_t::UNSIGNED) << 5) | 0x07u));
+		// Выполняем разбор записи с пропуском вложенного отображения
+		ASSERT_TRUE(walk(record, events));
+		// Событий обязано выйти ровно семь
+		ASSERT_EQ(events.size(), static_cast <size_t> (7));
+		// Первым обязано стоять начало массива
+		ASSERT_EQ(events.at(0), abc::event_t::ARRAY_BEGIN);
+		// Вторым обязано стоять начало пропускаемого отображения
+		ASSERT_EQ(events.at(1), abc::event_t::MAP_BEGIN);
+		// Пропущенное отображение обязано закрыться сразу же
+		ASSERT_EQ(events.at(2), abc::event_t::MAP_END);
+		// Число, стоящее ЗА пропущенным, обязано принадлежать массиву, а не ему
+		ASSERT_EQ(events.at(3), abc::event_t::NUMBER);
+		// Массив обязан закрыться вторым своим значением
+		ASSERT_EQ(events.at(4), abc::event_t::ARRAY_END);
+		// Документ обязан быть объявлен завершённым
+		ASSERT_EQ(events.at(5), abc::event_t::DOCUMENT);
+		// Запись обязана быть объявлена разобранной до конца
+		ASSERT_EQ(events.at(6), abc::event_t::FINISH);
+	}
+}
+/**
+ * @brief Проверка того, что предел очереди событий держат обе дороги подачи
+ *
+ * @details Подача у разбирателя двоякая: копированием (`feed`) и выдачей места под
+ * приём с последующей подачей принятого (`reserve` да `commit`). Настройка `maxEvents`
+ * стерегла очередь лишь у первой и молчала у второй - то есть не работала вовсе у того
+ * потребителя, ради какого путь этот и заведён, у поточного. Обратное давление
+ * обходилось одним лишь ВЫБОРОМ способа подачи
+ *
+ * @note Замер 02.09.2026 до правки: `feed` отвечал отказом на пятом октете, `reserve`
+ * принимал все 178 и отказа не давал ни разу
+ *
+ * @note Поверка ведётся подачей ПО ОДНОМУ октету и без снятия событий: так очередь
+ * растёт, а предел встречается там, где ему и место
+ *
+ */
+TEST(CodecAbcReader, EventLimitHoldsBothIntakePaths){
+	// Сборка бинарной записи
+	abc::writer_t writer(::logger());
+	// Выполняем укладку начала массива из ста значений
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (100)));
+	/**
+	 * Выполняем укладку всех значений массива
+	 */
+	for(uint64_t i = 0; i < 100; i++)
+		// Выполняем укладку очередного значения массива
+		ASSERT_TRUE(writer.number(i));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Собранная запись
+	const vector <uint8_t> record = writer.record();
+	// Настройки разбора с пределом очереди событий
+	abc::reader_t::settings_t settings;
+	// Выполняем установку предела очереди собранных событий
+	settings.maxEvents = 4;
+	// Количество октетов, принятых подачей копированием
+	size_t copied = 0;
+	/**
+	 * Подача копированием обязана упереться в предел
+	 */
+	{
+		// Разбиратель бинарной записи
+		abc::reader_t reader(::logger());
+		// Выполняем установку затребованных настроек разбора
+		reader.settings(settings);
+		/**
+		 * Выполняем подачу записи по одному октету
+		 */
+		for(size_t i = 0; i < record.size(); i++){
+			// Если подача очередного октета отвечена отказом
+			if(!reader.feed(record.data() + i, 1, false))
+				// Выходим из подачи записи
+				break;
+			// Выполняем учёт принятого октета
+			copied++;
+		}
+		// Подача обязана быть отвергнута прежде конца записи
+		ASSERT_LT(copied, record.size());
+		// Поводом отказа обязан стоять предел настроек разбора
+		ASSERT_EQ(reader.error(), abc::error_t::OVERFLOW_LIMIT);
+	}
+	/**
+	 * Подача выдачей места обязана упереться в тот же предел
+	 */
+	{
+		// Количество октетов, принятых выдачей места
+		size_t reserved = 0;
+		// Разбиратель бинарной записи
+		abc::reader_t reader(::logger());
+		// Выполняем установку затребованных настроек разбора
+		reader.settings(settings);
+		/**
+		 * Выполняем подачу записи по одному октету
+		 */
+		for(size_t i = 0; i < record.size(); i++){
+			// Выполняем выдачу места под приём одного октета
+			void * place = reader.reserve(1);
+			// Если места под приём октета не выдано
+			if(place == nullptr)
+				// Выходим из подачи записи
+				break;
+			// Выполняем перенос очередного октета в выданное место
+			::memcpy(place, record.data() + i, 1);
+			// Если подача принятого октета отвечена отказом
+			if(!reader.commit(1, false))
+				// Выходим из подачи записи
+				break;
+			// Выполняем учёт принятого октета
+			reserved++;
+		}
+		// Подача обязана быть отвергнута прежде конца записи
+		ASSERT_LT(reserved, record.size());
+		// Поводом отказа обязан стоять предел настроек разбора
+		ASSERT_EQ(reader.error(), abc::error_t::OVERFLOW_LIMIT);
+		/**
+		 * Обе дороги обязаны упереться в предел на ОДНОМ И ТОМ ЖЕ октете: предел один,
+		 * и расхождение означало бы, что стерегут они разное
+		 */
+		ASSERT_EQ(reserved, copied);
 	}
 }

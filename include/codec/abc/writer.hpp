@@ -230,6 +230,58 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Отрезок записи имени поля отображения вместе со свёрткой его
+					 *
+					 * @details Свёртка держится РЯДОМ с отрезком, а не считается заново на всяком
+					 * сличении: перебор прежних имён растёт квадратом их количества, и полное
+					 * сличение октетов на всякой паре обходилось дорого. Устройство взято у
+					 * разбора (`Reader`) знак в знак
+					 *
+					 * \~english
+					 * @brief Segment of the record of the name of a field of a mapping together with its digest
+					 *
+					 * \~
+					 */
+					typedef struct Naming {
+						// Смещение записи имени поля от начала собираемой записи
+						uint32_t offset;
+						// Длина записи имени поля в октетах
+						uint32_t length;
+						// Свёртка записи имени поля
+						uint64_t digest;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param offset смещение записи имени поля
+						 * @param length длина записи имени поля
+						 * @param digest свёртка записи имени поля
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Naming() noexcept : offset(0), length(0), digest(0) {}
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * @param offset смещение записи имени поля
+						 * @param length длина записи имени поля
+						 * @param digest свёртка записи имени поля
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Naming(const uint32_t offset, const uint32_t length, const uint64_t digest) noexcept :
+						 offset(offset), length(length), digest(digest) {}
+					} naming_t;
+				private:
 					typedef struct Frame {
 						// Признак того, что вместимое является отображением
 						bool mapping;
@@ -264,6 +316,20 @@ namespace awh {
 						 * \~
 						 */
 						size_t base;
+						/**
+						 * \~russian
+						 * Вместимость указателя имён полей вместимого, ноль - указатель не заведён
+						 *
+						 * @note Устройство взято у разбора (`Reader::duplicated`) знак в знак:
+						 * поверка повторов там и здесь решает один и тот же вопрос, и расходиться
+						 * им незачем
+						 *
+						 * \~english
+						 * Capacity of the index of the names of the fields of the container, zero if not created
+						 *
+						 * \~
+						 */
+						size_t hashed;
 						/**
 						 * \~russian
 						 * Смещение отведённого места записи размаха, ноль - размах не объявлен
@@ -315,7 +381,7 @@ namespace awh {
 						 */
 						Frame() noexcept :
 						 mapping(false), indefinite(false), expectKey(false), marked(false), remain(0),
-						 base(0), spanned(0), segment(type_t::UNDEFINED) {}
+						 base(0), hashed(0), spanned(0), segment(type_t::UNDEFINED) {}
 					} frame_t;
 					/**
 					 * \~russian
@@ -425,7 +491,23 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					mutable vector <span_t> _keys;
+					mutable vector <naming_t> _keys;
+				private:
+					/**
+					 * \~russian
+					 * Указатели имён полей, свои у всякой глубины вложенности
+					 *
+					 * @details Держатся они СБОРКОЙ, а не звеном стека: звено заводится и
+					 * снимается на всякое вместимое, и указатель при нём стоил бы выделения
+					 * памяти на каждое из них. Держась глубиною, вместилище это переживает
+					 * закрытие вместимого и достаётся следующему той же глубины
+					 *
+					 * \~english
+					 * @brief Indexes of the names of the fields, own for every depth of the nesting
+					 *
+					 * \~
+					 */
+					mutable vector <vector <uint32_t>> _tables;
 				private:
 					// Признак того, что сборка отвечена отказом
 					bool _failed;
@@ -480,6 +562,36 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Метод перестроения указателя имён полей вместимого
+					 *
+					 * @param depth  глубина звена, чей указатель перестраивается
+					 * @param frame  звено стека вместимых
+					 * @param needed число имён, какое указателю надлежит вместить
+					 *
+					 * \~english
+					 * @brief Method of the rebuilding of the index of the names of the fields of a container
+					 *
+					 * \~
+					 */
+					void rehash(const size_t depth, frame_t & frame, const size_t needed) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод поверки имени поля отображения на повтор
+					 *
+					 * @param frame  звено стека вместимых, чьё имя поля поверяется
+					 * @param offset смещение записи имени поля от начала собираемой записи
+					 * @param length длина записи имени поля отображения
+					 * @param digest свёртка записи имени поля отображения
+					 * @return       признак того, что имя поля в этом вместимом уже было
+					 *
+					 * \~english
+					 * @brief Method of the checking of the name of a field of a mapping for a repeat
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool duplicated(frame_t & frame, const size_t offset, const size_t length, const uint64_t digest) noexcept;
 					[[nodiscard]] bool account(const size_t start) noexcept;
 					/**
 					 * \~russian

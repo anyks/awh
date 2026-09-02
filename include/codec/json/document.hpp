@@ -1266,6 +1266,21 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
+					 * Кодировка, какою исходный текст документа прочитан
+					 *
+					 * @note Хранится своим полем, а не спрашивается у чтения, оттого что очистка
+					 *       обязана её сбрасывать, а сбросить чтение посреди разбора нельзя:
+					 *       очистка бывает позвана из обработчика потоковой выдачи
+					 *
+					 * \~english
+					 * Encoding by which the source text of the document has been read
+					 *
+					 * \~
+					 */
+					encoding_t _encoding = encoding_t::NONE;
+				private:
+					/**
+					 * \~russian
 					 * Объект ведения журнала работы
 					 *
 					 * @note Логгер уходит и в чтение, деревом хранимое: разбор сообщает о бедах
@@ -1583,6 +1598,29 @@ namespace awh {
 					 * \~
 					 */
 					bool deduplicate(const uint32_t parent, const reader_t & reader) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод розыска узла дерева документа по звеньям указателя
+					 *
+					 * @details Звено обращается к значению массива по номеру, а к полю объекта -
+					 * по имени. Работа эта общая у правки, сноса и сброса: розыск по указателю
+					 * обязан идти у них по одним правилам, а прежде он жил внутри одной правки
+					 *
+					 * @param parts     звенья указателя на разыскиваемое место
+					 * @param target    номер разысканного узла
+					 * @param ancestors перечень номеров узлов-предков разысканного места
+					 * @return          признак успешности розыска
+					 *
+					 * \~english
+					 * @brief Method of the search of a node of the tree of the document by the parts of a pointer
+					 * @param parts     parts of the pointer to the place being searched for
+					 * @param target    number of the found node
+					 * @param ancestors list of the numbers of the ancestor nodes of the found place
+					 * @return          flag of the success of the search
+					 *
+					 * \~
+					 */
+					bool locate(const vector <string> & parts, uint32_t & target, vector <uint32_t> & ancestors) const noexcept;
 				private:
 					/**
 					 * \~russian
@@ -1900,6 +1938,79 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					bool set(const string & pointer, const json::Value & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сноса значения дерева документа по указателю
+					 *
+					 * @details Узел, разысканный указателем, снимается со всем содержимым своим,
+					 * а вместилище, его державшее, о нём забывает: длина массива убывает, поле
+					 * объекта исчезает
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки, а вид пути остаётся
+					 *       своим у каждого: у документа это указатель RFC 6901
+					 *
+					 * @warning Снос корня отвергается: дерево без корня значением не является
+					 *          вовсе, и опустошается оно ходом `clear()`
+					 *
+					 * @warning Снос сдвигает нумерацию узлов, и всякая ссылка, выданная наружу
+					 *          прежде, обращается в недействительную - ровно как при правке
+					 *
+					 * @param pointer указатель на сносимое значение по RFC 6901
+					 * @return        признак успешности сноса
+					 *
+					 * \~english
+					 * @brief Method of the removal of a value of the tree of the document by a pointer
+					 * @param pointer pointer to the value being removed according to RFC 6901
+					 * @return        flag of the success of the removal
+					 *
+					 * \~
+					 */
+					bool erase(const string & pointer) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сброса значения дерева документа по указателю
+					 *
+					 * @details Узел, разысканный указателем, замещается пустым значением `null`
+					 * со всем содержимым своим. Сам узел при этом остаётся на месте: поле объекта
+					 * имя своё сохраняет, а значение массива - положение своё
+					 *
+					 * @note Сброс от сноса тем и отличается, что место сохраняется: `null` есть
+					 *       законное значение стандарта, и отсутствию поля он не равен
+					 *
+					 * @param pointer указатель на сбрасываемое значение по RFC 6901
+					 * @return        признак успешности сброса
+					 *
+					 * \~english
+					 * @brief Method of the resetting of a value of the tree of the document by a pointer
+					 * @param pointer pointer to the value being reset according to RFC 6901
+					 * @return        flag of the success of the resetting
+					 *
+					 * \~
+					 */
+					bool reset(const string & pointer) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод прививки владеющего значения в дерево документа
+					 *
+					 * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей,
+					 * написанных прежде согласования кодеков рамки между собой. Зови `set()`:
+					 * им правка дерева по пути зовётся у всех семи кодеков, а вид пути остаётся
+					 * своим у каждого - у документа это указатель RFC 6901
+					 *
+					 * @param pointer указатель на прививаемое место
+					 * @param value   прививаемое владеющее значение
+					 * @return        признак успешности прививки
+					 *
+					 * \~english
+					 * @brief Method of the grafting of an owning value into the tree of the document
+					 * @deprecated This name is DEPRECATED and is left as an intermediary. Call `set()`
+					 * @param pointer pointer to the place being grafted
+					 * @param value   owning value being grafted
+					 * @return        flag of the success of the grafting
+					 *
+					 * \~
+					 */
 					bool graft(const string & pointer, const json::Value & value) noexcept;
 				public:
 					/**
@@ -1993,6 +2104,27 @@ namespace awh {
 					 * \~
 					 */
 					value_t at(const string & pointer) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки наличия значения по указателю JSON Pointer
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки, а вид пути остаётся
+					 *       своим у каждого: у документа это указатель RFC 6901
+					 *
+					 * @note Пустой указатель ведёт к корню дерева и наличием отвечает у всякого
+					 *       разобранного документа: корень есть у него всегда
+					 *
+					 * @param pointer указатель на значение по RFC 6901
+					 * @return        признак наличия значения по указанному указателю
+					 *
+					 * \~english
+					 * @brief Method of checking the presence of a value by a JSON Pointer
+					 * @param pointer pointer to the value according to RFC 6901
+					 * @return        flag of the presence of a value at the specified pointer
+					 *
+					 * \~
+					 */
+					bool has(const string & pointer) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -2061,6 +2193,32 @@ namespace awh {
 					 * \~
 					 */
 					const location_t & errorLocation() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения кодировки исходного текста
+					 *
+					 * @details Выдаётся кодировка, какою текст ПРОЧИТАН - та, из которой шёл
+					 * перевод в UTF-8, распознанная по метке порядка байтов либо навязанная
+					 * настройками чтения. Кодека, объявляющего кодировку внутри себя, в JSON
+					 * нет, оттого иного ответа тут не бывает
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки: потребитель, читающий
+					 *       несколько кодеков, спрашивает кодировку одинаково
+					 *
+					 * @warning До первого разбора выдаётся кодировка неопределённая
+					 *
+					 * @return кодировка исходного текста
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the encoding of the source text
+					 * @details The encoding by which the text has been READ is issued — the one from which
+					 * the conversion to UTF-8 went, recognized by the byte order mark or imposed
+					 * by the settings of the reading
+					 * @return encoding of the source text
+					 *
+					 * \~
+					 */
+					encoding_t encoding() const noexcept;
 				public:
 					/**
 					 * \~russian

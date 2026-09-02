@@ -184,6 +184,8 @@ bool awh::codec::abc::Document::fail(const error_t error) noexcept {
  *
  */
 void awh::codec::abc::Document::clear() noexcept {
+	// Выполняем сброс места, где отказ разбора произошёл
+	this->_location = location_t();
 	// Выполняем очистку вместилища узлов дерева
 	this->_nodes.clear();
 	// Выполняем очистку хранилища содержимого
@@ -799,11 +801,22 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 		if(!state.failed)
 			// Выполняем установку кода отказа разбора
 			this->_error = reader.error();
+		/**
+		 * Выполняем перенос места, где отказ произошёл
+		 *
+		 * @note Место берётся у разбирателя ВСЯКИЙ раз, а не только при отказе разбора:
+		 *       отказала ли сборка дерева либо сам разбор, место у обоих одно - там, где
+		 *       разбор стоит, - а разбиратель разрушается концом работы, и после него
+		 *       спрашивать уже некого
+		 */
+		this->_location = reader.location();
 		// Сообщаем, что разбор отвечен отказом
 		return false;
 	}
 	// Если стек открытых вместимых не опустел
 	if(!state.stack.empty()){
+		// Выполняем перенос места, где отказ произошёл
+		this->_location = reader.location();
 		// Выполняем установку кода внутреннего отказа
 		this->fail(error_t::INTERNAL);
 		// Сообщаем, что разбор отвечен отказом
@@ -811,6 +824,8 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
 	}
 	// Если дерево документа осталось пустым
 	if(this->_nodes.empty()){
+		// Выполняем перенос места, где отказ произошёл
+		this->_location = reader.location();
 		// Выполняем установку кода отказа пустой записи
 		this->fail(error_t::EMPTY_RECORD);
 		// Сообщаем, что разбор отвечен отказом
@@ -829,10 +844,69 @@ bool awh::codec::abc::Document::parse(const void * buffer, const size_t size, co
  *
  */
 bool awh::codec::abc::Document::parse(const void * buffer, const size_t size) noexcept {
-	// Настройки разбора записи по умолчанию
-	const reader_t::settings_t settings;
-	// Выполняем разбор записи в дерево документа
-	return this->parse(buffer, size, settings);
+	/**
+	 * Выполняем разбор записи настройками, деревом хранимыми
+	 *
+	 * @note Хранимые настройки берутся ЗДЕСЬ, а не у работы с настройками доводом: та
+	 *       берёт отданные ей и хранимых не трогает вовсе. Устройство это равняется на
+	 *       шесть прочих кодеков рамки
+	 */
+	return this->parse(buffer, size, this->_parsing);
+}
+/**
+ * @brief Метод сборки записи из дерева документа
+ *
+ * @return собранная запись, пустая при отказе сборки
+ *
+ */
+vector <uint8_t> awh::codec::abc::Document::dump() const noexcept {
+	// Сборщик бинарной записи
+	writer_t writer(this->_log);
+	// Если сборка записи из дерева документа отвечена отказом
+	if(!this->build(writer))
+		// Выводим пустую запись
+		return vector <uint8_t> ();
+	// Выводим собранную запись
+	return writer.record();
+}
+/**
+ * @brief Метод сборки записи из дерева документа затребованными настройками
+ *
+ * @param settings настройки сборки записи
+ * @return         собранная запись, пустая при отказе сборки
+ *
+ */
+vector <uint8_t> awh::codec::abc::Document::dump(const writer_t::settings_t & settings) const noexcept {
+	// Сборщик бинарной записи
+	writer_t writer(this->_log);
+	// Выполняем установку затребованных настроек сборки записи
+	writer.settings(settings);
+	// Если сборка записи из дерева документа отвечена отказом
+	if(!this->build(writer))
+		// Выводим пустую запись
+		return vector <uint8_t> ();
+	// Выводим собранную запись
+	return writer.record();
+}
+/**
+ * @brief Метод извлечения настроек разбора записи
+ *
+ * @return настройки разбора записи
+ *
+ */
+const awh::codec::abc::reader_t::settings_t & awh::codec::abc::Document::settings() const noexcept {
+	// Выводим настройки разбора записи
+	return this->_parsing;
+}
+/**
+ * @brief Метод установки настроек разбора записи
+ *
+ * @param settings устанавливаемые настройки разбора записи
+ *
+ */
+void awh::codec::abc::Document::settings(const reader_t::settings_t & settings) noexcept {
+	// Выполняем установку настроек разбора записи
+	this->_parsing = settings;
 }
 /**
  * @brief Метод сборки записи из дерева документа
@@ -1123,6 +1197,28 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::root() const noexc
  * @return количество узлов дерева документа
  *
  */
+size_t awh::codec::abc::Document::size() const noexcept {
+	// Выводим количество узлов дерева документа
+	return this->_nodes.size();
+}
+/**
+ * @brief Метод проверки дерева документа на пустоту
+ *
+ * @return признак отсутствия узлов в дереве документа
+ *
+ */
+bool awh::codec::abc::Document::empty() const noexcept {
+	// Выводим признак отсутствия узлов в дереве документа
+	return this->_nodes.empty();
+}
+/**
+ * @brief Метод извлечения количества узлов дерева документа
+ *
+ * @deprecated Работа переименована в `size()` ради согласия договоров кодеков
+ *
+ * @return количество узлов дерева документа
+ *
+ */
 size_t awh::codec::abc::Document::nodes() const noexcept {
 	// Выводим количество узлов дерева документа
 	return this->_nodes.size();
@@ -1136,6 +1232,26 @@ size_t awh::codec::abc::Document::nodes() const noexcept {
 awh::codec::abc::error_t awh::codec::abc::Document::error() const noexcept {
 	// Выводим код отказа разбора записи
 	return this->_error;
+}
+/**
+ * @brief Метод извлечения места, где отказ разбора произошёл
+ *
+ * @return место, где отказ разбора произошёл
+ *
+ */
+const awh::codec::abc::location_t & awh::codec::abc::Document::errorLocation() const noexcept {
+	// Выводим место, где отказ разбора произошёл
+	return this->_location;
+}
+/**
+ * @brief Метод установки объекта логирования
+ *
+ * @param log объект работы с логами
+ *
+ */
+void awh::codec::abc::Document::setLogger(const log_t * log) noexcept {
+	// Выполняем установку объекта логирования
+	this->_log = log;
 }
 /**
  * @brief Метод проверки действительности ссылки
@@ -1402,6 +1518,35 @@ bool awh::codec::abc::Document::Value::value(uint64_t & result) const noexcept {
 	const type_t type = this->type();
 	// Разрядная запись значения
 	uint64_t bits = 0;
+	/**
+	 * Если значение является отметкой времени
+	 *
+	 * @details Отметка времени есть целое, и извлекаться она обязана ОБОИМИ целыми
+	 * видами. Прежде дерево разбора отдавало её видом со знаком и отвечало ОТКАЗОМ виду
+	 * без знака, тогда как владеющее значение отдавало обоими: одна и та же запись,
+	 * прочтённая двумя видами одного кодека, давала разные ответы
+	 *
+	 * @note Замер 03.09.2026 на отметке 1756800000: `Document` отвечал `int64=да`,
+	 * `uint64=ОТКАЗ`, а `Value` - `int64=да`, `uint64=да`. Закреплено проверкой
+	 * `CodecAbcDocument.TimestampExtractsByBothIntegerKinds`
+	 *
+	 * @note Дробным видом отметка не извлекается НИ У ОДНОГО из двух видов, и это не
+	 * расхождение, а согласие: за пределом 2^53 дробное число отметку не представляет
+	 * точно, и молчаливая потеря разрядов хуже отказа
+	 */
+	if(type == type_t::TIME){
+		// Выполняем снятие разрядной записи отметки времени
+		::memcpy(&bits, this->_doc->_nodes.at(this->_index).content, sizeof(bits));
+		/**
+		 * Выполняем установку извлекаемого значения переносом младших разрядов
+		 *
+		 * @note Отметка, меньшая нуля, видом без знака не представима, и переносится она
+		 *       младшими разрядами: договор извлечения общий у кодеков рамки
+		 */
+		result = bits;
+		// Сообщаем, что извлечение успешно
+		return true;
+	}
 	// Если значение числом родного вида не является
 	if(!((static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::INT)) ||
 	     (static_cast <uint32_t> (type) & static_cast <uint32_t> (type_t::REAL))))

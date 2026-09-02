@@ -382,7 +382,7 @@ TEST(CodecAbcDocument, IndefiniteBecomesDefinite) {
 	ASSERT_TRUE(again.parse(rebuild.record().data(), rebuild.record().size()))
 		<< "код отказа: " << abc::message(again.error());
 	// Выполняем проверку совпадения количества узлов деревьев
-	ASSERT_EQ(again.nodes(), document.nodes());
+	ASSERT_EQ(again.size(), document.size());
 }
 /**
  * @brief Проверка извлечения чисел с проверкой пределов
@@ -643,7 +643,7 @@ TEST(CodecAbcDocument, SegmentedValue) {
 	 * Выполняем проверку количества узлов дерева: отображение, имя поля и значение,
 	 * собранное кусками, - три узла, а не четыре и не пять
 	 */
-	ASSERT_EQ(document.nodes(), 3ul);
+	ASSERT_EQ(document.size(), 3ul);
 	// Выполняем получение корня дерева документа
 	const abc::document_t::value_t root = document.root();
 	// Выполняем проверку вида корня дерева
@@ -1587,4 +1587,284 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 	same(whole(static_cast <uint64_t> ((1ull << 53) - 1)), "два в пятьдесят третьей минус один целым");
 	same(whole(numeric_limits <int64_t>::min()), "нижний предел целого со знаком");
 	same(whole(numeric_limits <int64_t>::max()), "верхний предел целого со знаком");
+}
+/**
+ * @brief Проверка того, что место отказа разбора доходит до потребителя
+ *
+ * @details Разбиратель заводится разбором и им же разрушается, и место отказа, у него
+ * снятое, без переноса пропадало бы вместе с ним. Работа `errorLocation` заведена ради
+ * согласия договоров кодеков: у шести текстовых кодеков рамки она зовётся тем же именем
+ *
+ * @note Поверка требует смещения НЕНУЛЕВОГО: запись оборвана посреди значения, и нуль
+ * означал бы, что место не перенесено вовсе, а взято у пустого вида
+ *
+ */
+TEST(CodecAbcDocument, ErrorLocationReachesTheConsumer){
+	// Сборка бинарной записи
+	abc::writer_t writer(::logger());
+	// Выполняем укладку начала массива из трёх значений
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
+	// Выполняем укладку первого значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (1)));
+	// Выполняем укладку второго значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (2)));
+	// Выполняем укладку третьего значения массива
+	ASSERT_TRUE(writer.number(static_cast <uint64_t> (3)));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Собранная запись
+	const vector <uint8_t> record = writer.record();
+	// Дерево документа
+	abc::document_t document(::logger());
+	// Место отказа у свежего дерева обязано быть пустым
+	ASSERT_EQ(document.errorLocation().offset, abc::NO_OFFSET);
+	// Оборванная запись обязана быть отвергнута разбором
+	ASSERT_FALSE(document.parse(record.data(), record.size() - 1));
+	// Поводом отказа обязан стоять обрыв записи посреди значения
+	ASSERT_EQ(document.error(), abc::error_t::UNEXPECTED_EOF);
+	// Место отказа обязано указывать внутрь записи, а не оставаться пустым
+	ASSERT_NE(document.errorLocation().offset, abc::NO_OFFSET);
+	// Место отказа обязано лежать внутри поданной записи
+	ASSERT_LE(document.errorLocation().offset, static_cast <uint64_t> (record.size()));
+	// Очистка дерева обязана снимать и место отказа
+	document.clear();
+	// Снятое место отказа обязано вернуться к пустому виду
+	ASSERT_EQ(document.errorLocation().offset, abc::NO_OFFSET);
+}
+/**
+ * @brief Проверка согласия договора дерева документа с прочими кодеками рамки
+ *
+ * @details Владелец затребовал 02.09.2026 согласия договоров всех семи кодеков на уровне
+ * общего API. Поверка держит ту его часть, какая у ABC заведена ради согласия: `size`,
+ * `empty`, `dump` двумя видами, `settings` парою и `errorLocation`. Без неё добавки эти
+ * стояли бы незваными - набор их не трогал, а согласие проверялось бы чтением заголовков
+ *
+ * @note Поверяется РАБОТА добавок, а не наличие их: наличие блюдёт сам собиратель, а
+ * молчаливо negodный `dump` прошёл бы поверку наличия и провалил бы круговой ход
+ *
+ */
+TEST(CodecAbcDocument, ContractAgreesWithTheOtherCodecs){
+	// Сборка бинарной записи
+	abc::writer_t writer(::logger());
+	// Выполняем укладку начала массива из трёх значений
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
+	/**
+	 * Выполняем укладку всех значений массива
+	 */
+	for(uint64_t i = 1; i < 4; i++)
+		// Выполняем укладку очередного значения массива
+		ASSERT_TRUE(writer.number(i));
+	// Выполняем укладку конца массива
+	ASSERT_TRUE(writer.arrayEnd());
+	// Собранная запись
+	const vector <uint8_t> record = writer.record();
+	// Дерево документа
+	abc::document_t document(::logger());
+	// Свежее дерево обязано быть пустым
+	ASSERT_TRUE(document.empty());
+	// Узлов у свежего дерева быть не должно
+	ASSERT_EQ(document.size(), static_cast <size_t> (0));
+	// Настройки разбора с отказом на повтор имени поля
+	abc::reader_t::settings_t parsing;
+	// Выполняем объявление строгого вида записи
+	parsing.canonical = true;
+	// Выполняем установку настроек разбора деревом
+	document.settings(parsing);
+	// Хранимые настройки обязаны отвечать установленным
+	ASSERT_TRUE(document.settings().canonical);
+	// Запись обязана разбираться в дерево документа
+	ASSERT_TRUE(document.parse(record.data(), record.size()))
+		<< "код отказа: " << abc::message(document.error());
+	// Разобранное дерево пустым быть не должно
+	ASSERT_FALSE(document.empty());
+	// Узлов у дерева обязано выйти четыре: массив и три значения его
+	ASSERT_EQ(document.size(), static_cast <size_t> (4));
+	// Собранная деревом запись обязана совпасть с исходной октет в октет
+	ASSERT_EQ(document.dump(), record);
+	// Настройки сборки записи
+	abc::writer_t::settings_t assembling;
+	// Собранная затребованными настройками запись обязана совпасть с исходной
+	ASSERT_EQ(document.dump(assembling), record);
+	// Очистка обязана возвращать дерево к пустому виду
+	document.clear();
+	// Очищенное дерево обязано быть пустым
+	ASSERT_TRUE(document.empty());
+	// Узлов у очищенного дерева быть не должно
+	ASSERT_EQ(document.size(), static_cast <size_t> (0));
+	/**
+	 * Настройки разбора очистка трогать НЕ должна: они принадлежат дереву, а не
+	 * разобранному в него содержимому
+	 */
+	ASSERT_TRUE(document.settings().canonical);
+}
+/**
+ * @brief Проверка того, что отметка времени извлекается обоими целыми видами
+ *
+ * @details Отметка времени есть целое, и извлекаться она обязана и видом со знаком, и
+ * видом без знака. Дерево разбора отдавало её лишь видом со знаком и отвечало ОТКАЗОМ
+ * виду без знака, тогда как владеющее значение отдавало обоими: одна и та же запись,
+ * прочтённая двумя видами ОДНОГО кодека, давала разные ответы
+ *
+ * @note Поверка ведёт оба вида ABC СРАЗУ и сличает их между собой. В том и суть: порознь
+ * всякий из них выглядел бы согласным сам с собою, и расхождение видно лишь рядом
+ *
+ * @note Дробным видом отметка не извлекается ни у одного из двух, и поверка это
+ * закрепляет: согласие в отказе есть такая же часть договора, как и согласие в ответе
+ *
+ */
+TEST(CodecAbcDocument, TimestampExtractsByBothIntegerKinds){
+	// Отметка времени, укладываемая в запись
+	const int64_t stamp = static_cast <int64_t> (1756800000);
+	// Сборка бинарной записи
+	abc::writer_t writer(::logger());
+	// Отметка времени обязана укладываться сборкою
+	ASSERT_TRUE(writer.timestamp(stamp));
+	// Собранная запись
+	const vector <uint8_t> record = writer.record();
+	// Дерево документа
+	abc::document_t document(::logger());
+	// Запись обязана разбираться в дерево документа
+	ASSERT_TRUE(document.parse(record.data(), record.size()))
+		<< "код отказа: " << abc::message(document.error());
+	// Владеющее значение
+	abc::value_t owned;
+	// Выполняем установку объекта логирования
+	owned.setLogger(::logger());
+	// Запись обязана разбираться во владеющее значение
+	ASSERT_TRUE(owned.parse(record.data(), record.size()));
+	// Указание на корень дерева разбора
+	const abc::document_t::value_t view = document.root();
+	// Извлекаемое целое со знаком
+	int64_t integer = 0;
+	// Отметка обязана извлекаться видом со знаком у дерева разбора
+	ASSERT_TRUE(view.value(integer));
+	// Извлечённая отметка обязана отвечать уложенной
+	ASSERT_EQ(integer, stamp);
+	// Выполняем сброс извлекаемого целого со знаком
+	integer = 0;
+	// Отметка обязана извлекаться видом со знаком у владеющего значения
+	ASSERT_TRUE(owned.value(integer));
+	// Извлечённая отметка обязана отвечать уложенной
+	ASSERT_EQ(integer, stamp);
+	// Извлекаемое целое без знака у дерева разбора
+	uint64_t natural = 0;
+	// Отметка обязана извлекаться видом без знака у дерева разбора
+	ASSERT_TRUE(view.value(natural));
+	// Извлечённая отметка обязана отвечать уложенной
+	ASSERT_EQ(natural, static_cast <uint64_t> (stamp));
+	// Извлекаемое целое без знака у владеющего значения
+	uint64_t other = 0;
+	// Отметка обязана извлекаться видом без знака у владеющего значения
+	ASSERT_TRUE(owned.value(other));
+	// Оба вида кодека обязаны отвечать ОДИНАКОВО
+	ASSERT_EQ(natural, other);
+	// Извлекаемое дробное у дерева разбора
+	double real = 0.0;
+	// Дробным видом отметка извлекаться не должна
+	ASSERT_FALSE(view.value(real));
+	// Извлекаемое дробное у владеющего значения
+	double another = 0.0;
+	// Оба вида кодека обязаны отвечать отказом одинаково
+	ASSERT_FALSE(owned.value(another));
+}
+/**
+ * @brief Проверка согласия хранимого счёта узлов с обходом дерева
+ *
+ * @details Учёт узлов у дерева поверялся ДО СИХ ПОР лишь случаем: подмена мест учёта
+ * красила проверки о правиле повтора имени да о прививке, до счёта касательства не
+ * имеющие. Сторожить учёт случаем нельзя - переставь завтра эти проверки, и он
+ * останется без сторожа вовсе, а узнать о том будет неоткуда
+ *
+ * @note Довод подан Николаем 03.09.2026: он нашёл у себя ровно то же и завёл поверку
+ * прямо на счёт. Правило общее - подмена, красящая ЧУЖУЮ проверку, наблюдаемости не
+ * доказывает: доказывает её проверка, для того заведённая
+ *
+ * @note Поверка ведёт ДВА хода по одному дереву: счёт, деревом хранимый, сличается с
+ * перебором обходом. Один ход не поверяет ничего - он и есть то, что поверяется
+ *
+ */
+TEST(CodecAbcDocument, StoredCountsAgreeWithTheWalk){
+	// Сборка бинарной записи
+	abc::writer_t writer(::logger());
+	// Выполняем укладку начала отображения из двух пар
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (2)));
+	// Выполняем укладку имени первой пары
+	ASSERT_TRUE(writer.text(string{"перечень"}));
+	// Выполняем укладку начала перечня из трёх значений
+	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
+	/**
+	 * Выполняем укладку значений перечня
+	 */
+	for(uint64_t i = 0; i < 3; i++)
+		// Выполняем укладку очередного значения перечня
+		ASSERT_TRUE(writer.number(i));
+	// Выполняем укладку конца перечня
+	ASSERT_TRUE(writer.arrayEnd());
+	// Выполняем укладку имени второй пары
+	ASSERT_TRUE(writer.text(string{"вложенное"}));
+	// Выполняем укладку начала вложенного отображения из одной пары
+	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (1)));
+	// Выполняем укладку имени пары вложенного отображения
+	ASSERT_TRUE(writer.text(string{"поле"}));
+	// Выполняем укладку значения пары вложенного отображения
+	ASSERT_TRUE(writer.boolean(true));
+	// Выполняем укладку конца вложенного отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Выполняем укладку конца отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Собранная запись
+	const vector <uint8_t> record = writer.record();
+	// Дерево документа
+	abc::document_t document(::logger());
+	// Запись обязана разбираться в дерево документа
+	ASSERT_TRUE(document.parse(record.data(), record.size()))
+		<< "код отказа: " << abc::message(document.error());
+	/**
+	 * @brief Работа обхода дерева со счётом узлов и поверкой счёта детей
+	 *
+	 * @param value обходимое значение дерева документа
+	 * @param self  ссылка на саму работу обхода
+	 * @return      количество узлов обойденного поддерева
+	 *
+	 */
+	auto walk = [](const abc::document_t::value_t & value, auto & self) noexcept -> size_t {
+		// Количество узлов обойденного поддерева, считая сам узел
+		size_t result = 1;
+		// Если значение вместимым не является, поддерева у него нет
+		if(!value.is(abc::type_t::CONTAINER))
+			// Выводим количество узлов обойденного поддерева
+			return result;
+		// Количество детей, обходом насчитанное
+		size_t counted = 0;
+		/**
+		 * Выполняем обход всех значений вместимого
+		 */
+		for(size_t i = 0; i < value.size(); i++){
+			// Выполняем учёт обойденного ребёнка вместимого
+			counted++;
+			/**
+			 * Если вместимое является отображением, имя поля есть такой же узел
+			 */
+			if(value.type() == abc::type_t::MAP)
+				// Выполняем учёт узлов поддерева имени поля отображения
+				result += self(value.key(i), self);
+			// Выполняем учёт узлов поддерева значения вместимого
+			result += self(value.at(i), self);
+		}
+		// Счёт детей, деревом хранимый, обязан отвечать насчитанному обходом
+		EXPECT_EQ(counted, value.size());
+		// Выводим количество узлов обойденного поддерева
+		return result;
+	};
+	// Выполняем обход дерева документа со счётом узлов
+	const size_t walked = walk(document.root(), walk);
+	/**
+	 * Счёт узлов, деревом хранимый, обязан отвечать насчитанному обходом
+	 *
+	 * @note Именно этот сторож и отсутствовал: `size()` отдаёт длину арены, а обход
+	 *       идёт размахами, и разойтись они могут молча
+	 */
+	ASSERT_EQ(walked, document.size());
+	// Корень обязан нести ровно две пары
+	ASSERT_EQ(document.root().size(), static_cast <size_t> (2));
 }

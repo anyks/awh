@@ -219,6 +219,23 @@ namespace awh {
 					 */
 					mutable location_t _location;
 				private:
+					/**
+					 * \~russian
+					 * Кодировка, какою исходный текст таблицы прочитан
+					 *
+					 * @note Хранится полем оттого, что чтение живёт лишь внутри разбора: спросить
+					 *       его после выхода нельзя, а потребителю кодировка нужна и после
+					 *
+					 * @warning Поле это обязано сбрасываться очисткой таблицы наравне с кодом
+					 *          отказа: пережившая очистку кодировка отвечала бы о прежнем тексте
+					 *
+					 * \~english
+					 * Encoding by which the source text of the table has been read
+					 *
+					 * \~
+					 */
+					encoding_t _encoding = encoding_t::NONE;
+				private:
 					// Хранилище знаков полей таблицы
 					string _storage;
 					// Хранилище имён столбцов
@@ -544,6 +561,29 @@ namespace awh {
 					 * \~
 					 */
 					const location_t & errorLocation() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения кодировки исходного текста таблицы
+					 *
+					 * @details Выдаётся кодировка, какою текст ПРОЧИТАН - та, из которой шёл
+					 * перевод в UTF-8, распознанная по метке порядка байтов либо навязанная
+					 * настройками чтения. Кодека, объявляющего кодировку внутри себя, у таблицы
+					 * нет, оттого иного ответа тут не бывает
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки: потребитель, читающий
+					 *       несколько кодеков, спрашивает кодировку одинаково
+					 *
+					 * @warning До первого разбора выдаётся кодировка неопределённая
+					 *
+					 * @return кодировка исходного текста таблицы
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the encoding of the source text of the table
+					 * @return encoding of the source text of the table
+					 *
+					 * \~
+					 */
+					encoding_t encoding() const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -563,6 +603,31 @@ namespace awh {
 					 * \~
 					 */
 					size_t rows() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки таблицы на пустоту
+					 *
+					 * @details Пустой считается таблица без записей И без заголовка: таблица,
+					 * несущая один лишь заголовок, записей не имеет, а содержимое имеет, и
+					 * записывается она непустым текстом
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки: потребитель, читающий
+					 *       несколько кодеков, спрашивает пустоту одинаково
+					 *
+					 * @warning Одного размера у таблицы нет вовсе - есть `rows()`, `cols()` и
+					 *          `size(row)`, - и общего хода `size()` у неё оттого не заведено.
+					 *          Пустота же вопрос однозначный, и она общею сделана
+					 *
+					 * @return признак отсутствия содержимого в таблице
+					 *
+					 * \~english
+					 * @brief Method of checking the table for emptiness
+					 * @details A table without records AND without a header is considered empty
+					 * @return flag of the absence of the content in the table
+					 *
+					 * \~
+					 */
+					bool empty() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения количества столбцов таблицы
@@ -896,12 +961,40 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Метод сборки текста таблицы
+					 *
+					 * @details Настройки записи берутся хранимые; иные ставятся ходом
+					 * `settings()` прежде сборки
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки: потребитель, пишущий
+					 *       обобщённо, зовёт `dump()` без довода, не зная кодека вовсе
+					 *
+					 * @warning При отказе сборки выдаётся ПУСТОЙ текст, а код отказа спрашивается
+					 *          ходом `error()`. Пустая таблица от отказа отличается только им
+					 *
+					 * @return собранный текст таблицы
+					 *
+					 * \~english
+					 * @brief Method of the assembling of the text of the table
+					 * @return assembled text of the table
+					 *
+					 * \~
+					 */
+					string dump() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения текста таблицы
+					 *
+					 * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей,
+					 * написанных прежде согласования кодеков рамки между собой. Зови `dump()`:
+					 * им сборка текста зовётся у всех семи кодеков
 					 *
 					 * @return собранный текст таблицы
 					 *
 					 * \~english
 					 * @brief Method of getting the text of the table
+					 * @deprecated This name is DEPRECATED and is left as an intermediary for the sake of the consumers
+					 * written before the harmonization of the codecs of the framework with one another. Call `dump()`
 					 * @return assembled text of the table
 					 *
 					 * \~

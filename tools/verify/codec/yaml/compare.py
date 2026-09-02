@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Сверка кодека YAML с набором yaml-test-suite по потоку событий"""
-import os, re, subprocess, sys, json
-OUTPUT = sys.argv[1] if len(sys.argv) > 1 else '/tmp/verify-yaml'
+import os, re, subprocess, sys, json, tempfile
+OUTPUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(tempfile.gettempdir(), 'verify-yaml')
+# Подаваемый щупам файл кладётся рядом со стендом, а не в жёсткий путь: каталога `/tmp`
+# у MS Windows нет вовсе, и сличение падало там отказом открытия
+CASE = os.path.join(OUTPUT, 'yts.yaml')
 SRC = os.path.join(OUTPUT, 'corpus')
 EVENTS = os.path.join(OUTPUT, 'events')
 TREE = os.path.join(OUTPUT, 'tree')
@@ -83,8 +86,15 @@ for label, case in cases:
     if '<SPC>' in body or '<TAB>' in body:
         marked += 1
         continue
-    open('/tmp/yts.yaml', 'w', encoding='utf-8').write(body)
-    r = subprocess.run([EVENTS, '/tmp/yts.yaml'], capture_output=True, text=True, errors='replace')
+    # Запись ведётся с `newline=''` НАМЕРЕННО: без него Python на Windows переводит
+    # `\n` в `\r\n`, и сличитель молча подменяет корпус - эталонные события сняты с
+    # концом `LF`, а разбору подаётся `CRLF`. Даёт это сотню ложных расхождений
+    open(CASE, 'w', encoding='utf-8', newline='').write(body)
+    # Кодировка вывода задаётся ЯВНО: без неё Python берёт кодировку местности, и у MS
+    # Windows (cp1251) всякий знак вне ASCII превращается в мусор - `love ♥` читалось как
+    # `love в™Ґ`, то есть байты UTF-8, прочитанные однобайтовой кодировкой. Сам разбор
+    # при этом чист: байты выходят те же, что вошли
+    r = subprocess.run([EVENTS, CASE], capture_output=True, text=True, encoding='utf-8', errors='replace')
     got = r.stdout
     if str(case.get('fail', '')).strip() in ('true', 'True'):
         if 'ОТКАЗ' in got: failok += 1
@@ -144,8 +154,8 @@ for label, case in cases:
             wanted = None
         if wanted is not None:
             for mode, counter in (('', 'дерево'), ('rewrite', 'перезапись')):
-                probe = subprocess.run([TREE, '/tmp/yts.yaml'] + ([mode] if mode else []),
-                                       capture_output=True, text=True, errors='replace')
+                probe = subprocess.run([TREE, CASE] + ([mode] if mode else []),
+                                       capture_output=True, text=True, encoding='utf-8', errors='replace')
                 if probe.returncode != 0:
                     ##
                     # Отказ по построению, ещё не заведённому, находкою не является

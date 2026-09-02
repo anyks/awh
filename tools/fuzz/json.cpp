@@ -200,6 +200,10 @@ namespace {
 		uint64_t builds;
 		// Количество значений, привитых обратно в дерево документа
 		uint64_t grafts;
+		// Количество значений, снесённых из дерева документа по указателю
+		uint64_t removals;
+		// Количество значений, сброшенных в дереве документа по указателю
+		uint64_t resets;
 		/**
 		 * @brief Конструктор
 		 *
@@ -207,7 +211,7 @@ namespace {
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0), events(0),
 		 documents(0), rewrites(0), streams(0), numbers(0),
-		 values(0), builds(0), grafts(0) {}
+		 values(0), builds(0), grafts(0), removals(0), resets(0) {}
 	};
 	/**
 	 * @brief Собранное событие разбора
@@ -1414,6 +1418,58 @@ namespace {
 				// Выводим признак нарушения кругового хода
 				return false;
 			}
+			/**
+			 * Выполняем сброс привитого значения по указателю
+			 *
+			 * @note Сброс обязан оставить поле на месте, заместив содержимое его пустым
+			 *       значением: место сохраняется, а значение при нём становится `null`
+			 */
+			if(!host.reset("/graft")){
+				// Выводим сообщение об отказе сброса значения
+				::fprintf(stderr, "ЗНАЧЕНИЕ НЕ СБРАСЫВАЕТСЯ: «%s»\n", document.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
+			// Увеличиваем счёт сброшенных значений
+			totals.resets++;
+			/**
+			 * Если сброшенное значение пустым не стало либо место его исчезло
+			 */
+			if(!host.has("/graft") || !host.at("/graft").is(json::type_t::NUL) || (host.root().size() != 1)){
+				// Выводим сообщение о расхождении сброшенного значения с пустым
+				::fprintf(stderr, "РАСХОЖДЕНИЕ СБРОСА: «%s»\n", host.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
+			/**
+			 * Выполняем снос сброшенного значения по указателю
+			 *
+			 * @note Снос обязан убрать само место: поле объекта исчезает целиком, и
+			 *       опрос наличия его отвечает отсутствием - тем он и отличен от сброса
+			 */
+			if(!host.erase("/graft")){
+				// Выводим сообщение об отказе сноса значения
+				::fprintf(stderr, "ЗНАЧЕНИЕ НЕ СНОСИТСЯ: «%s»\n", document.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
+			// Увеличиваем счёт снесённых значений
+			totals.removals++;
+			/**
+			 * Если снесённое место в дереве уцелело
+			 *
+			 * @note Сличается и СЧЁТ детей вместилища, а не одна лишь запись его: подмена,
+			 *       снявшая убавление счёта при сносе, записи НЕ меняет вовсе - обход
+			 *       детей идёт по размаху, а не по счёту, - и проверка по одной записи
+			 *       её пропускала. Замер щупом: массив о двух значениях отчитывался
+			 *       тремя, а объект о нуле полей - одним
+			 */
+			if(host.has("/graft") || (host.dump().compare("{}") != 0) || (host.root().size() != 0)){
+				// Выводим сообщение о расхождении сноса
+				::fprintf(stderr, "РАСХОЖДЕНИЕ СНОСА: «%s»\n", host.dump().c_str());
+				// Выводим признак нарушения кругового хода
+				return false;
+			}
 		}
 		// Выполняем запись владеющего значения в текст
 		const string text = value.dump();
@@ -1733,13 +1789,14 @@ int main(int argc, char * argv[]) noexcept {
 	// Выводим итог работы генератора
 	::fprintf(stderr, "json fuzz: %llu passes, %llu texts (%llu corrupted), %llu survived, "
 		"%llu events, %llu documents, %llu rewrites, %llu streams, %llu numbers, "
-		"%llu values, %llu builds, %llu grafts\n",
+		"%llu values, %llu builds, %llu grafts, %llu resets, %llu removals\n",
 		static_cast <unsigned long long> (count), static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted), static_cast <unsigned long long> (totals.survived),
 		static_cast <unsigned long long> (totals.events), static_cast <unsigned long long> (totals.documents),
 		static_cast <unsigned long long> (totals.rewrites), static_cast <unsigned long long> (totals.streams),
 		static_cast <unsigned long long> (totals.numbers), static_cast <unsigned long long> (totals.values),
-		static_cast <unsigned long long> (totals.builds), static_cast <unsigned long long> (totals.grafts));
+		static_cast <unsigned long long> (totals.builds), static_cast <unsigned long long> (totals.grafts),
+		static_cast <unsigned long long> (totals.resets), static_cast <unsigned long long> (totals.removals));
 	// Выходим из приложения
 	return EXIT_SUCCESS;
 }

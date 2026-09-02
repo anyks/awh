@@ -608,19 +608,79 @@ namespace awh {
 					 * число, разобранное в дерево, было бы можно лишь перенести, но не прочесть.
 					 * Знак берётся `negative()`, десятичный разряд - `exponent()`
 					 *
-					 * @param result извлекаемые цифры числа старшим октетом вперёд
+					 * @warning Октеты выдаются МЛАДШИМ вперёд - тем же порядком, каким они
+					 * лежат в записи и каким их принимает `Writer::decimal`. Прежде здесь
+					 * стояло «старшим октетом вперёд», и договор этот был ЛЖИВ: работа
+					 * выдаёт хранимые октеты как они есть, ничего не оборачивая. Замер
+					 * 02.09.2026: число 258, уложенное октетами «02 01», извлекается
+					 * «02 01», а не «01 02»
+					 *
+					 * @note Исправлен ЗДЕСЬ договор, а не работа, и намеренно: порядок этот
+					 * держит круговой ход - `compose` отдаёт те же октеты обратно в
+					 * `Writer::decimal`, - а сама запись хранит величину младшим октетом
+					 * вперёд, и обе поверки старшего октета (у сборки и у разбора) смотрят
+					 * на ПОСЛЕДНИЙ октет. Оберни работа выдачу, круг сломался бы. Закреплено
+					 * проверкой `CodecAbcValue.DigitsComeLeastSignificantFirst`
+					 *
+					 * @param result извлекаемые цифры числа МЛАДШИМ октетом вперёд
 					 * @return       признак успешности извлечения
 					 *
 					 * \~english
 					 * @brief Method of the extraction of the digits of a number of an unlimited width
 					 * @details An integer of any width and a decimal carry the magnitude by octets rather than
 					 * by a native number: no numeric extraction takes them
-					 * @param result extracted digits of the number, the most significant octet first
+					 * @warning The octets are issued the LEAST significant one first — the same order
+					 * in which they lie in the record and in which `Writer::decimal` accepts them
+					 * @param result extracted digits of the number, the least significant octet first
 					 * @return sign of the success of the extraction
 					 *
 					 * \~
 					 */
 					[[nodiscard]] bool digits(vector <uint8_t> & result) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки числа неограниченной ширины
+					 *
+					 * @details Целое любой ширины и десятичное родного вида в машине не имеют
+					 * вовсе, и заводятся они октетами величины вместе со знаком и десятичным
+					 * порядком. Довод и порядок доводов взяты у `Writer::decimal` знак в знак:
+					 * работа эта есть тот же ход, но по владеющему значению
+					 *
+					 * @warning Октеты принимаются МЛАДШИМ вперёд - тем же порядком, каким их
+					 * выдаёт `digits()` и каким они лежат в записи. Старший октет нулевым быть
+					 * не вправе: запись такая неканонична, и разбор её отвергает
+					 *
+					 * @note Работа заведена 03.09.2026. Прежде числа сверх родных видов
+					 * попадали во владеющее значение ЛИШЬ через `absorb` из дерева документа,
+					 * то есть только разбором готовой записи: собрать такое число из своих
+					 * октетов было нечем, хотя сборка записи (`Writer::decimal`) то умела.
+					 * Пробел замечен со стороны, при сведении договоров кодеков
+					 *
+					 * @note Вид значения выбирается ПОРЯДКОМ, а не доводом: нулевой порядок
+					 * даёт целое любой ширины, ненулевой - десятичное. Правило это взято у
+					 * сборки записи, и расходиться им нельзя, иначе одно и то же число
+					 * укладывалось бы разными метками. Закреплено проверкой
+					 * `CodecAbcValue.DecimalIsBuildableWithoutARecord`
+					 *
+					 * @param buffer   октеты величины младшим октетом вперёд
+					 * @param size     размер октетов величины
+					 * @param negative признак того, что число меньше нуля
+					 * @param exponent десятичный порядок величины, ноль - целое любой ширины
+					 * @return         признак успешности установки
+					 *
+					 * \~english
+					 * @brief Method of the setting of a number of an unlimited width
+					 * @warning The octets are accepted the LEAST significant one first
+					 * @param buffer octets of the magnitude, the least significant octet first
+					 * @param size size of the octets of the magnitude
+					 * @param negative sign that the number is less than zero
+					 * @param exponent decimal exponent of the magnitude, zero for an integer of any width
+					 * @return sign of the success of the setting
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool decimal(const void * buffer, const size_t size,
+					 const bool negative = false, const int64_t exponent = 0) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод извлечения имени поля отображения по его номеру

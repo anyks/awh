@@ -251,7 +251,10 @@ namespace awh {
 			TOO_LARGE     = 0x07, // Размер записи превышает допустимый
 			BAD_PLATFORM  = 0x08, // Запись порождена машиной устройства иного
 			BAD_METHOD    = 0x09, // Обработчик метода сжатия записи не установлен
-			BAD_PACKING   = 0x0A  // Сжатие либо разжатие записи не выполнено
+			BAD_PACKING   = 0x0A, // Сжатие либо разжатие записи не выполнено
+			BAD_MACHINE   = 0x0B, // Запись порождена машиной иной
+			EXPIRED       = 0x0C, // Срок годности записи истёк
+			BAD_CIPHER    = 0x0D  // Зашифрование либо расшифрование записи не выполнено
 		};
 
 		/**
@@ -305,12 +308,48 @@ namespace awh {
 				 * \~
 				 */
 				using packer_t = function <bool (string_view, string &)>;
+				/**
+				 * \~russian
+				 * @brief Обработчик зашифрования либо расшифрования записи хранилища
+				 *
+				 * @details Обработчик принимает исходное содержимое и наполняет
+				 *          выходное, выводя признак успеха. Установка его возложена
+				 *          на потребителя по той же причине, что и установка сжатия:
+				 *          шифр стойкий собою модуль не несёт и нести не может -
+				 *          свой писать нельзя, а чужой привязал бы выражения к
+				 *          посторонней библиотеке, тогда как модуль обязан
+				 *          собираться на голой машине.
+				 *
+				 * \~english
+				 * @brief Handler of encryption or decryption of the storage record
+				 * @details The handler receives the source content and fills in the output
+				 *          one, yielding an indication of success. Setting it is laid on
+				 *          the consumer for the same reason as the compression: the module
+				 *          carries no strong cipher of its own and cannot carry one.
+				 *
+				 * \~
+				 */
+				using cipher_t = function <bool (string_view, string &)>;
 			private:
 				// Код ошибки хранилища собранных выражений
 				mutable storage_error_t _error;
 			private:
 				// Объект журнала событий
 				const log_t * _log;
+			private:
+				/**
+				 * \~russian
+				 * Срок годности записи в секундах
+				 *
+				 * @details Нулевой срок означает годность бессрочную.
+				 *
+				 * \~english
+				 * Lifetime of the record in seconds
+				 * @details A zero lifetime means unlimited validity.
+				 *
+				 * \~
+				 */
+				uint64_t _lifetime;
 			private:
 				/**
 				 * \~russian
@@ -341,6 +380,14 @@ namespace awh {
 				packer_t _pack;
 				// Обработчик разжатия записи хранилища
 				packer_t _unpack;
+			private:
+				// Признак шифрования записи хранилища
+				bool _ciphered;
+			private:
+				// Обработчик зашифрования записи хранилища
+				cipher_t _encrypt;
+				// Обработчик расшифрования записи хранилища
+				cipher_t _decrypt;
 			private:
 				/**
 				 * \~russian
@@ -545,6 +592,34 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод установки шифрования записи хранилища
+				 *
+				 * @param encrypt обработчик зашифрования записи хранилища
+				 * @param decrypt обработчик расшифрования записи хранилища
+				 *
+				 * @details Признак шифрования записывается в заголовок записи,
+				 *          поэтому восстановление расшифровывает её само.
+				 *          Обработчики пустые шифрование отключают. Восстановление
+				 *          записи шифрованной требует установленного обработчика
+				 *          расшифрования и без него отвечает ошибкой «BAD_METHOD».
+				 *          Шифрование выполняется ПОСЛЕ сжатия: шифрованное
+				 *          содержимое сжатию не поддаётся вовсе.
+				 *
+				 * \~english
+				 * @brief Method of setting the encryption of the storage record
+				 * @param encrypt encryption handler of the storage record
+				 * @param decrypt decryption handler of the storage record
+				 * @details The indication of encryption is written into the header of the
+				 *          record, therefore restoration decrypts it on its own. Empty
+				 *          handlers disable the encryption. The encryption is performed
+				 *          AFTER the compression: encrypted content does not compress at all.
+				 *
+				 * \~
+				 */
+				void cipher(cipher_t encrypt, cipher_t decrypt) noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод установки доверия порождённому коду записи
 				 *
 				 * @param mode признак доверия порождённому коду записи
@@ -584,6 +659,30 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод установки срока годности записи
+				 *
+				 * @details Срок отсчитывается от мгновения записи, а восстановление
+				 *          записи просроченной отвечает ошибкой «EXPIRED». Нулевой
+				 *          срок означает годность бессрочную и снят по умолчанию:
+				 *          выражения, записью хранимые, устаревают не сами по себе,
+				 *          а вместе с породившим их набором шаблонов, и знает о том
+				 *          лишь потребитель.
+				 *
+				 * @param seconds срок годности записи в секундах
+				 *
+				 * \~english
+				 * @brief Method of setting the lifetime of the record
+				 * @details The lifetime is counted from the moment of writing, and restoring
+				 *          an expired record answers with the «EXPIRED» error. A zero
+				 *          lifetime means unlimited validity and is the default.
+				 * @param seconds lifetime of the record in seconds
+				 *
+				 * \~
+				 */
+				void lifetime(const uint64_t seconds) noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Конструктор
 				 *
 				 *
@@ -593,7 +692,8 @@ namespace awh {
 				 * \~
 				 */
 				explicit Storage(const log_t * log) noexcept :
-				 _error(storage_error_t::NONE), _log(log), _trusted(false), _method(compressor::method_t::NONE) {}
+				 _error(storage_error_t::NONE), _log(log), _trusted(false), _lifetime(0),
+				 _method(compressor::method_t::NONE), _ciphered(false) {}
 				/**
 				 * \~russian
 				 * @brief Деструктор

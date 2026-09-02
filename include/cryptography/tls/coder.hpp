@@ -880,6 +880,14 @@ namespace awh {
 				 * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
 				 *       Параллельные вызовы на один id должен сериализовать вызывающий код.
 				 *
+				 * @warning Участник снимается НЕ ТОЛЬКО вызовом destroy: всякая ошибка внутри
+				 *          самих работ рукопожатия, шифрования и расшифровки метит его
+				 *          мусорным, и память освобождается на выходе из работы. Признаком
+				 *          служит отклик состояния DESTROYED - он приходит прежде
+				 *          освобождения. Получив его, вызывающая сторона обязана забыть
+				 *          опознаватель немедленно: реестр здесь не проверяется, и вызов на
+				 *          снятом опознавателе прочитает освобождённую память молча
+				 *
 				 * \~english
 				 * @brief Method performing the TLS handshake
 				 *
@@ -888,6 +896,13 @@ namespace awh {
 				 *
 				 * @note Hot path: the id is a valid CTL from transport(); __awh_ssl_ids__ is not checked.
 				 *       Parallel calls on one id must be serialized by the calling code.
+				 *
+				 * @warning The member is removed NOT ONLY by a call of destroy: any error inside
+				 *          the works of the handshake, of the encryption and of the decryption themselves marks it
+				 *          as garbage, and the memory is released upon the exit from the work. The sign of that
+				 *          is the DESTROYED state callback - it comes before the release. Having received it,
+				 *          the calling side must forget the identifier immediately: the registry is not checked
+				 *          here, and a call on a removed identifier will read the released memory silently
 				 *
 				 * \~
 				 */
@@ -1165,6 +1180,14 @@ namespace awh {
 				 * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
 				 *       Параллельные вызовы на один id должен сериализовать вызывающий код.
 				 *
+				 * @warning Участник снимается НЕ ТОЛЬКО вызовом destroy: всякая ошибка внутри
+				 *          самих работ рукопожатия, шифрования и расшифровки метит его
+				 *          мусорным, и память освобождается на выходе из работы. Признаком
+				 *          служит отклик состояния DESTROYED - он приходит прежде
+				 *          освобождения. Получив его, вызывающая сторона обязана забыть
+				 *          опознаватель немедленно: реестр здесь не проверяется, и вызов на
+				 *          снятом опознавателе прочитает освобождённую память молча
+				 *
 				 * \~english
 				 * @brief Method encrypting the data
 				 *
@@ -1175,6 +1198,13 @@ namespace awh {
 				 *
 				 * @note Hot path: the id is a valid CTL from transport(); __awh_ssl_ids__ is not checked.
 				 *       Parallel calls on one id must be serialized by the calling code.
+				 *
+				 * @warning The member is removed NOT ONLY by a call of destroy: any error inside
+				 *          the works of the handshake, of the encryption and of the decryption themselves marks it
+				 *          as garbage, and the memory is released upon the exit from the work. The sign of that
+				 *          is the DESTROYED state callback - it comes before the release. Having received it,
+				 *          the calling side must forget the identifier immediately: the registry is not checked
+				 *          here, and a call on a removed identifier will read the released memory silently
 				 *
 				 * \~
 				 */
@@ -1191,6 +1221,14 @@ namespace awh {
 				 * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
 				 *       Параллельные вызовы на один id должен сериализовать вызывающий код.
 				 *
+				 * @warning Участник снимается НЕ ТОЛЬКО вызовом destroy: всякая ошибка внутри
+				 *          самих работ рукопожатия, шифрования и расшифровки метит его
+				 *          мусорным, и память освобождается на выходе из работы. Признаком
+				 *          служит отклик состояния DESTROYED - он приходит прежде
+				 *          освобождения. Получив его, вызывающая сторона обязана забыть
+				 *          опознаватель немедленно: реестр здесь не проверяется, и вызов на
+				 *          снятом опознавателе прочитает освобождённую память молча
+				 *
 				 * \~english
 				 * @brief Method decrypting the data
 				 *
@@ -1201,6 +1239,13 @@ namespace awh {
 				 *
 				 * @note Hot path: the id is a valid CTL from transport(); __awh_ssl_ids__ is not checked.
 				 *       Parallel calls on one id must be serialized by the calling code.
+				 *
+				 * @warning The member is removed NOT ONLY by a call of destroy: any error inside
+				 *          the works of the handshake, of the encryption and of the decryption themselves marks it
+				 *          as garbage, and the memory is released upon the exit from the work. The sign of that
+				 *          is the DESTROYED state callback - it comes before the release. Having received it,
+				 *          the calling side must forget the identifier immediately: the registry is not checked
+				 *          here, and a call on a removed identifier will read the released memory silently
 				 *
 				 * \~
 				 */

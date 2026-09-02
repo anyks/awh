@@ -284,8 +284,8 @@ bool awh::codec::abc::take(const uint8_t * buffer, const size_t size, size_t & o
 			switch(item.detail){
 				// Если разновидность одиночного значения опознана
 				case static_cast <uint8_t> (single_t::NUL):
-				case static_cast <uint8_t> (single_t::FALSE):
-				case static_cast <uint8_t> (single_t::TRUE):
+				case static_cast <uint8_t> (single_t::NO):
+				case static_cast <uint8_t> (single_t::YES):
 				case static_cast <uint8_t> (single_t::FLOAT):
 				case static_cast <uint8_t> (single_t::DOUBLE):
 				case static_cast <uint8_t> (single_t::TIME):

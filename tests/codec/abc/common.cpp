@@ -529,9 +529,9 @@ TEST(CodecAbcCommon, WireConstants) {
 	// Подробность записи пустого значения
 	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::NUL), 0x00);
 	// Подробность записи лжи
-	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::FALSE), 0x01);
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::NO), 0x01);
 	// Подробность записи истины
-	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::TRUE), 0x02);
+	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::YES), 0x02);
 	// Подробность записи дробного одинарной точности
 	EXPECT_EQ(static_cast <uint8_t> (abc::single_t::FLOAT), 0x03);
 	// Подробность записи дробного двойной точности

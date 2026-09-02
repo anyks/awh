@@ -180,7 +180,7 @@ def main():
 			if not os.path.exists(target):
 				unreferenced += 1
 				continue
-			run = subprocess.run([dump, source], capture_output = True, text = True)
+			run = subprocess.run([dump, source], capture_output = True, text = True, encoding = 'utf-8')
 			##
 			# Если работа щупа прекращена сигналом
 			#
@@ -227,7 +227,7 @@ def main():
 				# Сличается лишь то, на чём разбор уже сошёлся: расхождение разбора
 				# отчитано выше, и вменять его записи вторым разом нечего
 				##
-				written = subprocess.run([dump, source, 'rewrite'], capture_output = True, text = True)
+				written = subprocess.run([dump, source, 'rewrite'], capture_output = True, text = True, encoding = 'utf-8')
 				if written.returncode != 0:
 					refuted += 1
 					report.append({'случай': label, 'исход': 'ЗАПИСЬ ОТВЕРГЛА ДЕРЕВО',
@@ -236,7 +236,7 @@ def main():
 					mirror = os.path.join(os.path.dirname(source), '.rewrite.toml')
 					with open(mirror, 'w', newline = '', encoding = 'utf-8') as file:
 						file.write(written.stdout)
-					again = subprocess.run([dump, mirror], capture_output = True, text = True)
+					again = subprocess.run([dump, mirror], capture_output = True, text = True, encoding = 'utf-8')
 					os.unlink(mirror)
 					if again.returncode != 0:
 						rewritten += 1
@@ -266,7 +266,7 @@ def main():
 			if (allowed is not None) and (os.path.relpath(source, root) not in allowed):
 				skipped += 1
 				continue
-			run = subprocess.run([dump, source], capture_output = True, text = True)
+			run = subprocess.run([dump, source], capture_output = True, text = True, encoding = 'utf-8')
 			# Если работа щупа прекращена сигналом
 			if run.returncode < 0:
 				crashed += 1

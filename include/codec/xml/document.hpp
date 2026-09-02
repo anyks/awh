@@ -1015,9 +1015,86 @@ namespace awh {
 						 */
 						Entry(const node_id_t first = 0) noexcept : first(first), count(1) {}
 					} entry_t;
+				public:
+					/**
+					 * \~russian
+					 * @brief Настройки дерева разметки
+					 *
+					 * @details Настройки разбора и записи держатся раздельно: прочитать разметку
+					 * с одними пределами и записать её иным видом - обыкновенное дело, и
+					 * связывать их незачем
+					 *
+					 * @note Построение это заведено ради согласия кодеков рамки: у всех у них
+					 *       настройки дерева спрашиваются и ставятся одинаково, а вид их свой
+					 *       у каждого кодека
+					 *
+					 * @warning Настройки разбора, поданные ходу `parse()` доводом, действуют
+					 *          лишь на этот заход и хранимых настроек НЕ меняют
+					 *
+					 * \~english
+					 * @brief Settings of the markup tree
+					 * @details The settings of the parsing and of the writing are kept separately
+					 *
+					 * \~
+					 */
+					typedef struct __AWH_SHARED_EXPORT__ Settings {
+						// Настройки разбора текста разметки
+						reader_t::settings_t reader;
+						// Настройки записи текста разметки
+						writer_settings_t writer;
+						/**
+						 * \~russian
+						 * @brief Конструктор
+						 *
+						 * \~english
+						 * @brief Constructor
+						 *
+						 * \~
+						 */
+						Settings() noexcept {}
+					} settings_t;
 				private:
-					// Код ошибки последней операции разбора
-					error_t _error;
+					// Настройки дерева разметки
+					settings_t _settings;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод розыска узла дерева по пути
+					 *
+					 * @details Путь записывается частями, разделёнными косой чертой, ровно как
+					 * у метода `at` владеющего значения: `/Envelope/Body/0`. Звено пути
+					 * обращается к вложенному узлу по местному имени либо по номеру
+					 *
+					 * @note Работа эта общая у прививки, опроса наличия и извлечения узла:
+					 *       розыск по пути обязан идти у них по одним правилам, а прежде он
+					 *       жил внутри одной лишь прививки
+					 *
+					 * @param path разыскиваемый путь
+					 * @return     индекс разысканного узла, `INVALID_NODE` - узел не разыскан
+					 *
+					 * \~english
+					 * @brief Method of the search of a node of the tree by a path
+					 * @param path path being searched for
+					 * @return     index of the found node, `INVALID_NODE` — the node is not found
+					 *
+					 * \~
+					 */
+					node_id_t locate(const string & path) const noexcept;
+				private:
+					/**
+					 * \~russian
+					 * Код ошибки последней операции разбора
+					 *
+					 * @note Изменяемым он объявлен ради записи: `dump()` есть ход постоянный -
+					 *       дерева он не меняет, - однако отказ записи обязан лечь в дерево,
+					 *       и спрашивается он тем же ходом `error()`, что и отказ разбора
+					 *
+					 * \~english
+					 * Code of the error of the last operation of the parsing
+					 *
+					 * \~
+					 */
+					mutable error_t _error;
 				private:
 					/**
 					 * \~russian
@@ -1035,6 +1112,23 @@ namespace awh {
 				private:
 					// Положение обнаруженной ошибки в исходном тексте
 					location_t _errorLocation;
+				private:
+					/**
+					 * \~russian
+					 * Кодировка, какою исходный текст разметки прочитан
+					 *
+					 * @note Хранится полем оттого, что чтение живёт лишь внутри разбора: спросить
+					 *       его после выхода нельзя, а потребителю кодировка нужна и после
+					 *
+					 * @warning Поле это обязано сбрасываться очисткой дерева наравне с кодом
+					 *          отказа: пережившая очистку кодировка отвечала бы о прежнем тексте
+					 *
+					 * \~english
+					 * Encoding by which the source text of the markup has been read
+					 *
+					 * \~
+					 */
+					encoding_t _encoding = encoding_t::NONE;
 				private:
 					// Арена узлов дерева разметки
 				private:
@@ -1236,7 +1330,27 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool parse(const string_view text, const reader_t::settings_t & settings = reader_t::settings_t()) noexcept;
+					bool parse(const string_view text) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод разбора текста разметки с указанными настройками
+					 *
+					 * @note Настройки эти действуют лишь на этот заход и хранимых настроек
+					 *       дерева НЕ меняют
+					 *
+					 * @param text     исходный текст разметки целиком
+					 * @param settings настройки разбора текста разметки
+					 * @return         признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of parsing a markup text with the given settings
+					 * @param text     source text of the markup in its entirety
+					 * @param settings settings of the parsing of the text of the markup
+					 * @return         flag of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool parse(const string_view text, const reader_t::settings_t & settings) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1266,6 +1380,174 @@ namespace awh {
 					 * \~
 					 */
 					const location_t & errorLocation() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения кодировки исходного текста разметки
+					 *
+					 * @details Выдаётся кодировка, какою текст ПРОЧИТАН - та, из которой шёл перевод
+					 * в UTF-8, распознанная по метке порядка байтов либо по объявлению разметки
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки: потребитель, читающий
+					 *       несколько кодеков, спрашивает кодировку одинаково
+					 *
+					 * @warning До первого разбора выдаётся кодировка неопределённая
+					 *
+					 * @return кодировка исходного текста разметки
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the encoding of the source text of the markup
+					 * @return encoding of the source text of the markup
+					 *
+					 * \~
+					 */
+					encoding_t encoding() const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод записи дерева разметки текстом
+					 *
+					 * @details Записывается дерево ЦЕЛИКОМ, от корня, вместе с объявлением разметки,
+					 * указаниями обработчику и примечаниями. Настройки записи берутся принятые
+					 * по умолчанию; иные подаются перегрузкой ниже
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки: потребитель, пишущий
+					 *       обобщённо, зовёт `dump()` без довода, не зная кодека вовсе
+					 *
+					 * @warning Дословного совпадения с исходным текстом запись не обещает: связывания
+					 *          пространств имён назначаются заново, а объявление типа документа
+					 *          не записывается вовсе - модуль его писать не умеет
+					 *
+					 * @warning При отказе записи выдаётся ПУСТОЙ текст, а код отказа ложится в
+					 *          дерево и спрашивается ходом `error()`. Пустое дерево от отказа
+					 *          отличается только этим кодом
+					 *
+					 * @return текст разметки собранного дерева
+					 *
+					 * \~english
+					 * @brief Method of writing the markup tree as a text
+					 * @details The tree is written WHOLE, from the root, together with the markup declaration,
+					 * the processing instructions and the comments
+					 * @return text of the markup of the assembled tree
+					 *
+					 * \~
+					 */
+					string dump() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи дерева разметки текстом с указанными настройками
+					 *
+					 * @details Настройки записи подаются свои: вид записи, отступ, схлопывание
+					 * пустых узлов и прочее
+					 *
+					 * @note Вид настроек тут свой у каждого кодека рамки, а общею сделана лишь
+					 *       ПОДПИСЬ: потребитель, знающий кодек, подаёт его настройки
+					 *
+					 * @param settings настройки записи текста разметки
+					 * @return         текст разметки собранного дерева
+					 *
+					 * \~english
+					 * @brief Method of writing the markup tree as a text with the given settings
+					 * @param settings settings of the writing of the text of the markup
+					 * @return         text of the markup of the assembled tree
+					 *
+					 * \~
+					 */
+					string dump(const writer_settings_t & settings) const noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Метод разбора текста разметки из файла
+					 *
+					 * @details Файл читается целиком, после чего текст его разбирается ходом
+					 * `parse()`. Кусками разметка не разбирается: дерево собирается по всему
+					 * тексту сразу
+					 *
+					 * @note Отказ доступа к файлу отвечает своим кодом - `FILE_NOT_OPENED` либо
+					 *       `FILE_NOT_READ`, - а не кодом отказа разбора: путь подан извне, и
+					 *       код внутренней беды отправлял бы потребителя искать изъян у нас
+					 *
+					 * @warning Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ успешно, а читается
+					 *          признаками конца и отказа - теми же, какими отзывается файл
+					 *          пустой. Распознаётся он по самому адресу и отвечает `FILE_NOT_READ`
+					 *
+					 * @param filename адрес файла разметки
+					 * @return         признак успешности разбора
+					 *
+					 * \~english
+					 * @brief Method of parsing a markup text from a file
+					 * @param filename address of the file of the markup
+					 * @return         flag of the success of the parsing
+					 *
+					 * \~
+					 */
+					bool load(const string & filename) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения настроек дерева разметки
+					 *
+					 * @return настройки дерева разметки
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the settings of the markup tree
+					 * @return settings of the markup tree
+					 *
+					 * \~
+					 */
+					const settings_t & settings() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки настроек дерева разметки
+					 *
+					 * @note Настройки эти действуют на ходы, довода настроек не принимающие:
+					 *       `parse(text)`, `load()`, `dump()` и `save(filename)`. Поданные же
+					 *       доводом действуют лишь на свой заход
+					 *
+					 * @param settings устанавливаемые настройки дерева разметки
+					 *
+					 * \~english
+					 * @brief Method of setting the settings of the markup tree
+					 * @param settings settings of the markup tree being set
+					 *
+					 * \~
+					 */
+					void settings(const settings_t & settings) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи дерева разметки в файл
+					 *
+					 * @details Записывается то же самое, что выдаёт ход `dump()`, с настройками,
+					 * принятыми по умолчанию
+					 *
+					 * @warning Прежнее содержимое файла затирается целиком
+					 *
+					 * @param filename адрес файла разметки
+					 * @return         признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of writing the markup tree to a file
+					 * @param filename address of the file of the markup
+					 * @return         flag of the success of the writing
+					 *
+					 * \~
+					 */
+					bool save(const string & filename) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи дерева разметки в файл с указанными настройками
+					 *
+					 * @param filename адрес файла разметки
+					 * @param settings настройки записи текста разметки
+					 * @return         признак успешности записи
+					 *
+					 * \~english
+					 * @brief Method of writing the markup tree to a file with the given settings
+					 * @param filename address of the file of the markup
+					 * @param settings settings of the writing of the text of the markup
+					 * @return         flag of the success of the writing
+					 *
+					 * \~
+					 */
+					bool save(const string & filename, const writer_settings_t & settings) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1364,7 +1646,122 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					bool set(const string & path, const xml::Value & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сноса узла дерева разметки по пути
+					 *
+					 * @details Узел, разысканный путём, отвязывается от дерева со всем содержимым
+					 * своим: родитель о нём забывает, а соседи связываются друг с другом
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки, а вид пути остаётся
+					 *       своим у каждого: у разметки это путь по именам узлов и номерам
+					 *
+					 * @warning Снос корня отвергается: дерево без корня разметкой не является
+					 *          вовсе, и опустошается оно ходом `clear()`
+					 *
+					 * @warning Арена дерева лишь дописывается: узлы снесённого поддерева остаются
+					 *          в ней недостижимыми и место своё возвращают только с очисткою
+					 *          дерева либо с новым разбором - ровно как при правке
+					 *
+					 * @param path путь к сносимому узлу
+					 * @return     признак успешности сноса
+					 *
+					 * \~english
+					 * @brief Method of the removal of a node of the markup tree by a path
+					 * @param path path to the node being removed
+					 * @return     flag of the success of the removal
+					 *
+					 * \~
+					 */
+					bool erase(const string & path) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сброса содержимого узла дерева разметки по пути
+					 *
+					 * @details Узел, разысканный путём, содержимого своего лишается: вложенные
+					 * узлы отвязываются, а сам узел остаётся на месте с именем своим и
+					 * свойствами своими
+					 *
+					 * @note Сброс от сноса тем и отличается, что узел сохраняется: пустой узел
+					 *       разметки есть узел законный, и отсутствию его он не равен
+					 *
+					 * @param path путь к сбрасываемому узлу
+					 * @return     признак успешности сброса
+					 *
+					 * \~english
+					 * @brief Method of the resetting of the content of a node of the markup tree by a path
+					 * @param path path to the node being reset
+					 * @return     flag of the success of the resetting
+					 *
+					 * \~
+					 */
+					bool reset(const string & path) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод прививки владеющего значения в дерево разметки
+					 *
+					 * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей,
+					 * написанных прежде согласования кодеков рамки между собой. Зови `set()`:
+					 * им правка дерева по пути зовётся у всех семи кодеков, а вид пути остаётся
+					 * своим у каждого - у разметки это путь по именам узлов и номерам вложенных
+					 *
+					 * @param path  путь к прививаемому месту
+					 * @param value прививаемое владеющее значение
+					 * @return      признак успешности прививки
+					 *
+					 * \~english
+					 * @brief Method of the grafting of an owning value into the markup tree
+					 * @deprecated This name is DEPRECATED and is left as an intermediary. Call `set()`
+					 * @param path  path to the place being grafted
+					 * @param value owning value being grafted
+					 * @return      flag of the success of the grafting
+					 *
+					 * \~
+					 */
 					bool graft(const string & path, const xml::Value & value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки наличия узла дерева по пути
+					 *
+					 * @details Путь записывается частями, разделёнными косой чертой, ровно как у
+					 * прививки: `/Envelope/Body/0`
+					 *
+					 * @note Ход этот заведён общим у всех кодеков рамки, а вид пути остаётся
+					 *       своим у каждого: у разметки это путь по именам узлов и номерам
+					 *
+					 * @param path проверяемый путь
+					 * @return     признак наличия узла по указанному пути
+					 *
+					 * \~english
+					 * @brief Method of checking the presence of a node of the tree by a path
+					 * @param path path being checked
+					 * @return     flag of the presence of a node at the specified path
+					 *
+					 * \~
+					 */
+					bool has(const string & path) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения узла дерева по пути
+					 *
+					 * @details Путь записывается частями, разделёнными косой чертой, ровно как у
+					 * прививки: `/Envelope/Body/0`
+					 *
+					 * @warning Узел, по пути не разысканный, выдаётся НЕПРИГОДНЫМ, а не отказом:
+					 *          пригодность его спрашивается ходом `valid()`
+					 *
+					 * @param path разыскиваемый путь
+					 * @return     узел дерева разметки по указанному пути
+					 *
+					 * \~english
+					 * @brief Method of the extraction of a node of the tree by a path
+					 * @param path path being searched for
+					 * @return     node of the markup tree at the specified path
+					 *
+					 * \~
+					 */
+					node_t at(const string & path) const noexcept;
 				public:
 					/**
 					 * \~russian

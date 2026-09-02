@@ -139,6 +139,15 @@ namespace awh {
 		 * @li **Знаки всех строк и имён лежат в одном хранилище.** Имя не выделяет
 		 * памяти вовсе, и весь собранный документ обходится двумя выделениями вместо
 		 * выделения на всякий узел
+		 *
+		 * @warning Довод этот о ЗНАКАХ имени, и оговорка к нему одна: объект, полей у
+		 *          какого больше `INDEX_THRESHOLD`, заводит отображение имён для розыска
+		 *          повторов, а оно стоит выделения на всякое поле. Замер 02.09.2026 на
+		 *          рабочей машине: массив из 100 000 чисел обходится 30 выделениями,
+		 *          массив строк - 43, массив объектов ровно по шестнадцати полей - 42, а
+		 *          ОДИН объект о 100 000 полях - 100 060, сиречь ровно по выделению на
+		 *          поле. Знаки имён и там лежат в общем хранилище, платит же память
+		 *          розыск повторов, а не хранение
 		 * @li **Разбор не заглядывает вперёд.** Знак, чьё значение зависит от
 		 * следующего за ним, переводит разбор в отдельное состояние, а не требует
 		 * следующего знака немедленно. Оттого выдача не зависит от того, как текст
@@ -370,9 +379,15 @@ namespace awh {
 			 * `uint64_t`. Извлечение сличает само значение с пределами затребованного вида,
 			 * а не вид хранения с видом затребованным
 			 *
-			 * @note Число, не вместимое ни в один родной вид - целое свыше `2^64` либо запись
-			 * с точностью выше `double` - получает вид `EXTENDED` и хранится записью. Точность
-			 * такого числа сохраняется полностью, а извлечение его разбирает запись
+			 * @note Число, не вместимое ни в один родной вид, получает вид `EXTENDED` и хранится
+			 * записью. Невместимость эта - по ВЕЛИЧИНЕ, а не по точности: целое свыше `2^64`,
+			 * переполнение порядка (`1e400`) да исчезновение его (`0.1e-400`). Точность такого
+			 * числа сохраняется полностью, а извлечение его разбирает запись
+			 *
+			 * @note Длина записи дробного числа вида не меняет: `0.30000000000000004440892098500626`
+			 * величиною в `double` укладывается и получает вид `DOUBLE`, а лишние разряды его
+			 * теряются при разборе - запись выдаётся кратчайшею того же значения (`0.30000000000000004`).
+			 * Разрядов сверх двойной точности хранение не обещает нигде, кроме `EXTENDED`
 			 *
 			 * \~english
 			 * @brief Kinds of the values of a document
@@ -386,9 +401,15 @@ namespace awh {
 			 * @note The kind of the storage is not a directive to the extraction: `INT8` is extracted both as a `double` and as
 			 * a `uint64_t`. The extraction compares the value itself with the limits of the demanded kind
 			 * rather than the kind of the storage with the demanded kind
-			 * @note A number not containable in any native kind — an integer above `2^64` or a record
-			 * with a precision higher than `double` — receives the kind `EXTENDED` and is stored as a record. The precision
+			 * @note A number not containable in any native kind receives the kind `EXTENDED` and is stored
+			 * as a record. That non-containability is by the MAGNITUDE rather than by the precision: an integer
+			 * above `2^64`, an overflow of the exponent (`1e400`) and a vanishing of it (`0.1e-400`). The precision
 			 * of such a number is preserved completely, and its extraction parses the record
+			 *
+			 * @note The length of the record of a fractional number does not change the kind: `0.30000000000000004440892098500626`
+			 * is contained by the magnitude in a `double` and receives the kind `DOUBLE`, whereas its superfluous digits
+			 * are lost at the parsing — the record is issued as the shortest one of the same value (`0.30000000000000004`).
+			 * The digits beyond the double precision are not promised by the storage anywhere except `EXTENDED`
 			 *
 			 * \~
 			 */

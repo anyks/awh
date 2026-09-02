@@ -462,6 +462,9 @@ namespace {
 			// Фасад клиента
 			std::unique_ptr <awh::client_t> _client;
 		private:
+			// Опознаватель транспортного уровня клиента, заведённого прогоном
+			tls::coder_t::id_t _ctl;
+		private:
 			// Отправленная клиентом нагрузка (эталон для сверки)
 			std::string _payload;
 			// Накопленное сервером принятое (эталон сверяется побайтово по мере приёма)
@@ -671,8 +674,16 @@ namespace {
 				this->_server->on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Harness::serverAccept, this, _1, _2, _3);
 				// Регистрируем коллбэк принятых сервером расшифрованных данных
 				this->_server->on <void (const event::id_t, const uint8_t *, const size_t, void *)> ("read", &Harness::serverRead, this, _1, _2, _3, _4);
+				/**
+				 * Опознаватель транспортного уровня запоминается: реестр участников
+				 * живёт весь процесс, и заведённый прогоном уровень обязан быть снят
+				 * этим же прогоном - иначе он копится от проверки к проверке вместе с
+				 * откликами, привязанными к фасаду клиента, который прогон разрушит
+				 */
+				// Выполняем заведение транспортного уровня клиента
+				this->_ctl = this->_security->coder().transport(this->_security->client());
 				// Создаём фасад клиента на транспорте клиентского шаблона контекста безопасности
-				this->_client = std::make_unique <awh::client_t> (this->_security->coder().transport(this->_security->client()), &this->_security->coder(), this->_fmk, this->_log);
+				this->_client = std::make_unique <awh::client_t> (this->_ctl, &this->_security->coder(), this->_fmk, this->_log);
 				// Создаём событие клиента потокового транспорта поверх TCP
 				this->_client->init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 				// Устанавливаем опции клиента: обе стороны на одном потоке цикла, блокирующая запись встала бы намертво
@@ -716,6 +727,12 @@ namespace {
 						worker.detach();
 						// Продлеваем жизнь фасадов до конца работы процесса
 						abandoned().emplace_back(std::move(this->_server), std::move(this->_client));
+						/**
+						 * Транспортный уровень снимать нельзя: фасады оставлены работать,
+						 * и снятие отдало бы память участника, которым они ещё пользуются
+						 */
+						// Забываем опознаватель транспортного уровня, не снимая его
+						this->_ctl = 0;
 						// Выводим итоги прогона
 						return this->_result;
 					}
@@ -738,7 +755,27 @@ namespace {
 			 */
 			Harness(const size_t length, const uint16_t port, awh::fmk_t * fmk, awh::log_t * log, Security * security) noexcept :
 			 _fmk(fmk), _log(log), _security(security), _length(length), _port(port),
-			 _payload{""}, _serverOk(true), _clientOk(true), _finishing(false) {}
+			 _ctl(0), _payload{""}, _serverOk(true), _clientOk(true), _finishing(false) {}
+			/**
+			 * @brief Деструктор
+			 *
+			 * @details Снимает транспортный уровень, заведённый прогоном. Порядок обязателен и
+			 *          именно таков: сперва снимается участник, и лишь затем разрушаются
+			 *          фасады. Снятие зовёт отклик состояния, а отклик этот привязан к фасаду
+			 *          клиента - разрушь мы фасад первым, снятие ушло бы в освобождённую
+			 *          память. Проверено: обратный порядок валит прогон немедленно
+			 *
+			 */
+			~Harness() noexcept {
+				// Если транспортный уровень заводился прогоном
+				if(this->_ctl > 0)
+					// Выполняем снятие транспортного уровня
+					this->_security->coder().destroy(this->_ctl);
+				// Выполняем разрушение фасада клиента
+				this->_client.reset(nullptr);
+				// Выполняем разрушение фасада сервера
+				this->_server.reset(nullptr);
+			}
 	};
 };
 

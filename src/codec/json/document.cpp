@@ -1592,6 +1592,14 @@ void awh::codec::json::Document::clear() noexcept {
 	this->_base = 0;
 	// Сбрасываем положение отказа разбора в исходном тексте
 	this->_position = location_t();
+	/**
+	 * Сбрасываем кодировку, какою исходный текст прочитан
+	 *
+	 * @warning Сбрасывается ПОЛЕ, а не состояние чтения: очистка бывает позвана из
+	 *          обработчика потоковой выдачи, то есть ПОСРЕДИ разбора, и сброс чтения
+	 *          там обрушил бы сам разбор. Замерено проверкой `ClearFromStreamHandler`
+	 */
+	this->_encoding = encoding_t::NONE;
 }
 /**
  * @brief Метод разбора текста документа
@@ -1714,6 +1722,13 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 	}
 	// Выполняем снятие обработчика прямой выдачи событий разбора
 	reader.handler(nullptr, nullptr);
+	/**
+	 * Запоминаем кодировку, какою исходный текст документа прочитан
+	 *
+	 * @note Кодировка снимается и при отказе разбора, и снимается ПОСЛЕ подачи текста:
+	 *       обработчик потоковой выдачи вправе позвать очистку, а та кодировку сбрасывает
+	 */
+	this->_encoding = reader.encoding();
 	// Сбрасываем обработчик потоковой выдачи значений
 	this->_callback = nullptr;
 	/**
@@ -1777,6 +1792,32 @@ bool awh::codec::json::Document::parse(const string_view text, const callback_t 
 bool awh::codec::json::Document::load(const string & filename) noexcept {
 	// Выполняем очистку документа
 	this->clear();
+	/**
+	 * Если адрес указывает на каталог
+	 *
+	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
+	 *       какими отзывается файл пустой. Без этой проверки разбор документа принимал бы
+	 *       каталог за файл пустой и отвечал бы на него не тем доводом, а разбор таблицы -
+	 *       и вовсе УСПЕХОМ, отдавая таблицу без записей
+	 *
+	 * @note Распознавание идёт ДО открытия потока намеренно, и порядок этот держит
+	 *       договор одним на все системы. У MS Windows каталог не открывается ВОВСЕ:
+	 *       поток отвечает отказом с кодом 13, и распознавание, стоящее после открытия,
+	 *       там мёртво - каталог отвечал бы кодом отказа ОТКРЫТИЯ вместо кода отказа
+	 *       чтения. Замерено на стенде Windows 11 ARM64
+	 */
+	if(::directory(filename)){
+		// Запоминаем код отказа чтения файла документа
+		this->_error = error_t::FILE_NOT_READ;
+		/**
+		 * Если объект для работы с логами установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		// Выводим признак неудачного разбора
+		return false;
+	}
 	// Открываем файл документа для чтения
 	ifstream file(filename, ios::binary);
 	/**
@@ -1797,26 +1838,6 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без
 		 *       настоящего вывода открытие файла отказывало бы молча, тогда как отказ
 		 *       разбора того же файла в лог уходит
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("JSON document failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(this->_error));
-		// Выводим признак неудачного разбора
-		return false;
-	}
-	/**
-	 * Если адрес указывает на каталог
-	 *
-	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
-	 *       какими отзывается файл пустой. Без этой проверки разбор документа принимал бы
-	 *       каталог за файл пустой и отвечал бы на него не тем доводом, а разбор таблицы -
-	 *       и вовсе УСПЕХОМ, отдавая таблицу без записей
-	 */
-	if(::directory(filename)){
-		// Запоминаем код отказа чтения файла документа
-		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
 		 */
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе
@@ -2344,6 +2365,17 @@ awh::codec::json::Document::value_t awh::codec::json::Document::at(const string 
 	return this->root().at(pointer);
 }
 /**
+ * @brief Метод проверки наличия значения по указателю JSON Pointer
+ *
+ * @param pointer указатель на значение по RFC 6901
+ * @return        признак наличия значения по указанному указателю
+ *
+ */
+bool awh::codec::json::Document::has(const string & pointer) const noexcept {
+	// Выводим признак наличия значения по указанному указателю
+	return this->root().at(pointer).valid();
+}
+/**
  * @brief Метод извлечения количества узлов документа
  *
  * @return количество узлов документа
@@ -2382,6 +2414,16 @@ awh::codec::json::error_t awh::codec::json::Document::error() const noexcept {
 const awh::codec::json::location_t & awh::codec::json::Document::errorLocation() const noexcept {
 	// Выводим положение отказа разбора в исходном тексте
 	return this->_position;
+}
+/**
+ * @brief Метод извлечения кодировки исходного текста
+ *
+ * @return кодировка исходного текста
+ *
+ */
+awh::codec::json::encoding_t awh::codec::json::Document::encoding() const noexcept {
+	// Выводим кодировку, какою исходный текст прочитан
+	return this->_encoding;
 }
 /**
  * @brief Метод извлечения настроек документа

@@ -144,7 +144,20 @@ done
 #
 # @note Объектные файлы перечисляются поимённо, а не маскою: посторонний объектный файл,
 #       оставленный в каталоге сборки кем угодно, попадал бы в связывание и валил его
-$COMPILER $OPTIONS "$ROOT/tools/verify/codec/toml/dump.cpp" $OBJECTS -lz -o "$OUTPUT/dump"
+##
+# Библиотеки системы, связыванию потребные
+#
+# @note Winsock тянет `sys/log` из `FileSink::rotate()`, и без него стенд под MinGW НЕ
+#       СОБИРАЕТСЯ вовсе: `ld.lld: undefined symbol: WSAGetLastError`. Стенд проверок
+#       правило это несёт с самого начала, а сборщик сличения не нёс. Нашёл это Андрей
+#       на стенде Windows 11 ARM64
+##
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -lIphlpapi -lpsapi" ;;
+	*) SYSTEM_LIBS="" ;;
+esac
+
+$COMPILER $OPTIONS "$ROOT/tools/verify/codec/toml/dump.cpp" $OBJECTS $SYSTEM_LIBS -lz -o "$OUTPUT/dump"
 
 # Выводим сообщение об окончании сборки стенда
 echo "Стенд собран: $OUTPUT/dump"

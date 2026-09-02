@@ -541,6 +541,32 @@ TEST(CodecTomlWriter, Floats) {
 	ASSERT_TRUE(std::isnan(events.at(3).real));
 }
 /**
+ * @brief Проверка сохранения знака у нечисла при обратном чтении
+ *
+ * @note Читающий знак у нечисла хранит, и пишущий обязан его ставить: иначе круг
+ *       «прочли - записали - прочли» размыкается, и дерево перезаписи расходится
+ *       с деревом исходника
+ *
+ */
+TEST(CodecTomlWriter, NegativeNotANumberKeepsSign) {
+	// Объект записи текста настроек
+	toml::writer_t writer(::logger());
+	// Выполняем запись имени ключа пары
+	ASSERT_TRUE(writer.key("undefined"));
+	// Выполняем запись нечисла со знаком
+	ASSERT_TRUE(writer.real(-numeric_limits <double>::quiet_NaN()));
+	// Выполняем проверку собранного текста настроек
+	ASSERT_EQ(writer.text(), "undefined = -nan\n");
+	// Собранные события разбора значений
+	vector <Scalar> events;
+	// Выполняем проверку разбора собранного текста настроек
+	ASSERT_EQ(::reread(writer.text(), events), toml::error_t::NONE);
+	// Выполняем проверку количества прочитанных значений
+	ASSERT_EQ(events.size(), 1u);
+	// Выполняем проверку сохранения знака нечисла при обратном чтении
+	ASSERT_TRUE(std::isnan(events.at(0).real) && std::signbit(events.at(0).real));
+}
+/**
  * @brief Проверка записи чисел при локали с иным десятичным знаком
  *
  * @details Запись числа ведётся через snprintf, а тот знак десятичной точки берёт из

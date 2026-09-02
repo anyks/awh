@@ -45,7 +45,7 @@ namespace {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Writer::Settings::Settings() noexcept :
+awh::codec::xml::Settings::Settings() noexcept :
  format(format_t::COMPACT), collapse(true), escapeNonAscii(false), indent(1), separator(separator_t::TABS), maxDepth(0) {}
 /**
  * @brief Метод завершения незакрытой метки узла

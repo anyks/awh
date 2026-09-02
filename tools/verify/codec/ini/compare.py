@@ -46,7 +46,7 @@ def git_oracle(path):
 	"""Разбор текста настроек эталоном - средством «git config»"""
 
 	run = subprocess.run(['git', 'config', '-f', path, '--list', '-z'],
-	                     capture_output = True, text = True)
+	                     capture_output = True, text = True, encoding = 'utf-8')
 	if run.returncode != 0:
 		return None
 	tree = {'': {}}
@@ -177,7 +177,7 @@ def main():
 				# образца. Мера эта сама по себе не приговор: чтение вправе быть шире
 				# там, где наречие того требует, - но расти она не должна незаметно
 				##
-				run = subprocess.run([dump, source, dialect], capture_output = True, text = True)
+				run = subprocess.run([dump, source, dialect], capture_output = True, text = True, encoding = 'utf-8')
 				if run.returncode == 0:
 					wider += 1
 				elif run.returncode < 0:
@@ -187,7 +187,7 @@ def main():
 					               'отказ': run.stderr.strip()[:400]})
 				else: narrower += 1
 				continue
-			run = subprocess.run([dump, source, dialect], capture_output = True, text = True)
+			run = subprocess.run([dump, source, dialect], capture_output = True, text = True, encoding = 'utf-8')
 			##
 			# Если работа щупа прекращена сигналом
 			#
@@ -221,7 +221,7 @@ def main():
 			#
 			# Сличается лишь то, на чём разбор уже сошёлся: расхождение разбора отчитано
 			# выше, и вменять его записи вторым разом нечего
-			written = subprocess.run([dump, source, dialect, 'rewrite'], capture_output = True, text = True)
+			written = subprocess.run([dump, source, dialect, 'rewrite'], capture_output = True, text = True, encoding = 'utf-8')
 			if (written.returncode == 0) and not collate(produced, expected, listed, folded, sectioned):
 				mirror = os.path.join(root, '.rewrite-%s.ini' % dialect)
 				with open(mirror, 'w', newline = '', encoding = 'utf-8') as file:

@@ -58,7 +58,34 @@ ROOT="${1:-$(cd "$(dirname "$0")/../../.." && pwd)}"
 OUTPUT="${2:-/tmp/awh-abc-stand}"
 
 # Получаем корень набора GoogleTest
+##
+# Корень набора GoogleTest
+#
+# @details Умолчанием стоит «/usr», но у BSD и у систем Sun третья сторона живёт в
+#          «/usr/local», и путь этот у собирателя НЕ подразумевается: заголовок лежит на
+#          месте, а сборка валится на «gtest/gtest.h file not found». Оттого при
+#          отсутствии заголовка в «/usr» берётся «/usr/local»
+#
+# @note Переменная «GTEST_ROOT» подбор этот перекрывает: задавший её знает, где набор
+#       у него лежит, и гадать за него незачем
+##
 GTEST="${GTEST_ROOT:-/usr}"
+
+if [ ! -f "$GTEST/include/gtest/gtest.h" ]; then
+	##
+	# Обходим обычные места третьей стороны
+	#
+	# @note «/usr/local» — у BSD и у систем Sun, «/usr/pkg» — у NetBSD с pkgsrc,
+	#       «/opt/homebrew» и «/usr/local» — у macOS по набору команд, «/opt/csw» — у
+	#       Solaris с OpenCSW
+	##
+	for CANDIDATE in /usr/local /usr/pkg /opt/homebrew /opt/csw; do
+		if [ -f "$CANDIDATE/include/gtest/gtest.h" ]; then
+			GTEST="$CANDIDATE"
+			break
+		fi
+	done
+fi
 
 # Получаем собиратель
 COMPILER="${CXX:-c++}"
@@ -99,7 +126,19 @@ elif [ -z "$COMPILER_C" ] || ! command -v "$COMPILER_C" > /dev/null 2>&1; then
 		exit 1
 	fi
 fi
-OPTIONS_C="-O2 -I$ROOT/submodules/zlib"
+##
+# Ключи сборки zlib подмодуля
+#
+# @details Признак «HAVE_UNISTD_H» обязателен: без него «zconf.h» не подключает
+#          «unistd.h», и «gzlib.c», «gzread.c», «gzwrite.c» зовут «lseek», «read»,
+#          «write» и «close» необъявленными. У clang это выходит предупреждениями, а у
+#          GCC 14 и новее - ОТКАЗОМ: неявное объявление работы там ошибка по умолчанию,
+#          и стенд на Alpine (musl, gcc 15.2) не собирался вовсе
+#
+# @note Сборка проекта тот же признак ставит сама («sh/build_third_party.sh»), стенд же
+#       собирает zlib своими руками - и признак этот повторить обязан
+##
+OPTIONS_C="-O2 -DHAVE_UNISTD_H=1 -I$ROOT/submodules/zlib"
 
 #
 # Путь к библиотеке языка C++ того собирателя, каким собран стенд

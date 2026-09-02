@@ -1,3 +1,19 @@
+# Запоминаем правила поиска, действовавшие до нас
+#
+# Правила эти общие на весь разбор сборки, а сужаются они здесь под СВОИ
+# зависимости - те, что лежат в дереве и названы по-своему. Не вернув их назад,
+# файл этот навязывал бы своё правило всякому поиску, идущему после него.
+#
+# Ущерб от этого замерен на стенде MS Windows: сужение до «.lib» делало невидимой
+# библиотеку эталона сличения (`libpcre2-8.a`), поиск её отвечал «не найдено», и
+# шесть проверок модуля выражений, сличающих его с эталоном, отменялись
+# препроцессором - молча, без единого довода в выводе сборки. Пропуск молчаливый
+# неотличим от прохождения, и на этой системе модуль выражений не сличался с
+# эталоном НИ РАЗУ.
+SET(AWH_FIND_LIBRARY_PREFIXES_KEPT ${CMAKE_FIND_LIBRARY_PREFIXES})
+SET(AWH_FIND_LIBRARY_SUFFIXES_KEPT ${CMAKE_FIND_LIBRARY_SUFFIXES})
+SET(AWH_FIND_USE_SYSTEM_ENVIRONMENT_PATH_KEPT ${CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH})
+
 SET(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH FALSE)
 
 # Если операцинная система относится к MS Windows
@@ -120,3 +136,11 @@ install(DIRECTORY "${LIZARD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/i
 install(DIRECTORY "${DENSITY_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BORINGSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
+
+# Возвращаем правила поиска, действовавшие до нас
+#
+# Возврат стоит здесь, а не у потребителей: своё сужение обязан снимать тот, кто его
+# завёл, - иначе всякому поиску во всём дереве пришлось бы знать о нём и защищаться
+SET(CMAKE_FIND_LIBRARY_PREFIXES ${AWH_FIND_LIBRARY_PREFIXES_KEPT})
+SET(CMAKE_FIND_LIBRARY_SUFFIXES ${AWH_FIND_LIBRARY_SUFFIXES_KEPT})
+SET(CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH ${AWH_FIND_USE_SYSTEM_ENVIRONMENT_PATH_KEPT})

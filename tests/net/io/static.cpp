@@ -7315,6 +7315,243 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
  *             перечитывать обходом
  *
  */
+/**
+ * @brief Тест выдачи извещений наблюдения, не вместившихся в пачку одного оборота
+ *
+ * @details Перевод извещений наблюдения в записи разбора ограничен местом в пачке
+ *          оборота, а порождает их всплеск в каталоге числом, наперёд неизвестным.
+ *          Остаток ждёт своей очереди в накопителе, и ждать он обязан НАЧАЛА оборота
+ *          следующего
+ *
+ * @warning Прежде перевод звался ровно в одном месте - при разборе завершения
+ *          наблюдения, - и утихший каталог хоронил остаток насовсем: новых завершений
+ *          по нему нет, звать перевод нечему. Потребитель недосчитывался событий
+ *          файловой системы, не видя отказа ниоткуда
+ *
+ * @note Число записей взято заведомо большим ёмкости пачки оборота (64 записи, предел
+ *       разбора - вдвое больше). Заводятся они одним всплеском, без опроса между ними,
+ *       чтобы всё извещение пришло разом; после всплеска каталог не трогается вовсе -
+ *       именно тишина после него и хоронила остаток
+ *
+ */
+/**
+ * @brief Тест разбора пачки готовностей, не вмещающейся в записи одного оборота
+ *
+ * @details Записи разбора у оборота конечны, а готовностей за один забор завершений
+ *          приходит сколько придёт. Разбор, упершийся в предел, обязан оставить
+ *          остаток пачки следующему обороту - и разобрать его там
+ *
+ * @warning Забранное системой обратно ей не отдаётся: `GetQueuedCompletionStatusEx`
+ *          снимает завершения с порта насовсем. Оборванный разбор терял остаток пачки
+ *          НАВСЕГДА, а с ним и записи учёта поданных операций: движок числил приём
+ *          поданным, ядро завершение уже отдало, и описатель вставал молча
+ *
+ * @note Число пар взято заведомо большим ёмкости записей оборота: начальный размер
+ *       пачки - 64 записи, предел разбора вдвое больше, а каждая готовность вправе
+ *       занять до двух записей. Все встречные стороны шлют разом, без опроса между
+ *       ними, чтобы готовности пришли одним забором
+ *
+ */
+TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
+	// Количество заводимых пар
+	constexpr uint16_t COUNT = 150;
+	// Количество событий, принявших своё сообщение
+	std::set <awh::event::id_t> received;
+	// Слушающий сокет, через который заводятся пары
+	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	ASSERT_GT(listener, 0);
+	// Адрес, на котором слушающий сокет будет ожидать подключения
+	struct sockaddr_in host{};
+	/**
+	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
+	 * MS Windows его нет вовсе, а нужным оно не является нигде
+	 */
+	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		host.sin_len = sizeof(host);
+	#endif
+	host.sin_family = AF_INET;
+	host.sin_port = 0;
+	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	// Длина записи адреса, которую вернёт опрос имени сокета
+	socklen_t length = sizeof(host);
+	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
+	ASSERT_EQ(0, ::listen(listener, COUNT));
+	ASSERT_TRUE(this->_io->initialize());
+	// Заведённые события клиентов
+	std::vector <awh::event::id_t> clients;
+	// Сырые встречные стороны заведённых пар
+	std::vector <int32_t> peers;
+	/**
+	 * Заводим пары подключений
+	 */
+	for(uint16_t index = 0; index < COUNT; index++){
+		// Заводим событие клиента
+		const awh::event::id_t eid = this->_io->event(
+			awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+			awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+		);
+		ASSERT_GT(eid, 0u);
+		ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+		ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTargetPort(eid, ntohs(host.sin_port)));
+		// Устанавливаем функцию обратного вызова на событие чтения данных
+		this->_io->on(eid, static_cast <awh::engine::callback::read_t> (
+			[&received](const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+				// Запоминаем событие, принявшее своё сообщение
+				received.emplace(eid);
+			}
+		));
+		ASSERT_TRUE(this->_io->commit(eid));
+		ASSERT_TRUE(this->_io->connect(eid));
+		ASSERT_TRUE(this->_io->launch(eid));
+		// Запоминаем заведённое событие
+		clients.push_back(eid);
+	}
+	{
+		/**
+		 * Дожидаемся, пока все подключения будут приняты слушающим сокетом
+		 *
+		 * @note Приём идёт сырым обращением, а не событием движка: проверяется здесь
+		 *       разбор готовностей, а не приём подключений
+		 */
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+		while((peers.size() < COUNT) && (std::chrono::steady_clock::now() < deadline)){
+			// Выполняем оборот опроса, чтобы подключения ушли ядру
+			this->_io->poll(__AWH_TEST_POLL_SLICE__);
+			// Выполняем приём очередного подключения
+			const int32_t peer = ::accept(listener, nullptr, nullptr);
+			// Если подключение принято, запоминаем встречную сторону
+			if(peer > 0)
+				// Запоминаем принятую встречную сторону
+				peers.push_back(peer);
+		}
+	}
+	// Роспись опыта, выводимая при отказе
+	std::string sign = std::string("пар=") + std::to_string(peers.size());
+	ASSERT_EQ(peers.size(), static_cast <size_t> (COUNT)) << sign;
+	/**
+	 * Шлём со всех встречных сторон разом
+	 *
+	 * @note Опроса между отправками нет намеренно: готовности обязаны прийти одним
+	 *       забором завершений, чтобы разбор упёрся в предел записей оборота
+	 */
+	for(const auto & peer : peers)
+		// Отправляем сообщение встречной стороной
+		::send(peer, "AWH", 3, 0);
+	{
+		// Срок, за который все сообщения обязаны быть принятыми
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+		// Выполняем опрос активных событий, пока все сообщения не приняты
+		while((received.size() < COUNT) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+	}
+	// Дополняем роспись опыта итогом приёма
+	sign.append(" принято=").append(std::to_string(received.size())).append(" из ").append(std::to_string(COUNT));
+	// Закрываем сырые встречные стороны
+	for(const auto & peer : peers)
+		// Закрываем встречную сторону
+		::closesocket(peer);
+	::closesocket(listener);
+	// Уничтожаем заведённые события
+	for(const auto & eid : clients)
+		// Уничтожаем событие клиента
+		this->_io->destroy(eid);
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Всякое событие обязано принять своё сообщение
+	ASSERT_EQ(received.size(), static_cast <size_t> (COUNT)) << sign;
+}
+
+TEST_F(IoFixture, IoFsDirEntriesBurstWindowsTest){
+	// Количество заводимых записей каталога
+	constexpr uint16_t COUNT = 300;
+	// Путь к отслеживаемому каталогу
+	const std::string dirname = ".\\dirburst";
+	// Собранные названия появившихся записей
+	std::set <std::string> collected;
+	// Удаляем остатки от предыдущего запуска
+	for(uint16_t index = 0; index < COUNT; index++)
+		// Удаляем запись каталога
+		::unlink((dirname + "\\f" + std::to_string(index) + ".txt").c_str());
+	::rmdir(dirname.c_str());
+	// Заводим отслеживаемый каталог
+	ASSERT_EQ(::mkdir(dirname.c_str()), 0);
+	// Добавляем событие отслеживания каталога
+	const awh::event::id_t did = this->_io->event(awh::event::node_t::DIR, awh::event::family_t::FSYS);
+	ASSERT_GT(did, 0u);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем путь к отслеживаемому каталогу
+	ASSERT_TRUE(this->_io->setAddress(did, awh::event::address_t::FS, dirname));
+	// Устанавливаем функцию обратного вызова на изменение записей каталога
+	this->_io->on(did, [&collected]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const awh::event::vnode_t vnode, const std::string & path) noexcept -> void {
+		// Появление записи каталога прочих действий проверку не занимает
+		if(action != awh::event::action_t::CHANGE)
+			// Выходим из функции обратного вызова
+			return;
+		// Выполняем поиск последнего разделителя в пути записи
+		const size_t pos = path.rfind('\\');
+		// Если разделитель в пути не найден, событие проверку не занимает
+		if(pos == std::string::npos)
+			// Выходим из функции обратного вызова
+			return;
+		// Получаем название появившейся записи
+		const std::string name = path.substr(pos + 1);
+		/**
+		 * Записи не нашего вида проверку не занимают
+		 *
+		 * @note Наблюдение сообщает и о самом отслеживаемом каталоге - его изменение и
+		 *       есть появление в нём записей, - а считаем мы здесь только заведённое
+		 */
+		if((name.length() < 5) || (name.compare(name.length() - 4, 4, ".txt") != 0))
+			// Выходим из функции обратного вызова
+			return;
+		// Запоминаем название появившейся записи
+		collected.emplace(name);
+	});
+	// Выполняем фиксацию настроек события
+	ASSERT_TRUE(this->_io->commit(did));
+	// Выполняем запуск события
+	ASSERT_TRUE(this->_io->launch(did));
+	// Выполняем один оборот опроса: подписка обязана уйти ядру до всплеска
+	this->_io->poll(__AWH_TEST_POLL_SLICE__);
+	/**
+	 * Заводим все записи каталога одним всплеском
+	 *
+	 * @note Опроса между ними нет намеренно: извещения обязаны прийти одним завершением
+	 */
+	for(uint16_t index = 0; index < COUNT; index++){
+		// Заводим очередную запись каталога
+		FILE * file = ::fopen((dirname + "\\f" + std::to_string(index) + ".txt").c_str(), "w");
+		// Если запись каталога заведена, закрываем её
+		if(file != nullptr)
+			// Закрываем заведённую запись каталога
+			::fclose(file);
+	}
+	{
+		/**
+		 * Срок, за который все извещения обязаны быть выданными
+		 *
+		 * @note Каталог после всплеска не трогается: выдача остатка обязана идти сама -
+		 *       оборотами опроса, а не приходом нового извещения
+		 */
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+		// Выполняем опрос активных событий, пока все записи не собраны
+		while((collected.size() < COUNT) && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+	}
+	// Роспись опыта, выводимая при отказе
+	const std::string sign = std::string("заведено=") + std::to_string(COUNT) +
+		" собрано=" + std::to_string(collected.size());
+	// Уничтожаем заведённое событие
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Удаляем остатки отслеживаемого каталога
+	for(uint16_t index = 0; index < COUNT; index++)
+		// Удаляем запись каталога
+		::unlink((dirname + "\\f" + std::to_string(index) + ".txt").c_str());
+	::rmdir(dirname.c_str());
+	// Все заведённые записи обязаны быть выданными наблюдением
+	ASSERT_EQ(collected.size(), static_cast <size_t> (COUNT)) << sign;
+}
+
 TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 	// Флаг остановки теста
 	bool stop = false;

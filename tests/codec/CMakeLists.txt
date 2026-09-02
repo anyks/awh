@@ -68,6 +68,7 @@ if (${GTest_FOUND})
         SET(${PROJECT_NAME}_UNITTEST_SOURCES
             ../main.cpp
             contract.cpp
+            bridge.cpp
             xml/common.cpp
             xml/encoding.cpp
             xml/reader.cpp

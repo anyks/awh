@@ -1340,7 +1340,7 @@ namespace {
 	 */
 	static outgoing_t compose() noexcept {
 		// Набор методов собираемого запроса
-		static const method_t methods[] = {method_t::GET, method_t::POST, method_t::PUT, method_t::DEL, method_t::PATCH};
+		static const method_t methods[] = {method_t::GET, method_t::POST, method_t::PUT, method_t::DELETE, method_t::PATCH};
 		/**
 		 * Результат работы функции: поля обнуляются явно - описание содержит признаки,
 		 * выставляемые не на каждом пути, и чтение неинициализированного признака

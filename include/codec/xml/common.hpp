@@ -731,6 +731,69 @@ namespace awh {
 				TABS   = 0x01, // Отступ ставится знаками горизонтальной табуляции
 				SPACES = 0x02  // Отступ ставится пробелами
 			};
+			/**
+			 * \~russian
+			 * @brief Настройки записи текста разметки
+			 *
+			 * @note Построение это лежит в общем заголовке, а не в записи, оттого что дерево
+			 *       разметки записывает себя ходом `dump(settings)`, а включить у себя запись
+			 *       не может: запись сама зависит от дерева. Внутри записи оно доступно
+			 *       прежним именем `writer_t::settings_t`
+			 *
+			 * \~english
+			 * @brief Settings of the writing of a markup text
+			 *
+			 * \~
+			 */
+			typedef struct __AWH_SHARED_EXPORT__ Settings {
+				// Вид записи собираемого текста разметки
+				format_t format;
+				// Флаг записи узлов без содержимого самозакрывающейся меткой
+				bool collapse;
+				// Флаг экранирования знаков, выходящих за пределы US-ASCII, числовыми ссылками
+				bool escapeNonAscii;
+				// Количество знаков отступа на один уровень вложенности
+				uint8_t indent;
+				// Знак, которым ставится отступ нарядной записи
+				separator_t separator;
+				/**
+				 * \~russian
+				 * Наибольшая допустимая глубина вложенности узлов, ноль - без предела
+				 *
+				 * @details Предела по умолчанию нет: обход дерева ведётся собственным
+				 * стеком, а не рекурсией, и стеку задачи глубина записи не грозит. Держи
+				 * запись предел разбора, дерево, разобранное с поднятым `maxDepth`,
+				 * обратно бы не записывалось - а разобранное обязано записываться
+				 *
+				 * @note Предел нужен лишь тому, кто открывает узлы сам, не имея дерева:
+				 * ошибка в его собственном ходе иначе растит стек открытых узлов, пока
+				 * не исчерпается память. Превышение отвечает отказом `DEPTH_EXCEEDED`
+				 *
+				 * \~english
+				 * Largest admissible depth of the nesting of the nodes, zero — without a limit
+				 * @details There is no limit by default: the traversal of the tree is conducted by an own
+				 * stack rather than by a recursion, and the depth of the writing does not threaten the stack of the task. Were the
+				 * writing to keep the limit of the parsing, a tree parsed with a raised `maxDepth`
+				 * would not be written back — while what has been parsed is obliged to be writable
+				 * @note The limit is needed only by the one who opens the nodes himself, having no tree:
+				 * an error in his own course would otherwise grow the stack of the open nodes until
+				 * the memory is exhausted. An excess answers with a `DEPTH_EXCEEDED` refusal
+				 *
+				 * \~
+				 */
+				uint32_t maxDepth;
+				/**
+				 * \~russian
+				 * @brief Конструктор
+				 *
+				 *
+				 * \~english
+				 * @brief Constructor
+				 *
+				 * \~
+				 */
+				Settings() noexcept;
+			} writer_settings_t;
 
 			/**
 			 * \~russian

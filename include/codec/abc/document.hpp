@@ -767,6 +767,34 @@ namespace awh {
 					// Код отказа разбора записи
 					mutable error_t _error;
 				private:
+					/**
+					 * \~russian
+					 * Место, где отказ разбора произошёл
+					 *
+					 * @details Место снимается у разбирателя при отказе: разбиратель заводится
+					 * разбором и им же разрушается, и без переноса место его пропадало бы
+					 *
+					 * \~english
+					 * @brief Location where the failure of the parsing has occurred
+					 *
+					 * \~
+					 */
+					location_t _location;
+				private:
+					/**
+					 * \~russian
+					 * Настройки разбора записи, хранимые деревом
+					 *
+					 * @details Хранятся они ради согласия договоров кодеков: у шести прочих
+					 * настройки живут при документе и опрашиваются `settings()`
+					 *
+					 * \~english
+					 * @brief Settings of the parsing of a record stored by the tree
+					 *
+					 * \~
+					 */
+					reader_t::settings_t _parsing;
+				private:
 					// Указатели имён полей отображений, заводимые по требованию
 					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
 				private:
@@ -929,6 +957,72 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool build(writer_t & writer) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сборки записи из дерева документа
+					 *
+					 * @details Работа эта заведена ради согласия договоров кодеков: у шести
+					 * текстовых кодеков рамки сборка зовётся тем же именем
+					 *
+					 * @note Выдаётся вместилище ОКТЕТОВ, а не строка: запись ABC двоична, и
+					 * нулевой октет в ней рядовой. Имя общее, вид выдачи свой - различие идёт
+					 * от существа записи, а не от разнобоя имён
+					 *
+					 * @return собранная запись, пустая при отказе сборки
+					 *
+					 * \~english
+					 * @brief Method of the assembling of a record out of the tree of a document
+					 * @note A container of OCTETS is issued rather than a string: the record of ABC is binary
+					 * @return assembled record, empty upon a failure of the assembling
+					 *
+					 * \~
+					 */
+					vector <uint8_t> dump() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сборки записи из дерева документа затребованными настройками
+					 *
+					 * @param settings настройки сборки записи
+					 * @return         собранная запись, пустая при отказе сборки
+					 *
+					 * \~english
+					 * @brief Method of the assembling of a record out of the tree of a document by the requested settings
+					 * @param settings settings of the assembling of the record
+					 * @return assembled record, empty upon a failure of the assembling
+					 *
+					 * \~
+					 */
+					vector <uint8_t> dump(const writer_t::settings_t & settings) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения настроек разбора записи
+					 *
+					 * @details Настройки эти берутся разбором, зовомым БЕЗ них: работа
+					 * `parse(buffer, size)` опирается на них, а `parse(buffer, size, settings)`
+					 * берёт отданные ей и хранимых не трогает
+					 *
+					 * @return настройки разбора записи
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the settings of the parsing of a record
+					 * @return settings of the parsing of the record
+					 *
+					 * \~
+					 */
+					const reader_t::settings_t & settings() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки настроек разбора записи
+					 *
+					 * @param settings устанавливаемые настройки разбора записи
+					 *
+					 * \~english
+					 * @brief Method of the setting of the settings of the parsing of a record
+					 * @param settings settings of the parsing of a record being set
+					 *
+					 * \~
+					 */
+					void settings(const reader_t::settings_t & settings) noexcept;
 				protected:
 					// Объект работы с логами
 					const log_t * _log;
@@ -1019,6 +1113,40 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					size_t size() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки дерева документа на пустоту
+					 *
+					 * @return признак отсутствия узлов в дереве документа
+					 *
+					 * \~english
+					 * @brief Method of the checking of the tree of a document for emptiness
+					 * @return sign of the absence of the nodes in the tree of the document
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool empty() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения количества узлов дерева документа
+					 *
+					 * @deprecated Работа переименована в `size()` ради согласия договоров всех
+					 * семи кодеков рамки: у шести прочих та же величина зовётся `size()`.
+					 * Замер 02.09.2026 по телам работ, а не по описаниям: `json`, `yaml`, `xml`
+					 * и `abc` возвращают одно и то же - `_nodes.size()`, счёт узлов в арене.
+					 * Посредник оставлен, чтобы правка не ломала уже написанное
+					 *
+					 * @return количество узлов дерева документа
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the number of the nodes of the tree of a document
+					 * @deprecated Renamed to `size()` for the sake of the agreement of the contracts of the codecs
+					 * @return number of the nodes of the tree of the document
+					 *
+					 * \~
+					 */
+					[[deprecated("зовите size(): имя сведено с шестью прочими кодеками рамки")]]
 					size_t nodes() const noexcept;
 					/**
 					 * \~russian
@@ -1033,6 +1161,48 @@ namespace awh {
 					 * \~
 					 */
 					error_t error() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения места, где отказ разбора произошёл
+					 *
+					 * @details Работа эта заведена ради согласия договоров кодеков: у шести
+					 * текстовых кодеков рамки место отказа зовётся тем же именем, и потребитель,
+					 * читающий несколько кодеков, обходится одним кодом
+					 *
+					 * @note Вид `abc::location_t` несёт смещение и глубину, но НЕ несёт номера
+					 * строки и положения в ней: у двоичной записи строк нет вовсе, и поля эти
+					 * означали бы у неё пустое место. Различие это идёт от существа записи, а
+					 * не от разнобоя имён
+					 *
+					 * @return место, где отказ разбора произошёл
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the location where the failure of the parsing has occurred
+					 * @details This work is introduced for the sake of the agreement of the contracts of the codecs
+					 * @note The kind `abc::location_t` carries the offset and the depth but NOT the number of a line
+					 * @return location where the failure of the parsing has occurred
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта логирования
+					 *
+					 * @details Работа эта заведена ради согласия договоров кодеков: журнал у
+					 * прочих кодеков заводится ею же. У ABC журнал принимается и конструктором,
+					 * и работа эта его не заменяет, а дополняет - дерево бывает заведено прежде,
+					 * чем журнал у потребителя готов
+					 *
+					 * @param log объект работы с логами
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the logging
+					 * @param log object for working with logs
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 				public:
 					/**
 					 * \~russian

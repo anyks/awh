@@ -682,20 +682,6 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 }
 
 /**
- * @brief Метод установки сетевого устройства групповой рассылки
- *
- * @param sock   сокет для установки сетевого устройства
- * @param family семейство адресов
- * @param ifname название сетевого устройства
- * @return       результат выполнения установки
- *
- * @note Устройство задаётся номером, а не названием: у MS Windows опции с названием
- *       устройства нет вовсе, и перевод названия в номер ведётся здесь -
- *       if_nametoindex объявлен там же, где и прочие средства Winsock
- *
- */
-
-/**
  * @brief Функция добычи номера сетевого устройства по его названию
  *
  * @details Название устройства у MS Windows - GUID вида `{F49A2CB0-...}`, и
@@ -790,6 +776,20 @@ static uint32_t __awh_iface_index__(const std::string_view ifname, const bool v6
 	return static_cast <uint32_t> (::if_nametoindex(std::string(ifname).c_str()));
 }
 
+
+/**
+ * @brief Метод установки сетевого устройства групповой рассылки
+ *
+ * @param sock   сокет для установки сетевого устройства
+ * @param family семейство адресов
+ * @param ifname название сетевого устройства
+ * @return       результат выполнения установки
+ *
+ * @note Устройство задаётся номером, а не названием: у MS Windows опции с названием
+ *       устройства нет вовсе, и перевод названия в номер ведётся здесь -
+ *       if_nametoindex объявлен там же, где и прочие средства Winsock
+ *
+ */
 bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
 	// Если название сетевого устройства не передано
 	if(ifname.empty())
@@ -941,21 +941,6 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 }
 
 /**
- * @brief Метод заведения сокета
- *
- * @param family семейство адресов
- * @param type   тип сокета
- * @param proto  протокол передачи данных
- * @return       заведённый сокет
- *
- * @note Сокет заводится наложенным (WSA_FLAG_OVERLAPPED), и иначе быть не может: у
- *       дескриптора без наложения система выстраивает операции в очередь, и запись из
- *       одного потока дожидается чтения из другого. Проверено опытом на именованном
- *       канале - обмен вставал намертво. Наложение же есть то самое устройство, на
- *       каком стоит порт завершения ввода-вывода
- *
- */
-/**
  * @brief Метод проверки готовности средств сокетов системы
  *
  * @details Подъём ведётся здесь же, а не одной лишь проверкой уже поднятого: спросить
@@ -980,6 +965,25 @@ bool awh::eth::Socket::ready() const noexcept {
 	return true;
 }
 
+/**
+ * @brief Метод заведения сокета
+ *
+ * @param family  семейство адресов
+ * @param type    тип сокета
+ * @param proto   протокол передачи данных
+ * @param options набор опций события
+ * @return        заведённый сокет
+ *
+ * @note Опции при создании сокета эта система не принимает вовсе - они накладываются
+ *       отдельными обращениями, - и довод этот здесь не используется
+ *
+ * @note Сокет заводится наложенным (WSA_FLAG_OVERLAPPED), и иначе быть не может: у
+ *       дескриптора без наложения система выстраивает операции в очередь, и запись из
+ *       одного потока дожидается чтения из другого. Проверено опытом на именованном
+ *       канале - обмен вставал намертво. Наложение же есть то самое устройство, на
+ *       каком стоит порт завершения ввода-вывода
+ *
+ */
 awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const event::type_t type, const event::protocol_t proto, const uint16_t options) const noexcept {
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
@@ -1227,13 +1231,22 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	return this->ipc(family, type, proto, name);
 }
 /**
- * @brief Метод создания пары связанных концов обмена с выдачей имени канала
+ * @brief Метод открытия своего конца именованного канала по его имени
  *
- * @param family семейство адресов
- * @param type   тип сокета
- * @param proto  протокол сокета
- * @param name   имя заведённого канала
- * @return       пара связанных концов обмена
+ * @details Обращение это выходит на канал, заведённый встречной стороной, а не
+ *          заводит своего: имя канала приходит извне - порождённый работник кластера
+ *          получает его от мастера, - и остаётся лишь открыть свой конец
+ *
+ * @note Открытие ведётся заходами: назвавшая сторона освобождает свой экземпляр не
+ *       мгновенно, а дойдя до подписки на приём, тогда как встречная сторона стучится
+ *       сразу. Занятость в такой миг означает неготовность, а не чужой обмен
+ *
+ * @warning Конец открывается наложенным и переводится в строй сообщений: обмен ведётся
+ *          портом завершений, а подача готовности к приёму держится на строе сообщений -
+ *          чтение нулевой длины ждёт прихода сообщения лишь у канала этого строя
+ *
+ * @param name имя именованного канала
+ * @return     описатель открытого конца канала
  *
  */
 awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept {
@@ -2507,11 +2520,119 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
  * @param source адрес устройства, каким выполняется вход
  * @return       результат выполнения
  *
- * @note Устройство у IPv6 задаётся не адресом, а номером, и номер этот берётся из
- *       поля зоны переданного адреса. Пустая зона означает выбор устройства самой
- *       системой - тем поведение приводится к общему с эталонными бэкендами виду
+ * @note Устройство у IPv6 задаётся системе не адресом, а номером, и перевод адреса в
+ *       номер ведётся здесь - тем же порядком, каким его ведут эталонные слои.
+ *       Заданная зона адреса имеет преимущество: она номером и является. Пустой адрес
+ *       (`::`) означает выбор устройства самой системой
  *
  */
+/**
+ * @brief Функция добычи номера сетевого устройства по его адресу IPv6
+ *
+ * @details Эталонные слои называют устройство входа в группу рассылки его АДРЕСОМ и
+ *          сами переводят адрес в номер, перебирая устройства машины. MS Windows
+ *          адреса на этом месте не принимает вовсе - структура `ipv6_mreq` несёт
+ *          номер, - и перевод потому ведётся здесь
+ *
+ * @warning Прежде номер брался из одного лишь поля зоны переданного адреса, а сам
+ *          адрес отбрасывался. Поле это заполнено у адресов связи-местных
+ *          (`FE80::/10`), где зона записана в самом адресе, и пусто у всех прочих -
+ *          у глобальных и у местных однозначных (`FC00::/7`). Вход по такому адресу
+ *          уходил оттого на устройство, выбранное системой, а не на названное, и
+ *          расхождение было молчаливым: обращение отвечало успехом
+ *
+ * @note Зона, если она задана, имеет преимущество: она и есть номер устройства,
+ *       названный вызывающей стороной прямо, и перебирать ради него устройства
+ *       машины незачем
+ *
+ * @param address адрес устройства, каким выполняется вход в группу рассылки
+ * @param zone    зона переданного адреса, ноль - зона не задана
+ * @return        номер сетевого устройства либо ноль, если устройство не найдено
+ *
+ */
+static uint32_t __awh_iface_index6__(const uint8_t * address, const uint32_t zone) noexcept {
+	// Если зона адреса задана - она и есть номер устройства
+	if(zone > 0)
+		// Выводим номер устройства, названный зоной адреса
+		return zone;
+	// Если адрес не передан
+	if(address == nullptr)
+		// Выводим отсутствие номера устройства
+		return 0;
+	// Признак того, что адрес пуст целиком
+	bool empty = true;
+	/**
+	 * Выполняем перебор всех октетов переданного адреса
+	 */
+	for(size_t i = 0; i < 16; i++){
+		// Если очередной октет адреса не пуст
+		if(address[i] != 0){
+			// Отмечаем адрес непустым
+			empty = false;
+			// Завершаем перебор октетов адреса
+			break;
+		}
+	}
+	/**
+	 * Если адрес пуст - устройство выбирает система
+	 *
+	 * @note Пустой адрес (`::`) и означает у эталонных слоёв выбор устройства самой
+	 *       системой, и перебирать устройства машины ради него незачем
+	 */
+	if(empty)
+		// Выводим отсутствие номера устройства
+		return 0;
+	// Состав запрашиваемых сведений
+	const ULONG flags = (GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME);
+	// Объём буфера под перечень устройств
+	ULONG size = 16384;
+	// Буфер под перечень сетевых устройств
+	std::vector <uint8_t> buffer(static_cast <size_t> (size));
+	// Итог опроса перечня устройств
+	ULONG code = ::GetAdaptersAddresses(AF_INET6, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+	// Если буфера не хватило - опрашиваем повторно с запрошенным объёмом
+	if(code == ERROR_BUFFER_OVERFLOW){
+		// Выполняем расширение буфера под перечень устройств
+		buffer.resize(static_cast <size_t> (size));
+		// Выполняем повторный опрос перечня устройств
+		code = ::GetAdaptersAddresses(AF_INET6, flags, nullptr, reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()), &size);
+	}
+	// Если перечень устройств получить не удалось
+	if(code != NO_ERROR)
+		// Выводим отсутствие номера устройства
+		return 0;
+	/**
+	 * Выполняем перебор всех сетевых устройств машины
+	 */
+	for(PIP_ADAPTER_ADDRESSES adapter = reinterpret_cast <PIP_ADAPTER_ADDRESSES> (buffer.data()); adapter != nullptr; adapter = adapter->Next){
+		/**
+		 * Устройства, не поднятые в работу, пропускаем
+		 *
+		 * @note Тем же порядком поступает и эталонный слой: он держит в своём складе
+		 *       признак поднятости и сличает адреса лишь у поднятых устройств
+		 */
+		if(adapter->OperStatus != IfOperStatusUp)
+			// Переходим к устройству следующему
+			continue;
+		/**
+		 * Выполняем перебор всех однозначных адресов устройства
+		 */
+		for(PIP_ADAPTER_UNICAST_ADDRESS unicast = adapter->FirstUnicastAddress; unicast != nullptr; unicast = unicast->Next){
+			// Если адрес устройства не задан либо не относится к IPv6
+			if((unicast->Address.lpSockaddr == nullptr) || (unicast->Address.lpSockaddr->sa_family != AF_INET6))
+				// Переходим к адресу следующему
+				continue;
+			// Получаем адрес устройства видом IPv6
+			const struct sockaddr_in6 * value = reinterpret_cast <const struct sockaddr_in6 *> (unicast->Address.lpSockaddr);
+			// Если адрес устройства совпал с искомым
+			if(::memcmp(&value->sin6_addr, address, 16) == 0)
+				// Выводим номер устройства, несущего искомый адрес
+				return static_cast <uint32_t> (adapter->Ipv6IfIndex);
+		}
+	}
+	// Выводим отсутствие номера устройства
+	return 0;
+}
 bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
 	// Если сокет либо адреса не переданы
 	if((sock == net::invalid_socket_t) || (group == nullptr) || (source == nullptr)){
@@ -2557,8 +2678,10 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			struct ipv6_mreq request{};
 			// Устанавливаем адрес группы рассылки
 			::memcpy(&request.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(request.ipv6mr_multiaddr));
+			// Получаем адрес устройства, каким выполняется вход
+			const net::addr_net_ipv6_t * device = awh_cast <const net::addr_net_ipv6_t *> (source);
 			// Устанавливаем номер устройства, каким выполняется вход
-			request.ipv6mr_interface = static_cast <ULONG> (awh_cast <const net::addr_net_ipv6_t *> (source)->zone);
+			request.ipv6mr_interface = static_cast <ULONG> (::__awh_iface_index6__(&device->address[0], device->zone));
 			// Если выполнить вход в группу рассылки либо выход из неё не удалось
 			if(::setsockopt(sock, IPPROTO_IPV6, (join ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP), reinterpret_cast <const char *> (&request), static_cast <int32_t> (sizeof(request))) != 0){
 				// Выводим в журнал сообщение о невозможности выполнения

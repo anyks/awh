@@ -134,6 +134,8 @@ void awh::regex::Emitter::clear() noexcept {
 	this->_stored.clear();
 	// Выполняем обрыв ряда записей в память
 	this->_stamp = SIZE_MAX;
+	// Выполняем сброс количества мест кадра вызова
+	this->_seats = 0;
 	// Выполняем сброс флага отказа порождения машинного кода
 	this->_failed = false;
 }
@@ -225,7 +227,7 @@ bool awh::regex::Emitter::failed() const noexcept {
  * @brief Конструктор
  *
  */
-awh::regex::Emitter::Emitter(const log_t * log) noexcept : _stamp(SIZE_MAX), _failed(false), _log(log) {}
+awh::regex::Emitter::Emitter(const log_t * log) noexcept : _stamp(SIZE_MAX), _seats(0), _failed(false), _log(log) {}
 
 #if defined(__aarch64__) || defined(_M_ARM64)
 
@@ -536,6 +538,8 @@ void awh::regex::Emitter::prologue(const uint32_t frame) noexcept {
 	 *
 	 */
 	emit(this->_code, 0xD503245Fu);
+	// Выполняем установку количества мест кадра вызова, входом отведённых
+	this->_seats = (static_cast <size_t> (frame) / sizeof(size_t));
 	/**
 	 * Если кадр вызова порождаемому сопоставителю требуется
 	 */
@@ -883,6 +887,19 @@ void awh::regex::Emitter::fetch(const reg_t target, const reg_t base, const uint
 		return;
 	}
 	/**
+	 * Если место кадра вызова за пределы отведённого выходит
+	 *
+	 * @details Ограждение действует лишь для мест кадра, входом отведённого:
+	 *          прочие основания адресуют область записей, кадром не мерянную.
+	 *
+	 */
+	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)) {
+		// Выполняем установку флага отказа порождения машинного кода
+		this->_failed = true;
+		// Выходим из метода размещения обращения к памяти
+		return;
+	}
+	/**
 	 * Если ряд записей в память не прерван
 	 *
 	 * @details Ряд из одних записей регистров не меняет, отчего значение,
@@ -934,6 +951,19 @@ void awh::regex::Emitter::store(const reg_t source, const reg_t base, const uint
 		// Выполняем установку флага отказа порождения машинного кода
 		this->_failed = true;
 		// Выходим из метода размещения записи
+		return;
+	}
+	/**
+	 * Если место кадра вызова за пределы отведённого выходит
+	 *
+	 * @details Ограждение действует лишь для мест кадра, входом отведённого:
+	 *          прочие основания адресуют область записей, кадром не мерянную.
+	 *
+	 */
+	if((base == reg_t::STACK) && (this->_seats > 0) && (static_cast <size_t> (index) >= this->_seats)) {
+		// Выполняем установку флага отказа порождения машинного кода
+		this->_failed = true;
+		// Выходим из метода размещения обращения к памяти
 		return;
 	}
 	/**

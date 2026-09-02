@@ -203,6 +203,31 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			/**
+			 * \~russian
+			 * @note Имя `TEXT` занято макросом `winnt.h` у MS Windows, и переименовано оно НЕ
+			 * БЫЛО - в отличие от пары `single_t::NO`/`YES`, прежде звавшейся `FALSE`/`TRUE`.
+			 * Разница у макросов существенная: `TEXT(quote)` ФУНКЦИОНАЛЬНЫЙ и подставляется
+			 * лишь тогда, когда имя стоит перед открывающей скобкой, тогда как `FALSE` и
+			 * `TRUE` были объектными и подставлялись ВЕЗДЕ, никакой квалификацией не
+			 * спасаясь
+			 *
+			 * @note Замерено на Windows 11 ARM64 (MinGW/clangarm64) 03.09.2026: перечисление
+			 * с членом `TEXT = 1` собирается и печатает единицу, подстановки нет. Замер
+			 * прогнан отдельным щупом, а не выведен из свойств макроса
+			 *
+			 * @warning Мина эта, однако, замедленного действия: подстановка сработает, окажись
+			 * имя перед открывающей скобкой - в макросе, в шаблоне, где угодно. Пара снятия
+			 * макросов в начале файла бережёт лишь СВОЙ текст, а не место вызова у
+			 * потребителя. Всплывёт такой случай - переименовывать, и довод к тому уже здесь
+			 *
+			 * \~english
+			 * @note The name `TEXT` is occupied by a macro of `winnt.h` at MS Windows and was NOT renamed:
+			 * `TEXT(quote)` is FUNCTION-LIKE and expands only before an opening parenthesis
+			 * @warning The expansion will trigger should the name ever stand before an opening parenthesis
+			 *
+			 * \~
+			 */
 			enum class payload_t : uint8_t {
 				MIXED   = 0x00, // Содержимое вперемешку
 				TEXT    = 0x01, // Знаковый текст

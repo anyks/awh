@@ -23,12 +23,15 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <cstring>
+#include <fstream>
+#include <sys/stat.h>
 #include <algorithm>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/document.hpp>
+#include <codec/xml/writer.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -115,6 +118,18 @@ awh::codec::xml::name_t awh::codec::xml::Document::get(const title_t & title) co
  * @param text     исходный текст разметки целиком
  * @param settings настройки разбора текста разметки
  * @return         результат выполнения операции
+ *
+ */
+bool awh::codec::xml::Document::parse(const string_view text) noexcept {
+	// Выводим итог разбора текста разметки с хранимыми настройками дерева
+	return this->parse(text, this->_settings.reader);
+}
+/**
+ * @brief Метод разбора текста разметки с указанными настройками
+ *
+ * @param text     исходный текст разметки целиком
+ * @param settings настройки разбора текста разметки
+ * @return         признак успешности разбора
  *
  */
 bool awh::codec::xml::Document::parse(const string_view text, const reader_t::settings_t & settings) noexcept {
@@ -392,12 +407,16 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 		const error_t error = reader.error();
 		// Запоминаем положение обнаруженной ошибки
 		const location_t location = reader.errorLocation();
+		// Запоминаем кодировку, какою исходный текст разметки прочитан
+		const encoding_t encoding = reader.encoding();
 		/**
 		 * Выполняем очистку дерева разметки
 		 *
 		 * @note Очистка сбрасывает и сведения об ошибке, поэтому они снимаются до неё
 		 */
 		this->clear();
+		// Запоминаем кодировку, какою исходный текст разметки прочитан
+		this->_encoding = encoding;
 		// Запоминаем код ошибки разбора
 		this->_error = error;
 		// Запоминаем положение обнаруженной ошибки
@@ -405,6 +424,13 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
+	/**
+	 * Запоминаем кодировку, какою исходный текст разметки прочитан
+	 *
+	 * @note Кодировка снимается сразу по подаче текста: чтение живёт лишь внутри разбора,
+	 *       и спросить его после выхода нельзя вовсе
+	 */
+	this->_encoding = reader.encoding();
 	/**
 	 * Выполняем перебор всех событий разбора
 	 */
@@ -415,12 +441,16 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 		if(overflow){
 			// Запоминаем положение обнаруженной ошибки
 			const location_t location = reader.location();
+			// Запоминаем кодировку, какою исходный текст разметки прочитан
+			const encoding_t encoding = reader.encoding();
 			/**
 			 * Выполняем очистку дерева разметки
 			 *
 			 * @note Очистка сбрасывает и сведения об ошибке, поэтому они снимаются до неё
 			 */
 			this->clear();
+			// Запоминаем кодировку, какою исходный текст разметки прочитан
+			this->_encoding = encoding;
 			// Запоминаем код ошибки разбора
 			this->_error = error_t::STORAGE_EXHAUSTED;
 			// Запоминаем положение обнаруженной ошибки
@@ -620,12 +650,16 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 		const error_t error = (overflow ? error_t::STORAGE_EXHAUSTED : reader.error());
 		// Запоминаем положение обнаруженной ошибки
 		const location_t location = (overflow ? reader.location() : reader.errorLocation());
+		// Запоминаем кодировку, какою исходный текст разметки прочитан
+		const encoding_t encoding = reader.encoding();
 		/**
 		 * Выполняем очистку дерева разметки
 		 *
 		 * @note Очистка сбрасывает и сведения об ошибке, поэтому они снимаются до неё
 		 */
 		this->clear();
+		// Запоминаем кодировку, какою исходный текст разметки прочитан
+		this->_encoding = encoding;
 		// Запоминаем код ошибки разбора
 		this->_error = error;
 		// Запоминаем положение обнаруженной ошибки
@@ -663,6 +697,274 @@ awh::codec::xml::error_t awh::codec::xml::Document::error() const noexcept {
 const awh::codec::xml::location_t & awh::codec::xml::Document::errorLocation() const noexcept {
 	// Выводим положение обнаруженной ошибки в исходном тексте
 	return this->_errorLocation;
+}
+/**
+ * @brief Метод извлечения кодировки исходного текста разметки
+ *
+ * @return кодировка исходного текста разметки
+ *
+ */
+awh::codec::xml::encoding_t awh::codec::xml::Document::encoding() const noexcept {
+	// Выводим кодировку, какою исходный текст разметки прочитан
+	return this->_encoding;
+}
+/**
+ * @brief Метод извлечения настроек дерева разметки
+ *
+ * @return настройки дерева разметки
+ *
+ */
+const awh::codec::xml::Document::settings_t & awh::codec::xml::Document::settings() const noexcept {
+	// Выводим настройки дерева разметки
+	return this->_settings;
+}
+/**
+ * @brief Метод установки настроек дерева разметки
+ *
+ * @param settings устанавливаемые настройки дерева разметки
+ *
+ */
+void awh::codec::xml::Document::settings(const settings_t & settings) noexcept {
+	// Выполняем установку настроек дерева разметки
+	this->_settings = settings;
+}
+/**
+ * @brief Метод записи дерева разметки текстом
+ *
+ * @return текст разметки собранного дерева
+ *
+ */
+string awh::codec::xml::Document::dump() const noexcept {
+	// Выполняем запись дерева разметки с хранимыми настройками дерева
+	return this->dump(this->_settings.writer);
+}
+/**
+ * @brief Метод записи дерева разметки текстом с указанными настройками
+ *
+ * @param settings настройки записи текста разметки
+ * @return         текст разметки собранного дерева
+ *
+ */
+string awh::codec::xml::Document::dump(const writer_settings_t & settings) const noexcept {
+	/**
+	 * Если узла разметки в дереве нет
+	 *
+	 * @note Отвечать здесь отказом записи о непригодном узле нельзя: узел непригоден
+	 *       оттого, что корня НЕТ вовсе, и потребителю нужен именно этот довод. Запись
+	 *       же о непригодном узле отправляла бы его искать изъян в поданном узле
+	 *
+	 * @warning Судить о пустоте по числу узлов арены НЕЛЬЗЯ: снос узлов её не убавляет
+	 *          вовсе - отвязанные узлы остаются в ней недостижимыми, - и дерево, у
+	 *          какого снесён единственный узел разметки, пустым по этому счёту не
+	 *          выглядит. Замер: запись такого дерева отдавала ПУСТОЙ текст с кодом
+	 *          «нет ошибки», то есть отказ был неотличим от успеха
+	 */
+	if(!this->element().valid()){
+		// Запоминаем код отказа записи дерева без корневого узла
+		this->_error = error_t::MISSING_ROOT;
+		// Выводим пустой текст разметки
+		return string();
+	}
+	// Объект записи текста разметки
+	writer_t writer(this->_log, settings);
+	/**
+	 * Если запись дерева разметки не удалась
+	 *
+	 * @note Код отказа кладётся в дерево, а текст выдаётся пустой: иначе потребитель
+	 *       получил бы половину разметки, не отличимую от целой
+	 */
+	if(!writer.element(this->root())){
+		// Запоминаем код отказа записи текста разметки
+		this->_error = writer.error();
+		// Выводим пустой текст разметки
+		return string();
+	}
+	// Выводим собранный текст разметки
+	return writer.text();
+}
+/**
+ * @brief Функция проверки того, что адрес указывает на каталог
+ *
+ * @details Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ потоком успешно, а чтение его
+ * ставит признаки конца и отказа - те же самые, какими отзывается файл ПУСТОЙ. Отличить
+ * их по одному лишь потоку нельзя, и распознаётся каталог по самому адресу
+ *
+ * @param filename проверяемый адрес
+ * @return         признак того, что адрес указывает на каталог
+ *
+ */
+static bool directory(const string & filename) noexcept {
+	// Сведения об объекте файловой системы
+	struct stat info;
+	// Выводим результат проверки того, что адрес указывает на каталог
+	return ((::stat(filename.c_str(), & info) == 0) && S_ISDIR(info.st_mode));
+}
+/**
+ * @brief Метод разбора текста разметки из файла
+ *
+ * @param filename адрес файла разметки
+ * @return         признак успешности разбора
+ *
+ */
+bool awh::codec::xml::Document::load(const string & filename) noexcept {
+	// Выполняем очистку дерева разметки
+	this->clear();
+	/**
+	 * Если адрес указывает на каталог
+	 *
+	 * @note Распознавание идёт ДО открытия потока намеренно, и порядок этот держит
+	 *       договор одним на все системы. У систем POSIX каталог открывается успешно,
+	 *       а читается признаками конца и отказа - теми же, какими отзывается файл
+	 *       пустой, - и распознать его после открытия ещё можно. У MS Windows каталог
+	 *       не открывается ВОВСЕ: поток отвечает отказом с кодом 13, и распознавание,
+	 *       стоящее после открытия, там мёртво - каталог отвечал бы кодом отказа
+	 *       ОТКРЫТИЯ вместо кода отказа чтения. Замерено на стенде Windows 11 ARM64
+	 */
+	if(::directory(filename)){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_READ));
+		// Запоминаем код отказа чтения файла разметки
+		this->_error = error_t::FILE_NOT_READ;
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Открываем файл разметки для чтения
+	ifstream file(filename, ios::binary);
+	/**
+	 * Если файл разметки открыть не удалось
+	 *
+	 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без настоящего
+	 *       вывода открытие файла отказывало бы молча, тогда как отказ разбора того же
+	 *       файла в лог уходит
+	 */
+	if(!file.is_open()){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_OPENED));
+		// Запоминаем код отказа открытия файла разметки
+		this->_error = error_t::FILE_NOT_OPENED;
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Собираемый текст разметки
+	string text;
+	// Хранилище куска читаемого файла
+	string chunk(0x4000, 0);
+	/**
+	 * Выполняем чтение файла разметки кусками
+	 */
+	while(file.read(chunk.data(), static_cast <streamsize> (chunk.size())) || (file.gcount() > 0))
+		// Добавляем прочитанный кусок файла к собираемому тексту
+		text.append(chunk.data(), static_cast <size_t> (file.gcount()));
+	/**
+	 * Если чтение файла оборвалось отказом
+	 *
+	 * @note Проверка стоит после цикла, а не внутри: признак негодности потока
+	 *       сбрасывается лишь явно, и после цикла он тот же
+	 */
+	if(file.bad()){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_READ));
+		// Запоминаем код отказа чтения файла разметки
+		this->_error = error_t::FILE_NOT_READ;
+		// Выводим признак неудачного разбора
+		return false;
+	}
+	// Выводим признак успешности разбора собранного текста разметки
+	return this->parse(text);
+}
+/**
+ * @brief Метод записи дерева разметки в файл
+ *
+ * @param filename адрес файла разметки
+ * @return         признак успешности записи
+ *
+ */
+bool awh::codec::xml::Document::save(const string & filename) const noexcept {
+	// Выводим итог записи дерева разметки с хранимыми настройками дерева
+	return this->save(filename, this->_settings.writer);
+}
+/**
+ * @brief Метод записи дерева разметки в файл с указанными настройками
+ *
+ * @param filename адрес файла разметки
+ * @param settings настройки записи текста разметки
+ * @return         признак успешности записи
+ *
+ */
+bool awh::codec::xml::Document::save(const string & filename, const writer_settings_t & settings) const noexcept {
+	// Получаем собранный текст разметки
+	const string text = this->dump(settings);
+	/**
+	 * Если собрать текст разметки не удалось
+	 *
+	 * @note Выдача текста код отказа уже поставила, коли отказала: здесь он лишь
+	 *       дополняется случаем дерева ПУСТОГО, где записывать попросту нечего
+	 */
+	if(text.empty()){
+		/**
+		 * Если своего отказа выдача текста не дала
+		 */
+		if(this->_error == error_t::NONE)
+			// Запоминаем код отказа записи дерева без корневого узла
+			this->_error = error_t::MISSING_ROOT;
+		// Выводим признак неудачной записи
+		return false;
+	}
+	// Открываем файл разметки для записи
+	ofstream file(filename, ios::binary | ios::trunc);
+	/**
+	 * Если файл разметки открыть не удалось
+	 */
+	if(!file.is_open()){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_OPENED));
+		// Запоминаем код отказа открытия файла разметки
+		this->_error = error_t::FILE_NOT_OPENED;
+		// Выводим признак неудачной записи
+		return false;
+	}
+	// Выполняем запись текста разметки в файл
+	file.write(text.data(), static_cast <streamsize> (text.size()));
+	/**
+	 * Выполняем закрытие файла разметки
+	 *
+	 * @note Закрытие обязано идти ЯВНО и до вывода признака: поток сбрасывает свой буфер
+	 *       разрушением своим, то есть уже ПОСЛЕ вычисления возвращаемого значения
+	 */
+	file.close();
+	/**
+	 * Если запись текста разметки в файл не удалась
+	 */
+	if(!file){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_WRITTEN));
+		// Запоминаем код отказа записи файла разметки
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выводим признак неудачной записи
+		return false;
+	}
+	// Выводим признак успешности записи
+	return true;
 }
 /**
  * @brief Метод получения корня дерева
@@ -737,6 +1039,8 @@ void awh::codec::xml::Document::clear() noexcept {
 	this->_error = error_t::NONE;
 	// Выполняем сброс положения обнаруженной ошибки
 	this->_errorLocation = location_t();
+	// Выполняем сброс кодировки прочитанного текста разметки
+	this->_encoding = encoding_t::NONE;
 	// Выполняем очистку арены узлов дерева разметки
 	this->_nodes.clear();
 	/**
