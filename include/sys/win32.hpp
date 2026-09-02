@@ -111,8 +111,8 @@
 	 *          SetCurrentConsoleFontEx и FF_DONTCARE, а последняя есть постоянная GDI,
 	 *          и с выключателем сборка отвечает отказом.
 	 *
-	 *          Столкновения снимает не выключатель, а пара sys/push.hpp и
-	 *          sys/pop.hpp в самих заголовках AWH: она срабатывает при любом
+	 *          Столкновения снимает не выключатель, а пара sys/macro/suppress.hpp и
+	 *          sys/macro/restore.hpp в самих заголовках AWH: она срабатывает при любом
 	 *          порядке подключения, тогда как выключатель действует лишь когда
 	 *          windows.h подключается впервые.
 	 *
@@ -130,8 +130,8 @@
 	 *          SetCurrentConsoleFontEx and FF_DONTCARE, and the last one is a GDI constant,
 	 *          and with the switch the build answers with a failure.
 	 *
-	 *          The collisions are removed not by the switch but by the pair sys/push.hpp and
-	 *          sys/pop.hpp in the AWH headers themselves: it works at any
+	 *          The collisions are removed not by the switch but by the pair sys/macro/suppress.hpp and
+	 *          sys/macro/restore.hpp in the AWH headers themselves: it works at any
 	 *          order of inclusion, whereas the switch takes effect only when
 	 *          windows.h is included for the first time.
 	 *
@@ -178,7 +178,7 @@
 	 *
 	 *          Снимать их здесь и не нужно, и вредно. Не нужно потому, что заголовок
 	 *          этот подключается лишь из файлов реализации, а заголовки AWH защищают
-	 *          свои объявления сами - парой sys/push.hpp и sys/pop.hpp,
+	 *          свои объявления сами - парой sys/macro/suppress.hpp и sys/macro/restore.hpp,
 	 *          снимающей имена на время объявлений и возвращающей их следом.
 	 *
 	 *          Вредно потому, что файлы реализации макросами этими пользуются по делу:
@@ -199,7 +199,7 @@
 	 *
 	 *          Removing them here is both unnecessary and harmful. Unnecessary because this header
 	 *          is included only from the implementation files, while the AWH headers protect
-	 *          their declarations themselves — by the pair sys/push.hpp and sys/pop.hpp,
+	 *          their declarations themselves — by the pair sys/macro/suppress.hpp and sys/macro/restore.hpp,
 	 *          which removes the names for the duration of the declarations and brings them back afterwards.
 	 *
 	 *          Harmful because the implementation files use those macros for a reason:

@@ -274,7 +274,7 @@ namespace signals {
 			 *       захваченным, и отпустить его в потомке некому
 			 *
 			 */
-			lock_state_t <std::mutex> mtx;
+			awh::lock_state_t <std::mutex> mtx;
 			// Условная переменная пробуждения рабочего потока
 			std::condition_variable cv;
 			// Очередь полученных сигналов
@@ -296,7 +296,7 @@ namespace signals {
 			if(self.active.load(std::memory_order_acquire)){
 				{
 					// Блокируем доступ к очереди сигналов
-					const locker_t <> lock(self.mtx);
+					const awh::locker_t <> lock(self.mtx);
 					// Добавляем сигнал в очередь
 					self.queue.push(sig);
 				}

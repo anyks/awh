@@ -1,5 +1,5 @@
 /**
- * @file pop.hpp
+ * @file restore.hpp
  * @date 2026-08-05
  *
  * @license{LicenseRef-AWH-1.0}
@@ -13,11 +13,11 @@
  * @site https://anyks.com
  *
  * \~russian
- * @brief Заголовочный файл возврата макросов, снятых заголовком push.hpp —
+ * @brief Заголовочный файл возврата системных макросов, подавленных заголовком suppress.hpp —
  *        восстанавливает прежние определения потребителя библиотеки
  *
  * \~english
- * @brief Header file of the restoration of the macros removed by the push.hpp header —
+ * @brief Header file of the restoration of the system macros suppressed by the suppress.hpp header —
  *        it restores the former definitions of the consumer of the library
  *
  * \~
@@ -28,7 +28,7 @@
 
 /**
  * \~russian
- * @brief Возврат макросов, снятых заголовком push.hpp
+ * @brief Возврат системных макросов, подавленных заголовком suppress.hpp
  *
  * @details Возвращает имена в том виде, в каком они были до снятия. Если макроса не
  *          существовало вовсе — а на платформах, отличных от MS Windows, так и есть, —
@@ -38,13 +38,13 @@
  *          Возврат идёт в порядке, обратном снятию.
  *
  * @note Охраны от повторной инициализации у заголовка нет намеренно — по той же причине,
- *       что и у push.hpp: подключений столько же, сколько снятий
+ *       что и у suppress.hpp: подключений столько же, сколько снятий
  *
- * @warning Подключать заголовок этот следует только вслед за push.hpp. Возврат без
+ * @warning Подключать заголовок этот следует только вслед за suppress.hpp. Возврат без
  *          предшествующего снятия поведения не определяет
  *
  * \~english
- * @brief Restoration of the macros removed by the push.hpp header
+ * @brief Restoration of the system macros suppressed by the suppress.hpp header
  *
  * @details It brings the names back in the form they had before the removal. If a macro did not
  *          exist at all — and on the platforms other than MS Windows that is the case —
@@ -54,9 +54,9 @@
  *          The restoration goes in the order reverse to the removal.
  *
  * @note The header has no guard against repeated initialisation deliberately — for the same reason
- *       as push.hpp: there are as many includes as removals
+ *       as suppress.hpp: there are as many includes as removals
  *
- * @warning This header should be included only after push.hpp. A restoration without
+ * @warning This header should be included only after suppress.hpp. A restoration without
  *          a preceding removal leaves the behaviour undefined
  *
  * \~

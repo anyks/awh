@@ -77,7 +77,7 @@
  *
  * @details Проверка эта пишет «awh::event::error_t::INVALID_SOCKET», а MS Windows
  *          заводит имя INVALID_SOCKET макросом. Заголовки AWH защищают **свои**
- *          объявления парой push.hpp и pop.hpp, но возвращают макросы
+ *          объявления парой suppress.hpp и restore.hpp, но возвращают макросы
  *          следом - тем они и оставляют их тому, кто ими пользуется по делу. Потому
  *          всякий, кто называет такие члены в **своём** коде, защищает свой файл
  *          той же парой, и проверка эта не исключение
@@ -86,7 +86,7 @@
  *       нужны самим заголовкам MS Windows, и снимать их прежде подключения нельзя
  *
  */
-#include <sys/push.hpp>
+#include <sys/macro/suppress.hpp>
 
 /**
  * @brief Параметры теста выполнения пингования
@@ -322,8 +322,29 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		if((offset + 4) > size)
 			// Выходим из разбора отклика
 			return;
+		/**
+		 * Заголовок ICMP принятого отклика
+		 *
+		 * @warning Принятое разбирается ПЕРЕНОСОМ БАЙТОВ, а не наложением указателя.
+		 *          Заголовок ICMP лежит следом за заголовком IP, длина которого кратна
+		 *          четырём, а сама структура требует выравнивания на восемь - из-за
+		 *          восьмиоктетного тела эхо-запроса. Наложение указателя на такой адрес
+		 *          языком не отведено, и надзиратель неопределённого поведения отвечал
+		 *          на него восемью докладами «member access within misaligned address».
+		 *          Построитель на высоких уровнях правки волен полагаться на
+		 *          выравненность, и это не придирка к переносимости
+		 *
+		 * @note Копируется РОВНО столько, сколько принято, но не больше самой структуры:
+		 *       отклик вправе прийти короче полного эхо-запроса, а читать за пределом
+		 *       принятого нельзя
+		 */
+		struct IoPingParameterizedFixture::IcmpHeader header{};
+		// Количество октетов, доступных для разбора заголовка ICMP
+		const size_t available = (size - offset);
+		// Выполняем перенос принятого заголовка в выравненную память
+		::memcpy(&header, (data + offset), ((available < sizeof(header)) ? available : sizeof(header)));
 		// Получаем заголовок ICMP принятого отклика
-		auto icmp = reinterpret_cast <const struct IoPingParameterizedFixture::IcmpHeader *> (data + offset);
+		const struct IoPingParameterizedFixture::IcmpHeader * icmp = &header;
 		// Записываем в лог сведения о принятом отклике
 		this->_log->print(
 			"Прочитано: ID=%u, %zu байт, заголовок IP %zu байт, тип %u, код %u",
@@ -899,7 +920,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			// Сведения о порождённом процессе
 			PROCESS_INFORMATION process{};
 			// Выполняем порождение работника
-			const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят push.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process);
+			const BOOL spawned = ::CreateProcessW(executable, command.data(), nullptr, nullptr, 0 /* FALSE: макрос снят suppress.hpp ради членов перечислений AWH */, 0, nullptr, nullptr, &startup, &process);
 			// Работник обязан быть порождён
 			ASSERT_TRUE(spawned) << "Дочерний процесс создать не удалось";
 			// Отсчёт времени ожидания доклада
@@ -2185,6 +2206,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, IoIPCTestParameterizedFixture,
 );
 
 /**
- * Возвращаем макросы, снятые в начале файла
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
  */
-#include <sys/pop.hpp>
+#include <sys/macro/restore.hpp>

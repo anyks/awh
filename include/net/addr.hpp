@@ -50,6 +50,14 @@
 #include "../sys/log.hpp"
 
 /**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
+ */
+#include "../sys/macro/suppress.hpp"
+
+
+/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -2447,5 +2455,11 @@ namespace awh {
 	 */
 	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const net_addr_t & addr) noexcept;
 };
+
+/**
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
+ */
+#include "../sys/macro/restore.hpp"
 
 #endif // __AWH_NET_ADDR__

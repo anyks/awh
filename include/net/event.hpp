@@ -40,10 +40,11 @@
 #include <cstdint>
 
 /**
- * Снимаем на время объявлений макросы, чьи имена заняты
- * членами перечислений ниже (возвращает их pop.hpp в конце файла)
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
-#include "../sys/push.hpp"
+#include "../sys/macro/suppress.hpp"
 
 /**
  * \~russian
@@ -733,7 +734,7 @@ namespace awh {
 		 * @warning Имена CS5, CS6, CS7 заняты макросами <termios.h>, где они задают число
 		 *          разрядов в знаке у последовательного порта. Имена эти взяты из RFC 2474
 		 *          и переименованию не подлежат, оттого снимаются на время объявлений парой
-		 *          sys/push.hpp и sys/pop.hpp - вместе с CS8, какого здесь нет,
+		 *          sys/macro/suppress.hpp и sys/macro/restore.hpp - вместе с CS8, какого здесь нет,
 		 *          но какой из того же ряда. Кто называет члены эти у себя, тот защищает
 		 *          свой файл той же парой; закреплено это проверкой tests/net/eth/socket.cpp,
 		 *          куда <termios.h> подключён намеренно
@@ -760,7 +761,7 @@ namespace awh {
 		 * @warning The names CS5, CS6, CS7 are taken by the macros of <termios.h>, where they set the number
 		 *          of the digits in the sign at a serial port. These names are taken from RFC 2474
 		 *          and are not subject to renaming, and therefore they are removed for the time of the declarations by a pair
-		 *          of sys/push.hpp and sys/pop.hpp — together with CS8, which is not here,
+		 *          of sys/macro/suppress.hpp and sys/macro/restore.hpp — together with CS8, which is not here,
 		 *          but which is of the same series. Whoever names these members in his own code, protects
 		 *          his file by the same pair; this is fixed by the check tests/net/eth/socket.cpp,
 		 *          where <termios.h> is intentionally included
@@ -1607,8 +1608,9 @@ namespace awh {
 };
 
 /**
- * Возвращаем макросы, снятые в начале файла
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
  */
-#include "../sys/pop.hpp"
+#include "../sys/macro/restore.hpp"
 
 #endif // __AWH_EVENTS__

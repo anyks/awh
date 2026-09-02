@@ -54,6 +54,14 @@
 #include "../cryptography/crypto.hpp"
 
 /**
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
+ */
+#include "macro/suppress.hpp"
+
+
+/**
  * \~russian
  * @brief Основное пространство имён
  *
@@ -3171,5 +3179,11 @@ namespace awh {
 	 */
 	using callback_t = Callback;
 };
+
+/**
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
+ */
+#include "macro/restore.hpp"
 
 #endif // __AWH_CALLBACK__

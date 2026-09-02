@@ -135,7 +135,7 @@ TEST_F(MacroFixture, HeadersCompileUnderWindowsMacrosTest){
  *          заодно служит тому образцом
  *
  */
-#include "../../../include/sys/push.hpp"
+#include "../../../include/sys/macro/suppress.hpp"
 
 /**
  * @brief Метод проверки доступности членов перечислений, чьи имена заняты макросами
@@ -153,7 +153,7 @@ TEST_F(MacroFixture, EnumMembersRemainAddressableTest){
 /**
  * Возвращаем макросы, снятые перед тестом выше
  */
-#include "../../../include/sys/pop.hpp"
+#include "../../../include/sys/macro/restore.hpp"
 
 /**
  * @brief Метод проверки совпадения типа сокета AWH с системным

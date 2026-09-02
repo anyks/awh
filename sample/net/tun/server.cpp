@@ -39,10 +39,9 @@
 /**
  * Стандартные модули
  */
-#include <iostream>
 #include <atomic>
 #include <chrono>
-#include <thread>
+#include <iostream>
 
 /**
  * Подключаем заголовочный файл проекта

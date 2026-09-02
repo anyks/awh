@@ -27,10 +27,11 @@
 #include <codec/ini/document.hpp>
 
 /**
- * Снимаем на время объявлений макросы, чьи имена заняты
- * членами перечислений ниже (возвращает их pop.hpp в конце файла)
+ * Подавляем системные макросы, занявшие имена членов перечислений ниже:
+ * DELETE и ERROR у MS Windows, CS и PRIVATE у Sun Solaris, CS5 у termios.
+ * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
-#include <sys/push.hpp>
+#include <sys/macro/suppress.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -2665,6 +2666,7 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <float> (fl
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <double> (double &, const string_view, const string_view, const string_view) const noexcept;
 
 /**
- * Возвращаем макросы, снятые в начале файла
+ * Возвращаем системные макросы потребителю библиотеки:
+ * имена, подавленные в начале файла, снова принадлежат ему
  */
-#include <sys/pop.hpp>
+#include <sys/macro/restore.hpp>

@@ -1,5 +1,5 @@
 /**
- * @file push.hpp
+ * @file suppress.hpp
  * @date 2026-08-05
  *
  * @license{LicenseRef-AWH-1.0}
@@ -13,12 +13,12 @@
  * @site https://anyks.com
  *
  * \~russian
- * @brief Заголовочный файл временного снятия макросов, чьи имена заняты членами перечислений AWH —
- *        сохраняет прежние определения и снимает их на время объявлений, возвращает же их pop.hpp
+ * @brief Заголовочный файл подавления системных макросов, занявших имена членов перечислений AWH —
+ *        сохраняет прежние определения и снимает имена на время объявлений, возвращает же их restore.hpp
  *
  * \~english
- * @brief Header file of the temporary removal of the macros whose names are taken by the members of the AWH enumerations —
- *        it keeps the former definitions and removes them for the duration of the declarations, while pop.hpp brings them back
+ * @brief Header file of the suppression of the system macros that have taken the names of the members of the AWH enumerations —
+ *        it keeps the former definitions and removes the names for the duration of the declarations, while restore.hpp brings them back
  *
  * \~
  *
@@ -38,10 +38,10 @@
  *          Снять макросы насовсем нельзя: заголовки эти открытые, и снятие протекло бы
  *          в единицу трансляции потребителя библиотеки, отняв у него имена, какими он
  *          вправе пользоваться. Поэтому имена снимаются лишь на время объявлений AWH,
- *          а прежние определения сохраняются и возвращаются заголовком pop.hpp.
+ *          а прежние определения сохраняются и возвращаются заголовком restore.hpp.
  *
- *          Порядок применения — подключить push.hpp после всех прочих подключений
- *          заголовка, а pop.hpp поместить в самый конец, перед закрывающим #endif
+ *          Порядок применения — подключить suppress.hpp после всех прочих подключений
+ *          заголовка, а restore.hpp поместить в самый конец, перед закрывающим #endif
  *          защиты от повторной инициализации.
  *
  * @par Пользующимся библиотекой
@@ -53,8 +53,8 @@
  *      как столкнулось бы само объявление.
  *
  *      Оттого правило одно: кто называет такие члены у себя, тот защищает свой файл той
- *      же парой — `#include <sys/push.hpp>` после всех подключений и
- *      `#include <sys/pop.hpp>` в конце. Иного пути нет: снять макросы насовсем
+ *      же парой — `#include <sys/macro/suppress.hpp>` после всех подключений и
+ *      `#include <sys/macro/restore.hpp>` в конце. Иного пути нет: снять макросы насовсем
  *      значило бы отнять их у тех, кому они нужны, а переименовать члены перечислений —
  *      исказить понятия договоров в угоду одной системе.
  *
@@ -73,7 +73,7 @@
  *       `FAILED = 0x02` безвредны. Здесь же снятие временное и ничего не стоит, поэтому
  *       имена эти взяты тоже — чтобы правка перечисления в будущем не вскрыла беду
  *
- * @warning Заголовок этот обязан идти в паре с pop.hpp. Снятие без возврата
+ * @warning Заголовок этот обязан идти в паре с restore.hpp. Снятие без возврата
  *          отнимает имена у потребителя библиотеки — ровно то, чего пара избегает
  *
  * \~english
@@ -87,10 +87,10 @@
  *          The macros cannot be removed for good: those headers are public, and the removal would leak
  *          into the translation unit of the consumer of the library, taking away from it the names it
  *          is entitled to use. Therefore the names are removed only for the duration of the AWH declarations,
- *          while the former definitions are kept and brought back by the pop.hpp header.
+ *          while the former definitions are kept and brought back by the restore.hpp header.
  *
- *          The order of use is to include push.hpp after all the other includes
- *          of the header, and to place pop.hpp at the very end, before the closing #endif
+ *          The order of use is to include suppress.hpp after all the other includes
+ *          of the header, and to place restore.hpp at the very end, before the closing #endif
  *          of the guard against repeated initialisation.
  *
  * @par To those using the library
@@ -102,8 +102,8 @@
  *      the declaration itself would have collided.
  *
  *      Hence the single rule: whoever names such members at home protects their own file by the
- *      same pair — `#include <sys/push.hpp>` after all the includes and
- *      `#include <sys/pop.hpp>` at the end. There is no other way: removing the macros for good
+ *      same pair — `#include <sys/macro/suppress.hpp>` after all the includes and
+ *      `#include <sys/macro/restore.hpp>` at the end. There is no other way: removing the macros for good
  *      would mean taking them away from those who need them, and renaming the members of the enumerations
  *      would distort the notions of the contracts for the sake of one system.
  *
@@ -122,7 +122,7 @@
  *       `FAILED = 0x02` form are harmless. Here, on the other hand, the removal is temporary and costs nothing, therefore
  *       those names are taken as well — so that a future change of an enumeration does not uncover trouble
  *
- * @warning This header must go in a pair with pop.hpp. A removal without a restoration
+ * @warning This header must go in a pair with restore.hpp. A removal without a restoration
  *          takes the names away from the consumer of the library — exactly what the pair avoids
  *
  * \~
