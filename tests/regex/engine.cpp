@@ -35,6 +35,7 @@
 #include <regex/dfa.hpp>
 #include <regex/pike.hpp>
 #include <regex/backtrack.hpp>
+#include <regex/codegen.hpp>
 #include <regex/storage.hpp>
 #include <regex/probe.hpp>
 #include <regex/regex.hpp>
@@ -2553,5 +2554,104 @@ TEST(Regex, MatchingAtomicRecursion) {
 				EXPECT_EQ(captures.front().second, expected)
 				 << "длина " << length << (jit ? ", машинный код" : "");
 		}
+	}
+}
+/**
+ * @brief Тест отказа восстановления сопоставителя с испорченным машинным кодом
+ *
+ * @details Примета машинного кода снимается с участка исполняемой памяти уже
+ *          наполненного и ДО разрешения исполнения ему: сличается не запись,
+ *          а те самые байты, каким предстоит исполниться, отчего щели между
+ *          проверкой и переносом в память не остаётся вовсе. Проверка портит
+ *          КАЖДЫЙ байт участка кода по очереди и удостоверяет, что принят
+ *          не будет ни один: сличение, случайно всегда истинное, дало бы
+ *          прогон зелёный ровно так же.
+ *
+ */
+TEST(Regex, CodegenImprint) {
+	// Создаём объект движка регулярных выражений
+	regex::engine_t engine(::logger());
+	// Создаём собираемое регулярное выражение
+	regex::expression_t expression;
+	// Выполняем сборку регулярного выражения с порождением машинного кода
+	ASSERT_TRUE(engine.build("([a-z]+)@([a-z]+)\\.[a-z]{2,4}", static_cast <uint32_t> (regex::flag_t::JIT), expression));
+	// Выполняем проверку порождения сопоставителя выражения
+	ASSERT_TRUE(expression.machine != nullptr);
+	// Запись порождённого сопоставителя
+	string record;
+	// Выполняем запись порождённого сопоставителя
+	ASSERT_TRUE(expression.machine->save(record));
+	// Выполняем проверку непустоты записи сопоставителя
+	ASSERT_FALSE(record.empty());
+	/**
+	 * Выполняем проверку восстановления записи целой
+	 */
+	{
+		// Создаём восстанавливаемый сопоставитель
+		regex::codegen_t fresh(::logger());
+		// Позиция чтения записи сопоставителя
+		size_t offset = 0;
+		// Выполняем проверку восстановления записи целой
+		ASSERT_TRUE(fresh.restore(record, offset, expression.forward));
+	}
+	// Позиция чтения состава записи сопоставителя
+	size_t position = 2;
+	/**
+	 * @brief Функция чтения числа переменной длины
+	 *
+	 * @return прочитанное число записи сопоставителя
+	 *
+	 */
+	auto reading = [&record, &position]() noexcept -> uint64_t {
+		// Прочитанное число записи сопоставителя
+		uint64_t result = 0;
+		// Сдвиг очередной доли числа
+		uint8_t shift = 0;
+		/**
+		 * Выполняем чтение числа долями по семь разрядов
+		 */
+		while(position < record.size()) {
+			// Получаем очередную долю числа
+			const uint8_t byte = static_cast <uint8_t> (record[position++]);
+			// Выполняем добавление доли числа к результату
+			result |= (static_cast <uint64_t> (byte & 0x7F) << shift);
+			/**
+			 * Если доля числа последняя
+			 */
+			if((byte & 0x80) == 0)
+				// Выходим из цикла чтения числа
+				break;
+			// Переходим к следующей доле числа
+			shift += 7;
+		}
+		// Выводим прочитанное число записи сопоставителя
+		return result;
+	};
+	// Выполняем пропуск размера записи кадра и количества записей
+	reading();
+	reading();
+	// Получаем размер порождённого машинного кода
+	const size_t length = static_cast <size_t> (reading());
+	// Получаем начало участка машинного кода в записи
+	const size_t begin = position;
+	// Выполняем проверку непустоты участка машинного кода
+	ASSERT_GT(length, static_cast <size_t> (0));
+	// Выполняем проверку принадлежности участка кода записи
+	ASSERT_LE((begin + length), record.size());
+	/**
+	 * Выполняем перебор байтов участка машинного кода
+	 */
+	for(size_t i = begin; i < (begin + length); i++) {
+		// Получаем запись с испорченным машинным кодом
+		string damaged = record;
+		// Выполняем порчу очередного байта машинного кода
+		damaged[i] = static_cast <char> (damaged[i] ^ 0x5A);
+		// Создаём восстанавливаемый сопоставитель
+		regex::codegen_t fresh(::logger());
+		// Позиция чтения записи сопоставителя
+		size_t offset = 0;
+		// Выполняем проверку отказа восстановления записи испорченной
+		EXPECT_FALSE(fresh.restore(damaged, offset, expression.forward))
+		 << "испорчен байт машинного кода " << (i - begin);
 	}
 }

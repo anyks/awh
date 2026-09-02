@@ -1846,3 +1846,70 @@ TEST(CodecAbcValue, GraftUsesDefaultSettings) {
 	// Извлечённая строка обязана отвечать уложенной октет в октет
 	ASSERT_EQ(text, string("a\xF0\x9F" "b"));
 }
+/**
+ * @brief Проверка того, что сборка возвращается в поле занятого имени
+ *
+ * @details Занятое имя `insert` перезаписывает НА МЕСТЕ, порядок полей сохраняя, - и
+ * номер занесённого поля с длиной отображения не совпадает вовсе. Сборка же брала номер
+ * счётом `size() - 1` и уходила путём на поле ЧУЖОЕ: `array()` отвечала успехом,
+ * `depth()` показывала открытое вместилище, а укладываемое в него значение терялось
+ * молча. Собранное дерево при этом оставалось «успешным»
+ *
+ * @note Занятое имя взято НЕ последним нарочно: последним оно совпадает с `size() - 1`
+ * случайно, и поверка прошла бы и при дефекте
+ *
+ */
+TEST(CodecAbcValue, BuilderReopensTheFieldOfTheOccupiedName){
+	// Потоковая сборка владеющего значения
+	abc::builder_t builder(::logger());
+	// Выполняем открытие отображения сборкою
+	ASSERT_TRUE(builder.map());
+	// Выполняем укладку первой пары отображения
+	ASSERT_TRUE(builder.key("первое"));
+	// Выполняем укладку значения первой пары
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (1)));
+	// Выполняем укладку второй пары отображения
+	ASSERT_TRUE(builder.key("второе"));
+	// Выполняем укладку значения второй пары
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (2)));
+	// Выполняем повторное назначение имени ПЕРВОЙ пары
+	ASSERT_TRUE(builder.key("первое"));
+	// Выполняем открытие перечня под занятым именем
+	ASSERT_TRUE(builder.array());
+	// Открытых вместилищ обязано быть ровно два: отображение и перечень
+	ASSERT_EQ(builder.depth(), static_cast <size_t> (2));
+	// Значение обязано укладываться в открытый перечень, а не теряться молча
+	ASSERT_TRUE(builder.value(static_cast <uint64_t> (7)));
+	// Выполняем закрытие открытого перечня
+	ASSERT_TRUE(builder.close());
+	// Выполняем закрытие отображения сборкою
+	ASSERT_TRUE(builder.close());
+	// Выполняем изъятие собранного значения
+	const abc::value_t value = builder.finish();
+	// Порядок полей обязан сохраниться: перезапись идёт на прежнем месте
+	ASSERT_EQ(value.size(), static_cast <size_t> (2));
+	// Извлечённое имя первого поля отображения
+	string name;
+	// Имя первого поля обязано извлекаться
+	ASSERT_TRUE(value.key(0).value(name));
+	// Первым полем обязано стоять перезаписанное имя
+	ASSERT_EQ(name, string("первое"));
+	// Перезаписанное поле обязано стать перечнем
+	ASSERT_EQ(value[static_cast <size_t> (0)].type(), abc::type_t::ARRAY);
+	// Перечень обязан нести ровно одно уложенное значение
+	ASSERT_EQ(value[static_cast <size_t> (0)].size(), static_cast <size_t> (1));
+	// Извлечённое значение перечня
+	uint64_t number = 0;
+	// Значение перечня обязано извлекаться
+	ASSERT_TRUE(value[static_cast <size_t> (0)][static_cast <size_t> (0)].value(number));
+	// Уложенное значение обязано отвечать затребованному
+	ASSERT_EQ(number, static_cast <uint64_t> (7));
+	// Второе поле обязано остаться нетронутым
+	ASSERT_TRUE(value.key(1).value(name));
+	// Именем второго поля обязано стоять прежнее
+	ASSERT_EQ(name, string("второе"));
+	// Значение второго поля обязано извлекаться
+	ASSERT_TRUE(value[static_cast <size_t> (1)].value(number));
+	// Значение второго поля обязано остаться прежним
+	ASSERT_EQ(number, static_cast <uint64_t> (2));
+}

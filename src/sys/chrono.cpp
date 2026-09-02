@@ -31,7 +31,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/global.hpp>
 #include <sys/log.hpp>
 #include <sys/chrono.hpp>
 
@@ -253,6 +252,26 @@ namespace {
 	 *
 	 */
 	static constexpr int32_t MIN_ZONE_OFFSET = (-12 * 3600);
+	/**
+	 * @brief Окно двузначного года по умолчанию
+	 *
+	 * @details Пятьдесят лет требует RFC 9110 (§5.6.7) для устаревшего формата даты
+	 *          RFC 850, где год записывается двумя разрядами
+	 *
+	 */
+	static constexpr uint8_t DEFAULT_YEAR_WINDOW = 50;
+	/**
+	 * @brief Допуск отката года по умолчанию
+	 *
+	 * @details Двадцать шесть часов - полный разброс временных зон, от UTC+14 до UTC-12.
+	 *          Устаревший стандарт системного журнала RFC 3164 временной зоны в записи не
+	 *          указывает: штамп содержит местное время отправителя, а читается он в зоне
+	 *          получателя, поэтому запись законно опережает получателя на величину вплоть
+	 *          до этого разброса. Меньший допуск отправлял бы на год назад каждую запись
+	 *          хоста, стоящего восточнее получателя
+	 *
+	 */
+	static constexpr uint32_t DEFAULT_YEAR_ROLLBACK = (26 * 3600);
 	/**
 	 * @brief Функция проверки зоны на принадлежность к сводным
 	 *
@@ -13645,39 +13664,11 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
  * @param log объект для работы с логами
  *
  */
-/**
- * @brief Допуск отката года по умолчанию
- *
- * @details Двадцать шесть часов - полный разброс временных зон, от UTC+14 до UTC-12.
- *          Устаревший стандарт системного журнала RFC 3164 временной зоны в записи не
- *          указывает: штамп содержит местное время отправителя, а читается он в зоне
- *          получателя, поэтому запись законно опережает получателя на величину вплоть
- *          до этого разброса. Меньший допуск отправлял бы на год назад каждую запись
- *          хоста, стоящего восточнее получателя
- *
- */
-static constexpr uint32_t DEFAULT_YEAR_ROLLBACK = (26 * 3600);
-/**
- * @brief Окно двузначного года по умолчанию
- *
- * @details Пятьдесят лет требует RFC 9110 (§5.6.7) для устаревшего формата даты
- *          RFC 850, где год записывается двумя разрядами
- *
- */
-static constexpr uint8_t DEFAULT_YEAR_WINDOW = 50;
-
 awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept :
-	_yearRollback(DEFAULT_YEAR_ROLLBACK), _yearWindow(DEFAULT_YEAR_WINDOW), _century(century_t::WINDOW), _leapSecond(true),
-	_fmk(fmk), _log(log) {
+ _leapSecond(true),
+ _century(century_t::WINDOW),
+ _yearWindow(DEFAULT_YEAR_WINDOW),
+ _yearRollback(DEFAULT_YEAR_ROLLBACK), _fmk(fmk), _log(log) {
 	// Выполняем инициализацию локального объекта даты и времени
 	this->clear();
-}
-/**
- * @brief Деструктор
- *
- */
-awh::Chrono::~Chrono() noexcept {
-	/**
-	 * Нативные парсеры не требуют освобождения ресурсов
-	 */
 }

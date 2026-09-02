@@ -462,6 +462,16 @@ const void * awh::regex::Assembly::entry() const noexcept {
 	return (this->_executable ? this->_address : nullptr);
 }
 /**
+ * @brief Метод извлечения адреса наполненного участка памяти
+ *
+ * @return адрес наполненного участка памяти либо нулевой указатель
+ *
+ */
+const void * awh::regex::Assembly::image() const noexcept {
+	// Выводим адрес участка памяти, порождённым кодом наполненного
+	return ((this->_length > 0) ? this->_address : nullptr);
+}
+/**
  * @brief Метод извлечения размера порождённого машинного кода
  *
  * @return размер порождённого машинного кода в байтах

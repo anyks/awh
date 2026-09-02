@@ -45,8 +45,23 @@
 
 /**
  * Системный заголовочный файл
+ *
+ * Заголовок POSIX есть у MinGW, но НЕ у нативного MSVC: там getpid зовётся _getpid из
+ * process.h, и имя приводится к нему тем же приёмом, что и в sys/os.hpp
  */
-#include <unistd.h>
+#if defined(_MSC_VER)
+	#include <process.h>
+	#ifndef getpid
+		#define getpid _getpid
+	#endif
+	/**
+	 * Тип идентификатора процесса POSIX у нативного MSVC не заведён: `_getpid` отдаёт
+	 * `int`, им же и приводим
+	 */
+	typedef int pid_t;
+#else
+	#include <unistd.h>
+#endif
 
 /**
  * Снимаем на время объявлений макросы, чьи имена заняты

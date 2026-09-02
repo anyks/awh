@@ -38,7 +38,9 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
-#include <unistd.h>
+#if !defined(_MSC_VER)
+	#include <unistd.h>
+#endif
 
 /**
  * Подключаем заголовочные файлы проекта

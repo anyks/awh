@@ -40,7 +40,15 @@
 #include <vector>
 #include <string>
 #include <cstdint>
-#include <unistd.h>
+/**
+ * Заголовок POSIX есть у MinGW, но НЕ у нативного MSVC: там его заменяют process.h и io.h
+ */
+#if defined(_MSC_VER)
+	#include <io.h>
+	#include <process.h>
+#else
+	#include <unistd.h>
+#endif
 
 /**
  * Активируем поддержку юникода

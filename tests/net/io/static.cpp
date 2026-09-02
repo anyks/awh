@@ -19859,6 +19859,116 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 }
 
 /**
+ * @brief Тест сохранения обмена подключением, пережившим переинициализацию движка
+ *
+ * @details Переинициализация разрушает механизм ожидания и заводит его заново, а узлы,
+ *          состояние которых её переживает, обязаны получить свои подписки в новом
+ *          механизме и работать дальше. Проверяется это единственным доступным способом
+ *          - настоящим обменом: подключение заводится до переинициализации, а данные
+ *          отправляются после неё
+ *
+ * @warning Проверка заведена по находке движка порта завершений MS Windows, но написана
+ *          она на общем API и годна всем системам. Привязка описателя к порту завершений
+ *          живёт у самого объекта обмена и разрушения порта НЕ переживает, а штатного
+ *          обращения снять её у системы нет вовсе. Переинициализация оттого оставляла по
+ *          себе описатели, привязанные к порту, которого больше нет: подача наложенного
+ *          обмена принималась как ни в чём не бывало, а завершений не приходило ни
+ *          одного. Отказ был молчаливым - ни отказа вызова, ни записи в журнале
+ *
+ * @note Обмен идёт от сырого встречного сокета к событию движка, а не наоборот,
+ *       намеренно: отправка движком проходит и без единого завершения - она принимается
+ *       ядром, - а вот приём без завершения не состоится ни при каких обстоятельствах.
+ *       Проверяется здесь именно приход завершения, оттого и направление такое
+ *
+ */
+TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
+	// Количество удавшихся подключений и принятых пакетов
+	uint8_t successes = 0, packets = 0;
+	// Заводим слушающий сокет на петле
+	const int32_t listener = ::socket(AF_INET, SOCK_STREAM, 0);
+	ASSERT_GT(listener, 0);
+	// Адрес, на котором слушающий сокет будет ожидать подключения
+	struct sockaddr_in host{};
+	/**
+	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
+	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
+	 * вызовам отдельным доводом
+	 */
+	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		host.sin_len = sizeof(host);
+	#endif
+	host.sin_family = AF_INET;
+	host.sin_port = 0;
+	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	// Длина записи адреса, которую вернёт опрос имени сокета
+	socklen_t length = sizeof(host);
+	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
+	ASSERT_EQ(0, ::listen(listener, 16));
+	// Заводим событие клиента и тикающий интервал
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	ASSERT_GT(eid, 0u);
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	ASSERT_GT(tick, 0u);
+	ASSERT_TRUE(this->_io->initialize());
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+	ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setTargetPort(eid, ntohs(host.sin_port)));
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);
+	// Устанавливаем функцию обратного вызова на событие подключения
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> (
+		[&successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+			// Считаем удавшееся подключение
+			if(ok) successes++;
+		}
+	));
+	// Устанавливаем функцию обратного вызова на событие чтения данных
+	this->_io->on(eid, static_cast <awh::engine::callback::read_t> (
+		[&packets]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Считаем принятый пакет
+			packets++;
+		}
+	));
+	ASSERT_TRUE(this->_io->commit(eid));
+	ASSERT_TRUE(this->_io->commit(tick));
+	ASSERT_TRUE(this->_io->connect(eid));
+	ASSERT_TRUE(this->_io->launch(eid));
+	ASSERT_TRUE(this->_io->launch(tick));
+	// Дожидаемся подключения
+	auto start = std::chrono::steady_clock::now();
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 2000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+	ASSERT_EQ(1, successes);
+	// Принимаем подключение сырым встречным сокетом
+	const int32_t peer = ::accept(listener, nullptr, nullptr);
+	ASSERT_GT(peer, 0);
+	// Выполняем переинициализацию движка: подключение обязано её пережить
+	const bool reinitialized = this->_io->reinitialize();
+	// Отправляем встречной стороной сообщение уже ПОСЛЕ переинициализации
+	const bool sent = (::send(peer, "AWH", 3, 0) == 3);
+	// Дожидаемся прихода сообщения
+	start = std::chrono::steady_clock::now();
+	while((packets < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+	// Роспись опыта, выводимая при отказе
+	const std::string sign = std::string("переинициализация=") + (reinitialized ? "да" : "нет") +
+		" отправка=" + (sent ? "да" : "нет") + " удач=" + std::to_string(successes) +
+		" пакетов=" + std::to_string(packets);
+	ASSERT_TRUE(reinitialized) << sign;
+	ASSERT_TRUE(sent) << sign;
+	// Пережившее переинициализацию подключение обязано принять сообщение
+	ASSERT_EQ(1, packets) << sign;
+	// Закрываем сырые сокеты опыта
+	::closesocket(peer);
+	::closesocket(listener);
+	// Уничтожаем заведённые события
+	this->_io->destroy(eid);
+	this->_io->destroy(tick);
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
  * @brief Тест подъёма события с самостоятельным переподключением после обрыва по сроку ожидания
  *
  * @details Обрыв ожидающего подключения закрывает дескриптор напрямую, минуя
@@ -22339,7 +22449,7 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
 	// Признак удавшегося подъёма события из снимка
 	bool restored = false;
 	// Устанавливаем функцию обратного вызова на получение снимка от переносчика
-	this->_io->on(channel, [&restored, &accepted, target, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	this->_io->on(channel, [&restored, &accepted, target, this]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		/**
 		 * Поднимаем событие из снимка
 		 *
@@ -22350,7 +22460,7 @@ TEST_F(IoFixture, DISABLED_IoSnapshotHandoffWorkerTest){
 		// Если событие из снимка поднято
 		if(restored){
 			// Устанавливаем функцию обратного вызова на получение статуса поднятого события
-			this->_io->on(target, [&accepted](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			this->_io->on(target, [&accepted]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				// Если подключение принято, отмечаем это
 				if(status == awh::event::status_t::ACCEPTED)
 					// Отмечаем принятое подключение
@@ -22458,7 +22568,7 @@ TEST_F(IoFixture, IoSnapshotHandoffTest){
 	// Признак доложившегося о готовности работника
 	bool ready = false;
 	// Устанавливаем функцию обратного вызова на получение доклада работника
-	this->_io->on(channels[0], [&ready](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	this->_io->on(channels[0], [&ready]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
 		// Отмечаем доложившегося работника: содержимое доклада значения не имеет
 		ready = true;
 	});

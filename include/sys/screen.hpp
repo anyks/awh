@@ -46,8 +46,12 @@
 
 /**
  * Системный заголовочный файл (для получения идентификатора процесса)
+ *
+ * У нативного MSVC заголовка POSIX нет; getpid и pid_t даёт sys/global.hpp
  */
-#include <unistd.h>
+#if !defined(_MSC_VER)
+	#include <unistd.h>
+#endif
 
 /**
  * \~russian

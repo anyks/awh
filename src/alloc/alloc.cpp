@@ -2963,7 +2963,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) {
  *          ворошителя, ибо искал места употребления в одном лишь `src`, а звавший лежал
  *          в `tools`. Пометка глушит предупреждение, не трогая доступности имени
  */
-static size_t AWH_ALLOC_HOOK(msize)(const void * ptr) __attribute__((unused));
+[[maybe_unused]] static size_t AWH_ALLOC_HOOK(msize)(const void * ptr);
 static size_t AWH_ALLOC_HOOK(msize)(const void * ptr) {
 	// Определяем размер выданного блока
 	const size_t result = ::measure(ptr, nullptr, nullptr);

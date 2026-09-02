@@ -44,8 +44,14 @@
 	 * вместо всего стека - и прямо, и с глубины в двадцать четыре вызова (сличено на
 	 * стенде: родной 1 против 29 у раскрутки, тогда как на x86-64 оба дают 29). Оттого
 	 * съём везде один и тот же, а родной путь не годится вовсе
+	 *
+	 * Заголовок раскрутки даёт компилятор GCC/Clang, у нативного MSVC его нет вовсе:
+	 * там съём идёт родным `RtlCaptureStackBackTrace` (на ARM64 с известной просадкой
+	 * до одного уровня), а не раскруткой
 	 */
-	#include <unwind.h>
+	#if !defined(_MSC_VER)
+		#include <unwind.h>
+	#endif
 /**
  * Для операционной системы не являющейся MS Windows
  */
@@ -187,11 +193,15 @@ namespace {
 		/**
 		 * @brief Метод обхода уровня стека вызовов
 		 *
+		 * @note Обход раскруткой заведён лишь там, где есть её заголовок: у нативного
+		 *       MSVC съём идёт родным `RtlCaptureStackBackTrace`, а не обходом уровней
+		 *
 		 * @param context уровень стека вызовов
 		 * @param arg     ход съёма стека вызовов
 		 * @return        признак продолжения обхода
 		 *
 		 */
+		#if !defined(_MSC_VER)
 		static ::_Unwind_Reason_Code walker(struct ::_Unwind_Context * context, void * arg) noexcept {
 			// Получаем ход съёма стека вызовов
 			walk_t * walk = reinterpret_cast <walk_t *> (arg);
@@ -217,6 +227,7 @@ namespace {
 			// Переходим к следующему уровню
 			return ::_URC_NO_REASON;
 		}
+		#endif
 };
 
 /**
@@ -348,20 +359,35 @@ size_t awh::alloc::Trace::capture(const void ** frames, const size_t depth, cons
 	// Число снятых адресов
 	size_t result = 0;
 	{
-		// Ход съёма стека вызовов
-		walk_t walk;
-		// Записываем массив под адреса стека вызовов
-		walk.frames = frames;
-		// Записываем длину массива
-		walk.depth = ((depth > DEPTH) ? DEPTH : depth);
-		// Записываем остаток пропускаемых ближних уровней
-		walk.skip = (skip + 1);
-		// Снятых адресов пока нет
-		walk.count = 0;
-		// Снимаем стек раскруткой
-		static_cast <void> (::_Unwind_Backtrace(&::walker, &walk));
-		// Запоминаем число снятых адресов
-		result = walk.count;
+		// Наибольшее число снимаемых уровней
+		const size_t cap = ((depth > DEPTH) ? DEPTH : depth);
+		#if defined(_MSC_VER)
+			/**
+			 * Съём родным средством системы
+			 *
+			 * У нативного MSVC заголовка раскрутки нет, и съём идёт родным
+			 * `RtlCaptureStackBackTrace`. На ARM64 он даёт известную просадку до одного
+			 * уровня (см. врезку у подключения раскрутки), на x86-64 - весь стек
+			 */
+			result = static_cast <size_t> (::RtlCaptureStackBackTrace(
+				static_cast <ULONG> (skip + 1), static_cast <ULONG> (cap),
+				reinterpret_cast <PVOID *> (const_cast <void **> (frames)), nullptr));
+		#else
+			// Ход съёма стека вызовов
+			walk_t walk;
+			// Записываем массив под адреса стека вызовов
+			walk.frames = frames;
+			// Записываем длину массива
+			walk.depth = cap;
+			// Записываем остаток пропускаемых ближних уровней
+			walk.skip = (skip + 1);
+			// Снятых адресов пока нет
+			walk.count = 0;
+			// Снимаем стек раскруткой
+			static_cast <void> (::_Unwind_Backtrace(&::walker, &walk));
+			// Запоминаем число снятых адресов
+			result = walk.count;
+		#endif
 	}
 	// Отмечаем поток вышедшим из съёма
 	::mark(false);
@@ -494,5 +520,9 @@ bool awh::alloc::Trace::ready() const noexcept {
  */
 const char * awh::alloc::Trace::name() const noexcept {
 	// Выводим название способа съёма
-	return "_Unwind_Backtrace";
+	#if defined(_MSC_VER)
+		return "RtlCaptureStackBackTrace";
+	#else
+		return "_Unwind_Backtrace";
+	#endif
 }

@@ -34,6 +34,40 @@
 
 /**
  * \~russian
+ * @brief Совместимость с нативным MSVC
+ *
+ * @details Фреймворк везде полагает, что «Windows» - это MinGW: у того есть слой POSIX
+ *          (unistd.h, ssize_t, pid_t) и синтаксис упаковки GCC. У нативного MSVC их нет
+ *          вовсе, и слой этот вводится здесь, в базовом заголовке, единожды - вместо
+ *          россыпи проверок `_MSC_VER` по десяткам мест. У MinGW и POSIX условие ложно,
+ *          и ничего не меняется.
+ *
+ *          `ssize_t` берётся из `SSIZE_T` (BaseTsd.h), `pid_t` - `int` (его отдаёт
+ *          `_getpid`), `getpid` приводится к `_getpid`.
+ *
+ * \~english
+ * @brief Compatibility with the native MSVC
+ *
+ * \~
+ */
+#if defined(_MSC_VER)
+	#include <BaseTsd.h>
+	#include <process.h>
+	#ifndef __AWH_MSVC_SSIZE_T__
+		#define __AWH_MSVC_SSIZE_T__
+		typedef SSIZE_T ssize_t;
+	#endif
+	#ifndef __AWH_MSVC_PID_T__
+		#define __AWH_MSVC_PID_T__
+		typedef int pid_t;
+	#endif
+	#ifndef getpid
+		#define getpid _getpid
+	#endif
+#endif
+
+/**
+ * \~russian
  * @brief Приведение типов, проверяемое в отладочной сборке
  *
  * @details Отладочная сборка приводит тип с проверкой, выпускная - без неё. Так

@@ -317,6 +317,21 @@ def pointer_of(value):
 		pass
 	return value
 
+def shared_target(pointer):
+	##
+	# Выводит адрес, на какой смотрит умный указатель
+	#
+	# Поле указателя зовётся `_M_ptr` у libstdc++, `__ptr_` у libc++, `pointer` у своего
+	# умного указателя AWH. Пустой указатель отвечает нулём - тем же, чем и отсутствие
+	##
+	if pointer is None:
+		return 0
+	for name in ('pointer', '__ptr_', '_M_ptr'):
+		got = field(pointer, name)
+		if got is not None:
+			return whole(got)
+	return whole(pointer)
+
 def string_parts(value):
 	##
 	# Выводит начало данных строки и её длину, каким бы ни был вид записи
@@ -703,15 +718,10 @@ class RegexExpression(object):
 		if count > 0:
 			result += ', имён: %d' % count
 		##
-		# Умный указатель целым не берётся: смотреть нужно поле самого указателя
+		# Умный указатель целым не берётся: смотреть нужно поле самого указателя,
+		# что и делает общий помощник shared_target
 		##
-		##
-		# Умный указатель зовётся `_M_ptr` у libstdc++ и `__ptr_` у libc++
-		##
-		machine = field(self.value, 'machine', '_M_ptr')
-		if machine is None:
-			machine = field(self.value, 'machine', '__ptr_')
-		if (machine is not None) and (whole(machine) != 0):
+		if shared_target(field(self.value, 'machine')) != 0:
 			return result + ', порождённый код'
 		if whole(field(self.value, 'backtracking')) != 0:
 			return result + ', возвраты'

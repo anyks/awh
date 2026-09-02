@@ -1056,14 +1056,6 @@ bool awh::codec::abc::Value::insert(const string & name, const Value & value) no
 	return this->insert(Value(name), value);
 }
 /**
- * @brief Метод добавления поля в отображение с именем любого вида
- *
- * @param name  имя поля отображения
- * @param value добавляемое значение
- * @return      признак успешности добавления
- *
- */
-/**
  * @brief Метод добавления поля в отображение с именем строковым литералом
  *
  * @param name  имя поля отображения
@@ -1075,7 +1067,32 @@ bool awh::codec::abc::Value::insert(const char * name, const Value & value) noex
 	// Выполняем добавление поля отображения с именем строковым литералом
 	return this->insert(Value((name != nullptr) ? string(name) : string{}), value);
 }
+/**
+ * @brief Метод добавления поля в отображение с именем любого вида
+ *
+ * @param name  имя поля отображения
+ * @param value добавляемое значение
+ * @return      признак успешности добавления
+ *
+ */
 bool awh::codec::abc::Value::insert(const Value & name, const Value & value) noexcept {
+	// Номер занесённого поля отображения, вызову не нужный
+	size_t index = 0;
+	// Выполняем добавление поля отображения с выдачей номера поля
+	return this->insert(name, value, index);
+}
+/**
+ * @brief Метод добавления поля в отображение с выдачей номера поля
+ *
+ * @param name  имя поля отображения
+ * @param value добавляемое значение
+ * @param index номер занесённого поля отображения
+ * @return      признак успешности добавления
+ *
+ */
+bool awh::codec::abc::Value::insert(const Value & name, const Value & value, size_t & index) noexcept {
+	// Выполняем сброс номера занесённого поля отображения
+	index = 0;
 	/**
 	 * Если именем поля отображения стоит вместимое, добавление отвергается
 	 *
@@ -1121,6 +1138,8 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value) noe
 		if(found < this->_items.size()){
 			// Выполняем перезапись значения разысканного поля отображения
 			this->_items.at(found) = value;
+			// Выполняем выдачу номера перезаписанного поля отображения
+			index = found;
 			// Сообщаем, что добавление успешно
 			return true;
 		}
@@ -1147,6 +1166,8 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value) noe
 			 * бы подпись
 			 */
 			this->_items.at(i) = value;
+			// Выполняем выдачу номера перезаписанного поля отображения
+			index = i;
 			// Сообщаем, что добавление успешно
 			return true;
 		}
@@ -1160,6 +1181,8 @@ bool awh::codec::abc::Value::insert(const Value & name, const Value & value) noe
 	if(this->_index && name.is(type_t::STRING))
 		// Выполняем добавление заводимого имени в указатель поиска
 		this->_index->emplace(name.text(), this->_keys.size());
+	// Выполняем выдачу номера заводимого поля отображения
+	index = this->_keys.size();
 	// Выполняем заведение имени затребованного поля отображения
 	this->_keys.push_back(name);
 	// Выполняем заведение значения затребованного поля отображения
@@ -2217,16 +2240,19 @@ bool awh::codec::abc::Builder::deposit(Value && value, size_t & index) noexcept 
 	if(this->_keyed){
 		/**
 		 * Если установка поля отображения отказала
+		 *
+		 * @note Номер занесённого поля берётся у самой установки, а не счётом
+		 *       `size() - 1`: занятое имя перезаписывается НА МЕСТЕ, порядок полей
+		 *       сохраняя, и счёт увёл бы путь сборки на поле чужое. Закреплено проверкой
+		 *       `CodecAbcValue.BuilderReopensTheFieldOfTheOccupiedName`
 		 */
-		if(!holder.insert(this->_key, value))
+		if(!holder.insert(this->_key, value, index))
 			// Выводим признак неудачного занесения
 			return false;
 		// Выполняем сброс признака назначенного имени
 		this->_keyed = false;
 		// Выполняем очистку имени поля отображения
 		this->_key.clear();
-		// Выполняем установку номера занесённого значения во вместилище
-		index = (holder.size() - 1);
 		// Выводим признак успешного занесения
 		return true;
 	}

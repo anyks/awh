@@ -282,6 +282,30 @@ namespace awh {
 				const void * entry() const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод извлечения адреса наполненного участка памяти
+				 *
+				 * @details Метод отдаёт адрес участка и до разрешения исполнения,
+				 *          в отличие от «entry»: сличение приметы кода выполняется
+				 *          по тем самым байтам, каким предстоит исполниться, а
+				 *          выполнить его надлежит ДО того, как участок исполнение
+				 *          получит. Сличение записи взамен участка оставляло бы
+				 *          щель между проверкой и переносом в память.
+				 *
+				 * @return адрес наполненного участка памяти либо нулевой указатель
+				 *
+				 * \~english
+				 * @brief Method of getting the address of the filled stretch of memory
+				 * @details The method gives the address of the stretch even before the execution
+				 *          is allowed, unlike «entry»: the comparison of the imprint of the code
+				 *          is performed over the very bytes that are to be executed, and it must
+				 *          be performed BEFORE the stretch receives execution.
+				 * @return address of the filled stretch of memory or a null pointer
+				 *
+				 * \~
+				 */
+				const void * image() const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод извлечения размера порождённого машинного кода
 				 *
 				 * @return размер порождённого машинного кода в байтах

@@ -48,6 +48,8 @@ cases = [
 	('atomic_value true', awh.atomic_value(probe['raised']), 1),
 	('atomic_value false', awh.atomic_value(probe['lowered']), 0),
 	('map_count', awh.map_count(probe['pairs']), 3),
+	('shared_target есть', awh.shared_target(probe['owned']) != 0, True),
+	('shared_target пуст', awh.shared_target(probe['empty']), 0),
 	('count_of вектора', awh.count_of(probe['numbers']), 5),
 	# storage_slice режет БАЙТЫ по памяти: кусок с середины кириллицы должен лечь
 	# по границе знаков

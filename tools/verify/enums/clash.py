@@ -18,7 +18,7 @@
 # @details Препроцессор области видимости не разбирает и заменяет имя даже внутри
 #          enum class: объявление `CS5 = 0x28` при пришедшем <termios.h> обращается
 #          в `(0x00000000) = 0x28`, и сборка отвечает отказом. Лечится это парой
-#          include/sys/macro_push.hpp и include/sys/macro_pop.hpp, но лишь для тех
+#          include/sys/macro/suppress.hpp и include/sys/macro/restore.hpp, но лишь для тех
 #          имён, что в неё внесены
 #
 #          Беда капкана в том, что вскрывается он не у нас: дерево собирается, пока
@@ -104,13 +104,13 @@ def available(cc):
 	return result
 
 ##
-# @brief Метод чтения имён, снимаемых парой macro_push.hpp
+# @brief Метод чтения имён, снимаемых парой macro/suppress.hpp
 #
 # @param base корень дерева исходников
 # @return     множество снятых имён
 ##
 def guarded(base):
-	path = os.path.join(base, 'include', 'sys', 'macro_push.hpp')
+	path = os.path.join(base, 'include', 'sys', 'macro', 'suppress.hpp')
 	body = open(path, encoding = 'utf-8', errors = 'replace').read()
 	return set(re.findall(r'#pragma\s+push_macro\("([A-Za-z_][A-Za-z0-9_]*)"\)', body))
 

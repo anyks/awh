@@ -828,6 +828,33 @@ namespace awh {
 					[[nodiscard]] bool insert(const Value & name, const Value & value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод добавления поля в отображение с выдачей номера поля
+					 *
+					 * @details Работа эта отвечает на вопрос «КУДА поле легло»: занятое имя
+					 * перезаписывается НА МЕСТЕ, порядок полей сохраняя, и номер занесённого
+					 * поля с длиной отображения не совпадает вовсе. Вызов, полагающийся на
+					 * `size() - 1`, уходил бы на поле чужое
+					 *
+					 * @param name  имя поля отображения
+					 * @param value добавляемое значение
+					 * @param index номер занесённого поля отображения
+					 * @return      признак успешности добавления
+					 *
+					 * \~english
+					 * @brief Method of the addition of a field into a mapping reporting the number of the field
+					 * @details This work answers the question of WHERE the field has landed: an occupied name is
+					 * overwritten IN PLACE, preserving the order of the fields, and the number of the deposited
+					 * field does not coincide with the length of the mapping at all
+					 * @param name name of the field of the mapping
+					 * @param value value being added
+					 * @param index number of the deposited field of the mapping
+					 * @return sign of the success of the addition
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool insert(const Value & name, const Value & value, size_t & index) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод добавления поля в отображение с именем строковым литералом
 					 *
 					 * @details Работа эта заведена РАЗРЕШЕНИЯ РАДИ: обращение `const char *` в

@@ -1577,19 +1577,20 @@ namespace awh {
 				 * \~
 				 */
 				explicit DateTime() noexcept;
-			} __attribute__((packed)) dt_t;
+			} dt_t;
 		private:
 			// Объект локального времени
 			dt_t _dt;
 		private:
-			// Допуск отката года при разборе записи без года (в секундах)
-			uint32_t _yearRollback;
-			// Окно двузначного года при разборе записи с ним (в годах)
-			uint8_t _yearWindow;
-			// Правило раскрытия двузначного года при разборе записи с ним
-			century_t _century;
 			// Признак приёма секунды координации при проверке пригодности записи
 			bool _leapSecond;
+		private:
+			// Правило раскрытия двузначного года при разборе записи с ним
+			century_t _century;
+			// Окно двузначного года при разборе записи с ним (в годах)
+			uint8_t _yearWindow;
+			// Допуск отката года при разборе записи без года (в секундах)
+			uint32_t _yearRollback;
 		private:
 			// Список внутренних временных зон
 			unordered_map <string, int32_t> _timeZones;
@@ -4881,7 +4882,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			~Chrono() noexcept;
+			~Chrono() noexcept = default;
 	} chrono_t;
 };
 

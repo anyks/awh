@@ -2,7 +2,7 @@
 
 Инструмент `clash.py` ищет члены перечислений AWH, чьи имена заняты макросами
 системных заголовков, и отвечает отказом, если такое имя не снято парой
-`include/sys/macro_push.hpp` и `include/sys/macro_pop.hpp`.
+`include/sys/macro/suppress.hpp` и `include/sys/macro/restore.hpp`.
 
 ## Зачем
 

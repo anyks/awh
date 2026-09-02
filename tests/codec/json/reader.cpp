@@ -181,6 +181,42 @@ static vector <event_t> parse(const string & text, const size_t chunk = 0, const
  * @return       запись сведённых событий разбора
  *
  */
+/**
+ * @brief Метод сборки ПОДРОБНОЙ записи событий разбора
+ *
+ * @details Запись эта несёт положение всякого события в тексте - строку и столбец, - а
+ * `join` печатает лишь вид события и его содержимое. Договор о независимости разбора от
+ * нарезки распространяется на событие ЦЕЛИКОМ, и положение его прежде закреплялось лишь
+ * у отказа: проверка `ErrorLocationIsIndependentOfChunking` стережёт положение ошибки, а
+ * положение УСПЕШНЫХ событий не стерёг никто
+ *
+ * @note Замер 02.09.2026 мутантом: потеря строки и столбца на границе куска красила одну
+ *       проверку из всего набора - ту самую, что про положение отказа
+ *
+ * @note Заведена отдельно от `join`, а не подмешана в него: ожидания проверок писаны
+ *       видом события и содержимым, и положение в них не место
+ *
+ * @param events сводимые события разбора
+ * @return       подробная запись событий разбора
+ *
+ */
+static string detail(const vector <event_t> & events) noexcept {
+	// Собираемая подробная запись событий разбора
+	string result;
+	// Место сборки описания очередного события
+	char buffer[128];
+	/**
+	 * Выполняем перебор всех событий разбора
+	 */
+	for(const event_t & item : events){
+		// Выполняем сборку описания положения очередного события
+		::snprintf(buffer, sizeof(buffer), "%u@%u:%u;", static_cast <uint32_t> (item.event), item.line, item.column);
+		// Добавляем описание события к собранной записи
+		result.append(buffer);
+	}
+	// Выводим собранную подробную запись событий разбора
+	return result;
+}
 static string join(const vector <event_t> & events) noexcept {
 	// Запись сведённых событий разбора
 	string result;
@@ -685,15 +721,29 @@ TEST(CodecJsonReader, ChunkIndependence) {
 		// Код отказа разбора текста документа целиком
 		json::error_t error = json::error_t::NONE;
 		// Выполняем разбор текста документа целиком
-		const string sample = ::join(::parse(text, 0, settings, & error));
+		const vector <event_t> events = ::parse(text, 0, settings, & error);
+		// Получаем запись событий разбора текста документа целиком
+		const string sample = ::join(events);
+		// Получаем подробную запись событий с положением их в тексте
+		const string standard = ::detail(events);
 		/**
 		 * Выполняем перебор всех размеров куска подаваемого текста
 		 */
 		for(size_t chunk = 1; chunk <= text.size(); chunk++){
 			// Код отказа разбора текста документа кусками
 			json::error_t reason = json::error_t::NONE;
+			// Выполняем разбор текста документа кусками
+			const vector <event_t> pieces = ::parse(text, chunk, settings, & reason);
 			// Выполняем проверку совпадения событий разбора с эталонными
-			ASSERT_EQ(::join(::parse(text, chunk, settings, & reason)), sample)
+			ASSERT_EQ(::join(pieces), sample)
+				<< "текст «" << text << "» кусками по " << chunk << " знаков";
+			/**
+			 * Выполняем проверку совпадения ПОЛОЖЕНИЯ событий с эталонным
+			 *
+			 * @note Положение прежде сличалось лишь у отказа, а событие успешное несёт
+			 *       его тоже: строка и столбец обязаны совпадать при всякой нарезке
+			 */
+			ASSERT_EQ(::detail(pieces), standard)
 				<< "текст «" << text << "» кусками по " << chunk << " знаков";
 			// Выполняем проверку совпадения кода отказа разбора с эталонным
 			ASSERT_EQ(reason, error)
