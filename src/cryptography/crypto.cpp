@@ -11818,37 +11818,19 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Заводим объект BIO для чтения записи ключа
-		BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
-		// Если объект BIO заведён
-		if(bio != nullptr){
-			/**
-			 * Определяем тип вводимого ключа
-			 */
-			switch(static_cast <uint8_t> (type)){
-				// Если вводу подлежит открытый ключ
-				case static_cast <uint8_t> (key_type_t::PUBLIC):
-					// Выполняем чтение открытого ключа
-					result = ::PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
-				break;
-				// Если вводу подлежит закрытый ключ
-				case static_cast <uint8_t> (key_type_t::PRIVATE):
-					// Выполняем чтение закрытого ключа
-					result = ::PEM_read_bio_PrivateKey(bio, nullptr, &driver::password, const_cast <string *> (&this->_params.passwordRSA));
-				break;
-			}
-			// Освобождаем объект BIO
-			::BIO_free_all(bio);
-		}
 		/**
-		 * Если ключ библиотекой криптографии не прочитан, разбор ведётся своими силами
+		 * Разбор ГОСТ ведётся своими силами и идёт ПЕРВЫМ
 		 *
-		 * @details Схемы ГОСТ библиотека не знает вовсе и отвечает отказом на всякий её
-		 *          ключ, оттого своя попытка идёт второй: она не перехватывает ключей,
-		 *          которые библиотека разбирает сама, и договор прежних видов подписи
-		 *          не трогает
+		 * @details Порядок этот задан содержимым ключа, а не ответом библиотеки.
+		 *          Прежде своя попытка шла второй, по отказу библиотеки, и держалась
+		 *          на допущении «схем ГОСТ библиотека не знает вовсе». Допущение это
+		 *          неверно: на стенде Астры в OpenSSL 3.4 включён поставщик gostprov,
+		 *          и там библиотека разбирает ключ ГОСТ сама - своя ветвь не работала
+		 *          вовсе, и пять проверок отказывали. Разбор свой строг: он сверяет
+		 *          опознаватель схемы с таблицей кривых ГОСТ и всякий чужой ключ
+		 *          отвергает, оттого договор прежних видов подписи он не трогает
 		 */
-		if(result == nullptr){
+		{
 			// Заводим объект BIO для чтения записи ключа
 			BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
 			/**
@@ -11911,9 +11893,33 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 				}
 				// Освобождаем объект BIO
 				::BIO_free_all(bio);
-			}
+				}
+		}
+		// Если разбор своими силами удался, работа на этом закончена
+		if(outcome)
 			// Выходим из метода
 			return outcome;
+		// Заводим объект BIO для чтения записи ключа
+		BIO * bio = ::BIO_new_mem_buf(key.data(), static_cast <int32_t> (key.size()));
+		// Если объект BIO заведён
+		if(bio != nullptr){
+			/**
+			 * Определяем тип вводимого ключа
+			 */
+			switch(static_cast <uint8_t> (type)){
+				// Если вводу подлежит открытый ключ
+				case static_cast <uint8_t> (key_type_t::PUBLIC):
+					// Выполняем чтение открытого ключа
+					result = ::PEM_read_bio_PUBKEY(bio, nullptr, nullptr, nullptr);
+				break;
+				// Если вводу подлежит закрытый ключ
+				case static_cast <uint8_t> (key_type_t::PRIVATE):
+					// Выполняем чтение закрытого ключа
+					result = ::PEM_read_bio_PrivateKey(bio, nullptr, &driver::password, const_cast <string *> (&this->_params.passwordRSA));
+				break;
+			}
+			// Освобождаем объект BIO
+			::BIO_free_all(bio);
 		}
 		// Если ключ подписи прочитан
 		if(result != nullptr){

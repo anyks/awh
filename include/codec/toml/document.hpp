@@ -1568,6 +1568,74 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Метод обращения к значению по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки, и спрашивается он у
+					 *          ДОКУМЕНТА, а не у значения: общие проверки договора зовут
+					 *          `document.at(путь)`, и кодек, такого хода не несущий, в перебор
+					 *          по семерым не входит вовсе
+					 *
+					 * @note Выдаётся ВЛАДЕЮЩЕЕ значение, а не узел дерева: узлового вида у toml
+					 *       нет вовсе - настройки держатся записями, а не ареною узлов. Это
+					 *       законное расхождение по устройству, а не отступление от договора
+					 *
+					 * @param path путь до разыскиваемого значения
+					 * @return     разысканное значение настроек
+					 *
+					 * \~english
+					 * @brief Method of accessing a value by a path
+					 * @param path path to the value being searched for
+					 * @return     found value of the settings
+					 *
+					 * \~
+					 */
+					::awh::codec::toml::Value at(const string & path) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки наличия значения по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки. Прежняя проверка наличия
+					 *          берёт имя со разделом, а не путь, и оставлена рядом: снос задел бы
+					 *          потребителей, а согласование того не требует
+					 *
+					 * @param path путь до проверяемого значения
+					 * @return     признак наличия значения по пути
+					 *
+					 * \~english
+					 * @brief Method of checking the presence of a value by a path
+					 * @param path path to the value being checked
+					 * @return     sign of the presence of the value by the path
+					 *
+					 * \~
+					 */
+					template <class T>
+					typename ::std::enable_if <::std::is_convertible <const T &, string_view>::value, bool>::type
+					has(const T & path) const noexcept {
+						// Выводим признак наличия значения по указанному пути
+						return this->present(string(string_view(path)));
+					}
+					/**
+					 * \~russian
+					 * @brief Метод проверки наличия значения по пути
+					 *
+					 * @details Тело посредника `has()`, шаблоном от него отделённое: прежняя
+					 *          проверка наличия берёт путь ПЕРЕЧНЕМ кусков, и запись
+					 *          `has({раздел, имя})` подошла бы разом к обеим - собиратель
+					 *          отвечал бы отказом по двусмысленности
+					 *
+					 * @param path путь до проверяемого значения
+					 * @return     признак наличия значения по пути
+					 *
+					 * \~english
+					 * @brief Method of checking the presence of a value by a path
+					 * @param path path to the value being checked
+					 * @return     sign of the presence of the value by the path
+					 *
+					 * \~
+					 */
+					bool present(const string & path) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод проверки наличия пары
 					 *
 					 * @param path составное имя искомой пары
@@ -2217,6 +2285,24 @@ namespace awh {
 					 */
 					writer_t::settings_t writing() const noexcept;
 				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним
+					 *          лишь доводом построения, но и после него - потребитель, дерево
+					 *          получивший готовым, иначе не имел бы способа направить его отчёты
+					 *          в свой журнал вовсе
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of setting the object of the keeping of the log of the work
+					 * @param log object of the keeping of the log of the work
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор

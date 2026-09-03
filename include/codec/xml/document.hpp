@@ -288,6 +288,30 @@ namespace awh {
 					string text() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения количества вложенных узлов
+					 *
+					 * @details Считаются дети ПЕРВОГО УРОВНЯ вложенности, а глубже лежащие в счёт
+					 * не идут. Считаются при том вложенные узлы ВСЯКОГО вида, а не одни лишь узлы
+					 * разметки: содержимое текстовое, разделы дословные, примечания и указания
+					 * обработчику суть такие же дети, и обход `first()`/`next()` отдаёт их наравне
+					 *
+					 * @note Счёт этот годен для обхода `for(i = 0; i < size(); i++)` вместе со
+					 *       звеном пути по номеру, каковое тоже берёт вложенный узел всякого вида
+					 *
+					 * @return количество вложенных узлов первого уровня
+					 *
+					 * \~english
+					 * @brief Method of getting the number of the nested nodes
+					 * @details The children of THE FIRST LEVEL of the nesting are counted, and those
+					 * lying deeper do not go into the count. The nested nodes of EVERY kind are counted
+					 * rather than the markup nodes alone
+					 * @return number of the nested nodes of the first level
+					 *
+					 * \~
+					 */
+					size_t size() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения места узла в исходном тексте
 					 *
 					 * @return положение начала узла в исходном тексте
@@ -1813,17 +1837,54 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод получения количества узлов дерева
+					 * @brief Метод получения количества вложенных узлов корня разметки
 					 *
-					 * @return количество узлов в арене дерева разметки
+					 * @details Считаются ДЕТИ КОРНЕВОГО УЗЛА РАЗМЕТКИ первого уровня, а не узлы
+					 * арены: у дерева `<r><a/><b><c/></b></r>` счёт этот даёт 2, тогда как арена
+					 * несёт 7 узлов. Счёт годен для обхода `for(i = 0; i < size(); i++)`
+					 *
+					 * @details Число узлов арены выдаётся ходом `nodes()`. Развести их пришлось
+					 * оттого, что арены семи кодеков ведут себя по-разному: у одних дописываются и
+					 * сносом не убавляются, у других сжимаются, у третьих дерева правке не
+					 * подлежат вовсе, - и одного смысла «узлы арены» у семи иметь не могут, тогда
+					 * как «дети корня» определимы у всех одинаково
+					 *
+					 * @note Дерево без корневого узла разметки отвечает нулём: считать у него
+					 *       нечего, а узлы арены к содержимому отношения не имеют
+					 *
+					 * @return количество вложенных узлов корня разметки
 					 *
 					 * \~english
-					 * @brief Method of getting the number of the nodes of the tree
-					 * @return number of the nodes in the arena of the markup tree
+					 * @brief Method of getting the number of the nested nodes of the root of the markup
+					 * @details THE CHILDREN OF THE ROOT MARKUP NODE of the first level are counted
+					 * rather than the nodes of the arena: for the tree `<r><a/><b><c/></b></r>` this
+					 * count gives 2, while the arena carries 7 nodes
+					 * @details The number of the nodes of the arena is given by the call `nodes()`
+					 * @return number of the nested nodes of the root of the markup
 					 *
 					 * \~
 					 */
 					size_t size() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения количества узлов арены дерева
+					 *
+					 * @details Арена эта лишь ДОПИСЫВАЕТСЯ: узлы снесённого поддерева остаются в
+					 * ней недостижимыми и место своё возвращают только с очисткою дерева либо с
+					 * новым разбором. Судить по этому счёту о содержимом дерева НЕЛЬЗЯ - для того
+					 * есть `size()` да `empty()`
+					 *
+					 * @return количество узлов в арене дерева разметки
+					 *
+					 * \~english
+					 * @brief Method of getting the number of the nodes of the arena of the tree
+					 * @details The arena is only APPENDED TO: the nodes of a removed subtree remain
+					 * in it unreachable. This count MUST NOT be used to judge the content of the tree
+					 * @return number of the nodes in the arena of the markup tree
+					 *
+					 * \~
+					 */
+					size_t nodes() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки дерева на пустоту

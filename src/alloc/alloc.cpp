@@ -954,7 +954,19 @@ namespace {
 	 *       его, а стоит он выше определения
 	 *
 	 */
-	static void inherit() noexcept;
+	/**
+	 * Объявление идёт под тем же гейтом, что и определение
+	 *
+	 * Определение лежит внутри блока `#if !defined(_WIN32) && !defined(_WIN64)` ниже:
+	 * ветвления у MS Windows нет вовсе, и приводить распределитель в порядок у потомка
+	 * там некому. Прежде объявление из гейта ВЫПАДАЛО, и у Windows выходило имя,
+	 * объявленное без определения и не званное ниоткуда - clang отвечал на него
+	 * `-Wunused-function`. Мёртвым кодом оно при этом не было: на POSIX путь замкнут -
+	 * `pthread_atfork` (либо зона у macOS) заводит `childFork`, а тот зовёт `inherit`
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		static void inherit() noexcept;
+	#endif
 	static void jammed() noexcept {
 		// Если распределитель не заведён
 		if(stage.load(std::memory_order_acquire) != STAGE_READY)

@@ -611,6 +611,27 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		// Выводим отрицательный результат прокладки
 		return false;
 	}
+	/**
+	 * Длина префикса обязана отвечать виду адреса
+	 *
+	 * @warning Длина эта уходила системе НЕПРОВЕРЕННОЙ, а хранится она в `uint8_t` и
+	 *          принимает до 255 при пределе 32 у IPv4 и 128 у IPv6. Система такую
+	 *          запись отвергает, но отвечает на неё общим `ERROR_INVALID_PARAMETER`, и
+	 *          по журналу выходило, будто не так с самим путём, а не с его длиной.
+	 *          Сличать длину при поиске нельзя (ищущий её не знает), а при прокладке -
+	 *          обязательно: тут она задаётся, а не отыскивается
+	 *
+	 * @note Отвечаем отказом, а не приведением к пределу: приведение обратило бы
+	 *       бессмысленную просьбу в осмысленную, но ДРУГУЮ - путь к одному узлу вместо
+	 *       заказанной сети, - и сделало бы это молча
+	 *
+	 */
+	if(route.prefix > ((route.destination->size == 4) ? 32 : 128)){
+		// Выводим в журнал сообщение о недопустимой длине префикса
+		this->_log->print("%s: prefix length %u is out of range for the %s destination", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, static_cast <uint32_t> (route.prefix), ((route.destination->size == 4) ? "IPv4" : "IPv6"));
+		// Выводим отрицательный результат прокладки
+		return false;
+	}
 	// Устанавливаем длину префикса пути
 	row.DestinationPrefix.PrefixLength = route.prefix;
 	// Если шлюз пути передан и перенести его не удалось
@@ -690,6 +711,27 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	if(!::__awh_to_sockaddr__(route.destination.get(), row.DestinationPrefix.Prefix)){
 		// Выводим в журнал сообщение о неподдерживаемом виде адреса
 		this->_log->print("%s: only IPv4 and IPv6 destinations are supported", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+		// Выводим отрицательный результат снятия
+		return false;
+	}
+	/**
+	 * Длина префикса обязана отвечать виду адреса
+	 *
+	 * @warning Длина эта уходила системе НЕПРОВЕРЕННОЙ, а хранится она в `uint8_t` и
+	 *          принимает до 255 при пределе 32 у IPv4 и 128 у IPv6. Система такую
+	 *          запись отвергает, но отвечает на неё общим `ERROR_INVALID_PARAMETER`, и
+	 *          по журналу выходило, будто не так с самим путём, а не с его длиной.
+	 *          Сличать длину при поиске нельзя (ищущий её не знает), а при снятии -
+	 *          обязательно: снятие сличает записи целиком, и длина входит в сличение
+	 *
+	 * @note Отвечаем отказом, а не приведением к пределу: приведение обратило бы
+	 *       бессмысленную просьбу в осмысленную, но ДРУГУЮ - путь к одному узлу вместо
+	 *       заказанной сети, - и сделало бы это молча
+	 *
+	 */
+	if(route.prefix > ((route.destination->size == 4) ? 32 : 128)){
+		// Выводим в журнал сообщение о недопустимой длине префикса
+		this->_log->print("%s: prefix length %u is out of range for the %s destination", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, static_cast <uint32_t> (route.prefix), ((route.destination->size == 4) ? "IPv4" : "IPv6"));
 		// Выводим отрицательный результат снятия
 		return false;
 	}

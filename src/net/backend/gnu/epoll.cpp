@@ -3089,7 +3089,7 @@ namespace {
 	 * @brief Метод очистки хранилища
 	 *
 	 */
-	void Storage_Transport_Layer_Nodes::clear() noexcept {
+	[[maybe_unused]] void Storage_Transport_Layer_Nodes::clear() noexcept {
 		// Сбрасываем номер первого обслуживаемого чанка
 		this->_base = 0;
 		// Сбрасываем количество узлов
@@ -7194,6 +7194,19 @@ namespace handoff {
  * @brief Инкапсулируем статические функции в пространство имён таймера
  *
  */
+/**
+ * @par Намеренные решения
+ *
+ * Часть помощников этого пространства помечена `[[maybe_unused]]`, и это не заглушка
+ * предупреждения, а объявление намерения. Решение владельца от 15.08.2026: `empty`,
+ * `size`, `cancel` и восемь перегрузок `set` НЕ зовутся ни одним местом движка
+ * намеренно - заведены под будущие работы, снимать их не нужно
+ *
+ * @note Невостребованность в самом дереве доводом не является: потребители фреймворка
+ *       внешние и ещё не написаны. Без пометки сборка Release даёт на каждую из них
+ *       `-Wunused-function`, и предупреждения эти возвращались бы при всяком проходе
+ *
+ */
 namespace timer {
 	/**
 	 * Используем пространство имён AWH
@@ -7787,7 +7800,7 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		static bool empty() noexcept {
+		[[maybe_unused]] static bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
@@ -7798,7 +7811,7 @@ namespace timer {
 		 * @return количество активных таймеров
 		 *
 		 */
-		static size_t size() noexcept {
+		[[maybe_unused]] static size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
@@ -8007,7 +8020,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		[[maybe_unused]] static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -8240,7 +8253,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -8270,7 +8283,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -8303,7 +8316,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -8339,7 +8352,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -9438,7 +9451,7 @@ namespace timer {
 		 * @return результат проверки
 		 *
 		 */
-		static bool empty() noexcept {
+		[[maybe_unused]] static bool empty() noexcept {
 			// Проверяем, пуста ли очередь таймеров
 			return __awh_heap__.empty();
 		}
@@ -9449,7 +9462,7 @@ namespace timer {
 		 * @return количество активных таймеров
 		 *
 		 */
-		static size_t size() noexcept {
+		[[maybe_unused]] static size_t size() noexcept {
 			// Получаем количество активных таймеров в очереди таймеров
 			return __awh_heap__.size();
 		}
@@ -9749,7 +9762,7 @@ namespace timer {
 		 * @param eid идентификатор события для которого устанавливается таймер
 		 *
 		 */
-		static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
+		[[maybe_unused]] static void cancel(::io::timeout_t & tm1, ::io::timeout_t & tm2, ::io::timeout_t & tm3, ::io::timeout_t & tm4, ::io::timeout_t & tm5, const event::id_t eid) noexcept {
 			// Отменяем первый таймер для данного события, так-как он больше не нужен
 			cancel(tm1, eid);
 			// Отменяем второй таймер для данного события, так-как он больше не нужен
@@ -10034,7 +10047,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -10064,7 +10077,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -10097,7 +10110,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров
@@ -10133,7 +10146,7 @@ namespace timer {
 		 * @param log  объект работы с логами
 		 *
 		 */
-		static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
+		[[maybe_unused]] static void set(record_t rec1, record_t rec2, record_t rec3, record_t rec4, record_t rec5, record_t rec6, const event::id_t eid, const event::rate_t rate, const log_t * log) noexcept {
 			// Устанавливаем первый таймер на основе переданных параметров
 			set(rec1.tm, eid, rec1.flag, rate, log);
 			// Устанавливаем второй таймер на основе переданных параметров

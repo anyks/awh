@@ -2427,7 +2427,23 @@ bool awh::codec::json::Document::has(const string & pointer) const noexcept {
  *
  */
 size_t awh::codec::json::Document::size() const noexcept {
-	// Выводим количество узлов документа
+	/**
+	 * Если хранилище документа пусто
+	 */
+	if(this->_nodes.empty())
+		// Выводим отсутствие значений в корне документа
+		return 0;
+	// Выводим количество значений в корне документа
+	return this->root().size();
+}
+/**
+ * @brief Метод извлечения количества узлов хранилища документа
+ *
+ * @return количество узлов хранилища документа
+ *
+ */
+size_t awh::codec::json::Document::nodes() const noexcept {
+	// Выводим количество узлов хранилища документа
 	return this->_nodes.size();
 }
 /**

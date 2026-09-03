@@ -2134,17 +2134,52 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод извлечения количества узлов документа
+					 * @brief Метод извлечения количества значений в корне документа
 					 *
-					 * @return количество узлов документа
+					 * @details Считаются ДЕТИ КОРНЯ, а не узлы хранилища: у объекта - число ПАР
+					 * «имя-значение», у массива - число значений, у скалярного корня - нуль.
+					 * Счёт этот и годен для обхода `for(i = 0; i < size(); i++)`
+					 *
+					 * @details Число узлов хранилища выдаётся ходом `nodes()`. Развести их
+					 * пришлось оттого, что хранилища семи кодеков ведут себя по-разному: у одних
+					 * оно дописывается и сносом не убавляется, у других сжимается, у третьих
+					 * дерева правке не подлежит вовсе, - и одного смысла «узлы хранилища» у семи
+					 * иметь не могут, тогда как «дети корня» определимы у всех одинаково
+					 *
+					 * @return количество значений в корне документа
 					 *
 					 * \~english
-					 * @brief Method of the extraction of the number of the nodes of the document
-					 * @return number of the nodes of the document
+					 * @brief Method of the extraction of the number of the values in the root of the document
+					 * @details THE CHILDREN OF THE ROOT are counted rather than the nodes of the storage:
+					 * for an object it is the number of the PAIRS «name-value», for an array the number
+					 * of the values, for a scalar root zero. It is this count that suits the traversal
+					 * `for(i = 0; i < size(); i++)`
+					 * @details The number of the nodes of the storage is given by the call `nodes()`
+					 * @return number of the values in the root of the document
 					 *
 					 * \~
 					 */
 					size_t size() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод извлечения количества узлов хранилища документа
+					 *
+					 * @details Хранилище это лишь ДОПИСЫВАЕТСЯ: узлы снесённого поддерева остаются
+					 * в нём недостижимыми и место своё возвращают только с очисткою документа либо
+					 * с новым разбором. Судить по этому счёту о содержимом документа НЕЛЬЗЯ -
+					 * для того есть `size()` да `empty()`
+					 *
+					 * @return количество узлов хранилища документа
+					 *
+					 * \~english
+					 * @brief Method of the extraction of the number of the nodes of the storage of the document
+					 * @details The storage is only APPENDED TO: the nodes of a removed subtree remain
+					 * in it unreachable. This count MUST NOT be used to judge the content of the document
+					 * @return number of the nodes of the storage of the document
+					 *
+					 * \~
+					 */
+					size_t nodes() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки документа на пустоту

@@ -382,8 +382,16 @@ TEST(CodecXmlDocument, Huge) {
 	xml::document_t document(::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(document.parse(text)) << xml::message(document.error());
-	// Выполняем проверку количества узлов дерева
-	ASSERT_EQ(document.size(), static_cast <size_t> ((20000 * 2) + 2));
+	/**
+	 * Выполняем проверку количества узлов арены дерева
+	 *
+	 * @note Сличается именно арена: 20000 узлов разметки, столько же текстовых узлов
+	 *       содержимого их да корень. Число детей корня выдаётся ходом `size()` и
+	 *       сличается ниже - величины эти разные, и стеречь надо обе
+	 */
+	ASSERT_EQ(document.nodes(), static_cast <size_t> ((20000 * 2) + 2));
+	// Выполняем проверку количества вложенных узлов корня разметки
+	ASSERT_EQ(document.size(), static_cast <size_t> (20000));
 	// Выполняем проверку значения атрибута последнего узла
 	ASSERT_EQ(document.element().last().attribute("n"), "19999");
 }

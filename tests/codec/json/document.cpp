@@ -1541,8 +1541,16 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 		document.settings(settings);
 		// Выполняем разбор текста документа с примечанием
 		ASSERT_TRUE(document.parse("/* c */{\"a\":1}"));
-		// Выполняем проверку количества узлов дерева
-		ASSERT_EQ(document.size(), static_cast <size_t> (2));
+		/**
+		 * Выполняем проверку количества узлов хранилища документа
+		 *
+		 * @note Сличается именно хранилище: примечание, выдачею событий затребованное,
+		 *       узлом в нём становится наравне с объектом. Число значений в корне
+		 *       выдаётся ходом `size()` и сличается ниже
+		 */
+		ASSERT_EQ(document.nodes(), static_cast <size_t> (2));
+		// Выполняем проверку количества значений в корне документа
+		ASSERT_EQ(document.size(), static_cast <size_t> (1));
 	}
 }
 

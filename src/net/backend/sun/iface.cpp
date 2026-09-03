@@ -2135,7 +2135,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					// Если сокет управления создан
 					if(result != net::invalid_socket_t){
 						// Структура запроса
-						struct ifreq ifr{0};
+						struct ifreq ifr{};
 						// Копируем имя интерфейса
 						::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
 						// Устанавливаем завершающий ноль
@@ -2161,7 +2161,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						// Пытаемся открыть устройство
 						if((result = ::open(buffer, O_RDWR)) != net::invalid_socket_t){
 							// Структура для привязки
-							struct ifreq ifr{0};
+							struct ifreq ifr{};
 							// Копируем имя интерфейса
 							::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
 							// Устанавливаем завершающий ноль
@@ -2646,7 +2646,7 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 				return 0;
 			}
 			// Настраиваем интерфейс
-			struct ifreq ifr{0};
+			struct ifreq ifr{};
 			// Копируем имя интерфейса
 			::iface::copyName(ifr.ifr_name, name);
 			// Извлекаем MTU из интерфейса
@@ -2753,7 +2753,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				return result;
 			}
 			// Настраиваем интерфейс
-			struct ifreq ifr{0};
+			struct ifreq ifr{};
 			// Копируем имя интерфейса
 			::iface::copyName(ifr.ifr_name, name);
 			// Если не удалось получить флаги интерфейса
@@ -2855,7 +2855,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 				return result;
 			}
 			// Настраиваем интерфейс
-			struct ifreq ifr{0};
+			struct ifreq ifr{};
 			// Копируем имя интерфейса
 			::iface::copyName(ifr.ifr_name, name);
 			// Если не удалось получить флаги интерфейса
@@ -2981,7 +2981,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 				return result;
 			}
 			// Настраиваем интерфейс
-			struct ifreq ifr{0};
+			struct ifreq ifr{};
 			// Копируем имя интерфейса
 			::iface::copyName(ifr.ifr_name, name);
 			// Если не удалось получить флаги интерфейса
@@ -3939,7 +3939,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 			 */
 			if(result && (mtu > 0)){
 				// Настраиваем интерфейс
-				struct ifreq ifr{0};
+				struct ifreq ifr{};
 				// Копируем имя интерфейса
 				::iface::copyName(ifr.ifr_name, name);
 				// Устанавливаем MTU интерфейса
@@ -3966,7 +3966,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 			 */
 			if(result){
 				// Настраиваем интерфейс
-				struct ifreq ifr{0};
+				struct ifreq ifr{};
 				// Копируем имя интерфейса
 				::iface::copyName(ifr.ifr_name, name);
 				// Если удалось получить текущие флаги интерфейса

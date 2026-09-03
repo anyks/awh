@@ -306,31 +306,7 @@ namespace awh {
 					 */
 					void unindex() noexcept;
 				private:
-					/**
-					 * \~russian
-					 * @brief Метод разбора звена пути на номер значения
-					 *
-					 * @details Разбор отвергает запись целиком, а не приводит её к пределу:
-					 * вместимого такой длины не бывает вовсе. Ведущий нуль номером не является,
-					 * а является именем поля
-					 *
-					 * @param segment разбираемое звено пути
-					 * @param result  разобранный номер значения
-					 * @return        признак того, что звено является номером
-					 *
-					 * \~english
-					 * @brief Method of the parsing of a link of a path into a number of a value
-					 * @details The parsing rejects the record as a whole rather than bringing it to the limit:
-					 * a container of such a length does not exist at all. A leading zero is not a number
-					 * but is the name of a field
-					 * @param segment link of the path being parsed
-					 * @param result parsed number of the value
-					 * @return sign that the link is a number
-					 *
-					 * \~
-					 */
-					static bool indexed(const string_view segment, size_t & result) noexcept;
-					/**
+										/**
 					 * \~russian
 					 * @brief Метод поверки родственности имён полей отображения
 					 *

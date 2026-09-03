@@ -646,7 +646,7 @@ namespace awh {
 							 * \~
 							 */
 							schema_t schema() const noexcept;
-							/**
+					/**
 							 * \~russian
 							 * @brief Метод извлечения количества детей вместилища
 							 *
@@ -2023,6 +2023,48 @@ namespace awh {
 					value_t root(const size_t index) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод обращения к узлу дерева по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки, и спрашивается он у
+					 *          ДОКУМЕНТА, а не у значения: общие проверки договора зовут
+					 *          `document.at(путь)`, и кодек, такого хода не несущий, в перебор
+					 *          по семерым не входит вовсе
+					 *
+					 * @note Путь берётся по описанию RFC 6901: звено внутри перечня есть номер,
+					 *       а внутри отображения - имя, хотя бы и записанное цифрами
+					 *
+					 * @param path путь до разыскиваемого узла
+					 * @return     разысканный узел дерева документа
+					 *
+					 * \~english
+					 * @brief Method of accessing a node of the tree by a path
+					 * @param path path to the node being searched for
+					 * @return     found node of the tree of the document
+					 *
+					 * \~
+					 */
+					value_t at(const string & path) const noexcept;
+							/**
+					 * \~russian
+					 * @brief Метод проверки наличия значения по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки. Путь берётся по описанию
+					 *          RFC 6901: звено внутри перечня есть номер, а внутри отображения -
+					 *          имя, хотя бы и записанное цифрами
+					 *
+					 * @param path путь до проверяемого значения
+					 * @return     признак наличия значения по пути
+					 *
+					 * \~english
+					 * @brief Method of checking the presence of a value by a path
+					 * @param path path to the value being checked
+					 * @return     sign of the presence of the value by the path
+					 *
+					 * \~
+					 */
+					bool has(const string & path) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения количества узлов дерева документа
 					 *
 					 * @return количество узлов дерева
@@ -2097,6 +2139,26 @@ namespace awh {
 					const location_t & location() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения положения отказа разбора
+					 *
+					 * @details Имя это общее у всех семи кодеков рамки. Прежде у YAML ход звался
+					 *          `location()`, и потребитель, два кодека рядом читающий, разыскивал
+					 *          его не тем именем
+					 *
+					 * @note Прежнее имя оставлено посредником и НЕ снесено: снос задел бы
+					 *       потребителей, а согласование имён того не требует
+					 *
+					 * @return положение отказа разбора в исходном тексте
+					 *
+					 * \~english
+					 * @brief Method of getting the location of the failure of the parsing
+					 * @return location of the failure of the parsing in the source text
+					 *
+					 * \~
+					 */
+					const location_t & errorLocation() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод сброса дерева документа
 					 *
 					 * \~english
@@ -2133,6 +2195,24 @@ namespace awh {
 					 */
 					void settings(const settings_t & settings) noexcept;
 				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним
+					 *          лишь доводом построения, но и после него - потребитель, дерево
+					 *          получивший готовым, иначе не имел бы способа направить его отчёты
+					 *          в свой журнал вовсе
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of setting the object of the keeping of the log of the work
+					 * @param log object of the keeping of the log of the work
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор

@@ -231,20 +231,30 @@ static void * __awh_source_huge__(const size_t size) noexcept {
  * @note Совет этот не отводит крупных страниц, а просит собрать их из обычных: систему
  *       он ни к чему не обязывает, и ответ его нам безразличен
  *
+ * @note Совет заведён под тем же гейтом, что и его зватель: советуют системе через
+ *       `madvise`, какого у MS Windows нет вовсе - там крупные страницы просятся
+ *       признаком `MEM_LARGE_PAGES` при самом отведении. Прежде определение из гейта
+ *       ВЫПАДАЛО, и у Windows выходила функция, не званная ниоткуда - clang отвечал на
+ *       неё `-Wunused-function`. Мёртвым кодом она при этом не была: на POSIX путь
+ *       замкнут - обычное отведение зовёт совет сразу за `mmap`, когда о крупных
+ *       страницах просили
+ *
  * @param addr адрес отображённой области
  * @param size размер области в байтах
  *
  */
-static void __awh_source_advise__(void * addr, const size_t size) noexcept {
-	#if defined(MADV_HUGEPAGE)
-		// Советуем системе собрать крупные страницы
-		::madvise(addr, size, MADV_HUGEPAGE);
-	#elif defined(MADV_COLLAPSE)
-		::madvise(addr, size, MADV_COLLAPSE);
-	#else
-		(void) addr; (void) size;
-	#endif
-}
+#if !_WIN32 && !_WIN64
+	static void __awh_source_advise__(void * addr, const size_t size) noexcept {
+		#if defined(MADV_HUGEPAGE)
+			// Советуем системе собрать крупные страницы
+			::madvise(addr, size, MADV_HUGEPAGE);
+		#elif defined(MADV_COLLAPSE)
+			::madvise(addr, size, MADV_COLLAPSE);
+		#else
+			(void) addr; (void) size;
+		#endif
+	}
+#endif
 /**
  * @brief Метод отведения области у системы
  *

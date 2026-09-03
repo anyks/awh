@@ -266,8 +266,17 @@ namespace {
 				if(::getmsg(fd, nullptr, &body, &flags) < 0)
 					// Выходим из разбора выдачи
 					break;
-				// Если таблица оказалась искомой
-				if((head->level == level) && (head->name == name)){
+				/**
+				 * Если таблица оказалась искомой
+				 *
+				 * @note Оба поля заголовка объявлены системой БЕЗЗНАКОВЫМИ (`t_uscalar_t`),
+				 *       а доводы приходят знаковыми - оттого gcc и давал `-Wsign-compare`.
+				 *       Приведение здесь именно у ДОВОДОВ, а не у полей: значения эти суть
+				 *       постоянные MIB, всегда положительные, и приведение отрицательного
+				 *       довода к беззнаковому дало бы огромное число, какое ни с одной
+				 *       таблицей не совпадёт - то есть сличение честно ответит «не она»
+				 */
+				if((head->level == static_cast <t_uscalar_t> (level)) && (head->name == static_cast <t_uscalar_t> (name))){
 					// Запоминаем записи искомой таблицы
 					buffer.assign(chunk.data(), (chunk.data() + body.len));
 					// Отмечаем, что таблица снята
@@ -1107,12 +1116,19 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
 				if(::getifaddrs(&ptr) != 0){
-					// Буфер временных данных для генерации IP-адреса
-					char buffer[INET_ADDRSTRLEN];
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
+						/**
+						 * Буфер временных данных для генерации IP-адреса
+						 *
+						 * @note Объявлен ВНУТРИ отладочной ветви намеренно: снаружи он в
+						 *       сборке без отладки не употребляется вовсе, и gcc даёт
+						 *       `-Wunused-variable`. Предупреждение верное - буфер и нужен
+						 *       единственно записи в журнал отладки
+						 */
+						char buffer[INET_ADDRSTRLEN];
 						// Записываем ошибку в лог
 						this->_log->debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
@@ -1190,12 +1206,19 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
 				if(::getifaddrs(&ptr) != 0){
-					// Буфер временных данных для генерации IP-адреса
-					char buffer[INET_ADDRSTRLEN];
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
+						/**
+						 * Буфер временных данных для генерации IP-адреса
+						 *
+						 * @note Объявлен ВНУТРИ отладочной ветви намеренно: снаружи он в
+						 *       сборке без отладки не употребляется вовсе, и gcc даёт
+						 *       `-Wunused-variable`. Предупреждение верное - буфер и нужен
+						 *       единственно записи в журнал отладки
+						 */
+						char buffer[INET_ADDRSTRLEN];
 						// Записываем ошибку в лог
 						this->_log->debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
@@ -1676,7 +1699,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							return;
 						}
 						// Создаём объект подключения
-						struct sockaddr_in6 addr{0};
+						struct sockaddr_in6 addr{};
 						// Копируем IP-адрес в структуру подключения
 						::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr.sin6_addr));
 						/**
@@ -1746,11 +1769,24 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 									 */
 									this->fillSource(source);
 									// Если адрес сетевого интерфейса разбором по имени не получен
-									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0)
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0){
 										// Копируем IP-адрес в результат
 										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
-										// Проставляем зону адресу, которому она нужна
-										::scope(source);
+									}
+									/**
+									 * Проставляем зону адресу, которому она нужна
+									 *
+									 * @warning Обращение это БЕЗУСЛОВНО, и прежде отступ говорил обратное:
+									 *          стояло оно на уровне тела `if`, а исполнялось всегда, отчего
+									 *          gcc и давал `-Wmisleading-indentation`. Отступ приведён к
+									 *          исполнению, а не наоборот: у наречия BSD в том же месте
+									 *          обращение тоже безусловно
+									 *
+									 * @note Дефекта поведения не было: зона выводится из САМОГО адреса и
+									 *       названия устройства, обращение идемпотентно, а адресу, зоны не
+									 *       требующему, оно ничего не проставляет. Врал отступ, не код
+									 */
+									::scope(source);
 									// Выходим из цикла
 									break;
 								}

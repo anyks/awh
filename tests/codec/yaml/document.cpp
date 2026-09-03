@@ -125,6 +125,61 @@ using namespace awh::codec;
  * @note Смена согласована с владельцами прочих кодеков 03.09.2026
  *
  */
+/**
+ * @brief Проверка ходов, общих у кодеков рамки
+ *
+ * @details Три хода заведены ради согласования семи кодеков: `has()` был лишь у YAML в
+ *          недостатке, `errorLocation()` звался тут `location()`, а `setLogger()`
+ *          отсутствовал у трёх моих кодеков вовсе
+ *
+ * @note Прежнее имя `location()` оставлено ПОСРЕДНИКОМ и не снесено: снос задел бы
+ *       потребителей, а согласование имён того не требует. Проверка держит оба имени,
+ *       чтобы посредник не отвалился молча
+ *
+ */
+TEST(CodecYamlDocument, CommonHandlesOfTheFramework){
+	// Объект дерева документа, журнала при построении не получивший
+	yaml::document_t document(nullptr);
+	// Выполняем установку объекта ведения журнала работы после построения
+	document.setLogger(::logger());
+	// Выполняем разбор текста документа
+	ASSERT_TRUE(document.parse("a: 1\nb:\n  c: 2\n"));
+	// Выполняем проверку наличия значения по пути
+	ASSERT_TRUE(document.has("/b/c"));
+	// Выполняем проверку отсутствия значения по пути, какого в дереве нет
+	ASSERT_FALSE(document.has("/b/d"));
+	/**
+	 * Объект журнала, отчёты СОБИРАЮЩИЙ
+	 *
+	 * @note Собственный журнал заведён затем, чтобы `setLogger()` проверялся ВЗАПРАВДУ.
+	 *       Проверка «поставили и не упало» его не проверяет вовсе: отчёт об отказе
+	 *       пустоту сторожит и молча её пропускает, - подмена тела `setLogger()`
+	 *       пустышкою такую проверку не роняла. Здесь же отчёт обязан ПРИЙТИ
+	 */
+	awh::fmk_t framework;
+	// Объект журнала, отчёты собирающий
+	awh::log_t watching(& framework);
+	// Собранные отчёты журнала
+	vector <string> reports;
+	// Выполняем подписку на отчёты журнала
+	watching.subscribe([& reports](const awh::log_t::flag_t, string_view text) noexcept -> void {
+		// Выполняем добавление очередного отчёта журнала
+		reports.push_back(string(text));
+	});
+	// Объект дерева документа, журнала при построении НЕ получивший
+	yaml::document_t broken(nullptr);
+	// Выполняем установку объекта ведения журнала работы после построения
+	broken.setLogger(& watching);
+	// Выполняем разбор заведомо негодного текста
+	ASSERT_FALSE(broken.parse("a: 1\n\t b: 2\n"));
+	// Выполняем проверку того, что положение отказа выдано общим именем
+	ASSERT_GT(broken.errorLocation().line, 0u);
+	// Выполняем проверку того, что прежнее имя выдаёт то же самое положение
+	ASSERT_EQ(broken.location().line, broken.errorLocation().line);
+	ASSERT_EQ(broken.location().column, broken.errorLocation().column);
+	// Выполняем проверку того, что отчёт об отказе дошёл до поставленного журнала
+	ASSERT_FALSE(reports.empty());
+}
 TEST(CodecYamlDocument, SizeCountsChildrenOfTheRoot){
 	// Объект дерева документа, текст разбирающий
 	yaml::document_t document(::logger());

@@ -268,7 +268,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
 	// Переменная результата
 	bool result = false;
 	// Создаём объект инициализации SCTP сокета
-	struct sctp_initmsg init{0};
+	struct sctp_initmsg init{};
 	// Устанавливаем количество попыток инициализации
 	init.sinit_max_attempts = initmsg.attempts;
 	// Устанавливаем таймаут инициализации
@@ -328,7 +328,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 	// Результат подписки через современный API SCTP_EVENT
 	bool resultModern = true;
 	// Создаём объект подписки на события (устаревший API SCTP_EVENTS)
-	struct sctp_event_subscribe subscribe{0};
+	struct sctp_event_subscribe subscribe{};
 	/**
 	 * Затребуем сведения о принятом сообщении безусловно
 	 *
@@ -365,7 +365,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 		 */
 		if((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) || (event == net::sctp::event_type_t::STREAM_CHANGE_EVENT)){
 			// Создаём объект подписки на событие (современный API SCTP_EVENT)
-			struct sctp_event item{0};
+			struct sctp_event item{};
 			// Активируем получение события
 			item.se_on = 1;
 			// Применяем подписку ко всем будущим ассоциациям
@@ -612,7 +612,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 	// Переменная результата
 	bool result = false;
 	// Создаём объект идентификатора ключа аутентификации
-	struct sctp_authkeyid authkeyid{0};
+	struct sctp_authkeyid authkeyid{};
 	// Устанавливаем идентификатор ассоциации
 	authkeyid.scact_assoc_id = id;
 	// Устанавливаем номер ключа аутентификации
@@ -977,7 +977,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 		// Если тип таймаута - INIT
 		case static_cast <uint8_t> (net::sctp::timeout_t::INIT): {
 			// Создаём объект параметров инициализации SCTP сокета
-			struct sctp_initmsg params{0};
+			struct sctp_initmsg params{};
 			// Устанавливаем длину объекта параметров инициализации
 			socklen_t length = sizeof(params);
 			// Извлекаем параметры инициализации SCTP сокета
@@ -1001,7 +1001,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 		// Если тип таймаута - DATA
 		case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_rtoinfo params{0};
+			struct sctp_rtoinfo params{};
 			// Устанавливаем длину объекта параметров таймаута
 			socklen_t length = sizeof(params);
 			// Устанавливаем идентификатор ассоциации
@@ -1047,7 +1047,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 		// Если тип таймаута - HEARTBEAT
 		case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_paddrparams params{0};
+			struct sctp_paddrparams params{};
 			// Устанавливаем длину объекта параметров таймаута
 			socklen_t length = sizeof(params);
 			// Устанавливаем идентификатор ассоциации
@@ -1077,7 +1077,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 		// Если тип таймаута - COOKIE
 		case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_assocparams params{0};
+			struct sctp_assocparams params{};
 			// Устанавливаем длину объекта параметров таймаута
 			socklen_t length = sizeof(params);
 			// Устанавливаем идентификатор ассоциации
@@ -1125,7 +1125,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 		// Если тип таймаута - INIT
 		case static_cast <uint8_t> (net::sctp::timeout_t::INIT): {
 			// Создаём объект параметров инициализации SCTP сокета
-			struct sctp_initmsg params{0};
+			struct sctp_initmsg params{};
 			// Устанавливаем длину объекта параметров инициализации
 			socklen_t length = sizeof(params);
 			// Читаем текущие параметры инициализации, чтобы не сбросить остальные поля (потоки/попытки)
@@ -1152,7 +1152,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 		// Если тип таймаута - DATA
 		case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_rtoinfo params{0};
+			struct sctp_rtoinfo params{};
 			// Устанавливаем идентификатор ассоциации
 			params.srto_assoc_id = id;
 			// Устанавливаем новое значение таймаута
@@ -1197,7 +1197,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 		// Если тип таймаута - HEARTBEAT
 		case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_paddrparams params{0};
+			struct sctp_paddrparams params{};
 			// Устанавливаем идентификатор ассоциации
 			params.spp_assoc_id = id;
 			// Устанавливаем новое значение таймаута
@@ -1228,7 +1228,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 		// Если тип таймаута - COOKIE
 		case static_cast <uint8_t> (net::sctp::timeout_t::COOKIE): {
 			// Создаём объект параметров таймаута SCTP сокета
-			struct sctp_assocparams params{0};
+			struct sctp_assocparams params{};
 			// Устанавливаем идентификатор ассоциации
 			params.sasoc_assoc_id = id;
 			// Устанавливаем новое значение таймаута
@@ -1468,7 +1468,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::receiveInfo(const net::sock
  * @return     результат работы функции
  *
  */
-bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord(const net::socket_t sock, const bool mode) const noexcept {
+bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const bool mode) const noexcept {
 	/**
 	 * Если система несёт режим явной границы записи
 	 */
@@ -1669,7 +1669,7 @@ ssize_t awh::eth::Stream_Control_Transmission_Protocol::receive(const net::socke
  * @return         количество отправленных октетов либо -1 при отказе
  *
  */
-ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const struct sctp_sndrcvinfo & info, const bool complete) const noexcept {
+ssize_t awh::eth::Stream_Control_Transmission_Protocol::send(const net::socket_t sock, const void * buffer, const size_t size, const struct sockaddr * addr, const socklen_t length, const struct sctp_sndrcvinfo & info, [[maybe_unused]] const bool complete) const noexcept {
 	/**
 	 * Если система несёт современный набор вызовов
 	 */

@@ -1022,6 +1022,33 @@ namespace awh {
 			 * \~
 			 */
 			[[nodiscard]] __AWH_SHARED_EXPORT__ bool segment(const string_view path, size_t & offset, string_view & result) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция разбора звена пути номером значения
+			 *
+			 * @details Работа эта решает лишь ОДНО: годится ли запись звена номером. О том
+			 * же, брать ли звено номером, судит вид ВМЕСТИЛИЩА у зовущего: у отображения
+			 * звено есть имя поля всегда, хотя бы и записанное цифрами
+			 *
+			 * @details Ведущий нуль номером негоден по RFC 6901 (раздел 4): без того `01` и
+			 * `1` означали бы одно и то же, и путь перестал бы задавать значение однозначно
+			 *
+			 * @note Работа вынесена сюда из владеющего значения 03.09.2026, когда путь
+			 * понадобился и дереву разбора: правила пути держатся В ОДНОМ месте на всех
+			 *
+			 * @param segment разбираемое звено пути
+			 * @param result  разобранный номер значения
+			 * @return        признак годности записи номером
+			 *
+			 * \~english
+			 * @brief Function of the parsing of a segment of a path as an index of a value
+			 * @param segment segment of the path being parsed
+			 * @param result parsed index of the value
+			 * @return sign of the fitness of the record as an index
+			 *
+			 * \~
+			 */
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool indexed(const string_view segment, size_t & result) noexcept;
 		};
 	};
 };

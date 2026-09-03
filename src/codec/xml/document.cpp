@@ -1056,6 +1056,16 @@ awh::codec::xml::node_t awh::codec::xml::Document::element() const noexcept {
  *
  */
 size_t awh::codec::xml::Document::size() const noexcept {
+	// Выводим количество вложенных узлов корня разметки
+	return this->element().size();
+}
+/**
+ * @brief Метод получения количества узлов арены дерева
+ *
+ * @return количество узлов в арене дерева разметки
+ *
+ */
+size_t awh::codec::xml::Document::nodes() const noexcept {
 	// Выводим количество узлов в арене дерева разметки
 	return this->_nodes.size();
 }
@@ -1233,6 +1243,34 @@ awh::codec::xml::name_t awh::codec::xml::Node::name() const noexcept {
  * @return содержимое узла
  *
  */
+/**
+ * @brief Метод получения количества вложенных узлов
+ *
+ * @return количество вложенных узлов первого уровня
+ *
+ */
+size_t awh::codec::xml::Node::size() const noexcept {
+	// Количество вложенных узлов первого уровня
+	size_t result = 0;
+	/**
+	 * Если узел непригоден
+	 */
+	if(!this->valid())
+		// Выводим отсутствие вложенных узлов
+		return result;
+	/**
+	 * Выполняем перебор всех вложенных узлов первого уровня
+	 *
+	 * @note Счёт ведётся обходом, а не полем записи: поле такое пришлось бы править
+	 *       всякою прививкой да сносом, и расхождение его с цепочкою узлов было бы
+	 *       молчаливым. Цепочка же и есть единственный источник истины о детях
+	 */
+	for(node_t node = this->first(); node.valid(); node = node.next())
+		// Выполняем учёт очередного вложенного узла
+		result++;
+	// Выводим количество вложенных узлов первого уровня
+	return result;
+}
 string awh::codec::xml::Node::text() const noexcept {
 	// Собираемое содержимое узла
 	string result;

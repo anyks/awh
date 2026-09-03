@@ -3144,6 +3144,38 @@ bool awh::codec::toml::Document::remove(const vector <string_view> & path) noexc
  *
  */
 /**
+ * @brief Метод обращения к значению по пути
+ *
+ * @details Ход этот общий у всех семи кодеков рамки, и спрашивается он у ДОКУМЕНТА, а не
+ *          у значения: общие проверки договора зовут `document.at(путь)`
+ *
+ * @note Выдаётся владеющее значение, а не узел дерева: узлового вида у toml нет вовсе -
+ *       настройки держатся записями, а не ареною узлов. Законное расхождение по
+ *       устройству, а не отступление от договора
+ *
+ * @param path путь до разыскиваемого значения
+ * @return     разысканное значение настроек
+ *
+ */
+::awh::codec::toml::Value awh::codec::toml::Document::at(const string & path) const noexcept {
+	// Выводим значение настроек, путём разысканное
+	return ::awh::codec::toml::Value(* this).at(path);
+}
+/**
+ * @brief Метод проверки наличия значения по пути
+ *
+ * @details Ход этот общий у всех семи кодеков рамки. Прежняя проверка наличия берёт имя
+ *          со разделом, а не путь, и оставлена рядом: снос задел бы потребителей
+ *
+ * @param path путь до проверяемого значения
+ * @return     признак наличия значения по пути
+ *
+ */
+bool awh::codec::toml::Document::present(const string & path) const noexcept {
+	// Выводим признак наличия значения по указанному пути
+	return ::awh::codec::toml::Value(* this).at(path).valid();
+}
+/**
  * @brief Метод получения количества детей корня
  *
  * @details Счёт этот един у всех семи кодеков рамки: `size()` означает детей корня, а
@@ -3461,6 +3493,20 @@ void awh::codec::toml::Document::report() const noexcept {
 	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе
 		this->_log->print("TOML document failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+}
+/**
+ * @brief Метод установки объекта ведения журнала работы
+ *
+ * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним лишь
+ *          доводом построения, но и после него - потребитель, дерево получивший готовым,
+ *          иначе не имел бы способа направить его отчёты в свой журнал вовсе
+ *
+ * @param log объект ведения журнала работы
+ *
+ */
+void awh::codec::toml::Document::setLogger(const log_t * log) noexcept {
+	// Устанавливаем объект ведения журнала работы
+	this->_log = log;
 }
 /**
  * @brief Конструктор

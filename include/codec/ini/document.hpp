@@ -1175,6 +1175,30 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
+					 * @brief Метод обращения к значению по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки, и спрашивается он у
+					 *          ДОКУМЕНТА, а не у значения: общие проверки договора зовут
+					 *          `document.at(путь)`, и кодек, такого хода не несущий, в перебор
+					 *          по семерым не входит вовсе
+					 *
+					 * @note Выдаётся ВЛАДЕЮЩЕЕ значение, а не узел дерева: узлового вида у ini
+					 *       нет вовсе - настройки держатся записями, а не ареною узлов. Это
+					 *       законное расхождение по устройству, а не отступление от договора
+					 *
+					 * @param path путь до разыскиваемого значения
+					 * @return     разысканное значение настроек
+					 *
+					 * \~english
+					 * @brief Method of accessing a value by a path
+					 * @param path path to the value being searched for
+					 * @return     found value of the settings
+					 *
+					 * \~
+					 */
+					::awh::codec::ini::Value at(const string & path) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод проверки наличия свойства
 					 *
 					 * @param key        имя искомого свойства
@@ -1690,6 +1714,24 @@ namespace awh {
 					 */
 					writer_t::settings_t writing() const noexcept;
 				public:
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта ведения журнала работы
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним
+					 *          лишь доводом построения, но и после него - потребитель, дерево
+					 *          получивший готовым, иначе не имел бы способа направить его отчёты
+					 *          в свой журнал вовсе
+					 *
+					 * @param log объект ведения журнала работы
+					 *
+					 * \~english
+					 * @brief Method of setting the object of the keeping of the log of the work
+					 * @param log object of the keeping of the log of the work
+					 *
+					 * \~
+					 */
+					void setLogger(const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор

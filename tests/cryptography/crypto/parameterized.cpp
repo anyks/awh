@@ -494,8 +494,18 @@ TEST_P(SignWithKeyParameterizedFixture, SignWithKeyTest){
 	std::vector <uint8_t> signature;
 	// Буфер данных для шифрования
 	std::vector <uint8_t> buffer(this->_parameter.text.begin(), this->_parameter.text.end());
+	/**
+	 * Выработка подписи утверждается отдельно от её признания
+	 *
+	 * @details Прежде исход выработки не проверялся вовсе, и отказ всплывал лишь
+	 *          на признании - будто сломано признание подписи. На стенде Fedora
+	 *          так и вышло: правила системы (crypto-policies DEFAULT) запрещают
+	 *          подпись по SHA-1, выработка молча не удавалась, а указывала
+	 *          проверка на verifyWithPublicKey. Утверждение здесь называет
+	 *          настоящее место отказа
+	 */
 	// Подписываем данные приватным ключом RSA
-	this->_crypto->signWithPrivateKey(buffer, this->_parameter.hash, signature);
+	ASSERT_TRUE(this->_crypto->signWithPrivateKey(buffer, this->_parameter.hash, signature));
 	// Устанавливаем публичный ключ RSA
 	ASSERT_TRUE(this->_crypto->setPublicKeyRSA(pubkey));
 	// Проверяем подпись публичным ключом RSA

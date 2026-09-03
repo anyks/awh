@@ -388,7 +388,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
  */
 uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socket_event_t event) const noexcept {
 	// Создаём объект таймаута
-	struct timeval timeout{0};
+	struct timeval timeout{};
 	// Получаем размер объекта таймаута
 	socklen_t length = sizeof(timeout);
 	/**
@@ -467,7 +467,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 	// Переменная результата
 	bool result = false;
 	// Создаём объект таймаута
-	struct timeval timeout{0};
+	struct timeval timeout{};
 	// Устанавливаем время в секундах
 	timeout.tv_sec = (msec > 0 ? (msec / 1000) : 0);
 	// Устанавливаем время счётчика (микросекунды)
@@ -2190,7 +2190,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			// Если необходимо отключить сигнал SIGILL
 			case event::options::NO_SIGILL: {
 				// Создаем структуру активации сигнала
-				struct sigaction act{0};
+				struct sigaction act{};
 				// Обнуляем маску блокируемых сигналов
 				sigemptyset(&act.sa_mask);
 				/**
@@ -2352,7 +2352,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 *
 				 */
 				// Создаем структуру активации сигнала
-				struct sigaction act{0};
+				struct sigaction act{};
 				// Обнуляем маску блокируемых сигналов
 				sigemptyset(&act.sa_mask);
 				/**
@@ -3541,7 +3541,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv4
 						case 4: {
 							// Формируем объект multicast request
-							struct ip_mreq mreq{0};
+							struct ip_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Устанавливаем адрес сетевого интерфейса
@@ -3573,7 +3573,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv6
 						case 16: {
 							// Формируем объект multicast request
-							struct ipv6_mreq mreq{0};
+							struct ipv6_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)
@@ -3613,7 +3613,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv4
 						case 4: {
 							// Формируем объект multicast request
-							struct ip_mreq mreq{0};
+							struct ip_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Устанавливаем адрес сетевого интерфейса
@@ -3645,7 +3645,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv6
 						case 16: {
 							// Формируем объект multicast request
-							struct ipv6_mreq mreq{0};
+							struct ipv6_mreq mreq{};
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)

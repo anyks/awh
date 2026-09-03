@@ -1129,6 +1129,53 @@ namespace awh {
 					size_t size() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод извлечения значения дерева документа по пути
+					 *
+					 * @details Путь равняется на RFC 6901 и разбирается ТЕМ ЖЕ посредником
+					 * `abc::segment`, каким разбирает его владеющее значение (`abc::value_t`):
+					 * путь пустой значит весь документ, ведущая косая черта есть приставка
+					 * указателя, а звено пустое внутри пути есть законное имя поля
+					 *
+					 * @details О том, взять ли звено номером либо именем, судит вид ВМЕСТИЛИЩА,
+					 * как то и велит RFC 6901: у отображения звено есть имя поля всегда, хотя бы
+					 * и записанное цифрами; у перечня - номер, и номер с ведущим нулём негоден
+					 *
+					 * @note Работа эта заведена 03.09.2026 при вводе ABC в общие проверки договора
+					 * кодеков: дерево разбора пути не понимало ВОВСЕ, тогда как владеющее значение
+					 * их понимало. Тот же почерк, каким вскрыты двенадцать находок кодека, -
+					 * дорога есть, а близнеца у неё нет
+					 *
+					 * @param path путь к извлекаемому значению
+					 * @return     ссылка на значение, недействительная при отсутствии его
+					 *
+					 * \~english
+					 * @brief Method of the extraction of a value of the tree of a document by a path
+					 * @param path path to the value being extracted
+					 * @return reference to the value, invalid if it is absent
+					 *
+					 * \~
+					 */
+					value_t at(const string & path) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки наличия значения дерева документа по пути
+					 *
+					 * @details Опрос ведётся ТЕМ ЖЕ обходом, что и извлечение, а не своим:
+					 * разойдись они хоть на одном звене - разошлись бы молча
+					 *
+					 * @param path путь к опрашиваемому значению
+					 * @return     признак наличия значения по пути
+					 *
+					 * \~english
+					 * @brief Method of the checking of the presence of a value of the tree of a document by a path
+					 * @param path path to the value being asked about
+					 * @return sign of the presence of the value by the path
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool has(const string & path) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод проверки дерева документа на пустоту
 					 *
 					 * @return признак отсутствия узлов в дереве документа

@@ -281,59 +281,6 @@ void awh::codec::abc::Value::clone(const Value & value) noexcept {
 	}
 }
 /**
- * @brief Метод разбора звена пути на номер значения
- *
- * @param segment разбираемое звено пути
- * @param result  разобранный номер значения
- * @return        признак того, что звено является номером
- *
- */
-bool awh::codec::abc::Value::indexed(const string_view segment, size_t & result) noexcept {
-	// Выполняем сброс разобранного номера значения
-	result = 0;
-	// Если звено пути пусто
-	if(segment.empty())
-		// Сообщаем, что звено номером не является
-		return false;
-	/**
-	 * Если запись номера имеет ведущий нуль, номером она не является, а является
-	 * именем поля. Правило это взято у RFC 6901: без него `01` и `1` означали бы
-	 * одно и то же, и путь перестал бы задавать значение однозначно
-	 */
-	if((segment.size() > 1) && (segment.front() == '0'))
-		// Сообщаем, что звено номером не является
-		return false;
-	/**
-	 * Выполняем перебор всех знаков звена пути
-	 */
-	for(const char letter : segment){
-		// Если знак цифрой не является
-		if((letter < '0') || (letter > '9')){
-			// Выполняем сброс разобранного номера значения
-			result = 0;
-			// Сообщаем, что звено номером не является
-			return false;
-		}
-		// Выполняем получение разряда номера значения
-		const size_t digit = static_cast <size_t> (letter - '0');
-		/**
-		 * Если накопление разряда переполнило бы номер, отвергаем запись целиком.
-		 * Приведение её к пределу выдало бы значение с иным номером, а вместимого
-		 * такой длины не бывает вовсе
-		 */
-		if(result > ((numeric_limits <size_t>::max() - digit) / 10)){
-			// Выполняем сброс разобранного номера значения
-			result = 0;
-			// Сообщаем, что звено номером не является
-			return false;
-		}
-		// Выполняем накопление разряда номера значения
-		result = ((result * 10) + digit);
-	}
-	// Сообщаем, что звено является номером
-	return true;
-}
-/**
  * @brief Метод поверки родственности имён полей отображения
  *
  * @param first  первое сличаемое имя поля
@@ -1348,7 +1295,7 @@ const awh::codec::abc::Value & awh::codec::abc::Value::at(const string & path) c
 			 *       их числам, и «нашло по имени» было неотличимо от «взяло по номеру».
 			 *       Закреплено `CodecAbcValue.PathSegmentIsNameInsideAMapping`
 			 */
-			if((current->_type != type_t::MAP) && Value::indexed(segment, index)){
+			if((current->_type != type_t::MAP) && abc::indexed(segment, index)){
 				// Если затребованного значения вместимого нет
 				if(index >= current->_items.size())
 					// Выводим ссылку на отсутствующее значение
@@ -1407,7 +1354,7 @@ awh::codec::abc::Value & awh::codec::abc::Value::place(const string & path) noex
 			 *       извлечения: прежде звено из цифр бралось номером и у отображения, и
 			 *       заведение шло МИМО поля, чьё имя записано цифрами
 			 */
-			if((current->_type != type_t::MAP) && Value::indexed(segment, index))
+			if((current->_type != type_t::MAP) && abc::indexed(segment, index))
 				// Выполняем заведение затребованного значения вместимого
 				current = &(* current)[index];
 			// Выполняем заведение затребованного поля отображения

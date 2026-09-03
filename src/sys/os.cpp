@@ -2440,9 +2440,9 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 						/**
 						 * Формат: "DOMAIN\Username" или просто "Username" для локальных учетных записей
 						 */
-						result = ::move(::convert(domain) + "\\" + ::convert(name));
+						result = ::convert(domain) + "\\" + ::convert(name);
 					// Если доменное имя не получено
-					} else result = ::move(::convert(name));
+					} else result = ::convert(name);
 				}
 				// Освобождаем память выделенную под идентификатор пользователя
 				::LocalFree(pSid);

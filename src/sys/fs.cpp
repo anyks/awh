@@ -719,7 +719,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 								// Ищем расширение файла
 								if((pos = name.find('.')) != string::npos)
 									// Устанавливаем имя файла
-									description = ::move(name.substr(0, pos));
+									description = name.substr(0, pos);
 								// Устанавливаем только имя файла
 								else description = ::move(name);
 								// Выполняем установку адреса ярлыка как он есть
@@ -735,9 +735,9 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 								// Если расширение ярлыка уже установлено
 								if((second.size() > 4) && this->_fmk->compare(".lnk", second.substr(second.size() - 4)))
 									// Выполняем установку адреса ярлыка как он есть
-									symlink = ::move(this->fullpath(second, true));
+									symlink = this->fullpath(second, true);
 								// Выполняем установку полного пути адреса файла
-								else symlink = ::move(this->_fmk->format("%s.lnk", this->fullpath(second, true).c_str()));
+								else symlink = this->_fmk->format("%s.lnk", this->fullpath(second, true).c_str());
 								// Выполняем создание ярлыка в файловой системе
 								hres = ppf->Save(this->_fmk->convert(symlink).c_str(), TRUE);
 							}
@@ -1338,13 +1338,13 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 			// Выполняем извлечение адресов из переменных окружений
 			::ExpandEnvironmentStringsW(this->_fmk->convert(addr.data()).c_str(), buffer, ARRAYSIZE(buffer));
 			// Устанавливаем результат
-			result = ::move(this->_fmk->convert(buffer));
+			result = this->_fmk->convert(buffer);
 			// Заполняем буфер нулями
 			::memset(buffer, 0, sizeof(buffer));
 			// Если адрес существует
 			if(::_wfullpath(buffer, this->_fmk->convert(result).c_str(), _MAX_PATH) != nullptr){
 				// Получаем полный адрес пути
-				result = ::move(this->_fmk->convert(buffer));
+				result = this->_fmk->convert(buffer);
 				// Если адрес пути получен
 				if(resolve && !result.empty()){
 					// Создаём объект проверки наличия ярлыка

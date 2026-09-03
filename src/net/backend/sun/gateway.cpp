@@ -478,8 +478,16 @@ namespace gw {
 				if(::getmsg(fd, nullptr, &body, &flags) < 0)
 					// Выходим из разбора выдачи
 					break;
-				// Если таблица оказалась искомой
-				if((head->level == level) && (head->name == name)){
+				/**
+				 * Если таблица оказалась искомой
+				 *
+				 * @note Оба поля заголовка объявлены системой БЕЗЗНАКОВЫМИ (`t_uscalar_t`),
+				 *       а доводы приходят знаковыми - оттого gcc и давал `-Wsign-compare`.
+				 *       Приведение здесь у ДОВОДОВ: значения суть постоянные MIB, всегда
+				 *       положительные, и отрицательный довод после приведения дал бы
+				 *       огромное число, не совпадающее ни с одной таблицей
+				 */
+				if((head->level == static_cast <t_uscalar_t> (level)) && (head->name == static_cast <t_uscalar_t> (name))){
 					// Запоминаем записи искомой таблицы
 					buffer.assign(chunk.data(), (chunk.data() + body.len));
 					// Отмечаем, что таблица снята
@@ -705,7 +713,7 @@ namespace gw {
  */
 awh::eth::Gateway::Route::Route() noexcept :
  ifname{""}, prefix(0),
- destination(nullptr), gateway(nullptr) {}
+ gateway(nullptr), destination(nullptr) {}
 
 /**
  * @brief Метод получения маршрута для указанного адреса
@@ -819,7 +827,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 								// Если индекс сетевого интерфейса записи неизвестен, а шлюз задан
 								if((index == 0) && (gw != nullptr) && (gw->sin_addr.s_addr > 0)){
 									// Структура адреса шлюза для запроса
-									struct sockaddr_in qgw{0};
+									struct sockaddr_in qgw{};
 									// Устанавливаем семейство адресов
 									qgw.sin_family = AF_INET;
 									// Устанавливаем адрес шлюза, о котором спрашиваем
@@ -921,7 +929,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					if((awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0) &&
 					   (awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)){
 						// Структура адреса назначения для запроса (ноль - маршрут по умолчанию)
-						struct sockaddr_in qdst{0};
+						struct sockaddr_in qdst{};
 						// Устанавливаем семейство адресов
 						qdst.sin_family = AF_INET;
 						// Устанавливаем адрес назначения, о котором спрашиваем
@@ -1015,7 +1023,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						// Если адрес шлюза получен
 						if(gateway > 0){
 							// Структура адреса шлюза для запроса
-							struct sockaddr_in qgw{0};
+							struct sockaddr_in qgw{};
 							// Устанавливаем семейство адресов
 							qgw.sin_family = AF_INET;
 							// Устанавливаем адрес шлюза, о котором спрашиваем
@@ -1177,7 +1185,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 */
 					if(!isDest){
 						// Структура адреса назначения для запроса (0 — маршрут по умолчанию)
-						struct sockaddr_in6 qdst{0};
+						struct sockaddr_in6 qdst{};
 						// Устанавливаем семейство адресов
 						qdst.sin6_family = AF_INET6;
 						// Буфер для приёма ответа маршрута
@@ -1336,6 +1344,43 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	 */
 	try {
 		/**
+		 * Сличаем длину префикса с разрядностью адреса назначения
+		 *
+		 * @details Поле `prefix` объявлено `uint8_t` и принимает до 255, а предел
+		 *          зависит от ВИДА адреса: 32 у IPv4 и 128 у IPv6. Договор этот не
+		 *          блюл ни один слой, и каждый узнавал о нём порознь - на 03.09.2026
+		 *          непроверенных длин в проекте насчитано четыре
+		 *
+		 * @warning У IPv4 негодная длина давала НЕОПРЕДЕЛЁННОЕ ПОВЕДЕНИЕ, а не просто
+		 *          негодную маску: разность `32 - prefix` считается беззнаковой и при
+		 *          33 уходит за нуль, обращаясь в 4294967295, а сдвиг на такую
+		 *          величину стандартом не определён. Исход зависит от машины и от
+		 *          ключей сборки: x86 берёт младшие пять разрядов счётчика, ARM64
+		 *          поступает иначе, а в Release собиратель вправе выкинуть ветвь
+		 *          целиком. Проверки этого не ловили: длина у них всегда в пределах
+		 *
+		 * @note Здесь именно ОТКАЗ, а не приведение к пределу, и это осознанно.
+		 *       Приведение обратило бы бессмысленную просьбу в осмысленную, но ДРУГУЮ
+		 *       - путь к одному узлу вместо заказанной сети, - и сделало бы это молча.
+		 *       Приведение уместно там, где смысл просьбы от него не меняется: чтение
+		 *       адреса по длине за его конец выйти не может
+		 *
+		 * @warning Заслон стоит у ВХОДА, а не внутри перевода длины в маску: перевод
+		 *          зовётся из заведения и из снятия, и отказ у входа называет причину,
+		 *          вместо того чтобы выдавать маску, какой никто не заказывал
+		 */
+		if(route.destination != nullptr){
+			// Предел длины префикса, отвечающий разрядности адреса назначения
+			const uint8_t limit = ((route.destination->size == 16) ? 128 : 32);
+			// Если заказанная длина префикса разрядности адреса не отвечает
+			if(route.prefix > limit){
+				// Выводим в журнал сообщение о негодной длине префикса
+				this->_log->print("Route prefix length %u exceeds the limit %u of the %s address", log_t::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				// Работать с маршрутом по негодной длине префикса нечем
+				return result;
+			}
+		}
+		/**
 		 * Сличаем вид шлюза с видом адреса назначения
 		 *
 		 * @warning Разбор ведётся по виду ШЛЮЗА, а адрес назначения приводился к тому
@@ -1398,7 +1443,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					// Маска используемых полей
 					rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
 					// Адрес назначения (RTA_DST)
-					struct sockaddr_in dst{0};
+					struct sockaddr_in dst{};
 					// Устанавливаем семейство адресов
 					dst.sin_family = AF_INET;
 					// Если адрес назначения не инициализирован
@@ -1423,7 +1468,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					if(isGateway){
 						// Структура IPv4 шлюза
-						struct sockaddr_in gw{0};
+						struct sockaddr_in gw{};
 						// Устанавливаем семейство адресов
 						gw.sin_family = AF_INET;
 						// Устанавливаем адрес шлюза
@@ -1454,7 +1499,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 								// Если интерфейс совпадает и семейство адресов IPv4
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
 									// Структура IPv4 шлюза
-									struct sockaddr_in gw{0};
+									struct sockaddr_in gw{};
 									// Устанавливаем семейство адресов
 									gw.sin_family = AF_INET;
 									// Устанавливаем адрес шлюза (IP интерфейса)
@@ -1517,7 +1562,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 								// Если интерфейс совпадает и семейство адресов IPv4
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
 									// Структура IPv4 шлюза
-									struct sockaddr_in gw{0};
+									struct sockaddr_in gw{};
 									// Устанавливаем семейство адресов
 									gw.sin_family = AF_INET;
 									// Устанавливаем адрес шлюза (адрес самого устройства)
@@ -1537,7 +1582,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						}
 					}
 					// Маска подсети (RTA_NETMASK)
-					struct sockaddr_in mask{0};
+					struct sockaddr_in mask{};
 					// Устанавливаем семейство адресов
 					mask.sin_family = AF_INET;
 					// Если адрес назначения является default route
@@ -1623,7 +1668,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					// Устанавливаем маску используемых полей
 					rtm->rtm_addrs = (RTA_DST | RTA_NETMASK);
 					// Адрес назначения (RTA_DST)
-					struct sockaddr_in6 dst{0};
+					struct sockaddr_in6 dst{};
 					// Устанавливаем семейство адресов
 					dst.sin6_family = AF_INET6;
 					// Если адрес назначения не инициализирован
@@ -1650,7 +1695,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					if(isGateway){
 						// Структура IPv6 шлюза
-						struct sockaddr_in6 gw{0};
+						struct sockaddr_in6 gw{};
 						// Устанавливаем семейство адресов
 						gw.sin6_family = AF_INET6;
 						// Устанавливаем адрес шлюза
@@ -1681,7 +1726,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 								// Если интерфейс совпадает и семейство адресов IPv6
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET6) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
 									// Структура IPv6 шлюза
-									struct sockaddr_in6 gw{0};
+									struct sockaddr_in6 gw{};
 									// Устанавливаем семейство адресов
 									gw.sin6_family = AF_INET6;
 									// Устанавливаем адрес шлюза
@@ -1741,7 +1786,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 								// Если интерфейс совпадает и семейство адресов IPv6
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET6) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
 									// Структура IPv6 шлюза
-									struct sockaddr_in6 gw{0};
+									struct sockaddr_in6 gw{};
 									// Устанавливаем семейство адресов
 									gw.sin6_family = AF_INET6;
 									// Устанавливаем адрес шлюза (адрес самого устройства)
@@ -1763,7 +1808,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						}
 					}
 					// Маска подсети (RTA_NETMASK)
-					struct sockaddr_in6 mask{0};
+					struct sockaddr_in6 mask{};
 					// Устанавливаем семейство адресов
 					mask.sin6_family = AF_INET6;
 					// Если адрес назначения является default route
@@ -1894,6 +1939,43 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		/**
+		 * Сличаем длину префикса с разрядностью адреса назначения
+		 *
+		 * @details Поле `prefix` объявлено `uint8_t` и принимает до 255, а предел
+		 *          зависит от ВИДА адреса: 32 у IPv4 и 128 у IPv6. Договор этот не
+		 *          блюл ни один слой, и каждый узнавал о нём порознь - на 03.09.2026
+		 *          непроверенных длин в проекте насчитано четыре
+		 *
+		 * @warning У IPv4 негодная длина давала НЕОПРЕДЕЛЁННОЕ ПОВЕДЕНИЕ, а не просто
+		 *          негодную маску: разность `32 - prefix` считается беззнаковой и при
+		 *          33 уходит за нуль, обращаясь в 4294967295, а сдвиг на такую
+		 *          величину стандартом не определён. Исход зависит от машины и от
+		 *          ключей сборки: x86 берёт младшие пять разрядов счётчика, ARM64
+		 *          поступает иначе, а в Release собиратель вправе выкинуть ветвь
+		 *          целиком. Проверки этого не ловили: длина у них всегда в пределах
+		 *
+		 * @note Здесь именно ОТКАЗ, а не приведение к пределу, и это осознанно.
+		 *       Приведение обратило бы бессмысленную просьбу в осмысленную, но ДРУГУЮ
+		 *       - путь к одному узлу вместо заказанной сети, - и сделало бы это молча.
+		 *       Приведение уместно там, где смысл просьбы от него не меняется: чтение
+		 *       адреса по длине за его конец выйти не может
+		 *
+		 * @warning Заслон стоит у ВХОДА, а не внутри перевода длины в маску: перевод
+		 *          зовётся из заведения и из снятия, и отказ у входа называет причину,
+		 *          вместо того чтобы выдавать маску, какой никто не заказывал
+		 */
+		if(route.destination != nullptr){
+			// Предел длины префикса, отвечающий разрядности адреса назначения
+			const uint8_t limit = ((route.destination->size == 16) ? 128 : 32);
+			// Если заказанная длина префикса разрядности адреса не отвечает
+			if(route.prefix > limit){
+				// Выводим в журнал сообщение о негодной длине префикса
+				this->_log->print("Route prefix length %u exceeds the limit %u of the %s address", log_t::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				// Работать с маршрутом по негодной длине префикса нечем
+				return result;
+			}
+		}
 		/**
 		 * Сличаем вид шлюза с видом адреса назначения
 		 *

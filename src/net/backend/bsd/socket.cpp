@@ -2503,7 +2503,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 */
 				#if __OpenBSD__
 					// Создаем структуру активации сигнала
-					struct sigaction act{0};
+					struct sigaction act{};
 					// Обнуляем маску блокируемых сигналов
 					sigemptyset(&act.sa_mask);
 					/**

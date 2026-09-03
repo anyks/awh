@@ -4,6 +4,12 @@ set -e
 cd "$(dirname "$0")"
 CXX=${CXX:-g++}
 INC=""; LIB=""; EXTRA=""; OBJCXX=""
+# Собиратель из портов ставит свою libstdc++ вне путей поиска rtld:
+# без -rpath двоичный файл собирается, но не запускается вовсе
+CXXRPATH=""
+for d in /usr/local/lib/gcc15 /usr/local/lib/gcc14 /usr/local/lib/gcc13 /usr/local/lib/gcc12 /usr/local/lib/gcc11; do
+  [ -d "$d" ] && { CXXRPATH="-L$d -Wl,-rpath,$d"; break; }
+done
 case "$(uname -s)" in
   Darwin)  CAPTURE=src/alloc/capture/mach.cpp
            INC="-I/opt/homebrew/include"; LIB="-L/opt/homebrew/lib"
@@ -26,5 +32,5 @@ $CXX -std=gnu++17 -O2 -g -Wno-narrowing -Wno-deprecated-declarations \
   src/cryptography/crypto.cpp src/cryptography/hash.cpp \
   src/num/bignum.cpp src/num/lexical/table.cpp src/net/nwt.cpp src/net/net.cpp \
   src/encoding/charset/*.cpp src/encoding/unicode/*.cpp $(if [ -n "$OBJCXX" ]; then echo "$OBJCXX"; fi) src/sys/*.cpp -x c++ src/alloc/*.cpp $CAPTURE \
-  -o ctests $LIB -lgtest -lgmock -lcrypto -lz -lpthread $EXTRA
+  -o ctests $CXXRPATH $LIB -lgtest -lgmock -lcrypto -lz -lpthread $EXTRA
 echo "BUILD-OK"
