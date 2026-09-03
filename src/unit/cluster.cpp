@@ -1178,10 +1178,23 @@ pid_t awh::unit::Cluster::execute() noexcept {
 	}
 	// Буфер под путь к образу приложения
 	wchar_t image[MAX_PATH]{0};
-	// Получаем путь к образу приложения
-	if(::GetModuleFileNameW(nullptr, image, MAX_PATH) == 0){
+	// Получаем длину пути к образу приложения
+	const DWORD length = ::GetModuleFileNameW(nullptr, image, MAX_PATH);
+	/**
+	 * Путь обязан уместиться в буфер целиком
+	 *
+	 * @warning Проверялся прежде лишь нуль, а усечение НУЛЁМ НЕ ОТВЕЧАЕТ: обращение
+	 *          отдаёт при нём размер буфера и оставляет путь обрезанным. Дальше
+	 *          порождение шло по обрезанному пути и отказывало «файл не найден» - то
+	 *          есть отказ называл следствие и о длине пути не намекал ничем
+	 *
+	 * @note Предел этот достижим: у MS Windows `MAX_PATH` равен 260, а образ набора
+	 *       проверок живёт под каталогом сборки, вложенным на пять-шесть уровней
+	 *
+	 */
+	if((length == 0) || (length >= MAX_PATH)){
 		// Записываем ошибку в лог
-		this->_log->print("Cluster could not determine its own executable path", log_t::flag_t::CRITICAL);
+		this->_log->print("Cluster could not determine its own executable path%s", log_t::flag_t::CRITICAL, ((length >= MAX_PATH) ? ": the path is longer than MAX_PATH" : ""));
 		// Возвращаем признак отсутствия порождённого процесса
 		return 0;
 	}

@@ -1929,6 +1929,14 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 	}
 	// Выполняем перестроение указателей поиска
 	this->reindex();
+	/**
+	 * Запоминаем кодировку, какою текст настроек прочитан
+	 *
+	 * @note Кодировку определяет ЧТЕНИЕ - по метке порядка октетов либо по самому виду
+	 *       текста, - а дерево лишь несёт её потребителю. Своего опознания дерево не
+	 *       ведёт: два опознания разошлись бы молча
+	 */
+	this->_encoding = reader.encoding();
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -3548,6 +3556,20 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 	return file.good();
 }
 /**
+ * @brief Метод получения кодировки прочитанного текста
+ *
+ * @details Ход этот общий у кодеков рамки, текст читающих. Кодировка определяется чтением
+ *          по метке порядка октетов либо по самому виду текста, а дерево лишь несёт её
+ *          потребителю
+ *
+ * @return кодировка, какою текст настроек прочитан
+ *
+ */
+::awh::codec::toml::encoding_t awh::codec::toml::Document::encoding() const noexcept {
+	// Выводим кодировку, какою текст настроек прочитан
+	return this->_encoding;
+}
+/**
  * @brief Метод сборки текста настроек
  *
  * @return собранный текст настроек
@@ -3641,7 +3663,7 @@ void awh::codec::toml::Document::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::toml::Document::Document(const log_t * log) noexcept :
- _log(log), _error(error_t::NONE), _garbage(0), _compacted(0) {}
+ _encoding(encoding_t::NONE), _log(log), _error(error_t::NONE), _garbage(0), _compacted(0) {}
 /**
  * @brief Конструктор
  *
@@ -3650,7 +3672,7 @@ awh::codec::toml::Document::Document(const log_t * log) noexcept :
  *
  */
 awh::codec::toml::Document::Document(const log_t * log, const settings_t & settings) noexcept :
- _log(log), _error(error_t::NONE), _garbage(0), _compacted(0) {
+ _encoding(encoding_t::NONE), _log(log), _error(error_t::NONE), _garbage(0), _compacted(0) {
 	// Выполняем установку настроек дерева настроек
 	this->settings(settings);
 }

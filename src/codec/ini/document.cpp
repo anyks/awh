@@ -1250,6 +1250,14 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
+	/**
+	 * Запоминаем кодировку, какою текст настроек прочитан
+	 *
+	 * @note Кодировку определяет ЧТЕНИЕ - по метке порядка октетов либо по самому виду
+	 *       текста, - а дерево лишь несёт её потребителю. Своего опознания дерево не
+	 *       ведёт: два опознания разошлись бы молча
+	 */
+	this->_encoding = reader.encoding();
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -2558,6 +2566,20 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 	return file.good();
 }
 /**
+ * @brief Метод получения кодировки прочитанного текста
+ *
+ * @details Ход этот общий у кодеков рамки, текст читающих. Кодировка определяется чтением
+ *          по метке порядка октетов либо по самому виду текста, а дерево лишь несёт её
+ *          потребителю
+ *
+ * @return кодировка, какою текст настроек прочитан
+ *
+ */
+::awh::codec::ini::encoding_t awh::codec::ini::Document::encoding() const noexcept {
+	// Выводим кодировку, какою текст настроек прочитан
+	return this->_encoding;
+}
+/**
  * @brief Метод сборки текста настроек
  *
  * @return собранный текст настроек
@@ -2756,7 +2778,7 @@ void awh::codec::ini::Document::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::ini::Document::Document(const log_t * log) noexcept :
- _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
+ _encoding(encoding_t::NONE), _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
 /**
  * @brief Конструктор
  *
@@ -2765,7 +2787,7 @@ awh::codec::ini::Document::Document(const log_t * log) noexcept :
  *
  */
 awh::codec::ini::Document::Document(const log_t * log, const settings_t & settings) noexcept :
- _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
+ _encoding(encoding_t::NONE), _log(log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
 /**
  * @brief Деструктор
  *
