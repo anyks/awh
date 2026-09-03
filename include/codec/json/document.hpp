@@ -2131,6 +2131,43 @@ namespace awh {
 					 * \~
 					 */
 					bool has(const string & pointer) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод перечисления звеньев пути к детям значения
+					 *
+					 * @details Выдаются не ИМЕНА детей, а ЗВЕНЬЯ УКАЗАТЕЛЯ к ним: такие, что
+					 * `at(указатель + "/" + звено)` непременно ведёт к тому самому ребёнку. У
+					 * объекта звеном служит имя поля, у массива - номер по порядку, ибо иного
+					 * звена там нет вовсе
+					 *
+					 * @details Ход этот вместе с `at()` даёт ПОЛНЫЙ обход документа, единый у всех
+					 * кодеков: перечисляются дети по пути, затем берётся значение по пути. Обход
+					 * этот ЗАМКНУТ - всякое выданное звено годно для `at()`, - и замкнутость эта
+					 * держится на отменяющих записях RFC 6901: имя поля, содержащее косую черту
+					 * либо тильду, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не как есть. Отдай мы имя
+					 * как есть - указатель разомкнулся бы молча, уведя обход не туда
+					 *
+					 * @note Скалярное значение да пустое вместилище отвечают пустым перечнем, а
+					 *       указатель, ведущий в никуда, - им же: отсутствие детей и отсутствие
+					 *       места разнятся ходом `has()`
+					 *
+					 * @param pointer указатель на значение по RFC 6901
+					 * @return        перечень звеньев указателя к детям значения
+					 *
+					 * \~english
+					 * @brief Method of the enumeration of the tokens of the pointer to the children of a value
+					 * @details Not THE NAMES of the children are given but THE TOKENS OF THE POINTER to them:
+					 * such that `at(pointer + "/" + token)` inevitably leads to that very child. For an object
+					 * the token is the name of a field, for an array the ordinal number
+					 * @details This call together with `at()` gives A FULL TRAVERSAL of the document, common
+					 * among all the codecs. The traversal is CLOSED — every token given out is fit for `at()` —
+					 * and this closedness rests upon the escaping of RFC 6901
+					 * @param pointer pointer to the value according to RFC 6901
+					 * @return        list of the tokens of the pointer to the children of the value
+					 *
+					 * \~
+					 */
+					vector <string> keys(const string & pointer) const noexcept;
 				public:
 					/**
 					 * \~russian

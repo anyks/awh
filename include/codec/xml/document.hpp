@@ -1815,6 +1815,63 @@ namespace awh {
 					bool has(const string & path) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод перечисления звеньев пути к вложенным узлам
+					 *
+					 * @details Выдаются не ИМЕНА узлов, а ЗВЕНЬЯ ПУТИ к ним: такие, что
+					 * `at(путь + "/" + звено)` непременно ведёт к тому самому узлу. Звеном служит
+					 * имя узла, КОГДА оно однозначно, и номер по порядку - когда узлов с этим
+					 * именем несколько либо узел безымянен вовсе
+					 *
+					 * @warning Выдавай мы имена, обход ломался бы молча на первом же
+					 *          `<r><a/><a/></r>`: два звена «a» вели бы оба к первому узлу, второй
+					 *          же не разыскивался бы никогда - и притом без всякого признака
+					 *
+					 * @details Ход этот вместе с `at()` даёт ПОЛНЫЙ обход дерева, единый у всех
+					 * кодеков: перечисляются дети по пути, затем берётся узел по пути
+					 *
+					 * @warning Текстовое содержимое у разметки есть РЕБЁНОК, а не значение узла, и
+					 *          это расхождение с кодеками YAML, TOML и INI, где текст скаляра есть
+					 *          значение самого узла и обходить там нечего. Замер: `<a/>` отдаёт
+					 *          пустой перечень, а `<a>текст</a>` - одно звено. Оба поведения верны,
+					 *          и сводить их единым правилом НЕЛЬЗЯ: вышло бы, что либо разметка
+					 *          теряет текст, либо запись настроек выдумывает узел, какого нет
+					 *
+					 * @warning Судить о виде узла по ЧИСЛУ звеньев нельзя, и вот три случая, где
+					 *          такое суждение обманывает:
+					 *          `<a>x<!--п-->y</a>` даёт ТРИ звена, а несёт один текст «xy» -
+					 *          примечание разрывает содержимое, не будучи его частью;
+					 *          `<a><![CDATA[до]]></a>` даёт одно звено, но ребёнок его не текстовый
+					 *          узел, а раздел дословного текста;
+					 *          `<a>x<b/>y</a>` даёт три звена, и `text()` склеивает у него «xy»
+					 *          СКВОЗЬ вложенную разметку, теряя `<b/>` вовсе.
+					 *          Судить надлежит по видам детей, а не по счёту их
+					 *
+					 * @note Безымянны текстовое содержимое, примечание и раздел дословного текста:
+					 *       имя их пусто, ибо XML 1.0 имени им не даёт вовсе, и условного имени
+					 *       вроде `#text` кодек не выдумывает. Указание же обработчику имя имеет -
+					 *       им служит цель указания. Звеном для безымянных всегда идёт номер
+					 *
+					 * @param path путь к узлу, дети коего перечисляются
+					 * @return     перечень звеньев пути к вложенным узлам
+					 *
+					 * \~english
+					 * @brief Method of the enumeration of the tokens of the path to the nested nodes
+					 * @details Not THE NAMES of the nodes are given but THE TOKENS OF THE PATH to them:
+					 * such that `at(path + "/" + token)` inevitably leads to that very node. The token is
+					 * the name of a node WHEN it is unambiguous, and the ordinal number when there are
+					 * several nodes with that name or the node is nameless altogether
+					 * @warning Were we to give out the names, the traversal would break silently on the very
+					 *          first `<r><a/><a/></r>`
+					 * @note A text content, a comment and a literal section are nameless: XML 1.0 gives them
+					 *       no name at all, and the codec invents no conventional name such as `#text`
+					 * @param path path to the node whose children are enumerated
+					 * @return     list of the tokens of the path to the nested nodes
+					 *
+					 * \~
+					 */
+					vector <string> keys(const string & path) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод извлечения узла дерева по пути
 					 *
 					 * @details Путь записывается частями, разделёнными косой чертой, ровно как у
