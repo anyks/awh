@@ -172,6 +172,43 @@ static const char * SAMPLE =
  *       шаблоном, а проверка закрепляет, что оба зовутся по-прежнему
  *
  */
+/**
+ * @brief Проверка чтения и записи настроек в файл
+ *
+ * @details Ходы эти общие у всех семи кодеков рамки, и у INI с TOML их прежде не было
+ *          вовсе
+ *
+ * @note Проверка держит и ОТКАЗ на ненайденном файле: ненайденный файл пустым текстом не
+ *       является, и молчаливый успех сообщил бы потребителю, будто файл прочтён и пуст.
+ *       Без этой половины проверка прошла бы и при чтении, ничего не читающем
+ *
+ */
+TEST(CodecTomlDocument, LoadAndSaveRoundTrip){
+	// Путь до временного файла настроек
+	const string filename = string(::testing::TempDir()) + "toml-roundtrip.conf";
+	// Объект дерева настроек, текст разбирающий
+	toml::document_t source(::logger());
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(source.parse("[server]\nhost = 'anyks'\n")) << toml::message(source.error());
+	// Выполняем запись настроек в файл
+	ASSERT_TRUE(source.save(filename)) << toml::message(source.error());
+	// Объект дерева настроек, файл читающий
+	toml::document_t loaded(::logger());
+	// Выполняем чтение настроек из файла
+	ASSERT_TRUE(loaded.load(filename)) << toml::message(loaded.error());
+	// Выполняем проверку того, что прочтённое совпало с записанным
+	ASSERT_EQ(loaded.dump(), source.dump());
+	// Выполняем проверку того, что значение по пути пережило круговой ход
+	ASSERT_TRUE(loaded.at("/server/host").valid());
+	// Объект дерева настроек, ненайденный файл читающий
+	toml::document_t missing(::logger());
+	// Выполняем проверку того, что чтение ненайденного файла ОТКАЗЫВАЕТ
+	ASSERT_FALSE(missing.load(filename + ".нет-такого"));
+	// Выполняем проверку того, что отказ назвал причину свою
+	ASSERT_EQ(missing.error(), toml::error_t::FILE_NOT_OPENED);
+	// Выполняем снятие временного файла настроек
+	::remove(filename.c_str());
+}
 TEST(CodecTomlDocument, RemovingValueByPath){
 	// Объект дерева настроек, текст разбирающий
 	toml::document_t document(::logger());

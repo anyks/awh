@@ -71,6 +71,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/lib.hpp>
 #include <alloc/alloc.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>

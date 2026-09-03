@@ -33,9 +33,6 @@
 #include <unordered_set>
 
 /**
- * Системные заголовочные файлы
- */
-/**
  * Для операционной системы MS Windows
  *
  * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют.
@@ -57,13 +54,18 @@
 	 */
 	#include <arpa/inet.h>
 #endif
+
+/**
+ * Системный заголовочный файл
+ */
 #include <sys/types.h>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <encoding/ascii.hpp>
+#include <sys/lib.hpp>
 #include <unit/dns.hpp>
+#include <encoding/ascii.hpp>
 #include <encoding/idna/idna.hpp>
 
 /**

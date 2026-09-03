@@ -25,19 +25,20 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <vector>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/lib.hpp>
 #include <alloc/alloc.hpp>
-
-/**
- * Стандартные заголовочные файлы
- */
-#include <cstdio>
-#include <cstring>
-#include <cstdlib>
-#include <vector>
 
 /**
  * Разбор искажённых имён

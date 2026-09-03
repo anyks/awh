@@ -53,7 +53,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "lib.hpp"
 #include "../net/nwt.hpp"
 #include "../encoding/charset/charset.hpp"
 

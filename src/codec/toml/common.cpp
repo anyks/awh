@@ -228,6 +228,10 @@ const char * awh::codec::toml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::STORAGE_EXHAUSTED):
 			// Выводим описание кода ошибки
 			return "the text does not fit the width of the parser storage";
+		// Если файл настроек открыть не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
+			// Выводим описание кода ошибки
+			return "the file of the settings could not be opened";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

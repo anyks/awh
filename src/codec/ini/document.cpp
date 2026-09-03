@@ -23,6 +23,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <fstream>
 #include <encoding/ascii.hpp>
 #include <codec/ini/document.hpp>
 #include <codec/ini/value.hpp>
@@ -2485,6 +2486,76 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 string awh::codec::ini::Document::text() const noexcept {
 	// Выводим результат сборки текста настроек
 	return this->dump();
+}
+/**
+ * @brief Метод чтения настроек из файла
+ *
+ * @details Ход этот общий у всех семи кодеков рамки
+ *
+ * @note Ненайденный файл пустым текстом НЕ является: отказ называет причину кодом
+ *       `FILE_NOT_OPENED`, тогда как пустота текста сообщила бы потребителю, будто файл
+ *       прочтён и пуст. Правило взято у YAML, где прежний код пустоты вводил в заблуждение
+ *
+ * @param filename путь до читаемого файла настроек
+ * @return         признак успешного чтения настроек
+ *
+ */
+bool awh::codec::ini::Document::load(const string & filename) noexcept {
+	// Выполняем открытие читаемого файла настроек
+	::std::ifstream file(filename, ::std::ios::binary);
+	/**
+	 * Если открыть читаемый файл настроек не удалось
+	 */
+	if(!file.is_open()){
+		// Выполняем сброс дерева настроек
+		this->clear();
+		// Запоминаем код отказа чтения файла настроек
+		this->_error = error_t::FILE_NOT_OPENED;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
+		// Выводим признак неудачного чтения настроек
+		return false;
+	}
+	// Собираемое содержимое читаемого файла настроек
+	const string text((::std::istreambuf_iterator <char> (file)), ::std::istreambuf_iterator <char> ());
+	// Выводим признак успешного чтения настроек
+	return this->parse(text);
+}
+/**
+ * @brief Метод записи настроек в файл
+ *
+ * @details Ход этот общий у всех семи кодеков рамки
+ *
+ * @param filename путь до записываемого файла настроек
+ * @return         признак успешной записи настроек
+ *
+ */
+bool awh::codec::ini::Document::save(const string & filename) const noexcept {
+	// Получаем собранный текст настроек
+	const string text = this->dump();
+	// Выполняем открытие записываемого файла настроек
+	::std::ofstream file(filename, ::std::ios::binary | ::std::ios::trunc);
+	/**
+	 * Если открыть записываемый файл настроек не удалось
+	 */
+	if(!file.is_open()){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 *
+		 * @note Код отказа здесь НЕ запоминается: запись объявлена постоянной, и правка
+		 *       кода отказа означала бы правку дерева при записи его
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе открытия записываемого файла
+			this->_log->print("INI document failed: %s", log_t::flag_t::CRITICAL,
+			 ::awh::codec::ini::message(error_t::FILE_NOT_OPENED));
+		// Выводим признак неудачной записи настроек
+		return false;
+	}
+	// Выполняем запись собранного текста настроек в файл
+	file.write(text.data(), static_cast <::std::streamsize> (text.size()));
+	// Выводим признак успешной записи настроек
+	return file.good();
 }
 /**
  * @brief Метод сборки текста настроек

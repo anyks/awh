@@ -34,9 +34,6 @@
 #include <algorithm>
 
 /**
- * Системные заголовочные файлы
- */
-/**
  * Для операционной системы MS Windows
  *
  * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют.
@@ -61,11 +58,16 @@
 	#include <sys/socket.h>
 	#include <netinet/in.h>
 #endif
+
+/**
+ * Системный заголовочный файл
+ */
 #include <sys/types.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/lib.hpp>
 #include <unit/ntp.hpp>
 
 /**

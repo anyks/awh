@@ -132,6 +132,43 @@ using namespace awh::codec;
  * @note Смена согласована с владельцами прочих кодеков 03.09.2026
  *
  */
+/**
+ * @brief Проверка чтения и записи настроек в файл
+ *
+ * @details Ходы эти общие у всех семи кодеков рамки, и у INI с TOML их прежде не было
+ *          вовсе
+ *
+ * @note Проверка держит и ОТКАЗ на ненайденном файле: ненайденный файл пустым текстом не
+ *       является, и молчаливый успех сообщил бы потребителю, будто файл прочтён и пуст.
+ *       Без этой половины проверка прошла бы и при чтении, ничего не читающем
+ *
+ */
+TEST(CodecIniDocument, LoadAndSaveRoundTrip){
+	// Путь до временного файла настроек
+	const string filename = string(::testing::TempDir()) + "ini-roundtrip.conf";
+	// Объект дерева настроек, текст разбирающий
+	ini::document_t source(::logger());
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(source.parse("[server]\nhost = anyks\n")) << ini::message(source.error());
+	// Выполняем запись настроек в файл
+	ASSERT_TRUE(source.save(filename)) << ini::message(source.error());
+	// Объект дерева настроек, файл читающий
+	ini::document_t loaded(::logger());
+	// Выполняем чтение настроек из файла
+	ASSERT_TRUE(loaded.load(filename)) << ini::message(loaded.error());
+	// Выполняем проверку того, что прочтённое совпало с записанным
+	ASSERT_EQ(loaded.dump(), source.dump());
+	// Выполняем проверку того, что значение по пути пережило круговой ход
+	ASSERT_TRUE(loaded.at("/server/host").valid());
+	// Объект дерева настроек, ненайденный файл читающий
+	ini::document_t missing(::logger());
+	// Выполняем проверку того, что чтение ненайденного файла ОТКАЗЫВАЕТ
+	ASSERT_FALSE(missing.load(filename + ".нет-такого"));
+	// Выполняем проверку того, что отказ назвал причину свою
+	ASSERT_EQ(missing.error(), ini::error_t::FILE_NOT_OPENED);
+	// Выполняем снятие временного файла настроек
+	::remove(filename.c_str());
+}
 TEST(CodecIniDocument, SizeCountsChildrenOfTheRoot){
 	// Объект дерева документа, текст разбирающий
 	ini::document_t document(::logger());

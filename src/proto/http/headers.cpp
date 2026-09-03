@@ -22,15 +22,16 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstring>
 #include <cmath>
 #include <ctime>
 #include <locale>
 #include <iomanip>
+#include <cstring>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/lib.hpp>
 #include <proto/http/headers.hpp>
 
 /**

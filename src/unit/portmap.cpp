@@ -24,8 +24,9 @@
 #include <random>
 
 /**
- * Подключаем заголовочный файл модуля
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/lib.hpp>
 #include <unit/portmap.hpp>
 
 /**

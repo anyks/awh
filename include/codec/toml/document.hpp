@@ -357,6 +357,8 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					// Кодировка, какою текст настроек прочитан
+					encoding_t _encoding;
 					const log_t * _log;
 				public:
 					/**
@@ -2273,6 +2275,61 @@ namespace awh {
 					 * \~
 					 */
 					string text(const writer_t::settings_t & settings) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод чтения настроек из файла
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки
+					 *
+					 * @note Ненайденный файл пустым текстом НЕ является: отказ называет причину
+					 *       кодом `FILE_NOT_OPENED`, тогда как пустота текста сообщила бы
+					 *       потребителю, будто файл прочтён и пуст
+					 *
+					 * @param filename путь до читаемого файла настроек
+					 * @return         признак успешного чтения настроек
+					 *
+					 * \~english
+					 * @brief Method of reading the settings from a file
+					 * @param filename path to the file of the settings being read
+					 * @return         sign of the successful reading of the settings
+					 *
+					 * \~
+					 */
+					bool load(const string & filename) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи настроек в файл
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки
+					 *
+					 * @param filename путь до записываемого файла настроек
+					 * @return         признак успешной записи настроек
+					 *
+					 * \~english
+					 * @brief Method of writing the settings into a file
+					 * @param filename path to the file of the settings being written
+					 * @return         sign of the successful writing of the settings
+					 *
+					 * \~
+					 */
+					bool save(const string & filename) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения кодировки прочитанного текста
+					 *
+					 * @details Ход этот общий у кодеков рамки, текст читающих. Кодировка
+					 *          определяется чтением по метке порядка октетов либо по самому
+					 *          виду текста, а дерево лишь несёт её потребителю
+					 *
+					 * @return кодировка, какою текст настроек прочитан
+					 *
+					 * \~english
+					 * @brief Method of getting the encoding of the read text
+					 * @return encoding by which the text of the settings was read
+					 *
+					 * \~
+					 */
+					encoding_t encoding() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи дерева обратно в текст настроек

@@ -82,6 +82,7 @@
  */
 #include <sys/os.hpp>
 #include <sys/log.hpp>
+#include <sys/lib.hpp>
 
 /**
  * Используем стандартное пространство имён

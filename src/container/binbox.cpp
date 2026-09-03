@@ -27,9 +27,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <sys/lib.hpp>
 #include <sys/global.hpp>
-#include <container/binbox.hpp>
 #include <sys/version.hpp>
+#include <container/binbox.hpp>
 
 /**
  * Используем стандартное пространство имён

@@ -20,14 +20,6 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
- */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <alloc/alloc.hpp>
-#include <alloc/keeper.hpp>
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <map>
@@ -35,6 +27,15 @@
 #include <vector>
 #include <cstdio>
 #include <cstring>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
+#include <sys/lib.hpp>
+#include <alloc/alloc.hpp>
+#include <alloc/keeper.hpp>
 
 /**
  * Используем пространство имён AWH

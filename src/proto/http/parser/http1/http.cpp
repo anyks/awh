@@ -29,8 +29,9 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/lib.hpp>
 #include <proto/http/parser/http1/http.hpp>
 
 /**
