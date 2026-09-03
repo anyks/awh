@@ -2126,6 +2126,52 @@ namespace awh {
 					bool erase(const vector <string_view> & path) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод снятия значения по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки: снос по пути, строкою
+					 *          заданному. Сносится значение ЛЮБОГО вида - и пара, и таблица, -
+					 *          тогда как `erase(перечень)` снимает пару, а `remove(перечень)`
+					 *          таблицу. Имена эти в языке суть синонимы, и потребитель угадать
+					 *          по ним, который что делает, не может вовсе
+					 *
+					 * @note Отделено шаблоном от `erase(перечень)`: список в фигурных скобках к
+					 *       шаблонному доводу не выводится, и двусмысленности не возникает
+					 *
+					 * @param path путь до снимаемого значения
+					 * @return     признак успешного снятия значения
+					 *
+					 * \~english
+					 * @brief Method of removing a value by a path
+					 * @param path path to the value being removed
+					 * @return     sign of the successful removal of the value
+					 *
+					 * \~
+					 */
+					template <class T>
+					typename ::std::enable_if <::std::is_convertible <const T &, string_view>::value, bool>::type
+					erase(const T & path) noexcept {
+						// Выводим результат снятия значения по пути
+						return this->prune(string(string_view(path)));
+					}
+					/**
+					 * \~russian
+					 * @brief Метод снятия значения по пути
+					 *
+					 * @details Тело посредника `erase()`, шаблоном от него отделённое
+					 *
+					 * @param path путь до снимаемого значения
+					 * @return     признак успешного снятия значения
+					 *
+					 * \~english
+					 * @brief Method of removing a value by a path
+					 * @param path path to the value being removed
+					 * @return     sign of the successful removal of the value
+					 *
+					 * \~
+					 */
+					bool prune(const string & path) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод удаления таблицы
 					 *
 					 * @details Удаляется объявление таблицы вместе со всеми её парами

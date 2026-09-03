@@ -1167,6 +1167,16 @@ size_t awh::codec::csv::Document::rows() const noexcept {
 	return this->_records.size();
 }
 /**
+ * @brief Метод получения количества записей таблицы
+ *
+ * @return количество записей таблицы
+ *
+ */
+size_t awh::codec::csv::Document::size() const noexcept {
+	// Выводим количество записей таблицы
+	return this->rows();
+}
+/**
  * @brief Метод проверки таблицы на пустоту
  *
  * @return признак отсутствия содержимого в таблице

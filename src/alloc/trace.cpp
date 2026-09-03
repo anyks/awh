@@ -46,8 +46,10 @@
 	 * съём везде один и тот же, а родной путь не годится вовсе
 	 *
 	 * Заголовок раскрутки даёт компилятор GCC/Clang, у нативного MSVC его нет вовсе:
-	 * там съём идёт родным `RtlCaptureStackBackTrace` (на ARM64 с известной просадкой
-	 * до одного уровня), а не раскруткой
+	 * там стек снимается обходом `RtlVirtualUnwind` по таблицам раскрутки самой системы.
+	 * Родной `RtlCaptureStackBackTrace` на ARM64 не годится по причине выше, а обход
+	 * таблицами даёт весь стек на обеих архитектурах разом. Таблиц раскрутки нет лишь
+	 * у 32-разрядного x86, и только там остаётся родное средство
 	 */
 	#if !defined(_MSC_VER)
 		#include <unwind.h>
@@ -194,7 +196,7 @@ namespace {
 		 * @brief Метод обхода уровня стека вызовов
 		 *
 		 * @note Обход раскруткой заведён лишь там, где есть её заголовок: у нативного
-		 *       MSVC съём идёт родным `RtlCaptureStackBackTrace`, а не обходом уровней
+		 *       MSVC съём идёт обходом `RtlVirtualUnwind` по таблицам системы
 		 *
 		 * @param context уровень стека вызовов
 		 * @param arg     ход съёма стека вызовов
@@ -362,16 +364,78 @@ size_t awh::alloc::Trace::capture(const void ** frames, const size_t depth, cons
 		// Наибольшее число снимаемых уровней
 		const size_t cap = ((depth > DEPTH) ? DEPTH : depth);
 		#if defined(_MSC_VER)
-			/**
-			 * Съём родным средством системы
-			 *
-			 * У нативного MSVC заголовка раскрутки нет, и съём идёт родным
-			 * `RtlCaptureStackBackTrace`. На ARM64 он даёт известную просадку до одного
-			 * уровня (см. врезку у подключения раскрутки), на x86-64 - весь стек
-			 */
-			result = static_cast <size_t> (::RtlCaptureStackBackTrace(
-				static_cast <ULONG> (skip + 1), static_cast <ULONG> (cap),
-				reinterpret_cast <PVOID *> (const_cast <void **> (frames)), nullptr));
+			#if defined(_M_X64) || defined(_M_ARM64)
+				/**
+				 * Съём обходом таблиц раскрутки системы
+				 *
+				 * Снимаем состояние своего же потока и шагаем по нему вверх, всякий раз
+				 * отыскивая запись раскрутки для текущего счётчика команд и откатывая
+				 * состояние на уровень выше. Так снимается весь стек и на ARM64, где
+				 * родной `RtlCaptureStackBackTrace` отдаёт лишь один уровень
+				 */
+				// Состояние потока, откатываемое уровень за уровнем
+				::CONTEXT context;
+				// Ускоритель поиска записей раскрутки
+				::UNWIND_HISTORY_TABLE history;
+				// Обнуляем ускоритель поиска
+				::memset(&history, 0, sizeof(history));
+				// Снимаем состояние своего потока
+				::RtlCaptureContext(&context);
+				/**
+				 * Счётчик команд зовётся по-разному у разных архитектур
+				 */
+				#if defined(_M_ARM64)
+					#define __AWH_TRACE_PC__ Pc
+				#else
+					#define __AWH_TRACE_PC__ Rip
+				#endif
+				// Остаток пропускаемых ближних уровней (свой уровень тоже пропускаем)
+				size_t rest = (skip + 1);
+				// Выполняем обход уровней стека вызовов
+				while(result < cap){
+					// Адрес начала образа, которому принадлежит уровень
+					::DWORD64 image = 0;
+					// Выполняем поиск записи раскрутки текущего уровня
+					::PRUNTIME_FUNCTION entry = ::RtlLookupFunctionEntry(context.__AWH_TRACE_PC__, &image, &history);
+					// Если записи раскрутки нет, дальше шагать нечем
+					if(entry == nullptr)
+						// Выходим из обхода
+						break;
+					// Данные обработчика раскрутки
+					::PVOID handler = nullptr;
+					// Основание кадра уровня
+					::DWORD64 frame = 0;
+					// Откатываем состояние на уровень выше
+					::RtlVirtualUnwind(UNW_FLAG_NHANDLER, image, context.__AWH_TRACE_PC__, entry, &context, &handler, &frame, nullptr);
+					// Если счётчик команд обнулился, стек кончился
+					if(context.__AWH_TRACE_PC__ == 0)
+						// Выходим из обхода
+						break;
+					// Если ближние уровни ещё пропускаются
+					if(rest > 0){
+						// Уменьшаем остаток пропускаемых уровней
+						rest--;
+						// Переходим к следующему уровню
+						continue;
+					}
+					// Запоминаем адрес уровня
+					frames[result++] = reinterpret_cast <const void *> (context.__AWH_TRACE_PC__);
+				}
+				/**
+				 * Снимаем название счётчика команд
+				 */
+				#undef __AWH_TRACE_PC__
+			#else
+				/**
+				 * Съём родным средством системы
+				 *
+				 * Таблиц раскрутки у 32-разрядного x86 нет вовсе, и обходить нечего:
+				 * съём идёт родным `RtlCaptureStackBackTrace`
+				 */
+				result = static_cast <size_t> (::RtlCaptureStackBackTrace(
+					static_cast <ULONG> (skip + 1), static_cast <ULONG> (cap),
+					reinterpret_cast <PVOID *> (const_cast <void **> (frames)), nullptr));
+			#endif
 		#else
 			// Ход съёма стека вызовов
 			walk_t walk;
@@ -521,7 +585,11 @@ bool awh::alloc::Trace::ready() const noexcept {
 const char * awh::alloc::Trace::name() const noexcept {
 	// Выводим название способа съёма
 	#if defined(_MSC_VER)
-		return "RtlCaptureStackBackTrace";
+		#if defined(_M_X64) || defined(_M_ARM64)
+			return "RtlVirtualUnwind";
+		#else
+			return "RtlCaptureStackBackTrace";
+		#endif
 	#else
 		return "_Unwind_Backtrace";
 	#endif

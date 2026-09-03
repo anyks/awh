@@ -1048,6 +1048,26 @@ namespace awh {
 					 * \~
 					 */
 					bool fail(const error_t error) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия собранного содержимого документа
+					 *
+					 * @details Снятие это отличается от очистки одним, и различие это существенно:
+					 * код отказа и место его здесь СОХРАНЯЮТСЯ. Зовётся оно с путей отказа, где
+					 * содержимое обязано уйти, а причина - остаться; очистка же, сбрасывающая и
+					 * причину, зовётся с путей, где документ снимается по заказу потребителя
+					 *
+					 * @note Дороги эти близнецы, и разошлись бы они молча, зови отказ очистку:
+					 *       потребитель, спросивший причину после отказа, получил бы «нет ошибки»
+					 *
+					 * \~english
+					 * @brief Method of the dropping of the assembled content of a document
+					 *
+					 * @details Unlike the reset, the code of the failure and its location are KEPT here
+					 *
+					 * \~
+					 */
+					void discard() noexcept;
 				private:
 					/**
 					 * \~russian

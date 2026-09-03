@@ -605,6 +605,35 @@ namespace awh {
 					size_t rows() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения количества записей таблицы
+					 *
+					 * @details Ход этот - посредник к `rows()`, заведённый ради общего облика
+					 * кодеков: у документа JSON да дерева разметки `size()` выдаёт ДЕТЕЙ КОРНЯ, и
+					 * у таблицы детьми этими служат записи её. Без него потребитель, пишущий один
+					 * обход на три кодека, у таблицы спотыкался бы на имени
+					 *
+					 * @details Заголовок записью не считается, ровно как и у `rows()`
+					 *
+					 * @note Хода `nodes()` у таблицы нет вовсе и быть не может: арены узлов она не
+					 *       держит, а поля лежат нарезкой общего хранилища знаков. Заводить его
+					 *       посредником к чему бы то ни было значило бы выдумать величину
+					 *
+					 * @return количество записей таблицы
+					 *
+					 * \~english
+					 * @brief Method of getting the number of the records of the table
+					 * @details This call is a mediator to `rows()`, introduced for the sake of the common
+					 * appearance of the codecs: for a JSON document and a markup tree `size()` gives THE
+					 * CHILDREN OF THE ROOT, and for a table those children are its records
+					 * @note There is no call `nodes()` for a table and there cannot be: it holds no arena
+					 *       of the nodes
+					 * @return number of the records of the table
+					 *
+					 * \~
+					 */
+					size_t size() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод проверки таблицы на пустоту
 					 *
 					 * @details Пустой считается таблица без записей И без заголовка: таблица,
