@@ -548,6 +548,54 @@ TEST(CodecTomlWriter, Floats) {
  *       с деревом исходника
  *
  */
+/**
+ * @brief Проверка посредников записи значения, одним именем зовущихся
+ *
+ * @details Посредники заведены затем, чтобы потребитель, вид значения по месту
+ *          разбирающий, не знал про запись TOML того, чего знать не должен, - про
+ *          систему счисления числа да про ограду строки
+ *
+ */
+TEST(CodecTomlWriter, ValueOverloadsMatchTheirKinds) {
+	// Объект записи текста настроек
+	toml::writer_t writer(::logger());
+	// Выполняем запись логического значения посредником
+	ASSERT_TRUE(writer.key("flag"));
+	ASSERT_TRUE(writer.value(true));
+	// Выполняем запись целого числа со знаком посредником
+	ASSERT_TRUE(writer.key("count"));
+	ASSERT_TRUE(writer.value(static_cast <int64_t> (-7)));
+	// Выполняем запись целого числа без знака посредником
+	ASSERT_TRUE(writer.key("size"));
+	ASSERT_TRUE(writer.value(static_cast <uint64_t> (42)));
+	// Выполняем запись вещественного числа посредником
+	ASSERT_TRUE(writer.key("ratio"));
+	ASSERT_TRUE(writer.value(2.5));
+	// Выполняем запись строкового значения посредником
+	ASSERT_TRUE(writer.key("host"));
+	ASSERT_TRUE(writer.value(string_view("anyks")));
+	// Выполняем проверку собранного текста настроек
+	ASSERT_EQ(writer.text(), "flag = true\ncount = -7\nsize = 42\nratio = 2.5\nhost = \"anyks\"\n");
+}
+/**
+ * @brief Проверка отказа посредника на числе без знака, предел знакового превысившем
+ *
+ * @details Описание TOML целых без знака не несёт вовсе, и приведение со знаком
+ *          переменило бы число МОЛЧА: потребитель получил бы текст с числом
+ *          отрицательным вместо затребованного. Оттого запись отвергается с названною
+ *          причиною, а не приводится
+ *
+ */
+TEST(CodecTomlWriter, UnsignedBeyondSignedLimitIsRefused) {
+	// Объект записи текста настроек
+	toml::writer_t writer(::logger());
+	// Выполняем запись имени ключа пары
+	ASSERT_TRUE(writer.key("huge"));
+	// Выполняем проверку отказа записи числа, предел знакового превысившего
+	ASSERT_FALSE(writer.value(static_cast <uint64_t> (numeric_limits <int64_t>::max()) + 1u));
+	// Выполняем проверку того, что отказ причину свою назвал
+	ASSERT_EQ(writer.error(), toml::error_t::NUMBER_OVERFLOW);
+}
 TEST(CodecTomlWriter, NegativeNotANumberKeepsSign) {
 	// Объект записи текста настроек
 	toml::writer_t writer(::logger());

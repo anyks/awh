@@ -345,7 +345,7 @@ void awh::codec::abc::Fetcher::crypto(const crypto_t * value) noexcept {
  * @return       признак успешно открытого контейнера
  *
  */
-bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
+bool awh::codec::abc::Fetcher::open(source_t source, const uint64_t length) noexcept {
 	// Выполняем сброс состояния выборки записей
 	this->reset();
 	/**
@@ -409,7 +409,7 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	 * длина эта объявлена заголовком кадра, и вычитывать оглавление целиком
 	 * наугад не приходится
 	 */
-	const uint64_t length = abc::gather(buffer.data() + 4, 4);
+	const uint64_t packed = abc::gather(buffer.data() + 4, 4);
 	/**
 	 * Если длина, объявленная кадром оглавления, расходится с объявленной заголовком
 	 *
@@ -418,19 +418,49 @@ bool awh::codec::abc::Fetcher::open(source_t source) noexcept {
 	 *          недочитанному. Заголовок же несёт контрольную сумму, и объявленное им
 	 *          поверять можно
 	 */
-	if(length != static_cast <uint64_t> (this->_header.extent)){
+	if(packed != static_cast <uint64_t> (this->_header.extent)){
 		// Выполняем установку кода отказа повреждённого кадра
 		this->fail(error_t::INVALID_CHUNK);
 		// Выводим признак неудачного открытия контейнера
 		return false;
+	}
+	/**
+	 * Если полная длина контейнера объявлена и кадр оглавления в неё не умещается
+	 *
+	 * @details Сличение с заголовком выше от ПОДДЕЛКИ не стережёт: подделыватель
+	 *          пересчитывает контрольную сумму заголовка, и обе длины приходят какими он
+	 *          положит. По ним же вычитывается кадр ЦЕЛИКОМ: подделка на `0xFFFFFFFF`
+	 *          заставляла ЗАТРЕБОВАТЬ У ИСТОЧНИКА 4 294 967 327 октетов - замерено щупом
+	 *          03.09.2026 на контейнере в 197 октетов, и то же число вышло у правки
+	 *
+	 * @note Полная длина контейнера объявляется НЕОБЯЗАТЕЛЬНОЙ: выборка открывается одним
+	 *       источником, и длины ему знать неоткуда. Нуль означает «длина неведома», и
+	 *       сторож при нём снимается - иначе прежние зовущие лишились бы работы вовсе.
+	 *       Зовущему, длину знающему, подавать её НАДЛЕЖИТ: `Storage` её ведёт полем
+	 *
+	 * @note Сличение ведётся ВЫЧИТАНИЕМ от полной длины, а не сложением смещения с
+	 *       длиною: слагаемые недоверенны оба, и сумма их завернулась бы, пройдя сторож
+	 *       насквозь
+	 */
+	if(length > 0){
+		/**
+		 * Если кадр оглавления в контейнер не умещается
+		 */
+		if((this->_header.index > length) ||
+		 ((length - this->_header.index) < (static_cast <uint64_t> (CHUNK_HEADER) + packed))){
+			// Выполняем установку кода отказа повреждённого кадра
+			this->fail(error_t::INVALID_CHUNK);
+			// Выводим признак неудачного открытия контейнера
+			return false;
+		}
 	}
 	// Выполняем очистку буфера вычитанных октетов
 	buffer.clear();
 	/**
 	 * Если вычитать кадр оглавления целиком не вышло
 	 */
-	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + length), buffer) ||
-	 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + length))){
+	if(!this->_source(this->_header.index, static_cast <size_t> (CHUNK_HEADER + packed), buffer) ||
+	 (buffer.size() < static_cast <size_t> (CHUNK_HEADER + packed))){
 		// Выполняем установку кода отказа чтения октетов контейнера
 		this->fail(error_t::UNREADABLE_SOURCE);
 		// Выводим признак неудачного открытия контейнера

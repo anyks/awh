@@ -131,6 +131,13 @@ static vector <string> samples(const size_t count) noexcept {
 		 *          состояния, отметки имён да адреса тел. Без них
 		 *          запись этих полей не проверялась вовсе.
 		 *
+		 *          Число составляющих берётся размером набора, а не записанное
+		 *          прямо: выбор шёл по остатку от пятнадцати, тогда как набор
+		 *          нёс двадцать девять составляющих, отчего четырнадцать
+		 *          последних - те самые, вне подмножества, - не выбирались
+		 *          никогда, и поля их записи проверка не покрывала вопреки
+		 *          собственному примечанию.
+		 *
 		 */
 		"(*MARK:m)a", "(*COMMIT)b", "(*PRUNE)c", "a(*SKIP:s)b", "(*FAIL:f)|d",
 		"(a)(?1)", "(?<r>a)(?&r)", "(a)?(?(1)b|c)", "(?(?=a)b|c)",
@@ -159,9 +166,9 @@ static vector <string> samples(const size_t count) noexcept {
 		 */
 		for(size_t j = 0; j < length; j++) {
 			// Выполняем добавление составляющей выражения
-			pattern.append(atoms[generator() % 15]);
+			pattern.append(atoms[generator() % (sizeof(atoms) / sizeof(atoms[0]))]);
 			// Выполняем добавление квантора повторения
-			pattern.append(repeats[generator() % 9]);
+			pattern.append(repeats[generator() % (sizeof(repeats) / sizeof(repeats[0]))]);
 		}
 		/**
 		 * Если выражение получает захватывающую группу со ссылкой

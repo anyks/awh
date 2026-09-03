@@ -2066,7 +2066,7 @@ namespace {
 		if(fetcher.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 			// Выполняем чтение затребованных октетов контейнера
 			return medium.read(offset, size, result);
-		})){
+		}, static_cast <uint64_t> (medium.data.size()))){
 			/**
 			 * Выполняем выборку всех записей контейнера вразнобой
 			 */
@@ -2275,7 +2275,7 @@ namespace {
 			if(rereader.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 				// Выполняем чтение затребованных октетов контейнера
 				return medium.read(offset, size, result);
-			})){
+			}, static_cast <uint64_t> (medium.data.size()))){
 				/**
 				 * Если число записей на носителе разошлось с ожидаемым
 				 */
@@ -2383,7 +2383,7 @@ namespace {
 			if(sweeper.open([&cleaned](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 				// Выполняем чтение затребованных октетов убранного контейнера
 				return cleaned.read(offset, size, result);
-			})){
+			}, static_cast <uint64_t> (cleaned.data.size()))){
 				/**
 				 * Если число записей убранного контейнера разошлось с ожидаемым
 				 */
@@ -2566,7 +2566,7 @@ namespace {
 		if(fetcher.open([&medium](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 			// Выполняем чтение затребованных октетов контейнера
 			return medium.read(offset, size, result);
-		})){
+		}, static_cast <uint64_t> (medium.data.size()))){
 			/**
 			 * Выполняем выборку записей порченого контейнера
 			 */

@@ -467,151 +467,38 @@ using namespace std;
  *
  */
 /**
- * @brief Описание буфера обмена в строе POSIX
+ * Подключаем строй сообщений POSIX для MS Windows
+ *
+ * @details Типы `iovec`, `msghdr` и `cmsghdr`, обход метаданных макросами `CMSG_*` и
+ *          простой приём поверх `WSARecvMsg` вынесены отсюда в свой модуль 03.09.2026.
+ *          Довод к выносу изложен при заголовке модуля: покуда строй жил внутри этой
+ *          единицы трансляции, ни проверка доставки метки перегрузки, ни щуп чтения
+ *          каталога не могли до него добраться
+ *
+ * @note Свой `recvmsg` движок держит по-прежнему здесь: он сперва спрашивает пул
+ *       родного приёма, а пул есть внутренность движка. Наружу вынесен приём ПРОСТОЙ
  *
  */
-struct iovec {
-	void * iov_base;                  // Начало буфера обмена
-	size_t iov_len;                   // Размер буфера обмена
-};
+#include <net/backend/win/message.hpp>
 
 /**
- * @brief Описание сообщения в строе POSIX
+ * @brief Данные служебного метаданного берутся ФУНКЦИЕЙ, а не макросом
+ *
+ * @details Имя `CMSG_DATA` у MS Windows занято дважды, и второй владелец -
+ *          `wincrypt.h:2910`, где это число 1, вид криптографического сообщения.
+ *          Заголовок тот приходит через `windows.h` и В ЭТУ единицу трансляции тоже:
+ *          рядом с нашим определением виден его `CMSG_DATA_FLAG`. Спасает здесь лишь
+ *          ПОРЯДОК - криптография приходит раньше подмены, - а порядок этот
+ *          случаен: сдвинь любое включение, и разбор ответит «called object type
+ *          'int' is not a function» в тридцати шести местах разом
+ *
+ * @note Оттого движок зовёт `win::message::data` прямо, а макрос оставлен лишь ради
+ *       кода, писанного на понятиях POSIX. Установлено 03.09.2026: ровно так сломалась
+ *       проверка доставки метки перегрузки, куда криптография пришла ПОСЛЕ подмены
  *
  */
-struct msghdr {
-	void * msg_name;                  // Адрес собеседника
-	socklen_t msg_namelen;            // Размер адреса собеседника
-	struct iovec * msg_iov;           // Набор буферов обмена
-	size_t msg_iovlen;                // Число буферов обмена
-	void * msg_control;               // Буфер служебных метаданных
-	size_t msg_controllen;            // Размер буфера служебных метаданных
-	int32_t msg_flags;                // Признаки сообщения
-};
 
-/**
- * @brief Заголовок служебного метаданного
- *
- * @note Состав его у MS Windows совпадает с POSIX поимённо, оттого здесь довольно
- *       переобъявления имени
- *
- */
-typedef WSACMSGHDR cmsghdr;
 
-/**
- * @brief Функция выравнивания размера служебного метаданного
- *
- * @param size выравниваемый размер
- * @return     выровненный размер
- *
- */
-static inline size_t __awh_cmsg_align__(const size_t size) noexcept {
-	// Выравниваем размер по границе машинного слова
-	return ((size + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1));
-}
-
-/**
- * @brief Функция получения первого служебного метаданного сообщения
- *
- * @param msg описание сообщения
- * @return    первое служебное метаданное, либо пустое значение
- *
- */
-static inline cmsghdr * __awh_cmsg_first__(const struct msghdr * msg) noexcept {
-	// Если буфера служебных метаданных нет либо он меньше заголовка
-	if((msg == nullptr) || (msg->msg_control == nullptr) || (msg->msg_controllen < sizeof(cmsghdr)))
-		// Выводим пустое значение
-		return nullptr;
-	// Выводим первое служебное метаданное
-	return reinterpret_cast <cmsghdr *> (msg->msg_control);
-}
-
-/**
- * @brief Функция получения следующего служебного метаданного сообщения
- *
- * @param msg  описание сообщения
- * @param cmsg текущее служебное метаданное
- * @return     следующее служебное метаданное, либо пустое значение
- *
- */
-static inline cmsghdr * __awh_cmsg_next__(const struct msghdr * msg, cmsghdr * cmsg) noexcept {
-	// Если обход окончен либо заголовок неполон
-	if((msg == nullptr) || (cmsg == nullptr) || (cmsg->cmsg_len < sizeof(cmsghdr)))
-		// Выводим пустое значение
-		return nullptr;
-	// Получаем начало буфера служебных метаданных
-	uint8_t * const begin = reinterpret_cast <uint8_t *> (msg->msg_control);
-	// Получаем следующее служебное метаданное
-	uint8_t * const next = (reinterpret_cast <uint8_t *> (cmsg) + __awh_cmsg_align__(static_cast <size_t> (cmsg->cmsg_len)));
-	// Если следующее метаданное за пределами буфера
-	if(static_cast <size_t> ((next + sizeof(cmsghdr)) - begin) > msg->msg_controllen)
-		// Выводим пустое значение
-		return nullptr;
-	// Выводим следующее служебное метаданное
-	return reinterpret_cast <cmsghdr *> (next);
-}
-
-/**
- * @brief Обход служебных метаданных сообщения
- *
- * @details Имена эти у MS Windows заняты макросами `WSA_CMSG_*` (mswsock.h), и работают
- *          те с `WSAMSG`, а не с `msghdr` движка. Оттого прежние определения снимаются
- *          ЯВНО, а не переопределяются поверх: подмена намеренная, и написана она так,
- *          чтобы это было видно
- *
- * @note Найдено разбором предупреждений 25.08.2026: переопределение поверх давало пять
- *       предупреждений `redefined`, и намерение в них не читалось никак
- */
-#undef CMSG_FIRSTHDR
-#undef CMSG_NXTHDR
-#undef CMSG_DATA
-#undef CMSG_LEN
-#undef CMSG_SPACE
-#define CMSG_FIRSTHDR(msg) ::__awh_cmsg_first__(msg)
-#define CMSG_NXTHDR(msg, cmsg) ::__awh_cmsg_next__(msg, cmsg)
-#define CMSG_DATA(cmsg) (reinterpret_cast <uint8_t *> (cmsg) + ::__awh_cmsg_align__(sizeof(cmsghdr)))
-#define CMSG_LEN(size) (::__awh_cmsg_align__(sizeof(cmsghdr)) + (size))
-#define CMSG_SPACE(size) (::__awh_cmsg_align__(sizeof(cmsghdr)) + ::__awh_cmsg_align__(size))
-
-/**
- * @brief Функция получения расширенного вызова приёма сообщения с метаданными
- *
- * @details Вызов этот у MS Windows не объявлен наперёд: адрес его берётся у самого
- *          сокета управляющим запросом. Берётся он однажды и запоминается - адрес
- *          общий для всех сокетов библиотеки
- *
- * @param sock сокет, у которого спрашивается вызов
- * @return     адрес расширенного вызова, либо пустое значение
- *
- */
-static LPFN_WSARECVMSG __awh_wsa_recvmsg__(const SOCKET sock) noexcept {
-	// Запомненный адрес расширенного вызова
-	static LPFN_WSARECVMSG result = nullptr;
-	// Если адрес уже взят
-	if(result != nullptr)
-		// Выводим запомненный адрес
-		return result;
-	// Опознаватель расширенного вызова приёма сообщения
-	GUID guid = WSAID_WSARECVMSG;
-	// Размер отданного адреса
-	DWORD size = 0;
-	// Если взять адрес расширенного вызова не удалось
-	if(::WSAIoctl(sock, SIO_GET_EXTENSION_FUNCTION_POINTER, &guid, sizeof(guid), &result, sizeof(result), &size, nullptr, nullptr) != 0)
-		// Сбрасываем адрес расширенного вызова
-		result = nullptr;
-	// Выводим адрес расширенного вызова
-	return result;
-}
-
-/**
- * @brief Функция приёма сообщения со служебными метаданными
- *
- * @param sock  сокет, из которого ведётся приём
- * @param msg   описание принимаемого сообщения
- * @param flags признаки приёма
- * @return      число принятых октетов, либо -1 при отказе
- *
- */
 /**
  * @brief Функция перевода кода отказа обращения к сокету в код POSIX
  *
@@ -649,6 +536,15 @@ static bool __awh_pool_recvmsg__(const SOCKET sock, struct msghdr * msg, ssize_t
  */
 static bool __awh_pool_armed__(const SOCKET sock) noexcept;
 
+/**
+ * @brief Функция приёма сообщения со служебными метаданными
+ *
+ * @param sock  сокет, из которого ведётся приём
+ * @param msg   описание принимаемого сообщения
+ * @param flags признаки приёма
+ * @return      число принятых октетов, либо -1 при отказе
+ *
+ */
 static ssize_t recvmsg(const SOCKET sock, struct msghdr * msg, [[maybe_unused]] const int32_t flags) noexcept {
 	/**
 	 * Если приём обслужен родным приёмом - обращения к системе не происходит вовсе
@@ -681,62 +577,31 @@ static ssize_t recvmsg(const SOCKET sock, struct msghdr * msg, [[maybe_unused]] 
 		// Выводим признак отсутствия данных
 		return -1;
 	}
-	// Получаем расширенный вызов приёма сообщения
-	LPFN_WSARECVMSG receive = ::__awh_wsa_recvmsg__(sock);
-	// Если вызов взять не удалось либо описание не передано
-	if((receive == nullptr) || (msg == nullptr)){
-		// Отмечаем приём сообщения недоступным
-		errno = EOPNOTSUPP;
-		// Выводим признак отказа приёма
-		return -1;
-	}
-	// Набор буферов приёма в строе MS Windows
-	std::vector <WSABUF> buffers(msg->msg_iovlen);
-	// Переносим набор буферов приёма
-	for(size_t i = 0; i < msg->msg_iovlen; i++){
-		// Устанавливаем начало буфера приёма
-		buffers[i].buf = reinterpret_cast <CHAR *> (msg->msg_iov[i].iov_base);
-		// Устанавливаем размер буфера приёма
-		buffers[i].len = static_cast <ULONG> (msg->msg_iov[i].iov_len);
-	}
-	// Описание принимаемого сообщения в строе MS Windows
-	WSAMSG message{};
-	// Устанавливаем адрес собеседника
-	message.name = reinterpret_cast <LPSOCKADDR> (msg->msg_name);
-	// Устанавливаем размер адреса собеседника
-	message.namelen = static_cast <INT> (msg->msg_namelen);
-	// Устанавливаем набор буферов приёма
-	message.lpBuffers = buffers.data();
-	// Устанавливаем число буферов приёма
-	message.dwBufferCount = static_cast <ULONG> (buffers.size());
-	// Устанавливаем начало буфера служебных метаданных
-	message.Control.buf = reinterpret_cast <CHAR *> (msg->msg_control);
-	// Устанавливаем размер буфера служебных метаданных
-	message.Control.len = static_cast <ULONG> (msg->msg_controllen);
-	// Число принятых октетов
-	DWORD received = 0;
 	/**
-	 * Если приём отказом завершился
+	 * Приём у системы ведётся вынесенным посредником
 	 *
-	 * @note Код отказа переносится в `errno`: обращения к сокетам у этой системы его
-	 *       не ставят вовсе, а разбор движка читает именно его - и отличает по нему
-	 *       исчерпание буфера от настоящей беды. Без переноса дейтаграммный приём
-	 *       выглядел отказом без причины, а в журнал уходило «Unknown error»
+	 * @details Прежде тело его лежало здесь же: перенос состава `msghdr` в `WSAMSG`,
+	 *          добыча расширенного вызова и разбор отказа. Вынесено в свой модуль
+	 *          03.09.2026 - разбор при заголовке `net/backend/win/message.hpp`
+	 *
+	 * @note Код отказа посредник отдаёт доводом, а не через `errno`: таблица переноса
+	 *       кодов `WSA` в `errno` живёт здесь, у движка, и тащить её в общий модуль
+	 *       ради одного вызова незачем
+	 *
 	 */
-	if(receive(sock, &message, &received, nullptr, nullptr) != 0){
+	// Код отказа приёма, если отказ случится
+	int32_t error = 0;
+	// Выполняем приём сообщения у системы
+	const int64_t result = ::awh::win::message::receive(static_cast <awh::net::socket_t> (sock), msg, flags, &error);
+	// Если приём отказом завершился
+	if(result < 0){
 		// Переносим код отказа приёма в errno
-		errno = ::__awh_socket_errno__(::WSAGetLastError());
+		errno = ::__awh_socket_errno__(error);
 		// Выводим признак отказа приёма
 		return -1;
 	}
-	// Запоминаем размер принятого адреса собеседника
-	msg->msg_namelen = static_cast <socklen_t> (message.namelen);
-	// Запоминаем размер принятых служебных метаданных
-	msg->msg_controllen = static_cast <size_t> (message.Control.len);
-	// Запоминаем признаки принятого сообщения
-	msg->msg_flags = static_cast <int32_t> (message.dwFlags);
 	// Выводим число принятых октетов
-	return static_cast <ssize_t> (received);
+	return static_cast <ssize_t> (result);
 }
 
 
@@ -965,15 +830,6 @@ static T __awh_socket_result__(const T result) noexcept {
 	// Выводим результат обращения к сокету
 	return result;
 }
-/**
- * @brief Функция привязки сокета к адресу
- *
- * @param sock дескриптор сокета
- * @param addr адрес привязки
- * @param size размер адреса привязки
- * @return     результат привязки сокета
- *
- */
 /**
  * @brief Функция закрытия дескриптора
  *
@@ -1548,39 +1404,88 @@ static int32_t __awh_stat__(const char * path, struct stat * info) noexcept {
 	return result;
 }
 /**
+ * @brief Описатель открытого каталога вместе с ячейкой его записи
+ *
+ * @details Держит описатель широкого каталога и ячейку, в какую переводится название
+ *          очередной записи. Ячейка принадлежит ИМЕННО ЭТОМУ каталогу - тем повторяется
+ *          устройство POSIX, где буфер названия принадлежит потоку каталога (`DIR *`)
+ *
+ * @warning Прежде ячейка была одна на ПОТОК ИСПОЛНЕНИЯ (`static thread_local`), и это
+ *          давало МЕНЬШЕ эталона, а не больше: читая два каталога вперемежку одним
+ *          потоком, вызывающий получал название второго на месте названия первого.
+ *          У систем POSIX оба названия остаются живыми - буфер там свой у каждого
+ *          каталога. Установлено замером владельца наречий POSIX на пяти системах
+ *          03.09.2026: название из первого каталога переживает пять чтений второго
+ *
+ * @note Розыска по описателю и замка тут нет вовсе: ячейка лежит в самом описателе, и
+ *       чтение записи остаётся тем же, чем было, - без обращений к общим складам.
+ *       Обход каталога стоит в горячем пути
+ *
+ */
+struct __awh_dir_t {
+	_WDIR * handle;      // Описатель широкого каталога
+	struct dirent entry; // Ячейка записи, принадлежащая этому каталогу
+};
+/**
  * @brief Функция открытия каталога по пути в записи UTF-8
  *
- * @note Описатель широкого каталога отдаётся под видом обычного намеренно: трогают
- *       его лишь посредники, а вызывающему он непрозрачен и у POSIX
+ * @note Собственный описатель отдаётся под видом обычного намеренно: трогают его лишь
+ *       посредники, а вызывающему он непрозрачен и у POSIX
  *
  * @param path путь к каталогу
  * @return     описатель открытого каталога
  *
  */
 static DIR * __awh_opendir__(const char * path) noexcept {
+	// Выполняем открытие широкого каталога
+	_WDIR * handle = ::_wopendir(::__awh_widen__(path).c_str());
+	// Если открыть каталог не удалось
+	if(handle == nullptr)
+		// Выводим отсутствие описателя каталога
+		return nullptr;
+	// Заводим собственный описатель каталога вместе с ячейкой его записи
+	__awh_dir_t * result = new (std::nothrow) __awh_dir_t{};
+	/**
+	 * Если места под описатель не нашлось
+	 *
+	 * @warning Открытый каталог закрывается: без этого отказ отведения памяти
+	 *          оставлял бы описатель системы навсегда занятым
+	 *
+	 */
+	if(result == nullptr){
+		// Выполняем закрытие открытого широкого каталога
+		::_wclosedir(handle);
+		// Выводим отсутствие описателя каталога
+		return nullptr;
+	}
+	// Запоминаем описатель широкого каталога
+	result->handle = handle;
 	// Выводим описатель открытого каталога
-	return reinterpret_cast <DIR *> (::_wopendir(::__awh_widen__(path).c_str()));
+	return reinterpret_cast <DIR *> (result);
 }
 /**
  * @brief Функция чтения очередной записи каталога
  *
- * @note Название записи переводится в UTF-8 в свою на поток ячейку: у POSIX
- *       обращение это отдаёт указатель на память, принадлежащую каталогу, и
- *       вызывающий вправе держать его до следующего чтения
+ * @note Название записи переводится в UTF-8 в ячейку САМОГО КАТАЛОГА: у POSIX
+ *       обращение это отдаёт указатель на память, принадлежащую потоку каталога, и
+ *       вызывающий вправе держать его до следующего чтения ЭТОГО ЖЕ каталога. Ячейка
+ *       на поток исполнения давала бы меньше - разбор при описателе `__awh_dir_t`
  *
  * @param dir описатель открытого каталога
  * @return    запись каталога
  *
  */
 static struct dirent * __awh_readdir__(DIR * dir) noexcept {
-	// Запись каталога, отдаваемая вызывающему
-	static thread_local struct dirent result{};
 	// Если описатель каталога не передан
 	if(dir == nullptr)
 		// Выводим отсутствие записи каталога
 		return nullptr;
+	// Получаем собственный описатель каталога
+	__awh_dir_t * owner = reinterpret_cast <__awh_dir_t *> (dir);
+	// Получаем ячейку записи, принадлежащую этому каталогу
+	struct dirent & result = owner->entry;
 	// Выполняем чтение очередной записи каталога
-	struct _wdirent * source = ::_wreaddir(reinterpret_cast <_WDIR *> (dir));
+	struct _wdirent * source = ::_wreaddir(owner->handle);
 	// Если записей каталога больше нет
 	if(source == nullptr)
 		// Выводим отсутствие записи каталога
@@ -1606,7 +1511,7 @@ static void __awh_rewinddir__(DIR * dir) noexcept {
 	// Если описатель каталога передан
 	if(dir != nullptr)
 		// Выполняем перевод чтения каталога к его началу
-		::_wrewinddir(reinterpret_cast <_WDIR *> (dir));
+		::_wrewinddir(reinterpret_cast <__awh_dir_t *> (dir)->handle);
 }
 /**
  * @brief Функция закрытия каталога
@@ -1616,8 +1521,18 @@ static void __awh_rewinddir__(DIR * dir) noexcept {
  *
  */
 static int32_t __awh_closedir__(DIR * dir) noexcept {
+	// Если описатель каталога не передан
+	if(dir == nullptr)
+		// Выводим признак отказа закрытия
+		return -1;
+	// Получаем собственный описатель каталога
+	__awh_dir_t * owner = reinterpret_cast <__awh_dir_t *> (dir);
+	// Выполняем закрытие широкого каталога
+	const int32_t result = ::_wclosedir(owner->handle);
+	// Выполняем освобождение собственного описателя каталога вместе с его ячейкой
+	delete owner;
 	// Выводим результат закрытия каталога
-	return ((dir != nullptr) ? ::_wclosedir(reinterpret_cast <_WDIR *> (dir)) : -1);
+	return result;
 }
 /**
  * @brief Функция удаления записи файловой системы по пути в записи UTF-8
@@ -1739,10 +1654,6 @@ static std::unordered_map <void *, __awh_mapping_t> __awh_mappings__;
 
 
 /**
- * @brief Замок таблицы подставных областей отображения
- *
- */
-/**
  * @brief Состояние блокировок, погашенное при заведении
  *
  * @details `LockState` заводится ВКЛЮЧЁННЫМ: он зовёт `onEnabledChanged(true)` в теле
@@ -1768,6 +1679,10 @@ struct muted_state_t : public awh::lock_state_t <MutexType> {
 		this->enabled = false;
 	}
 };
+/**
+ * @brief Замок таблицы подставных областей отображения
+ *
+ */
 static muted_state_t <std::shared_mutex> __awh_mappings_mutex__;
 
 
@@ -3028,8 +2943,13 @@ namespace io {
 		 *          с отсутствием метки ровно это и означают
 		 *
 		 * @note Класс обслуживания сюда, в отличие от эталонных движков, НЕ кладётся:
-		 *       у систем POSIX оба поля занимают один октет и уезжают одной настройкой
-		 *       IP_TOS, оттого там и хранятся вместе. MS Windows развела их порознь -
+		 *       у систем POSIX оба поля занимают один октет и уезжают одной НАСТРОЙКОЙ
+		 *       СОКЕТА - IP_TOS у IPv4 и IPV6_TCLASS у IPv6, - оттого там и хранятся
+		 *       вместе. Замерено владельцем наречий POSIX на шести системах 03.09.2026:
+		 *       запись 0x2A читается обратно как 0x2A всюду, ни одно ядро значения не
+		 *       меняет. Оговорка: сказанное относится к настройке СОКЕТА; податаграммная
+		 *       метка через управляющие данные единой у POSIX НЕ является - NetBSD не
+		 *       принимает её для IPv4 ни в каком виде. MS Windows развела их порознь -
 		 *       управляющие данные несут настройку IP_ECN, а она принимает только два
 		 *       разряда метки. Класс обслуживания задаётся здесь подсистемой качества
 		 *       обслуживания и настройкой сокета не выставляется вовсе, так что
@@ -5365,10 +5285,6 @@ namespace fs {
 };
 
 /**
- * @brief Инкапсулируем статические типы данных в пространство имён
- *
- */
-/**
  * @brief Предварительные объявления средств учёта подписок
  *
  * @note Закрытие дескрипторов встречается по файлу раньше, чем объявлено само
@@ -5387,6 +5303,14 @@ namespace fs {
  */
 static void __awh_drop_changes__(const net::socket_t sock) noexcept;
 
+/**
+ * @brief Инкапсулируем статические функции работы с ядром в пространство имён
+ *
+ * @note Прежде заголовок этот стоял выше и звал содержимое «типами данных», тогда как
+ *       пространство несёт одни функции; отделён же он был от самого пространства
+ *       предварительными объявлениями, вставшими между
+ *
+ */
 namespace kernel {
 	/**
 	 * Используем пространство имён AWH
@@ -7137,34 +7061,6 @@ namespace port {
 };
 
 /**
- * @brief Пространство имён учёта родного приёма данных
- *
- * @details Порт завершений принимает данные сам, в буфер, поданный вместе с
- *          операцией, и отдаёт их готовыми - завершением. Обращения к ядру со
- *          стороны потребителя при этом не происходит вовсе: принятое лежит в
- *          нашем буфере, и посредник приёма забирает его оттуда.
- *
- *          Устройство это - зеркало отправки (`::drain::`), и заведено оно по
- *          тому же доводу: слой выше движка работает по модели готовности, и
- *          принятое ему выдаётся обычным событием готовности к чтению, а данные
- *          он забирает своим же обращением приёма, не зная о разнице ничего
- *
- * @note Отличие от io_uring существенно и лежит в владении буфером. Там буфер
- *       выбирает ядро - из кольца, зарегистрированного заранее, и **в миг
- *       прихода данных**: поданный приём памяти под себя не занимает вовсе, и
- *       подать его дозволено хоть всем дескрипторам сразу. Порт завершений
- *       кольца буферов не имеет (у Windows оно есть лишь в составе RIO -
- *       средствах иных), и буфер обязан быть подан вместе с операцией. Оттого
- *       каждый заведённый приём занимает буфер на всё время ожидания данных, и
- *       число их приходится ограничивать
- *
- * @warning Буфер система пишет **после** возврата из обращения, и жить он обязан
- *          до прихода завершения. Отсюда владение буферами здесь, а не у
- *          потребителя: буфер потребителя живёт ровно до возврата из его же
- *          обращения приёма
- *
- */
-/**
  * @brief Пространство имён управления разрешением системного таймера
  *
  * @details Разрешение это у MS Windows общее на всю систему, а не своё у каждого
@@ -7292,6 +7188,34 @@ namespace resolution {
 	}
 };
 
+/**
+ * @brief Пространство имён учёта родного приёма данных
+ *
+ * @details Порт завершений принимает данные сам, в буфер, поданный вместе с
+ *          операцией, и отдаёт их готовыми - завершением. Обращения к ядру со
+ *          стороны потребителя при этом не происходит вовсе: принятое лежит в
+ *          нашем буфере, и посредник приёма забирает его оттуда.
+ *
+ *          Устройство это - зеркало отправки (`::drain::`), и заведено оно по
+ *          тому же доводу: слой выше движка работает по модели готовности, и
+ *          принятое ему выдаётся обычным событием готовности к чтению, а данные
+ *          он забирает своим же обращением приёма, не зная о разнице ничего
+ *
+ * @note Отличие от io_uring существенно и лежит в владении буфером. Там буфер
+ *       выбирает ядро - из кольца, зарегистрированного заранее, и **в миг
+ *       прихода данных**: поданный приём памяти под себя не занимает вовсе, и
+ *       подать его дозволено хоть всем дескрипторам сразу. Порт завершений
+ *       кольца буферов не имеет (у Windows оно есть лишь в составе RIO -
+ *       средствах иных), и буфер обязан быть подан вместе с операцией. Оттого
+ *       каждый заведённый приём занимает буфер на всё время ожидания данных, и
+ *       число их приходится ограничивать
+ *
+ * @warning Буфер система пишет **после** возврата из обращения, и жить он обязан
+ *          до прихода завершения. Отсюда владение буферами здесь, а не у
+ *          потребителя: буфер потребителя живёт ровно до возврата из его же
+ *          обращения приёма
+ *
+ */
 namespace pool {
 	/**
 	 * Используем пространство имён AWH
@@ -7764,12 +7688,37 @@ namespace pool {
 		record->offset += static_cast <uint32_t> (portion);
 		// Если адрес отправителя запрошен и системой выяснен
 		if((addr != nullptr) && record->addressed){
+			/**
+			 * Выдаём адрес отправителя в объёме, заявленном вызывающей стороной
+			 *
+			 * @details Договор здесь тот же, что у `recvfrom` системы: поле длины
+			 *          приходит ЁМКОСТЬЮ, а уходит объёмом выданного. Копировать по
+			 *          длине источника нельзя - у вызывающего под адрес вправе быть
+			 *          отведено меньше
+			 *
+			 * @warning Прежде объём копирования брался у ИСТОЧНИКА, а заявленная ёмкость
+			 *          не спрашивалась вовсе. Беды не выходило лишь потому, что все
+			 *          нынешние вызывающие подают под адрес `sockaddr_storage`: верность
+			 *          держалась на свойстве вызывающих, а не на договоре. Соседний путь
+			 *          того же приёма (`::pool::receiving`, разбор через устройство
+			 *          сообщения) ёмкость чтит и усечение объявляет - вопрос у них один,
+			 *          и ответ обязан быть один
+			 *
+			 * @note Усечения при нынешних вызывающих не случится: ёмкость им задаёт
+			 *       семейство своего же сокета, а адрес отправителя приходит того же
+			 *       семейства
+			 */
+			const size_t capacity = ((length != nullptr) ?
+			 static_cast <size_t> (* length) : static_cast <size_t> (record->length));
+			// Получаем объём выдачи, не выходящий за отведённое вызывающим
+			const size_t portion = ((static_cast <size_t> (record->length) < capacity) ?
+			 static_cast <size_t> (record->length) : capacity);
 			// Выполняем перенос адреса отправителя
-			::memcpy(addr, &record->addr, static_cast <size_t> (record->length));
+			::memcpy(addr, &record->addr, portion);
 			// Если длину адреса отправителя запросили
 			if(length != nullptr)
-				// Устанавливаем длину адреса отправителя
-				(* length) = static_cast <int32_t> (record->length);
+				// Устанавливаем длину выданного адреса отправителя
+				(* length) = static_cast <int32_t> (portion);
 		}
 		/**
 		 * Если принятое сохраняет границы сообщения - остаток отбрасываем
@@ -7975,16 +7924,6 @@ namespace pool {
 	}
 };
 
-/**
- * @brief Функция добычи принятого родным приёмом
- *
- * @param sock   дескриптор сокета
- * @param buffer буфер для приёма данных
- * @param size   размер буфера для приёма данных
- * @param result количество принятых октетов либо признак ошибки
- * @return       признак того, что приём обслужен родным путём
- *
- */
 /**
  * @brief Пространство имён вынесенной в чужой поток работы
  *
@@ -8372,6 +8311,16 @@ namespace fibers {
 	}
 };
 
+/**
+ * @brief Функция добычи принятого родным приёмом
+ *
+ * @param sock   дескриптор сокета
+ * @param buffer буфер для приёма данных
+ * @param size   размер буфера для приёма данных
+ * @param result количество принятых октетов либо признак ошибки
+ * @return       признак того, что приём обслужен родным путём
+ *
+ */
 static bool __awh_pool_receive__(const SOCKET sock, void * buffer, const size_t size, ssize_t & result, struct sockaddr * addr, int32_t * length) noexcept {
 	// Выводим признак обслуженности приёма родным путём
 	return ::pool::receive(static_cast <awh::net::socket_t> (sock), buffer, size, result, addr, length);
@@ -8387,6 +8336,18 @@ static bool __awh_pool_armed__(const SOCKET sock) noexcept {
 	// Выводим признак заведённого родного приёма
 	return ::pool::armed(static_cast <awh::net::socket_t> (sock));
 }
+/**
+ * @brief Функция добычи принятого родным приёмом со служебными метаданными
+ *
+ * @details Тело её лежит здесь, а объявлена она наперёд, у самых посредников приёма:
+ *          пул буферов описан много ниже, а спрашивают его оттуда
+ *
+ * @param sock   дескриптор сокета
+ * @param msg    описание принимаемого сообщения
+ * @param result количество принятых октетов либо признак ошибки
+ * @return       признак того, что приём обслужен родным путём
+ *
+ */
 static bool __awh_pool_recvmsg__(const SOCKET sock, struct msghdr * msg, ssize_t & result) noexcept {
 	// Выводим признак обслуженности приёма сообщения родным путём
 	return ::pool::receiving(static_cast <awh::net::socket_t> (sock), msg, result);
@@ -9005,7 +8966,7 @@ namespace post {
 		// Если приём ведётся со служебными метаданными
 		if(metadata){
 			// Получаем расширенный вызов приёма сообщения
-			LPFN_WSARECVMSG receive = ::__awh_wsa_recvmsg__(static_cast <SOCKET> (sock));
+			LPFN_WSARECVMSG receive = ::awh::win::message::extended(sock);
 			// Получаем буфер служебных метаданных
 			uint8_t * control = ::pool::control(bid);
 			// Если расширенный вызов либо буфер служебных метаданных не добыты
@@ -13254,10 +13215,6 @@ namespace local {
 };
 
 /**
- * @brief Инкапсулируем статические функции в пространство имён событий
- *
- */
-/**
  * @brief Функция снятия записей изменений по дескриптору
  *
  * @details Записи эти ядру подаются не сразу, а началом ожидания, и закрытие своего
@@ -13292,6 +13249,10 @@ static void __awh_drop_changes__(const net::socket_t sock) noexcept {
 	);
 }
 
+/**
+ * @brief Инкапсулируем статические функции в пространство имён событий
+ *
+ */
 namespace events {
 	/**
 	 * Используем пространство имён AWH
@@ -20595,11 +20556,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 													/**
 													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -20637,7 +20598,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -20647,7 +20608,7 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -20660,7 +20621,7 @@ namespace io {
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -20678,7 +20639,7 @@ namespace io {
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
-																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
 																client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
@@ -20858,11 +20819,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												/**
 												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -20900,7 +20861,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -20910,7 +20871,7 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -20923,7 +20884,7 @@ namespace io {
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -20941,7 +20902,7 @@ namespace io {
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
-															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
 															client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;
@@ -21089,11 +21050,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 													/**
 													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -21131,7 +21092,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -21141,7 +21102,7 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -21154,7 +21115,7 @@ namespace io {
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -21172,7 +21133,7 @@ namespace io {
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
-																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
 																client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
@@ -21365,11 +21326,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												/**
 												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -21407,7 +21368,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -21417,7 +21378,7 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -21430,7 +21391,7 @@ namespace io {
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -21448,7 +21409,7 @@ namespace io {
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
-															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
 															client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;
@@ -22166,11 +22127,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 													/**
 													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22208,7 +22169,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -22218,7 +22179,7 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22231,7 +22192,7 @@ namespace io {
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 															/**
 															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22249,7 +22210,7 @@ namespace io {
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
-																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
 																server->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
@@ -22473,11 +22434,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == AWH_CMSG_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 												/**
 												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22515,7 +22476,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -22525,7 +22486,7 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22538,7 +22499,7 @@ namespace io {
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (::awh::win::message::data(cmsg)));
 														/**
 														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
 														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
@@ -22556,7 +22517,7 @@ namespace io {
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
-															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (::awh::win::message::data(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
 															server->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;

@@ -1069,6 +1069,10 @@ namespace awh {
 					 *       розыск по пути обязан идти у них по одним правилам, а прежде он
 					 *       жил внутри одной лишь прививки
 					 *
+					 * @details Пустой путь ведёт к корневому узлу разметки - тому самому, какой
+					 * заводит и заменяет прививка пустым путём. Корень же арены узлом разметки не
+					 * является вовсе и содержимое текста лишь вмещает: путём к нему не ведут
+					 *
 					 * @param path разыскиваемый путь
 					 * @return     индекс разысканного узла, `INVALID_NODE` - узел не разыскан
 					 *
@@ -1110,8 +1114,14 @@ namespace awh {
 					 */
 					const log_t * _log = nullptr;
 				private:
-					// Положение обнаруженной ошибки в исходном тексте
-					location_t _errorLocation;
+					/**
+					 * Положение обнаруженной ошибки в исходном тексте
+					 *
+					 * @note Изменчиво оно намеренно: запись дерева константна, а сброс положения
+					 *       прежней работы обязателен и ей - код от новой работы складывался бы
+					 *       со старым местом в донесение стройное, но ложное
+					 */
+					mutable location_t _errorLocation;
 				private:
 					/**
 					 * \~russian
@@ -1591,7 +1601,20 @@ namespace awh {
 					 *
 					 * @details Путь записывается частями, разделёнными косой чертой, ровно как
 					 * у метода `at` владеющего значения: `/Envelope/Body/0`. Прививаемое место
-					 * обязано существовать - прививка заменяет поддерево, а не заводит его
+					 * обязано существовать - прививка заменяет поддерево, а не заводит его:
+					 * заведение отсутствующего принадлежит владеющему значению, а не дереву
+					 *
+					 * @details Пустой путь прививает значение корневым узлом разметки, дерево
+					 * притом заводя с нуля, буде его ещё нет. Ходом этим дерево и строится,
+					 * минуя разбор текста: собирается владеющее значение со всем содержимым
+					 * своим, а прививка ставит его корнем. Документ JSON тем же пустым
+					 * указателем заводит корень своего дерева
+					 *
+					 * @note Корнем дерева разметки становится ОДИН ЛИШЬ УЗЕЛ РАЗМЕТКИ: XML 1.0
+					 * требует у документа ровно один корневой элемент, и текст, примечание либо
+					 * указание обработчику корнем ему не бывать - прививка их отвергает кодом
+					 * `MISSING_ROOT`. Расхождение это с документом JSON, где корнем становится
+					 * значение любого вида, идёт от стандарта, а не от произвола
 					 *
 					 * @note Арена дерева лишь дописывается: узлы заменённого поддерева остаются
 					 * в ней недостижимыми и место своё возвращают только с очисткою дерева либо
@@ -1623,7 +1646,18 @@ namespace awh {
 					 * the place of the specified node with all of its content
 					 * @details The path is written by the parts separated by a slash, exactly as
 					 * for the method `at` of an owning value: `/Envelope/Body/0`. The place being grafted
-					 * must exist — the grafting replaces a subtree rather than creates it
+					 * must exist — the grafting replaces a subtree rather than creates it: the creation
+					 * of the missing belongs to an owning value rather than to the tree
+					 * @details An empty path grafts the value as the root node of the markup, creating
+					 * the tree from scratch if there is none yet. It is by this that a tree is built
+					 * apart from the parsing of a text: an owning value is assembled with all of its
+					 * content, and the grafting sets it as the root. A JSON document creates the root
+					 * of its own tree by that same empty pointer
+					 * @note ONLY A MARKUP NODE becomes the root of a markup tree: XML 1.0 requires
+					 * exactly one root element of a document, and a text, a comment or a processing
+					 * instruction is never to be its root — the grafting refuses them with the code
+					 * `MISSING_ROOT`. This divergence from a JSON document, where a value of any kind
+					 * becomes the root, comes from the standard rather than from an arbitrary choice
 					 * @note The arena of the tree is only appended to: the nodes of the replaced subtree remain
 					 * in it unreachable and give their place back only with the clearing of the tree or
 					 * with a new parsing. This arrangement is deliberate — a renumbering of the nodes
@@ -1658,11 +1692,22 @@ namespace awh {
 					 *       своим у каждого: у разметки это путь по именам узлов и номерам
 					 *
 					 * @warning Снос корня отвергается: дерево без корня разметкой не является
-					 *          вовсе, и опустошается оно ходом `clear()`
+					 *          вовсе, и опустошается оно ходом `clear()`. Довод этот от СТАНДАРТА,
+					 *          а не от единообразия: XML 1.0 §2.1 велит документу нести ровно один
+					 *          корневой элемент. У кодеков, чей стандарт пустой документ допускает,
+					 *          снос корня вправе быть дозволен, и приводить их к нашему укладу
+					 *          НЕ НАДО: при столкновении согласия API со стандартом старше
+					 *          стандарт (решение владельца от 03.09.2026)
 					 *
 					 * @warning Арена дерева лишь дописывается: узлы снесённого поддерева остаются
 					 *          в ней недостижимыми и место своё возвращают только с очисткою
 					 *          дерева либо с новым разбором - ровно как при правке
+					 *
+					 * @details Пустой путь ведёт к корневому узлу разметки, а снос его отвергается:
+					 * XML 1.0 требует у документа ровно один корневой элемент, и дерево, корня
+					 * лишённое, записи не подлежит вовсе. Заменить корень целиком дозволено
+					 * прививкой пустым путём, а снести его - нет. Документ JSON пустой указатель
+					 * сносом отвергает тем же порядком
 					 *
 					 * @param path путь к сносимому узлу
 					 * @return     признак успешности сноса
@@ -1685,6 +1730,9 @@ namespace awh {
 					 *
 					 * @note Сброс от сноса тем и отличается, что узел сохраняется: пустой узел
 					 *       разметки есть узел законный, и отсутствию его он не равен
+					 *
+					 * @details Пустой путь ведёт к корневому узлу разметки: сброс им опустошает
+					 * содержимое корня, сам корень оставляя на месте
 					 *
 					 * @param path путь к сбрасываемому узлу
 					 * @return     признак успешности сброса

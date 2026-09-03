@@ -960,6 +960,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
         "${SOURCE_FILES}"
+        "${CMAKE_SOURCE_DIR}/src/net/backend/win/message.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/eth.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/iocp.cpp"
         "${CMAKE_SOURCE_DIR}/src/net/backend/win/socket.cpp"

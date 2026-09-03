@@ -119,12 +119,23 @@ namespace {
 		std::array <uint8_t, 16> address; // Адрес сетевого устройства
 		std::array <uint8_t, 6> mac;      // Аппаратный адрес устройства
 		/**
+		 * @brief Номер устройства зоны адреса IPv6
+		 *
+		 * @note Хранится наравне с самим адресом: адрес канальной связи без зоны
+		 *       непригоден, а запомненным он оказывается сплошь и рядом - на машине
+		 *       без пути IPv6 наружу путём служит туннель, и годного адреса поиск
+		 *       среди устройств не находит вовсе. Без этого поля первый вызов отдавал
+		 *       адрес с зоной, а повторный в те же пять секунд - тот же адрес БЕЗ неё:
+		 *       память об адресе обязана быть прозрачной, а не менять ответ
+		 *
+		 */
+		uint32_t zone;
+		/**
 		 * @brief Конструктор
 		 *
 		 */
-		outward_t() noexcept : filled(false), deadline(0), address{}, mac{} {}
+		outward_t() noexcept : filled(false), deadline(0), address{}, mac{}, zone(0) {}
 	};
-	// Замок, оберегающий запомненные сведения
 	/**
 	 * @brief Состояние блокировок, погашенное при заведении
 	 *
@@ -151,7 +162,8 @@ namespace {
 			this->enabled = false;
 		}
 	};
-		static muted_state_t <std::shared_mutex> __awh_outward_mutex__;
+	// Замок, оберегающий запомненные сведения
+	static muted_state_t <std::shared_mutex> __awh_outward_mutex__;
 	/**
 	 * @brief Признак безопасной работы с потоками
 	 *
@@ -333,7 +345,12 @@ namespace {
 			// Восстанавливаем адрес сетевого устройства
 			::memcpy(&awh_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->address, &outward.address[0], 4);
 		// Если адрес является адресом IPv6
-		else ::memcpy(&awh_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->address[0], &outward.address[0], 16);
+		else {
+			// Восстанавливаем адрес сетевого устройства
+			::memcpy(&awh_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->address[0], &outward.address[0], 16);
+			// Восстанавливаем номер устройства зоны адреса
+			awh_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->zone = outward.zone;
+		}
 		// Если аппаратный адрес задан
 		if(source.mac != nullptr)
 			// Восстанавливаем аппаратный адрес устройства
@@ -363,7 +380,12 @@ namespace {
 			// Запоминаем адрес сетевого устройства
 			::memcpy(&outward.address[0], &awh_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->address, 4);
 		// Если адрес является адресом IPv6
-		else ::memcpy(&outward.address[0], &awh_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->address[0], 16);
+		else {
+			// Запоминаем адрес сетевого устройства
+			::memcpy(&outward.address[0], &awh_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->address[0], 16);
+			// Запоминаем номер устройства зоны адреса
+			outward.zone = awh_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->zone;
+		}
 		// Если аппаратный адрес задан
 		if(source.mac != nullptr)
 			// Запоминаем аппаратный адрес устройства
@@ -591,6 +613,38 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				return;
 		} break;
 	}
+	/**
+	 * Длина префикса поданной сети переносится в источник исправленной
+	 *
+	 * @details Договор этот общий на все движки и закреплён проверками
+	 *          `AddressFillSourceNetPrefixClampIPv4Test` и `...IPv6Test`: длина, шире
+	 *          адреса, приходит наружу ограниченной разрядностью самого адреса. Эталон
+	 *          переносит её той же строкой (`bsd/addr.cpp:890`), и перенос стоит ДО
+	 *          перебора устройств: договор о длине держится и тогда, когда устройства
+	 *          с адресом в поданной сети на машине нет вовсе
+	 *
+	 * @warning Прежде слой этот длину не переносил ВОВСЕ, и обе проверки на MS Windows
+	 *          проходили впустую: конструкторы `addr_net_ipv4_t` и `addr_net_ipv6_t`
+	 *          задают длину умолчанием ровно 32 и 128 (`net.cpp:90`, `net.cpp:97`) - то
+	 *          есть ровно то, чего проверки и требуют. Утверждали они умолчание
+	 *          конструктора, а не поведение движка, и молчали бы при любом ответе слоя
+	 *
+	 * @note Виды поданной сети и источника здесь уже сличены выше, и разойтись они не
+	 *       могут - оттого длина кладётся по виду поданной сети без повторной проверки
+	 *
+	 */
+	switch(net->size){
+		// Для адреса IPv4
+		case 4:
+			// Переносим длину префикса сети в источник, ограничив её разрядностью адреса
+			awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->prefix = (awh_cast <const net::addr_net_ipv4_t *> (net)->prefix > 32 ? static_cast <uint8_t> (32) : awh_cast <const net::addr_net_ipv4_t *> (net)->prefix);
+		break;
+		// Для адреса IPv6
+		case 16:
+			// Переносим длину префикса сети в источник, ограничив её разрядностью адреса
+			awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->prefix = (awh_cast <const net::addr_net_ipv6_t *> (net)->prefix > 128 ? static_cast <uint8_t> (128) : awh_cast <const net::addr_net_ipv6_t *> (net)->prefix);
+		break;
+	}
 	// Буфер под перечень сетевых устройств
 	std::vector <uint8_t> buffer;
 	// Выполняем опрос перечня сетевых устройств
@@ -657,8 +711,23 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 			}
 			// Если проверяется принадлежность адреса IPv6
 			else if((net->size == 16) && (address->Address.lpSockaddr->sa_family == AF_INET6)){
-				// Получаем длину префикса заданной сети
-				const uint8_t prefix = awh_cast <const net::addr_net_ipv6_t *> (net)->prefix;
+				/**
+				 * Получаем длину префикса заданной сети, ограниченную сверху
+				 *
+				 * @warning Верхний край проверяется наравне с соседней ветвью IPv4: длина
+				 *          префикса приходит полем октета, и значение свыше 128 уводило
+				 *          сличение ЗА КОНЕЦ обоих адресов - перебор идёт по разрядам
+				 *          префикса, а взятие байта `value[i / 8]` доходило до тридцать
+				 *          первого при отведённых шестнадцати. Довод приходит от
+				 *          потребителя, ограничивать его выше по течению нечем
+				 *
+				 * @note Ограничение ставится местной переменной, а не правкой самого
+				 *       довода: эталон (`bsd/addr.cpp:949`) переписывает поле вызывающего
+				 *       через `const_cast`, а помеченный `const` довод исправлять - не
+				 *       дело слоя, у какого о нём спрашивают
+				 *
+				 */
+				const uint8_t prefix = (awh_cast <const net::addr_net_ipv6_t *> (net)->prefix > 128 ? static_cast <uint8_t> (128) : awh_cast <const net::addr_net_ipv6_t *> (net)->prefix);
 				// Получаем адрес устройства
 				const uint8_t * value = reinterpret_cast <const uint8_t *> (&reinterpret_cast <struct sockaddr_in6 *> (address->Address.lpSockaddr)->sin6_addr);
 				// Получаем адрес заданной сети

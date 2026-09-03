@@ -39,6 +39,7 @@
  */
 #include <string>
 #include <vector>
+#include <type_traits>
 #include <cstdint>
 #include <string_view>
 #include <unordered_map>
@@ -212,6 +213,16 @@ namespace awh {
 			 *  @endcode
 			 *
 			 */
+			/**
+			 * \~russian
+			 * @brief Предобъявление владеющего значения настроек
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value of the settings
+			 *
+			 * \~
+			 */
+			class Value;
 			typedef class __AWH_SHARED_EXPORT__ Document {
 				private:
 					/**
@@ -1414,6 +1425,63 @@ namespace awh {
 					bool set(const string_view key, const string_view value, const string_view section = "", const string_view subsection = "") noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод постановки владеющего значения по пути
+					 *
+					 * @details Ход этот заведён ради общего вида кодеков рамки: правка дерева
+					 *          зовётся у одних ходом значения, у других ходом документа, и
+					 *          потребитель, два кодека рядом читающий, разыскивал ход не там,
+					 *          где тот лежал. Путь берётся строкою по описанию RFC 6901
+					 *
+					 * @note Постановка ведётся ЧЕРЕЗ КОПИЮ дерева: настройки снимаются
+					 *       владеющим значением, правятся по пути и переносятся обратно.
+					 *       Правка не есть быстрый путь, а целость её важнее цены копии -
+					 *       отказ посреди переноса оставил бы дерево с частью правки
+					 *
+					 * @param path  путь постановки значения
+					 * @param value ставимое владеющее значение
+					 * @return      признак успешной постановки значения
+					 *
+					 * \~english
+					 * @brief Method of setting an owning value by a path
+					 * @param path  path of the setting of the value
+					 * @param value owning value being set
+					 * @return      sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					template <class V>
+					typename ::std::enable_if <::std::is_same <typename ::std::decay <V>::type, ::awh::codec::ini::Value>::value, bool>::type
+					set(const string & path, const V & value) noexcept {
+						// Выводим результат переноса владеющего значения в дерево настроек
+						return this->graft(path, value);
+					}
+					/**
+					 * \~russian
+					 * @brief Метод постановки владеющего значения по пути
+					 *
+					 * @details Тело посредника `set()`, шаблоном от него отделённое. Отделение
+					 *          обязательно: постановка по ключу принимает довод строкою, и
+					 *          запись `set("x", "1")` подошла бы РАЗОМ к ней и к постановке
+					 *          владеющего значения - собиратель отвечал бы отказом по
+					 *          двусмысленности. Шаблон, точным видом значения огороженный,
+					 *          строковых доводов не принимает вовсе, и двусмысленность тем
+					 *          снимается, ничего у потребителя не ломая
+					 *
+					 * @param path  путь постановки значения
+					 * @param value ставимое владеющее значение
+					 * @return      признак успешной постановки значения
+					 *
+					 * \~english
+					 * @brief Method of setting an owning value by a path
+					 * @param path  path of the setting of the value
+					 * @param value owning value being set
+					 * @return      sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool graft(const string & path, const ::awh::codec::ini::Value & value) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод долива значения к перечню значений свойства
 					 *
 					 * @details Установка значения правит объявление, уже имеющееся в
@@ -1576,6 +1644,25 @@ namespace awh {
 					 * the text has been read is the one it is written by as well. Another dialect can be given
 					 * by passing the settings of the writing explicitly
 					 * @return assembled settings text
+					 *
+					 * \~
+					 */
+					string dump() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения текста настроек
+					 *
+					 * @deprecated Имя это УСТАРЕЛО и оставлено посредником ради потребителей,
+					 * написанных прежде согласования кодеков рамки между собой. Зови `dump()`:
+					 * им сборка текста зовётся у всех семи кодеков
+					 *
+					 * @return собранный текст настроек
+					 *
+					 * \~english
+					 * @brief Method of getting the text of the settings
+					 * @deprecated This name is DEPRECATED and is left as an intermediary for the sake of the consumers
+					 * written before the harmonization of the codecs of the framework with one another. Call `dump()`
+					 * @return assembled text of the settings
 					 *
 					 * \~
 					 */

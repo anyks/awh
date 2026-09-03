@@ -982,6 +982,90 @@ namespace awh {
 					bool value(const content_t & value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод записи логического значения
+					 *
+					 * @details Посредник к методу boolean(), одним именем со прочими видами
+					 *          зовущийся: потребитель, вид значения по месту разбирающий,
+					 *          обязан был бы иначе знать про запись TOML то, чего знать не
+					 *          должен, - про систему счисления числа да про ограду строки
+					 *
+					 * @param value записываемое логическое значение
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of writing a boolean value
+					 * @param value value being written
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool value(const bool value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи целого числа со знаком
+					 *
+					 * @param value записываемое целое число со знаком
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of writing a signed integer
+					 * @param value value being written
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool value(const int64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи целого числа без знака
+					 *
+					 * @details Число, предел знакового превысившее, записью отвергается:
+					 *          описание TOML целых без знака не несёт вовсе, и запись такого
+					 *          числа со знаком переменила бы его молча
+					 *
+					 * @param value записываемое целое число без знака
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of writing an unsigned integer
+					 * @param value value being written
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool value(const uint64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи вещественного числа
+					 *
+					 * @param value записываемое вещественное число
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of writing a real number
+					 * @param value value being written
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool value(const double value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи строкового значения
+					 *
+					 * @param value записываемое строковое значение
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief Method of writing a string value
+					 * @param value value being written
+					 * @return      result of performing the operation
+					 *
+					 * \~
+					 */
+					bool value(const string_view value) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи строкового значения
 					 *
 					 * @param text    записываемое строковое значение

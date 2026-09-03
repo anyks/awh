@@ -642,8 +642,13 @@ TEST(CodecAbcDocument, SegmentedValue) {
 	/**
 	 * Выполняем проверку количества узлов дерева: отображение, имя поля и значение,
 	 * собранное кусками, - три узла, а не четыре и не пять
+	 *
+	 * @note Мерою здесь `nodes()`, а не `size()`: с 03.09.2026 `size()` выдаёт ДЕТЕЙ
+	 *       КОРНЯ, а стережётся тут именно то, что куски НЕ порождают лишних узлов арены
 	 */
-	ASSERT_EQ(document.size(), 3ul);
+	ASSERT_EQ(document.nodes(), 3ul);
+	// Корень же несёт ровно одну пару: имя поля со значением
+	ASSERT_EQ(document.size(), 1ul);
 	// Выполняем получение корня дерева документа
 	const abc::document_t::value_t root = document.root();
 	// Выполняем проверку вида корня дерева
@@ -1678,7 +1683,9 @@ TEST(CodecAbcDocument, ContractAgreesWithTheOtherCodecs){
 	// Разобранное дерево пустым быть не должно
 	ASSERT_FALSE(document.empty());
 	// Узлов у дерева обязано выйти четыре: массив и три значения его
-	ASSERT_EQ(document.size(), static_cast <size_t> (4));
+	ASSERT_EQ(document.nodes(), static_cast <size_t> (4));
+	// Значений же у корня три: сам массив корнем и является
+	ASSERT_EQ(document.size(), static_cast <size_t> (3));
 	// Собранная деревом запись обязана совпасть с исходной октет в октет
 	ASSERT_EQ(document.dump(), record);
 	// Настройки сборки записи
@@ -1861,10 +1868,13 @@ TEST(CodecAbcDocument, StoredCountsAgreeWithTheWalk){
 	/**
 	 * Счёт узлов, деревом хранимый, обязан отвечать насчитанному обходом
 	 *
-	 * @note Именно этот сторож и отсутствовал: `size()` отдаёт длину арены, а обход
+	 * @note Именно этот сторож и отсутствовал: счёт узлов арены отдаётся полем, а обход
 	 *       идёт размахами, и разойтись они могут молча
+	 *
+	 * @note Мерою здесь `nodes()`, а не `size()`: с 03.09.2026 `size()` выдаёт детей
+	 *       корня, а сличается тут длина АРЕНЫ с числом узлов, пройденных обходом
 	 */
-	ASSERT_EQ(walked, document.size());
+	ASSERT_EQ(walked, document.nodes());
 	// Корень обязан нести ровно две пары
 	ASSERT_EQ(document.root().size(), static_cast <size_t> (2));
 }

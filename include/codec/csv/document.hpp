@@ -726,6 +726,13 @@ namespace awh {
 					 * молчалива - вид не падает, он начинает читать чужое содержимое, - и
 					 * содержимое, нужное дольше, следует копировать
 					 *
+					 * @warning Поле ПУСТОЕ от поля ОТСУТСТВУЮЩЕГО выдача не отличает: и то и
+					 * другое отвечает пустотою. Различаются они ходом `size(row)`, дающим число
+					 * полей записи, и иного пути у потребителя нет. Двусмысленность эта у
+					 * таблицы законна - пустое поле есть законное значение стандарта, а не
+					 * отсутствие его, - но полагаться на пустоту как на признак отсутствия
+					 * нельзя, и договор этот закреплён проверкой
+					 *
 					 * @param row номер записи, считая с нуля
 					 * @param col номер столбца, считая с нуля
 					 * @return    содержимое поля, пустое при его отсутствии
@@ -736,6 +743,8 @@ namespace awh {
 					 * point into the common storage of the characters, and it MOVES at a growth. That trouble is
 					 * silent — the view does not fall, it begins to read a foreign content — and
 					 * the content needed for longer should be copied
+					 * @warning An EMPTY field is not distinguished from an ABSENT one: both answer with emptiness.
+					 * They are distinguished by the method `size(row)` giving the number of the fields of the record
 					 * @param row number of the record, counting from zero
 					 * @param col number of the column, counting from zero
 					 * @return    content of the field, empty in its absence

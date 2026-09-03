@@ -1584,7 +1584,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Value(const string & value, const style_t style = style_t::PLAIN) noexcept;
+					explicit Value(const string & value, const style_t style = style_t::PLAIN) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор строкового значения

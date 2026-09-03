@@ -1013,141 +1013,172 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что UDS-адрес установлен и правильный
 			ASSERT_EQ(::uds("awh.sock"), this->_io->getAddress(eid8, awh::event::address_t::UDS));
 		}
+	}
+}
+
+/**
+ * @brief Тест единого набора свойств событий по IPv6
+ *
+ * @par Намеренные решения
+ *
+ * Проверка эта отделена от IoSuiteTest НАМЕРЕННО, и вот отчего. Прежде блок
+ * IPv6 стоял внутри неё, и его GTEST_SKIP помечал пропущенной ВСЮ проверку -
+ * хотя части IPv4 и UDS к тому мгновению уже отрабатывали полностью. В отчёте
+ * четырёх систем из шести стояло «IoSuiteTest SKIPPED», и читатель заключал,
+ * что не проверено НИЧЕГО, тогда как не проверена была лишь треть
+ *
+ * @note Довод пропуска верен и оставлен дословно: там, где маршрута IPv6 нет,
+ *       выводить название устройства не из чего. Разведены не доводы, а охваты:
+ *       пропуск обязан касаться ровно того, что он измеряет
+ *
+ */
+TEST_F(IoFixture, IoSuiteIPv6Test){
+	// Устанавливаем логгер
+	this->_fmk->setLogger(this->_log.get());
+	// Создаём объект работы с Ethernet
+	awh::eth_t eth(this->_fmk.get(), this->_log.get());
+	// Временный объект для извлечения сетевого интерфейса
+	awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+	// Выполняем извлечение сетевых параметров
+	eth.addr.fillSource(source);
+	// Проверяем, что название сетевого интерфейса получено
+	ASSERT_FALSE(source.iface.empty());
+	// Устанавливаем тип таймера для событий сетевого движка
+	this->_io->setInternalTimer(awh::event::timer_t::DIFFICULT);
+	// Если сетевой интерфейс не принадлежит к VPN
+	if(::memcmp("ut", source.iface.c_str(), 2) != 0){
+		// MAC-адрес и IP-адрес сетевого интерфейса
+		std::string mac = "", ip = "";
 		/**
-		 * IPv6 событие
+		 * @par Намеренные решения
+		 *
+		 * Проверка ведётся лишь на машине, у которой сеть IPv6 действительно
+		 * настроена. Название устройства события выводится из маршрута к
+		 * источнику, и там, где маршрута IPv6 по умолчанию нет вовсе, выводить
+		 * его не из чего: пустой ответ - правда о такой машине, а не дефект.
+		 * Признаком служит опыт - попытка определить источник IPv6, а не
+		 * наличие адреса на устройстве: связный адрес есть и у машины без
+		 * выхода наружу, а маршрута к ней нет
+		 *
 		 */
-		{
-			/**
-			 * @par Намеренные решения
-			 *
-			 * Проверка ведётся лишь на машине, у которой сеть IPv6 действительно
-			 * настроена. Название устройства события выводится из маршрута к
-			 * источнику, и там, где маршрута IPv6 по умолчанию нет вовсе, выводить
-			 * его не из чего: пустой ответ - правда о такой машине, а не дефект.
-			 * Признаком служит опыт - попытка определить источник IPv6, а не
-			 * наличие адреса на устройстве: связный адрес есть и у машины без
-			 * выхода наружу, а маршрута к ней нет
-			 *
-			 */
-			// Атрибуты источника IPv6 для проверки настроенности сети
-			awh::net::src_t probe(std::make_unique <awh::net::addr_net_ipv6_t> ());
-			// Создаём объект работы с Ethernet для проверки настроенности сети
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
-			// Выполняем извлечение сетевых параметров источника IPv6
-			eth.addr.fillSource(probe);
-			// Если сеть IPv6 на машине не настроена, проверять нечего
-			if(probe.iface.empty())
-				// Пропускаем проверку событий IPv6
-				GTEST_SKIP() << "IPv6 network is not configured on this machine";
-			// Добавляем новое событие клиента TCP
-			awh::event::id_t eid1 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-			// Проверяем, что идентификатор события больше нуля
-			ASSERT_GT(eid1, 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setTargetPort(eid1, 8080));
-			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getTargetPort(eid1));
-			// Устанавливаем сетевой интерфейс события
-			ASSERT_TRUE(this->_io->setIface(eid1, source.iface));
-			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->getIface(eid1).empty());
-			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->getIface(eid1));
-			// Извлекаем IP-адрес сетевого интерфейса
-			ip = this->_io->getAddress(eid1, awh::event::address_t::IPV6);
-			// Извлекаем MAC-адрес сетевого интерфейса
-			mac = this->_io->getAddress(eid1, awh::event::address_t::MAC);
-			// Проверяем, что IP-адрес получен
-			ASSERT_FALSE(ip.empty());
-			// Проверяем, что MAC-адрес получен
-			ASSERT_FALSE(mac.empty());
-			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->getTarget(eid1).empty());
-			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->getAddress(eid1, awh::event::address_t::UDS).empty());
+		// Атрибуты источника IPv6 для проверки настроенности сети
+		awh::net::src_t probe(std::make_unique <awh::net::addr_net_ipv6_t> ());
+		// Создаём объект работы с Ethernet для проверки настроенности сети
+		awh::eth_t eth(this->_fmk.get(), this->_log.get());
+		// Выполняем извлечение сетевых параметров источника IPv6
+		eth.addr.fillSource(probe);
+		// Если сеть IPv6 на машине не настроена, проверять нечего
+		if(probe.iface.empty())
+			// Пропускаем проверку событий IPv6
+			GTEST_SKIP() << "IPv6 network is not configured on this machine";
+		// Добавляем новое событие клиента TCP
+		awh::event::id_t eid1 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(eid1, 0);
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setTargetPort(eid1, 8080));
+		// Проверяем что порт получен
+		ASSERT_EQ(8080, this->_io->getTargetPort(eid1));
+		// Устанавливаем сетевой интерфейс события
+		ASSERT_TRUE(this->_io->setIface(eid1, source.iface));
+		// Проверяем, что название сетевого интерфейса получено
+		ASSERT_FALSE(this->_io->getIface(eid1).empty());
+		// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
+		ASSERT_EQ(source.iface, this->_io->getIface(eid1));
+		// Извлекаем IP-адрес сетевого интерфейса
+		ip = this->_io->getAddress(eid1, awh::event::address_t::IPV6);
+		// Извлекаем MAC-адрес сетевого интерфейса
+		mac = this->_io->getAddress(eid1, awh::event::address_t::MAC);
+		// Проверяем, что IP-адрес получен
+		ASSERT_FALSE(ip.empty());
+		// Проверяем, что MAC-адрес получен
+		ASSERT_FALSE(mac.empty());
+		// Проверяем, что адрес назначения получен
+		ASSERT_FALSE(this->_io->getTarget(eid1).empty());
+		// Проверяем, что UDS-адрес не установлен
+		ASSERT_TRUE(this->_io->getAddress(eid1, awh::event::address_t::UDS).empty());
 
-			// Добавляем новое событие клиента TCP
-			awh::event::id_t eid2 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-			// Проверяем, что идентификатор события больше нуля
-			ASSERT_GT(eid2, 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setTargetPort(eid2, 8080));
-			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getTargetPort(eid2));
-			// Устанавливаем MAC-адрес события
-			ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
-			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->getIface(eid2).empty());
-			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->getIface(eid2));
-			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->getAddress(eid2, awh::event::address_t::IPV6));
-			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->getAddress(eid2, awh::event::address_t::MAC));
-			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->getTarget(eid2).empty());
-			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->getAddress(eid2, awh::event::address_t::UDS).empty());
+		// Добавляем новое событие клиента TCP
+		awh::event::id_t eid2 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(eid2, 0);
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setTargetPort(eid2, 8080));
+		// Проверяем что порт получен
+		ASSERT_EQ(8080, this->_io->getTargetPort(eid2));
+		// Устанавливаем MAC-адрес события
+		ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
+		// Проверяем, что название сетевого интерфейса получено
+		ASSERT_FALSE(this->_io->getIface(eid2).empty());
+		// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
+		ASSERT_EQ(source.iface, this->_io->getIface(eid2));
+		// Проверяем, что IP-адрес совпадает с извлечённым ранее
+		ASSERT_EQ(ip, this->_io->getAddress(eid2, awh::event::address_t::IPV6));
+		// Проверяем, что MAC-адрес совпадает с извлечённым ранее
+		ASSERT_EQ(mac, this->_io->getAddress(eid2, awh::event::address_t::MAC));
+		// Проверяем, что адрес назначения получен
+		ASSERT_FALSE(this->_io->getTarget(eid2).empty());
+		// Проверяем, что UDS-адрес не установлен
+		ASSERT_TRUE(this->_io->getAddress(eid2, awh::event::address_t::UDS).empty());
 
-			// Добавляем новое событие клиента TCP
-			awh::event::id_t eid3 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-			// Проверяем, что идентификатор события больше нуля
-			ASSERT_GT(eid3, 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setTargetPort(eid3, 8080));
-			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getTargetPort(eid3));
-			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV6, ip));
-			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->getIface(eid3).empty());
-			// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
-			ASSERT_EQ(source.iface, this->_io->getIface(eid3));
-			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(ip, this->_io->getAddress(eid3, awh::event::address_t::IPV6));
-			// Проверяем, что MAC-адрес совпадает с извлечённым ранее
-			ASSERT_EQ(mac, this->_io->getAddress(eid3, awh::event::address_t::MAC));
-			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->getTarget(eid3).empty());
-			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->getAddress(eid3, awh::event::address_t::UDS).empty());
-			
-			// Добавляем новое событие клиента TCP
-			awh::event::id_t eid4 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-			// Проверяем, что идентификатор события больше нуля
-			ASSERT_GT(eid4, 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setTargetPort(eid4, 8080));
-			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getTargetPort(eid4));
-			// Устанавливаем IP-адрес события
-			ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/64"));
-			// Проверяем, что название сетевого интерфейса получено
-			ASSERT_FALSE(this->_io->getIface(eid4).empty());
-			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_FALSE(this->_io->getAddress(eid4, awh::event::address_t::IPV6).empty());
-			// Проверяем, что адрес назначения получен
-			ASSERT_FALSE(this->_io->getTarget(eid4).empty());
-			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->getAddress(eid4, awh::event::address_t::UDS).empty());
-			
-			// Добавляем новое событие клиента TCP
-			awh::event::id_t eid7 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
-			// Проверяем, что идентификатор события больше нуля
-			ASSERT_GT(eid7, 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setTargetPort(eid7, 8080));
-			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getTargetPort(eid7));
-			// Устанавливаем IP-адрес назначения для события
-			ASSERT_TRUE(this->_io->setTarget(eid7, ip));
-			// Проверяем, что IP-адрес совпадает с извлечённым ранее
-			ASSERT_FALSE(this->_io->getAddress(eid4, awh::event::address_t::IPV6).empty());
-			// Проверяем, что адрес назначения получен и соответствует
-			ASSERT_EQ(ip, this->_io->getTarget(eid7));
-			// Проверяем, что UDS-адрес не установлен
-			ASSERT_TRUE(this->_io->getAddress(eid7, awh::event::address_t::UDS).empty());
-		}
+		// Добавляем новое событие клиента TCP
+		awh::event::id_t eid3 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(eid3, 0);
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setTargetPort(eid3, 8080));
+		// Проверяем что порт получен
+		ASSERT_EQ(8080, this->_io->getTargetPort(eid3));
+		// Устанавливаем IP-адрес события
+		ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV6, ip));
+		// Проверяем, что название сетевого интерфейса получено
+		ASSERT_FALSE(this->_io->getIface(eid3).empty());
+		// Проверяем, что название сетевого интерфейса совпадает с извлечённым ранее
+		ASSERT_EQ(source.iface, this->_io->getIface(eid3));
+		// Проверяем, что IP-адрес совпадает с извлечённым ранее
+		ASSERT_EQ(ip, this->_io->getAddress(eid3, awh::event::address_t::IPV6));
+		// Проверяем, что MAC-адрес совпадает с извлечённым ранее
+		ASSERT_EQ(mac, this->_io->getAddress(eid3, awh::event::address_t::MAC));
+		// Проверяем, что адрес назначения получен
+		ASSERT_FALSE(this->_io->getTarget(eid3).empty());
+		// Проверяем, что UDS-адрес не установлен
+		ASSERT_TRUE(this->_io->getAddress(eid3, awh::event::address_t::UDS).empty());
+		
+		// Добавляем новое событие клиента TCP
+		awh::event::id_t eid4 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(eid4, 0);
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setTargetPort(eid4, 8080));
+		// Проверяем что порт получен
+		ASSERT_EQ(8080, this->_io->getTargetPort(eid4));
+		// Устанавливаем IP-адрес события
+		ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/64"));
+		// Проверяем, что название сетевого интерфейса получено
+		ASSERT_FALSE(this->_io->getIface(eid4).empty());
+		// Проверяем, что IP-адрес совпадает с извлечённым ранее
+		ASSERT_FALSE(this->_io->getAddress(eid4, awh::event::address_t::IPV6).empty());
+		// Проверяем, что адрес назначения получен
+		ASSERT_FALSE(this->_io->getTarget(eid4).empty());
+		// Проверяем, что UDS-адрес не установлен
+		ASSERT_TRUE(this->_io->getAddress(eid4, awh::event::address_t::UDS).empty());
+		
+		// Добавляем новое событие клиента TCP
+		awh::event::id_t eid7 = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV6, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(eid7, 0);
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setTargetPort(eid7, 8080));
+		// Проверяем что порт получен
+		ASSERT_EQ(8080, this->_io->getTargetPort(eid7));
+		// Устанавливаем IP-адрес назначения для события
+		ASSERT_TRUE(this->_io->setTarget(eid7, ip));
+		// Проверяем, что IP-адрес совпадает с извлечённым ранее
+		ASSERT_FALSE(this->_io->getAddress(eid4, awh::event::address_t::IPV6).empty());
+		// Проверяем, что адрес назначения получен и соответствует
+		ASSERT_EQ(ip, this->_io->getTarget(eid7));
+		// Проверяем, что UDS-адрес не установлен
+		ASSERT_TRUE(this->_io->getAddress(eid7, awh::event::address_t::UDS).empty());
 	}
 }
 
@@ -2630,6 +2661,158 @@ TEST_F(IoFixture, IoDatagramInfoTest){
 	ASSERT_GT(traffics, 0);
 	// Проверяем, что предел жизни принятого пакета выяснен
 	ASSERT_GT(hops, 0);
+}
+
+/**
+ * @brief Тест доставки метки перегрузки пути на датаграмме узловым обращением
+ *
+ * @par Намеренные решения
+ *
+ * Проверка эта заведена 03.09.2026 по находке разбора пропусков: узлового покрытия
+ * метки перегрузки не было НИ ОДНОГО - `io_t::setExplicitCongestionNotification` не
+ * звался проверками ни разу, как и `getTrafficInfo` для признака перегрузки. То есть
+ * путь, каким метка ходит НА ДЕЛЕ у всех движков, держался на щупах и чтении кода
+ *
+ * @note Обращение здесь именно УЗЛОВОЕ, и это существенно. Сокетное
+ *       (`eth::Socket::setExplicitCongestionNotification`) закрепляется отдельно, в
+ *       наборе `eth`, и под MS Windows оно инертно: система настройку `IP_ECN`
+ *       принимает и к исходящим датаграммам не применяет (замер 03.09.2026).
+ *       Узловое кладёт метку КАЖДОЙ датаграмме управляющими данными и работает там,
+ *       где сокетное молчит
+ *
+ * @warning Метка ставится отправителем и читается получателем - иначе проверка
+ *          закрепляла бы лишь чтение своей же настройки, а не доставку. Оттого
+ *          `traffic_t` висит на ПРИНЯТОМ сервером соединении, а не на клиенте
+ *
+ */
+TEST_F(IoFixture, IoEcnDeliveryTest){
+	// Флаг остановки теста
+	bool stop = false;
+	/**
+	 * Признак перегрузки пути принятой сервером датаграммы
+	 *
+	 * @note Начальным берётся NOT_ECT - «отправитель ECN не поддерживает». Это ровно
+	 *       то, что придёт при непомеченной датаграмме, и оттого утверждение внизу
+	 *       двустороннее: не отличив доставленную метку от начального значения,
+	 *       проверка проходила бы и при молчащем движке
+	 */
+	awh::event::ecn_t congestion = awh::event::ecn_t::NOT_ECT;
+	// Количество принятых сервером сведений о пакетах
+	uint8_t traffics = 0;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем новое событие клиента и сервера UDP
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	/**
+	 * Проверяем, что оба идентификатора события созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(events[i], 0);
+	// Устанавливаем порт события клиента
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Если система признак перегрузки принятых пакетов не выдаёт, проверять нечего
+	if(!this->_io->availableExplicitCongestionNotification(awh::event::family_t::IPV4)){
+		// Уничтожаем все события
+		this->_io->deinitialize();
+		// Сообщаем о пропуске проверки с доводом
+		GTEST_SKIP() << "the system does not yield the congestion mark of the received IPv4 packets";
+	}
+	/**
+	 * Выставляем опции и параметры для каждого события
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Устанавливаем опции событий вместе с приёмом сведений о пакетах
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::DGRAM_INFO));
+	/**
+	 * Серверное событие
+	 */
+	{
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на подключение нового клиента
+		/**
+		 * Устанавливаем функцию обратного вызова на приём сведений о принятом пакете
+		 *
+		 * @note Отклик этот вешается на САМО серверное событие, а не на принятое
+		 *       соединение: сведения о датаграмме движок выдаёт слушающему событию
+		 *       (`server->callbacks.traffic`), и на принятом их не будет вовсе
+		 */
+		this->_io->on(events[1], static_cast <awh::engine::callback::traffic_t> ([&congestion, &traffics]([[maybe_unused]] const awh::event::id_t eid, const awh::net::dgram_info_t & info) noexcept -> void {
+			// Запоминаем признак перегрузки пути принятой датаграммы
+			congestion = info.congestion;
+			// Увеличиваем количество принятых сведений о пакетах
+			traffics++;
+		}));
+		// Устанавливаем функцию обратного вызова на подключение нового клиента
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на чтение из события
+			this->_io->on(cid, [this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Отправляем принятое обратно клиенту
+				this->_io->send(eid, reinterpret_cast <const char *> (data), size);
+			});
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(events[1]));
+		// Запускаем событие сервера
+		ASSERT_TRUE(this->_io->launch(events[1]));
+	}
+	/**
+	 * Клиентское событие
+	 */
+	{
+		// Устанавливаем адрес события клиента
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на чтение из события
+		this->_io->on(events[0], [&stop]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Отмечаем проверку выполненной: отклик получен
+			stop = true;
+		});
+		// Устанавливаем таймаут события на чтение
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
+		// Устанавливаем таймаут события на запись
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(events[0]));
+		// Помечаем исходящие датаграммы клиента поддержкой перегрузки пути
+		ASSERT_TRUE(this->_io->setExplicitCongestionNotification(events[0], awh::event::family_t::IPV4, awh::event::ecn_t::ECT0));
+		// Проверяем, что метка на исходящих датаграммах установлена
+		ASSERT_EQ(awh::event::ecn_t::ECT0, this->_io->getExplicitCongestionNotification(events[0], awh::event::family_t::IPV4));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(events[0]));
+		// Текст исходящего сообщения
+		std::string message("Congestion mark probe message!");
+		// Отправляем сообщение серверу
+		ASSERT_TRUE(this->_io->send(events[0], message.c_str(), message.size()));
+	}
+	/**
+	 * Запускаем опрос событий
+	 *
+	 * @note Срок опроса обязателен: не приди ожидаемое событие через устройство, опрос
+	 *       ждал бы его без конца, и проверка не отказала бы, а зависла
+	 */
+	{
+		// Срок, за который ожидаемое событие обязано прийти
+		const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
+		// Выполняем опрос активных событий
+		while(!stop && (std::chrono::steady_clock::now() < deadline) && this->_io->poll(__AWH_TEST_POLL_SLICE__));
+		// Если срок вышел, событие через устройство так и не пришло
+		EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
+	}
+	// Уничтожаем все события после получения ответа
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Проверяем, что отклик сервера получен
+	ASSERT_TRUE(stop);
+	// Проверяем, что сведения о принятом пакете выданы потребителю
+	ASSERT_GT(traffics, 0) << "сервер не получил сведений о принятых датаграммах";
+	// Проверяем, что метка перегрузки пути доставлена в неизменном виде
+	ASSERT_EQ(awh::event::ecn_t::ECT0, congestion) << "метка перегрузки пути на датаграмме не доставлена";
 }
 
 /**
@@ -19720,11 +19903,157 @@ TEST_F(IoFixture, IoBandwidthServerKeepsReadingTest){
  * @return глухой адрес канального блока
  *
  */
-static std::string deafAddress() noexcept {
+static std::string deafAddress([[maybe_unused]] const awh::fmk_t * fmk, [[maybe_unused]] const awh::log_t * log) noexcept {
 	// Счётчик обращений за глухим адресом
 	static uint32_t count = 0;
 	// Получаем номер текущего процесса
 	const uint32_t pid = static_cast <uint32_t> (::getpid());
+	/**
+	 * Если проверка идёт под MS Windows
+	 *
+	 * @details Канальный блок там негоден: маршрута к `169.254/16` у машины нет вовсе,
+	 *          и подключение отвечает НЕМЕДЛЕННЫМ отказом 10065 (`WSAEHOSTUNREACH`) за
+	 *          0 мс. Ожидающего подключения не возникает, и обе проверки срока честно
+	 *          отступали - то есть под MS Windows не проверялось НИЧЕГО
+	 *
+	 * @details Взамен берётся адрес из СОБСТВЕННОЙ подсети машины: маршрут к ней есть,
+	 *          узла по адресу нет, и ядро уходит в разрешение канального адреса, где и
+	 *          виснет. Замерено на стенде Windows ARM64 03.09.2026: подключение к
+	 *          свободному адресу своей подсети висит и отказывает лишь через 21 секунду
+	 *          (`WSAETIMEDOUT`), тогда как сроки проверок измеряются секундами
+	 *
+	 * @warning Адрес обязателен к ПРОВЕРКЕ НА МЕСТЕ, а не берётся наугад. Замер
+	 *          «сорок адресов подсети из сорока висят» получен на подсети с пустым
+	 *          хвостом и правилом не является: на занятой подсети живой узел ответил
+	 *          бы отказом либо согласием, и проверка не пропустилась бы, а ОТКАЗАЛА -
+	 *          то есть стало бы хуже, чем было
+	 *
+	 * @note Шлюза здесь не касаются вовсе, и это существенно. На этой самой машине
+	 *       всякий адрес, уходящий через шлюз по умолчанию, отвечает СОГЛАСИЕМ за 0 мс
+	 *       и тут же закрывается - проверено на `192.0.2.1`, `198.51.100.1`,
+	 *       `203.0.113.1`, `10.255.255.1` и `100.64.0.1`. Свойство это машины, а не
+	 *       сети: на пяти системах POSIX того же хозяйства все шесть адресов висят как
+	 *       должно (замер владельца наречий POSIX, тридцать наблюдений из тридцати)
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		/**
+		 * Узнаём свой адрес и длину префикса своей сети
+		 */
+		// Источник обмена для опроса собственного адреса
+		awh::net::src_t source(std::make_unique <awh::net::addr_net_ipv4_t> ());
+		// Объект работы с Ethernet для опроса собственного адреса
+		awh::eth_t eth(fmk, log);
+		// Выполняем извлечение собственного адреса машины
+		eth.addr.fillSource(source);
+		// Если устройство выхода найдено
+		if(!source.iface.empty()){
+			// Собственный адрес устройства
+			std::unique_ptr <awh::net::addr_t> own = std::make_unique <awh::net::addr_net_ipv4_t> ();
+			// Адрес того конца связи, здесь не нужный
+			std::unique_ptr <awh::net::addr_t> peer = nullptr;
+			// Длина префикса своей сети
+			uint8_t prefix = 0;
+			// Если собственный адрес вместе с длиной префикса получен
+			if(eth.iface.getAddress(source.iface, own, peer, prefix) && (prefix > 0) && (prefix < 31)){
+				// Собственный адрес машины в порядке следования байт машины
+				const uint32_t address = ::ntohl(awh_cast <awh::net::addr_net_ipv4_t *> (own.get())->address);
+				// Маска своей сети
+				const uint32_t mask = (0xFFFFFFFFU << (32 - prefix));
+				// Адрес своей сети
+				const uint32_t network = (address & mask);
+				// Широковещательный адрес своей сети
+				const uint32_t broadcast = (network | (~mask));
+				/**
+				 * Двигаем счётчик обращений ОДИН раз на вызов
+				 *
+				 * @note Счётчик разводит между собой ПРОВЕРКИ, а перебор кандидатов
+				 *       внутри одного вызова ведёт свой оборот. Прежде двигали оба
+				 *       сразу, и за один вызов счётчик накручивался до восьми: на
+				 *       верность это не влияло - адрес всё равно проверяется на месте, -
+				 *       но смысл его размывался. Замечание владельца проверок
+				 */
+				const uint32_t number = ((++count) * 2);
+				/**
+				 * Перебираем возможные адреса, покуда не найдём висящий
+				 *
+				 * @note Оборотов отведено немного: подбор идёт при живой проверке, и
+				 *       платить за него секундами нельзя. Не нашлось за восемь - падаем
+				 *       к канальному блоку, и проверка отступит ровно так же, как
+				 *       отступала прежде: хуже нынешнего не станет
+				 */
+				for(uint32_t attempt = 0; attempt < 8; attempt++){
+					// Складываем номер узла из номера процесса, счётчика и оборота подбора
+					const uint32_t host = ((pid + number + (attempt * 37)) & (~mask));
+					// Собираем возможный адрес своей сети
+					const uint32_t candidate = (network | host);
+					// Отсеиваем адрес сети, широковещательный и свой собственный
+					if((candidate == network) || (candidate == broadcast) || (candidate == address))
+						// Переходим к следующему обороту подбора
+						continue;
+					/**
+					 * Заводим сокет для проверки пригодности адреса
+					 *
+					 * @note Тип и признак негодности взяты у самого фреймворка, а не
+					 *       из `winsock2.h`: единая точка `sys/win32.hpp` подключается
+					 *       к проверкам ради объявлений POSIX, а голые имена MS Windows
+					 *       через неё наружу не выходят - так задумано, и обходить это
+					 *       незачем, когда `net::socket_t` повторяет их поимённо
+					 */
+					const awh::net::socket_t sock = static_cast <awh::net::socket_t> (::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
+					// Если сокет завести не удалось, подбирать нечем
+					if(sock == awh::net::invalid_socket_t)
+						// Прекращаем подбор
+						break;
+					// Переводим сокет в неблокирующий режим
+					u_long mode = 1;
+					// Выполняем перевод сокета в неблокирующий режим
+					::ioctlsocket(sock, FIONBIO, &mode);
+					// Адрес назначения проверки пригодности
+					struct sockaddr_in target{};
+					// Устанавливаем семейство адреса назначения
+					target.sin_family = AF_INET;
+					// Устанавливаем порт назначения, какого не слушает никто
+					target.sin_port = ::htons(9);
+					// Устанавливаем сам адрес назначения
+					target.sin_addr.s_addr = ::htonl(candidate);
+					// Признак пригодности подобранного адреса
+					bool suitable = false;
+					// Выполняем подключение к подобранному адресу
+					if((::connect(sock, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)) != 0) && (::WSAGetLastError() == WSAEWOULDBLOCK)){
+						// Набор описателей, готовых к записи
+						fd_set writable;
+						// Набор описателей, сообщивших об отказе
+						fd_set failed;
+						// Срок ожидания ответа: висящий адрес не ответит и за сутки,
+						// а живой отвечает за считанные миллисекунды
+						struct timeval timeout{0, 200000};
+						// Выполняем очистку набора готовых к записи
+						FD_ZERO(&writable);
+						// Добавляем сокет в набор готовых к записи
+						FD_SET(sock, &writable);
+						// Выполняем очистку набора сообщивших об отказе
+						FD_ZERO(&failed);
+						// Добавляем сокет в набор сообщивших об отказе
+						FD_SET(sock, &failed);
+						// Адрес пригоден, если подключение осталось ОЖИДАЮЩИМ
+						suitable = (::select(0, nullptr, &writable, &failed, &timeout) == 0);
+					}
+					// Выполняем закрытие сокета проверки пригодности
+					::closesocket(sock);
+					// Если адрес пригоден
+					if(suitable){
+						// Буфер под запись подобранного адреса
+						char buffer[INET_ADDRSTRLEN]{};
+						// Выполняем перевод адреса в запись
+						::inet_ntop(AF_INET, &target.sin_addr, buffer, sizeof(buffer));
+						// Выводим подобранный глухой адрес
+						return std::string(buffer);
+					}
+				}
+			}
+		}
+	#endif
 	/**
 	 * Складываем адрес канального блока из номера процесса и счётчика обращений
 	 *
@@ -19770,7 +20099,7 @@ TEST_F(IoFixture, IoConnectTimeoutAbandonsPendingTest){
 	ASSERT_GT(tick, 0u);
 	ASSERT_TRUE(this->_io->initialize());
 	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
-	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress(this->_fmk.get(), this->_log.get())));
 	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
 	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
 	this->_io->setTimeout(tick, awh::event::action_t::NONE, 200);
@@ -20240,7 +20569,7 @@ TEST_F(IoFixture, IoAutoReconnectAfterConnectTimeoutTest){
 	ASSERT_GT(tick, 0u);
 	ASSERT_TRUE(this->_io->initialize());
 	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
-	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress(this->_fmk.get(), this->_log.get())));
 	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
 	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
 	this->_io->setTimeout(eid, awh::event::action_t::RECONNECT, 500);
@@ -20350,7 +20679,7 @@ TEST_F(IoFixture, IoAutoReconnectOnTimeoutRefusalTest){
 	ASSERT_GT(tick, 0u);
 	ASSERT_TRUE(this->_io->initialize());
 	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
-	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress(this->_fmk.get(), this->_log.get())));
 	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
 	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
 	this->_io->setTimeout(eid, awh::event::action_t::RECONNECT, 500);
@@ -20593,7 +20922,7 @@ TEST_F(IoFixture, IoAbandonedClientStaysUsableTest){
 	ASSERT_TRUE(this->_io->initialize());
 	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
 	// Первое подключение ведётся к глухому адресу, чтобы истёк срок ожидания
-	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress()));
+	ASSERT_TRUE(this->_io->setTarget(eid, deafAddress(this->_fmk.get(), this->_log.get())));
 	ASSERT_TRUE(this->_io->setTargetPort(eid, 8080));
 	this->_io->setTimeout(eid, awh::event::action_t::CONNECT, 500);
 	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);

@@ -795,10 +795,6 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 			case 4: {
 				// Получаем сетевой адрес подсети
 				const net::addr_net_ipv4_t * network = awh_cast <const net::addr_net_ipv4_t *> (net);
-				// Проверяем корректность префикса сети
-				if(network->prefix > 32)
-					// Корректируем префикс сети
-					const_cast <net::addr_net_ipv4_t *> (network)->prefix = 32;
 				/**
 				 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
 				 * Проверка не работает на то, соответствует ли IP-адрес 192.168.7.249 маске 255.255.255.0
@@ -858,7 +854,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					return;
 				}
 				// Устанавливаем префикс хостового адреса
-				awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->prefix = network->prefix;
+				awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->prefix = ((network->prefix > 32) ? static_cast <uint8_t> (32) : network->prefix);
 				/**
 				 * Перебираем все сетевые интерфейсы
 				 */
@@ -912,10 +908,6 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 			case 16: {
 				// Получаем сетевой адрес подсети
 				const net::addr_net_ipv6_t * network = awh_cast <const net::addr_net_ipv6_t *> (net);
-				// Проверяем корректность префикса сети
-				if(network->prefix > 128)
-					// Корректируем префикс сети
-					const_cast <net::addr_net_ipv6_t *> (network)->prefix = 128;
 				// Получаем список сетевых интерфейсов
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
@@ -945,7 +937,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					return;
 				}
 				// Устанавливаем префикс хостового адреса
-				awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->prefix = network->prefix;
+				awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->prefix = ((network->prefix > 128) ? static_cast <uint8_t> (128) : network->prefix);
 				/**
 				 * Перебираем все сетевые интерфейсы
 				 */
@@ -1607,10 +1599,29 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 		if(length == 0)
 			// Возвращаем результат сравнения
 			return true;
+		/**
+		 * Ограничиваем длину префикса разрядностью адреса IPv6
+		 *
+		 * @warning Метод берёт ГОЛЫЕ указатели и длину полем `uint8_t`, а длина эта
+		 *          доходит до 255 при отведённых адресу шестнадцати октетах. Без края
+		 *          `memcmp` читает вдвое больше положенного, а взятие последнего
+		 *          октета бьёт мимо вовсе - надзиратель `address` отвечает на это
+		 *          `heap-buffer-overflow`
+		 *
+		 * @note Край стоит ИМЕННО ЗДЕСЬ, а не у вызывающих: метод объявлен открытым, и
+		 *       потребитель фреймворка волен позвать его напрямую с любой длиной.
+		 *       Оберегать свои края - дело самого метода, а не всякого, кто его зовёт
+		 *
+		 * @note Прежде край держался у единственного вызывающего правкой поля `prefix`
+		 *       через `const_cast` - то есть изменением ЧУЖОГО объекта, помеченного
+		 *       постоянным. Приём этот снят: вызывающий вправе не ждать, что его
+		 *       объект после запроса изменится
+		 */
+		const uint8_t bits = ((length > 128) ? static_cast <uint8_t> (128) : length);
 		// Вычисляем количество полных байтов и оставшихся битов
-		size_t fullBytes = (length / 8);
+		size_t fullBytes = (bits / 8);
 		// Вычисляем количество битов в последнем байте
-		uint8_t bitsInLast = (length % 8);
+		uint8_t bitsInLast = (bits % 8);
 		// Сравниваем полные байты
 		if(::memcmp(first, second, fullBytes) != 0)
 			// Возвращаем результат сравнения

@@ -174,7 +174,6 @@ namespace {
 		 session(nullptr), handle(INVALID_HANDLE_VALUE), event(nullptr),
 		 pending(false), overlapped{} {}
 	};
-	// Замок, оберегающий реестр заведённых устройств
 	/**
 	 * @brief Состояние блокировок, погашенное при заведении
 	 *
@@ -201,7 +200,8 @@ namespace {
 			this->enabled = false;
 		}
 	};
-		static muted_state_t <std::shared_mutex> __awh_mutex__;
+	// Замок, оберегающий реестр заведённых устройств
+	static muted_state_t <std::shared_mutex> __awh_mutex__;
 
 	/**
 	 * @brief Замок согласования подключения библиотеки драйвера
@@ -734,6 +734,25 @@ namespace {
 }
 
 /**
+ * @brief Функция установки режима безопасной работы с потоками
+ *
+ * @details Замки модуля по умолчанию ПОГАШЕНЫ: работа в один поток - обычный расклад,
+ *          и платить за захват на каждом обращении незачем. Включаются они отсюда,
+ *          тем же порядком, каким это сделано у наречий POSIX
+ *
+ * @param mode устанавливаемый режим безопасной работы с потоками
+ *
+ */
+void awh::win::tunnel::threadSafety(const bool mode) noexcept {
+	// Запоминаем режим безопасной работы с потоками
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Приводим замок к установленному режиму
+	::__awh_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Приводим замок согласования подключения библиотеки к установленному режиму
+	::__awh_guard__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
+
+/**
  * @brief Функция сообщения драйверу адресов туннеля
  *
  * @details Драйвер переводится в режим точки-точки настоящими адресами туннеля. Прежде
@@ -771,26 +790,6 @@ namespace {
  * @return       результат выполнения сообщения
  *
  */
-
-/**
- * @brief Функция установки режима безопасной работы с потоками
- *
- * @details Замки модуля по умолчанию ПОГАШЕНЫ: работа в один поток - обычный расклад,
- *          и платить за захват на каждом обращении незачем. Включаются они отсюда,
- *          тем же порядком, каким это сделано у наречий POSIX
- *
- * @param mode устанавливаемый режим безопасной работы с потоками
- *
- */
-void awh::win::tunnel::threadSafety(const bool mode) noexcept {
-	// Запоминаем режим безопасной работы с потоками
-	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
-	// Приводим замок к установленному режиму
-	::__awh_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-	// Приводим замок согласования подключения библиотеки к установленному режиму
-	::__awh_guard__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-}
-
 bool awh::win::tunnel::configure(const net::socket_t sock, const uint32_t local, const uint32_t remote, const log_t * log) noexcept {
 	// Дескриптор устройства, каким оно заведено драйвером tap-windows6
 	HANDLE handle = INVALID_HANDLE_VALUE;

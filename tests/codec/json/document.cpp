@@ -3520,3 +3520,53 @@ TEST(CodecJsonDocument, NameIndexDoesNotSurviveTreeEditing) {
 		ASSERT_EQ(doc.root()["k7"].size(), static_cast <size_t> (5));
 	}
 }
+/**
+ * @brief Проверка обесценивания снятых значений всякой правкой дерева
+ *
+ * @details Значение, снятое с дерева до правки, обязано обращаться в НЕПРИГОДНОЕ:
+ * правка сдвигает нумерацию узлов и пополняет хранилище знаков, и значение прежнего
+ * поколения отдавало бы содержимое чужого узла. Стережёт это клеймо поколения дерева
+ *
+ * @note Договор записан в заголовке при всякой правке, а сторожим был лишь у одной:
+ *       снятие наращивания клейма у `erase` набор пропускал МОЛЧА, у `set` ловил.
+ *       Вскрыто подменою 03.09.2026
+ *
+ * @warning Значение берётся у СОСЕДА правимого места: снесённое непригодно и без
+ *          клейма, и проверка по нему сторожила бы пустоту
+ *
+ */
+TEST(CodecJsonDocument, EditingInvalidatesTheValuesTakenBefore) {
+	// Исходный текст документа
+	const string text = "{\"a\":\"первое\",\"b\":1}";
+	/**
+	 * Выполняем перебор всех правок дерева документа
+	 */
+	for(uint8_t operation = 0; operation < 3; operation++){
+		// Объект документа
+		json::document_t doc(::logger());
+		// Выполняем разбор текста документа
+		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
+		// Снимаем значение соседа правимого места
+		const json::document_t::value_t value = doc.at("/a");
+		// Выполняем проверку пригодности снятого значения до правки
+		ASSERT_TRUE(value.valid()) << static_cast <uint32_t> (operation);
+		// Выполняем правку дерева документа выбранным ходом
+		switch(operation){
+			/**
+			 * Выполняем правку значения по указателю
+			 */
+			case 0: {
+				// Владеющее значение, устанавливаемое правкой
+				json::value_t replacement(static_cast <int64_t> (7));
+				// Выполняем правку дерева документа по указателю
+				ASSERT_TRUE(doc.set("/b", replacement));
+			} break;
+			// Выполняем снос значения по указателю
+			case 1: ASSERT_TRUE(doc.erase("/b")); break;
+			// Выполняем сброс значения по указателю
+			case 2: ASSERT_TRUE(doc.reset("/b")); break;
+		}
+		// Выполняем проверку обесценивания снятого значения правкой
+		ASSERT_FALSE(value.valid()) << static_cast <uint32_t> (operation);
+	}
+}

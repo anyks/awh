@@ -22,6 +22,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <sys/stat.h>
@@ -747,6 +748,17 @@ string awh::codec::xml::Document::dump() const noexcept {
  */
 string awh::codec::xml::Document::dump(const writer_settings_t & settings) const noexcept {
 	/**
+	 * Выполняем сброс кода отказа и положения прежней работы
+	 *
+	 * @details У отказа записи места в исходном тексте нет вовсе, а код и положение
+	 * прежнего разбора, запись пережив, складывались бы с нею в донесение стройное, но
+	 * ложное: успешная запись отвечала бы кодом давно исправленного отказа. Документ
+	 * JSON и таблица CSV держатся того же правила
+	 */
+	this->_error = error_t::NONE;
+	// Выполняем сброс положения отказа прежней работы
+	this->_errorLocation = location_t();
+	/**
 	 * Если узла разметки в дереве нет
 	 *
 	 * @note Отвечать здесь отказом записи о непригодном узле нельзя: узел непригоден
@@ -922,8 +934,20 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Открываем файл разметки для записи
-	ofstream file(filename, ios::binary | ios::trunc);
+	/**
+	 * Адрес временного файла, куда собирается текст
+	 *
+	 * @details Текст пишется рядом с целью и переносится на неё лишь по успешном
+	 * завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
+	 * записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
+	 * ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
+	 * как вызов отвечал отказом. Замер щупом при пределе `RLIMIT_FSIZE`: файл о годном
+	 * содержимом в 4096 октетов обращался в обрубок о 8192, а сохранение выводило `false`.
+	 * Тем же порядком пользуется таблица CSV
+	 */
+	const string temporary = (filename + ".awh-tmp");
+	// Открываем временный файл для записи
+	ofstream file(temporary, ios::binary | ios::trunc);
 	/**
 	 * Если файл разметки открыть не удалось
 	 */
@@ -958,7 +982,29 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе
 			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_WRITTEN));
+		// Выполняем снос недописанного временного файла
+		::remove(temporary.c_str());
 		// Запоминаем код отказа записи файла разметки
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выводим признак неудачной записи
+		return false;
+	}
+	/**
+	 * Если перенос собранного текста на место цели не удался
+	 *
+	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
+	 *       либо становится новым текстом целиком, а половины её не видно никогда
+	 */
+	if(::rename(temporary.c_str(), filename.c_str()) != 0){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_WRITTEN));
+		// Выполняем снос временного файла
+		::remove(temporary.c_str());
+		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выводим признак неудачной записи
 		return false;

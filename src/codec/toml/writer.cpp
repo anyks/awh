@@ -1316,6 +1316,74 @@ bool awh::codec::toml::Writer::key(const string_view name) noexcept {
  * @return      результат выполнения операции
  *
  */
+/**
+ * @brief Метод записи логического значения
+ *
+ * @param value записываемое логическое значение
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Writer::value(const bool value) noexcept {
+	// Выводим результат записи логического значения
+	return this->boolean(value);
+}
+/**
+ * @brief Метод записи целого числа со знаком
+ *
+ * @param value записываемое целое число со знаком
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Writer::value(const int64_t value) noexcept {
+	// Выводим результат записи целого числа со знаком
+	return this->integer(value);
+}
+/**
+ * @brief Метод записи целого числа без знака
+ *
+ * @param value записываемое целое число без знака
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Writer::value(const uint64_t value) noexcept {
+	/**
+	 * Если число предел целого со знаком превысило
+	 *
+	 * @note Отказ обязателен: описание TOML целых без знака не несёт вовсе, и приведение
+	 *       со знаком переменило бы число молча - потребитель получил бы текст с числом
+	 *       отрицательным вместо затребованного
+	 */
+	if(value > static_cast <uint64_t> (::std::numeric_limits <int64_t>::max())){
+		// Запоминаем код отказа записи значения
+		this->_error = error_t::NUMBER_OVERFLOW;
+		// Выводим признак неудачной записи значения
+		return false;
+	}
+	// Выводим результат записи целого числа без знака
+	return this->integer(static_cast <int64_t> (value));
+}
+/**
+ * @brief Метод записи вещественного числа
+ *
+ * @param value записываемое вещественное число
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Writer::value(const double value) noexcept {
+	// Выводим результат записи вещественного числа
+	return this->real(value);
+}
+/**
+ * @brief Метод записи строкового значения
+ *
+ * @param value записываемое строковое значение
+ * @return      результат выполнения операции
+ *
+ */
+bool awh::codec::toml::Writer::value(const string_view value) noexcept {
+	// Выводим результат записи строкового значения
+	return this->text(value);
+}
 bool awh::codec::toml::Writer::value(const content_t & value) noexcept {
 	/**
 	 * Если предыдущая операция записи завершилась ошибкой

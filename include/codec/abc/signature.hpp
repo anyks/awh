@@ -419,17 +419,28 @@ namespace awh {
 			 * \~russian
 			 * @brief Функция укладки записи подписи контейнера
 			 *
+			 * @warning Отказ укладки объявляется ВЫДАЧЕЙ, и поверять его зовущий обязан, оттого
+			 * выдача помечена `[[nodiscard]]`: половину эту набором не постеречь - понадобилась бы
+			 * схема подписи шире 64 КиБ, каких сегодня нет вовсе, - и сторожем её ставится
+			 * собиратель. Пропуск выдачи мимо был бы: запись,
+			 * не уложенная, остаётся пустой, а обёртка кадром пустое содержимое принимает
+			 * безропотно. Контейнер вышел бы объявленным подписанным, кадр подписи -
+			 * безупречным по виду, а отказ всплыл бы лишь у читающего, да ещё и не тем кодом.
+			 * Замерено щупом 03.09.2026: `internal parsing error` вместо обрыва подписи
+			 *
 			 * @param sign   укладываемая подпись контейнера
 			 * @param result буфер, куда следует уложить запись подписи
+			 * @return       признак успешно уложенной записи подписи
 			 *
 			 * \~english
 			 * @brief Function of the laying of the record of the signature of a container
 			 * @param sign signature of the container being laid
 			 * @param result buffer the record of the signature should be laid into
+			 * @return flag of the successfully laid record of the signature
 			 *
 			 * \~
 			 */
-			__AWH_SHARED_EXPORT__ void pack(const sign_t & sign, vector <uint8_t> & result) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool pack(const sign_t & sign, vector <uint8_t> & result) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция снятия записи подписи контейнера

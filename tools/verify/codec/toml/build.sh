@@ -153,7 +153,7 @@ done
 #       на стенде Windows 11 ARM64
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -lIphlpapi -lpsapi" ;;
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 

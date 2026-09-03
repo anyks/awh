@@ -785,12 +785,28 @@ TEST_F(EthFixture, AddressFillSourceNetPrefixClampIPv4Test){
 	std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Устанавливаем адрес loopback
 	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->address = htonl(INADDR_LOOPBACK);
-	// Устанавливаем некорректный префикс (> 32)
-	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->prefix = 40;
+	/**
+	 * Сперва длина, умолчанию НЕ равная: движок обязан её ПЕРЕНЕСТИ
+	 *
+	 * @warning Утверждение это и делает проверку зрячей. Прежде она подавала лишь
+	 *          чрезмерную длину и ждала 32 - ровно то число, каким конструктор
+	 *          `Address_Network_IPv4` заводит поле по умолчанию (src/net/net.cpp:90).
+	 *          Проверка держалась на умолчании и молчала бы при слое, не пишущем
+	 *          длину ВОВСЕ, - что и было найдено у наречия MS Windows 03.09.2026
+	 */
+	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->prefix = 8;
 	// Выполняем извлечение сетевых параметров
 	this->_eth->addr.fillSource(addr.get(), source);
+	// Длина, разрядности адреса не превышающая, обязана дойти до источника как есть
+	ASSERT_EQ(8, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->prefix))
+	 << "Движок не переносит длину префикса в источник";
+	// Устанавливаем некорректный префикс (> 32)
+	static_cast <awh::net::addr_net_ipv4_t *> (addr.get())->prefix = 40;
+	// Выполняем извлечение сетевых параметров заново
+	this->_eth->addr.fillSource(addr.get(), source);
 	// Префикс источника должен быть скорректирован до 32
-	ASSERT_EQ(32, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->prefix));
+	ASSERT_EQ(32, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv4_t *> (source.ip.get())->prefix))
+	 << "Движок не ограничивает длину префикса разрядностью адреса";
 }
 
 /**
@@ -804,12 +820,26 @@ TEST_F(EthFixture, AddressFillSourceNetPrefixClampIPv6Test){
 	std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv6_t> ();
 	// Устанавливаем адрес loopback IPv6 (::1)
 	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->address[15] = 1;
+	/**
+	 * Сперва длина, умолчанию НЕ равная: движок обязан её ПЕРЕНЕСТИ
+	 *
+	 * @warning Довод тот же, что и у проверки IPv4: конструктор
+	 *          `Address_Network_IPv6` заводит поле числом 128 (src/net/net.cpp:97), и
+	 *          одно лишь ожидание 128 утверждало умолчание, а не работу слоя
+	 */
+	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->prefix = 64;
+	// Выполняем извлечение сетевых параметров
+	ASSERT_NO_THROW(this->_eth->addr.fillSource(addr.get(), source));
+	// Длина, разрядности адреса не превышающая, обязана дойти до источника как есть
+	ASSERT_EQ(64, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix))
+	 << "Движок не переносит длину префикса в источник";
 	// Устанавливаем некорректный префикс (> 128) — раньше приводил к выходу за границы массива
 	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->prefix = 200;
 	// Выполняем извлечение сетевых параметров (не должно падать)
 	ASSERT_NO_THROW(this->_eth->addr.fillSource(addr.get(), source));
 	// Префикс источника должен быть скорректирован до 128
-	ASSERT_EQ(128, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix));
+	ASSERT_EQ(128, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix))
+	 << "Движок не ограничивает длину префикса разрядностью адреса";
 }
 
 /**
@@ -835,12 +865,21 @@ TEST_F(EthFixture, AddressFillSourceNetIPv6Test){
 	std::unique_ptr <awh::net::addr_t> addr = std::make_unique <awh::net::addr_net_ipv6_t> ();
 	// Устанавливаем адрес loopback IPv6 (::1)
 	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->address[15] = 1;
-	// Устанавливаем префикс /128
-	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->prefix = 128;
+	/**
+	 * Устанавливаем длину префикса, умолчанию НЕ равную
+	 *
+	 * @warning Прежде здесь стояло 128 при ожидании 128 - ровно то число, каким
+	 *          конструктор `Address_Network_IPv6` заводит поле (src/net/net.cpp:97).
+	 *          Утверждение держалось на умолчании целиком: слой, не пишущий длину
+	 *          ВОВСЕ, проверку бы прошёл. Длина, умолчанию не равная, только и делает
+	 *          такую проверку зрячей
+	 */
+	static_cast <awh::net::addr_net_ipv6_t *> (addr.get())->prefix = 96;
 	// Выполняем извлечение сетевых параметров (не должно падать)
 	ASSERT_NO_THROW(this->_eth->addr.fillSource(addr.get(), source));
-	// Префикс источника должен быть установлен в /128
-	ASSERT_EQ(128, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix));
+	// Длина префикса обязана дойти до источника как есть
+	ASSERT_EQ(96, static_cast <uint16_t> (static_cast <awh::net::addr_net_ipv6_t *> (source.ip.get())->prefix))
+	 << "Движок не переносит длину префикса в источник";
 }
 
 /**
@@ -929,4 +968,47 @@ TEST_F(EthFixture, AddressSubnetOversizedPrefixTest){
 	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, ip, 32));
 	// Нулевой префикс принимает любой адрес
 	ASSERT_TRUE(this->_eth->addr.isInSubnet(ip, 0x0200007F, 0));
+}
+
+/**
+ * @brief Тест сличения адресов IPv6 по префиксу шире самого адреса
+ *
+ * @details Метод объявлен ОТКРЫТЫМ и берёт голые указатели с длиной префикса полем
+ *          `uint8_t`, а длина эта доходит до 255 при отведённых адресу шестнадцати
+ *          октетах. Без края `memcmp` читал бы вдвое больше положенного, а взятие
+ *          последнего октета било бы мимо вовсе - надзиратель `address` отвечает на
+ *          это `heap-buffer-overflow`
+ *
+ * @note Прежняя правка закрывала лишь путь через `fillSource`, где край держался
+ *       правкой чужого объекта через `const_cast`. Прямой вызов открытого метода она
+ *       не закрывала: потребитель фреймворка волен позвать его с любой длиной
+ *
+ * @note Проверка стоит НЕ на отсутствие падения: без надзирателя перебег кучи может
+ *       и не проявиться. Утверждается СМЫСЛ - префикс шире адреса описывает
+ *       один-единственный узел, ровно как это уже закреплено у IPv4
+ *
+ */
+TEST_F(EthFixture, AddressIPv6PrefixOversizedTest){
+	// Первый сличаемый адрес IPv6
+	uint8_t first[16] = {0};
+	// Второй сличаемый адрес IPv6
+	uint8_t second[16] = {0};
+	// Обращаем оба адреса в петлевой (::1)
+	first[15] = second[15] = 1;
+	// Префикс шире самого адреса описывает один-единственный узел
+	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(first, second, 200));
+	// Наибольшее значение поля довода обязано разбираться тем же порядком
+	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(first, second, 255));
+	// Разводим адреса последним октетом
+	second[15] = 2;
+	// Адрес, отличный от названного, такой подсети не принадлежит
+	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(first, second, 255));
+	// Префикс ровно по ширине адреса сличает адреса целиком
+	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(first, second, 128));
+	// Нулевой префикс принимает любой адрес
+	ASSERT_TRUE(this->_eth->addr.ipv6PrefixEqual(first, second, 0));
+	// Разводим адреса октетом первым, чтобы задеть сличение полных октетов
+	second[0] = 0xFF;
+	// Расхождение в старших октетах обязано ловиться и при чрезмерном префиксе
+	ASSERT_FALSE(this->_eth->addr.ipv6PrefixEqual(first, second, 255));
 }

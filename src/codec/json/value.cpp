@@ -30,6 +30,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cmath>
+#include <cstdio>
 #include <limits>
 #include <atomic>
 #include <fstream>
@@ -1800,8 +1801,19 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Открываем файл значения для записи
-	ofstream file(filename, ios::binary | ios::trunc);
+	/**
+	 * Адрес временного файла, куда собирается текст
+	 *
+	 * @details Текст пишется рядом с целью и переносится на неё лишь по успешном
+	 * завершении. Прежде запись шла прямо в цель, открытую с усечением: отказ самой
+	 * записи, - переполненный носитель либо превышенный предел размера файла, - оставлял
+	 * ПРЕЖНЕЕ СОДЕРЖИМОЕ ЦЕЛИ УНИЧТОЖЕННЫМ, а на его месте половину нового текста, тогда
+	 * как вызов отвечал отказом. Тем же порядком пользуются сохранения обоих документов
+	 * да таблицы CSV
+	 */
+	const string temporary = (filename + ".awh-tmp");
+	// Открываем временный файл для записи
+	ofstream file(temporary, ios::binary | ios::trunc);
 	/**
 	 * Если файл значения открыть не удалось
 	 */
@@ -1831,7 +1843,29 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе
 			this->_log->print("JSON value failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(error_t::FILE_NOT_WRITTEN));
+		// Выполняем снос недописанного временного файла
+		::remove(temporary.c_str());
 		// Запоминаем код отказа записи файла значения
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выводим признак неудачной записи
+		return false;
+	}
+	/**
+	 * Если перенос собранного текста на место цели не удался
+	 *
+	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
+	 *       либо становится новым текстом целиком, а половины её не видно никогда
+	 */
+	if(::rename(temporary.c_str(), filename.c_str()) != 0){
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("JSON value failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(error_t::FILE_NOT_WRITTEN));
+		// Выполняем снос временного файла
+		::remove(temporary.c_str());
+		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выводим признак неудачной записи
 		return false;

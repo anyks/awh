@@ -532,17 +532,27 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод открытия контейнера отданной работой чтения
 					 *
+					 * @warning Полную длину контейнера подавать НАДЛЕЖИТ всякому, кто её знает: по
+					 * ней поверяется, умещается ли кадр оглавления в контейнер. Длина кадра объявлена
+					 * заголовком, а заголовок подделыватель пересчитывает вместе с суммой его, - и по
+					 * подделанной длине выборка ЗАТРЕБОВАЛА У ИСТОЧНИКА 4 294 967 327 октетов на
+					 * контейнере в 197 (замер 03.09.2026, то же число вышло у правки). Нуль означает
+					 * «длина неведома», и сторож при нём снимается: последней преградой остаётся тогда
+					 * источник, а полагаться на разумность чужой работы нельзя
+					 *
 					 * @param source устанавливаемая работа чтения октетов контейнера
+					 * @param length полная длина контейнера на носителе, ноль - длина неведома
 					 * @return       признак успешно открытого контейнера
 					 *
 					 * \~english
 					 * @brief Method of the opening of a container by a given work of the reading
 					 * @param source work of the reading of the octets of the container being set
+					 * @param length full length of the container on the medium, zero — the length is unknown
 					 * @return sign of a successfully opened container
 					 *
 					 * \~
 					 */
-					[[nodiscard]] bool open(source_t source) noexcept;
+					[[nodiscard]] bool open(source_t source, const uint64_t length = 0) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод выборки записи контейнера по номеру

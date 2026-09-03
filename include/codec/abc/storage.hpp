@@ -328,6 +328,31 @@ namespace awh {
 					 * \~
 					 */
 					[[nodiscard]] bool bind(editor_t & editor) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод открытия контейнера файла выборкой записей
+					 *
+					 * @details Близнец связывания с правкой, и заведён он по той же надобности:
+					 * выборка сама открывается ОДНИМ источником, и полной длины контейнера ей знать
+					 * неоткуда, - а по ней поверяется, умещается ли кадр оглавления в контейнер.
+					 * Хранилище длину ведёт полем и подаёт её выборке само, оттого сторож работает
+					 * без участия зовущего
+					 *
+					 * @note Открывать выборку можно и напрямую, `open(storage.source())`, - но тогда
+					 * длина остаётся неведомой, сторож снимается, и последней преградой становится
+					 * сам источник
+					 *
+					 * @param fetcher выборка, какой открывается контейнер
+					 * @return        признак успешно открытого контейнера
+					 *
+					 * \~english
+					 * @brief Method of the opening of the container of the file by a fetcher of the records
+					 * @param fetcher fetcher the container is opened by
+					 * @return sign of a successfully opened container
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool bind(fetcher_t & fetcher) noexcept;
 				public:
 					/**
 					 * \~russian

@@ -295,6 +295,8 @@ namespace awh {
 						bool keyed;
 						// Признак того, что содержимое узла правлено после разбора
 						bool touched;
+						// Признак того, что узел блочного значения лишился соседа снизу
+						bool severed;
 						/**
 						 * Смещение начала записи узла в удержанном исходном тексте
 						 *
@@ -474,7 +476,7 @@ namespace awh {
 						 * \~
 						 */
 						Node() noexcept :
-						 type(type_t::UNDEFINED), style(style_t::PLAIN), keyed(false), touched(false),
+						 type(type_t::UNDEFINED), style(style_t::PLAIN), keyed(false), touched(false), severed(false),
 						 origin(NO_ORIGIN), dwelling(NO_ORIGIN), edge(NO_ORIGIN), offset(0), named(0), props(0), content{0, 1}, number{0, 0} {}
 					} node_t;
 				public:
@@ -1549,6 +1551,15 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * @brief Метод отделения блоков с сохранением хвоста от соседей снизу
+					 *
+					 */
+					void sever() noexcept;
+					/**
+					 * @brief Метод разбора повторяющихся имён пар отображения
+					 *
+					 */
 					bool deduplicate(const uint32_t parent, ::std::unordered_map <::std::string, uint32_t> & anchors, const reader_t & reader) noexcept;
 					/**
 					 * \~russian
@@ -1742,6 +1753,29 @@ namespace awh {
 					 * \~
 					 */
 					bool set(const string & path, const string_view value, const style_t style = style_t::PLAIN) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод постановки владеющего значения по пути
+					 *
+					 * @details Ход этот есть тот же перенос, какой ведёт `value_t::graft()`,
+					 *          и зовётся он вторым концом: у дерева, а не у значения. Заведены
+					 *          ОБА конца намеренно - у одних кодеков рамки правка стояла ходом
+					 *          значения, у других ходом документа, и потребитель, два кодека
+					 *          рядом читающий, разыскивал ход не там, где тот лежал
+					 *
+					 * @param path  путь постановки значения
+					 * @param value ставимое владеющее значение
+					 * @return      признак успешной постановки значения
+					 *
+					 * \~english
+					 * @brief Method of setting an owning value by a path
+					 * @param path  path of the setting of the value
+					 * @param value owning value being set
+					 * @return      sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool set(const string & path, const ::awh::codec::yaml::Value & value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки логического значения по пути к нему
@@ -2000,6 +2034,28 @@ namespace awh {
 					 * \~
 					 */
 					size_t size() const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения количества узлов дерева документа
+					 *
+					 * @details Величина эта зависит от УСТРОЙСТВА кодека, а не от разобранного
+					 *          текста: узлы дерева YAML сжимаются правкою, у иных кодеков нет.
+					 *          Оттого имя ей своё, а в общий договор кодеков рамки она не
+					 *          входит вовсе - там `size()` означает детей корня у всех семи
+					 *
+					 * @note Прежде этот счёт выдавала `size()`. Смена смысла согласована с
+					 *       владельцами прочих кодеков 03.09.2026: под одним именем лежали три
+					 *       разных величины - узлы арены у YAML, разделы у INI, таблицы у TOML
+					 *
+					 * @return количество узлов дерева документа
+					 *
+					 * \~english
+					 * @brief Method of getting the count of the nodes of the tree of the document
+					 * @return count of the nodes of the tree of the document
+					 *
+					 * \~
+					 */
+					size_t nodes() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод проверки дерева документа на пустоту

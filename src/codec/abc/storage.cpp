@@ -537,6 +537,26 @@ bool awh::codec::abc::Storage::bind(editor_t & editor) noexcept {
 	return editor.open(this->source(), this->sink(), this->_length);
 }
 /**
+ * @brief Метод открытия контейнера файла выборкой записей
+ *
+ * @param fetcher выборка, какой открывается контейнер
+ * @return        признак успешно открытого контейнера
+ *
+ */
+bool awh::codec::abc::Storage::bind(fetcher_t & fetcher) noexcept {
+	/**
+	 * Если файл контейнера не открыт
+	 */
+	if(this->_stream == nullptr){
+		// Выполняем установку кода отказа чтения октетов контейнера
+		this->fail(error_t::UNREADABLE_SOURCE);
+		// Выводим признак неудачно открытого контейнера
+		return false;
+	}
+	// Выполняем открытие контейнера файла выборкой записей
+	return fetcher.open(this->source(), this->_length);
+}
+/**
  * @brief Метод записи собранного контейнера в файл
  *
  * @param filename название заводимого файла контейнера

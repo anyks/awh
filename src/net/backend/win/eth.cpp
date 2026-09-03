@@ -58,8 +58,6 @@ using namespace std;
 /**
  * @brief Название бэкенда для записей в журнале
  *
- */
-/**
  * @note Метка употребляется лишь в ветвях `#else`, то есть в сборке БЕЗ `DEBUG_MODE`:
  *       при включённой отладке записи ведёт `debug()`, называющий место сам. Оттого
  *       в отладочной сборке метка законно остаётся невостребованной, и clang честно
@@ -150,9 +148,6 @@ namespace {
 		return static_cast <uint16_t> (~sum);
 	}
 };
-
-
-
 
 /**
  * @brief Метод проверки принадлежности IP-адреса подсети
@@ -400,10 +395,31 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 	if(length == 0)
 		// Возвращаем результат сравнения
 		return true;
+	/**
+	 * Длина префикса ограничивается сверху
+	 *
+	 * @warning Без края сличение уходило ЗА КОНЕЦ обоих адресов: длина приходит полем
+	 *          октета, и значение свыше 128 давало `fullBytes` до тридцати одного при
+	 *          отведённых шестнадцати - `memcmp` читал вдвое больше положенного, а
+	 *          взятие `first[fullBytes]` и вовсе било мимо. Довод приходит от
+	 *          потребителя, ограничивать его выше по течению нечем: адреса поданы
+	 *          голыми указателями, и длины у них при себе нет
+	 *
+	 * @note Соседний `isInSubnet` этого же файла край проверяет и разбор к тому несёт;
+	 *       здесь тот же порядок. Эталонные наречия (`bsd/addr.cpp:1816`,
+	 *       `gnu/addr.cpp:1601`) края НЕ проверяют - они вылечили одного вызывающего
+	 *       сличением вида адресов, а сам метод остался открытым; о том доложено
+	 *       владельцу наречий POSIX
+	 *
+	 * @note Префиксу от 128 и выше отвечает сличение адресов целиком - ответ тот же,
+	 *       что дало бы сличение по всем ста двадцати восьми разрядам
+	 *
+	 */
+	const uint8_t prefix = (length > 128 ? static_cast <uint8_t> (128) : length);
 	// Вычисляем количество полных байтов префикса
-	const size_t fullBytes = (length / 8);
+	const size_t fullBytes = (prefix / 8);
 	// Вычисляем количество разрядов в последнем байте префикса
-	const uint8_t bitsInLast = (length % 8);
+	const uint8_t bitsInLast = (prefix % 8);
 	// Сравниваем полные байты префикса
 	if(::memcmp(first, second, fullBytes) != 0)
 		// Возвращаем результат сравнения
@@ -417,50 +433,6 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 	// Возвращаем результат сравнения
 	return ((first[fullBytes] & mask) == (second[fullBytes] & mask));
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /**
  * @brief Метод установки объекта управления шлюзами
@@ -521,13 +493,6 @@ awh::eth::Socket::Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(f
 awh::eth::Socket::~Socket() noexcept {}
 
 /**
- * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
- */
-/**
  * @brief Конструктор записи маршрута
  *
  * @note Тело у него общее со всеми системами: поля задаются пустыми, и системного в
@@ -539,6 +504,13 @@ awh::eth::Gateway::Route::Route() noexcept :
  ifname{""}, prefix(0),
  gateway(nullptr), destination(nullptr) {}
 
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект работы с логами
+ *
+ */
 awh::eth::Gateway::Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 
 /**

@@ -143,6 +143,8 @@ namespace {
 		uint64_t removals;
 		// Количество узлов, сброшенных в дереве разметки по пути
 		uint64_t resets;
+		// Количество деревьев разметки, построенных с нуля
+		uint64_t scratches;
 		/**
 		 * @brief Конструктор
 		 *
@@ -150,7 +152,7 @@ namespace {
 		Statistic() noexcept :
 		 texts(0), corrupted(0), survived(0),
 		 events(0), trees(0), rewrites(0), intact(0), accepted(0),
-		 values(0), builds(0), grafts(0), removals(0), resets(0) {}
+		 values(0), builds(0), grafts(0), removals(0), resets(0), scratches(0) {}
 	/**
 	 * Учёт проделанной работы
 	 *
@@ -1984,6 +1986,69 @@ namespace {
 						// Выполняем учёт привитого владеющего значения
 						totals.grafts++;
 						/**
+						 * Выполняем сличение построения дерева разметки с нуля
+						 *
+						 * @details Прививка пустым путём заводит дерево с нуля либо заменяет
+						 * корневой узел разметки целиком. Ход этот и есть единственный способ
+						 * построить дерево, минуя разбор текста, - оттого он и сличается кругом:
+						 * собранное обязано разбираться обратно тем же текстом
+						 *
+						 * @note Корнем дерева разметки становится один лишь узел разметки: XML 1.0
+						 *       требует у документа ровно один корневой элемент. Значение иного
+						 *       вида проверяется потому отказом, а не сличением
+						 */
+						{
+							// Дерево разметки, строимое с нуля
+							xml::document_t scratch(::logger());
+							/**
+							 * Если прививаемое значение узлом разметки является
+							 */
+							if(value.kind() == xml::kind_t::ELEMENT){
+								/**
+								 * Если построение дерева разметки с нуля не удалось
+								 */
+								if(!scratch.set("", value)){
+									// Выводим сообщение об отказе построения дерева с нуля
+									::fprintf(stderr, "xml fuzz: scratch build refused\n  запись [%s]\n", value.dump().c_str());
+									// Выводим исходный текст разметки
+									dump(text);
+									// Выводим результат проверки дерева разметки
+									return false;
+								}
+								// Получаем текст построенного с нуля дерева разметки
+								const string built = scratch.dump();
+								// Дерево разметки для обратного разбора построенного текста
+								xml::document_t back(::logger());
+								/**
+								 * Если построенный текст разметки разбору не подлежит
+								 *
+								 * @note Круг этот и стережёт построение: дерево, собранное руками,
+								 *       могло бы записываться текстом негодным, а изъян такой
+								 *       виден лишь обратным разбором
+								 */
+								if(!back.parse(built, relaxed) || (back.dump() != built)){
+									// Выводим сообщение о расхождении круга построения
+									::fprintf(stderr, "xml fuzz: scratch round trip diverged\n  построено [%s]\n  повтор [%s]\n", built.c_str(), back.dump().c_str());
+									// Выводим исходный текст разметки
+									dump(text);
+									// Выводим результат проверки дерева разметки
+									return false;
+								}
+								// Выполняем учёт построенного с нуля дерева разметки
+								totals.scratches++;
+							/**
+							 * Если прививаемое значение узлом разметки не является
+							 */
+							} else if(scratch.set("", value)) {
+								// Выводим сообщение о принятом корне, узлом разметки не являющемся
+								::fprintf(stderr, "xml fuzz: non element accepted as root\n  запись [%s]\n", value.dump().c_str());
+								// Выводим исходный текст разметки
+								dump(text);
+								// Выводим результат проверки дерева разметки
+								return false;
+							}
+						}
+						/**
 						 * Если прививка корнем дерева с несколькими узлами отказом не завершилась
 						 *
 						 * @note Корень узлом разметки не является вовсе, и ребёнком ему не
@@ -2674,7 +2739,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"xml fuzz: seed=%u, %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted, %llu values, %llu builds, %llu grafts, %llu resets, %llu removals\n",
+		"xml fuzz: seed=%u, %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu of %llu intact texts accepted, %llu values, %llu builds, %llu grafts, %llu resets, %llu removals, %llu scratch builds\n",
 		seed,
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
@@ -2687,7 +2752,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		static_cast <unsigned long long> (totals.values),
 		static_cast <unsigned long long> (totals.builds),
 		static_cast <unsigned long long> (totals.grafts),
-		static_cast <unsigned long long> (totals.resets), static_cast <unsigned long long> (totals.removals)
+		static_cast <unsigned long long> (totals.resets), static_cast <unsigned long long> (totals.removals),
+		static_cast <unsigned long long> (totals.scratches)
 	);
 	// Выходим из приложения
 	return EXIT_SUCCESS;

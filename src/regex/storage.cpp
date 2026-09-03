@@ -401,7 +401,7 @@ namespace {
 	 *          какого порождён.
 	 *
 	 */
-	inline uint64_t identity() noexcept {
+	inline uint64_t hardware() noexcept {
 		// Собираемое опознание машины
 		uint64_t result = 0xCBF29CE484222325ull;
 		/**
@@ -1409,7 +1409,7 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 		// Выполняем запись контрольной суммы сжатого содержимого
 		write64(checksum(packed), result);
 		// Выполняем запись опознания машины, запись породившей
-		write64(identity(), result);
+		write64(hardware(), result);
 		// Выполняем запись мгновения порождения записи
 		write64(static_cast <uint64_t> (::time(nullptr)), result);
 		// Выполняем запись срока годности записи
@@ -1475,7 +1475,7 @@ bool awh::regex::Storage::save(const vector <exp_t> & expressions, string & resu
 	 *          не подлежит.
 	 *
 	 */
-	write64(identity(), result);
+	write64(hardware(), result);
 	// Выполняем запись мгновения порождения записи
 	write64(static_cast <uint64_t> (::time(nullptr)), result);
 	// Выполняем запись срока годности записи
@@ -1680,7 +1680,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 	 *          порождения принадлежащий, отчего сличается и сама машина.
 	 *
 	 */
-	if(owner != identity()) {
+	if(owner != hardware()) {
 		// Устанавливаем ошибку несовпадения машины записи
 		this->_error = storage_error_t::BAD_MACHINE;
 		// Выводим результат восстановления собранных выражений

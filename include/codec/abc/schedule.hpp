@@ -35,6 +35,7 @@
  */
 #include <mutex>
 #include <thread>
+#include <vector>
 #include <cstdint>
 #include <functional>
 #include <condition_variable>
@@ -166,6 +167,25 @@ namespace awh {
 				private:
 					// Поток отбоя срока
 					thread _thread;
+					/**
+					 * \~russian
+					 * Потоки отбоя, ушедшие в отставку и ждущие ожидания
+					 *
+					 * @details Поток, остановленный ИЗ САМОГО СЕБЯ, ожидать нельзя - стандарт зовёт
+					 * это тупиком, - но и оставить его в поле нельзя тоже: следующий запуск положил
+					 * бы новый поток поверх ожидаемого, а это `std::terminate`. Отставка разводит
+					 * два эти требования: поле освобождается тут же, а ожидание берёт на себя
+					 * следующая остановка либо разрушитель, когда звать их будет уже иной поток
+					 *
+					 * @note Отвязать такой поток нельзя: отвязанный, он трогал бы замок объекта уже
+					 * разрушенного
+					 *
+					 * \~english
+					 * Threads of the deadline retired and awaiting the joining
+					 *
+					 * \~
+					 */
+					vector <thread> _retired;
 				private:
 					// Работа, зовомая по наступлении срока
 					function <void (void)> _callback;
