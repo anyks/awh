@@ -611,6 +611,20 @@ namespace awh {
 							[[nodiscard]] bool same(const Value & value) const noexcept;
 							/**
 							 * \~russian
+							 * @note Оператор равенства у курсора НЕ ЗАВЕДЁН намеренно, и решение это
+							 *       закреплено проверкою
+							 *       `CodecAbcDocument.EqualityIsAskedByDifferentWordsInTwoViews`:
+							 *       отсутствие хода поведением не стережётся вовсе - его нельзя ни
+							 *       позвать, ни увидеть, - и закрепляется оно сборкою, утверждением
+							 *       о том, что выражение `курсор == курсор` не составляется
+							 *
+							 * \~english
+							 * @note The equality operator is deliberately NOT declared for the cursor
+							 *
+							 * \~
+							 */
+							/**
+							 * \~russian
 							 * @brief Метод извлечения значения поля отображения по имени
 							 *
 							 * @param name имя поля отображения
@@ -1106,6 +1120,13 @@ namespace awh {
 					 *
 					 * @note Дороги эти близнецы, и разошлись бы они молча, зови отказ очистку:
 					 *       потребитель, спросивший причину после отказа, получил бы «нет ошибки»
+					 *
+					 * @note Разобрано подменами 04.09.2026, и разбор уточняет довод: на самом
+					 *       месте вызова замена `discard` очисткою БЕЗВРЕДНА, ибо причина пишется
+					 *       ПОСЛЕ снятия. Опасность живёт не в выборе работы, а в ПОРЯДКЕ - и вот
+					 *       она стережётся: очистка, поставленная после записи причины, краснит
+					 *       пять проверок (`CodecAbcDocument.Failures`, `.ErrorLocationReachesTheConsumer`,
+					 *       `.EmptyRecordParsingNamesItsCause`, `.DuplicateRules`, `.DuplicateRulesByKeyKind`)
 					 *
 					 * \~english
 					 * @brief Method of the dropping of the assembled content of a document

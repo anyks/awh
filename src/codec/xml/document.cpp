@@ -470,11 +470,11 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 					this->_log->debug("XML document build failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
 					                  ::std::make_tuple(location.line, location.column), log_t::flag_t::CRITICAL,
 					                  static_cast <unsigned long long> (location.line),
-					                  static_cast <unsigned long long> (location.column), message(error_t::STORAGE_EXHAUSTED));
+					                  static_cast <unsigned long long> (location.column), message(this->_error));
 				#else
 					this->_log->print("XML document build failed at line %llu column %llu: %s", log_t::flag_t::CRITICAL,
 					                  static_cast <unsigned long long> (location.line),
-					                  static_cast <unsigned long long> (location.column), message(error_t::STORAGE_EXHAUSTED));
+					                  static_cast <unsigned long long> (location.column), message(this->_error));
 				#endif
 			}
 			// Выводим отрицательный результат выполнения операции
@@ -836,11 +836,19 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_READ));
 		// Запоминаем код отказа чтения файла разметки
 		this->_error = error_t::FILE_NOT_READ;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
+		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
+		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
+		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -857,11 +865,19 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_OPENED));
 		// Запоминаем код отказа открытия файла разметки
 		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
+		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
+		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
+		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -880,16 +896,35 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 *
 	 * @note Проверка стоит после цикла, а не внутри: признак негодности потока
 	 *       сбрасывается лишь явно, и после цикла он тот же
+	 *
+	 * @note Заслон обратился в СЕТЬ БЕЗОПАСНОСТИ и набором не покрыт. Прежде он ловил
+	 *       каталог, поданный вместо файла: у POSIX каталог открывается, а читается
+	 *       отказом. Ныне распознавание каталога стоит ДО открытия потока, и каталог
+	 *       сюда не доходит вовсе - отказ приходит выше, тем же кодом. Остаётся ему
+	 *       ловить отказ носителя посреди чтения, проверкой не добываемый. Замерено
+	 *       щупом по местам отказа 04.09.2026: подмена кода здесь не красит ничего, а
+	 *       проверка чтения каталога проходит и с подменённым. Тот же довод и у JSON
+	 *
+	 * @warning Снимать заслон нельзя: без него оборванное чтение выглядело бы разметкой,
+	 *          прочитанной до конца, - успехом на половине данных
 	 */
 	if(file.bad()){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_READ));
 		// Запоминаем код отказа чтения файла разметки
 		this->_error = error_t::FILE_NOT_READ;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
+		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
+		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
+		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -955,11 +990,19 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_OPENED));
 		// Запоминаем код отказа открытия файла разметки
 		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
+		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
+		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
+		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -979,13 +1022,21 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_WRITTEN));
-		// Выполняем снос недописанного временного файла
-		::remove(temporary.c_str());
 		// Запоминаем код отказа записи файла разметки
 		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выполняем снос недописанного временного файла
+		::remove(temporary.c_str());
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
+		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
+		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
+		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -999,13 +1050,21 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(error_t::FILE_NOT_WRITTEN));
-		// Выполняем снос временного файла
-		::remove(temporary.c_str());
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выполняем снос временного файла
+		::remove(temporary.c_str());
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
+		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
+		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
+		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}

@@ -815,7 +815,7 @@ bool awh::codec::abc::Editor::add(const void * buffer, const size_t size,
 			 *
 			 * @note Отказ этот достижим открытым API: настройка укладчика `encrypt` при
 			 *       неотданном модуле шифрования. Закреплено
-			 *       `CodecAbcEditor.RefusedAddLeavesNothingToCommit`
+			 *       `EditorFixture.RefusedAddLeavesNothingToCommit`
 			 */
 			this->_dirty = dirty;
 			// Выводим признак неудачного накопления записи

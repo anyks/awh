@@ -1600,7 +1600,33 @@ awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcep
  */
 awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexcept :
  _log(nullptr), _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
- _boolean(false), _multiline(false), _integer(static_cast <int64_t> (value)), _real(0.) {}
+ _boolean(false), _multiline(false), _integer(static_cast <int64_t> (value)), _real(0.) {
+	/**
+	 * Если величина разрядность целого со знаком превышает
+	 *
+	 * @details Описание TOML знает целое ЛИШЬ СО ЗНАКОМ шириною в восемь октетов, и
+	 *          величина сверх того наречию невыразима вовсе. Прежде она приводилась
+	 *          молча: `18446744073709551615` обращалось записью в `-1`, а
+	 *          `9223372036854775808` - в самое отрицательное число. Запись выходила
+	 *          годной по виду, разбиралась без отказа и была неверна по величине -
+	 *          худший из возможных исходов
+	 *
+	 * @note Отвечать отказом самому конструктору нечем - он ответа не выдаёт, - и потому
+	 *       значение объявляется НЕГОДНЫМ с названной причиной: запись такого значения
+	 *       отвечает отказом, а `error()` называет `INVALID_VALUE`. Потребитель узнаёт о
+	 *       беде на записи, а не по неверному числу в файле
+	 *
+	 * @note Наречие YAML величину эту записывает целиком и правильно - оно её знает, - и
+	 *       расхождение это законно: правило берётся у описания наречия, а не у общего
+	 *       вида ходов
+	 */
+	if(value > static_cast <uint64_t> (::std::numeric_limits <int64_t>::max())){
+		// Объявляем значение негодным: величина наречию невыразима
+		this->_type = type_t::NONE;
+		// Запоминаем код отказа построения значения
+		this->_error = error_t::INVALID_VALUE;
+	}
+}
 /**
  * @brief Конструктор числа с плавающей точкой
  *
@@ -2153,6 +2179,8 @@ bool awh::codec::toml::Value::compose(writer_t & writer, const string_view name,
  *
  */
 string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) const noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
 	// Объект записи текста настроек
 	writer_t writer(this->_log, settings);
 	/**
@@ -2161,9 +2189,12 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	 * @note Корнем текста настроек может быть одна лишь таблица: описание наречия
 	 *       велит тексту быть перечнем пар, и число либо строка корнем его не бывают
 	 */
-	if(this->_type != type_t::TABLE)
+	if(this->_type != type_t::TABLE){
+		// Запоминаем код отказа записи
+		this->_error = error_t::INVALID_VALUE;
 		// Выводим пустой текст настроек
 		return string();
+	}
 	/**
 	 * Выполняем перебор всех пар корневой таблицы
 	 *
@@ -2188,7 +2219,12 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 		 */
 		if(!this->_items.at(i).compose(writer, this->_names.at(i), true))
 			// Выводим пустой текст настроек
-			return string();
+			{
+				// Запоминаем код отказа записи, потоком названный
+				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INVALID_VALUE);
+				// Выводим пустой текст настроек
+				return string();
+			}
 	}
 	/**
 	 * Выполняем перебор всех пар корневой таблицы вторым заходом
@@ -2211,7 +2247,12 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 		 */
 		if(!writer.table(this->_names.at(i)))
 			// Выводим пустой текст настроек
-			return string();
+			{
+				// Запоминаем код отказа записи, потоком названный
+				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INVALID_VALUE);
+				// Выводим пустой текст настроек
+				return string();
+			}
 		// Получаем значение объявленной таблицы
 		const Value & table = this->_items.at(i);
 		/**
@@ -2240,7 +2281,12 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 			 */
 			if(!table._items.at(j).compose(writer, table._names.at(j), true))
 				// Выводим пустой текст настроек
-				return string();
+				{
+					// Запоминаем код отказа записи, потоком названный
+					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INVALID_VALUE);
+					// Выводим пустой текст настроек
+					return string();
+				}
 		}
 	}
 	/**
@@ -2249,6 +2295,71 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	 * @note Отдельного завершения запись не требует: поток дописывает окончание строки
 	 *       сам, и дерево настроек забирает у него текст ровно так же
 	 */
+	return writer.text();
+}
+/**
+ * @brief Метод получения кода отказа последней работы
+ *
+ * @details Ход этот отвечает на вопрос «отчего запись пуста»: пустой текст означает разом
+ * и значение пустое, и отказ записи, и различить их иначе потребителю нечем
+ *
+ * @note Прежде отказ записи молчал целиком - ни кода, ни сообщения в журнал, - и
+ *       потребитель сохранял бы пустой файл вместо своих настроек. Найдено разбором
+ *
+ * @return код отказа последней работы
+ *
+ */
+awh::codec::toml::error_t awh::codec::toml::Value::error() const noexcept {
+	// Выводим код отказа последней работы над владеющим значением
+	return this->_error;
+}
+/**
+ * @brief Метод получения начертания простого значения
+ *
+ * @details Ход этот отдаёт значение тем видом, каким оно ложится в текст: число,
+ * логическое значение и отметку времени - записью их, а строку - содержимым, оградою
+ * уже снятою. Ход `text()` отвечает лишь у значений строковых, и у прочих отдаёт
+ * пустую строку, от строки пустой неотличимую
+ *
+ * @note Заведён разбором: у YAML и INI начертание всякого простого значения отдаёт
+ *       `text()`, а у здешнего дерева хода к нему не было вовсе - ни `text()`, ни
+ *       `dump()`, корнем таблицу требующий. Мост, значения переносящий, терял на этом
+ *       отметку времени: она уходила пустою строкою без единого отказа
+ *
+ * @return начертание простого значения
+ *
+ */
+string awh::codec::toml::Value::record() const noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
+	/**
+	 * Если значение простым не является
+	 *
+	 * @note Ход этот отведён значениям простым: у перечня и таблицы начертания одного,
+	 *       вне текста стоящего, нет вовсе - их записывает `dump()` целым текстом
+	 */
+	if((this->_type == type_t::NONE) || (this->_type == type_t::ARRAY) || (this->_type == type_t::TABLE)){
+		// Запоминаем код отказа записи начертания
+		this->_error = error_t::INVALID_VALUE;
+		// Выводим пустое начертание значения
+		return string();
+	}
+	// Объект записи текста настроек
+	writer_t writer(this->_log);
+	/**
+	 * Если записать значение не удалось
+	 *
+	 * @note Запись ведётся тем же ходом, каким значение ложится в текст: заведи мы
+	 *       здесь запись вторую, она разошлась бы с первою - и начертание, потребителю
+	 *       выданное, разнилось бы с тем, что уходит в файл
+	 */
+	if(!this->compose(writer, string_view(), false)){
+		// Запоминаем код отказа записи, потоком названный
+		this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INVALID_VALUE);
+		// Выводим пустое начертание значения
+		return string();
+	}
+	// Выводим начертание значения
 	return writer.text();
 }
 /**

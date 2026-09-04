@@ -2894,6 +2894,22 @@ TEST(CodecJsonValue, SaveToMissingDirectoryIsReported) {
 	ASSERT_FALSE(messages.empty());
 	// Выполняем проверку упоминания причины отказа в сообщении
 	ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_OPENED)), string::npos) << messages.back();
+	/**
+	 * Выполняем проверку КОДА отказа, а не одного лишь сообщения
+	 *
+	 * @note Довод общий с прочими файловыми проверками: сообщение читает человек, а
+	 *       звучащий судит по коду. Замерено щупом по местам отказа 04.09.2026
+	 */
+	ASSERT_EQ(value.error(), json::error_t::FILE_NOT_OPENED);
+	/**
+	 * Выполняем проверку КОДА отказа, а не одного лишь сообщения
+	 *
+	 * @note Замерено щупом по местам отказа 04.09.2026 у кодека CSV, а затем и здесь:
+	 *       проверки сохранения спрашивали признак успеха да сообщение в журнале, а код
+	 *       не сличали. Сообщение читает человек, звучащий же судит по коду - и по нему
+	 *       решает, исправить ли довод, завести ли каталог либо отступиться
+	 */
+	ASSERT_EQ(value.error(), json::error_t::FILE_NOT_OPENED);
 }
 
 /**
@@ -2972,6 +2988,15 @@ TEST(CodecJsonValue, AssignmentAdoptsLoggerWhenAbsent) {
 		ASSERT_FALSE(messages.empty());
 		// Выполняем проверку упоминания причины отказа в сообщении
 		ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_OPENED)), string::npos) << messages.back();
+		/**
+		 * Выполняем проверку КОДА отказа у ТОГО ЖЕ значения, какое отказало
+		 *
+		 * @warning Спрашивать код надо у вложенного значения, а не у корневого: донесение
+		 *          у каждого значения СВОЁ, и корень об отказе вложенного не знает вовсе.
+		 *          Замерено на себе - сличение у корня дало «нет ошибки» при настоящем
+		 *          отказе вложенного, и проверка покраснела верно
+		 */
+		ASSERT_EQ(value["имя"].error(), json::error_t::FILE_NOT_OPENED);
 	}
 }
 
@@ -3084,6 +3109,13 @@ TEST(CodecJsonValue, SaveFailureIsNotSuccess) {
 	ASSERT_FALSE(messages.empty());
 	// Выполняем проверку упоминания причины отказа в сообщении
 	ASSERT_NE(messages.back().find(json::message(json::error_t::FILE_NOT_WRITTEN)), string::npos) << messages.back();
+	/**
+	 * Выполняем проверку КОДА отказа, а не одного лишь сообщения
+	 *
+	 * @note Довод общий с прочими файловыми проверками: сообщение читает человек, а
+	 *       звучащий судит по коду. Замерено щупом по местам отказа 04.09.2026
+	 */
+	ASSERT_EQ(value.error(), json::error_t::FILE_NOT_WRITTEN);
 	// Выполняем удаление файла документа
 	::remove(filename.c_str());
 }

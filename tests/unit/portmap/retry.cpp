@@ -109,6 +109,14 @@ namespace {
 					 * Выполняем приём, пока работа не прекращена
 					 */
 					while(this->_working.load()){
+						/**
+						 * Ожидаем готовности гнезда прежде обращения к приёму
+						 *
+						 * @note Обязательно: у MS Windows дейтаграмма, пришедшая ровно в миг
+						 *       снятия приёма по сроку `SO_RCVTIMEO`, теряется бесследно.
+						 *       Подробности и опыт смотрите у `waitReadable` в `tests/posix.hpp`
+						 */
+						if(!::waitReadable(this->_socket, 100)) continue;
 						// Выполняем чтение очередной просьбы
 						const ssize_t size = ::recvfrom(this->_socket, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, nullptr, nullptr);
 						// Если просьба принята, запоминаем её

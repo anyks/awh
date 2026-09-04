@@ -960,11 +960,20 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект для работы с логами установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_OPENED));
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: прежде
+		 *          код стоял в этом месте ДВАЖДЫ - в сообщении и в поле, - и половины
+		 *          эти могли разойтись молча. Замерено щупом по местам отказа
+		 *          04.09.2026: проверка сличала сообщение и потому подмену кода в поле
+		 *          не видела вовсе, а звучащий судит именно по коду
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1093,13 +1102,20 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект для работы с логами установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_WRITTEN));
 		// Выполняем снос недописанного временного файла таблицы
 		::remove(temporary.c_str());
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду: код, записанный в месте
+		 *          отказа дважды, разошёлся бы молча, а проверка, сличающая сообщение,
+		 *          подмены кода в поле не увидела бы вовсе
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1113,13 +1129,19 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект для работы с логами установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(error_t::FILE_NOT_WRITTEN));
 		// Выполняем снос временного файла таблицы
 		::remove(temporary.c_str());
 		// Запоминаем код отказа переименования временного файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
+		/**
+		 * Если объект для работы с логами установлен
+		 *
+		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду по доводу, изложенному
+		 *          у места отказа записи выше
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV document failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}

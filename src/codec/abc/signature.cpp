@@ -360,7 +360,7 @@ bool awh::codec::abc::pack(const sign_t & sign, vector <uint8_t> & result) noexc
 	 *       безропотно, и на носитель ложился безупречный кадр в 32 октета при заголовке,
 	 *       объявляющем контейнер подписанным. Отказ всплывал лишь у читающего, да ещё и
 	 *       не тем кодом - `internal parsing error` вместо обрыва подписи. Замерено щупом
-	 *       03.09.2026, закреплено `CodecAbcSignature.OversizedRecordIsRefusedOutright`
+	 *       03.09.2026, закреплено `SignatureFixture.OversizedRecordIsRefusedOutright`
 	 */
 	if((sign.signature.size() > 0xFFFF) || (sign.root.size() > 0xFFFF))
 		// Сообщаем, что запись подписи не уложена

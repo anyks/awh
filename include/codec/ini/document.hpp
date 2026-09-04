@@ -1174,6 +1174,80 @@ namespace awh {
 					 * \~
 					 */
 					vector <string_view> keys(const string_view section = "", const string_view subsection = "") const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод перечисления звеньев пути к детям значения
+					 *
+					 * @details Выдаются НЕ ИМЕНА детей, а ЗВЕНЬЯ ПУТИ к ним: такие, что
+					 * `at(путь + "/" + звено)` неминуемо ведёт к тому самому ребёнку. У вместилища
+					 * пар звеном служит имя пары, у перечня одноимённых объявлений - порядковый
+					 * номер
+					 * @details Ход этот вместе с `at()` даёт ПОЛНЫЙ ОБХОД дерева, общий у всех
+					 * кодеков рамки. Обход ЗАМКНУТ - всякое выданное звено годно для `at()`, - и
+					 * замкнутость эта держится на отменяющих записях RFC 6901: имя, косую черту
+					 * либо тильду несущее, выдаётся ЗАПИСАННЫМ (`~1` и `~0`), а не как есть
+					 *
+					 * @details Ход поставлен ПЕРЕГРУЗКОЙ рядом с прежним перечнем имён свойств
+					 * раздела, а не подменою его: обещания у них РАЗНЫЕ - прежний берёт имя
+					 * раздела с подразделом и выдаёт имена свойств, ничего не записывая
+					 *
+					 * @warning Застава стоит по ТОЧНОМУ виду `string`, а НЕ по преобразуемости,
+					 *          как у `set()` того же дерева. Разница намеренная и замерена:
+					 *          прежний ход берёт `string_view`, и литерал в него проходит, - будь
+					 *          застава по преобразуемости, вызов `keys("srv")`, ныне означающий
+					 *          свойства раздела `srv`, МОЛЧА стал бы означать путь и отвечал бы
+					 *          звеньями числовыми. Замерено щупом: отвечал `«0» «1»` вместо
+					 *          `«host» «port»`, собираясь без единого замечания
+					 *
+					 * @warning Цена заставы: литерал уходит в ход ПРЕЖНИЙ, и запись
+					 *          `keys("/раздел/имя")` означает раздел с таким именем, а не путь, -
+					 *          в отличие от YAML и TOML, где литерал означает путь. Путь у этого
+					 *          дерева задавать надлежит ТОЛЬКО видом `string`. Закреплено
+					 *          проверкою `CodecIniDocument.PathEnumerationTakesOnlyTheStringType`
+					 *
+					 * @warning Литералом путь задавать НЕ через это имя, а через `children()`:
+					 *          оно берёт `string_view`, и вид довода на ход его не влияет вовсе.
+					 *          Ходы `keys(string)` и `children()` суть один и тот же ход, но
+					 *          второе имя однозначно всегда, и правила «подавать переменной»
+					 *          при нём не требуется. То же и у соседей: `holds()` и `prune()`
+					 *
+					 * @note Перечисление НИКОГДА не отвечает отказом: значение простое, пустое
+					 *       вместилище и путь в никуда отвечают пустым перечнем ОДИНАКОВО, а
+					 *       разнятся они ходом `at()`
+					 *
+					 * @param path путь до значения
+					 * @return     перечень звеньев пути к детям значения
+					 *
+					 * \~english
+					 * @brief Method of the enumeration of the path links to the children of a value
+					 * @param path path to the value
+					 * @return     list of the path links to the children of the value
+					 *
+					 * \~
+					 */
+					template <class T>
+					typename ::std::enable_if <::std::is_same <T, string>::value, vector <string>>::type
+					keys(const T & path) const noexcept {
+						// Выводим перечень звеньев пути к детям значения
+						return this->children(string_view(path));
+					}
+					/**
+					 * \~russian
+					 * @brief Метод перечисления звеньев пути к детям значения
+					 *
+					 * @details Тело посредника `keys()`, шаблоном от него отделённое
+					 *
+					 * @param path путь до значения
+					 * @return     перечень звеньев пути к детям значения
+					 *
+					 * \~english
+					 * @brief Method of the enumeration of the path links to the children of a value
+					 * @param path path to the value
+					 * @return     list of the path links to the children of the value
+					 *
+					 * \~
+					 */
+					vector <string> children(const string_view path) const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1218,6 +1292,55 @@ namespace awh {
 					 * \~
 					 */
 					bool has(const string_view key, const string_view section = "", const string_view subsection = "") const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод проверки наличия значения по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки: спрос по пути, строкою
+					 * заданному. Спрашивается значение ЛЮБОГО вида - и свойство, и раздел, и
+					 * значение перечня, - тогда как прежний ход берёт имя свойства с разделом
+					 * @details Вместе с `keys()` и `at()` ход этот и составляет общий обход
+					 * дерева: всякое звено, перечнем выданное, спрос проходит
+					 *
+					 * @warning Застава стоит по ТОЧНОМУ виду `string` по той же причине, по какой
+					 *          она стоит у общего перечня звеньев: прежний ход берёт `string_view`,
+					 *          и литерал в него проходит, - будь застава по преобразуемости, вызов
+					 *          `has("port")`, свойство означающий, МОЛЧА стал бы означать путь.
+					 *          Цена та же: путь задавать надлежит ТОЛЬКО видом `string`
+					 *
+					 * @param path путь до искомого значения
+					 * @return     признак наличия значения по пути
+					 *
+					 * \~english
+					 * @brief Method of checking the presence of a value by a path
+					 * @param path path to the value being sought
+					 * @return     sign of the presence of the value by the path
+					 *
+					 * \~
+					 */
+					template <class T>
+					typename ::std::enable_if <::std::is_same <T, string>::value, bool>::type
+					has(const T & path) const noexcept {
+						// Выводим признак наличия значения по пути
+						return this->holds(string_view(path));
+					}
+					/**
+					 * \~russian
+					 * @brief Метод проверки наличия значения по пути
+					 *
+					 * @details Тело посредника `has()`, шаблоном от него отделённое
+					 *
+					 * @param path путь до искомого значения
+					 * @return     признак наличия значения по пути
+					 *
+					 * \~english
+					 * @brief Method of checking the presence of a value by a path
+					 * @param path path to the value being sought
+					 * @return     sign of the presence of the value by the path
+					 *
+					 * \~
+					 */
+					bool holds(const string_view path) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения значения свойства
@@ -1593,6 +1716,63 @@ namespace awh {
 					 * \~
 					 */
 					bool erase(const string_view key, const string_view section = "", const string_view subsection = "") noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия значения по пути
+					 *
+					 * @details Ход этот общий у всех семи кодеков рамки: снос по пути, строкою
+					 * заданному. Сносится значение ЛЮБОГО вида - и свойство, и раздел, и значение
+					 * перечня одноимённых объявлений, - тогда как прежний ход снимает свойство в
+					 * разделе, а `remove(раздел)` сносит раздел
+					 *
+					 * @details Пустой путь по описанию RFC 6901 означает ВЕСЬ документ, а не
+					 * отсутствующее свойство: снос его опустошает дерево целиком. Дозволен он
+					 * оттого, что пустой файл настроек INI законен вполне
+					 *
+					 * @warning Застава стоит по ТОЧНОМУ виду `string` по той же причине, по какой
+					 *          она стоит у общего перечня звеньев и общего спроса: прежний ход
+					 *          берёт `string_view`, и литерал в него проходит, - будь застава по
+					 *          преобразуемости, вызов `erase("port")`, свойство означающий, МОЛЧА
+					 *          стал бы означать путь
+					 *
+					 * @note Числовое звено принимается наравне с именем: повтор имени свойства
+					 *       ложится в дерево перечнем, и перечень звеньев выдаёт там номера.
+					 *       Не прими снос номера - обход был бы замкнут для чтения и разомкнут
+					 *       для правки
+					 *
+					 * @param path путь до снимаемого значения
+					 * @return     признак успешного снятия значения
+					 *
+					 * \~english
+					 * @brief Method of removing a value by a path
+					 * @param path path to the value being removed
+					 * @return     sign of the successful removal of the value
+					 *
+					 * \~
+					 */
+					template <class T>
+					typename ::std::enable_if <::std::is_same <T, string>::value, bool>::type
+					erase(const T & path) noexcept {
+						// Выводим результат снятия значения по пути
+						return this->prune(path);
+					}
+					/**
+					 * \~russian
+					 * @brief Метод снятия значения по пути
+					 *
+					 * @details Тело посредника `erase()`, шаблоном от него отделённое
+					 *
+					 * @param path путь до снимаемого значения
+					 * @return     признак успешного снятия значения
+					 *
+					 * \~english
+					 * @brief Method of removing a value by a path
+					 * @param path path to the value being removed
+					 * @return     sign of the successful removal of the value
+					 *
+					 * \~
+					 */
+					bool prune(const string & path) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод удаления раздела

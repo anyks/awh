@@ -2354,10 +2354,17 @@ bool awh::codec::toml::Reader::numeric(const string_view text, item_t & item) no
 		const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), (digits.data() + digits.length()), number);
 		/**
 		 * Если разбор числа выполнить не удалось
+		 *
+		 * @note Отличать негодное построение от выхода за отрезок значений обязательно
+		 *       и здесь: запись «1e1000» построена безупречно, и негодна в ней одна лишь
+		 *       величина. Отвечать на неё ошибкой в файле значило бы посылать потребителя
+		 *       править запись, которая правильна, - целое за отрезком отвечает
+		 *       NUMBER_OVERFLOW, и дробному отводится тот же код
 		 */
 		if(!static_cast <bool> (res) || (res.ptr != (digits.data() + digits.length())))
-			// Выполняем запоминание ошибки построения записи числа
-			return this->failure(error_t::INVALID_NUMBER, this->_offset);
+			// Выполняем запоминание ошибки разбора записи числа
+			return this->failure(((res.ec == errc::result_out_of_range) ?
+				error_t::NUMBER_OVERFLOW : error_t::INVALID_NUMBER), this->_offset);
 		// Запоминаем тип значения события
 		item.type = type_t::FLOAT;
 		// Запоминаем значение события с плавающей точкой

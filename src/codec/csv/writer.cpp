@@ -496,7 +496,7 @@ void awh::codec::csv::Writer::record() noexcept {
 			// Снимаем признак наличия полей у записи
 			this->_started = false;
 			// Выполняем отказ записи с сообщением о нём в журнал
-			this->refuse(error_t::INTERNAL);
+			this->refuse(error_t::UNWRITABLE_FIELD);
 			// Выходим из функции
 			return;
 		}

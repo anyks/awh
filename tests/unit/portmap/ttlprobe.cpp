@@ -90,7 +90,8 @@ static bool delivers(const std::string & iface, const unsigned char hops) noexce
 			::setReceiveTimeout(rx, 700);
 			if(::sendto(tx, "PROBE", 5, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)) > 0){
 				char buffer[16];
-				delivered = (::recv(rx, buffer, sizeof(buffer), 0) > 0);
+				// Готовность ожидаем select-ом: см. `waitReadable` в `tests/posix.hpp`
+				delivered = (::waitReadable(rx, 700) && (::recv(rx, buffer, sizeof(buffer), 0) > 0));
 			} else ::printf("    отправка отказала\n");
 		} else ::printf("    вступление в группу отказало\n");
 	}

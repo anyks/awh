@@ -658,3 +658,92 @@ TEST(ArgsArgs, Filesystem) {
 	// Выполняем проверку кода отказа чтения файла настроек
 	ASSERT_EQ(third.errors().at(0).first, error_t::FILESYSTEM);
 }
+
+/**
+ * @brief Проверка приёма настроек записями всех кодеков
+ *
+ * @details Смысл модуля в том, чтобы настройки принимались ЛЮБЫМ видом записи,
+ *          а разбирались единообразно: разные виды записи об одном и том же
+ *          обязаны дать одно и то же дерево. Оттого проверка ведёт один и тот
+ *          же набор настроек пятью видами и сличает исход, а не разбирает
+ *          каждый вид сам по себе
+ *
+ */
+TEST(ArgsArgs, ConfigEveryFormat){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Перечень видов записи и записей настроек, им отвечающих
+	const vector <pair <codec::Bridge::format_t, string>> samples = {
+		{codec::Bridge::format_t::JSON, "{\"name\":\"значение\",\"net\":{\"port\":8080}}"},
+		{codec::Bridge::format_t::YAML, "name: значение\nnet:\n  port: 8080\n"},
+		{codec::Bridge::format_t::TOML, "name = \"значение\"\n[net]\nport = 8080\n"},
+		{codec::Bridge::format_t::INI,  "name = значение\n[net]\nport = 8080\n"},
+		{codec::Bridge::format_t::XML,  "<config><name>значение</name><net><port>8080</port></net></config>"}
+	};
+	// Выполняем перебор всех видов записи настроек
+	for(auto & sample : samples){
+		// Создаём объект сбора параметров запуска
+		args_t args(&fmk, &log);
+		// Выполняем разбор записи настроек кодеком
+		ASSERT_TRUE(args.config(sample.second, sample.first)) << "вид записи " << static_cast <uint16_t> (sample.first);
+		/**
+		 * Выполняем выбор пути к значению
+		 *
+		 * @warning У записи XML корень ИМЕНОВАН - стандарт требует ровно один
+		 *          корневой элемент, - и содержимое лежит под ним. Расхождение
+		 *          это законно и вызвано стандартом, а не устройством моста,
+		 *          потому путь здесь и разнится
+		 */
+		const string prefix = (sample.first == codec::Bridge::format_t::XML ? "config." : "");
+		// Выполняем проверку укладки последовательности знаков
+		ASSERT_EQ(args.get <string> (prefix + "name"), "значение") << "вид записи " << static_cast <uint16_t> (sample.first);
+		// Выполняем проверку укладки значения по вложенному пути
+		ASSERT_EQ(args.get <uint16_t> (prefix + "net.port"), 8080) << "вид записи " << static_cast <uint16_t> (sample.first);
+	}
+}
+
+/**
+ * @brief Проверка выдачи настроек записями всех кодеков
+ *
+ * @details Настройки, собранные из доводов запуска, обязаны выдаваться любым
+ *          видом записи и приниматься обратно тем же видом. Круг здесь ведётся
+ *          через сам модуль, а не через мост, потому что проверяется именно
+ *          выдача модуля - с его именами путей и его разделителем
+ *
+ */
+TEST(ArgsArgs, DumpEveryFormat){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Перечень видов записи, круг через которые замкнут
+	const vector <codec::Bridge::format_t> formats = {
+		codec::Bridge::format_t::JSON,
+		codec::Bridge::format_t::YAML,
+		codec::Bridge::format_t::TOML,
+		codec::Bridge::format_t::INI
+	};
+	// Выполняем перебор всех видов записи настроек
+	for(auto & format : formats){
+		// Создаём объект сбора параметров запуска
+		args_t args(&fmk, &log);
+		// Разбираемые доводы запуска приложения
+		const char * argv[] = {"app", "--net.port=8080", "--name=значение"};
+		// Выполняем разбор доводов запуска приложения
+		ASSERT_TRUE(args.parse(3, argv)) << "вид записи " << static_cast <uint16_t> (format);
+		// Собираемая запись настроек
+		string text = "";
+		// Выполняем выдачу дерева настроек записью кодека
+		ASSERT_TRUE(args.dump(text, format)) << "вид записи " << static_cast <uint16_t> (format);
+		// Создаём объект сбора параметров запуска для обратного приёма
+		args_t second(&fmk, &log);
+		// Выполняем разбор собранной записи настроек
+		ASSERT_TRUE(second.config(text, format)) << "вид записи " << static_cast <uint16_t> (format) << ", собрано: " << text;
+		// Выполняем проверку сохранности значения по вложенному пути
+		ASSERT_EQ(second.get <uint16_t> ("net.port"), 8080) << "вид записи " << static_cast <uint16_t> (format) << ", собрано: " << text;
+		// Выполняем проверку сохранности последовательности знаков
+		ASSERT_EQ(second.get <string> ("name"), "значение") << "вид записи " << static_cast <uint16_t> (format) << ", собрано: " << text;
+	}
+}

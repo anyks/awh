@@ -168,6 +168,14 @@ class Router {
 					socklen_t length = sizeof(client);
 					// Выполняем очистку адреса обратившейся машины
 					::memset(&client, 0, sizeof(client));
+					/**
+					 * Ожидаем готовности гнезда прежде обращения к приёму
+					 *
+					 * @note Обязательно: у MS Windows дейтаграмма, пришедшая ровно в миг
+					 *       снятия приёма по сроку `SO_RCVTIMEO`, теряется бесследно.
+					 *       Подробности и опыт смотрите у `waitReadable` в `tests/posix.hpp`
+					 */
+					if(!::waitReadable(this->_socket, 100)) continue;
 					// Выполняем чтение просьбы обратившейся машины
 					const ssize_t size = ::recvfrom(this->_socket, reinterpret_cast <char *> (buffer), sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&client), &length);
 					/**

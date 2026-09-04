@@ -162,8 +162,16 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/numeric.cpp" -o "$OUTPUT/codec-numeric.o"
 OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
 
+#
 # Выполняем перебор всех частей кодека CSV
-for PART in common encoding reader writer document; do
+#
+# @warning Перечень обязан покрывать ВСЕ части кодека, и сверять его надо при заведении
+#          всякой новой. Часть `value` была заведена 04.09.2026 и в стенд не внесена: на
+#          восьми отладочных стендах владеющее значение таблицы не проверялось вовсе, а
+#          стенд отчитывался успехом - молчание его означало не здоровье, а отсутствие
+#          проверок. Вскрылось случайно, при сборке щупа объектными файлами стенда
+#
+for PART in common encoding reader writer document value; do
 	# Выполняем сборку очередной части кодека CSV
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/csv/$PART.cpp" -o "$OUTPUT/codec-$PART.o"
 	# Выполняем сборку проверок очередной части кодека CSV

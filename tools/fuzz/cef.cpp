@@ -412,7 +412,29 @@ namespace {
 	 * @return         признак успешности проверки
 	 *
 	 */
-	bool tree(const string & text, const cef::reader_t::settings_t & settings) noexcept {
+	bool tree(const string & text, const cef::reader_t::settings_t & given) noexcept {
+		// Настройки разбора записей, обороту назначенные
+		cef::reader_t::settings_t settings = given;
+		/**
+		 * Устанавливаем обращение пустого значения последовательностью знаков
+		 *
+		 * @details Обратимость обещана при УМОЛЧАНИИ, и обращение пустого значения в
+		 *          логическую истину её по замыслу нарушает: запись «cs3=» обращается
+		 *          в «cs3=true», а повторный разбор даёт знаки «true» вместо пустоты.
+		 *          Потеря эта заявлена в самом кодеке решением, и сличать деревья при
+		 *          ней значило бы поверять не кодек, а собственную невнимательность
+		 */
+		settings.empty = cef::empty_t::STRING;
+		/**
+		 * Включаем снятие отмены знаков со значений
+		 *
+		 * @details Обратимость обещана при УМОЛЧАНИИ и по той же причине: разбор пар
+		 *          ведётся ходом `fmk_t::kv`, а он снимает кавычки-ограду значения
+		 *          всегда, настройке кодека не подчиняясь. При выключенном снятии
+		 *          отмены значение «"a b=c"» выдаётся без ограды и, записанное обратно
+		 *          как есть, разбирается двумя парами вместо одной
+		 */
+		settings.unescape = true;
 		// Объект события CEF
 		cef::document_t doc(&environment().fmk, &environment().log);
 		// Устанавливаем настройки разбора записей
@@ -474,6 +496,58 @@ namespace {
 		if(doc.root().dump() != again.root().dump()){
 			// Выводим сообщение о расхождении деревьев разбора
 			::fprintf(stderr, "cef fuzz: trees differ after the round trip\n");
+			/**
+			 * Выполняем перебор областей записи в поисках расхождения
+			 *
+			 * @details Печатается ПЕРВЫЙ расходящийся узел, а не оба дерева целиком:
+			 * дерево живой записи несёт полторы сотни пар, и глазами в нём расхождение
+			 * не разыскивается вовсе
+			 */
+			/**
+			 * Если приставка syslog у деревьев разошлась
+			 */
+			if(doc.at("/syslog").text() != again.at("/syslog").text())
+				// Выводим сообщение о расхождении приставки syslog
+				::fprintf(
+					stderr, "cef fuzz: /syslog: \"%s\" / \"%s\" (has %d/%d)\n",
+					doc.at("/syslog").text().c_str(), again.at("/syslog").text().c_str(),
+					(int) doc.has("/syslog"), (int) again.has("/syslog")
+				);
+			for(const char * area : {"/header", "/extension"}){
+				// Получаем звенья пути области у обоих деревьев
+				const auto first = doc.keys(area), second = again.keys(area);
+				/**
+				 * Если количества звеньев области разошлись
+				 */
+				if(first.size() != second.size())
+					// Выводим сообщение о расхождении количества звеньев области
+					::fprintf(stderr, "cef fuzz: %s: links %zu/%zu\n", area, first.size(), second.size());
+				/**
+				 * Выполняем перебор всех звеньев области первого дерева
+				 */
+				for(size_t i = 0; i < first.size(); i++){
+					// Получаем путь к значению первого дерева
+					const string path = (string(area) + "/" + first.at(i));
+					/**
+					 * Если звено второму дереву неведомо
+					 */
+					if(!again.has(path)){
+						// Выводим сообщение об отсутствии звена у второго дерева
+						::fprintf(stderr, "cef fuzz: %s: link \"%s\" is absent after the round trip\n", area, first.at(i).c_str());
+						// Переходим к следующему звену области
+						continue;
+					}
+					/**
+					 * Если значения звена разошлись
+					 */
+					if(doc.at(path).text() != again.at(path).text())
+						// Выводим сообщение о расхождении значения звена
+						::fprintf(
+							stderr, "cef fuzz: %s: link \"%s\": \"%s\" / \"%s\"\n", area, first.at(i).c_str(),
+							doc.at(path).text().c_str(), again.at(path).text().c_str()
+						);
+				}
+			}
 			// Выводим собранную запись
 			::fprintf(stderr, "cef fuzz: rewritten: %s\n", rewritten.c_str());
 			// Выводим исходную запись

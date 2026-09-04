@@ -371,6 +371,26 @@ TEST(CodecTomlReader, Numbers) {
 		// Выполняем проверку выданного кода ошибки разбора
 		ASSERT_EQ(reader.error(), toml::error_t::NUMBER_OVERFLOW);
 	}
+	/**
+	 * Выполняем проверку отказа разбора дробного числа за отрезком значений
+	 *
+	 * @note Запись эта построена безупречно, и негодна в ней одна лишь величина:
+	 *       ответ ошибкой построения посылал бы потребителя править запись, которая
+	 *       правильна. Отвечать здесь обязан тот же код, что и у целого числа
+	 */
+	{
+		/**
+		 * Выполняем перебор записей дробных чисел за отрезком значений
+		 */
+		for(auto & source : {string("a = 1e1000\n"), string("a = 1.0e+400\n"), string("a = -1e400\n")}){
+			// Объект потокового чтения текста настроек
+			toml::reader_t reader(::logger());
+			// Выполняем проверку отказа разбора записи числа
+			ASSERT_FALSE(reader.feed(source.data(), source.size(), true)) << source;
+			// Выполняем проверку выданного кода ошибки разбора
+			ASSERT_EQ(reader.error(), toml::error_t::NUMBER_OVERFLOW) << source;
+		}
+	}
 }
 /**
  * @brief Проверка разбора чисел с плавающей точкой и логических значений
@@ -2692,7 +2712,7 @@ TEST(CodecTomlReader, RefusalsNotCoveredBefore) {
 		{"суррогат управляющей последовательностью", "a = \"\\uD800\"\n", toml::error_t::INVALID_ESCAPE},
 		{"кодовое значение свыше предела Юникода", "a = \"\\U00110000\"\n", toml::error_t::INVALID_ESCAPE},
 		{"целое число сверх отрезка значений хранилища", "a = 0xFFFFFFFFFFFFFFFFFF\n", toml::error_t::NUMBER_OVERFLOW},
-		{"число с плавающей точкой сверх отрезка значений", "a = 1e999\n", toml::error_t::INVALID_NUMBER},
+		{"число с плавающей точкой сверх отрезка значений", "a = 1e999\n", toml::error_t::NUMBER_OVERFLOW},
 		{"смещение часового пояса без минут", "a = 1979-05-27T07:32:00+01\n", toml::error_t::INVALID_DATETIME},
 		{"значение за знаком равенства отсутствует", "a = ", toml::error_t::MISSING_VALUE},
 		{"перечень значений незакрыт", "a = [1,", toml::error_t::UNCLOSED_ARRAY},

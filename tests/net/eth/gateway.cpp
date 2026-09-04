@@ -252,6 +252,51 @@ namespace {
  *
  */
 TEST_F(EthFixture, GatewayGetTest){
+	// Структура маршрута
+	awh::eth::gateway_t::route_t route{};
+	// Инициализируем объект адреса шлюза в маршруте
+	route.gateway = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Инициализируем объект адреса назначения в маршруте
+	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Если получаем маршрут для указанного адреса
+	ASSERT_TRUE(this->_eth->gateway.get(route));
+	/**
+	 * Содержимое полученного маршрута утверждается, а не печатается
+	 *
+	 * @warning Прежде здесь стоял ОДИН признак - что вызов ответил истиной, - а имя
+	 *          устройства и адрес шлюза лишь печатались. Вернись `get` истину с
+	 *          обнулённым маршрутом, проверка прошла бы зелёной: признак успеха о
+	 *          содержимом не говорит ничего
+	 */
+	ASSERT_FALSE(route.ifname.empty()) << "маршрут по умолчанию получен без имени сетевого устройства";
+	// Адрес шлюза по умолчанию нулевым быть не может
+	ASSERT_NE(0u, awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address) << "маршрут по умолчанию получен с нулевым адресом шлюза";
+	// Длина префикса у маршрута по умолчанию предела разрядности превышать не может
+	ASSERT_LE(route.prefix, 32) << "длина префикса маршрута IPv4 превышает предел разрядности";
+	// Устанавливаем полученный IP-адрес
+	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
+	// Записываем в лог сведения о найденном маршруте
+	std::cout << "Gateway found: interface " << route.ifname << ", default gateway " << static_cast <std::string> (* this->_addr.get()) << std::endl;
+}
+
+/**
+ * @brief Тест подмены маршрута по умолчанию и его восстановления
+ *
+ * @details Отделён от `GatewayGetTest` намеренно. Прежде это была одна проверка,
+ *          и все её содержательные шаги - снос маршрута, подмена шлюза,
+ *          восстановление - стояли за `if(::getuid() == 0)`. Под обычным
+ *          пользователем она утверждала ровно ОДИН вызов из шести и была при этом
+ *          зелёной, ничем не выдавая, что прошла в усечённом виде. Теперь
+ *          нехватка полномочий отвечает ПРОПУСКОМ с доводом
+ *
+ * @warning Проверка правит таблицу маршрутизации и восстанавливает её охранником
+ *          `RouteGuard`. Без полномочий она не выполняется вовсе
+ */
+TEST_F(EthFixture, GatewayRouteSubstitutionTest){
+	// Если полномочий недостаточно, править таблицу маршрутизации нечем
+	if(::getuid() != 0)
+		// Пропускаем проверку с указанием причины
+		GTEST_SKIP() << "подмена маршрута по умолчанию требует полномочий суперпользователя";
 	// Заводим охранника маршрута по умолчанию
 	RouteGuard guard(this->_eth.get(), this->_fmk.get(), this->_log.get());
 	// Структура маршрута
@@ -262,28 +307,12 @@ TEST_F(EthFixture, GatewayGetTest){
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Если получаем маршрут для указанного адреса
 	ASSERT_TRUE(this->_eth->gateway.get(route));
-	// Записываем в лог информацию о найденном маршруте
-	std::cout << "Gateway found:" << std::endl;
-	// Записываем в лог информацию о маршруте
-	std::cout << " Interface: " << route.ifname << std::endl;
 	// Устанавливаем полученный IP-адрес
 	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
 	// Получаем IP-адрес текущего шлюза по умолчанию
 	const std::string gateway = static_cast <std::string> (* this->_addr.get());
-	// Возвращаем адрес шлюза по умолчанию
-	std::cout << "Default Gateway: " << gateway << std::endl;
-	// Устанавливаем полученный IP-адрес
-	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.destination.get())->address, awh::net_addr_t::endian_t::LITTLE);
-	// Возвращаем адрес назначения
-	std::cout << "Destination: " << static_cast <std::string> (* this->_addr.get()) << "/" << static_cast <uint32_t> (route.prefix) << std::endl;
-	// Если пользователь является привилигированным
-	if(::getuid() == 0)
-		// Удаляем маршрут по указанному адресу
-		ASSERT_TRUE(this->_eth->gateway.remove(route));
-	/**
-	 * sudo route add default 192.168.7.1
-	 * sudo route delete default 0.0.0.0
-	 */
+	// Удаляем маршрут по указанному адресу
+	ASSERT_TRUE(this->_eth->gateway.remove(route));
 	/**
 	 * @note Подменный шлюз берётся соседом действующего, а не задаётся числом:
 	 *       ядро отвергает маршрут через шлюз, до которого не достаёт напрямую,
@@ -293,46 +322,33 @@ TEST_F(EthFixture, GatewayGetTest){
 	const std::string & prefix = gateway.substr(0, gateway.rfind('.') + 1);
 	// Получаем адрес подменного шлюза
 	const std::string & substitute = (prefix + (gateway.compare(prefix + "131") != 0 ? "131" : "132"));
-	// Выводим адрес подменного шлюза
-	std::cout << "Substitute Gateway: " << substitute << std::endl;
 	// Выполняем парсинг адреса нового шлюза
 	(* this->_addr.get()) = substitute;
 	// Устанавливаем адрес шлюза в маршрут
 	awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address = this->_addr->v4(awh::net_addr_t::endian_t::LITTLE);
 	// Сообщаем охраннику адрес подменного шлюза
 	guard.substitute(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address);
-	// Устанавливаем имя сетевого интерфейса
-	// route.ifname = "en0";
-	// Сбрасываем адрес назначения
-	// awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = 0;
-	// Если пользователь является привилигированным
-	if(::getuid() == 0)
-		// Добавляем маршрут с новым шлюзом
-		ASSERT_TRUE(this->_eth->gateway.add(route));
-	// Сбрасываем имя сетевого интерфейса
-	// route.ifname = "";
-	// Если пользователь является привилигированным
-	if(::getuid() == 0)
-		// Если получаем маршрут для указанного адреса
-		ASSERT_TRUE(this->_eth->gateway.get(route));
-	// Записываем в лог информацию о маршруте
-	std::cout << " Interface: " << route.ifname << std::endl;
-	// Устанавливаем полученный IP-адрес
-	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
-	// Возвращаем адрес шлюза по умолчанию
-	std::cout << "Default Gateway: " << static_cast <std::string> (* this->_addr.get()) << std::endl;
-	// Если пользователь является привилигированным
-	if(::getuid() == 0)
-		// Удаляем маршрут по указанному адресу
-		ASSERT_TRUE(this->_eth->gateway.remove(route));
-	// Выполняем парсинг адреса нового шлюза
+	// Добавляем маршрут с новым шлюзом
+	ASSERT_TRUE(this->_eth->gateway.add(route));
+	// Получаем маршрут заново: подмена обязана быть видна
+	ASSERT_TRUE(this->_eth->gateway.get(route));
+	/**
+	 * Подмена обязана быть УТВЕРЖДЕНА, а не только выполнена
+	 *
+	 * @warning Прежде за добавлением следовало лишь получение маршрута с признаком
+	 *          успеха, а сам подменный адрес только печатался. Не встань подмена
+	 *          вовсе - проверка прошла бы: `get` вернул бы прежний маршрут и ту же
+	 *          истину
+	 */
+	ASSERT_EQ(this->_addr->v4(awh::net_addr_t::endian_t::LITTLE), awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address) << "подменный шлюз не встал: маршрут отдаёт прежний адрес";
+	// Удаляем маршрут по указанному адресу
+	ASSERT_TRUE(this->_eth->gateway.remove(route));
+	// Выполняем парсинг адреса прежнего шлюза
 	(* this->_addr.get()) = gateway;
 	// Устанавливаем адрес шлюза в маршрут
 	awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address = this->_addr->v4(awh::net_addr_t::endian_t::LITTLE);
-	// Если пользователь является привилигированным
-	if(::getuid() == 0)
-		// Добавляем маршрут с новым шлюзом
-		ASSERT_TRUE(this->_eth->gateway.add(route));
+	// Возвращаем маршрут по умолчанию на место
+	ASSERT_TRUE(this->_eth->gateway.add(route));
 }
 /**
  * @brief Тест получения маршрута по умолчанию IPv4 и разрешения имени интерфейса
@@ -606,8 +622,15 @@ TEST_F(EthFixture, GatewayGetSpecificDestinationNotFoundIPv4){
 		ASSERT_FALSE(route.ifname.empty());
 		// Запрошенный адрес назначения ответом затираться не должен
 		ASSERT_EQ(awh_cast <awh::net::addr_net_ipv4_t *> (route.destination.get())->address, this->_addr->v4(awh::net_addr_t::endian_t::LITTLE));
+	/**
+	 * Отсутствие маршрута обязано быть ПРОПУСКОМ, а не печатью
+	 *
+	 * @warning Прежде здесь стояла печать в поток вывода: проверка проходила
+	 *          зелёной, не утвердив ничего, и узнать об этом можно было только
+	 *          читая вывод глазами. Отчёт о прогоне такой случай не показывал
+	 */
 	// Если маршрута нет вовсе, у машины нет и выхода наружу
-	} else std::cout << "Маршрут до тестового адреса отсутствует - выхода наружу у машины нет" << std::endl;
+	} else GTEST_SKIP() << "маршрута до тестового адреса нет: выхода наружу у машины нет";
 }
 /**
  * @brief Тест получения маршрута по умолчанию IPv6 (толерантный к отсутствию IPv6)
@@ -630,7 +653,14 @@ TEST_F(EthFixture, GatewayGetDefaultIPv6){
 		ASSERT_NE(awh_cast <awh::net::addr_net_ipv6_t *> (route.gateway.get())->address, zero);
 		// Имя сетевого интерфейса должно быть определено
 		ASSERT_FALSE(route.ifname.empty());
-	}
+	/**
+	 * Отсутствие маршрута IPv6 обязано быть ПРОПУСКОМ с доводом
+	 *
+	 * @warning Прежде ветви «иначе» не было вовсе: на машине без IPv6 проверка
+	 *          проходила зелёной при нуле утверждений. Сеть IPv6 есть не у всякой
+	 *          машины, и это законная обстановка, - но названа она должна быть
+	 */
+	} else GTEST_SKIP() << "маршрута по умолчанию IPv6 у машины нет";
 }
 /**
  * @brief Тест полного круга маршрута IPv6 через устройство: заведение, поиск, снос

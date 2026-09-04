@@ -527,6 +527,8 @@ namespace awh {
 					 * @note Очистка ведётся без возвратности: дерево на десятки тысяч уровней
 					 * иначе сорвало бы стек уже при разрушении значения
 					 *
+					 * @note Закреплено проверкой `CodecAbcValue.DeepTeardown`
+					 *
 					 * \~english
 					 * @brief Method of the clearing of a value
 					 * @note The clearing is conducted without a recursion: a tree of tens of thousands of levels
@@ -840,7 +842,8 @@ namespace awh {
 					 *
 					 * @note Занятое имя разыскивается сличением ЗНАЧЕНИЙ, а не видов хранения:
 					 * `UINT64(42)` при пересборке сужается до `UINT8`, и сличение видами
-					 * объявило бы равные имена разными
+					 * объявило бы равные имена разными; закреплено проверками
+					 * `CodecAbcValue.KeyIdentityByKind` и `CodecAbcDocument.KeyIdentityDivergesByLayer`
 					 *
 					 * @param name  имя поля отображения
 					 * @param value добавляемое значение

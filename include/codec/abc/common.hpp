@@ -1021,7 +1021,8 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			[[nodiscard]] __AWH_SHARED_EXPORT__ bool segment(const string_view path, size_t & offset, string_view & result) noexcept;
+			[[nodiscard]] __AWH_SHARED_EXPORT__ bool segment(const string_view path, size_t & offset, string_view & result,
+			 string & buffer, bool & invalid) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция разбора звена пути номером значения

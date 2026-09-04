@@ -43,6 +43,12 @@
  *          правке не подлежит. Раздел заведён затем, чтобы разбор кода не начинался
  *          каждый раз с одних и тех же выводов.
  *
+ *          <b>Разбор обрывается первым полем образца, которого в записи нет.</b>
+ *          Остальные поля образца после этого не разбираются, как то делает strptime.
+ *          Мягкий пропуск замерен на 200 000 записей: он спасает 3992 разбора ценой
+ *          5667 грубо неверных моментов, объявленных при этом пригодными, - соотношение
+ *          против него, и договор разбора остаётся строгим.
+ *
  *          <b>Даты до 1970 года не поддерживаются.</b> Штамп времени беззнаковый, и
  *          нижний предел представимости - само начало эпохи. Так же поступает
  *          большинство сред исполнения. Отсчёт вглубь от 1970 года - отдельная
@@ -347,6 +353,18 @@
  *          на Земле нет, принимает, но применяет его приведённым к ближайшему пределу.
  *          Приведение в самом разборе поля отняло бы у проверки записи возможность
  *          такое смещение отвергнуть: она судит по разобранным полям, а не по итогу.
+ *
+ *          <b>Обозначение временной зоны отыскивается в записи до опознания.</b>
+ *          Переменная \%Z пропускает всё, что обозначением зоны не является, и берёт
+ *          первое опознанное - таблицей модуля либо реестром своих обозначений.
+ *          Слово, ни там ни там не найденное, за зону не выдаётся: прежде всякое
+ *          неопознанное слово давало нулевое смещение, и запись «23:30:15.734 YEKT»
+ *          читалась временем по Гринвичу - долю секунды разбор принимал за зону, а
+ *          метка молча уезжала на пять часов. Название зоны внутри записи набирается
+ *          одними буквами, тогда как отдельно взятое обозначение бывает и числом:
+ *          «3» означает UTC+3, но в записи даты числа принадлежат её собственным
+ *          полям. Не найдя зоны вовсе, разбор переменную неразобранной и оставляет -
+ *          проверка такую запись отвергает.
  *
  *          <b>Обозначение продолжительности занимает запись целиком.</b> Число
  *          обязано стоять в её начале, единица размерности - в её конце, и состоят
@@ -657,6 +675,11 @@
  *          by its tail alone — "1h" was discarded silently, and the check approved such
  *          a record. A record read halfway is worse than a rejected one: it
  *          gives a quantity whose substitution the calling side will not learn about.
+ *
+ *          <b>Parsing stops at the first pattern field absent from the record.</b>
+ *          Remaining fields are not parsed, the way strptime behaves. Soft skipping was
+ *          measured over 200000 records: it rescues 3992 parses at the cost of 5667 grossly
+ *          wrong moments reported as valid, so the strict contract stands.
  *
  * \~
  *
@@ -4137,6 +4160,80 @@ namespace awh {
 			 *
 			 */
 			uint64_t parse(string_view date, const standard_t standard, const storage_t storage = storage_t::GLOBAL) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод разбора записи даты с признаком её пригодности
+			 *
+			 * @details Разбор об ошибке не сообщает: запись, в которой не нашлось ни одного
+			 *          поля образца, выдаётся текущим моментом, а испорченная метка тем
+			 *          самым обращается в «сейчас» и выглядит правдоподобной. Признак
+			 *          пригодности отличает разобранную запись от неразобранной за тот же
+			 *          один проход, тогда как метод validate проходит запись вторично.
+			 *
+			 *          Признак поднимается по тем же правилам, что и у validate: разобраны
+			 *          все переменные образца, а значения полей уложились в допустимые
+			 *          пределы.
+			 *
+			 *          @code{.cpp}
+			 *          bool valid = false;
+			 *          const uint64_t date = chrono.parse("Feb 17 2023 23:30:15 YEKT", "%b %d %Y %H:%M:%S %Z", valid);
+			 *          if(!valid) // запись разбору не поддалась
+			 *          @endcode
+			 *
+			 * @param date    строка даты
+			 * @param format  формат даты
+			 * @param valid   признак пригодности записи, выставляемый разбором
+			 * @param storage хранение значение времени
+			 * @return        дата в UnixTimestamp
+			 *
+			 * \~english
+			 * @brief Method for parsing a date record along with its validity flag
+			 *
+			 * @details Parsing reports no error: a record with none of the pattern fields
+			 *          found is returned as the current moment, so a corrupted stamp turns
+			 *          into «now» and looks plausible. The validity flag tells a parsed
+			 *          record from an unparsed one within the same single pass, whereas
+			 *          the validate method walks the record a second time.
+			 *
+			 * @param date    date string
+			 * @param format  date format
+			 * @param valid   record validity flag set by the parser
+			 * @param storage time value storage
+			 * @return        date in UnixTimestamp
+			 *
+			 * \~
+			 */
+			uint64_t parse(string_view date, string_view format, bool & valid, const storage_t storage = storage_t::GLOBAL) noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод разбора записи даты по стандарту с признаком её пригодности
+			 *
+			 * @details Признак поднимается тогда, когда запись отвечает одной из
+			 *          разновидностей, стандартом допускаемых. Запись, ни одной из них не
+			 *          отвечающая, выдаётся нулём с опущенным признаком.
+			 *
+			 * @param date     строка даты
+			 * @param standard стандарт записи даты
+			 * @param valid    признак пригодности записи, выставляемый разбором
+			 * @param storage  хранение значение времени
+			 * @return         дата в UnixTimestamp
+			 *
+			 * \~english
+			 * @brief Method for parsing a standard date record along with its validity flag
+			 *
+			 * @details The flag is raised when the record matches one of the forms the
+			 *          standard allows. A record matching none of them is returned as zero
+			 *          with the flag lowered.
+			 *
+			 * @param date     date string
+			 * @param standard date record standard
+			 * @param valid    record validity flag set by the parser
+			 * @param storage  time value storage
+			 * @return         date in UnixTimestamp
+			 *
+			 * \~
+			 */
+			uint64_t parse(string_view date, const standard_t standard, bool & valid, const storage_t storage = storage_t::GLOBAL) noexcept;
 		public:
 			/**
 			 * \~russian

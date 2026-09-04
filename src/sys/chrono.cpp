@@ -1526,7 +1526,7 @@ namespace {
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - слово, группа 2 - блок смещения, группа 3 - знак, группа 4 - значение смещения, группы 5 и 6 - часы и минуты при формате с двоеточием)
 	 *
 	 */
-	matches_t parseZoneFull(const char * text, const size_t length) noexcept {
+	matches_t parseZoneFull(const char * text, const size_t length, const bool alpha = false) noexcept {
 		// Итоговый список групп: остаётся пустым, если ни слова, ни смещения не нашлось
 		matches_t result;
 		/**
@@ -1537,14 +1537,21 @@ namespace {
 			size_t pos = i;
 			// Группы: [0] всё, [1] слово, [2] блок смещения, [3] знак, [4] значение, [5]/[6] часы/минуты
 			matches_t groups(7);
+			/**
+			 * Название зоны внутри записи даты набирается одними буквами: словесным
+			 * разбор считает и цифры, и доля секунды записи «23:30:15.734Z» уходила в
+			 * название зоны целиком - «734Z» не опознавалось, а зона терялась. Отдельно
+			 * же взятое обозначение зоны бывает и числом («3» означает UTC+3), и там
+			 * цифры названию принадлежат
+			 */
 			// Необязательная часть (\w+)?: название зоны словом
-			if(isWordChar(text[pos])){
+			if(alpha ? isAlphaChar(text[pos]) : isWordChar(text[pos])){
 				// Курсор для поглощения всего слова
 				size_t offset = pos;
 				/**
 				 * Расширяем слово, пока подряд идут словесные символы
 				 */
-				while((offset < length) && isWordChar(text[offset]))
+				while((offset < length) && (alpha ? isAlphaChar(text[offset]) : isWordChar(text[offset])))
 					// Включаем очередной словесный символ в слово
 					offset++;
 				/**
@@ -3090,7 +3097,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 			// Если формат соответствует %A ([A-Z][a-z]{2,})
 			case static_cast <uint8_t> (format_t::A): match = ::parseName(src, len, 2, static_cast <size_t> (-1), ((fmt == format_t::B) ? &params.nameMonths : &params.nameDays)); break;
 			// Если формат соответствует %Z ((\w+)?((\+|\-)((\d{1,2}):(\d{1,2})|(\d{1,4})))?)
-			case static_cast <uint8_t> (format_t::Z): match = ::parseZoneFull(src, len); break;
+			case static_cast <uint8_t> (format_t::Z): match = ::parseZoneFull(src, len, true); break;
 			// Если формат соответствует %R ((\d{1,2}):(\d{1,2}))
 			case static_cast <uint8_t> (format_t::R): match = ::parseDigitGroups(src, len, ':', DIGITS_HM, 2); break;
 			// Если формат соответствует %T ((\d{1,2}):(\d{1,2}):(\d{1,2}))
@@ -3385,29 +3392,94 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					} break;
 					// Если формат получен как %Z
 					case static_cast <uint8_t> (format_t::Z): {
-						// Если группа всего совпадения получена
-						if(match[0].end > match[0].begin)
-							// Получаем смещение в тексте
-							result = static_cast <ssize_t> (pos + match[0].end);
-						// Если название временной зоны указано
-						if(match[1].end > match[1].begin){
-							// Выполняем матчинг временной зоны
-							dt.zone = this->matchTimeZone(string(text.data() + pos + match[1].begin, static_cast <size_t> (match[1].end - match[1].begin)));
-							/**
-							 * Сводной зоне выставляется её стандартное смещение, а не разрешённое
-							 * по текущему мгновению: разрешение по самой записи идёт в конце разбора,
-							 * когда её поля собраны целиком, и обращение к часам здесь давало лишь
-							 * ответ, который тут же переписывался
-							 */
-							// Получаем смещение найденной временной зоны
-							dt.offset = this->getTimeZone(::composite(dt.zone) ? ::standard(dt.zone) : dt.zone);
-						}
 						/**
-						 * Накладываем смещение, записанное следом за названием зоны: сам
-						 * модуль печатает переменную %Z именно так (UTC+5:30, MSK+1), и
-						 * без этого шага собственная его запись читалась бы обратно как UTC
+						 * Название зоны отыскивается в записи до тех пор, пока не опознается:
+						 * словесным разбор считает и цифры, и всякое слово на месте зоны прежде
+						 * принималось за неё саму, а неопознанное давало нулевое смещение. Запись
+						 * «23:30:15.734 YEKT» оттого читалась временем по Гринвичу - долю секунды
+						 * разбор принимал за зону, само её обозначение не видел вовсе, и метка
+						 * молча уезжала на пять часов
 						 */
-						dt.offset += ::readZoneOffset(text.data() + pos, match[3], match[4], match[5], match[6]);
+						// Смещение поиска зоны в хвосте записи
+						size_t shift = 0;
+						// Группы очередного совпадения
+						matches_t item = match;
+						/**
+						 * Ищем обозначение зоны, пока в хвосте записи остаются слова
+						 */
+						while(item[0].end > item[0].begin){
+							// Обозначение временной зоны, найденное словом
+							zone_t zone = zone_t::NONE;
+							// Смещение временной зоны, найденное словом
+							int32_t offset = 0;
+							// Признак того, что обозначение зоны опознано
+							bool found = false;
+							// Если название временной зоны указано
+							if(item[1].end > item[1].begin){
+								// Получаем название временной зоны
+								const string name(text.data() + pos + shift + item[1].begin, static_cast <size_t> (item[1].end - item[1].begin));
+								// Выполняем матчинг временной зоны по таблице модуля
+								zone = this->matchTimeZone(name);
+								// Если временная зона опознана таблицей модуля
+								if(zone != zone_t::NONE){
+									/**
+									 * Сводной зоне выставляется её стандартное смещение, а не разрешённое
+									 * по текущему мгновению: разрешение по самой записи идёт в конце разбора,
+									 * когда её поля собраны целиком, и обращение к часам здесь давало лишь
+									 * ответ, который тут же переписывался
+									 */
+									// Получаем смещение найденной временной зоны
+									offset = this->getTimeZone(::composite(zone) ? ::standard(zone) : zone);
+									// Обозначение зоны опознано
+									found = true;
+								/**
+								 * Обозначения своего реестра запись несёт наравне с обозначениями
+								 * таблицы модуля: заведённая методом addTimeZone зона прежде в записи
+								 * не опознавалась вовсе, хотя перевод её обозначения работал
+								 */
+								} else {
+									// Выполняем поиск названия в реестре своих обозначений
+									auto i = this->_timeZones.find(::lowerZone(name.data(), name.length()));
+									// Если название найдено в реестре своих обозначений
+									if(i != this->_timeZones.end()){
+										// Получаем смещение своей временной зоны
+										offset = i->second;
+										// Обозначение зоны опознано
+										found = true;
+									}
+								}
+							}
+							/**
+							 * Накладываем смещение, записанное следом за названием зоны: сам
+							 * модуль печатает переменную %Z именно так (UTC+5:30, MSK+1), и
+							 * без этого шага собственная его запись читалась бы обратно как UTC
+							 */
+							// Получаем смещение, записанное следом за названием зоны
+							const int32_t tail = ::readZoneOffset(text.data() + pos + shift, item[3], item[4], item[5], item[6]);
+							// Записанное смещение задаёт зону и само по себе, без её названия
+							if(item[3].end > item[3].begin)
+								// Обозначение зоны опознано
+								found = true;
+							// Если обозначение зоны опознано
+							if(found){
+								// Устанавливаем обозначение найденной временной зоны
+								dt.zone = zone;
+								// Устанавливаем смещение найденной временной зоны
+								dt.offset = (offset + tail);
+								// Получаем смещение в тексте
+								result = static_cast <ssize_t> (pos + shift + item[0].end);
+								// Выходим из поиска обозначения зоны
+								break;
+							}
+							// Продолжаем поиск за неопознанным словом
+							shift += static_cast <size_t> (item[0].end);
+							// Если хвост записи исчерпан
+							if((pos + shift) >= text.size())
+								// Выходим из поиска обозначения зоны
+								break;
+							// Выполняем разбор хвоста записи, оставшегося за неопознанным словом
+							item = ::parseZoneFull(text.data() + pos + shift, text.size() - (pos + shift), true);
+						}
 					} break;
 					// Если формат получен как %z
 					case static_cast <uint8_t> (format_t::z): {
@@ -11427,6 +11499,19 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
  * @return        дата в UnixTimestamp
  *
  */
+uint64_t awh::Chrono::parse(string_view date, string_view format, bool & valid, const storage_t storage) noexcept {
+	// Выполняем разбор записи даты вместе с проверкой её пригодности
+	return this->parse(date, format, storage, &valid);
+}
+/**
+ * @brief Метод парсинга строки даты и времени в UnixTimestamp
+ *
+ * @param date    строка даты для парсинга
+ * @param format  формат даты
+ * @param storage хранение значение времени
+ * @return        дата в UnixTimestamp
+ *
+ */
 uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_t storage) noexcept {
 	// Выполняем разбор записи без проверки её пригодности
 	return this->parse(date, format, storage, nullptr);
@@ -11496,8 +11581,26 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, const standa
  *
  */
 uint64_t awh::Chrono::parse(string_view date, const standard_t standard, const storage_t storage) noexcept {
+	// Признак пригодности записи, вызывающей стороне не нужный
+	bool valid = false;
+	// Выполняем разбор записи даты по стандарту
+	return this->parse(date, standard, valid, storage);
+}
+/**
+ * @brief Метод разбора записи даты по стандарту с признаком её пригодности
+ *
+ * @param date     строка даты для парсинга
+ * @param standard стандарт записи даты
+ * @param valid    признак пригодности записи, выставляемый разбором
+ * @param storage  хранение значение времени
+ * @return         дата в UnixTimestamp
+ *
+ */
+uint64_t awh::Chrono::parse(string_view date, const standard_t standard, bool & valid, const storage_t storage) noexcept {
 	// Переменная результата
 	uint64_t result = 0;
+	// Запись пригодной пока не признана
+	valid = false;
 	/**
 	 * Разновидности записи перебираются по порядку, и берётся первая, дающая запись
 	 * пригодную: стандарт допускает не один образец, а несколько, и запись, годную
@@ -11514,8 +11617,6 @@ uint64_t awh::Chrono::parse(string_view date, const standard_t standard, const s
 		if(!::matchLiterals(date, format))
 			// Переходим к следующему образцу записи
 			continue;
-		// Признак пригодности разобранной записи
-		bool valid = false;
 		// Выполняем разбор записи очередным образцом
 		const uint64_t value = this->parse(date, format, storage, &valid);
 		// Если запись оказалась пригодной

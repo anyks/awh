@@ -429,7 +429,8 @@ class FakeIGD {
 							// Хранилище принятой рассылки
 							char buffer[16];
 							// Признак доставки рассылки устанавливаем по принятому
-							delivered = (::recv(rx, buffer, sizeof(buffer), 0) > 0);
+							// Готовность ожидаем select-ом: см. `waitReadable` в `tests/posix.hpp`
+							delivered = (::waitReadable(rx, 500) && (::recv(rx, buffer, sizeof(buffer), 0) > 0));
 						}
 					}
 				}
@@ -575,6 +576,14 @@ class FakeIGD {
 				while(this->_working.load()){
 					struct sockaddr_in peer; socklen_t length = sizeof(peer);
 					::memset(&peer, 0, sizeof(peer));
+					/**
+					 * Ожидаем готовности гнезда прежде обращения к приёму
+					 *
+					 * @note Обязательно: у MS Windows дейтаграмма, пришедшая ровно в миг
+					 *       снятия приёма по сроку `SO_RCVTIMEO`, теряется бесследно.
+					 *       Подробности и опыт смотрите у `waitReadable` в `tests/posix.hpp`
+					 */
+					if(!::waitReadable(this->_udp, 100)) continue;
 					const ssize_t size = ::recvfrom(this->_udp, reinterpret_cast <char *> (buffer), sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&peer), &length);
 					if(size <= 0) continue;
 					buffer[size] = 0;
@@ -603,6 +612,14 @@ class FakeIGD {
 				while(this->_working.load()){
 					struct sockaddr_in6 peer; socklen_t length = sizeof(peer);
 					::memset(&peer, 0, sizeof(peer));
+					/**
+					 * Ожидаем готовности гнезда прежде обращения к приёму
+					 *
+					 * @note Обязательно: у MS Windows дейтаграмма, пришедшая ровно в миг
+					 *       снятия приёма по сроку `SO_RCVTIMEO`, теряется бесследно.
+					 *       Подробности и опыт смотрите у `waitReadable` в `tests/posix.hpp`
+					 */
+					if(!::waitReadable(this->_udp6, 100)) continue;
 					const ssize_t size = ::recvfrom(this->_udp6, reinterpret_cast <char *> (buffer), sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&peer), &length);
 					if(size <= 0) continue;
 					buffer[size] = 0;

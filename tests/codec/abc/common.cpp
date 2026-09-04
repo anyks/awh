@@ -594,3 +594,86 @@ TEST(CodecAbcCommon, WireConstants) {
 	 *
 	 */
 }
+
+/**
+ * @brief Проверка того, что всякая причина отказа несёт СВОЁ объяснение
+ *
+ * @details Объяснение отказа есть то, что видит человек, и по нему же судят иные
+ *          кодеки рамки, сличающие журнал. Причина, объяснения не получившая, отдаёт
+ *          «unknown error» - и отказ, названный в перечне, выглядит несуществующим;
+ *          две причины с ОДНИМ объяснением неразличимы для того, кто судит по тексту
+ *
+ * @note Проверка заведена 04.09.2026 сличением состава: перечень причин и перечень
+ *       объяснений суть два независимых списка, и разойтись они могут молча - забытая
+ *       ветвь не валит сборки, а даёт общее «unknown error»
+ *
+ * @note Порок этот у соседей случился в ином виде: объяснение печаталось не по
+ *       УСТАНОВЛЕННОМУ коду, а вторым литералом при месте отказа, и проверка,
+ *       сличавшая текст, подмены кода не видела вовсе. У ABC такого нет по устройству -
+ *       донесение идёт из единственного места и по установленному коду, - и проверка
+ *       ниже стережёт вторую половину того же договора: полноту перечня объяснений
+ *
+ */
+TEST(CodecAbcCommon, EveryCauseCarriesItsOwnExplanation) {
+	// Все причины отказа, объявленные видом записи
+	const vector <abc::error_t> causes = {
+		abc::error_t::NONE, abc::error_t::INTERNAL, abc::error_t::UNEXPECTED_EOF,
+		abc::error_t::UNKNOWN_TAG, abc::error_t::RESERVED_TAG, abc::error_t::INVALID_LENGTH,
+		abc::error_t::INVALID_ENCODING, abc::error_t::NUMBER_OUT_OF_RANGE,
+		abc::error_t::INVALID_BIGNUM, abc::error_t::INVALID_DECIMAL,
+		abc::error_t::UNBALANCED_BREAK, abc::error_t::DEPTH_EXCEEDED,
+		abc::error_t::TOO_MANY_NODES, abc::error_t::STRING_TOO_LONG,
+		abc::error_t::BLOB_TOO_LONG, abc::error_t::DUPLICATE_KEY,
+		abc::error_t::UNORDERED_KEY, abc::error_t::INVALID_KEY,
+		abc::error_t::MISSING_VALUE, abc::error_t::EMPTY_RECORD,
+		abc::error_t::TRAILING_OCTETS, abc::error_t::OVERFLOW_LIMIT,
+		abc::error_t::INDEFINITE_REFUSED, abc::error_t::UNBALANCED_CONTAINER,
+		abc::error_t::INVALID_MAGIC, abc::error_t::INVALID_VERSION,
+		abc::error_t::TRUNCATED_HEADER, abc::error_t::INVALID_CHECKSUM,
+		abc::error_t::INVALID_CHUNK, abc::error_t::TRUNCATED_CHUNK,
+		abc::error_t::CONTAINER_OVERFLOW, abc::error_t::MISSING_RECORD,
+		abc::error_t::INVALID_INDEX, abc::error_t::MISSING_INDEX,
+		abc::error_t::UNREADABLE_SOURCE, abc::error_t::UNWRITABLE_SINK,
+		abc::error_t::COMPRESSION_FAILED, abc::error_t::ENCRYPTION_FAILED,
+		abc::error_t::UNSIGNED_CONTAINER, abc::error_t::TRUNCATED_SIGNATURE,
+		abc::error_t::INVALID_SIGNATURE, abc::error_t::REFUSED_SIGNATURE,
+		abc::error_t::SIGNING_FAILED, abc::error_t::INVALID_SEGMENT,
+		abc::error_t::INVALID_EXTENSION, abc::error_t::NON_MINIMAL_TAG
+	};
+	// Собираемые объяснения причин отказа
+	unordered_set <string> explanations;
+	/**
+	 * Выполняем перебор всех причин отказа
+	 */
+	for(const abc::error_t cause : causes){
+		// Выполняем получение объяснения очередной причины отказа
+		const string explanation(abc::message(cause));
+		// Выполняем проверку того, что объяснение непусто
+		ASSERT_FALSE(explanation.empty()) << static_cast <uint32_t> (cause);
+		/**
+		 * Выполняем проверку того, что причина объяснение ПОЛУЧИЛА
+		 *
+		 * @note Общее «unknown error» означает забытую ветвь перечня: причина названа
+		 *       видом записи, а объяснения ей не отведено
+		 */
+		ASSERT_NE(explanation, "unknown error") << static_cast <uint32_t> (cause);
+		// Выполняем проверку того, что объяснение это прежде не встречалось
+		ASSERT_TRUE(explanations.emplace(explanation).second)
+			<< static_cast <uint32_t> (cause) << ": " << explanation;
+	}
+	/**
+	 * Выполняем проверку того, что перечень причин исчерпан
+	 *
+	 * @warning Половина эта стережёт САМУ ПРОВЕРКУ: причина, добавленная видом записи и
+	 * забытая здесь, осталась бы неперебранной, и проверка прошла бы зелёной, ничего о
+	 * ней не сказав. Число сличается с числом ветвей перечня объяснений
+	 */
+	ASSERT_EQ(causes.size(), static_cast <size_t> (46));
+	/**
+	 * Выполняем проверку того, что код вне перечня объяснения не получает
+	 *
+	 * @note Половина эта делает проверку зрячей: без неё она была бы зелена и при
+	 *       перечне, отдающем всякому коду одно и то же слово
+	 */
+	ASSERT_EQ(string(abc::message(static_cast <abc::error_t> (0xFE))), "unknown error");
+}

@@ -8600,8 +8600,8 @@ namespace kernel {
 		 */
 		const bool limited = (
 			(::bandwidth::read > 0) || (exchanging && ((node->state.node == event::node_t::PEER) ?
-			 reinterpret_cast <::io::peer_t *> (node)->limitedRead() :
-			 reinterpret_cast <::io::client_t *> (node)->limitedRead()))
+			 awh_cast <::io::peer_t *> (node)->limitedRead() :
+			 awh_cast <::io::client_t *> (node)->limitedRead()))
 		);
 		// Дескриптор приёмника объединения, если узел годен в источники
 		net::socket_t joined = net::invalid_socket_t;
@@ -8749,8 +8749,8 @@ namespace kernel {
 		const bool accepting = (
 			(node != nullptr) && (node->state.node == event::node_t::SERVER) &&
 			(node->state.type == event::type_t::STREAM) && (node->state.protocol != event::protocol_t::SCTP) &&
-			(reinterpret_cast <::io::server_t *> (node)->backlog.max > 0) &&
-			(reinterpret_cast <::io::server_t *> (node)->actions & ::action::ACCEPT) &&
+			(awh_cast <::io::server_t *> (node)->backlog.max > 0) &&
+			(awh_cast <::io::server_t *> (node)->actions & ::action::ACCEPT) &&
 			((events & ~static_cast <uint32_t> (EPOLLRDHUP)) == static_cast <uint32_t> (EPOLLIN))
 		);
 		/**
@@ -77775,8 +77775,48 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 *       записью учёта
 					 */
 					if(kind == ::inflight::kind_t::FILE){
+						/**
+						 * Вид узла сличается ДО приведения к узлу файла
+						 *
+						 * @details Учёт живых узлов ведётся по АДРЕСУ, и совпадение адреса
+						 *          доказывает лишь то, что по нему живёт какой-то узел, но
+						 *          не то, что узел этот - файл. `Filename` и `Dirname` -
+						 *          братья от общего `fs_t`, лежат в одной куче и получают
+						 *          освободившиеся адреса друг друга. Завершение чтения,
+						 *          пришедшее к адресу, где уже поселился узел каталога,
+						 *          приводилось к `file_t` и читало чужие поля
+						 *
+						 * @warning Найдено надзирателем неопределённого поведения на Астре:
+						 *          «member access within address ... which does not point to
+						 *          an object of type 'Filename'». Признак отказа при этом
+						 *          молчал: набор был зелёным, 633 из 633
+						 *
+						 * @note Поле вида лежит в ОБЩЕМ предке `node_t`, и читать его через
+						 *       базовый указатель законно - в отличие от чтения полей
+						 *       `Filename` через указатель на брата
+						 */
+						// Получаем узел события общим видом, без приведения к узлу файла
+						::io::node_t * const node = reinterpret_cast <::io::node_t *> (owner);
+						// Если узел файлом не является
+						if((node == nullptr) || (node->state.node != event::node_t::FILE))
+							// Переходим к завершению следующему: разбирать его не для кого
+							continue;
+						/**
+						 * Приведение идёт домашним средством, а не голым
+						 *
+						 * @warning Прежде здесь стоял `reinterpret_cast`, обходивший
+						 *          домашний заслон: `awh_cast` разворачивается в
+						 *          `dynamic_cast` в отладочной сборке и отдал бы пустоту
+						 *          при чужом типе. Голое приведение эту проверку снимало
+						 */
+						// Получаем узел файла домашним приведением
+						::io::file_t * const fs = awh_cast <::io::file_t *> (node);
+						// Если узел файлом не оказался
+						if(fs == nullptr)
+							// Переходим к завершению следующему: разбирать его не для кого
+							continue;
 						// Выполняем разбор прочитанного из файла
-						::io::complete(reinterpret_cast <::io::file_t *> (owner), completion.res, this, this->_log);
+						::io::complete(fs, completion.res, this, this->_log);
 						// Переходим к завершению следующему
 						continue;
 					}
@@ -77850,8 +77890,20 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 								);
 								// Если отказ приёма окончателен
 								if(doomed){
+									/**
+									 * Узел добывается через учёт живых, а не голым приведением
+									 *
+									 * @warning Прежде здесь стояло приведение `state->udata` с
+									 *          проверкой лишь на непустоту, а следом - вызов
+									 *          ВИРТУАЛЬНОГО метода `hooks()`. Узел к этому мигу
+									 *          мог быть разрушен: завершение приёма приходит
+									 *          позже подачи, и адрес в записи учёта живости не
+									 *          доказывает. В том же файле есть свой образец
+									 *          верного обращения - через `::io::living`,
+									 *          - и путь этот от него отступал
+									 */
 									// Получаем узел сервера, которому приём принадлежал
-									::io::node_t * node = reinterpret_cast <::io::node_t *> (state->udata);
+									::io::node_t * node = ((::io::living.count(state->udata) > 0) ? reinterpret_cast <::io::node_t *> (state->udata) : nullptr);
 									// Если узел сервера получен
 									if(node != nullptr){
 										// Получаем набор функций обратного вызова узла
@@ -77873,8 +77925,22 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 							}
 							// Если подключение принято успешно
 							if(completion.res >= 0){
-								// Получаем узел сервера, которому приём принадлежал
-								::io::server_t * server = reinterpret_cast <::io::server_t *> (state->udata);
+								/**
+								 * Узел сервера добывается учётом живых и сличением ВИДА
+								 *
+								 * @warning Прежде здесь стояло голое приведение `state->udata`
+								 *          с проверкой лишь на непустоту, а ниже в этот узел
+								 *          ПИШУТ адрес удалённой стороны. Совпадение адреса
+								 *          доказывает лишь то, что по нему живёт какой-то узел,
+								 *          но не то, что узел этот - сервер: узлы разных видов
+								 *          лежат в одной куче и наследуют освободившиеся адреса
+								 *          друг друга. Найдено по нити от отчёта надзирателя о
+								 *          таком же приведении на пути чтения файла
+								 */
+								// Получаем узел, которому приём принадлежал, через учёт живых
+								::io::node_t * const owner = ((::io::living.count(state->udata) > 0) ? reinterpret_cast <::io::node_t *> (state->udata) : nullptr);
+								// Получаем узел сервера домашним приведением, сличив вид узла
+								::io::server_t * server = (((owner != nullptr) && (owner->state.node == event::node_t::SERVER)) ? awh_cast <::io::server_t *> (owner) : nullptr);
 								// Если узел сервера получен
 								if(server != nullptr){
 									/**

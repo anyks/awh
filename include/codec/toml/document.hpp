@@ -2238,6 +2238,30 @@ namespace awh {
 					bool prune(const string & path) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод установки пустого значения по пути к нему
+					 *
+					 * @details Ход этот общий у кодеков рамки: пустое значение от снятия узла
+					 * отлично - пара остаётся налицо, а значения при ней нет
+					 *
+					 * @note Пустотою наречию служит пустая СТРОКА: своего вида пустоты описание
+					 *       TOML не знает вовсе - ни `null`, ни `~`, - и всякая пара обязана
+					 *       нести значение. Запись `имя = ""` есть потому единственный способ
+					 *       выразить пару без содержимого, и обратно она прочтётся строкою
+					 *       пустой, а не отсутствием значения
+					 *
+					 * @param path путь к устанавливаемому узлу
+					 * @return     признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of an empty value by the path to it
+					 * @param path path to the node being set
+					 * @return     sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool reset(const string & path) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод удаления таблицы
 					 *
 					 * @details Удаляется объявление таблицы вместе со всеми её парами

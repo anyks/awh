@@ -200,6 +200,16 @@ namespace awh {
 				 * вызовы и без того возвращаются сразу, а ожиданием ведает цикл
 				 * событий - и там пределы задаются движком, а не здесь
 				 *
+				 * @warning У **MS Windows** срок приёма ТЕРЯЕТ дейтаграмму, пришедшую ровно
+				 * в миг снятия блокирующего приёма по этому сроку. Стек засчитывает её
+				 * отданной получателю, приём возвращает `WSAETIMEDOUT`, в очереди гнезда
+				 * дейтаграммы уже нет, и потерю не отмечает ни один счётчик системы.
+				 * Свойство доказано опытом: при подгонке прихода к самому истечению срока
+				 * теряется от 1 до 25 дейтаграмм на 4000, при приходе в середину промежутка
+				 * и при ожидании готовности через `select` - ни одной. Оттого приём опросом
+				 * на блокирующем сокете обязан отсчитывать срок ДО обращения к приёму и
+				 * звать приём лишь по готовности, а настройку эту держать запасным пределом
+				 *
 				 * @param sock  сетевой сокет
 				 * @param event событие сокета
 				 * @param msec  время таймаута в миллисекундах
@@ -212,6 +222,16 @@ namespace awh {
 				 * @warning Is in force only for the **blocking** sockets. For the non-blocking ones
 				 * the calls return at once anyway, and the waiting is in charge of the loop of
 				 * the events — and there the limits are set by the engine, and not here
+				 * @warning On **MS Windows** the receive timeout LOSES a datagram that arrives
+				 * exactly at the instant the blocking receive is cancelled by this timeout. The
+				 * stack counts it as delivered to a consumer, the receive returns `WSAETIMEDOUT`,
+				 * the datagram is no longer in the socket queue, and no counter of the system
+				 * reports the loss. The property is proven by experiment: aligning the arrival
+				 * with the very expiry of the timeout loses from 1 to 25 datagrams out of 4000,
+				 * while an arrival in the middle of the interval and a wait through `select`
+				 * lose none. Hence a polling receive on a blocking socket must count the timeout
+				 * BEFORE the call to the receive and call it only on readiness, keeping this
+				 * setting as a fallback limit
 				 * @param sock  network socket
 				 * @param event event of the socket
 				 * @param msec  time of the timeout in milliseconds

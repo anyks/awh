@@ -75,6 +75,7 @@ if (${GTest_FOUND})
             xml/document.cpp
             xml/writer.cpp
             xml/value.cpp
+            cef/common.cpp
             cef/reader.cpp
             cef/writer.cpp
             cef/document.cpp

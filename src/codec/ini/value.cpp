@@ -1617,15 +1617,20 @@ bool awh::codec::ini::Value::load(const string & filename, const Document::setti
  *
  */
 string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const noexcept {
+	// Выполняем сброс кода отказа прежней работы
+	this->_error = error_t::NONE;
 	/**
 	 * Если корень вместилищем пар не является
 	 *
 	 * @note Корнем текста настроек может быть одно лишь вместилище пар: текст настроек
 	 *       есть перечень свойств и разделов, и простое значение корнем его не бывает
 	 */
-	if(this->_type != type_t::TABLE)
+	if(this->_type != type_t::TABLE){
+		// Запоминаем код отказа записи
+		this->_error = error_t::UNREPRESENTABLE_VALUE;
 		// Выводим пустой текст настроек
 		return string();
+	}
 	// Объект записи текста настроек
 	writer_t writer(this->_log, settings);
 	/**
@@ -1724,7 +1729,12 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 	 */
 	if(!compose(* this))
 		// Выводим пустой текст настроек
-		return string();
+		{
+			// Запоминаем код отказа записи, писателем названный
+			this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::UNREPRESENTABLE_VALUE);
+			// Выводим пустой текст настроек
+			return string();
+		}
 	/**
 	 * Выполняем перебор всех пар корневого вместилища
 	 */
@@ -1774,13 +1784,23 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 			 */
 			if(!writer.section(this->_names.at(i)))
 				// Выводим пустой текст настроек
-				return string();
+				{
+					// Запоминаем код отказа записи, писателем названный
+					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::UNREPRESENTABLE_VALUE);
+					// Выводим пустой текст настроек
+					return string();
+				}
 			/**
 			 * Если записать свойства раздела не удалось
 			 */
 			if(!compose(section))
 				// Выводим пустой текст настроек
-				return string();
+				{
+					// Запоминаем код отказа записи, писателем названный
+					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::UNREPRESENTABLE_VALUE);
+					// Выводим пустой текст настроек
+					return string();
+				}
 		}
 		/**
 		 * Выполняем перебор всех пар раздела
@@ -1805,13 +1825,23 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 			 */
 			if(!writer.section(this->_names.at(i), section._names.at(j)))
 				// Выводим пустой текст настроек
-				return string();
+				{
+					// Запоминаем код отказа записи, писателем названный
+					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::UNREPRESENTABLE_VALUE);
+					// Выводим пустой текст настроек
+					return string();
+				}
 			/**
 			 * Если записать свойства подраздела не удалось
 			 */
 			if(!compose(subsection))
 				// Выводим пустой текст настроек
-				return string();
+				{
+					// Запоминаем код отказа записи, писателем названный
+					this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::UNREPRESENTABLE_VALUE);
+					// Выводим пустой текст настроек
+					return string();
+				}
 			/**
 			 * Выполняем перебор всех пар подраздела
 			 */
@@ -1824,7 +1854,12 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 				 */
 				if(item._type == type_t::TABLE)
 					// Выводим пустой текст настроек
-					return string();
+					{
+						// Запоминаем код отказа записи, писателем названный
+						this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::UNREPRESENTABLE_VALUE);
+						// Выводим пустой текст настроек
+						return string();
+					}
 			}
 		}
 	}
@@ -1837,6 +1872,22 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
  * @return записанный текст настроек
  *
  */
+/**
+ * @brief Метод получения кода отказа последней работы
+ *
+ * @details Ход этот отвечает на вопрос «отчего запись пуста»: пустой текст означает разом
+ * и дерево пустое, и отказ записи, и различить их иначе потребителю нечем
+ *
+ * @note Прежде отказ записи молчал целиком - ни кода, ни сообщения в журнал, - и
+ *       потребитель сохранял бы пустой файл вместо своих настроек. Найдено разбором
+ *
+ * @return код отказа последней работы
+ *
+ */
+awh::codec::ini::error_t awh::codec::ini::Value::error() const noexcept {
+	// Выводим код отказа последней работы над владеющим значением
+	return this->_error;
+}
 string awh::codec::ini::Value::dump() const noexcept {
 	// Выводим записанный текст настроек с настройками записи по умолчанию
 	return this->dump(writer_t::settings_t());

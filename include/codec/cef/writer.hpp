@@ -145,6 +145,8 @@ namespace awh {
 						bool syslog;
 						// Признак записи знака конца строки за записью
 						bool terminate;
+						// Признак постановки отмены знаков в значениях
+						bool escape;
 						// Номер редакции записи, словом «CEF:» объявляемый
 						uint32_t version;
 						/**
@@ -158,7 +160,7 @@ namespace awh {
 						 * \~
 						 */
 						Settings() noexcept :
-						 nested(nested_t::STRICT), syslog(true), terminate(true), version(0) {}
+						 nested(nested_t::STRICT), syslog(true), terminate(true), escape(true), version(0) {}
 					} settings_t;
 				private:
 					// Настройки записи событий

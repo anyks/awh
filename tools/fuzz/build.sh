@@ -719,6 +719,24 @@ DEPENDS=""
 case "$CODEC_DIR" in
 	# Кодек CEF стоит на дереве ABC, а проверку адресов сети ведёт «net_addr_t»
 	cef) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp) $ROOT/src/net/addr.cpp $ROOT/src/net/net.cpp" ;;
+	##
+	# Мост стоит на ВСЕХ кодеках разом
+	#
+	# @details Своего каталога у него нет вовсе - он лежит одним файлом
+	#          «src/codec/bridge.cpp» рядом с каталогами кодеков, - и части ему потребны
+	#          от каждого кодека, какой он переводит, плюс дерево ABC, служащее ему осью
+	#
+	# @warning Каталог CSV сюда НЕ входит: мост его не переводит намеренно - запись эта
+	#          таблична, а не древовидна, и настройками не бывает
+	##
+	bridge)
+		DEPENDS="$ROOT/src/codec/bridge.cpp"
+		# Выполняем перебор всех кодеков, мостом переводимых
+		for BRIDGED in abc json yaml xml toml ini; do
+			# Добавляем к перечню части очередного кодека
+			DEPENDS="$DEPENDS $(echo "$ROOT/src/codec/$BRIDGED/"*.cpp)"
+		done
+	;;
 esac
 
 for PART in $SHARED $([ -d "$ROOT/src/codec/$CODEC_DIR" ] && echo "$ROOT/src/codec/$CODEC_DIR/"*.cpp) $DEPENDS; do
@@ -772,9 +790,10 @@ done
 ZLIB="${ZLIB:--lz}"
 
 # Надбавка эта берётся и кодеком, НА ABC стоящим: слой хранилища ABC зовёт сжатие с
-# шифрованием независимо от того, чьим ворошителем он собран
+# шифрованием независимо от того, чьим ворошителем он собран, - а мост стоит на ABC
+# осью своей и тянет его целиком
 DEPEND=""
-if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ]; then
+if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "bridge" ]; then
 	##
 	# Собираем каталоги сторонних заголовков ПОИМЁННО
 	#
