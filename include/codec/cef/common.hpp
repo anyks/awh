@@ -355,6 +355,48 @@ namespace awh {
 
 			/**
 			 * \~russian
+			 * @brief Запись даты, описанием ArcSight назначенная меткам времени
+			 *
+			 * @details Описание назначает меткам времени запись вида
+			 * «MMM dd yyyy HH:mm:ss.SSS zzz», и разбор её ведётся модулем `chrono_t`
+			 * с этой записью по умолчанию. Запись эта настройкой переопределяема:
+			 * живые устройства пишут метку и иначе, а описанию следуют не все
+			 *
+			 * \~english
+			 * @brief Notation of a date appointed to the timestamps by the ArcSight specification
+			 * @details The specification appoints to the timestamps the notation of the form
+			 * «MMM dd yyyy HH:mm:ss.SSS zzz»
+			 *
+			 * \~
+			 */
+			constexpr string_view TIMESTAMP_FORMAT = "%b %d %Y %H:%M:%S %Z";
+
+			/**
+			 * \~russian
+			 * @brief Запись даты, метку времени с долей секунды несущую
+			 *
+			 * @details Живые устройства пишут метку и с долей секунды, и без неё, а
+			 * ОДНА запись обоих видов не покрывает: разбор записи «23:30:15.734 YEKT»
+			 * записью без доли секунды съедает «.734» полем зоны, зона остаётся
+			 * неразобранной, и метка МОЛЧА смещается на величину зоны. Оттого записей
+			 * держится две, а выбор между ними ведётся по самой метке
+			 *
+			 * @warning Смещение это молчаливо: отказа разбор не выдаёт, и метка
+			 * недоверенного журнала обращается в иной момент времени, оставаясь на вид
+			 * правдоподобной. Замерено 04.09.2026: «Feb 17 2023 23:30:15.734 YEKT»
+			 * записью без доли секунды дало 18 февраля 02:30 вместо 17 февраля 21:30
+			 *
+			 * \~english
+			 * @brief Notation of a date carrying a timestamp with a fraction of a second
+			 * @details The living devices write a timestamp both with a fraction of a second and without it,
+			 * while ONE notation does not cover both kinds
+			 *
+			 * \~
+			 */
+			constexpr string_view TIMESTAMP_FRACTION_FORMAT = "%b %d %Y %H:%M:%S.%s %Z";
+
+			/**
+			 * \~russian
 			 * @brief Коды ошибок разбора записи CEF
 			 *
 			 * @details Разбор не выбрасывает исключений: признаком отказа служит код ошибки

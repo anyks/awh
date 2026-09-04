@@ -369,6 +369,42 @@ namespace awh {
 				[[nodiscard]] bool encodeYAML(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод подачи значения ABC значению TOML
+				 *
+				 * @param value  значение контейнера ABC
+				 * @param result собираемое значение записи TOML
+				 * @param depth  глубина обхода дерева
+				 * @return       результат подачи
+				 *
+				 * \~english
+				 * @brief Method of the submission of a value of ABC to a value of TOML
+				 * @param value value of the container ABC
+				 * @param result assembled value of a record of TOML
+				 * @param depth depth of the traversal of the tree
+				 * @return result of the submission
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool feedTOML(const abc::value_t & value, toml::Value & result, const uint32_t depth) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода дерева ABC в запись TOML
+				 *
+				 * @param value  дерево значений контейнера ABC
+				 * @param result собранная запись TOML
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a tree of ABC into a record of TOML
+				 * @param value tree of the values of the container ABC
+				 * @param result assembled record of TOML
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool encodeTOML(const abc::value_t & value, string & result) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод укладки значения YAML в значение ABC
 				 *
 				 * @param document документ записи YAML

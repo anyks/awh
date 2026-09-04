@@ -41,6 +41,34 @@
 	#include <mach/mach.h>
 #elif defined(__linux__)
 	#include <cstdio>
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+	#include <unistd.h>
+	#include <sys/param.h>
+	#include <sys/sysctl.h>
+	/**
+	 * Заголовок этот есть НЕ У ВСЕХ BSD
+	 *
+	 * @warning У NetBSD файла `sys/user.h` нет вовсе, и подключение его валит
+	 *          сборку насмерть («fatal error»). Нужен он только FreeBSD: у NetBSD
+	 *          и OpenBSD сведения о процессе объявлены в самом `sys/sysctl.h`.
+	 *          Опознано сборкой на стенде
+	 */
+	#if defined(__FreeBSD__)
+		#include <sys/user.h>
+	#endif
+#elif defined(__sun)
+	/**
+	 * Признак этот обязателен ДО подключения заголовка
+	 *
+	 * @warning Без него `<sys/procfs.h>` у Solaris отдаёт старое устройство SVR4 с
+	 *          `prpsinfo_t`, а `psinfo_t` не объявляется вовсе - сборка валится
+	 *          доводом «did you mean prpsinfo_t?». Опознано сборкой на стенде
+	 */
+	#define _STRUCTURED_PROC 1
+	#include <cstdio>
+	#include <fcntl.h>
+	#include <unistd.h>
+	#include <sys/procfs.h>
 #endif
 
 /**
@@ -84,6 +112,100 @@ static size_t currentRSS() noexcept {
 		::fclose(file);
 		// Возвращаем размер резидентной памяти в байтах
 		return (static_cast <size_t> (rss) * static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
+	/**
+	 * Если операционной системой является FreeBSD, NetBSD либо OpenBSD
+	 *
+	 * @note У этих систем `/proc` по умолчанию не смонтирован вовсе, и резидентный
+	 *       размер отдаёт `sysctl`. Устройство расходится: FreeBSD отвечает
+	 *       структурой `kinfo_proc` с полем `ki_rssize`, NetBSD и OpenBSD -
+	 *       структурой `kinfo_proc2` с полем `p_vm_rssize`, и запрос у них берёт
+	 *       шесть звеньев вместо четырёх. Величина В СТРАНИЦАХ у всех трёх
+	 */
+	#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+		/**
+		 * Если операционной системой является FreeBSD
+		 */
+		#if defined(__FreeBSD__)
+			// Запрос сведений о своём процессе
+			int32_t request[4] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid())};
+			// Структура сведений о процессе
+			struct kinfo_proc info;
+			// Размер структуры сведений о процессе
+			size_t length = sizeof(info);
+			// Получаем сведения о своём процессе
+			if(::sysctl(request, 4, &info, &length, nullptr, 0) < 0)
+				// Возвращаем 0 при ошибке измерения
+				return 0;
+			// Возвращаем размер резидентной памяти в байтах
+			return (static_cast <size_t> (info.ki_rssize) * static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
+		/**
+		 * Если операционной системой является NetBSD
+		 *
+		 * @warning NetBSD и OpenBSD в одну ветвь по родству НЕ сводятся, хотя поле у
+		 *          них зовётся одинаково. У NetBSD сведения отдаёт `KERN_PROC2` в
+		 *          структуре `kinfo_proc2`, а OpenBSD структуру эту слила обратно в
+		 *          `kinfo_proc` и запрос зовёт `KERN_PROC`; имени `KERN_PROC2` там
+		 *          нет вовсе. Опознано сборкой на стенде: «variable has incomplete
+		 *          type 'struct kinfo_proc2'»
+		 */
+		#elif defined(__NetBSD__)
+			// Структура сведений о процессе
+			struct kinfo_proc2 info;
+			// Запрос сведений о своём процессе
+			int32_t request[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
+			// Размер структуры сведений о процессе
+			size_t length = sizeof(info);
+			// Получаем сведения о своём процессе
+			if(::sysctl(request, 6, &info, &length, nullptr, 0) < 0)
+				// Возвращаем 0 при ошибке измерения
+				return 0;
+			// Возвращаем размер резидентной памяти в байтах
+			return (static_cast <size_t> (info.p_vm_rssize) * static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
+		/**
+		 * Если операционной системой является OpenBSD
+		 */
+		#else
+			// Структура сведений о процессе
+			struct kinfo_proc info;
+			// Запрос сведений о своём процессе
+			int32_t request[6] = {CTL_KERN, KERN_PROC, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
+			// Размер структуры сведений о процессе
+			size_t length = sizeof(info);
+			// Получаем сведения о своём процессе
+			if(::sysctl(request, 6, &info, &length, nullptr, 0) < 0)
+				// Возвращаем 0 при ошибке измерения
+				return 0;
+			// Возвращаем размер резидентной памяти в байтах
+			return (static_cast <size_t> (info.p_vm_rssize) * static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
+		#endif
+	/**
+	 * Если операционной системой является Solaris либо illumos
+	 *
+	 * @note Файл `/proc/self/statm` у этих систем отсутствует, а `/proc/self/psinfo`
+	 *       отдаёт двоичную структуру `psinfo_t`, где поле `pr_rssize` несёт
+	 *       резидентный размер В КИЛОБАЙТАХ. Прежде ветви этой не было вовсе, и
+	 *       замер отвечал нулём - молча, отчего единственное утверждение проверки
+	 *       не исполнялось, а проверка проходила зелёной
+	 */
+	#elif defined(__sun)
+		// Открываем файл сведений о процессе
+		const int32_t fd = ::open("/proc/self/psinfo", O_RDONLY);
+		// Если файл открыть не удалось
+		if(fd < 0)
+			// Возвращаем 0 при ошибке измерения
+			return 0;
+		// Структура сведений о процессе
+		psinfo_t info;
+		// Читаем сведения о процессе
+		const ssize_t bytes = ::read(fd, &info, sizeof(info));
+		// Закрываем файл сведений о процессе
+		::close(fd);
+		// Если сведения прочитаны не целиком
+		if(bytes != static_cast <ssize_t> (sizeof(info)))
+			// Возвращаем 0 при ошибке измерения
+			return 0;
+		// Возвращаем размер резидентной памяти в байтах
+		return (static_cast <size_t> (info.pr_rssize) * 1024ull);
 	/**
 	 * Для остальных операционных систем
 	 */
@@ -811,7 +933,7 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 	 * @brief Лямбда измерения латентности push для заданного типа очереди
 	 *
 	 */
-	auto bench = [&](const awh::net_queue_t::type_t type, const char * label, double & median){
+	auto bench = [&](const awh::net_queue_t::type_t type, const char * label, double & p90){
 		// Очищаем очередь
 		this->_queue->clear();
 		// Устанавливаем тип очереди
@@ -857,8 +979,8 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 		 * Суммируем все измерения
 		 */
 		for(double value : samples) sum += value;
-		// Запоминаем середину ряда наружу: по ней и судится заявка замера
-		median = percentile(samples, 0.50);
+		// Запоминаем девяностую долю ряда наружу: по ней и судится заявка замера
+		p90 = percentile(samples, 0.90);
 		// Выводим результаты
 		::printf("%-18s p50=%7.1f  p90=%7.1f  p99=%7.1f  p99.9=%8.1f  max=%9.1f  mean=%7.1f  (ns)\n",
 			label,
@@ -869,13 +991,13 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 	// Выводим заголовок результатов
 	::printf("\n========== push() Latency Benchmark (fragmented, block=%zu, iters=%zu) ==========\n", BLOCK, ITERS);
 	// Прогоняем бенчмарк для TCP (bip-буфер, без memmove)
-	// Середина ряда задержек у кольцевой очереди TCP
-	double medianTCP = -1.0;
-	// Середина ряда задержек у линейной очереди UDP
-	double medianUDP = -1.0;
-	bench(awh::net_queue_t::type_t::TCP, "TCP bip:", medianTCP);
+	// Девяностая доля ряда задержек у кольцевой очереди TCP
+	double p90TCP = -1.0;
+	// Девяностая доля ряда задержек у линейной очереди UDP
+	double p90UDP = -1.0;
+	bench(awh::net_queue_t::type_t::TCP, "TCP bip:", p90TCP);
 	// Прогоняем бенчмарк для UDP (линейный буфер с compact/memmove)
-	bench(awh::net_queue_t::type_t::UDP, "UDP linear:", medianUDP);
+	bench(awh::net_queue_t::type_t::UDP, "UDP linear:", p90UDP);
 	// Завершаем вывод результатов
 	::printf("====================================================================================\n");
 	/**
@@ -889,19 +1011,33 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 	 *          МЕДЛЕННЕЕ линейной, то есть при полной утрате того свойства, ради
 	 *          которого она заведена
 	 *
-	 * @note Судится СЕРЕДИНА ряда, а не худший круг: худший ловит вспышку чужой
-	 *       нагрузки на машине и к устройству очереди отношения не имеет
+	 * @note Судится ДЕВЯНОСТАЯ ДОЛЯ ряда, а НЕ середина, и это установлено опытом,
+	 *       а не выбрано. Первая редакция судила по середине и провалилась на
+	 *       Solaris: 101 против 98 нс. Провал был правильным - мера негодна.
+	 *       Уплотнение линейной очереди случается РЕДКО, и в половине случаев
+	 *       обычный `push` у обеих очередей одинаков; разница живёт в хвосте, где
+	 *       уплотнение и происходит. Замерено на трёх системах:
+	 *
+	 *       | система | середина TCP/UDP | p90 TCP/UDP |
+	 *       |---|---|---|
+	 *       | macOS   | 0.0 / 41.0  | 42 / 542   |
+	 *       | Astra   | 51 / 58     | 56 / 2173  |
+	 *       | Solaris | 101 / 98    | 105 / 2201 |
+	 *
+	 *       Худший круг (`max`) при этом негоден по-прежнему: он ловит вспышку
+	 *       чужой нагрузки на машине. Девяностая доля вспышек не видит
 	 *
 	 * @warning Порог - только НАПРАВЛЕНИЕ, без кратности. Отношение задержек от
-	 *          машины зависит, и жать его к измеренному (на macOS 41.0 против 0.0)
-	 *          значило бы ловить разницу машин вместо утраты свойства. Направление
-	 *          же держится устройством: перенос памяти дешевле не бывает
+	 *          машины зависит (13x у macOS, 39x у Astra, 21x у Solaris), и жать
+	 *          его к измеренному значило бы ловить разницу машин вместо утраты
+	 *          свойства. Направление же держится устройством: перенос памяти
+	 *          дешевле не бывает
 	 */
-	ASSERT_GE(medianTCP, 0.0) << "замер кольцевой очереди TCP не состоялся";
+	ASSERT_GE(p90TCP, 0.0) << "замер кольцевой очереди TCP не состоялся";
 	// Проверяем, что замер линейной очереди состоялся
-	ASSERT_GE(medianUDP, 0.0) << "замер линейной очереди UDP не состоялся";
+	ASSERT_GE(p90UDP, 0.0) << "замер линейной очереди UDP не состоялся";
 	// Кольцевая очередь обязана быть не медленнее линейной по середине ряда
-	ASSERT_LE(medianTCP, medianUDP) << "кольцевая очередь TCP оказалась медленнее линейной UDP по середине ряда (" << medianTCP << " против " << medianUDP << " нс): обход memmove больше не работает";
+	ASSERT_LE(p90TCP, p90UDP) << "кольцевая очередь TCP оказалась медленнее линейной UDP по девяностой доле ряда (" << p90TCP << " против " << p90UDP << " нс): обход memmove больше не работает";
 }
 
 /**

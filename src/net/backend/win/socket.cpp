@@ -690,10 +690,67 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
-	// Если число попыток задано - сообщаем, что система его не принимает
-	if(cnt > 0)
-		// Заносим в журнал предупреждение о неприменимости числа попыток
-		this->_log->print("%s: keepalive probe count is not settable on MS Windows, the value %d is ignored", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, cnt);
+	/**
+	 * Настройки задаются поимённо, как у наречий POSIX
+	 *
+	 * @warning Прежде здесь стояло утверждение, что число попыток «система не
+	 *          принимает», и заданное значение отбрасывалось с предупреждением, а
+	 *          время простоя с промежутком накладывались управляющим обращением
+	 *          `SIO_KEEPALIVE_VALS`. Утверждение НЕВЕРНО: издания MS Windows начиная с
+	 *          10 (1709) принимают `TCP_KEEPCNT`, а с 1703 - `TCP_KEEPIDLE` и
+	 *          `TCP_KEEPINTVL`, ровно теми же именами и в тех же единицах, что у
+	 *          POSIX. Проверено щупом на стенде (сборка 10.0.26200): все три ставятся
+	 *          и читаются обратно точь-в-точь
+	 *
+	 * @note Управляющее обращение остаётся ЗАПАСНЫМ путём: издания старее названных
+	 *       поимённых настроек не знают и отвечают на них отказом, а обращение это
+	 *       понимают все. Числа попыток оно не принимает - его там и правда нет
+	 *
+	 * @note Единицы разные: поимённые настройки считают в СЕКУНДАХ, управляющее
+	 *       обращение - в миллисекундах. Оттого перевод стоит лишь у запасного пути
+	 *
+	 */
+	#ifndef TCP_KEEPIDLE
+		#define TCP_KEEPIDLE 3
+	#endif
+	#ifndef TCP_KEEPCNT
+		#define TCP_KEEPCNT 16
+	#endif
+	#ifndef TCP_KEEPINTVL
+		#define TCP_KEEPINTVL 17
+	#endif
+	// Признак того, что поимённые настройки система приняла
+	bool named = true;
+	// Если время простоя подключения задано
+	if(idle > 0){
+		// Значение времени простоя подключения в секундах
+		const DWORD value = static_cast <DWORD> (idle);
+		// Отмечаем итог наложения времени простоя подключения
+		named = (::setsockopt(static_cast <SOCKET> (sock), IPPROTO_TCP, TCP_KEEPIDLE, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) == 0);
+	}
+	// Если промежуток между попытками задан и поимённые настройки принимаются
+	if(named && (intvl > 0)){
+		// Значение промежутка между попытками в секундах
+		const DWORD value = static_cast <DWORD> (intvl);
+		// Отмечаем итог наложения промежутка между попытками
+		named = (::setsockopt(static_cast <SOCKET> (sock), IPPROTO_TCP, TCP_KEEPINTVL, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) == 0);
+	}
+	// Если число попыток задано и поимённые настройки принимаются
+	if(named && (cnt > 0)){
+		// Значение числа попыток
+		const DWORD value = static_cast <DWORD> (cnt);
+		// Если число попыток наложить не удалось
+		if(::setsockopt(static_cast <SOCKET> (sock), IPPROTO_TCP, TCP_KEEPCNT, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
+			// Заносим в журнал предупреждение о неприменимости числа попыток
+			this->_log->print("%s: keepalive probe count is not settable on this edition of MS Windows, the value %d is ignored", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, cnt);
+			// Отмечаем неприменимость поимённых настроек
+			named = false;
+		}
+	}
+	// Если поимённые настройки система приняла - накладывать больше нечего
+	if(named)
+		// Возвращаем положительный результат установки
+		return true;
 	// Если ни время простоя, ни промежуток между попытками не заданы
 	if((idle <= 0) && (intvl <= 0))
 		// Возвращаем положительный результат установки
@@ -1012,8 +1069,9 @@ bool awh::eth::Socket::ready() const noexcept {
  * @param options набор опций события
  * @return        заведённый сокет
  *
- * @note Опции при создании сокета эта система не принимает вовсе - они накладываются
- *       отдельными обращениями, - и довод этот здесь не используется
+ * @note Из опций заведение принимает одну - закрытие сокета при запуске стороннего
+ *       образа: ей отвечает признак `WSA_FLAG_NO_HANDLE_INHERIT`. Прочие накладываются
+ *       отдельными обращениями, и `inborn` называет наложенное заведением
  *
  * @note Сокет заводится наложенным (WSA_FLAG_OVERLAPPED), и иначе быть не может: у
  *       дескриптора без наложения система выстраивает операции в очередь, и запись из
@@ -1030,8 +1088,25 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		// Возвращаем признак отсутствия заведённого сокета
 		return static_cast <net::socket_t> (INVALID_SOCKET);
 	}
-	// Опции при создании сокета эта система не принимает, они накладываются отдельно
-	(void) options;
+	/**
+	 * Признаки заведения сокета, накладываемые сразу
+	 *
+	 * @warning Опции при заведении прежде НЕ ПРИНИМАЛИСЬ вовсе, и просьба закрывать
+	 *          сокет при запуске стороннего образа накладывалась вторым обращением.
+	 *          Меж тем окно между заведением и наложением - ровно то, ради устранения
+	 *          какого у систем POSIX и заведён `SOCK_CLOEXEC`: породи соседний поток
+	 *          процесс именно в это окно, сокет унаследуется ВОПРЕКИ просьбе
+	 *
+	 * @note Прочие опции система при заведении и правда не принимает: неблокирующий
+	 *       режим у неё задаётся отдельным управляющим обращением, а не признаком
+	 *       заведения, - оттого `inborn` и отмечает наложенной одну лишь эту
+	 *
+	 */
+	DWORD flags = WSA_FLAG_OVERLAPPED;
+	// Если событие просит закрытия сокета при запуске стороннего образа
+	if(options & event::options::CLOSE_ON_EXEC)
+		// Добавляем признак запрета наследования описателя
+		flags |= WSA_FLAG_NO_HANDLE_INHERIT;
 	// Семейство адресов сокета в понимании системы
 	int32_t domain = 0;
 	/**
@@ -1120,7 +1195,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
 		// Выполняем заведение наложенного UNIX-доменного сокета
-		const SOCKET single = ::WSASocketW(domain, kind, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
+		const SOCKET single = ::WSASocketW(domain, kind, 0, nullptr, 0, flags);
 		// Если сокет завести не удалось
 		if(single == INVALID_SOCKET)
 			// Записываем ошибку в лог
@@ -1189,7 +1264,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		default: protocol = 0;
 	}
 	// Выполняем заведение наложенного сокета
-	const SOCKET result = ::WSASocketW(domain, kind, protocol, nullptr, 0, WSA_FLAG_OVERLAPPED);
+	const SOCKET result = ::WSASocketW(domain, kind, protocol, nullptr, 0, flags);
 	// Если сокет завести не удалось
 	if(result == INVALID_SOCKET)
 		// Записываем ошибку в лог
@@ -1230,18 +1305,34 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 /**
  * @brief Метод получения опций, принимаемых при создании сокета
  *
- * @note Эта система опций при создании сокета не принимает вовсе, оттого
- * набор всегда пуст, и опции накладываются отдельными обращениями
+ * @note Заведением накладывается одна опция - закрытие сокета при запуске стороннего
+ *       образа, - и в набор она попадает лишь тогда, когда её просили. Прочие
+ *       накладываются отдельными обращениями
  *
  * @param options набор опций события
  * @return        подмножество опций, наложенных при создании сокета
  *
  */
 uint16_t awh::eth::Socket::inborn(const uint16_t options) const noexcept {
-	// Опции при создании сокета эта система не принимает
-	(void) options;
-	// Выводим пустой набор опций
-	return event::options::NONE;
+	// Результат работы функции
+	uint16_t result = event::options::NONE;
+	/**
+	 * Закрытие при запуске стороннего образа накладывается ЗАВЕДЕНИЕМ
+	 *
+	 * @note Признак `WSA_FLAG_NO_HANDLE_INHERIT` система принимает при заведении
+	 *       сокета, и наложение его вторым обращением оставляло бы окно, в какое
+	 *       описатель наследуется вопреки просьбе. Ровно того же ради у систем POSIX
+	 *       заведён `SOCK_CLOEXEC`
+	 *
+	 * @note Прочих опций заведение не принимает: неблокирующий режим задаётся у этой
+	 *       системы отдельным управляющим обращением
+	 *
+	 */
+	if(options & event::options::CLOSE_ON_EXEC)
+		// Отмечаем закрытие при запуске образа как наложенное
+		result |= event::options::CLOSE_ON_EXEC;
+	// Выводим результат
+	return result;
 }
 
 

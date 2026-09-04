@@ -52,6 +52,7 @@
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
 #include "../../net/addr.hpp"
+#include "../../sys/chrono.hpp"
 #include "../abc/value.hpp"
 
 /**
@@ -155,6 +156,8 @@ namespace awh {
 				private:
 					// Объект работы с адресами сети
 					mutable net_addr_t _net;
+					// Объект работы с датой и временем
+					mutable chrono_t _chrono;
 				private:
 					// Код ошибки последней операции
 					error_t _error;
@@ -464,6 +467,38 @@ namespace awh {
 					 * \~
 					 */
 					string label(const string & key) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод получения метки времени записью заданного вида
+					 *
+					 * @details Метка времени держится деревом штампом в миллисекундах от
+					 * начала эпохи, а ходом этим выдаётся записью знаков любого вида,
+					 * какой примет модуль `chrono_t`. Ход этот и есть замена
+					 * установщику записи даты прежнего модуля: тот держал запись
+					 * настройкой объекта и менял выдачу ВСЕХ меток разом, здесь же
+					 * запись задаётся при выдаче, и два потребителя одного события
+					 * могут получить метку каждый в своей записи
+					 *
+					 * @note Метка выдаётся в МЕСТНОЙ зоне машины, как её выдавал и
+					 * прежний модуль: зона, самой записью объявленная, при разборе уже
+					 * учтена, и штамп её не помнит. Кому нужна иная зона, тот берёт
+					 * штамп ходом `at` и зовёт `chrono_t::format` с зоною сам
+					 *
+					 * @param key    имя ключа расширения, метку времени несущего
+					 * @param format запись даты, выдаваемой метке назначаемая
+					 * @return       метка времени записью заданного вида
+					 *
+					 * \~english
+					 * @brief Method of getting a timestamp in a notation of the given kind
+					 * @details A timestamp is held by the tree as a stamp in the milliseconds from
+					 * the beginning of the epoch, while by this method it is issued as a record of the characters
+					 * @param key    name of the key of the extension carrying the timestamp
+					 * @param format notation of the date appointed to the issued timestamp
+					 * @return       timestamp in a notation of the given kind
+					 *
+					 * \~
+					 */
+					string timestamp(const string & key, const string & format = string(TIMESTAMP_FORMAT)) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения вида значения ключа расширения

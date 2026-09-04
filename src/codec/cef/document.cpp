@@ -24,6 +24,7 @@
  */
 #include <fstream>
 #include <iterator>
+#include <vector>
 #include <codec/cef/document.hpp>
 
 /**
@@ -60,18 +61,82 @@ namespace {
 	};
 
 	/**
-	 * @brief Метод постановки отменяющей записи в звене пути
+	 * @brief Имя вместилища пар расширения в дереве события
 	 *
-	 * @details Звено пути отменяющей записи требует по RFC 6901: знак «~» пишется «~0»,
-	 *          а косая черта - «~1». Без того имя ключа, косую черту несущее, разрывало
-	 *          бы путь на два звена, и обход переставал бы быть замкнутым
+	 * @details Обращение к паре ведётся именем внутри вместилища, а НЕ строковым путём
+	 *          «/extension/<ключ>»: ось дерева - контейнер ABC, а ход `at` его
+	 *          отменяющей записи RFC 6901 не понимает вовсе. Замерено 04.09.2026:
+	 *          имя «a~b» разыскивается дословно, «a~0b» не находит ничего, а имя,
+	 *          косую черту несущее, строковым путём недостижимо в принципе - путь
+	 *          рвётся на два звена. Ключи же живых журналов косую черту несут
+	 *
+	 * @note Ворошитель нашёл это разомкнутостью обхода: `keys` выдавал звено с
+	 *       отменяющей записью, а `at` по нему не находил потомка
+	 */
+	constexpr const char * EXTENSION = "extension";
+
+	/**
+	 * @brief Метод снятия отменяющей записи со звена пути
+	 *
+	 * @details Звено пути несёт отменяющую запись RFC 6901: «~1» есть косая черта, а
+	 *          «~0» - сам знак отмены. Порядок снятия обратен порядку постановки:
+	 *          сперва «~1», затем «~0», - иначе запись «~01» обращалась бы в косую
+	 *          черту вместо «~1»
+	 *
+	 * @param link звено пути с отменяющей записью
+	 * @return     имя, звеном пути обозначенное
+	 */
+	string decode(const string_view link) noexcept {
+		// Результирующее имя, звеном обозначенное
+		string result;
+		// Выделяем память под результирующее имя
+		result.reserve(link.size());
+		/**
+		 * Выполняем перебор всех знаков звена пути
+		 */
+		for(size_t i = 0; i < link.size(); i++){
+			// Если знак отменяющей записью не является
+			if((link[i] != '~') || ((i + 1) >= link.size())){
+				// Добавляем знак в результирующее имя как есть
+				result.append(1, link[i]);
+				// Переходим к следующему знаку
+				continue;
+			}
+			/**
+			 * Определяем знак, отменяющей записью обозначенный
+			 */
+			switch(link[i + 1]){
+				// Если отменяющей записью обозначена косая черта
+				case '1': {
+					// Добавляем косую черту в результирующее имя
+					result.append(1, '/');
+					// Пропускаем знак отменяющей записи
+					i++;
+				} break;
+				// Если отменяющей записью обозначен сам знак отмены
+				case '0': {
+					// Добавляем знак отмены в результирующее имя
+					result.append(1, '~');
+					// Пропускаем знак отменяющей записи
+					i++;
+				} break;
+				// Если запись отменяющей не является
+				default: result.append(1, link[i]);
+			}
+		}
+		// Выводим результирующее имя
+		return result;
+	}
+
+	/**
+	 * @brief Метод постановки отменяющей записи в звене пути
 	 *
 	 * @param name имя, звеном пути ставимое
 	 * @return     звено пути с поставленной отменяющей записью
 	 */
-	string pointer(const string_view name) noexcept {
+	string encode(const string_view name) noexcept {
 		// Результирующее звено пути
-		string result = "";
+		string result;
 		// Выделяем память под результирующее звено пути
 		result.reserve(name.size());
 		/**
@@ -82,7 +147,7 @@ namespace {
 			 * Определяем знак имени
 			 */
 			switch(name[i]){
-				// Если знак является знаком отменяющей записи
+				// Если знак является знаком отмены
 				case '~': result.append("~0"); break;
 				// Если знак является косой чертой
 				case '/': result.append("~1"); break;
@@ -91,6 +156,50 @@ namespace {
 			}
 		}
 		// Выводим результирующее звено пути
+		return result;
+	}
+
+	/**
+	 * @brief Метод разбора пути на звенья
+	 *
+	 * @details Путь разбирается САМИМ кодеком, а не осью его - контейнером ABC: ход
+	 *          `at` контейнера отменяющей записи RFC 6901 не понимает вовсе, и имя
+	 *          ключа, косую черту несущее, было бы им недостижимо. Ключи же живых
+	 *          журналов косую черту несут, и терять их нельзя
+	 *
+	 * @note Найдено ворошителем 04.09.2026: обход размыкался - `keys` выдавал звено,
+	 *       а `at` по нему потомка не находил
+	 *
+	 * @param path разбираемый путь
+	 * @return     звенья пути со снятой отменяющей записью
+	 */
+	vector <string> split(const string & path) noexcept {
+		// Результирующие звенья пути
+		vector <string> result;
+		// Если путь пуст либо корнем является
+		if(path.empty() || (path == "/"))
+			// Выводим отсутствие звеньев пути
+			return result;
+		// Смещение начала очередного звена пути
+		size_t begin = ((path.front() == '/') ? 1 : 0);
+		/**
+		 * Выполняем разбор пути на звенья
+		 */
+		while(begin <= path.size()){
+			// Выполняем поиск конца очередного звена пути
+			const size_t end = path.find('/', begin);
+			// Получаем очередное звено пути
+			const string_view link(path.data() + begin, ((end == string::npos) ? path.size() : end) - begin);
+			// Добавляем звено пути со снятой отменяющей записью
+			result.push_back(decode(link));
+			// Если звено пути последним является
+			if(end == string::npos)
+				// Выходим из цикла разбора пути
+				break;
+			// Сдвигаем смещение начала очередного звена пути
+			begin = (end + 1);
+		}
+		// Выводим результирующие звенья пути
 		return result;
 	}
 }
@@ -180,6 +289,82 @@ bool awh::codec::cef::Document::convert(const entry_t * entry, const string & va
 		case static_cast <uint8_t> (type_t::BOOLEAN): {
 			// Устанавливаем логическое значение значением дерева
 			result = abc::value_t(this->_fmk->compare(value, "true") || this->_fmk->compare(value, "yes"));
+			// Выводим положительный признак обращения значения
+			return true;
+		}
+		// Если значение является меткой времени
+		case static_cast <uint8_t> (type_t::TIMESTAMP): {
+			// Если сличение всех видов значений не ведётся
+			if(mode != mode_t::STRONG){
+				// Устанавливаем последовательность знаков значением дерева
+				result = abc::value_t(value);
+				// Выводим положительный признак обращения значения
+				return true;
+			}
+			// Признак числовой записи метки времени
+			bool numeric = true;
+			/**
+			 * Выполняем перебор всех знаков метки времени
+			 */
+			for(size_t i = 0; i < value.size(); i++){
+				// Если знак метки времени цифрой не является
+				if((value[i] < '0') || (value[i] > '9')){
+					// Запоминаем отсутствие числовой записи метки времени
+					numeric = false;
+					// Выходим из цикла перебора
+					break;
+				}
+			}
+			// Если метка времени записана числом
+			if(numeric){
+				// Устанавливаем штамп времени значением дерева
+				result = abc::value_t(static_cast <uint64_t> (::std::stoull(value)));
+				// Выводим положительный признак обращения значения
+				return true;
+			}
+			/**
+			 * Выполняем разбор записи метки времени модулем работы с датой и временем
+			 *
+			 * @warning Признака успешности разбор этот не выдаёт: ход `parse` с доводом
+			 * `valid` у модуля `chrono_t` закрыт, а открытый его вид об отказе молчит.
+			 * Запись, в которой не нашлось ни одного поля формата, выдаётся им ТЕКУЩИМ
+			 * МОМЕНТОМ, и отличить её от разобранной кодеку нечем. Оттого отказом здесь
+			 * считается один лишь нулевой штамп - пустая запись либо пустая запись
+			 * формата, - а испорченная метка недоверенного журнала обращается в момент
+			 * разбора молча. Ограничение это лежит НЕ у кодека, и снимается оно
+			 * открытием признака успешности у самого модуля
+			 */
+			// Признак того, что метка времени долю секунды несёт
+			bool fractional = false;
+			/**
+			 * Выполняем перебор знаков метки времени в поисках доли секунды
+			 *
+			 * @details Доля секунды опознаётся точкой, цифрами с обеих сторон окружённой:
+			 * запись «23:30:15.734» её несёт, а «2.4.3-371989» - нет
+			 */
+			for(size_t i = 1; (i + 1) < value.size(); i++){
+				// Если знак точкой является, а соседи его цифрами
+				if((value[i] == '.') &&
+				   (value[i - 1] >= '0') && (value[i - 1] <= '9') &&
+				   (value[i + 1] >= '0') && (value[i + 1] <= '9')){
+					// Запоминаем наличие доли секунды у метки времени
+					fractional = true;
+					// Выходим из цикла перебора
+					break;
+				}
+			}
+			// Получаем запись даты, метке времени отвечающую
+			const string & pattern = (fractional ? this->_reader.settings().fraction : this->_reader.settings().timestamp);
+			const uint64_t stamp = this->_chrono.parse(value, pattern, chrono_t::storage_t::GLOBAL);
+			// Если разбор записи метки времени отказом завершился
+			if(stamp == 0){
+				// Устанавливаем код ошибки несоответствия значения виду
+				this->_error = error_t::INVALID_TIMESTAMP;
+				// Выводим отрицательный признак обращения значения
+				return false;
+			}
+			// Устанавливаем штамп времени значением дерева
+			result = abc::value_t(stamp);
 			// Выводим положительный признак обращения значения
 			return true;
 		}
@@ -278,12 +463,12 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 	if(value.empty() && (this->_reader.settings().empty == empty_t::SKIP))
 		// Выводим положительный признак укладки пары
 		return true;
-	// Получаем путь к паре расширения в дереве события
-	const string path("/extension/" + pointer(key));
+	// Получаем вместилище пар расширения дерева события
+	abc::value_t & extension = this->_root.place(string("/") + EXTENSION);
 	// Если ключ расширения деревом уже объявлен
-	if(this->_root.at("/extension").contains(key)){
+	if(extension.contains(key)){
 		// Получаем значение, ключом уже объявленное
-		abc::value_t & exists = this->_root.place(path);
+		abc::value_t & exists = extension[key];
 		// Если объявленное значение перечнем не является
 		if(exists.type() != abc::type_t::ARRAY){
 			// Заводим перечень значений одного ключа
@@ -305,7 +490,7 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 		return exists.push(current);
 	}
 	// Ставим значение пары расширения в дерево события
-	this->_root.place(path) = ::std::move(current);
+	extension[key] = ::std::move(current);
 	// Выводим положительный признак укладки пары
 	return true;
 }
@@ -453,8 +638,23 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 string awh::codec::cef::Document::dump() const noexcept {
 	// Собранная запись CEF
 	string result = "";
-	// Выполняем сборку записи CEF из дерева события
-	const_cast <writer_t &> (this->_writer).write(this->_root, result);
+	/**
+	 * Если сборка записи CEF отказом завершилась
+	 *
+	 * @details Итог сборки проверяется НЕПРЕМЕННО: писатель наполняет запись по ходу
+	 * обхода дерева, и на отказе в ней остаётся собранное до места отказа. Выдача
+	 * такого обрубка отдавала бы потребителю запись, которая разбирается, но несёт
+	 * лишь часть события - и молча
+	 *
+	 * @note Найдено ворошителем 04.09.2026: запись с непредставимым ключом выдавалась
+	 *       одним заголовком, а расширение пропадало без всякого знака о том
+	 */
+	if(!const_cast <writer_t &> (this->_writer).write(this->_root, result)){
+		// Запоминаем код ошибки сборки записи
+		const_cast <Document *> (this)->_error = this->_writer.error();
+		// Выводим пустую запись CEF
+		return string("");
+	}
 	// Выводим собранную запись CEF
 	return result;
 }
@@ -466,8 +666,53 @@ string awh::codec::cef::Document::dump() const noexcept {
  * @return     ссылка на значение либо ссылка на отсутствующее значение
  */
 const awh::codec::abc::value_t & awh::codec::cef::Document::at(const string & path) const noexcept {
+	// Получаем звенья разбираемого пути
+	const vector <string> links = split(path);
+	// Текущее значение обхода дерева события
+	const abc::value_t * result = &this->_root;
+	/**
+	 * Выполняем обход дерева события по звеньям пути
+	 */
+	for(const auto & link : links){
+		/**
+		 * Определяем вид текущего значения обхода
+		 */
+		switch(static_cast <uint32_t> (result->type())){
+			// Если значение является отображением
+			case static_cast <uint32_t> (abc::type_t::MAP):
+				// Переходим к полю отображения по имени
+				result = &(*result)[link];
+			break;
+			// Если значение является перечнем
+			case static_cast <uint32_t> (abc::type_t::ARRAY): {
+				// Номер значения перечня, звеном обозначенный
+				size_t index = 0;
+				// Признак числового вида звена пути
+				bool numeric = !link.empty();
+				/**
+				 * Выполняем перебор всех знаков звена пути
+				 */
+				for(size_t i = 0; numeric && (i < link.size()); i++){
+					// Если знак звена цифрой не является
+					if((link[i] < '0') || (link[i] > '9'))
+						// Запоминаем отсутствие числового вида звена
+						numeric = false;
+					// Если знак звена цифрой является
+					else index = ((index * 10) + static_cast <size_t> (link[i] - '0'));
+				}
+				// Если звено пути числовым не является
+				if(!numeric)
+					// Выводим отсутствующее значение дерева
+					return abc::value_t::scrap();
+				// Переходим к значению перечня по номеру
+				result = &(*result)[index];
+			} break;
+			// Если значение вместилищем не является
+			default: return abc::value_t::scrap();
+		}
+	}
 	// Выводим значение дерева события по пути
-	return this->_root.at(path);
+	return * result;
 }
 
 /**
@@ -478,10 +723,36 @@ const awh::codec::abc::value_t & awh::codec::cef::Document::at(const string & pa
  * @return      признак успешности постановки значения
  */
 bool awh::codec::cef::Document::set(const string & path, const abc::value_t & value) noexcept {
-	// Ставим значение в дерево события по пути
-	this->_root.place(path) = value;
+	// Получаем звенья разбираемого пути
+	const vector <string> links = split(path);
+	// Если путь звеньев не содержит
+	if(links.empty()){
+		// Запоминаем код ошибки отсутствия поля
+		this->_error = error_t::UNKNOWN_FIELD;
+		// Выводим отрицательный признак постановки значения
+		return false;
+	}
+	// Текущее значение обхода дерева события
+	abc::value_t * current = &this->_root;
+	/**
+	 * Выполняем обход дерева события по звеньям пути, кроме последнего
+	 */
+	for(size_t i = 0; (i + 1) < links.size(); i++){
+		// Если вместилище звена пути отображением не является
+		if(current->type() != abc::type_t::MAP)
+			// Заводим вместилище звена пути отображением
+			(* current) = abc::value_t(abc::kind_t::MAP);
+		// Переходим к полю отображения по имени
+		current = &(*current)[links.at(i)];
+	}
+	// Если вместилище последнего звена отображением не является
+	if(current->type() != abc::type_t::MAP)
+		// Заводим вместилище последнего звена отображением
+		(* current) = abc::value_t(abc::kind_t::MAP);
+	// Ставим значение в дерево события по последнему звену пути
+	(* current)[links.back()] = value;
 	// Выводим признак успешности постановки значения
-	return this->_root.at(path).valid();
+	return (* current)[links.back()].valid();
 }
 
 /**
@@ -498,10 +769,8 @@ bool awh::codec::cef::Document::reset(const string & path) noexcept {
 		// Выводим отрицательный признак сброса значения
 		return false;
 	}
-	// Замещаем значение пустой последовательностью знаков
-	this->_root.place(path) = abc::value_t(string(""));
-	// Выводим положительный признак сброса значения
-	return true;
+	// Выводим признак замещения значения пустой последовательностью знаков
+	return this->set(path, abc::value_t(string("")));
 }
 
 /**
@@ -511,27 +780,60 @@ bool awh::codec::cef::Document::reset(const string & path) noexcept {
  * @return     признак успешности сноса значения
  */
 bool awh::codec::cef::Document::erase(const string & path) noexcept {
-	// Выполняем поиск последнего звена пути
-	const size_t pos = path.rfind('/');
+	// Получаем звенья разбираемого пути
+	const vector <string> links = split(path);
 	// Если путь звеньев не содержит
-	if(pos == string::npos){
+	if(links.empty()){
 		// Запоминаем код ошибки отсутствия поля
 		this->_error = error_t::UNKNOWN_FIELD;
 		// Выводим отрицательный признак сноса значения
 		return false;
 	}
-	// Получаем путь к вместилищу сносимого значения
-	const string parent(path, 0, pos);
-	// Получаем имя сносимого значения
-	const string name(path, pos + 1, string::npos);
-	// Получаем вместилище сносимого значения
-	abc::value_t & value = this->_root.place(parent.empty() ? "/" : parent);
-	// Если вместилище перечнем является
-	if(value.type() == abc::type_t::ARRAY)
+	// Текущее значение обхода дерева события
+	abc::value_t * current = &this->_root;
+	/**
+	 * Выполняем обход дерева события по звеньям пути, кроме последнего
+	 */
+	for(size_t i = 0; (i + 1) < links.size(); i++){
+		// Если вместилище звена пути отображением не является
+		if(current->type() != abc::type_t::MAP){
+			// Запоминаем код ошибки отсутствия поля
+			this->_error = error_t::UNKNOWN_FIELD;
+			// Выводим отрицательный признак сноса значения
+			return false;
+		}
+		// Переходим к полю отображения по имени
+		current = &(*current)[links.at(i)];
+	}
+	// Если вместилище сносимого значения перечнем является
+	if(current->type() == abc::type_t::ARRAY){
+		// Номер сносимого значения перечня
+		size_t index = 0;
+		// Признак числового вида последнего звена пути
+		bool numeric = !links.back().empty();
+		/**
+		 * Выполняем перебор всех знаков последнего звена пути
+		 */
+		for(size_t i = 0; numeric && (i < links.back().size()); i++){
+			// Если знак звена цифрой не является
+			if((links.back()[i] < '0') || (links.back()[i] > '9'))
+				// Запоминаем отсутствие числового вида звена
+				numeric = false;
+			// Если знак звена цифрой является
+			else index = ((index * 10) + static_cast <size_t> (links.back()[i] - '0'));
+		}
+		// Если последнее звено пути числовым не является
+		if(!numeric){
+			// Запоминаем код ошибки отсутствия поля
+			this->_error = error_t::UNKNOWN_FIELD;
+			// Выводим отрицательный признак сноса значения
+			return false;
+		}
 		// Выводим признак сноса значения перечня по номеру
-		return value.erase(static_cast <size_t> (::std::stoull(name)));
+		return current->erase(index);
+	}
 	// Выводим признак сноса значения отображения по имени
-	return value.erase(name);
+	return current->erase(links.back());
 }
 
 /**
@@ -544,7 +846,7 @@ vector <string> awh::codec::cef::Document::keys(const string & path) const noexc
 	// Результирующий перечень звеньев пути
 	vector <string> result;
 	// Получаем значение дерева события по пути
-	const abc::value_t & value = this->_root.at(path);
+	const abc::value_t & value = this->at(path);
 	/**
 	 * Определяем вид значения дерева события
 	 */
@@ -558,7 +860,7 @@ vector <string> awh::codec::cef::Document::keys(const string & path) const noexc
 			 */
 			for(size_t i = 0; i < value.size(); i++)
 				// Добавляем имя поля отображения звеном пути
-				result.push_back(pointer(value.key(i).text()));
+				result.push_back(encode(value.key(i).text()));
 		} break;
 		// Если значение является перечнем
 		case static_cast <uint32_t> (abc::type_t::ARRAY): {
@@ -584,7 +886,7 @@ vector <string> awh::codec::cef::Document::keys(const string & path) const noexc
  */
 bool awh::codec::cef::Document::has(const string & path) const noexcept {
 	// Выводим признак наличия значения дерева события по пути
-	return this->_root.at(path).valid();
+	return this->at(path).valid();
 }
 
 /**
@@ -596,7 +898,7 @@ bool awh::codec::cef::Document::has(const string & path) const noexcept {
  */
 bool awh::codec::cef::Document::contains(const string & path, const string & name) const noexcept {
 	// Выводим признак наличия вложенного значения по имени
-	return this->_root.at(path).contains(name);
+	return this->at(path).contains(name);
 }
 
 /**
@@ -606,7 +908,7 @@ bool awh::codec::cef::Document::contains(const string & path, const string & nam
  */
 size_t awh::codec::cef::Document::size() const noexcept {
 	// Выводим количество пар расширения события
-	return this->_root.at("/extension").size();
+	return this->_root.at(string("/") + EXTENSION).size();
 }
 
 /**
@@ -629,12 +931,14 @@ void awh::codec::cef::Document::clear() noexcept {
 const awh::codec::abc::value_t & awh::codec::cef::Document::field(const string & name) const noexcept {
 	// Выполняем розыск записи словаря по полному имени ключа
 	const entry_t * entry = dictionary::search(name);
+	// Получаем вместилище пар расширения дерева события
+	const abc::value_t & extension = this->_root.at(string("/") + EXTENSION);
 	// Если полное имя ключа словарю неизвестно
 	if(entry == nullptr)
 		// Выводим значение расширения по имени как оно есть
-		return this->_root.at("/extension/" + pointer(name));
+		return extension[name];
 	// Выводим значение расширения по ключу, словарём заданному
-	return this->_root.at("/extension/" + pointer(entry->key));
+	return extension[string(entry->key)];
 }
 
 /**
@@ -647,7 +951,7 @@ string awh::codec::cef::Document::label(const string & key) const noexcept {
 	// Получаем имя ключа, метку имени несущего
 	const string name(key + string(LABEL_SUFFIX));
 	// Получаем значение метки имени ключа
-	const abc::value_t & value = this->_root.at("/extension/" + pointer(name));
+	const abc::value_t & value = this->_root.at(string("/") + EXTENSION)[name];
 	// Если метка имени ключа записью объявлена
 	if(value.valid() && (value.type() == abc::type_t::STRING))
 		// Выводим человеческое имя ключа, меткой записи заданное
@@ -656,6 +960,34 @@ string awh::codec::cef::Document::label(const string & key) const noexcept {
 	const entry_t * entry = dictionary::find(key);
 	// Выводим человеческое имя ключа, словарём заданное
 	return (entry != nullptr ? string(entry->name) : string(""));
+}
+
+/**
+ * @brief Метод получения метки времени записью заданного вида
+ *
+ * @param key    имя ключа расширения, метку времени несущего
+ * @param format запись даты, выдаваемой метке назначаемая
+ * @return       метка времени записью заданного вида
+ */
+string awh::codec::cef::Document::timestamp(const string & key, const string & format) const noexcept {
+	// Получаем значение пары расширения, метку времени несущей
+	const abc::value_t & value = this->_root.at(string("/") + EXTENSION)[key];
+	// Если значение пары расширения деревом не объявлено
+	if(!value.valid())
+		// Выводим пустую метку времени
+		return "";
+	// Если значение пары расширения последовательностью знаков является
+	if(value.type() == abc::type_t::STRING)
+		// Выводим метку времени как она в записи стоит: разбор её не вёлся
+		return value.text();
+	// Штамп времени, деревом удерживаемый
+	uint64_t stamp = 0;
+	// Если извлечение штампа времени отказом завершилось
+	if(!value.value(stamp))
+		// Выводим пустую метку времени
+		return "";
+	// Выводим метку времени записью заданного вида
+	return this->_chrono.format(stamp, format);
 }
 
 /**
@@ -741,7 +1073,8 @@ void awh::codec::cef::Document::settings(const writer_t::settings_t & settings) 
  * @param log объект для работы с логами
  */
 awh::codec::cef::Document::Document(const fmk_t * fmk, const log_t * log) noexcept :
- _reader(fmk, log), _writer(fmk, log), _net(fmk, log), _error(error_t::NONE), _fmk(fmk), _log(log) {}
+ _reader(fmk, log), _writer(fmk, log), _net(fmk, log), _chrono(fmk, log),
+ _error(error_t::NONE), _fmk(fmk), _log(log) {}
 
 /**
  * Возвращаем имена, системными макросами занятые

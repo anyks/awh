@@ -620,6 +620,18 @@ bool awh::codec::Bridge::absorbYAML(const yaml::document_t & document, const str
  *
  */
 bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & result) noexcept {
+	/**
+	 * @warning Обход ведётся ходом `keys()`, и это верно ПОКУДА разбор держит
+	 *          умолчание: YAML 1.2 требует имена пар отображения уникальными, и
+	 *          умолчание повтор ОТВЕРГАЕТ, так что до моста он не доходит вовсе.
+	 *          Под послаблением `duplicate_t::KEEP` обход РАЗОМКНУТ - имя
+	 *          выдаётся дважды, а оба звена ведут к ПЕРВОЙ паре, и вторая
+	 *          недостижима ничем; `has()` и `valid()` при этом отвечают истиной
+	 *          обе, так что беспечная проверка была бы зелёной. Послабление это
+	 *          стоит вне стандарта, и разомкнутость есть цена его, а не порок
+	 *          хода. Понадобится KEEP - брать пары перебором по номеру, а не
+	 *          обходом по звеньям
+	 */
 	// Создаём документ записи YAML
 	yaml::document_t document(this->_log);
 	// Выполняем разбор поданной записи YAML
@@ -1210,6 +1222,22 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи YAML
 	yaml::document_t document(this->_log);
+	/**
+	 * Выполняем заведение первого документа записи YAML
+	 *
+	 * @warning Затравка эта обязательна: посадка ведётся от корня ПЕРВОГО
+	 *          документа, а у документа, ничего не разобравшего, его нет вовсе -
+	 *          прививка отвечает отказом `EMPTY_TEXT` даже на простейшем дереве.
+	 *          Замерено: `{a: 17}` прививается лишь по затравке, а без неё
+	 *          отвечает кодом 41. Знаком начала документа затравка взята потому,
+	 *          что содержимого он не задаёт и толкованию не мешает
+	 */
+	if(!document.parse(string("---"))){
+		// Запоминаем код отказа перевода
+		this->_error = error_t::WRITING;
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
 	// Собираемое владеющее значение записи YAML
 	yaml::Value root;
 	// Выполняем подачу дерева значений владеющему значению
@@ -1237,6 +1265,189 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
 		return false;
 	}
 	// Выполняем изъятие собранной записи YAML
+	result = document.dump();
+	// Сообщаем, что перевод выполнен
+	return true;
+}
+
+/**
+ * @brief Метод подачи значения ABC значению TOML
+ *
+ * @param value  значение контейнера ABC
+ * @param result собираемое значение записи TOML
+ * @param depth  глубина обхода дерева
+ * @return       результат подачи
+ *
+ * @warning Пустого значения у записи TOML нет ВОВСЕ: запись `a = ` отвергается
+ *          самим стандартом. Оттого вид NUL укладывается по правилу сужения, а
+ *          не своим видом, и при умолчании TEXT ложится пустой строкой `a = ""`.
+ *          Обратное чтение вернёт её строкой, а не пустотою, и это законная
+ *          потеря вида, свойством формата вызванная
+ *
+ */
+bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & result, const uint32_t depth) noexcept {
+	// Если глубина обхода превысила предел перевода
+	if(depth > this->_settings.depth){
+		// Запоминаем код отказа перевода
+		this->_error = error_t::DEEP_TREE;
+		// Выходим из метода, обход остановлен
+		return false;
+	}
+	// Если значение контейнера ABC недействительно вовсе
+	if(!value.valid())
+		// Выходим из метода, подавать нечего
+		return true;
+	// Определяем вид значения контейнера ABC
+	switch(static_cast <uint32_t> (value.type())){
+		// Если значение является логическим
+		case static_cast <uint32_t> (abc::type_t::BOOL): {
+			// Извлекаемое логическое значение
+			bool number = false;
+			// Выполняем извлечение логического значения
+			if(!value.value(number))
+				// Выходим из метода, извлечение отвечено отказом
+				return false;
+			// Выполняем заведение логического значения
+			result = toml::Value(number);
+		} return true;
+		// Если значение является последовательностью знаков
+		case static_cast <uint32_t> (abc::type_t::STRING): {
+			// Выполняем заведение последовательности знаков
+			result = toml::Value(value.text());
+		} return true;
+		// Если значение является вместимым
+		case static_cast <uint32_t> (abc::type_t::ARRAY): {
+			// Выполняем перебор всех значений вместимого
+			for(size_t i = 0; i < value.size(); i++){
+				// Собираемое значение перечня
+				toml::Value item;
+				// Выполняем подачу значения вместимого значению перечня
+				if(!this->feedTOML(value[i], item, depth + 1))
+					// Выходим из метода, подача отвечена отказом
+					return false;
+				// Выполняем добавление значения концом перечня
+				if(!result.push(item))
+					// Выходим из метода, добавление отвечено отказом
+					return false;
+			}
+		} return true;
+		// Если значение является отображением
+		case static_cast <uint32_t> (abc::type_t::MAP): {
+			// Выполняем перебор всех полей отображения
+			for(size_t i = 0; i < value.size(); i++){
+				// Извлекаемое имя поля отображения
+				string name = "";
+				// Выполняем извлечение имени поля отображения
+				if(!value.key(i).value(name)){
+					/**
+					 * Имя поля, знаками не выражаемое, записи TOML неведомо: у неё
+					 * именем ключа бывает лишь последовательность знаков
+					 */
+					if(this->_settings.narrow == narrow_t::SKIP)
+						// Продолжаем перебор полей отображения дальше
+						continue;
+					// Запоминаем код отказа перевода
+					this->_error = error_t::UNSUPPORTED;
+					// Выходим из метода, перевод отвечен отказом
+					return false;
+				}
+				// Собираемое значение поля отображения
+				toml::Value item;
+				// Выполняем подачу значения поля значению отображения
+				if(!this->feedTOML(value[name], item, depth + 1))
+					// Выходим из метода, подача отвечена отказом
+					return false;
+				/**
+				 * Выполняем добавление поля отображению
+				 *
+				 * @warning Имя кладётся ИСХОДНЫМ: отменяющая запись есть свойство
+				 *          ПУТИ, а не имени, и ход этот берёт именно имя. Ограду
+				 *          же кавычками ставит сам кодек - голое имя ключа по
+				 *          стандарту TOML лишь ASCII, и кириллица кавычек требует
+				 */
+				if(!result.insert(name, item))
+					// Выходим из метода, добавление отвечено отказом
+					return false;
+			}
+		} return true;
+	}
+	// Если значение является числом
+	if(value.is(abc::type_t::NUMBER)){
+		// Извлекаемое целое со знаком
+		int64_t number = 0;
+		// Если значение извлекается целым со знаком
+		if(value.value(number)){
+			// Выполняем заведение целого со знаком
+			result = toml::Value(number);
+			// Выводим результат подачи
+			return true;
+		}
+		// Извлекаемое число дробное
+		double real = 0.;
+		// Если значение извлекается числом дробным
+		if(value.value(real)){
+			// Выполняем заведение числа дробного
+			result = toml::Value(real);
+			// Выводим результат подачи
+			return true;
+		}
+	}
+	// Определяем правило обращения с видом, записи TOML неведомым
+	switch(static_cast <uint8_t> (this->_settings.narrow)){
+		// Если вид надлежит пропустить вовсе
+		case static_cast <uint8_t> (narrow_t::SKIP):
+			// Выходим из метода, значение пропущено
+			return true;
+		// Если вид надлежит обратить в последовательность знаков
+		case static_cast <uint8_t> (narrow_t::TEXT): {
+			// Выполняем заведение последовательности знаков
+			result = toml::Value(value.text());
+			// Выводим результат подачи
+			return true;
+		}
+	}
+	// Запоминаем код отказа перевода
+	this->_error = error_t::UNSUPPORTED;
+	// Выходим из метода, перевод отвечен отказом
+	return false;
+}
+
+/**
+ * @brief Метод перевода дерева ABC в запись TOML
+ *
+ * @param value  дерево значений контейнера ABC
+ * @param result собранная запись TOML
+ * @return       результат перевода
+ *
+ */
+bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result) noexcept {
+	// Создаём документ записи TOML
+	toml::document_t document(this->_log);
+	// Собираемое владеющее значение записи TOML
+	toml::Value root;
+	// Выполняем подачу дерева значений владеющему значению
+	if(!this->feedTOML(value, root, 0)){
+		// Если код отказа перевода ещё не запомнен
+		if(this->_error == error_t::NONE)
+			// Запоминаем код отказа перевода
+			this->_error = error_t::WRITING;
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
+	/**
+	 * Выполняем посадку собранного значения в документ записи TOML
+	 *
+	 * @warning Путь посадки задаётся ПЕРЕЧНЕМ КУСКОВ, а не строкою, как у
+	 *          записи YAML: ходы прививки у двух кодеков покуда разной формы, и
+	 *          пустой перечень означает здесь корень документа
+	 */
+	if(!root.graft(document, vector <string_view> ())){
+		// Запоминаем код отказа перевода
+		this->_error = error_t::WRITING;
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
+	// Выполняем изъятие собранной записи TOML
 	result = document.dump();
 	// Сообщаем, что перевод выполнен
 	return true;
@@ -1271,6 +1482,10 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		case static_cast <uint8_t> (format_t::YAML):
 			// Выводим результат перевода дерева в запись YAML
 			return this->encodeYAML(value, result);
+		// Если запись переводится в вид TOML
+		case static_cast <uint8_t> (format_t::TOML):
+			// Выводим результат перевода дерева в запись TOML
+			return this->encodeTOML(value, result);
 		// Если вид записи мостом ещё не переводится
 		default: {
 			// Запоминаем код отказа перевода

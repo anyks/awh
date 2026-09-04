@@ -145,9 +145,9 @@ TEST(CodecAbcDocument, ParseAndNavigate) {
 	// Выполняем проверку количества пар корня дерева документа
 	ASSERT_EQ(root.size(), 4u);
 	// Выполняем проверку наличия поля числа
-	ASSERT_TRUE(root.has("число"));
+	ASSERT_TRUE(root.contains("число"));
 	// Выполняем проверку отсутствия поля, какого нет
-	ASSERT_FALSE(root.has("нету"));
+	ASSERT_FALSE(root.contains("нету"));
 	// Извлекаемое целое число со знаком
 	int64_t integer = 0;
 	// Выполняем извлечение целого числа со знаком
@@ -2111,12 +2111,12 @@ TEST(CodecAbcDocument, LookupAgreesOnBothSidesOfTheIndexThreshold){
 			ASSERT_TRUE(document.root().get(named).same(document.root().at(i)))
 				<< count << ": " << named;
 			// Выполняем проверку наличия поля по имени
-			ASSERT_TRUE(document.root().has(named)) << count << ": " << named;
+			ASSERT_TRUE(document.root().contains(named)) << count << ": " << named;
 		}
 		// Выполняем проверку того, что отсутствующее имя не разыскивается
 		ASSERT_FALSE(document.root().get("нет-такого-поля").valid()) << count;
 		// Выполняем проверку того, что отсутствующего имени и вправду нет
-		ASSERT_FALSE(document.root().has("нет-такого-поля")) << count;
+		ASSERT_FALSE(document.root().contains("нет-такого-поля")) << count;
 	}
 	/**
 	 * Выполняем перебор чисел полей вокруг порога у отображения с ПУСТЫМ именем

@@ -282,7 +282,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_NODES = 8;
+			constexpr uint32_t MAX_NODES = 0x4000000;
 
 			/**
 			 * \~russian

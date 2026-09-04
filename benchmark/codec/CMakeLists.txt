@@ -22,6 +22,26 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
     # Источники для сборки бенчмарков
     SET(${PROJECT_NAME}_BENCHMARK_SOURCES ../main.cpp)
 
+    # Указываем что нужно собрать бенчмарки для контейнера CEF
+    option(CMAKE_BUILD_${BENCHMARK_NAME}_CEF_BENCHMARK "Build CEF benchmark for ${BENCHMARK_NAME}" ON)
+
+    # Если нужно собрать бенчмарки для контейнера CEF
+    if (${CMAKE_BUILD_${BENCHMARK_NAME}_CEF_BENCHMARK})
+        # Выводим сообщение о сборке бенчмарков для контейнера CEF
+        message(STATUS "Build benchmarks CEF submodule: Yes\n")
+        # Дополняем список источников бенчмарками для контейнера CEF
+        list(APPEND ${PROJECT_NAME}_BENCHMARK_SOURCES
+            cef/cef.cpp
+            cef/reader.cpp
+            cef/writer.cpp
+            cef/document.cpp
+        )
+    # Если не нужно собрать бенчмарки для контейнера CEF
+    else()
+        # Выводим сообщение о пропуске сборки бенчмарков для контейнера CEF
+        message(STATUS "Build benchmarks CEF submodule: No\n")
+    endif()
+
     # Указываем что нужно собрать бенчмарки для контейнера XML
     option(CMAKE_BUILD_${BENCHMARK_NAME}_XML_BENCHMARK "Build XML benchmark for ${BENCHMARK_NAME}" ON)
 

@@ -1598,7 +1598,7 @@ awh::codec::abc::Document::value_t awh::codec::abc::Document::Value::get(const s
  * @return     признак наличия поля отображения
  *
  */
-bool awh::codec::abc::Document::Value::has(const string_view name) const noexcept {
+bool awh::codec::abc::Document::Value::contains(const string_view name) const noexcept {
 	// Выводим признак наличия поля отображения
 	return this->get(name).valid();
 }

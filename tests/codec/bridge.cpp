@@ -709,21 +709,13 @@ TEST(CodecBridge, RoundTripYAML){
 		"  - 1\n"
 		"  - 2\n"
 		"nested:\n"
-		"  port: 8080\n";
+		"  port: 8080\n"
+		"\"a/b\": косая\n";
 	// Выполняем перевод записи YAML в дерево значений
 	ASSERT_TRUE(bridge.decode(text, first, bridge_t::format_t::YAML));
 	// Собираемая запись первого прохода
 	string once = "";
 	// Выполняем перевод дерева значений в запись YAML
-	// ЗАМЕР: прямая запись в пустой документ
-	{
-		yaml::document_t d(&log);
-		std::cout << "set(/name): " << d.set("/name", string_view("x")) << std::endl;
-		std::cout << "set(/n/p):  " << d.set("/n/p", string_view("y")) << std::endl;
-		std::cout << "dump: [" << d.dump() << "]" << std::endl;
-	}
-	if(!bridge.encode(first, once, bridge_t::format_t::YAML))
-		std::cout << "ОТКАЗ моста, код: " << static_cast <uint32_t> (bridge.error()) << " собрано: [" << once << "]" << std::endl;
 	ASSERT_TRUE(bridge.encode(first, once, bridge_t::format_t::YAML)) << "перевод дерева в запись YAML отвечен отказом";
 	// Собираемое дерево значений второго прохода
 	abc::value_t second;
@@ -733,11 +725,94 @@ TEST(CodecBridge, RoundTripYAML){
 	ASSERT_TRUE(second.contains("a/b")) << "имя с косой чертой потеряно при записи: отменяющая запись не наложена; собрано: " << once;
 	// Выполняем проверку сохранности вложенного отображения
 	ASSERT_TRUE(second.contains("nested"));
-	ASSERT_EQ(second["nested"]["port"].text(), "8080");
+	/**
+	 * Выполняем проверку сохранности числа
+	 *
+	 * @warning Спрашивать у числа `text()` нельзя: ход этот отдаёт запись лишь у
+	 *          последовательности знаков, а у числа пуст. Прежняя редакция
+	 *          сличала его с «8080» и краснела, хотя число сохранялось верно -
+	 *          вопрос был задан неверно, а не ответ получен ложный
+	 */
+	ASSERT_TRUE(second["nested"]["port"].is(abc::type_t::NUMBER)) << "число не сохранилось видом; собрано: " << once;
+	// Извлекаемое значение числа
+	int64_t port = 0;
+	// Выполняем извлечение значения числа
+	ASSERT_TRUE(second["nested"]["port"].value(port));
+	// Выполняем сличение извлечённого числа
+	ASSERT_EQ(port, 8080);
 	// Выполняем проверку сохранности перечня значений
 	ASSERT_TRUE(second.contains("list"));
 	ASSERT_TRUE(second["list"].is(abc::type_t::ARRAY)) << "перечень значений не сохранился; собрано: " << once;
 	ASSERT_EQ(second["list"].size(), 2u);
 	// Выполняем проверку сохранности последовательности знаков
 	ASSERT_EQ(second["name"].text(), "значение");
+}
+
+/**
+ * @brief Проверка кругового перевода дерева через запись TOML
+ *
+ * @details Сличаются ДЕРЕВЬЯ, а не тексты: запись TOML одно и то же значение
+ *          выражает несколькими способами, и посимвольное сличение доказывало
+ *          бы устойчивость письма, а не сохранность содержимого
+ *
+ */
+TEST(CodecBridge, RoundTripTOML){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&log);
+	// Собираемое дерево значений контейнера ABC
+	abc::value_t first;
+	/**
+	 * Разбираемая запись настроек
+	 *
+	 * @note Имя с кириллицей стоит здесь ради ограды кавычками: голое имя ключа
+	 *       по стандарту TOML лишь ASCII, и ставить ограду обязан тот, кто
+	 *       пишет. Забудь мост об этом - собранная запись разбору не поддастся
+	 */
+	const string text =
+		"top = 1\n"
+		"[srv]\n"
+		"host = \"localhost\"\n"
+		"port = 8080\n"
+		"list = [1, 2, 3]\n"
+		"\"имя\" = \"значение\"\n"
+		"\"a/b\" = \"косая\"\n";
+	// Выполняем перевод записи TOML в дерево значений
+	ASSERT_TRUE(bridge.decode(text, first, bridge_t::format_t::TOML));
+	// Собираемая запись первого прохода
+	string once = "";
+	// Выполняем перевод дерева значений в запись TOML
+	ASSERT_TRUE(bridge.encode(first, once, bridge_t::format_t::TOML)) << "перевод дерева в запись TOML отвечен отказом";
+	// Собираемое дерево значений второго прохода
+	abc::value_t second;
+	// Выполняем перевод собранной записи обратно в дерево значений
+	ASSERT_TRUE(bridge.decode(once, second, bridge_t::format_t::TOML)) << "собранная запись TOML разбору не поддалась: " << once;
+	// Выполняем проверку сохранности таблицы
+	ASSERT_TRUE(second.contains("srv")) << "таблица потеряна; собрано: " << once;
+	ASSERT_TRUE(second["srv"].is(abc::type_t::MAP));
+	// Выполняем проверку сохранности последовательности знаков
+	ASSERT_EQ(second["srv"]["host"].text(), "localhost");
+	/**
+	 * Выполняем проверку сохранности имени с кириллицей
+	 *
+	 * @warning Утверждение это ловит потерю ограды кавычками: без неё запись
+	 *          собралась бы негодной, и разбор её выше ответил бы отказом
+	 */
+	ASSERT_TRUE(second["srv"].contains("имя")) << "имя с кириллицей потеряно; собрано: " << once;
+	// Выполняем проверку сохранности имени с косой чертой
+	ASSERT_TRUE(second["srv"].contains("a/b")) << "имя с косой чертой потеряно; собрано: " << once;
+	// Выполняем проверку сохранности перечня значений
+	ASSERT_TRUE(second["srv"]["list"].is(abc::type_t::ARRAY)) << "перечень значений не сохранился; собрано: " << once;
+	ASSERT_EQ(second["srv"]["list"].size(), 3u);
+	// Выполняем проверку сохранности числа
+	ASSERT_TRUE(second["srv"]["port"].is(abc::type_t::NUMBER));
+	// Извлекаемое значение числа
+	int64_t port = 0;
+	// Выполняем извлечение значения числа
+	ASSERT_TRUE(second["srv"]["port"].value(port));
+	// Выполняем сличение извлечённого числа
+	ASSERT_EQ(port, 8080);
 }

@@ -173,6 +173,10 @@ namespace awh {
 						empty_t empty;
 						// Кодировка исходного текста, извне навязанная
 						encoding_t encoding;
+						// Запись даты, меткам времени назначенная
+						string timestamp;
+						// Запись даты, меткам времени с долей секунды назначенная
+						string fraction;
 						// Признак признания приставки syslog перед словом «CEF:»
 						bool syslog;
 						// Признак снятия отмены знаков со значений
@@ -193,7 +197,9 @@ namespace awh {
 						 */
 						Settings() noexcept :
 						 mode(mode_t::NONE), empty(empty_t::STRING), encoding(encoding_t::NONE),
-						 syslog(true), unescape(true), maxRecord(MAX_RECORD), maxExtensions(MAX_EXTENSIONS) {}
+						 timestamp(TIMESTAMP_FORMAT), fraction(TIMESTAMP_FRACTION_FORMAT),
+						 syslog(true), unescape(true),
+						 maxRecord(MAX_RECORD), maxExtensions(MAX_EXTENSIONS) {}
 					} settings_t;
 				private:
 					// Настройки разбора записей
