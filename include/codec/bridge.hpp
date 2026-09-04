@@ -40,8 +40,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
 #include "../sys/global.hpp"
+#include "numeric.hpp"
 #include "abc/value.hpp"
 #include "json/json.hpp"
 #include "yaml/yaml.hpp"
@@ -198,6 +200,46 @@ namespace awh {
 					// Предельная глубина дерева перевода
 					uint32_t depth;
 					/**
+					 * Имя корневого узла собираемой записи разметки
+					 *
+					 * @warning Настройка эта нужна одному лишь виду XML и зашита быть не
+					 *          может: стандарт XML 1.0 требует у документа РОВНО ОДИН
+					 *          корневой элемент, а у дерева контейнера ABC корень
+					 *          безымянен. Имя взять неоткуда, кроме как у того, кто
+					 *          пишет, и молчаливый выбор моста был бы выдумкой
+					 */
+					/**
+					 * Признак вывода вида значения из его записи
+					 *
+					 * @warning Настройка эта нужна видам записи, своей системы видов не
+					 *          имеющим - разметке прежде всего: у неё всякое содержимое
+					 *          есть текст, и `<port>8080</port>` без вывода вида лёг бы
+					 *          строкою, а не числом. Вывод ведётся цепью: целое, дробное,
+					 *          логическое, иначе строка
+					 */
+					bool typed;
+					/**
+					 * Имя поля, под которым ложится текст узла с атрибутами
+					 *
+					 * @warning Имя это нужно оттого, что узел разметки несёт РАЗОМ и
+					 *          атрибуты, и собственный текст, а отображение выразить это
+					 *          может лишь полем. При столкновении с одноимённым атрибутом
+					 *          имя получает приставку `_` столько раз, сколько нужно
+					 */
+					string text;
+					string root;
+					/**
+					 * Имя узла, обносящего перечень, во вместилище вложенный
+					 *
+					 * @warning Имя это нужно оттого, что перечень у разметки ИМЕНИ НЕ
+					 *          ИМЕЕТ вовсе: перечень выражается повтором одноимённых
+					 *          узлов, и перечень внутри перечня выразить нечем -
+					 *          одноимённые узлы легли бы вперемешку и границы вложенного
+					 *          перечня пропали бы. Оттого всякое звено вложенного перечня
+					 *          обносится узлом с этим именем
+					 */
+					string item;
+					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
@@ -207,7 +249,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Settings() noexcept : narrow(narrow_t::TEXT), format(json::format_t::PRETTY), depth(512) {}
+					Settings() noexcept : narrow(narrow_t::TEXT), format(json::format_t::PRETTY), depth(512), typed(true), text{"value"}, root{"config"}, item{"item"} {}
 				} settings_t;
 			private:
 				// Настройки перевода
@@ -217,6 +259,9 @@ namespace awh {
 				error_t _error;
 			private:
 				// Объект работы с логами
+				// Объект фреймворка
+				const fmk_t * _fmk;
+				// Объект для работы с логами
 				const log_t * _log;
 			private:
 				/**
@@ -332,6 +377,43 @@ namespace awh {
 				[[nodiscard]] string escape(const string & name) const noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод выдачи записи простого значения ABC
+				 *
+				 * @details Ход этот нужен видам записи, у которых своей системы видов
+				 *          нет: значение выдаётся ТЕКСТОМ, каким оно записывается
+				 *
+				 * @param value значение контейнера ABC
+				 * @return      запись простого значения
+				 *
+				 * \~english
+				 * @brief Method of getting the record of a simple value of ABC
+				 * @param value value of the container ABC
+				 * @return record of the simple value
+				 *
+				 * \~
+				 */
+				[[nodiscard]] string record(const abc::value_t & value) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод вывода значения ABC из его записи
+				 *
+				 * @details Вид выводится цепью: целое, дробное, логическое, иначе
+				 *          последовательность знаков. Ход этот нужен видам записи, своей
+				 *          системы видов не имеющим
+				 *
+				 * @param text запись значения
+				 * @return     выведенное значение контейнера ABC
+				 *
+				 * \~english
+				 * @brief Method of the inference of a value of ABC from its record
+				 * @param text record of the value
+				 * @return inferred value of the container ABC
+				 *
+				 * \~
+				 */
+				[[nodiscard]] abc::value_t infer(const string & text) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод подачи значения ABC документу YAML
 				 *
 				 * @param value    значение контейнера ABC
@@ -403,6 +485,80 @@ namespace awh {
 				 * \~
 				 */
 				[[nodiscard]] bool encodeTOML(const abc::value_t & value, string & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод подачи значения ABC значению XML
+				 *
+				 * @param value  значение контейнера ABC
+				 * @param result собираемое значение записи XML
+				 * @param depth  глубина обхода дерева
+				 * @return       результат подачи
+				 *
+				 * \~english
+				 * @brief Method of the submission of a value of ABC to a value of XML
+				 * @param value value of the container ABC
+				 * @param result assembled value of a record of XML
+				 * @param depth depth of the traversal of the tree
+				 * @return result of the submission
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool feedXML(const abc::value_t & value, xml::Value & result, const uint32_t depth) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода дерева ABC в запись XML
+				 *
+				 * @param value  дерево значений контейнера ABC
+				 * @param result собранная запись XML
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a tree of ABC into a record of XML
+				 * @param value tree of the values of the container ABC
+				 * @param result assembled record of XML
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool encodeXML(const abc::value_t & value, string & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод записи значения свойством раздела INI
+				 *
+				 * @param value    значение контейнера ABC
+				 * @param document собираемый документ записи INI
+				 * @param name     имя свойства
+				 * @param section  имя раздела
+				 * @return         результат записи
+				 *
+				 * \~english
+				 * @brief Method of the writing of a value as a property of a section of INI
+				 * @param value value of the container ABC
+				 * @param document assembled document of a record of INI
+				 * @param name name of the property
+				 * @param section name of the section
+				 * @return result of the writing
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool feedINI(const abc::value_t & value, ini::document_t & document, const string & name, const string & section) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода дерева ABC в запись INI
+				 *
+				 * @param value  дерево значений контейнера ABC
+				 * @param result собранная запись INI
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a tree of ABC into a record of INI
+				 * @param value tree of the values of the container ABC
+				 * @param result assembled record of INI
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool encodeINI(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод укладки значения YAML в значение ABC
@@ -544,6 +700,27 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				/**
+				 * \~russian
+				 * @brief Метод укладки значения INI в значение ABC
+				 *
+				 * @param document документ записи INI
+				 * @param path     путь к укладываемому значению
+				 * @param result   укладываемое значение контейнера ABC
+				 * @param depth    глубина обхода дерева
+				 * @return         результат укладки
+				 *
+				 * \~english
+				 * @brief Method of the laying of a value of INI into a value of ABC
+				 * @param document document of a record of INI
+				 * @param path path to the value being laid
+				 * @param result laid value of the container ABC
+				 * @param depth depth of the traversal of the tree
+				 * @return result of the laying
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool absorbINI(const ini::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
 				[[nodiscard]] bool decodeINI(const string_view text, abc::value_t & result) noexcept;
 			public:
 				/**
@@ -634,7 +811,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Bridge(const log_t * log) noexcept : _error(error_t::NONE), _log(log) {}
+				Bridge(const fmk_t * fmk, const log_t * log) noexcept : _error(error_t::NONE), _fmk(fmk), _log(log) {}
 				/**
 				 * \~russian
 				 * @brief Деструктор

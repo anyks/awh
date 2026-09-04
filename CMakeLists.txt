@@ -1691,6 +1691,14 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CODEC_APP_INI_DOCUMENT_NAME codec-ini-document)
     # Устанавливаем имя приложения записи текста настроек
     SET(CODEC_APP_INI_WRITER_NAME codec-ini-writer)
+    # Устанавливаем имя приложения перевода настроек между видами записи
+    SET(CODEC_APP_BRIDGE_NAME codec-bridge)
+    # Указываем что нужно собрать приложение перевода настроек между видами записи
+    option(CMAKE_BUILD_CODEC_BRIDGE_APP_SAMPLE "Build codec bridge app sample" ON)
+    # Устанавливаем имя приложения работы с параметрами запуска
+    SET(ARGS_APP_NAME args)
+    # Указываем что нужно собрать приложение работы с параметрами запуска
+    option(CMAKE_BUILD_ARGS_APP_SAMPLE "Build args app sample" ON)
     # Указываем что нужно собрать приложение работы с контейнером INI
     option(CMAKE_BUILD_CODEC_INI_APP_SAMPLE "Build INI codec app sample" ON)
 
@@ -2499,6 +2507,30 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample INI Codec: No\n")
     endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+
+    # Если нужно собрать семпл перевода настроек между видами записи
+    if (${CMAKE_BUILD_CODEC_BRIDGE_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Codec Bridge: Yes\n")
+        # Выполняем создание приложения перевода настроек между видами записи
+        add_sample(${CODEC_APP_BRIDGE_NAME} sample/codec/bridge.cpp codec)
+    # Если не нужно собирать семпл перевода настроек между видами записи
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Codec Bridge: No\n")
+    endif()
+
+    # Если нужно собрать семпл работы с параметрами запуска приложения
+    if (${CMAKE_BUILD_ARGS_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Args: Yes\n")
+        # Выполняем создание приложения работы с параметрами запуска
+        add_sample(${ARGS_APP_NAME} sample/args/args.cpp args)
+    # Если не нужно собирать семпл работы с параметрами запуска приложения
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample Args: No\n")
+    endif()
 
     # Если нужно собрать семплы для работы с контейнером ABC
     if (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
@@ -3548,6 +3580,26 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+
+        # Если нужно собрать семпл перевода настроек между видами записи
+        if (${CMAKE_BUILD_CODEC_BRIDGE_APP_SAMPLE})
+            # Выполняем сборку приложения перевода настроек между видами записи
+            target_link_libraries(
+                ${CODEC_APP_BRIDGE_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_BRIDGE_APP_SAMPLE})
+
+        # Если нужно собрать семпл работы с параметрами запуска приложения
+        if (${CMAKE_BUILD_ARGS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с параметрами запуска
+            target_link_libraries(
+                ${ARGS_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_ARGS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером TOML
         if (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
@@ -4768,6 +4820,28 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_INI_APP_SAMPLE})
+
+        # Если нужно собрать семпл перевода настроек между видами записи
+        if (${CMAKE_BUILD_CODEC_BRIDGE_APP_SAMPLE})
+            # Выполняем сборку приложения перевода настроек между видами записи
+            target_link_libraries(
+                ${CODEC_APP_BRIDGE_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_BRIDGE_APP_SAMPLE})
+
+        # Если нужно собрать семпл работы с параметрами запуска приложения
+        if (${CMAKE_BUILD_ARGS_APP_SAMPLE})
+            # Выполняем сборку приложения работы с параметрами запуска
+            target_link_libraries(
+                ${ARGS_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_ARGS_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером TOML
         if (${CMAKE_BUILD_CODEC_TOML_APP_SAMPLE})
