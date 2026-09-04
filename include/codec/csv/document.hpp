@@ -513,6 +513,9 @@ namespace awh {
 					 * @return         result of the writing
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
+					 *      неделимость записи: отказ оставляет прежний файл нетронутым
 					 */
 					bool save(const string & filename) const noexcept;
 				public:
@@ -582,6 +585,9 @@ namespace awh {
 					 * @return encoding of the source text of the table
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
+					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
 				public:
@@ -630,6 +636,9 @@ namespace awh {
 					 * @return number of the records of the table
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
+					 *      счёт записей таблицы наравне с детьми корня у деревьев
 					 */
 					size_t size() const noexcept;
 					/**

@@ -381,6 +381,80 @@ namespace {
 		// Выводим признак успешного перевода уникального номера в местный
 		return (::ConvertInterfaceGuidToLuid(&guid, &luid) == NO_ERROR);
 	}
+	/**
+	 * @brief Функция получения устройства пути
+	 *
+	 * @details Устройство берётся из названия, а если названия нет - выясняется у самой
+	 *          системы по тому концу, каким путь начинается: по шлюзу, а при его
+	 *          отсутствии по назначению
+	 *
+	 * @warning Пустое название прежде означало отказ: посредник перевода отвечает на
+	 *          него «устройство не найдено», и прокладка со снятием отвергали описание
+	 *          пути целиком. Меж тем у эталонного бэкенда BSD и у прочих наречий POSIX
+	 *          пустое название значит «НЕ ЗАДАНО»: устройство выбирает ядро по шлюзу, и
+	 *          описание это проходит там свободно. Расхождение было молчаливым - тот же
+	 *          путь, что прокладывается у POSIX, у MS Windows не прокладывался вовсе.
+	 *          Поиск по таблице (`__awh_lookup__`) договор этот блюдёт и сличает
+	 *          устройство лишь при непустом названии
+	 *
+	 * @note Записи `MIB_IPFORWARD_ROW2` устройство необходимо: система принимает путь
+	 *       только с ним, оттого «не задано» здесь и приходится выяснять, а не опускать
+	 *
+	 * @param route описание пути, откуда берётся устройство
+	 * @param luid  место для опознавателя устройства
+	 * @param log   объект для работы с логами
+	 * @return      результат получения устройства
+	 *
+	 */
+	bool __awh_ifroute__(const awh::eth::gateway_t::route_t & route, NET_LUID & luid, const awh::log_t * log) noexcept {
+		// Если название устройства передано - берём устройство по названию
+		if(!route.ifname.empty()){
+			// Если опознаватель устройства получить не удалось
+			if(!::__awh_ifluid__(route.ifname, luid)){
+				// Выводим в журнал сообщение о ненайденном устройстве
+				log->print("%s: interface \"%s\" was not found", awh::log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
+				// Выводим отрицательный результат получения
+				return false;
+			}
+			// Выводим успешный результат получения
+			return true;
+		}
+		// Тот конец пути, по какому спрашивается устройство
+		const awh::net::addr_t * addr = ((route.gateway != nullptr) ? route.gateway.get() : route.destination.get());
+		// Если конца пути нет вовсе
+		if(addr == nullptr){
+			// Выводим в журнал сообщение о недостаточном описании пути
+			log->print("%s: neither interface nor gateway is given, the route cannot be resolved", awh::log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			// Выводим отрицательный результат получения
+			return false;
+		}
+		// Тот конец пути в виде записи системы
+		SOCKADDR_INET target{};
+		// Если перевести конец пути не удалось
+		if(!::__awh_to_sockaddr__(addr, target)){
+			// Выводим в журнал сообщение о неподдерживаемом виде адреса
+			log->print("%s: only IPv4 and IPv6 addresses are supported", awh::log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__);
+			// Выводим отрицательный результат получения
+			return false;
+		}
+		// Найденный системой путь
+		MIB_IPFORWARD_ROW2 row{};
+		// Адрес устройства, каким путь начинается
+		SOCKADDR_INET source{};
+		// Выполняем опрос пути у системы
+		const DWORD code = ::GetBestRoute2(nullptr, 0, nullptr, &target, 0, &row, &source);
+		// Если путь найти не удалось
+		if(code != NO_ERROR){
+			// Выводим в журнал сообщение о ненайденном устройстве пути
+			log->print("%s: interface could not be resolved from the route, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, code);
+			// Выводим отрицательный результат получения
+			return false;
+		}
+		// Запоминаем опознаватель найденного устройства
+		luid = row.InterfaceLuid;
+		// Выводим успешный результат получения
+		return true;
+	}
 };
 
 /**
@@ -645,13 +719,10 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	if(route.gateway == nullptr)
 		// Устанавливаем семейство того конца пути по адресу назначения
 		row.NextHop.si_family = row.DestinationPrefix.Prefix.si_family;
-	// Если устройство пути найти не удалось
-	if(!::__awh_ifluid__(route.ifname, row.InterfaceLuid)){
-		// Выводим в журнал сообщение о ненайденном устройстве
-		this->_log->print("%s: interface \"%s\" was not found", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
+	// Если устройство пути получить не удалось
+	if(!::__awh_ifroute__(route, row.InterfaceLuid, this->_log))
 		// Выводим отрицательный результат прокладки
 		return false;
-	}
 	// Устанавливаем стоимость пути
 	row.Metric = 1;
 	// Выполняем прокладку пути
@@ -758,13 +829,10 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		}
 	// Если шлюз пути не передан
 	} else row.NextHop.si_family = row.DestinationPrefix.Prefix.si_family;
-	// Если устройство пути найти не удалось
-	if(!::__awh_ifluid__(route.ifname, row.InterfaceLuid)){
-		// Выводим в журнал сообщение о ненайденном устройстве
-		this->_log->print("%s: interface \"%s\" was not found", log_t::flag_t::WARNING, ::__AWH_GATEWAY_BACKEND__, route.ifname.c_str());
+	// Если устройство пути получить не удалось
+	if(!::__awh_ifroute__(route, row.InterfaceLuid, this->_log))
 		// Выводим отрицательный результат снятия
 		return false;
-	}
 	// Выполняем снятие пути
 	const DWORD code = ::DeleteIpForwardEntry2(&row);
 	// Если путь снят

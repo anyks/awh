@@ -96,12 +96,12 @@ namespace {
 	 *          копирование здесь сопоставимо по стоимости с самим хэшированием
 	 *
 	 */
-	static constexpr double SMALL_THRESHOLD = 235000000.0;
+	static constexpr double SMALL_THRESHOLD = 460000000.0;
 	/**
 	 * @brief Порог пропускной способности подачи порциями сетевого пакета в октетах в секунду
 	 *
 	 */
-	static constexpr double PACKET_THRESHOLD = 440000000.0;
+	static constexpr double PACKET_THRESHOLD = 4900000000.0;
 	/**
 	 * @brief Порог пропускной способности подачи крупными порциями в октетах в секунду
 	 *
@@ -110,12 +110,12 @@ namespace {
 	 *          к пропускной способности одноразового хэширования
 	 *
 	 */
-	static constexpr double LARGE_THRESHOLD = 450000000.0;
+	static constexpr double LARGE_THRESHOLD = 6300000000.0;
 	/**
 	 * @brief Порог скорости передачи одной порции в операциях в секунду
 	 *
 	 */
-	static constexpr double UPDATE_THRESHOLD = 5800000.0;
+	static constexpr double UPDATE_THRESHOLD = 19000000.0;
 	/**
 	 * @brief Порог скорости формирования результата в операциях в секунду
 	 *
@@ -125,7 +125,7 @@ namespace {
 	 *          уже обработанных данных
 	 *
 	 */
-	static constexpr double DIGEST_THRESHOLD = 3400000.0;
+	static constexpr double DIGEST_THRESHOLD = 28000000.0;
 	/**
 	 * @brief Порог количества выделений памяти на один прогон потокового хэширования
 	 *

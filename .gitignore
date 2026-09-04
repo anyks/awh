@@ -42,6 +42,7 @@ __pycache__/
 bin/
 build/
 build-release/
+build-asan/
 build-ngtcp2/
 build-nghttp2/
 build-nghttp3/

@@ -272,7 +272,24 @@ namespace awh {
 					 *
 					 * @details Для текстового содержимого, дословного раздела, примечания и
 					 * указания обработчику - их собственное содержимое. Для узла разметки -
-					 * содержимое всех вложенных в него текстовых узлов подряд
+					 * содержимое всех вложенных в него текстовых узлов да разделов дословного
+					 * текста, собранное подряд
+					 *
+					 * @details Сбор идёт ПО ВСЕЙ ГЛУБИНЕ, а не по прямым детям: у
+					 * `<a><b><c>ГЛУБОКО</c></b></a>` содержимым узла `a` выйдет «ГЛУБОКО».
+					 * Примечания да указания обработчику в сбор НЕ входят: у `<a>x<!--п-->y</a>`
+					 * содержимым выйдет «xy»
+					 *
+					 * @warning У узла, несущего вложенную разметку, содержимое это есть СКЛЕЙКА
+					 *          всего поддерева, и в разметке такой строки не стоит нигде: у
+					 *          `<a>свой<b>чужой</b></a>` выйдет «свойчужой». Потребителю,
+					 *          укладывающему разметку в чужое дерево, брать содержимое надлежит
+					 *          лишь у тех узлов, среди детей коих НЕТ узлов разметки, - иначе он
+					 *          получит вид целого, какого нет, а вложенное потеряет молча
+					 *
+					 * @note Пробельное содержимое сохраняется как есть: у `<a>  значение  </a>`
+					 *       выйдет «  значение  » с пробелами. Обрезка их - дело потребителя, и
+					 *       настройкою чтения она не правится
 					 *
 					 * @return содержимое узла
 					 *
@@ -1433,6 +1450,9 @@ namespace awh {
 					 * @return encoding of the source text of the markup
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
+					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
 				public:
@@ -1563,6 +1583,9 @@ namespace awh {
 					 * @return         flag of the success of the writing
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
+					 *      неделимость записи: отказ оставляет прежний файл нетронутым
 					 */
 					bool save(const string & filename) const noexcept;
 					/**
@@ -1868,6 +1891,9 @@ namespace awh {
 					 * @return     list of the tokens of the path to the nested nodes
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.EnumerationAndLookupFormAClosedTraversal`:
+					 *      замкнутость обхода да три случая, где счёт звеньев лжёт о виде узла
 					 */
 					vector <string> keys(const string & path) const noexcept;
 					/**
@@ -1940,6 +1966,9 @@ namespace awh {
 					 * @return number of the nodes in the arena of the markup tree
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
+					 *      развод счёта детей корня со счётом узлов арены
 					 */
 					size_t nodes() const noexcept;
 					/**

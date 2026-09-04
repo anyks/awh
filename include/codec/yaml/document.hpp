@@ -2065,6 +2065,37 @@ namespace awh {
 					bool has(const string & path) const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод перечисления звеньев пути к детям значения
+					 *
+					 * @details Выдаются НЕ ИМЕНА детей, а ЗВЕНЬЯ ПУТИ к ним: такие, что
+					 * `at(путь + "/" + звено)` неминуемо ведёт к тому самому ребёнку. У
+					 * вместилища пар звеном служит имя пары, у перечня значений - номер
+					 * @details Ход этот вместе с `at()` даёт ПОЛНЫЙ ОБХОД документа, общий у
+					 * всех кодеков рамки. Обход ЗАМКНУТ - всякое выданное звено годно для
+					 * `at()`, - и замкнутость эта держится на отменяющих записях RFC 6901:
+					 * имя, косую черту либо тильду несущее, выдаётся ЗАПИСАННЫМ (`~1` и
+					 * `~0`), а не как есть
+					 *
+					 * @note Перечисление НИКОГДА не отвечает отказом: значение простое, пустое
+					 *       вместилище и путь в никуда отвечают пустым перечнем ОДИНАКОВО, а
+					 *       разнятся они ходом `has()`
+					 *
+					 * @param path путь до значения
+					 * @return     перечень звеньев пути к детям значения
+					 *
+					 * \~english
+					 * @brief Method of the enumeration of the tokens of the path to the children of a value
+					 * @details Not THE NAMES of the children are given but THE TOKENS OF THE PATH to them
+					 * @param path path to the value
+					 * @return     list of the tokens of the path to the children of the value
+					 *
+					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.EnumerationAndLookupFormAClosedTraversal`
+					 */
+					vector <string> keys(const string & path) const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод получения количества узлов дерева документа
 					 *
 					 * @return количество узлов дерева

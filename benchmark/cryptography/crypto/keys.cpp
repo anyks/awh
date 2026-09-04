@@ -60,16 +60,17 @@ namespace {
 	/**
 	 * @brief Пороги количества операций в секунду
 	 *
-	 * @details Пороги сняты выпускной сборкой по самому медленному из восьми стендов
+	 * @details Пороги сняты НАСТОЯЩЕЙ выпускной сборкой проекта - со своим
+	 *          BoringSSL, а не с системным OpenSSL, - по дну девяти систем
 	 *          с двукратным запасом к нему: они ловят регрессию в разы, а не колебания
 	 *          планировщика операционной системы и не разницу самих машин. Отладочная
 	 *          сборка мерой не служит - на потоковой расшифровке она врёт на порядок
 	 *
 	 */
-	static constexpr double SEAL_THRESHOLD = 5800.0;
+	static constexpr double SEAL_THRESHOLD = 14000.0;
 	static constexpr double OPEN_THRESHOLD = 430.0;
-	static constexpr double SIGN_THRESHOLD = 450.0;
-	static constexpr double VERIFY_THRESHOLD = 10000.0;
+	static constexpr double SIGN_THRESHOLD = 480.0;
+	static constexpr double VERIFY_THRESHOLD = 14000.0;
 
 	/**
 	 * @brief Функция получения объекта криптографии с заведённым ключом RSA

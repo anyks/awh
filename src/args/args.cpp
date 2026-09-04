@@ -340,20 +340,16 @@ bool awh::args::Args::parse(const vector <string> & items) noexcept {
 	const bool parsed = this->_lexer.parse(items, [this, &result](const lexeme_t & lexeme) noexcept -> bool {
 		// Определяем вид разобранной лексемы
 		switch(static_cast <uint8_t> (lexeme.type)){
-			// Если лексемой является именованный параметр
-			case static_cast <uint8_t> (token_t::PARAM): {
-				// Выполняем перевод имени параметра в путь оси хранения
-				const string & path = this->route(lexeme.key);
-				/**
-				 * Значение, не поданное вовсе, ложится ИСТИНОЙ: запись «--verbose»
-				 * есть взведённый признак, а не пустая последовательность знаков
-				 */
-				if(!lexeme.assigned)
-					// Выполняем укладку взведённого признака
-					result = (this->lay(path, codec::abc::value_t(true), source_t::CLI) && result);
-				// Выполняем укладку выведенного значения параметра
-				else result = (this->lay(path, this->derive(lexeme.value), source_t::CLI) && result);
-			} break;
+			/**
+			 * Если лексемой является именованный параметр
+			 *
+			 * @note Значение, не поданное вовсе, ложится ИСТИНОЙ: запись «--verbose»
+			 *       есть взведённый признак, а не пустая последовательность знаков
+			 */
+			case static_cast <uint8_t> (token_t::PARAM):
+				// Выполняем укладку лексемы по описанию ожидаемых параметров
+				result = (this->apply(lexeme, source_t::CLI) && result);
+			break;
 			// Если лексемой является позиционный довод
 			case static_cast <uint8_t> (token_t::OPERAND):
 				// Добавляем позиционный довод в контейнер собранных
@@ -391,16 +387,10 @@ bool awh::args::Args::text(const string_view text) noexcept {
 		// Определяем вид разобранной лексемы
 		switch(static_cast <uint8_t> (lexeme.type)){
 			// Если лексемой является именованный параметр
-			case static_cast <uint8_t> (token_t::PARAM): {
-				// Выполняем перевод имени параметра в путь оси хранения
-				const string & path = this->route(lexeme.key);
-				// Если значение параметру не подано вовсе
-				if(!lexeme.assigned)
-					// Выполняем укладку взведённого признака
-					result = (this->lay(path, codec::abc::value_t(true), source_t::TEXT) && result);
-				// Выполняем укладку выведенного значения параметра
-				else result = (this->lay(path, this->derive(lexeme.value), source_t::TEXT) && result);
-			} break;
+			case static_cast <uint8_t> (token_t::PARAM):
+				// Выполняем укладку лексемы по описанию ожидаемых параметров
+				result = (this->apply(lexeme, source_t::TEXT) && result);
+			break;
 			// Если лексемой является позиционный довод
 			case static_cast <uint8_t> (token_t::OPERAND):
 				// Добавляем позиционный довод в контейнер собранных
@@ -535,17 +525,189 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 }
 
 /**
+ * @brief Метод укладки разобранной лексемы по описанию ожидаемых
+ *
+ * @param lexeme разобранная лексема
+ * @param source источник поданного значения
+ * @return       результат укладки
+ *
+ */
+bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noexcept {
+	/**
+	 * Если описания ожидаемых параметров нет вовсе, лексема ложится КАК ЕСТЬ:
+	 * описание необязательно, и без него разбор принимает всякий поданный параметр
+	 */
+	if(this->_schema.empty()){
+		// Если значение параметру не подано вовсе
+		if(!lexeme.assigned)
+			// Выполняем укладку взведённого признака
+			return this->lay(this->route(lexeme.key), codec::abc::value_t(true), source);
+		// Выполняем укладку выведенного значения параметра
+		return this->lay(this->route(lexeme.key), this->derive(lexeme.value), source);
+	}
+	// Выполняем поиск описания по длинному имени параметра
+	const schema_t::param_t * param = this->_schema.get(lexeme.key);
+	// Если описание по длинному имени не найдено
+	if(param == nullptr){
+		/**
+		 * Если имя состоит из одного знака, оно спрашивается КОРОТКИМ: запись «-v»
+		 * есть короткое имя, а не длинное имя об одном знаке
+		 */
+		if(lexeme.key.length() == 1)
+			// Выполняем поиск описания по короткому имени параметра
+			param = this->_schema.get(lexeme.key.front());
+		// Если описание не найдено и по короткому имени
+		if(param == nullptr){
+			// Контейнер длинных имён, разобранных из склейки коротких
+			vector <string> names;
+			/**
+			 * Пробуем разобрать имя склейкой коротких имён: запись «-abc» есть три
+			 * признака лишь тогда, когда ВСЕ знаки её описанию известны
+			 */
+			if(!lexeme.assigned && this->_schema.cluster(lexeme.key, names)){
+				// Признак успешности укладки разобранных признаков
+				bool result = true;
+				// Выполняем перебор всех разобранных длинных имён
+				for(auto & name : names)
+					// Выполняем укладку взведённого признака
+					result = (this->lay(this->route(name), codec::abc::value_t(true), source) && result);
+				// Выводим результат укладки разобранных признаков
+				return result;
+			}
+			/**
+			 * Если строгость взведена настройкой, имя, описанию неизвестное,
+			 * отвечается ОТКАЗОМ; иначе оно ложится как есть - приложению,
+			 * принимающему настройки сверх описанных, отказ мешал бы
+			 */
+			if(this->_settings.strict){
+				// Выполняем запоминание отказа разбора вместе с его положением
+				this->_errors.emplace_back(error_t::UNKNOWN, lexeme.location);
+				// Выводим в лог сообщение об имени, описанию неизвестном
+				this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
+				// Выходим из метода, укладка отвечена отказом
+				return false;
+			}
+			// Если значение параметру не подано вовсе
+			if(!lexeme.assigned)
+				// Выполняем укладку взведённого признака
+				return this->lay(this->route(lexeme.key), codec::abc::value_t(true), source);
+			// Выполняем укладку выведенного значения параметра
+			return this->lay(this->route(lexeme.key), this->derive(lexeme.value), source);
+		}
+	}
+	// Если значение параметру подано, а описание его не принимает вовсе
+	if(lexeme.assigned && (param->value == schema_t::value_t::NONE)){
+		// Выполняем запоминание отказа разбора вместе с его положением
+		this->_errors.emplace_back(error_t::ODD_VALUE, lexeme.location);
+		// Выводим в лог сообщение о значении, параметру не потребном
+		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
+		// Выходим из метода, укладка отвечена отказом
+		return false;
+	}
+	// Если значение параметру не подано, а описание его требует непременно
+	if(!lexeme.assigned && (param->value == schema_t::value_t::REQUIRED)){
+		// Выполняем запоминание отказа разбора вместе с его положением
+		this->_errors.emplace_back(error_t::NO_VALUE, lexeme.location);
+		// Выводим в лог сообщение об отсутствии потребного значения
+		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
+		// Выходим из метода, укладка отвечена отказом
+		return false;
+	}
+	// Выполняем перевод длинного имени параметра в путь оси хранения
+	const string & path = this->route(param->name);
+	// Если параметр подан повторно, а описание повтора не дозволяет
+	if(!param->multiple && (this->_origins.count(path) > 0) && (this->_origins.at(path) == source)){
+		// Выполняем запоминание отказа разбора вместе с его положением
+		this->_errors.emplace_back(error_t::DUPLICATE, lexeme.location);
+		// Выводим в лог сообщение о повторной подаче параметра
+		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
+		// Выходим из метода, укладка отвечена отказом
+		return false;
+	}
+	// Если значение параметру не подано вовсе
+	if(!lexeme.assigned)
+		// Выполняем укладку взведённого признака
+		return this->lay(path, codec::abc::value_t(true), source);
+	// Выполняем укладку выведенного значения параметра
+	return this->lay(path, this->derive(lexeme.value), source);
+}
+
+/**
+ * @brief Метод извлечения описания ожидаемых параметров запуска
+ *
+ * @return описание ожидаемых параметров запуска
+ *
+ */
+schema_t & awh::args::Args::schema() noexcept {
+	// Выводим описание ожидаемых параметров запуска
+	return this->_schema;
+}
+
+/**
+ * @brief Метод сборки справки о применении
+ *
+ * @return собранный текст справки
+ *
+ */
+string awh::args::Args::usage() const noexcept {
+	// Выводим справку, собранную из описания ожидаемых параметров
+	return this->_schema.usage();
+}
+
+/**
+ * @brief Метод проверки собранного по описанию ожидаемых
+ *
+ * @return результат проверки
+ *
+ */
+bool awh::args::Args::verify() noexcept {
+	// Если описания ожидаемых параметров нет вовсе
+	if(this->_schema.empty())
+		// Выходим из метода, проверять нечем
+		return true;
+	// Признак успешности проверки собранного
+	bool result = true;
+	// Выполняем перебор всех описаний ожидаемых параметров
+	for(auto & param : this->_schema.params()){
+		// Выполняем перевод длинного имени параметра в путь оси хранения
+		const string & path = this->route(param.name);
+		// Если параметр уже уложен в дерево настроек
+		if(this->_root.at(path).valid())
+			// Продолжаем перебор описаний дальше
+			continue;
+		// Если описание несёт значение параметра по умолчанию
+		if(param.preset){
+			// Выполняем укладку значения по умолчанию
+			result = (this->lay(path, this->derive(param.fallback), source_t::DEFAULT) && result);
+			// Продолжаем перебор описаний дальше
+			continue;
+		}
+		// Если параметр обязателен к подаче, а подан не был
+		if(param.required){
+			// Выполняем запоминание отказа проверки
+			this->_errors.emplace_back(error_t::REQUIRED, location_t());
+			// Выводим в лог сообщение об отсутствии обязательного параметра
+			this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::REQUIRED), param.name.c_str());
+			// Отмечаем, что проверка собранного отвечена отказом
+			result = false;
+		}
+	}
+	// Выводим результат проверки собранного
+	return result;
+}
+
+/**
  * @brief Метод разбора записи настроек кодеком
  *
  * @param text запись настроек для разбора
  * @return     результат разбора
  *
  */
-bool awh::args::Args::config(const string_view text) noexcept {
+bool awh::args::Args::config(const string_view text, const codec::Bridge::format_t format) noexcept {
 	// Собираемое дерево значений записи настроек
 	codec::abc::value_t value;
 	// Выполняем разбор записи настроек кодеком
-	if(!this->_bridge.decode(text, value)){
+	if(!this->_bridge.decode(text, value, format)){
 		// Выполняем запоминание отказа разбора записи настроек
 		this->_errors.emplace_back(error_t::CODEC, location_t());
 		// Выходим из метода, разбор отвечен отказом
@@ -562,7 +724,7 @@ bool awh::args::Args::config(const string_view text) noexcept {
  * @return         результат чтения
  *
  */
-bool awh::args::Args::filename(const string & filename) noexcept {
+bool awh::args::Args::filename(const string & filename, const codec::Bridge::format_t format) noexcept {
 	// Если файла настроек нет вовсе
 	if(this->_fs.type(filename) != fs_t::type_t::FILE){
 		// Выполняем запоминание отказа чтения файла настроек
@@ -584,7 +746,7 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 		return false;
 	}
 	// Выполняем разбор прочитанной записи настроек
-	return this->config(text);
+	return this->config(text, format);
 }
 
 /**
@@ -594,9 +756,9 @@ bool awh::args::Args::filename(const string & filename) noexcept {
  * @return       результат выдачи
  *
  */
-bool awh::args::Args::dump(string & result) noexcept {
+bool awh::args::Args::dump(string & result, const codec::Bridge::format_t format) noexcept {
 	// Выполняем перевод дерева настроек в запись кодека
-	if(!this->_bridge.encode(this->_root, result)){
+	if(!this->_bridge.encode(this->_root, result, format)){
 		// Выполняем запоминание отказа выдачи записи настроек
 		this->_errors.emplace_back(error_t::UNSUPPORTED, location_t());
 		// Выходим из метода, выдача отвечена отказом
@@ -613,11 +775,11 @@ bool awh::args::Args::dump(string & result) noexcept {
  * @return         результат записи
  *
  */
-bool awh::args::Args::save(const string & filename) noexcept {
+bool awh::args::Args::save(const string & filename, const codec::Bridge::format_t format) noexcept {
 	// Собираемая запись настроек
 	string text = "";
 	// Выполняем выдачу дерева настроек записью кодека
-	if(!this->dump(text))
+	if(!this->dump(text, format))
 		// Выходим из метода, выдача отвечена отказом
 		return false;
 	// Выполняем запись собранной записи настроек в файл
@@ -915,7 +1077,7 @@ void awh::args::Args::lexing(const lexer_t::settings_t & settings) noexcept {
  *
  */
 awh::args::Args::Args(const fmk_t * fmk, const log_t * log) noexcept :
- _prefix{""}, _lexer(fmk, log), _bridge(log), _fs(fmk, log),
+ _prefix{""}, _schema(fmk, log), _lexer(fmk, log), _bridge(log), _fs(fmk, log),
  _root(codec::abc::kind_t::MAP), _fmk(fmk), _log(log) {
 	// Выполняем установку объекта работы с логами дереву настроек
 	this->_root.setLogger(log);

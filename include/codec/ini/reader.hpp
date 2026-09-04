@@ -449,19 +449,45 @@ namespace awh {
 						 * \~russian
 						 * Наибольшая допустимая глубина вложенности подразделов
 						 *
-						 * @note Граница исключающая, и считается по числу знаков-разделителей
-						 * в имени раздела: при значении в единицу отвергается уже «[a.b]», где
-						 * разделитель один. Значение в ноль запрещает подразделы вовсе
+						 * @note Граница ВКЛЮЧАЮЩАЯ, и считается по числу знаков-разделителей в имени
+						 * раздела: при значении в единицу «[a.b]» принимается, а «[a.b.c]» отвергается.
+						 * Ноль значит «без предела» - уклад этот один у всех кодеков рамки
+						 *
+						 * @warning Граница прежде была ИСКЛЮЧАЮЩЕЙ, а ноль ЗАПРЕЩАЛ подразделы вовсе, и
+						 *          оба уклада расходились с прочими кодеками рамки. Хуже того, они
+						 *          расходились между собою: при исключающей границе единица значила ровно
+						 *          то же, что ноль, - «подразделов нельзя», - и запросить «допускаю один
+						 *          уровень» было нечем вовсе. Запрет получил своё выражение - признак
+						 *          `nesting`
 						 *
 						 * \~english
 						 * Largest admissible depth of the nesting of the subsections
-						 * @note The boundary is an exclusive one and is counted by the number of the separator characters
-						 * in the name of the section: at a value of one already «[a.b]» is rejected, where
-						 * there is one separator. A value of zero prohibits the subsections altogether
+						 * @note The boundary is an inclusive one and is counted by the number of the separator characters
+						 * in the name of the section: at a value of one «[a.b]» is accepted while «[a.b.c]» is rejected.
+						 * Zero means «without a limit» — this convention is one and the same for all the codecs of the framework
 						 *
 						 * \~
 						 */
 						uint32_t maxDepth;
+						/**
+						 * \~russian
+						 * Признак дозволения подразделов
+						 *
+						 * @details Снятый признак отвергает всякое имя раздела со знаком-разделителем,
+						 * оставляя разделы простые. Прежде мысль эта выражалась нулём у `maxDepth`, а ноль
+						 * ныне значит «без предела» у всех кодеков рамки
+						 *
+						 * @note Признак этот от настройки `subsections` отличен: та решает, ВЫДЕЛЯЮТСЯ ли
+						 *       подразделы вовсе, а этот - дозволены ли они, коль скоро выделяются. При
+						 *       `subsection_t::NONE` имя берётся целиком и отказа не выходит вовсе
+						 *
+						 * \~english
+						 * Sign of the permission of the subsections
+						 * @details A cleared sign rejects every name of a section carrying a separator character
+						 *
+						 * \~
+						 */
+						bool nesting;
 						/**
 						 * \~russian
 						 * Наибольшее допустимое количество строк продолжения у одной записи

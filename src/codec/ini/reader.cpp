@@ -413,7 +413,7 @@ awh::codec::ini::Reader::Settings::Settings() noexcept :
  quotes(quote_t::STRIP), subsections(subsection_t::NONE), delimiter('.'), inlineComments(false), spacedComments(true), greedySections(false), trimSections(true), strictNames(false),
  escapes(false), continuations(false), indents(false), valueless(false), arrays(false),
  sensitive(false), sensitiveSections(false), trim(true), global(true), emitComments(true), emitBlanks(false),
- maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH), maxContinuation(MAX_CONTINUATION),
+ maxLine(MAX_LINE), maxName(MAX_NAME), maxDepth(MAX_DEPTH), nesting(true), maxContinuation(MAX_CONTINUATION),
  encoding(encoding_t::NONE) {}
 /**
  * @brief Метод получения настроек наречия MS Windows
@@ -1352,7 +1352,23 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				/**
 				 * Если глубина вложенности подразделов предел настроек превышает
 				 */
-				if(depth >= this->_settings.maxDepth)
+				/**
+				 * Если подразделы настройками не дозволены
+				 *
+				 * @note Мысль эта прежде выражалась нулём у предела глубины, а ноль ныне
+				 *       значит «без предела» у всех кодеков рамки
+				 */
+				if(!this->_settings.nesting)
+					// Выводим сообщение об ошибке разбора
+					return this->fail(error_t::DEPTH_EXCEEDED, offset, this->_line, 1);
+				/**
+				 * Если глубина вложенности подразделов предел настроек превышает
+				 *
+				 * @note Граница ВКЛЮЧАЮЩАЯ: предел в единицу допускает один уровень
+				 *       подраздела. Прежде она была исключающей, и предел в единицу значил
+				 *       ровно то же, что ноль, - одно значение настройки пропадало впустую
+				 */
+				if((this->_settings.maxDepth > 0) && (depth > this->_settings.maxDepth))
 					// Выводим сообщение об ошибке разбора
 					return this->fail(error_t::DEPTH_EXCEEDED, offset, this->_line, 1);
 				/**

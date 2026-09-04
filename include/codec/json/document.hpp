@@ -1845,6 +1845,9 @@ namespace awh {
 					 * @return sign of the success of the writing
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`:
+					 *      неделимость записи: отказ оставляет прежний файл нетронутым
 					 */
 					bool save(const string & filename) const noexcept;
 					/**
@@ -2166,6 +2169,9 @@ namespace awh {
 					 * @return        list of the tokens of the pointer to the children of the value
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.EnumerationAndLookupFormAClosedTraversal`:
+					 *      замкнутость обхода: всякое выданное звено годно для `at()` и ведёт к тому самому ребёнку
 					 */
 					vector <string> keys(const string & pointer) const noexcept;
 				public:
@@ -2215,6 +2221,9 @@ namespace awh {
 					 * @return number of the nodes of the storage of the document
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ChildCountIsSeparatedFromStorageCount`:
+					 *      развод счёта детей корня со счётом узлов хранилища
 					 */
 					size_t nodes() const noexcept;
 					/**
@@ -2295,6 +2304,9 @@ namespace awh {
 					 * @return encoding of the source text
 					 *
 					 * \~
+					 *
+					 * @see Договор этот закреплён проверкою `CodecContract.ByteOrderMarkIsRecognisedAndKeptOutOfTheContent`:
+					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
 				public:

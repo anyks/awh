@@ -75,6 +75,10 @@ if (${GTest_FOUND})
             xml/document.cpp
             xml/writer.cpp
             xml/value.cpp
+            cef/reader.cpp
+            cef/writer.cpp
+            cef/document.cpp
+            cef/dictionary.cpp
             ini/common.cpp
             ini/encoding.cpp
             ini/reader.cpp
@@ -86,6 +90,7 @@ if (${GTest_FOUND})
             csv/reader.cpp
             csv/writer.cpp
             csv/document.cpp
+            csv/value.cpp
             toml/common.cpp
             toml/encoding.cpp
             toml/reader.cpp

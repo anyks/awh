@@ -52,8 +52,15 @@ namespace {
 	 * @param location положение лексемы в поданном наборе
 	 * @return         признак продолжения разбора
 	 *
+	 * @warning Виды здесь названы ПОЛНЫМ именем намеренно, и это не многословие: у
+	 *          систем GNU заголовок «errno.h» объявляет свой «error_t» в глобальном
+	 *          пространстве, и краткое имя в свободной функции разрешается в него, а
+	 *          не в наш. Замерено срывом сборки на Debian 12.15 с g++ 12.2: довод
+	 *          принимался видом «int», а внутри класса то же имя разрешалось верно -
+	 *          оттого срыв виден лишь у свободных функций и лишь у систем GNU
+	 *
 	 */
-	bool notify(const Lexer::failure_t & failure, const error_t error, const location_t & location) noexcept {
+	bool notify(const Lexer::failure_t & failure, const awh::args::error_t error, const awh::args::location_t & location) noexcept {
 		// Если отзыв извещения об отказе установлен
 		if(failure != nullptr)
 			// Выполняем извещение об отказе разбора

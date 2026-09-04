@@ -236,7 +236,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			constexpr uint32_t MAX_NUMBER = 0x400;
+			constexpr uint32_t MAX_NUMBER = 4;
 
 			/**
 			 * \~russian

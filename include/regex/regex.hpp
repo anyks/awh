@@ -33,6 +33,15 @@
  *          навязанная всем, оборачивается взаимными захватами и провалом
  *          производительности там, где многопоточность не нужна вовсе.
  *
+ *          <b>Отчёт об ошибке живёт потоком исполнения, а не объектом.</b>
+ *          Код ошибки, смещение её и текст суть состояние последней операции
+ *          потока наравне с рабочим состоянием сопоставления. Живи отчёт полем
+ *          объекта, сопоставление несколькими потоками одним объектом - способ
+ *          работы, договором обещанный, - писало бы в него разом, и это гонка
+ *          данных. Ценою тому общий отчёт у нескольких объектов одного потока:
+ *          читается он сразу за отказавшей операцией, и порядок этот договором
+ *          и предполагается.
+ *
  *          <b>Кэш собранных выражений хранит слабые ссылки.</b> Выражение живёт,
  *          пока его удерживает вызывающая сторона; кэш лишь избавляет от повторной
  *          сборки того же выражения с тем же набором режимов. Освобождение
@@ -202,15 +211,6 @@ namespace awh {
 				 */
 				size_t operator () (const key_t & key) const noexcept;
 			};
-		private:
-			// Код ошибки последней операции сборки
-			mutable error_t _error;
-		private:
-			// Смещение ошибки в тексте регулярного выражения
-			mutable size_t _offset;
-		private:
-			// Текст ошибки последней операции сборки
-			mutable string _message;
 		private:
 			// Объект журнала событий
 			const log_t * _log;
@@ -535,13 +535,13 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод извлечения кода ошибки последней сборки
+			 * @brief Метод извлечения кода ошибки последней операции
 			 *
-			 * @return код ошибки последней операции сборки
+			 * @return код ошибки последней операции потока исполнения
 			 *
 			 * \~english
-			 * @brief Method of getting the error code of the last build
-			 * @return error code of the last build operation
+			 * @brief Method of getting the error code of the last operation
+			 * @return error code of the last operation of the thread
 			 *
 			 * \~
 			 */
@@ -570,12 +570,12 @@ namespace awh {
 			const string & marker() const noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод извлечения смещения ошибки последней сборки
+			 * @brief Метод извлечения смещения ошибки последней операции
 			 *
 			 * @return смещение ошибки в тексте регулярного выражения
 			 *
 			 * \~english
-			 * @brief Method of getting the error offset of the last build
+			 * @brief Method of getting the error offset of the last operation
 			 * @return offset of the error in the text of the regular expression
 			 *
 			 * \~
@@ -583,9 +583,9 @@ namespace awh {
 			size_t offset() const noexcept;
 			/**
 			 * \~russian
-			 * @brief Метод извлечения текста ошибки последней сборки
+			 * @brief Метод извлечения текста ошибки последней операции
 			 *
-			 * @return текст ошибки последней операции сборки
+			 * @return текст ошибки последней операции потока исполнения
 			 *
 			 * \~english
 			 * @brief Method of getting the error text of the last build

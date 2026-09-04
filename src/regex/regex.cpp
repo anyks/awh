@@ -44,6 +44,54 @@ using namespace awh;
  * @return движок сопоставления потока исполнения
  *
  */
+/**
+ * @brief Отчёт об ошибке последней операции потока исполнения
+ *
+ * @details Отчёт живёт потоком исполнения, а не объектом, и решение это
+ *          вынужденное: сопоставление ведётся несколькими потоками ОДНИМ
+ *          объектом - так велит договор модуля и так поступают обе проверки
+ *          потоков, - а всякое сопоставление отчёт свой записывает. Живи
+ *          отчёт полем объекта, потоки писали бы в него разом, и это
+ *          гонка данных: ThreadSanitizer её и нашёл (regex.cpp:310
+ *          в receive()). Заметить её работой нельзя вовсе - код ошибки
+ *          есть байт, и запись его выглядит безобидной, - а текст ошибки
+ *          есть строка, и гонка на ней безобидной не бывает.
+ *
+ *          Ценою решения - общий отчёт у нескольких объектов одного потока:
+ *          отказ сборки объектом одним затирается операцией объекта другого.
+ *          Договор модуля того и не обещал: сборка идёт до потоков, отчёт
+ *          читается сразу за отказавшей операцией, и порядок этот
+ *          соблюдается и здесь.
+ *
+ * @return отчёт об ошибке потока исполнения
+ *
+ */
+struct report_t {
+	// Код ошибки последней операции потока
+	awh::regex::error_t error;
+	// Смещение ошибки в тексте регулярного выражения
+	size_t offset;
+	// Текст ошибки последней операции потока
+	string message;
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	report_t() noexcept : error(awh::regex::error_t::NONE), offset(0) {}
+};
+
+/**
+ * @brief Функция извлечения отчёта об ошибке потока исполнения
+ *
+ * @return отчёт об ошибке потока исполнения
+ *
+ */
+static report_t & report() noexcept {
+	// Создаём отчёт об ошибке потока исполнения
+	static thread_local report_t result;
+	// Выводим отчёт об ошибке потока исполнения
+	return result;
+}
 static awh::regex::engine_t & engine() noexcept {
 	/**
 	 * Создаём движок сопоставления потока исполнения
@@ -79,7 +127,7 @@ size_t awh::RegularExpression::Hash::operator () (const key_t & key) const noexc
  *
  */
 awh::RegularExpression::RegularExpression(const log_t * log) noexcept :
- _error(error_t::NONE), _offset(0), _log(log), _limit(awh::regex::MAX_STEPS), _nesting(awh::regex::MAX_RECURSION) {}
+ _log(log), _limit(awh::regex::MAX_STEPS), _nesting(awh::regex::MAX_RECURSION) {}
 /**
  * @brief Метод извлечения кода ошибки последней сборки
  *
@@ -88,7 +136,7 @@ awh::RegularExpression::RegularExpression(const log_t * log) noexcept :
  */
 awh::RegularExpression::error_t awh::RegularExpression::error() const noexcept {
 	// Выводим код ошибки последней операции сборки
-	return this->_error;
+	return report().error;
 }
 /**
  * @brief Метод извлечения имени отметки совпадения последнего
@@ -108,7 +156,7 @@ const string & awh::RegularExpression::marker() const noexcept {
  */
 size_t awh::RegularExpression::offset() const noexcept {
 	// Выводим смещение ошибки в тексте регулярного выражения
-	return this->_offset;
+	return report().offset;
 }
 /**
  * @brief Метод извлечения текста ошибки последней сборки
@@ -118,7 +166,7 @@ size_t awh::RegularExpression::offset() const noexcept {
  */
 const string & awh::RegularExpression::message() const noexcept {
 	// Выводим текст ошибки последней операции сборки
-	return this->_message;
+	return report().message;
 }
 /**
  * @brief Метод очистки кэша собранных регулярных выражений
@@ -158,11 +206,11 @@ void awh::RegularExpression::nesting(const size_t nesting) noexcept {
  */
 awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern, const uint32_t flags) const noexcept {
 	// Выполняем сброс кода ошибки последней операции сборки
-	this->_error = error_t::NONE;
+	report().error = error_t::NONE;
 	// Выполняем сброс смещения ошибки в тексте выражения
-	this->_offset = 0;
+	report().offset = 0;
 	// Выполняем очистку текста ошибки последней операции сборки
-	this->_message.clear();
+	report().message.clear();
 	// Создаём ключ кэша собранных регулярных выражений
 	const key_t key = make_pair(flags, string(pattern));
 	/**
@@ -198,11 +246,11 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 	 */
 	if(!engine().build(pattern, flags, * result)) {
 		// Выполняем установку кода ошибки последней операции сборки
-		this->_error = engine().error();
+		report().error = engine().error();
 		// Выполняем установку смещения ошибки в тексте выражения
-		this->_offset = engine().offset();
+		report().offset = engine().offset();
 		// Выполняем установку текста ошибки последней операции сборки
-		this->_message = engine().message();
+		report().message = engine().message();
 		/**
 		 * Если объект журнала событий передан
 		 */
@@ -212,13 +260,13 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, make_tuple(string(pattern), flags), log_t::flag_t::WARNING, this->_offset, this->_message.c_str());
+				this->_log->debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, make_tuple(string(pattern), flags), log_t::flag_t::WARNING, report().offset, report().message.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Regular expression could not be built at offset %zu: %s", log_t::flag_t::WARNING, this->_offset, this->_message.c_str());
+				this->_log->print("Regular expression could not be built at offset %zu: %s", log_t::flag_t::WARNING, report().offset, report().message.c_str());
 			#endif
 		}
 		// Выводим отсутствие собранного регулярного выражения
@@ -307,21 +355,21 @@ static bool verified(string_view text, const awh::RegularExpression::exp_t & exp
  */
 void awh::RegularExpression::receive() const noexcept {
 	// Выполняем снятие кода ошибки сопоставления с движка
-	this->_error = engine().error();
+	report().error = engine().error();
 	/**
 	 * Если ошибки сопоставления не случилось
 	 */
-	if(this->_error == error_t::NONE)
+	if(report().error == error_t::NONE)
 		// Выходим из метода снятия кода ошибки
 		return;
 	// Выполняем снятие текста ошибки сопоставления с движка
-	this->_message = engine().message();
+	report().message = engine().message();
 	/**
 	 * Если объект журнала событий передан
 	 */
 	if(this->_log != nullptr)
 		// Записываем ошибку в лог
-		this->_log->print("Regular expression matching failed: %s", log_t::flag_t::WARNING, this->_message.c_str());
+		this->_log->print("Regular expression matching failed: %s", log_t::flag_t::WARNING, report().message.c_str());
 }
 /**
  * @brief Метод проверки наличия совпадения в тексте
@@ -343,7 +391,7 @@ bool awh::RegularExpression::test(string_view text, const exp_t & exp) const noe
 	 */
 	if(!verified(text, exp)) {
 		// Устанавливаем ошибку неверной записи текста сопоставления
-		this->_error = error_t::BAD_UTF8_SUBJECT;
+		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Выводим результат проверки наличия совпадения
 		return false;
 	}
@@ -403,7 +451,7 @@ bool awh::RegularExpression::match(string_view text, const exp_t & exp, vector <
 	 */
 	if(!verified(text, exp)) {
 		// Устанавливаем ошибку неверной записи текста сопоставления
-		this->_error = error_t::BAD_UTF8_SUBJECT;
+		report().error = error_t::BAD_UTF8_SUBJECT;
 		// Выводим результат поиска совпадения
 		return false;
 	}

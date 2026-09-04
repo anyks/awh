@@ -294,7 +294,17 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 	}));
 	// Устанавливаем функцию обратного вызова на чтение из события
-	this->_io->on(eid, [this, raw, identifier, &expected, &replies](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	/**
+	 * Признак сырого сокета захватывается ССЫЛКОЙ намеренно
+	 *
+	 * @warning Захват по значению верен, но у MS Windows признак этот задан
+	 *          постоянной (`= true`), а захват постоянной по значению собиратель
+	 *          считает излишним и предупреждает. У прочих систем признак берётся
+	 *          опытом (`::getuid()`), постоянной не является, и захват там
+	 *          обязателен - убрать его нельзя. Ссылка верна в обоих случаях:
+	 *          отклик живёт не дольше объемлющей проверки
+	 */
+	this->_io->on(eid, [this, &raw, identifier, &expected, &replies](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Если принятого не хватает даже на заголовок
 		if((data == nullptr) || (size == 0))
 			// Выходим из разбора отклика
@@ -892,7 +902,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			// Опознаватель процесса, доложившийся работником
 			uint32_t reported = 0;
 			// Устанавливаем функцию обратного вызова на получение доклада работника
-			this->_io->on(channels[0], [&reported, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			this->_io->on(channels[0], [&reported, &stop]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Если доклад пришёл целиком
 				if((data != nullptr) && (size == sizeof(uint32_t))){
 					// Запоминаем опознаватель процесса работника

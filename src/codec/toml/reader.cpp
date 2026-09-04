@@ -221,7 +221,7 @@ namespace {
  */
 awh::codec::toml::Reader::Settings::Settings() noexcept :
  maxLine(MAX_LINE), maxKey(MAX_KEY), maxDepth(MAX_DEPTH), maxParts(MAX_PARTS),
- duplicates(true), unicode(false), emitComments(true), emitBlanks(false), encoding(encoding_t::NONE) {}
+ nesting(true), duplicates(true), unicode(false), emitComments(true), emitBlanks(false), encoding(encoding_t::NONE) {}
 /**
  * @brief Метод запоминания ошибки разбора вместе с местом её обнаружения
  *
@@ -2673,6 +2673,16 @@ bool awh::codec::toml::Reader::interlude(const bool end, const size_t opening) n
  */
 bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexcept {
 	/**
+	 * Если вложенные значения настройками не дозволены
+	 *
+	 * @note Мысль эта прежде выражалась нулём у предела глубины, а ноль ныне значит «без
+	 *       предела» у всех кодеков рамки: одним числом две разные мысли выразить нельзя,
+	 *       не отняв одну из них
+	 */
+	if(!this->_settings.nesting)
+		// Выполняем запоминание ошибки превышения глубины вложенности
+		return this->failure(error_t::DEPTH_EXCEEDED, this->_offset);
+	/**
 	 * Если глубина вложенности значений предел настроек превышает
 	 *
 	 * @note Предел этот не украшение: разбор вложенности ведётся стопой вызовов, и
@@ -2769,6 +2779,16 @@ bool awh::codec::toml::Reader::array(const bool end, const uint32_t depth) noexc
  *
  */
 bool awh::codec::toml::Reader::inlined(const bool end, const uint32_t depth, const string * prefix) noexcept {
+	/**
+	 * Если вложенные значения настройками не дозволены
+	 *
+	 * @note Мысль эта прежде выражалась нулём у предела глубины, а ноль ныне значит «без
+	 *       предела» у всех кодеков рамки: одним числом две разные мысли выразить нельзя,
+	 *       не отняв одну из них
+	 */
+	if(!this->_settings.nesting)
+		// Выполняем запоминание ошибки превышения глубины вложенности
+		return this->failure(error_t::DEPTH_EXCEEDED, this->_offset);
 	/**
 	 * Если глубина вложенности значений предел настроек превышает
 	 */

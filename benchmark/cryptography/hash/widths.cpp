@@ -69,12 +69,12 @@ namespace {
 	 *          через формирование потока октетов
 	 *
 	 */
-	static constexpr double WIDTH_32_THRESHOLD = 12000000.0;
+	static constexpr double WIDTH_32_THRESHOLD = 79000000.0;
 	/**
 	 * @brief Порог скорости вывода 64-битного результата в операциях в секунду
 	 *
 	 */
-	static constexpr double WIDTH_64_THRESHOLD = 12000000.0;
+	static constexpr double WIDTH_64_THRESHOLD = 83000000.0;
 	/**
 	 * @brief Порог скорости вывода 128-битного результата в операциях в секунду
 	 *
@@ -82,22 +82,22 @@ namespace {
 	 *          каждые следующие восемь октетов стоят одного перемешивания
 	 *
 	 */
-	static constexpr double WIDTH_128_THRESHOLD = 3900000.0;
+	static constexpr double WIDTH_128_THRESHOLD = 22000000.0;
 	/**
 	 * @brief Порог скорости вывода 256-битного результата в операциях в секунду
 	 *
 	 */
-	static constexpr double WIDTH_256_THRESHOLD = 2350000.0;
+	static constexpr double WIDTH_256_THRESHOLD = 18000000.0;
 	/**
 	 * @brief Порог скорости вывода 1024-битного результата в операциях в секунду
 	 *
 	 */
-	static constexpr double WIDTH_1024_THRESHOLD = 700000.0;
+	static constexpr double WIDTH_1024_THRESHOLD = 3800000.0;
 	/**
 	 * @brief Порог скорости хэширования длинного числа в операциях в секунду
 	 *
 	 */
-	static constexpr double BIGNUM_THRESHOLD = 11500000.0;
+	static constexpr double BIGNUM_THRESHOLD = 74000000.0;
 	/**
 	 * @brief Порог скорости работы специализации стандартной библиотеки в операциях в секунду
 	 *
@@ -106,7 +106,7 @@ namespace {
 	 *          пределы заполнения состояния
 	 *
 	 */
-	static constexpr double STANDARD_THRESHOLD = 3300000.0;
+	static constexpr double STANDARD_THRESHOLD = 74000000.0;
 	/**
 	 * @brief Порог количества выделений памяти на один вывод результата
 	 *

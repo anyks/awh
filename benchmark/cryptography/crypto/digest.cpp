@@ -52,15 +52,16 @@ namespace {
 	/**
 	 * @brief Пороги пропускной способности в октетах в секунду
 	 *
-	 * @details Пороги сняты выпускной сборкой по самому медленному из восьми стендов
+	 * @details Пороги сняты НАСТОЯЩЕЙ выпускной сборкой проекта - со своим
+	 *          BoringSSL, а не с системным OpenSSL, - по дну девяти систем
 	 *          с двукратным запасом к нему: они ловят регрессию в разы, а не колебания
 	 *          планировщика операционной системы и не разницу самих машин. Отладочная
 	 *          сборка мерой не служит - на потоковой расшифровке она врёт на порядок
 	 *
 	 */
-	static constexpr double SHORT_THRESHOLD = 16000000.0;
-	static constexpr double CHUNK_THRESHOLD = 68000000.0;
-	static constexpr double HMAC_THRESHOLD = 46000000.0;
+	static constexpr double SHORT_THRESHOLD = 40000000.0;
+	static constexpr double CHUNK_THRESHOLD = 120000000.0;
+	static constexpr double HMAC_THRESHOLD = 100000000.0;
 	/**
 	 * @brief Порог количества выделений памяти на одну операцию
 	 *

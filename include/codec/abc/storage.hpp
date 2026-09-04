@@ -380,6 +380,46 @@ namespace awh {
 					[[nodiscard]] bool store(const string & filename, const void * buffer, const size_t size) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод чтения октетов файла целиком
+					 *
+					 * @details Работа эта есть БЛИЗНЕЦ записи `store`: та кладёт октеты в файл, эта
+					 * берёт их оттуда обратно. Держится пара затем, что потребителю, которому нужна
+					 * ГОЛАЯ запись в файле, а не вместилище с заголовком да кадрами, обе половины
+					 * дороги нужны, и вторая её половина отсутствовала - положить запись было чем,
+					 * а взять обратно нечем, и потребителю оставалось звать `fopen` самому
+					 *
+					 * @note Работа эта вместилища НЕ РАЗБИРАЕТ и заголовка его не ждёт: отдаёт она
+					 *       октеты как есть. Разбор вместилища ведут `bind` да `load`, и путать их
+					 *       с нею не следует - у них своё устройство и свои отказы
+					 *
+					 * @warning Предел длины здесь обязателен и по умолчанию НЕ БЕСКОНЕЧЕН: чтение
+					 *          целиком берёт столько памяти, сколько весит файл, и поданное имя
+					 *          приходит извне. Файл сверх предела отвергается, а не читается
+					 *
+					 * @note Предел, равный НУЛЮ, означает «без предела» - согласно тому же
+					 *       уговору, каким живут `maxString` и `maxBlob` в настройках разбора.
+					 *       Уговор этот у кодека единый, и разойдись он здесь - потребитель,
+					 *       подавший нуль в значении «ни октета», получил бы обратное
+					 *
+					 * @param filename название читаемого файла
+					 * @param result   вычитанные октеты файла
+					 * @param limit    наибольшая допустимая длина файла в октетах, ноль - без предела
+					 * @return         признак успешности чтения
+					 *
+					 * \~english
+					 * @brief Method of the reading of the octets of a file as a whole
+					 * @details This work is the TWIN of the writing `store`
+					 * @param filename name of the file being read
+					 * @param result read octets of the file
+					 * @param limit largest admissible length of the file in octets
+					 * @return sign of the success of the reading
+					 *
+					 * \~
+					 */
+					[[nodiscard]] bool fetch(const string & filename, vector <uint8_t> & result,
+					 const uint64_t limit = 0x4000000) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод подачи файла контейнера снимателю
 					 *
 					 * @details Файл подаётся кусками, а не целиком: снятие ведётся потоком, и

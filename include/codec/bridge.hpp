@@ -44,6 +44,10 @@
 #include "../sys/global.hpp"
 #include "abc/value.hpp"
 #include "json/json.hpp"
+#include "yaml/yaml.hpp"
+#include "xml/xml.hpp"
+#include "toml/toml.hpp"
+#include "ini/ini.hpp"
 
 /**
  * \~russian
@@ -140,6 +144,29 @@ namespace awh {
 				};
 				/**
 				 * \~russian
+				 * @brief Вид записи, с которым мост переводит дерево
+				 *
+				 * @details Кодек CSV в перечень не входит намеренно: содержимое его
+				 *          таблично, а не древовидно, и настройками оно не бывает
+				 *
+				 * \~english
+				 * @brief Kind of a record with which the bridge translates a tree
+				 * @details The codec CSV is deliberately not in the list: its content is
+				 *          tabular, not tree-shaped, and it is never settings
+				 *
+				 * \~
+				 */
+				enum class format_t : uint8_t {
+					NONE = 0x00, // Вид записи не задан
+					ABC  = 0x01, // Запись контейнера ABC как она есть
+					JSON = 0x02, // Запись JSON
+					XML  = 0x03, // Запись XML
+					YAML = 0x04, // Запись YAML
+					TOML = 0x05, // Запись TOML
+					INI  = 0x06  // Запись INI
+				};
+				/**
+				 * \~russian
 				 * @brief Правила обращения с видами, записи кодека неведомыми
 				 *
 				 *
@@ -230,6 +257,258 @@ namespace awh {
 				 * \~
 				 */
 				[[nodiscard]] bool absorb(const json::Document::value_t & value, abc::value_t & result, const uint32_t depth) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод перевода дерева ABC в запись JSON
+				 *
+				 * @param value  дерево значений контейнера ABC
+				 * @param result собранная запись JSON
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a tree of ABC into a record of JSON
+				 * @param value tree of the values of the container ABC
+				 * @param result assembled record of JSON
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool encodeJSON(const abc::value_t & value, string & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода записи JSON в дерево ABC
+				 *
+				 * @param text   запись JSON для перевода
+				 * @param result собранное дерево значений контейнера ABC
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a record of JSON into a tree of ABC
+				 * @param text record of JSON for the translation
+				 * @param result assembled tree of the values of the container ABC
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool decodeJSON(const string_view text, abc::value_t & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод снятия отменяющей записи со звена пути
+				 *
+				 * @details Звенья пути выдаются кодеками с отменяющими записями RFC 6901:
+				 *          имя `a/b` записывается звеном `a~1b`, имя `a~b` - звеном `a~0b`.
+				 *          Ход возвращает звену исходное имя
+				 *
+				 * @param link звено пути с отменяющими записями
+				 * @return     исходное имя потомка
+				 *
+				 * \~english
+				 * @brief Method of the removal of the escaping from a link of a path
+				 * @param link link of a path with the escaping
+				 * @return original name of the child
+				 *
+				 * \~
+				 */
+				[[nodiscard]] string unescape(const string & link) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод наложения отменяющей записи на имя потомка
+				 *
+				 * @details Ход обратный снятию: имя `a/b` обращается в звено `a~1b`,
+				 *          имя `a~b` - в звено `a~0b`. Без него имя, косую черту
+				 *          несущее, разошлось бы у кодека на два звена пути
+				 *
+				 * @param name исходное имя потомка
+				 * @return     звено пути с отменяющими записями
+				 *
+				 * \~english
+				 * @brief Method of the applying of the escaping to a name of a child
+				 * @param name original name of the child
+				 * @return link of a path with the escaping
+				 *
+				 * \~
+				 */
+				[[nodiscard]] string escape(const string & name) const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод подачи значения ABC документу YAML
+				 *
+				 * @param value    значение контейнера ABC
+								 * @param result   собираемое значение записи YAML
+				 * @param depth    глубина обхода дерева
+				 * @return         результат подачи
+				 *
+				 * \~english
+				 * @brief Method of the submission of a value of ABC to the document of YAML
+				 * @param value value of the container ABC
+				 * @param document assembled document of a record of YAML
+				 * @param path path to the value being submitted
+				 * @param depth depth of the traversal of the tree
+				 * @return result of the submission
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool feedYAML(const abc::value_t & value, yaml::Value & result, const uint32_t depth) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода дерева ABC в запись YAML
+				 *
+				 * @param value  дерево значений контейнера ABC
+				 * @param result собранная запись YAML
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a tree of ABC into a record of YAML
+				 * @param value tree of the values of the container ABC
+				 * @param result assembled record of YAML
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool encodeYAML(const abc::value_t & value, string & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод укладки значения YAML в значение ABC
+				 *
+				 * @param document документ записи YAML
+				 * @param path     путь к укладываемому значению
+				 * @param result   укладываемое значение контейнера ABC
+				 * @param depth    глубина обхода дерева
+				 * @return         результат укладки
+				 *
+				 * \~english
+				 * @brief Method of the laying of a value of YAML into a value of ABC
+				 * @param document document of a record of YAML
+				 * @param path path to the value being laid
+				 * @param result laid value of the container ABC
+				 * @param depth depth of the traversal of the tree
+				 * @return result of the laying
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool absorbYAML(const yaml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода записи YAML в дерево ABC
+				 *
+				 * @param text   запись YAML для перевода
+				 * @param result собранное дерево значений контейнера ABC
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a record of YAML into a tree of ABC
+				 * @param text record of YAML for the translation
+				 * @param result assembled tree of the values of the container ABC
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool decodeYAML(const string_view text, abc::value_t & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод укладки значения XML в значение ABC
+				 *
+				 * @details Своей системы видов у разметки нет: узел считается простым
+				 *          значением тогда, когда потомков-узлов у него не нашлось, и
+				 *          укладывается тогда собранным текстом. Признак этот берётся
+				 *          перечнем звеньев, а не числом потомков: примечания и разделы
+				 *          дословного текста узлами разметки не являются, и счёт лжёт
+				 *
+				 * @param document документ записи XML
+				 * @param path     путь к укладываемому значению
+				 * @param result   укладываемое значение контейнера ABC
+				 * @param depth    глубина обхода дерева
+				 * @return         результат укладки
+				 *
+				 * \~english
+				 * @brief Method of the laying of a value of XML into a value of ABC
+				 * @param document document of a record of XML
+				 * @param path path to the value being laid
+				 * @param result laid value of the container ABC
+				 * @param depth depth of the traversal of the tree
+				 * @return result of the laying
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода записи XML в дерево ABC
+				 *
+				 * @param text   запись XML для перевода
+				 * @param result собранное дерево значений контейнера ABC
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a record of XML into a tree of ABC
+				 * @param text record of XML for the translation
+				 * @param result assembled tree of the values of the container ABC
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool decodeXML(const string_view text, abc::value_t & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод укладки значения TOML в значение ABC
+				 *
+				 * @param document документ записи TOML
+				 * @param path     путь к укладываемому значению
+				 * @param result   укладываемое значение контейнера ABC
+				 * @param depth    глубина обхода дерева
+				 * @return         результат укладки
+				 *
+				 * \~english
+				 * @brief Method of the laying of a value of TOML into a value of ABC
+				 * @param document document of a record of TOML
+				 * @param path path to the value being laid
+				 * @param result laid value of the container ABC
+				 * @param depth depth of the traversal of the tree
+				 * @return result of the laying
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool absorbTOML(const toml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода записи TOML в дерево ABC
+				 *
+				 * @param text   запись TOML для перевода
+				 * @param result собранное дерево значений контейнера ABC
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a record of TOML into a tree of ABC
+				 * @param text record of TOML for the translation
+				 * @param result assembled tree of the values of the container ABC
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool decodeTOML(const string_view text, abc::value_t & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода записи INI в дерево ABC
+				 *
+				 * @details Обход ведётся РОДНЫМ ходом кодека - перечнем разделов и
+				 *          перечнем свойств раздела, - а не общим видом `keys(путь)`:
+				 *          общего вида у этого кодека покуда нет, ибо имя занято прежним
+				 *          плоским ходом с иным обещанием
+				 *
+				 * @param text   запись INI для перевода
+				 * @param result собранное дерево значений контейнера ABC
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a record of INI into a tree of ABC
+				 * @param text record of INI for the translation
+				 * @param result assembled tree of the values of the container ABC
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool decodeINI(const string_view text, abc::value_t & result) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -247,7 +526,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool encode(const abc::value_t & value, string & result) noexcept;
+				[[nodiscard]] bool encode(const abc::value_t & value, string & result, const format_t format) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи JSON в дерево ABC
@@ -264,7 +543,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool decode(const string_view text, abc::value_t & result) noexcept;
+				[[nodiscard]] bool decode(const string_view text, abc::value_t & result, const format_t format) noexcept;
 			public:
 				/**
 				 * \~russian

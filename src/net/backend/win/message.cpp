@@ -26,6 +26,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <atomic>
 #include <vector>
 
 /**
@@ -46,8 +47,19 @@ using namespace std;
  *
  */
 LPFN_WSARECVMSG awh::win::message::extended(const net::socket_t sock) noexcept {
-	// Запомненный адрес расширенного вызова
-	static LPFN_WSARECVMSG result = nullptr;
+	/**
+	 * Запомненный адрес расширенного вызова
+	 *
+	 * @warning Прежде система писала ответ ПРЯМО В ТАЙНИК: адрес его отдавался
+	 *          `WSAIoctl` местом под ответ. Движок же зовёт приём из нескольких
+	 *          потоков набора, и покуда один поток тайник заполняет, другой вправе
+	 *          прочесть его наполовину заполненным - и уйти вызывать по мусорному
+	 *          адресу. Ответ берётся теперь в свой переменной, а в тайник кладётся
+	 *          уже целым и разом
+	 */
+	static std::atomic <LPFN_WSARECVMSG> cache{nullptr};
+	// Получаем запомненный адрес расширенного вызова
+	LPFN_WSARECVMSG result = cache.load(std::memory_order_acquire);
 	// Если адрес уже взят - отдаём запомненный
 	if(result != nullptr)
 		// Выводим адрес расширенного вызова
@@ -59,7 +71,9 @@ LPFN_WSARECVMSG awh::win::message::extended(const net::socket_t sock) noexcept {
 	// Выполняем запрос адреса расширенного вызова у сокета
 	if(::WSAIoctl(static_cast <SOCKET> (sock), SIO_GET_EXTENSION_FUNCTION_POINTER, &identifier, sizeof(identifier), &result, sizeof(result), &bytes, nullptr, nullptr) != 0)
 		// Сбрасываем адрес расширенного вызова
-		result = nullptr;
+		return nullptr;
+	// Запоминаем взятый адрес расширенного вызова целиком
+	cache.store(result, std::memory_order_release);
 	// Выводим адрес расширенного вызова
 	return result;
 }
@@ -69,12 +83,36 @@ LPFN_WSARECVMSG awh::win::message::extended(const net::socket_t sock) noexcept {
  *
  * @param sock  сокет, из которого ведётся приём
  * @param msg   описание принимаемого сообщения
- * @param flags признаки приёма, системой не употребляемые
+ * @param flags признаки приёма: поддерживается лишь нулевой набор
  * @param error код отказа системы, если отказ случился
  * @return      число принятых октетов, либо -1 при отказе
  *
  */
-int64_t awh::win::message::receive(const net::socket_t sock, struct msghdr * msg, [[maybe_unused]] const int32_t flags, int32_t * error) noexcept {
+int64_t awh::win::message::receive(const net::socket_t sock, struct msghdr * msg, const int32_t flags, int32_t * error) noexcept {
+	/**
+	 * Признаки приёма расширенный вызов не принимает
+	 *
+	 * @warning Прежде довод этот числился неупотребляемым и отбрасывался МОЛЧА.
+	 *          Приём тогда шёл обычным порядком, что бы ни просили, и опаснее всего
+	 *          выходило с `MSG_PEEK`: просящий подсмотреть сообщение, не вынимая его,
+	 *          получал сообщение ВЫНУТЫМ - дейтаграмма съедалась, а отказа не было
+	 *
+	 * @note Поле `dwFlags` записи `WSAMSG` у приёма служит лишь ответом: признаки
+	 *       принятого сообщения система кладёт в него сама, а на вход не берёт ни
+	 *       одного. `MSG_PEEK` расширенный вызов не поддерживает вовсе
+	 *
+	 * @note Нуль пропускается: движок зовёт приём с `MSG_NOSIGNAL`, а тот у MS Windows
+	 *       объявлен нулём - сигнала, какой требовалось бы гасить, здесь нет
+	 *
+	 */
+	if(flags != 0){
+		// Если код отказа спрашивают
+		if(error != nullptr)
+			// Отмечаем признаки приёма неподдерживаемыми
+			(* error) = WSAEOPNOTSUPP;
+		// Выводим признак отказа приёма
+		return -1;
+	}
 	// Получаем расширенный вызов приёма сообщения
 	LPFN_WSARECVMSG method = ::awh::win::message::extended(sock);
 	// Если вызов взять не удалось либо описание не передано

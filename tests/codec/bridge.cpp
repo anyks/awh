@@ -56,7 +56,7 @@ TEST(CodecBridge, DecodeJSON) {
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод записи JSON в дерево значений
-	ASSERT_TRUE(bridge.decode("{\"name\":\"value\",\"count\":17,\"rate\":1.5,\"flag\":true,\"empty\":null,\"list\":[1,2,3],\"nested\":{\"port\":8080}}", value));
+	ASSERT_TRUE(bridge.decode("{\"name\":\"value\",\"count\":17,\"rate\":1.5,\"flag\":true,\"empty\":null,\"list\":[1,2,3],\"nested\":{\"port\":8080}}", value, bridge_t::format_t::JSON));
 	// Выполняем проверку заведения корня отображением
 	ASSERT_TRUE(value.is(abc::type_t::MAP));
 	// Выполняем проверку числа полей отображения
@@ -111,7 +111,7 @@ TEST(CodecBridge, DecodeFailure) {
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод негодной записи JSON в дерево значений
-	ASSERT_FALSE(bridge.decode("{\"name\":", value));
+	ASSERT_FALSE(bridge.decode("{\"name\":", value, bridge_t::format_t::JSON));
 	// Выполняем проверку кода отказа перевода
 	ASSERT_EQ(bridge.error(), bridge_t::error_t::PARSING);
 }
@@ -169,15 +169,15 @@ TEST(CodecBridge, RoundTripValues) {
 		// Дерево значений, собранное первым переводом
 		abc::value_t first;
 		// Выполняем перевод образца записи JSON в дерево значений
-		ASSERT_TRUE(bridge.decode(sample, first)) << sample;
+		ASSERT_TRUE(bridge.decode(sample, first, bridge_t::format_t::JSON)) << sample;
 		// Собираемая запись JSON
 		string text = "";
 		// Выполняем перевод дерева значений обратно в запись JSON
-		ASSERT_TRUE(bridge.encode(first, text)) << sample;
+		ASSERT_TRUE(bridge.encode(first, text, bridge_t::format_t::JSON)) << sample;
 		// Дерево значений, собранное вторым переводом
 		abc::value_t second;
 		// Выполняем перевод собранной записи JSON в дерево значений
-		ASSERT_TRUE(bridge.decode(text, second)) << sample;
+		ASSERT_TRUE(bridge.decode(text, second, bridge_t::format_t::JSON)) << sample;
 		/**
 		 * Выполняем проверку СОВПАДЕНИЯ ДЕРЕВЬЕВ, а не текстов: значение, прошедшее
 		 * мостом, обязано остаться тем же самым
@@ -200,7 +200,7 @@ TEST(CodecBridge, ExtendedNumber) {
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод записи JSON с числом сверх родных видов
-	ASSERT_TRUE(bridge.decode("{\"a\":123456789012345678901234567890}", value));
+	ASSERT_TRUE(bridge.decode("{\"a\":123456789012345678901234567890}", value, bridge_t::format_t::JSON));
 	// Извлекаемая запись числа
 	string text = "";
 	// Выполняем извлечение записи числа
@@ -279,11 +279,11 @@ TEST(CodecBridge, Normalisation) {
 		// Собираемое дерево значений контейнера ABC
 		abc::value_t value;
 		// Выполняем перевод образца записи JSON в дерево значений
-		ASSERT_TRUE(bridge.decode(sample.first, value)) << sample.first;
+		ASSERT_TRUE(bridge.decode(sample.first, value, bridge_t::format_t::JSON)) << sample.first;
 		// Собираемая запись JSON
 		string text = "";
 		// Выполняем перевод дерева значений обратно в запись JSON
-		ASSERT_TRUE(bridge.encode(value, text)) << sample.first;
+		ASSERT_TRUE(bridge.encode(value, text, bridge_t::format_t::JSON)) << sample.first;
 		// Выполняем проверку совпадения записи с ожидаемым её видом
 		ASSERT_EQ(text, sample.second) << sample.first;
 	}
@@ -317,7 +317,7 @@ TEST(CodecBridge, EncodeBuilt) {
 	// Собираемая запись JSON
 	string result = "";
 	// Выполняем перевод дерева значений в запись JSON
-	ASSERT_TRUE(bridge.encode(value, result));
+	ASSERT_TRUE(bridge.encode(value, result, bridge_t::format_t::JSON));
 	// Выполняем проверку собранной записи JSON
 	ASSERT_EQ(result, "{\"name\":\"value\",\"count\":17,\"nested\":{\"port\":8080}}");
 }
@@ -351,7 +351,7 @@ TEST(CodecBridge, NarrowingRules) {
 	 * Выполняем проверку ОТКАЗА перевода: молчаливая порча оставляла бы потребителя
 	 * с записью, которая разбирается, но означает иное
 	 */
-	ASSERT_FALSE(bridge.encode(value, result));
+	ASSERT_FALSE(bridge.encode(value, result, bridge_t::format_t::JSON));
 	// Выполняем проверку кода отказа перевода
 	ASSERT_EQ(bridge.error(), bridge_t::error_t::UNSUPPORTED);
 	// Устанавливаем правило пропуска вида, записи кодека неведомого
@@ -359,7 +359,7 @@ TEST(CodecBridge, NarrowingRules) {
 	// Устанавливаем настройки перевода
 	bridge.settings(settings);
 	// Выполняем перевод дерева значений в запись JSON
-	ASSERT_TRUE(bridge.encode(value, result));
+	ASSERT_TRUE(bridge.encode(value, result, bridge_t::format_t::JSON));
 	// Выполняем проверку укладки пропущенного значения пустым
 	ASSERT_EQ(result, "{\"blob\":null}");
 }
@@ -378,11 +378,11 @@ TEST(CodecBridge, DecodeFailureClearsResult) {
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод годной записи JSON в дерево значений
-	ASSERT_TRUE(bridge.decode("{\"name\":\"value\",\"count\":17}", value));
+	ASSERT_TRUE(bridge.decode("{\"name\":\"value\",\"count\":17}", value, bridge_t::format_t::JSON));
 	// Выполняем проверку числа полей собранного дерева
 	ASSERT_EQ(value.size(), 2);
 	// Выполняем перевод негодной записи JSON в то же самое дерево
-	ASSERT_FALSE(bridge.decode("{\"name\":", value));
+	ASSERT_FALSE(bridge.decode("{\"name\":", value, bridge_t::format_t::JSON));
 	/**
 	 * Выполняем проверку ОЧИСТКИ дерева при отказе разбора.
 	 *
@@ -395,4 +395,349 @@ TEST(CodecBridge, DecodeFailureClearsResult) {
 	ASSERT_FALSE(value.at("name").valid());
 	// Выполняем проверку кода отказа перевода
 	ASSERT_EQ(bridge.error(), bridge_t::error_t::PARSING);
+}
+
+/**
+ * @brief Проверка перевода записи YAML в дерево контейнера ABC
+ *
+ * @details Проверка ведёт обход общим ходом документа: `keys(путь)` выдаёт
+ *          звенья, `at(путь)` достигает потомка. Отдельно проверяется имя с
+ *          косой чертой: кодек выдаёт его звеном `a~1b` по RFC 6901, а в дереве
+ *          ABC оно обязано лежать исходным именем `a/b`. Смешение этих двух
+ *          видов теряет такие имена молча, потому имя это здесь и стоит
+ *
+ */
+TEST(CodecBridge, DecodeYAML){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&log);
+	// Собираемое дерево значений контейнера ABC
+	abc::value_t value;
+	// Разбираемая запись настроек
+	const string text =
+		"name: значение\n"
+		"count: 17\n"
+		"flag: true\n"
+		"empty: null\n"
+		"list:\n"
+		"  - 1\n"
+		"  - 2\n"
+		"nested:\n"
+		"  port: 8080\n"
+		"\"a/b\": косая\n";
+	// Выполняем перевод записи YAML в дерево
+	ASSERT_TRUE(bridge.decode(text, value, bridge_t::format_t::YAML));
+	// Выполняем проверку вида собранного дерева
+	ASSERT_TRUE(value.is(abc::type_t::MAP));
+	// Выполняем проверку последовательности знаков
+	ASSERT_EQ(value["name"].text(), "значение");
+	// Выполняем проверку логического значения
+	ASSERT_TRUE(value["flag"].is(abc::type_t::BOOL));
+	// Выполняем проверку пустого значения
+	ASSERT_TRUE(value["empty"].is(abc::type_t::NUL));
+	// Выполняем проверку перечня значений
+	ASSERT_TRUE(value["list"].is(abc::type_t::ARRAY));
+	// Выполняем проверку размера перечня значений
+	ASSERT_EQ(value["list"].size(), 2u);
+	// Выполняем проверку вложенного отображения
+	ASSERT_TRUE(value["nested"].is(abc::type_t::MAP));
+	/**
+	 * Выполняем проверку имени с косой чертой
+	 *
+	 * @note Имя это ключевое: кодек выдаёт его звеном `a~1b`, и мост обязан
+	 *       снять отменяющую запись прежде укладки. Приняв звено именем, он
+	 *       положил бы в дерево `a~1b` - и проверка эта провалилась бы
+	 */
+	ASSERT_TRUE(value.contains("a/b")) << "имя с косой чертой потеряно: отменяющая запись RFC 6901 не снята";
+}
+
+/**
+ * @brief Проверка перевода записи XML в дерево контейнера ABC
+ *
+ * @details Своей системы видов у разметки нет, потому простое значение
+ *          опознаётся ПУСТЫМ перечнем звеньев, а не числом потомков узла:
+ *          примечание разрывает содержимое на две части, а раздел дословного
+ *          текста узлом разметки не является - счёт в обоих случаях лжёт.
+ *          Оба этих случая здесь и стоят
+ *
+ */
+TEST(CodecBridge, DecodeXML){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&log);
+	// Собираемое дерево значений контейнера ABC
+	abc::value_t value;
+	// Разбираемая запись настроек
+	const string text =
+		"<config>"
+			"<name>значение</name>"
+			"<split>перед<!-- примечание -->после</split>"
+			"<verbatim><![CDATA[дословно]]></verbatim>"
+			"<net><port>8080</port></net>"
+		"</config>";
+	// Выполняем перевод записи XML в дерево значений
+	ASSERT_TRUE(bridge.decode(text, value, bridge_t::format_t::XML));
+	// Выполняем проверку заведения корня отображением
+	ASSERT_TRUE(value.is(abc::type_t::MAP));
+	/**
+	 * Выполняем проверку наличия корневого узла разметки
+	 *
+	 * @warning Утверждение это стоит ПЕРВЫМ и снимать его нельзя: у записи XML
+	 *          есть корневой узел документа, и содержимое лежит под ним, а не
+	 *          прямо в корне дерева. Прежняя редакция проверки спрашивала узлы
+	 *          прямо у корня, и утверждения вида «не отображение» проходили
+	 *          ВПУСТУЮ - несуществующий узел вместилищем тоже не является.
+	 *          Проверка была зелёной, не проверяя ничего
+	 */
+	ASSERT_TRUE(value.contains("config")) << "корневой узел разметки не найден";
+	// Извлекаем содержимое корневого узла разметки
+	const abc::value_t & root = value["config"];
+	// Выполняем проверку заведения корневого узла отображением
+	ASSERT_TRUE(root.is(abc::type_t::MAP));
+	// Выполняем проверку собранного текста простого узла
+	ASSERT_TRUE(root.contains("name"));
+	/**
+	 * Выполняем проверку значения простого узла
+	 *
+	 * @warning Утверждение это ловит настоящую ошибку и снимать его нельзя: ход
+	 *          `keys()` у разметки выдаёт звеном и ТЕКСТОВОЕ содержимое узла -
+	 *          у записи `<name>значение</name>` он отдаёт звено «0». Мост,
+	 *          считающий простым значением узел с пустым перечнем звеньев,
+	 *          уложил бы сюда отображение со звеном «0» вместо текста, и
+	 *          проверка на вид узла этого НЕ поймала бы
+	 */
+	ASSERT_EQ(root["name"].text(), "значение");
+	/**
+	 * Выполняем проверку узла, разорванного примечанием
+	 *
+	 * @note Узел `split` несёт текст, примечание и снова текст. Узлов разметки
+	 *       внутри нет, потому он ОБЯЗАН лечь простым значением, а не
+	 *       отображением. Опознавай мост простое значение числом потомков -
+	 *       здесь их три, и узел лёг бы вместилищем
+	 */
+	ASSERT_TRUE(root.contains("split"));
+	ASSERT_FALSE(root["split"].is(abc::type_t::MAP)) << "узел, разорванный примечанием, принят вместилищем: признак взят числом потомков вместо перечня звеньев";
+	/**
+	 * Выполняем проверку узла с разделом дословного текста
+	 *
+	 * @note Раздел дословного текста узлом разметки не является, и узел с ним
+	 *       внутри тоже обязан лечь простым значением
+	 */
+	ASSERT_TRUE(root.contains("verbatim"));
+	ASSERT_FALSE(root["verbatim"].is(abc::type_t::MAP)) << "узел с разделом дословного текста принят вместилищем";
+	// Выполняем проверку вложенного узла разметки
+	ASSERT_TRUE(root.contains("net"));
+	ASSERT_TRUE(root["net"].is(abc::type_t::MAP));
+	// Выполняем проверку простого значения вложенного узла
+	ASSERT_EQ(root["net"]["port"].text(), "8080");
+}
+
+/**
+ * @brief Проверка перевода записи TOML в дерево контейнера ABC
+ *
+ * @details Проверка ведёт обход общим ходом `keys(путь)`, а не прежним плоским
+ *          перечнем дочерних имён: на наборе одноимённых таблиц `[[fruit]]`
+ *          прежний законно молчит, ибо набор таблицею не является, а общий
+ *          выдаёт там ЧИСЛОВЫЕ звенья. Ходи мост прежним - набор терялся бы
+ *
+ */
+TEST(CodecBridge, DecodeTOML){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&log);
+	// Собираемое дерево значений контейнера ABC
+	abc::value_t value;
+	/**
+	 * Разбираемая запись настроек
+	 *
+	 * @note Имя с кириллицей записано В КАВЫЧКАХ намеренно: голое имя ключа по
+	 *       стандарту TOML только ASCII, и запись без кавычек кодек отвергает
+	 *       верно. Имя с косой чертой стоит здесь ради отменяющей записи
+	 */
+	const string text =
+		"top = 1\n"
+		"[srv]\n"
+		"host = \"localhost\"\n"
+		"port = 8080\n"
+		"list = [1, 2, 3]\n"
+		"\"имя\" = \"значение\"\n"
+		"\"a/b\" = \"косая\"\n"
+		"[[fruit]]\n"
+		"name = \"apple\"\n"
+		"[[fruit]]\n"
+		"name = \"pear\"\n";
+	// Выполняем перевод записи TOML в дерево значений
+	ASSERT_TRUE(bridge.decode(text, value, bridge_t::format_t::TOML));
+	// Выполняем проверку заведения корня отображением
+	ASSERT_TRUE(value.is(abc::type_t::MAP));
+	// Выполняем проверку значения верхнего уровня
+	ASSERT_TRUE(value.contains("top"));
+	// Выполняем проверку заведения таблицы отображением
+	ASSERT_TRUE(value.contains("srv"));
+	ASSERT_TRUE(value["srv"].is(abc::type_t::MAP));
+	// Выполняем проверку простого значения таблицы
+	ASSERT_EQ(value["srv"]["host"].text(), "localhost");
+	// Выполняем проверку перечня значений
+	ASSERT_TRUE(value["srv"]["list"].is(abc::type_t::ARRAY));
+	ASSERT_EQ(value["srv"]["list"].size(), 3u);
+	// Выполняем проверку имени с кириллицей
+	ASSERT_TRUE(value["srv"].contains("имя"));
+	/**
+	 * Выполняем проверку имени с косой чертой
+	 *
+	 * @note Кодек выдаёт его звеном `a~1b`, и мост обязан снять отменяющую
+	 *       запись прежде укладки. Приняв звено именем, он положил бы `a~1b`
+	 */
+	ASSERT_TRUE(value["srv"].contains("a/b")) << "имя с косой чертой потеряно: отменяющая запись RFC 6901 не снята";
+	/**
+	 * Выполняем проверку набора одноимённых таблиц
+	 *
+	 * @warning Утверждение это ловит подмену общего хода прежним: прежний
+	 *          перечень дочерних имён на наборе таблиц выдаёт ПУСТО, и набор
+	 *          лёг бы пустым отображением, а не перечнем из двух таблиц
+	 */
+	ASSERT_TRUE(value.contains("fruit"));
+	ASSERT_TRUE(value["fruit"].is(abc::type_t::ARRAY)) << "набор одноимённых таблиц не лёг перечнем: обход идёт прежним ходом вместо общего";
+	ASSERT_EQ(value["fruit"].size(), 2u);
+	// Выполняем проверку содержимого таблиц набора
+	ASSERT_EQ(value["fruit"][0]["name"].text(), "apple");
+	ASSERT_EQ(value["fruit"][1]["name"].text(), "pear");
+}
+
+/**
+ * @brief Проверка перевода записи INI в дерево контейнера ABC
+ *
+ * @details Обход ведётся родным ходом кодека - перечнем разделов и перечнем
+ *          свойств раздела, - ибо общего вида `keys(путь)` у этого кодека
+ *          покуда нет: имя занято прежним плоским ходом с иным обещанием
+ *
+ */
+TEST(CodecBridge, DecodeINI){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&log);
+	// Собираемое дерево значений контейнера ABC
+	abc::value_t value;
+	/**
+	 * Разбираемая запись настроек
+	 *
+	 * @note Свойство `port` объявлено ДВАЖДЫ намеренно: наречия Git и systemd
+	 *       задают перечень значений именно повтором свойства
+	 */
+	const string text =
+		"top = 1\n"
+		"[net]\n"
+		"host = localhost\n"
+		"port = 80\n"
+		"port = 443\n";
+	// Выполняем перевод записи INI в дерево значений
+	ASSERT_TRUE(bridge.decode(text, value, bridge_t::format_t::INI));
+	// Выполняем проверку заведения корня отображением
+	ASSERT_TRUE(value.is(abc::type_t::MAP));
+	/**
+	 * Выполняем проверку свойства верхнего уровня
+	 *
+	 * @warning Свойства до первого объявления раздела ложатся ПРЯМО В КОРЕНЬ, а
+	 *          не в поле с пустым именем: раздела этого в тексте настроек нет
+	 */
+	ASSERT_TRUE(value.contains("top")) << "свойство верхнего уровня не легло в корень дерева";
+	// Выполняем проверку заведения раздела отображением
+	ASSERT_TRUE(value.contains("net"));
+	ASSERT_TRUE(value["net"].is(abc::type_t::MAP));
+	// Выполняем проверку простого значения раздела
+	ASSERT_EQ(value["net"]["host"].text(), "localhost");
+	/**
+	 * Выполняем проверку повторённого свойства
+	 *
+	 * @warning Утверждение это ловит подмену хода `values()` ходом `get()`:
+	 *          `get()` отдаёт ДЕЙСТВУЮЩЕЕ объявление по политике повторов, то
+	 *          есть при умолчании одно лишь «443», и второе значение пропало бы
+	 *          МОЛЧА - отказа не было бы, а проверка на наличие свойства прошла
+	 */
+	ASSERT_TRUE(value["net"].contains("port"));
+	ASSERT_TRUE(value["net"]["port"].is(abc::type_t::ARRAY)) << "повтор свойства не лёг перечнем: обход идёт ходом get() вместо values()";
+	ASSERT_EQ(value["net"]["port"].size(), 2u);
+	// Выполняем проверку обоих объявлений повторённого свойства
+	ASSERT_EQ(value["net"]["port"][0].text(), "80");
+	ASSERT_EQ(value["net"]["port"][1].text(), "443");
+}
+
+/**
+ * @brief Проверка кругового перевода дерева через запись YAML
+ *
+ * @details Сличаются ДЕРЕВЬЯ, а не тексты: запись YAML одно и то же значение
+ *          выражает несколькими способами, и посимвольное сличение доказывало
+ *          бы устойчивость письма, а не сохранность содержимого. Круг идёт
+ *          дважды: первый проход приводит запись к виду кодека, и лишь со
+ *          ВТОРОГО прохода сличение доказывает неподвижность
+ *
+ */
+TEST(CodecBridge, RoundTripYAML){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&log);
+	// Собираемое дерево значений контейнера ABC
+	abc::value_t first;
+	/**
+	 * Разбираемая запись настроек
+	 *
+	 * @note Имя с косой чертой стоит здесь ради обеих отменяющих записей разом:
+	 *       при разборе она снимается, при записи налагается вновь. Забудь мост
+	 *       наложение - имя разошлось бы на два звена пути и легло бы вложенным
+	 *       отображением вместо одного поля
+	 */
+	const string text =
+		"name: значение\n"
+		"count: 17\n"
+		"flag: true\n"
+		"list:\n"
+		"  - 1\n"
+		"  - 2\n"
+		"nested:\n"
+		"  port: 8080\n";
+	// Выполняем перевод записи YAML в дерево значений
+	ASSERT_TRUE(bridge.decode(text, first, bridge_t::format_t::YAML));
+	// Собираемая запись первого прохода
+	string once = "";
+	// Выполняем перевод дерева значений в запись YAML
+	// ЗАМЕР: прямая запись в пустой документ
+	{
+		yaml::document_t d(&log);
+		std::cout << "set(/name): " << d.set("/name", string_view("x")) << std::endl;
+		std::cout << "set(/n/p):  " << d.set("/n/p", string_view("y")) << std::endl;
+		std::cout << "dump: [" << d.dump() << "]" << std::endl;
+	}
+	if(!bridge.encode(first, once, bridge_t::format_t::YAML))
+		std::cout << "ОТКАЗ моста, код: " << static_cast <uint32_t> (bridge.error()) << " собрано: [" << once << "]" << std::endl;
+	ASSERT_TRUE(bridge.encode(first, once, bridge_t::format_t::YAML)) << "перевод дерева в запись YAML отвечен отказом";
+	// Собираемое дерево значений второго прохода
+	abc::value_t second;
+	// Выполняем перевод собранной записи обратно в дерево значений
+	ASSERT_TRUE(bridge.decode(once, second, bridge_t::format_t::YAML)) << "собранная запись YAML разбору не поддалась: " << once;
+	// Выполняем проверку сохранности имени с косой чертой
+	ASSERT_TRUE(second.contains("a/b")) << "имя с косой чертой потеряно при записи: отменяющая запись не наложена; собрано: " << once;
+	// Выполняем проверку сохранности вложенного отображения
+	ASSERT_TRUE(second.contains("nested"));
+	ASSERT_EQ(second["nested"]["port"].text(), "8080");
+	// Выполняем проверку сохранности перечня значений
+	ASSERT_TRUE(second.contains("list"));
+	ASSERT_TRUE(second["list"].is(abc::type_t::ARRAY)) << "перечень значений не сохранился; собрано: " << once;
+	ASSERT_EQ(second["list"].size(), 2u);
+	// Выполняем проверку сохранности последовательности знаков
+	ASSERT_EQ(second["name"].text(), "значение");
 }

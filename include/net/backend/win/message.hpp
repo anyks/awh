@@ -367,7 +367,7 @@ namespace awh {
 			 *
 			 * @param sock  сокет, из которого ведётся приём
 			 * @param msg   описание принимаемого сообщения
-			 * @param flags признаки приёма, системой не употребляемые
+			 * @param flags признаки приёма: поддерживается лишь нулевой набор
 			 * @param error код отказа системы, если отказ случился
 			 * @return      число принятых октетов, либо -1 при отказе
 			 *
@@ -381,7 +381,7 @@ namespace awh {
 			 *          remembered: its address is a common one for the whole library of the sockets
 			 * @param sock  socket the reception is performed from
 			 * @param msg   description of the received message
-			 * @param flags signs of the reception, not used by the system
+			 * @param flags reception flags: only an empty set is supported
 			 * @param error code of the refusal of the system, if a refusal has happened
 			 * @return      number of the received octets, or -1 at a refusal
 			 *

@@ -1508,6 +1508,32 @@ namespace awh {
 					bool graft(const string & path, const ::awh::codec::ini::Value & value) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод установки пустого значения по пути к нему
+					 *
+					 * @details Ход этот общий у кодеков рамки. Пустое значение от снятия свойства
+					 * отлично: свойство остаётся налицо, а значения при нём нет
+					 *
+					 * @note Пустое значение у настроек законно: запись «ключ =» разбирается
+					 *       свойством с пустым значением и переписывается обратно ею же. У
+					 *       кодека TOML хода этого нет вовсе, и расхождение то законное -
+					 *       запись «a = » отвергается там самим стандартом, а пустая строка
+					 *       есть значение иное, нежели его отсутствие
+					 *
+					 * @param path путь к устанавливаемому свойству
+					 * @return     признак успешной установки значения
+					 *
+					 * \~english
+					 * @brief Method of the setting of an empty value by the path to it
+					 * @details The empty value differs from the removal of a property: the property remains
+					 * present, while there is no value at it
+					 * @param path path to the property being set
+					 * @return     sign of the successful setting of the value
+					 *
+					 * \~
+					 */
+					bool reset(const string & path) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод долива значения к перечню значений свойства
 					 *
 					 * @details Установка значения правит объявление, уже имеющееся в

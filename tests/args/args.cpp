@@ -513,7 +513,7 @@ TEST(ArgsArgs, Config) {
 	// Создаём объект сбора параметров запуска
 	args_t args(&fmk, &log);
 	// Выполняем разбор записи настроек кодеком
-	ASSERT_TRUE(args.config("{\"name\":\"value\",\"net\":{\"port\":8080,\"host\":\"localhost\"},\"list\":[1,2,3]}"));
+	ASSERT_TRUE(args.config("{\"name\":\"value\",\"net\":{\"port\":8080,\"host\":\"localhost\"},\"list\":[1,2,3]}", codec::Bridge::format_t::JSON));
 	// Выполняем проверку укладки значения записи настроек
 	ASSERT_EQ(args.get <string> ("name"), "value");
 	// Выполняем проверку укладки значения по вложенному пути
@@ -552,7 +552,7 @@ TEST(ArgsArgs, ConfigSeniority) {
 	 * Выполняем разбор записи настроек ПОСЛЕ набора запуска: значение младшего
 	 * источника поверх старшего не ложится, в каком бы порядке источники ни подавались
 	 */
-	ASSERT_TRUE(args.config("{\"port\":8080,\"timeout\":60}"));
+	ASSERT_TRUE(args.config("{\"port\":8080,\"timeout\":60}", codec::Bridge::format_t::JSON));
 	// Выполняем проверку сохранности значения, поданного набором запуска
 	ASSERT_EQ(args.get <uint16_t> ("port"), 443);
 	// Выполняем проверку перекрытия значения по умолчанию записью настроек
@@ -573,7 +573,7 @@ TEST(ArgsArgs, ConfigFailure) {
 	// Создаём объект сбора параметров запуска
 	args_t args(&fmk, &log);
 	// Выполняем разбор негодной записи настроек кодеком
-	ASSERT_FALSE(args.config("{\"name\":"));
+	ASSERT_FALSE(args.config("{\"name\":", codec::Bridge::format_t::JSON));
 	// Выполняем проверку числа отказов разбора
 	ASSERT_EQ(args.errors().size(), 1);
 	// Выполняем проверку кода отказа разбора
@@ -604,13 +604,13 @@ TEST(ArgsArgs, Dump) {
 	// Собираемая запись настроек
 	string text = "";
 	// Выполняем выдачу дерева настроек записью кодека
-	ASSERT_TRUE(args.dump(text));
+	ASSERT_TRUE(args.dump(text, codec::Bridge::format_t::JSON));
 	// Выполняем проверку собранной записи настроек
 	ASSERT_EQ(text, "{\"name\":\"value\",\"net\":{\"port\":8080},\"verbose\":true}");
 	// Создаём второй объект сбора параметров запуска
 	args_t second(&fmk, &log);
 	// Выполняем разбор выданной записи настроек
-	ASSERT_TRUE(second.config(text));
+	ASSERT_TRUE(second.config(text, codec::Bridge::format_t::JSON));
 	/**
 	 * Выполняем проверку ОБРАТИМОСТИ выдачи: настройки, выданные записью кодека и
 	 * прочитанные обратно, должны совпасть с исходными
@@ -638,11 +638,11 @@ TEST(ArgsArgs, Filesystem) {
 	// Получаем путь к файлу настроек
 	const string filename = "./args-settings.json";
 	// Выполняем запись дерева настроек в файл
-	ASSERT_TRUE(args.save(filename));
+	ASSERT_TRUE(args.save(filename, codec::Bridge::format_t::JSON));
 	// Создаём второй объект сбора параметров запуска
 	args_t second(&fmk, &log);
 	// Выполняем чтение записанного файла настроек
-	ASSERT_TRUE(second.filename(filename));
+	ASSERT_TRUE(second.filename(filename, codec::Bridge::format_t::JSON));
 	// Выполняем проверку прочитанного значения настроек
 	ASSERT_EQ(second.get <string> ("name"), "value");
 	// Выполняем проверку прочитанного значения по вложенному пути
@@ -654,7 +654,7 @@ TEST(ArgsArgs, Filesystem) {
 	// Создаём третий объект сбора параметров запуска
 	args_t third(&fmk, &log);
 	// Выполняем проверку отказа чтения снесённого файла настроек
-	ASSERT_FALSE(third.filename(filename));
+	ASSERT_FALSE(third.filename(filename, codec::Bridge::format_t::JSON));
 	// Выполняем проверку кода отказа чтения файла настроек
 	ASSERT_EQ(third.errors().at(0).first, error_t::FILESYSTEM);
 }

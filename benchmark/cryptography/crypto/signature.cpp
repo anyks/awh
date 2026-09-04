@@ -67,19 +67,20 @@ namespace {
 	/**
 	 * @brief Пороги количества операций в секунду
 	 *
-	 * @details Пороги сняты выпускной сборкой по самому медленному из восьми стендов
+	 * @details Пороги сняты НАСТОЯЩЕЙ выпускной сборкой проекта - со своим
+	 *          BoringSSL, а не с системным OpenSSL, - по дну девяти систем
 	 *          с двукратным запасом к нему. Запас берётся к стенду, а не к рабочей
 	 *          машине: она быстрее самого медленного стенда впятеро и более, и порог,
 	 *          посчитанный от неё, валил бы прогон на стенде при полностью исправном
 	 *          модуле
 	 *
 	 */
-	static constexpr double ED25519_SIGN_THRESHOLD = 8000.0;
-	static constexpr double ED25519_VERIFY_THRESHOLD = 3200.0;
-	static constexpr double ECDSA_SIGN_THRESHOLD = 5500.0;
-	static constexpr double ECDSA_VERIFY_THRESHOLD = 4200.0;
-	static constexpr double RSA_SIGN_THRESHOLD = 450.0;
-	static constexpr double RSA_VERIFY_THRESHOLD = 10000.0;
+	static constexpr double ED25519_SIGN_THRESHOLD = 14000.0;
+	static constexpr double ED25519_VERIFY_THRESHOLD = 6400.0;
+	static constexpr double ECDSA_SIGN_THRESHOLD = 15000.0;
+	static constexpr double ECDSA_VERIFY_THRESHOLD = 5300.0;
+	static constexpr double RSA_SIGN_THRESHOLD = 470.0;
+	static constexpr double RSA_VERIFY_THRESHOLD = 15000.0;
 	/**
 	 * Пороги схемы ГОСТ Р 34.10-2012
 	 *
@@ -96,14 +97,14 @@ namespace {
 	 *          подняло его ещё вдвое (5б.18); порог стоит стражем обеих правок. Самый
 	 *          медленный стенд - Solaris, 71,9 МБ/с против 209 у рабочей машины
 	 */
-	static constexpr double STREEBOG_THRESHOLD = 35.0;
+	static constexpr double STREEBOG_THRESHOLD = 34.0;
 	/**
 	 * Пороги схемы на 256 разрядов взяты по самому медленному стенду - Solaris, где
 	 * схема даёт 1900 подписей в секунду, - а не по рабочей машине с её 8500: порог,
 	 * посчитанный от машины, валил бы замер на стенде при исправном модуле (5б.13)
 	 */
-	static constexpr double GOST_SIGN_THRESHOLD = 950.0;
-	static constexpr double GOST_VERIFY_THRESHOLD = 250.0;
+	static constexpr double GOST_SIGN_THRESHOLD = 1100.0;
+	static constexpr double GOST_VERIFY_THRESHOLD = 260.0;
 	/**
 	 * Пороги схемы на 512 разрядов
 	 *
@@ -113,7 +114,7 @@ namespace {
 	 *          где схема даёт 325 подписей и 77 проверок в секунду
 	 */
 	static constexpr double GOST512_SIGN_THRESHOLD = 160.0;
-	static constexpr double GOST512_VERIFY_THRESHOLD = 38.0;
+	static constexpr double GOST512_VERIFY_THRESHOLD = 39.0;
 	/**
 	 * Порог отпечатка держится не машиной, а разновидностью библиотеки криптографии:
 	 * каноническая запись открытого ключа вырабатывается вызовом i2d_PUBKEY, и у
@@ -121,7 +122,7 @@ namespace {
 	 * (OpenSSL 3.6) даёт 5,9 миллиона отпечатков в секунду, стенды с OpenSSL 3.0 -
 	 * от семи тысяч, то есть в восемьсот раз меньше при разнице машин в восемь раз
 	 */
-	static constexpr double FINGERPRINT_THRESHOLD = 3600.0;
+	static constexpr double FINGERPRINT_THRESHOLD = 720000.0;
 	/**
 	 * @brief Функция получения объекта криптографии со связкой ключей подписи
 	 *

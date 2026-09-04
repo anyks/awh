@@ -607,10 +607,37 @@ namespace {
 					char buffer[64];
 					// Выполняем перевод названия устройства в узкую кодировку
 					const int32_t count = ::WideCharToMultiByte(CP_UTF8, 0, guid, -1, buffer, static_cast <int32_t> (sizeof(buffer)), nullptr, nullptr);
-					// Если название устройства переведено
-					if(count > 0)
-						// Запоминаем название занятого устройства
-						name.assign(buffer, static_cast <size_t> (count - 1));
+					/**
+					 * Если название устройства переведено - запоминаем его
+					 *
+					 * @warning Обращение объявлено `noexcept`, а присвоение строки
+					 *          ВПРАВЕ БРОСИТЬ. Устройство к этому времени уже занято, и
+					 *          бросок из `noexcept` не размотал бы ничего, а позвал
+					 *          `std::terminate`: приложение легло бы целиком, притом
+					 *          дескриптор устройства и две ветви настроек остались бы
+					 *          у системы незакрытыми
+					 *
+					 * @note Отказ здесь равняется незанятому устройству: дескриптор
+					 *       освобождается, и перебор идёт к следующему
+					 *
+					 */
+					if(count > 0){
+						/**
+						 * Выполняем перехват ошибок
+						 */
+						try {
+							// Запоминаем название занятого устройства
+							name.assign(buffer, static_cast <size_t> (count - 1));
+						/**
+						 * Если возникает ошибка
+						 */
+						} catch(const std::exception &) {
+							// Выполняем освобождение занятого устройства
+							::CloseHandle(result);
+							// Сбрасываем дескриптор занятого устройства
+							result = INVALID_HANDLE_VALUE;
+						}
+					}
 				}
 			}
 			// Выполняем закрытие записи устройства
@@ -700,6 +727,64 @@ namespace {
 	 * @return      признак принятой системой подачи
 	 *
 	 */
+	/**
+	 * @brief Функция отката заведённого устройства
+	 *
+	 * @details Освобождает всё, что успело завестись у записи, и приводит её к
+	 *          пустому виду. Порядок повторяет устранение: сеанс прежде устройства,
+	 *          дескриптор файла прежде события
+	 *
+	 * @note Всякое поле разбирается на пустоту порознь: откат зовётся с записи,
+	 *       заведённой НАПОЛОВИНУ, и незаведённое поле стоит в ней умолчанием
+	 *
+	 * @param entry откатываемая запись устройства
+	 * @param log   объект для работы с логами
+	 *
+	 */
+	static void __awh_unwind__(entry_t & entry, const awh::log_t * log) noexcept {
+		/**
+		 * Определяем драйвер, каким устройство заводилось
+		 */
+		switch(static_cast <uint8_t> (entry.driver)){
+			// Если устройство заводилось драйвером Wintun
+			case static_cast <uint8_t> (awh::win::tunnel::driver_t::WINTUN): {
+				// Выполняем подключение библиотеки драйвера
+				const wintun_t * wintun = ::__awh_wintun__(log);
+				// Если библиотека драйвера подключена
+				if(wintun != nullptr){
+					// Если сеанс обмена заведён - закрываем его
+					if(entry.session != nullptr)
+						// Выполняем закрытие сеанса обмена
+						wintun->end(entry.session);
+					// Если устройство заведено - устраняем его
+					if(entry.adapter != nullptr)
+						// Выполняем устранение заведённого устройства
+						wintun->close(entry.adapter);
+				}
+			} break;
+			// Если устройство заводилось драйвером tap-windows6
+			case static_cast <uint8_t> (awh::win::tunnel::driver_t::TAP): {
+				// Если дескриптор файла устройства занят - освобождаем его
+				if(entry.handle != INVALID_HANDLE_VALUE)
+					// Выполняем освобождение занятого устройства
+					::CloseHandle(entry.handle);
+				// Если событие готовности заведено - закрываем его
+				if(entry.event != nullptr)
+					// Выполняем закрытие события готовности
+					::CloseHandle(entry.event);
+			} break;
+		}
+		// Сбрасываем описатель устройства Wintun
+		entry.adapter = nullptr;
+		// Сбрасываем описатель сеанса Wintun
+		entry.session = nullptr;
+		// Сбрасываем дескриптор файла устройства
+		entry.handle = INVALID_HANDLE_VALUE;
+		// Сбрасываем событие готовности к чтению
+		entry.event = nullptr;
+		// Сбрасываем драйвер, каким устройство заводилось
+		entry.driver = awh::win::tunnel::driver_t::NONE;
+	}
 	static bool __awh_arm__(entry_t & entry) noexcept {
 		// Если приём уже подан либо устройство к приёму не готово
 		if(entry.pending || (entry.handle == INVALID_HANDLE_VALUE) || (entry.event == nullptr))
@@ -893,6 +978,14 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 				return net::invalid_socket_t;
 			}
 			/**
+			 * Отмечаем драйвер сразу по заведении устройства
+			 *
+			 * @warning Отметка стояла прежде В КОНЦЕ ветви, а откат ведётся ПО НЕЙ:
+			 *          запись, заведённая наполовину, числилась бы записью без
+			 *          драйвера, и откат не освободил бы у неё ничего
+			 */
+			entry.driver = driver_t::WINTUN;
+			/**
 			 * Объём кольца берётся наибольшим из допустимых
 			 *
 			 * @note Кольцо это - единственное место, где пакеты ждут разбора, и
@@ -915,7 +1008,17 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			// Выполняем получение местного номера заведённого устройства
 			wintun->luid(entry.adapter, &luid);
 			// Запоминаем название заведённого устройства
-			entry.name = ::__awh_name__(luid);
+			try {
+				// Запоминаем название заведённого устройства
+				entry.name = ::__awh_name__(luid);
+			} catch(const std::exception & error) {
+				// Выводим в журнал сообщение о нехватке памяти под заведение устройства
+				log->print("%s: tunnel device could not be created, %s", log_t::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
+				// Выполняем откат заведённого устройства
+				::__awh_unwind__(entry, log);
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			}
 			// Запоминаем событие готовности устройства к чтению
 			entry.event = wintun->event(entry.session);
 			/**
@@ -944,8 +1047,6 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
 			}
-			// Запоминаем драйвер, каким устройство заведено
-			entry.driver = driver_t::WINTUN;
 		} break;
 		// Если устройство заводится драйвером tap-windows6
 		case static_cast <uint8_t> (driver_t::TAP): {
@@ -964,6 +1065,14 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			if(entry.handle == INVALID_HANDLE_VALUE)
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
+			/**
+			 * Отмечаем драйвер сразу по занятии устройства
+			 *
+			 * @warning Отметка стояла прежде В КОНЦЕ ветви, после выделения буфера
+			 *          приёма, а выделение это вправе БРОСИТЬ. Запись тогда числилась
+			 *          бы записью без драйвера, и откат не освободил бы у неё ничего
+			 */
+			entry.driver = driver_t::TAP;
 			// Если перевести устройство в рабочее состояние не удалось
 			if(!::__awh_activate__(entry.handle, (type == event::eth_t::TUN))){
 				// Выводим в журнал сообщение о невозможности перевода устройства
@@ -998,7 +1107,17 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			 *       короткий буфер обрывает приём отказом `ERROR_MORE_DATA`
 			 *
 			 */
-			entry.buffer.resize(0xFFFF, 0);
+			try {
+				// Выделяем место под упреждающий приём пакета
+				entry.buffer.resize(0xFFFF, 0);
+			} catch(const std::exception & error) {
+				// Выводим в журнал сообщение о нехватке памяти под заведение устройства
+				log->print("%s: tunnel device could not be created, %s", log_t::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
+				// Выполняем откат заведённого устройства
+				::__awh_unwind__(entry, log);
+				// Выводим пустой дескриптор
+				return net::invalid_socket_t;
+			}
 			/**
 			 * Запоминаем драйвер, каким устройство заведено
 			 *
@@ -1008,7 +1127,6 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			 *          лежащей в реестре - у выдачи события готовности и у самого приёма
 			 *
 			 */
-			entry.driver = driver_t::TAP;
 		} break;
 		// Если драйвер заведения устройства не определён
 		default: {
@@ -1026,12 +1144,48 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 	const net::socket_t result = reinterpret_cast <net::socket_t> (
 		entry.driver == driver_t::WINTUN ? entry.event : entry.handle
 	);
-	// Запоминаем название заведённого устройства
-	name = entry.name;
-	// Выполняем блокировку реестра заведённых устройств
-	const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем занесение устройства в реестр
-	::__awh_registry__.emplace(result, ::std::move(entry));
+	/**
+	 * Выдача названия и занесение в реестр ведутся под охраной
+	 *
+	 * @warning Обращение объявлено `noexcept`, а обе эти правки ВПРАВЕ БРОСИТЬ:
+	 *          выдача названия копирует строку, занесение выделяет узел набора.
+	 *          Бросок из `noexcept` кладёт всё приложение целиком, притом устройство
+	 *          к этому времени уже заведено у драйвера и осталось бы висеть
+	 *
+	 */
+	try {
+		// Запоминаем название заведённого устройства
+		name = entry.name;
+		// Выполняем блокировку реестра заведённых устройств
+		const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем занесение устройства в реестр
+		::__awh_registry__.emplace(result, ::std::move(entry));
+	} catch(const std::exception & error) {
+		// Выводим в журнал сообщение о невозможности занесения устройства
+		log->print("%s: tunnel device could not be registered, %s", log_t::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
+		// Признак того, что запись в реестр всё же попала
+		bool registered = false;
+		{
+			// Выполняем блокировку реестра заведённых устройств
+			const awh::locker_t <std::shared_mutex> lock(::__awh_mutex__, awh::locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем поиск устройства в реестре
+			registered = (::__awh_registry__.find(result) != ::__awh_registry__.end());
+		}
+		/**
+		 * Откат ведётся лишь по записи, в реестр НЕ попавшей
+		 *
+		 * @warning Занесение забирает запись перемещением, а перемещение описатели
+		 *          лишь КОПИРУЕТ - у покинутой записи они остаются прежними. Брось
+		 *          набор после перемещения, откат по покинутой записи закрыл бы те же
+		 *          описатели ВТОРИЧНО, притом уже принадлежащие записи в реестре
+		 *
+		 */
+		if(!registered)
+			// Выполняем откат заведённого устройства
+			::__awh_unwind__(entry, log);
+		// Выводим пустой дескриптор
+		return net::invalid_socket_t;
+	}
 	// Выводим дескриптор заведённого устройства
 	return result;
 }

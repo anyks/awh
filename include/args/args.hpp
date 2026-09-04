@@ -42,6 +42,7 @@
  */
 #include "lexer.hpp"
 #include "common.hpp"
+#include "schema.hpp"
 #include "../sys/fs.hpp"
 #include "../sys/fmk.hpp"
 #include "../codec/bridge.hpp"
@@ -136,6 +137,8 @@ namespace awh {
 					bool typed;
 					// Признак укладки повторно поданного параметра массивом
 					bool multiple;
+					// Признак отказа на параметр, описанию ожидаемых неизвестный
+					bool strict;
 					// Разделитель звеньев пути в имени параметра
 					char delimiter;
 					/**
@@ -148,11 +151,14 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Settings() noexcept : typed(true), multiple(true), delimiter('.') {}
+					Settings() noexcept : typed(true), multiple(true), strict(false), delimiter('.') {}
 				} settings_t;
 			private:
 				// Настройки сбора параметров запуска
 				settings_t _settings;
+			private:
+				// Описание ожидаемых параметров запуска
+				schema_t _schema;
 			private:
 				// Начало имён переменных окружения, приложению отведённых
 				string _prefix;
@@ -258,6 +264,27 @@ namespace awh {
 				 * \~
 				 */
 				[[nodiscard]] bool merge(const codec::abc::value_t & value, const string & path, const source_t source) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод укладки разобранной лексемы по описанию ожидаемых
+				 *
+				 * @details Без описания лексема ложится как есть. С описанием же имя
+				 * сличается с ожидаемыми, склейка коротких имён разбирается, а потребность
+				 * значения проверяется
+				 *
+				 * @param lexeme разобранная лексема
+				 * @param source источник поданного значения
+				 * @return       результат укладки
+				 *
+				 * \~english
+				 * @brief Method of the laying of a parsed lexeme by the description of the expected
+				 * @param lexeme parsed lexeme
+				 * @param source source of the submitted value
+				 * @return result of the laying
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool apply(const lexeme_t & lexeme, const source_t source) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -378,6 +405,49 @@ namespace awh {
 			public:
 				/**
 				 * \~russian
+				 * @brief Метод извлечения описания ожидаемых параметров запуска
+				 *
+				 * @return описание ожидаемых параметров запуска
+				 *
+				 * \~english
+				 * @brief Method of the extraction of the description of the expected parameters of the launch
+				 * @return description of the expected parameters of the launch
+				 *
+				 * \~
+				 */
+				schema_t & schema() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод сборки справки о применении
+				 *
+				 * @return собранный текст справки
+				 *
+				 * \~english
+				 * @brief Method of the assembling of the help of the usage
+				 * @return assembled text of the help
+				 *
+				 * \~
+				 */
+				string usage() const noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки собранного по описанию ожидаемых
+				 *
+				 * @details Проверяется подача обязательных параметров, а значения по
+				 * умолчанию, описанием заданные, укладываются недостающим
+				 *
+				 * @return результат проверки
+				 *
+				 * \~english
+				 * @brief Method of the check of the assembled by the description of the expected
+				 * @return result of the check
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool verify() noexcept;
+			public:
+				/**
+				 * \~russian
 				 * @brief Метод разбора записи настроек кодеком
 				 *
 				 * @details Разобранное сливается с деревом настроек источником файла:
@@ -393,7 +463,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool config(const string_view text) noexcept;
+				[[nodiscard]] bool config(const string_view text, const codec::Bridge::format_t format) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод чтения файла настроек
@@ -408,7 +478,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool filename(const string & filename) noexcept;
+				[[nodiscard]] bool filename(const string & filename, const codec::Bridge::format_t format) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -424,7 +494,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool dump(string & result) noexcept;
+				[[nodiscard]] bool dump(string & result, const codec::Bridge::format_t format) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод записи дерева настроек в файл
@@ -439,7 +509,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool save(const string & filename) noexcept;
+				[[nodiscard]] bool save(const string & filename, const codec::Bridge::format_t format) noexcept;
 			public:
 				/**
 				 * \~russian

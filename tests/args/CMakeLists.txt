@@ -69,6 +69,7 @@ if (${GTest_FOUND})
             ../main.cpp
             lexer.cpp
             args.cpp
+            schema.cpp
         )
 
         # Библиотеки GTest для линковки

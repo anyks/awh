@@ -212,16 +212,41 @@ namespace awh {
 						 * Наибольшая допустимая глубина вложенности значений
 						 *
 						 * @note Считается вложенностью перечней и встроенных таблиц друг в
-						 * друга. Ноль запрещает вложенные значения вовсе, оставляя простые
+						 * друга. Ноль значит «без предела» - уклад этот один у всех кодеков рамки
+						 *
+						 * @warning Ноль прежде ЗАПРЕЩАЛ вложенность вовсе, и уклад тот расходился с
+						 *          прочими кодеками: настройка, перенесённая с одного кодека на
+						 *          другой, срабатывала наоборот и молча. Запрет получил своё
+						 *          выражение - признак `nesting`, - ибо одним числом две разные мысли
+						 *          выразить нельзя, не отняв одну из них
+						 *
+						 * @note Ноль огранивается потолком `MAX_DEPTH` перед разбором наравне с числом
+						 *       завышенным: разбор вложенности ведётся стопою вызовов
 						 *
 						 * \~english
 						 * Largest admissible depth of the nesting of the values
 						 * @note Counted by the nesting of the arrays and of the inline tables into one
-						 * another. Zero prohibits the nested values altogether, leaving the simple ones
+						 * another. Zero means «without a limit» — this convention is one and the same for all
+						 * the codecs of the framework
 						 *
 						 * \~
 						 */
 						uint32_t maxDepth;
+						/**
+						 * \~russian
+						 * Признак дозволения вложенных значений
+						 *
+						 * @details Снятый признак отвергает всякий перечень значений да встроенную
+						 * таблицу, оставляя значения простые. Прежде мысль эта выражалась нулём у
+						 * `maxDepth`, а ноль ныне значит «без предела» у всех кодеков рамки
+						 *
+						 * \~english
+						 * Sign of the permission of the nested values
+						 * @details A cleared sign rejects every array and inline table, leaving the simple values
+						 *
+						 * \~
+						 */
+						bool nesting;
 						// Наибольшее допустимое количество составных частей имени ключа, ноль - без предела
 						uint32_t maxParts;
 						/**

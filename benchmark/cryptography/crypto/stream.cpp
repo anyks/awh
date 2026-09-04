@@ -66,22 +66,23 @@ namespace {
 	/**
 	 * @brief Пороги пропускной способности в октетах в секунду
 	 *
-	 * @details Пороги сняты выпускной сборкой по самому медленному из восьми стендов
+	 * @details Пороги сняты НАСТОЯЩЕЙ выпускной сборкой проекта - со своим
+	 *          BoringSSL, а не с системным OpenSSL, - по дну девяти систем
 	 *          с двукратным запасом к нему: они ловят регрессию в разы, а не колебания
 	 *          планировщика операционной системы и не разницу самих машин. Отладочная
 	 *          сборка мерой не служит - на потоковой расшифровке она врёт на порядок
 	 *
 	 */
-	static constexpr double ENCODE_CHUNK_THRESHOLD = 36000000.0;
-	static constexpr double ENCODE_BULK_THRESHOLD = 38000000.0;
-	static constexpr double DECODE_CHUNK_THRESHOLD = 36000000.0;
-	static constexpr double DECODE_BULK_THRESHOLD = 37000000.0;
+	static constexpr double ENCODE_CHUNK_THRESHOLD = 150000000.0;
+	static constexpr double ENCODE_BULK_THRESHOLD = 170000000.0;
+	static constexpr double DECODE_CHUNK_THRESHOLD = 160000000.0;
+	static constexpr double DECODE_BULK_THRESHOLD = 170000000.0;
 	/**
 	 * @brief Пороги количества операций в секунду
 	 *
 	 */
-	static constexpr double CYCLE_THRESHOLD = 40000.0;
-	static constexpr double DERIVE_THRESHOLD = 4.0;
+	static constexpr double CYCLE_THRESHOLD = 380000.0;
+	static constexpr double DERIVE_THRESHOLD = 9.0;
 
 	/**
 	 * @brief Функция прогона потока шифрования порциями указанного размера

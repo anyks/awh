@@ -113,6 +113,14 @@ const char * awh::args::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILESYSTEM):
 			// Выводим описание кода ошибки разбора
 			return "settings file is unreadable";
+		// Если обязательный параметр описания не подан вовсе
+		case static_cast <uint8_t> (error_t::REQUIRED):
+			// Выводим описание кода ошибки разбора
+			return "required parameter is missing";
+		// Если склейка коротких имён содержит имя, описанию неизвестное
+		case static_cast <uint8_t> (error_t::CLUSTER):
+			// Выводим описание кода ошибки разбора
+			return "unknown short name in a cluster";
 	}
 	// Выводим общее описание кода ошибки, отведённого не имеющего
 	return "unknown error";
