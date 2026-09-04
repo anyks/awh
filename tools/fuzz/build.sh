@@ -399,6 +399,14 @@ case "$(uname -s)" in
 	#          нехватки не видно, оттого дефект и не всплывал до 31.08.2026
 	##
 	NetBSD|OpenBSD) SYSTEM_LIBS="-lexecinfo" ;;
+	##
+	# @warning У DragonFly «pthread_create» лежит в ОТДЕЛЬНОЙ библиотеке, а не в libc,
+	#          и собиратель из портов сам её не подключает: сборка проходит целиком и
+	#          валится лишь на связывании - «undefined reference to pthread_create» из
+	#          «std::thread». У FreeBSD, родителя системы, нехватки не видно, оттого
+	#          довод и не был нужен до 04.09.2026
+	##
+	DragonFly) SYSTEM_LIBS="-pthread -lexecinfo" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
