@@ -1740,6 +1740,15 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с контейнером ABC
     option(CMAKE_BUILD_CODEC_ABC_APP_SAMPLE "Build ABC codec app sample" ON)
 
+    # Устанавливаем имя приложения потокового чтения записей CEF
+    SET(CODEC_APP_CEF_READER_NAME codec-cef-reader)
+    # Устанавливаем имя приложения работы с деревом события CEF
+    SET(CODEC_APP_CEF_DOCUMENT_NAME codec-cef-document)
+    # Устанавливаем имя приложения сборки записи CEF
+    SET(CODEC_APP_CEF_WRITER_NAME codec-cef-writer)
+    # Указываем что нужно собрать приложение работы с контейнером CEF
+    option(CMAKE_BUILD_CODEC_CEF_APP_SAMPLE "Build CEF codec app sample" ON)
+
     # Устанавливаем имя приложения потокового чтения текста документа JSON
     SET(CODEC_APP_JSON_READER_NAME codec-json-reader)
     # Устанавливаем имя приложения работы с деревом документа JSON
@@ -2551,6 +2560,22 @@ if (${CMAKE_BUILD_SAMPLES})
     endif (${CMAKE_BUILD_CODEC_ABC_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с контейнером JSON
+    # Если нужно собрать семплы для работы с контейнером CEF
+    if (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CEF Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения записей
+        add_sample(${CODEC_APP_CEF_READER_NAME} sample/codec/cef-reader.cpp codec)
+        # Выполняем создание приложения работы с деревом события
+        add_sample(${CODEC_APP_CEF_DOCUMENT_NAME} sample/codec/cef-document.cpp codec)
+        # Выполняем создание приложения сборки записи
+        add_sample(${CODEC_APP_CEF_WRITER_NAME} sample/codec/cef-writer.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером CEF
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample CEF Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+
     if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample JSON Codec: Yes\n")
@@ -3668,6 +3693,31 @@ if (CMAKE_SHARED_BUILD_LIB)
         endif (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером JSON
+        # Если нужно собрать семплы для работы с контейнером CEF
+        if (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения записей
+            target_link_libraries(
+                ${CODEC_APP_CEF_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом события
+            target_link_libraries(
+                ${CODEC_APP_CEF_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения сборки записи
+            target_link_libraries(
+                ${CODEC_APP_CEF_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
             # Выполняем сборку приложения потокового чтения текста документа
             target_link_libraries(
@@ -4919,6 +4969,31 @@ else (CMAKE_SHARED_BUILD_LIB)
         endif (${CMAKE_BUILD_CODEC_CSV_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с контейнером JSON
+        # Если нужно собрать семплы для работы с контейнером CEF
+        if (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения записей
+            target_link_libraries(
+                ${CODEC_APP_CEF_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом события
+            target_link_libraries(
+                ${CODEC_APP_CEF_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения сборки записи
+            target_link_libraries(
+                ${CODEC_APP_CEF_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
             # Выполняем сборку приложения потокового чтения текста документа
             target_link_libraries(

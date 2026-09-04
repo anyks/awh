@@ -398,7 +398,15 @@ case "$(uname -s)" in
 	#          связывании: «undefined reference to backtrace». У FreeBSD и Linux
 	#          нехватки не видно, оттого дефект и не всплывал до 31.08.2026
 	##
-	NetBSD|OpenBSD) SYSTEM_LIBS="-lexecinfo" ;;
+	##
+	# @warning У NetBSD довод `-pthread` обязателен, а у OpenBSD нет: там `pthread_create`
+	#          лежит в libc, а здесь отдельною библиотекой. Сборка проходит целиком и
+	#          валится лишь на связывании - «undefined reference to pthread_create» из
+	#          `std::thread` - и вылезает это лишь у целей, тело фреймворка тянущих
+	#          (замер 04.09.2026, цель «bridge»)
+	##
+	NetBSD) SYSTEM_LIBS="-lexecinfo -pthread" ;;
+	OpenBSD) SYSTEM_LIBS="-lexecinfo" ;;
 	##
 	# @warning У DragonFly «pthread_create» лежит в ОТДЕЛЬНОЙ библиотеке, а не в libc,
 	#          и собиратель из портов сам её не подключает: сборка проходит целиком и

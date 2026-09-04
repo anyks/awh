@@ -342,6 +342,18 @@ TEST(CodecAbcStorage, Refusals){
 	ASSERT_FALSE(storage.bind(editor));
 	// Выполняем проверку кода отказа чтения октетов контейнера
 	ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE);
+	/**
+	 * Выборка записей, ВТОРАЯ дверь того же договора
+	 *
+	 * @note Дверей у привязки две - правщиком и выборкой, - а заслон у них один и тот же:
+	 *       файл не открыт, читать нечего. Дверь выборки до 05.09.2026 не стерёг НИКТО, и
+	 *       нашлась она сплошным щупом по местам отказа
+	 */
+	abc::fetcher_t fetcher(::logger());
+	// Выполняем проверку отказа открытия контейнера закрытого файла выборкой записей
+	ASSERT_FALSE(storage.bind(fetcher));
+	// Выполняем проверку кода отказа чтения октетов контейнера
+	ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE);
 	// Сниматель контейнера
 	abc::loader_t loader(::logger());
 	// Выполняем проверку отказа подачи закрытого файла снимателю
@@ -876,6 +888,8 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 		vector <uint8_t> previous = {0x01, 0x02, 0x03};
 		// Выполняем чтение отсутствующего файла
 		ASSERT_FALSE(storage.fetch("abc-storage-нет-такого-файла.bin", previous));
+		// Выполняем проверку названной причины отказа чтения
+		ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE) << abc::message(storage.error());
 		// Выполняем проверку опустошения выдачи отказом
 		ASSERT_TRUE(previous.empty());
 	}
@@ -890,6 +904,14 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 		vector <uint8_t> bounded;
 		// Выполняем чтение файла пределом меньше его длины
 		ASSERT_FALSE(storage.fetch(temporary.filename(), bounded, (record.size() - 1)));
+		/**
+		 * Выполняем проверку НАЗВАННОЙ причины отказа, а не одного лишь факта его
+		 *
+		 * @note Причину эту до 05.09.2026 не сличал никто: сплошной щуп по местам отказа
+		 *       показал, что подмена её здесь не красит ничего, - проверка стерегла лишь
+		 *       ложь работы, а не то, о чём работа отчитывается потребителю
+		 */
+		ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE) << abc::message(storage.error());
 		// Выполняем проверку пустоты выдачи при отказе по пределу
 		ASSERT_TRUE(bounded.empty());
 		// Выполняем проверку успешности чтения пределом ровно в длину файла
@@ -922,6 +944,8 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 		vector <uint8_t> directory = {0x0A, 0x0B};
 		// Выполняем чтение каталога вместо файла
 		ASSERT_FALSE(storage.fetch(".", directory));
+		// Выполняем проверку названной причины отказа чтения
+		ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE) << abc::message(storage.error());
 		// Выполняем проверку опустошения выдачи отказом
 		ASSERT_TRUE(directory.empty());
 	}
@@ -1058,6 +1082,43 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 		 *       прямо в назначенный файл: остаться он не должен ни при успехе, ни при отказе
 		 */
 		ASSERT_TRUE(content(filename + ".part").empty());
+	}
+	/**
+	 * Половина третья: отказ ПЕРЕНОСА готового на место назначенного
+	 *
+	 * @details Наводится он назначением, каким стоит НЕПУСТОЙ КАТАЛОГ: укладка рядом
+	 *          проходит, а перенос на его место отвергается носителем. Дверь эта отлична
+	 *          от заведения файла рядом, и до 05.09.2026 её не стерёг никто - нашлась
+	 *          она сплошным щупом по местам отказа
+	 *
+	 * @note Хвост записи обязан быть убран и здесь: временный файл, оставленный отказом
+	 *       переноса, есть тот же мусор, что и оставленный отказом записи
+	 *
+	 */
+	{
+		// Название каталога, стоящего назначением записи
+		const string occupied = (directory + "/занято");
+		// Выполняем заведение каталога, стоящего назначением записи
+		ASSERT_EQ(::mkdir(occupied.c_str(), 0755), 0) << occupied;
+		// Выполняем заведение файла ВНУТРИ каталога, дабы тот не был пуст
+		{
+			// Объект потока записываемого файла
+			ofstream stream(occupied + "/жилец", ios::binary);
+			// Выполняем запись содержимого файла-жильца
+			stream << "жилец";
+		}
+		// Выполняем проверку отказа записи по назначению, занятому каталогом
+		ASSERT_FALSE(storage.store(occupied, body.data(), body.size()));
+		// Выполняем проверку названной причины отказа
+		ASSERT_EQ(storage.error(), abc::error_t::UNWRITABLE_SINK) << abc::message(storage.error());
+		// Выполняем проверку того, что временный файл записи не остался
+		ASSERT_TRUE(content(occupied + ".part").empty());
+		// Выполняем проверку сохранности жильца каталога
+		ASSERT_EQ(content(occupied + "/жилец"), string("жилец"));
+		// Выполняем снос жильца каталога
+		(void) ::remove((occupied + "/жилец").c_str());
+		// Выполняем снос каталога, стоявшего назначением записи
+		(void) ::rmdir(occupied.c_str());
 	}
 	// Выполняем снос файла контейнера
 	(void) ::remove(filename.c_str());

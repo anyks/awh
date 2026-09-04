@@ -211,6 +211,10 @@ namespace {
 			// Выводим количество пар расширения разобранной записи
 			return ::digest(doc, text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Устанавливаем измеренную пропускную способность укладки
 		result.value = awh::benchmark::event::perSecond(output);
 		// Устанавливаем сведения о прогоне сценария
@@ -241,6 +245,10 @@ namespace {
 			// Выводим количество пар расширения разобранной записи
 			return ::digest(doc, text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Устанавливаем измеренную пропускную способность укладки
 		result.value = awh::benchmark::event::perSecond(output);
 		// Устанавливаем сведения о прогоне сценария
@@ -271,6 +279,10 @@ namespace {
 			// Выводим количество полей заголовка разобранной записи
 			return doc.keys("/header").size();
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Устанавливаем измеренную задержку обработки одной записи
 		result.value = awh::benchmark::event::perLatency(output);
 		// Устанавливаем сведения о прогоне сценария
@@ -351,6 +363,10 @@ namespace {
 			// Выводим длину собранной заново записи
 			return doc.dump().size();
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Устанавливаем измеренную задержку полного оборота
 		result.value = awh::benchmark::event::perLatency(output);
 		// Устанавливаем сведения о прогоне сценария
@@ -381,6 +397,10 @@ namespace {
 			// Выводим количество пар расширения разобранной записи
 			return ::digest(doc, text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Если учёт выделений памяти неработоспособен
 		if(!awh::benchmark::event::counted(output, result))
 			// Выводим результат измерения

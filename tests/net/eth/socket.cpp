@@ -57,6 +57,7 @@
 	#include <arpa/inet.h>
 	#include <sys/socket.h>
 	#include <netinet/in.h>
+	#include <netinet/tcp.h>
 	/**
 	 * @brief Закрепление снятия макросов CS5, CS6, CS7 и CS8
 	 *
@@ -283,6 +284,120 @@ TEST_F(EthFixture, SocketBufferSizeTest){
 }
 
 /**
+ * @brief Тест занятости приёмного буфера сокета
+ *
+ * @par Намеренные решения
+ *
+ * Договор у обращения разнится по системам, и проверка закрепляет ИМЕННО ЭТО, а не одну
+ * лишь величину:
+ *
+ * | наречие | чтение | запись |
+ * |---|---|---|
+ * | `gnu` | свободное место | свободное место |
+ * | `win` | свободное место | -1, средства нет |
+ * | `bsd` | свободное место | зависит от системы |
+ * | `sun` | -1, средства нет | -1, средства нет |
+ *
+ * Оттого утверждается полоса, а не число: ответ либо -1 - «средства у системы нет», -
+ * либо величина от нуля до размера буфера. Ответ вне полосы означает дефект наречия.
+ *
+ * @warning Проверки у обращения не было ВОВСЕ ни на одной системе, при том что оно
+ *          выведено наружу заголовком. Под MS Windows оно отвечало -1 на оба направления
+ *          и было исправлено 04.09.2026 - откат этой правки прошёл бы молча
+ *
+ */
+TEST_F(EthFixture, SocketBufferAvailableTest){
+	// Создаём UDP сокет IPv4
+	auto sock = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокет создан успешно
+	ASSERT_NE(sock, awh::net::invalid_socket_t);
+	// Получаем размер приёмного буфера сокета
+	const int32_t size = this->_eth->socket.getBufferSize(sock, awh::net::socket_event_t::READ);
+	// Проверяем что размер приёмного буфера положительный
+	ASSERT_GT(size, 0);
+	// Получаем занятость приёмного буфера сокета
+	const int32_t reading = this->_eth->socket.getBufferAvailable(sock, awh::net::socket_event_t::READ);
+	/**
+	 * Ответ обязан лежать в полосе договора
+	 */
+	if(reading != -1){
+		// Свободное место на свежем сокете обязано быть положительным
+		ASSERT_GT(reading, 0) << "свежий сокет объявлен без свободного места в приёмном буфере";
+		// Свободное место не вправе превышать сам буфер
+		ASSERT_LE(reading, size) << "свободного места объявлено больше самого буфера";
+	}
+	// Получаем занятость буфера отправки сокета
+	const int32_t writing = this->_eth->socket.getBufferAvailable(sock, awh::net::socket_event_t::WRITE);
+	// Ответ обязан лежать в той же полосе договора
+	if(writing != -1)
+		// Свободное место не вправе превышать буфер отправки
+		ASSERT_LE(writing, this->_eth->socket.getBufferSize(sock, awh::net::socket_event_t::WRITE))
+		 << "свободного места объявлено больше буфера отправки";
+	/**
+	 * У систем, где средство приёма есть, оно обязано БЫТЬ
+	 *
+	 * @note Отступление здесь неуместно: обращение опирается на FIONREAD либо SIOCINQ,
+	 *       какие у обеих названных систем есть всегда, и -1 означал бы не свойство
+	 *       машины, а несделанную работу наречия
+	 */
+	#if defined(_WIN32) || defined(_WIN64) || defined(__linux__)
+		// Занятость приёмного буфера обязана быть названа
+		ASSERT_NE(reading, -1) << "занятость приёмного буфера не отдана, хотя средство у системы есть";
+	#endif
+	// Закрываем сокет
+	::closesocket(sock);
+}
+
+/**
+ * @brief Тест настроек, накладываемых при самом заведении сокета
+ *
+ * @par Намеренные решения
+ *
+ * Утверждается договор, а не платформенная частность: ответ обязан быть ПОДМНОЖЕСТВОМ
+ * спрошенного, а закрытие при запуске стороннего образа накладывается при заведении
+ * у всех четырёх наречий - у POSIX признаком `SOCK_CLOEXEC`, у MS Windows признаком
+ * `WSA_FLAG_NO_HANDLE_INHERIT`. Неблокирующий режим наложенным при заведении числят
+ * лишь наречия POSIX, и здесь он не утверждается вовсе
+ *
+ * @warning Проверки у обращения не было ВОВСЕ. Под MS Windows оно отвечало пустотой -
+ *          признаки при заведении не накладывались, - и было исправлено 04.09.2026
+ *
+ * @note Наличие признака утверждается лишь там, где средство у системы есть: у macOS
+ *       ни `SOCK_CLOEXEC`, ни `SOCK_NONBLOCK` не объявлены, и пустой ответ там верен
+ *
+ */
+TEST_F(EthFixture, SocketInbornOptionsTest){
+	// Пустой набор настроек не даёт наложенных при заведении
+	ASSERT_EQ(this->_eth->socket.inborn(0), 0);
+	/**
+	 * Закрытие при запуске стороннего образа утверждается лишь там, где средство ЕСТЬ
+	 *
+	 * @warning Первая редакция этой проверки утверждала признак у всех систем разом и
+	 *          отказала на macOS - и отказала ВЕРНО: `SOCK_CLOEXEC` там не объявлен
+	 *          вовсе, накладывать признак при заведении нечем, и пустой ответ наречия
+	 *          правилен. Договор был выведен беглым просмотром тел, а не чтением их
+	 *          условий сборки
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// У MS Windows признак кладётся при заведении всегда - WSA_FLAG_NO_HANDLE_INHERIT
+		ASSERT_TRUE(this->_eth->socket.inborn(static_cast <uint16_t> (awh::event::options::CLOSE_ON_EXEC)) & static_cast <uint16_t> (awh::event::options::CLOSE_ON_EXEC))
+		 << "закрытие при запуске стороннего образа не числится накладываемым при заведении";
+	#elif defined(SOCK_CLOEXEC)
+		// У систем POSIX - лишь при объявленном SOCK_CLOEXEC
+		ASSERT_TRUE(this->_eth->socket.inborn(static_cast <uint16_t> (awh::event::options::CLOSE_ON_EXEC)) & static_cast <uint16_t> (awh::event::options::CLOSE_ON_EXEC))
+		 << "закрытие при запуске стороннего образа не числится накладываемым при заведении";
+	#endif
+	// Набор наложенных обязан быть подмножеством спрошенного
+	const uint16_t asked = static_cast <uint16_t> (awh::event::options::CLOSE_ON_EXEC) | static_cast <uint16_t> (awh::event::options::NO_IO_BLOCK) | static_cast <uint16_t> (awh::event::options::REUSE_ADDR);
+	// Проверяем, что лишнего наречие не назвало
+	ASSERT_EQ(static_cast <uint16_t> (this->_eth->socket.inborn(asked) & ~asked), 0)
+	 << "наложенным при заведении названо то, о чём не просили";
+	// Не спрошенное закрытие при запуске не вправе оказаться наложенным
+	ASSERT_EQ(static_cast <uint16_t> (this->_eth->socket.inborn(static_cast <uint16_t> (awh::event::options::REUSE_ADDR)) & static_cast <uint16_t> (awh::event::options::CLOSE_ON_EXEC)), 0)
+	 << "закрытие при запуске названо наложенным, хотя о нём не просили";
+}
+
+/**
  * @brief Тест установки постоянного подключения (keepalive)
  *
  */
@@ -294,6 +409,76 @@ TEST_F(EthFixture, SocketKeepaliveTest){
 
 	// Устанавливаем корректные параметры постоянного подключения
 	ASSERT_TRUE(this->_eth->socket.setKeepalive(sock, 5, 5, 5));
+
+	/**
+	 * @brief Сличение заданных сроков с тем, что приняло ядро
+	 *
+	 * @details Одного лишь положительного ответа наречия мало: у MS Windows наложение
+	 *          идёт двумя путями - поимённым (TCP_KEEPIDLE, TCP_KEEPINTVL,
+	 *          TCP_KEEPCNT) и запасным управляющим обращением SIO_KEEPALIVE_VALS, и
+	 *          ВТОРОЙ числа попыток не принимает вовсе, отвечая при этом успехом.
+	 *          Проверка, глядящая лишь на ответ, откат с первого пути на второй не
+	 *          заметила бы. Оттого сроки читаются обратно и сличаются с заданными
+	 *
+	 * @note Имена настроек у систем расходятся: время простоя у macOS зовётся
+	 *       TCP_KEEPALIVE, у прочих - TCP_KEEPIDLE. У OpenBSD посокетных сроков нет
+	 *       вовсе, у Sun Solaris и illumos наречие их не накладывает - там сличать
+	 *       нечего, и раздел этот опущен намеренно
+	 *
+	 * @note У MS Windows имена эти объявлены не во всяком издании заголовков, оттого
+	 *       восполняются здесь теми же числами, что и у самого наречия
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		#ifndef TCP_KEEPIDLE
+			#define TCP_KEEPIDLE 3
+		#endif
+		#ifndef TCP_KEEPCNT
+			#define TCP_KEEPCNT 16
+		#endif
+		#ifndef TCP_KEEPINTVL
+			#define TCP_KEEPINTVL 17
+		#endif
+	#endif
+	#if !defined(__OpenBSD__) && !defined(__sun__) && !defined(__sun)
+	{
+		// Прочитанное у ядра значение настройки
+		int32_t value = 0;
+		// Размер прочитанного значения настройки
+		socklen_t length = static_cast <socklen_t> (sizeof(value));
+		/**
+		 * Время простоя подключения
+		 */
+		#if defined(__APPLE__)
+			const int32_t idle = TCP_KEEPALIVE;
+		#else
+			const int32_t idle = TCP_KEEPIDLE;
+		#endif
+		// Считываем время простоя подключения
+		ASSERT_EQ(::getsockopt(static_cast <awh::net::socket_t> (sock), IPPROTO_TCP, idle, reinterpret_cast <char *> (&value), &length), 0)
+		 << "время простоя подключения не читается обратно";
+		// Сличаем время простоя подключения с заданным
+		ASSERT_EQ(value, 5) << "ядру досталось время простоя подключения, отличное от заданного";
+		// Обнуляем прочитанное значение настройки
+		value = 0;
+		// Восстанавливаем размер прочитанного значения настройки
+		length = static_cast <socklen_t> (sizeof(value));
+		// Считываем промежуток между попытками
+		ASSERT_EQ(::getsockopt(static_cast <awh::net::socket_t> (sock), IPPROTO_TCP, TCP_KEEPINTVL, reinterpret_cast <char *> (&value), &length), 0)
+		 << "промежуток между попытками не читается обратно";
+		// Сличаем промежуток между попытками с заданным
+		ASSERT_EQ(value, 5) << "ядру достался промежуток между попытками, отличный от заданного";
+		// Обнуляем прочитанное значение настройки
+		value = 0;
+		// Восстанавливаем размер прочитанного значения настройки
+		length = static_cast <socklen_t> (sizeof(value));
+		// Считываем число попыток
+		ASSERT_EQ(::getsockopt(static_cast <awh::net::socket_t> (sock), IPPROTO_TCP, TCP_KEEPCNT, reinterpret_cast <char *> (&value), &length), 0)
+		 << "число попыток не читается обратно";
+		// Сличаем число попыток с заданным
+		ASSERT_EQ(value, 5) << "ядру досталось число попыток, отличное от заданного";
+	}
+	#endif
 
 	/**
 	 * Передача отрицательных параметров не должна приводить к аварийному завершению

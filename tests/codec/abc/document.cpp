@@ -2407,3 +2407,43 @@ TEST(CodecAbcDocument, InvalidCursorsAreNotIdentical) {
 	// Выполняем проверку того, что пригодная ссылка не тождественна непригодной
 	ASSERT_FALSE(document.root().same(empty));
 }
+
+/**
+ * @brief Проверка того, что пустота документа есть отсутствие разобранного
+ *
+ * @details Мерою пустоты стоят узлы АРЕНЫ, а не значения корня, и различие это
+ *          наблюдаемо: документ, несущий одно лишь ПУСТОЕ отображение, узлом обладает,
+ *          а значений корня у него ноль. Мерь пустоту детьми корня - и разобранный
+ *          документ звался бы пустым
+ *
+ * @note Заведена находкой 04.09.2026: подмена меры на `root().size() == 0` не красила
+ *       НИ ОДНОЙ проверки стенда, - договор жил одним доводом
+ *
+ */
+TEST(CodecAbcDocument, EmptinessIsTheAbsenceOfTheParsed) {
+	// Объект документа
+	abc::document_t document(::logger());
+	// Документ, разбора не видавший, пуст
+	ASSERT_TRUE(document.empty());
+	// Объект сборки двоичной записи
+	abc::writer_t writer(::logger());
+	// Выполняем сборку записи пустого отображения
+	ASSERT_TRUE(writer.mapBegin(0));
+	// Выполняем закрытие отображения
+	ASSERT_TRUE(writer.mapEnd());
+	// Выполняем проверку завершённости записи
+	ASSERT_TRUE(writer.complete()) << abc::message(writer.error());
+	// Выполняем разбор собранной записи
+	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
+	 << abc::message(document.error());
+	// Значений у корня разобранного документа нет
+	ASSERT_EQ(document.root().size(), 0u);
+	// Узел же арены у него есть
+	ASSERT_GT(document.nodes(), 0u);
+	// Оттого пустым документ этот не зовётся
+	ASSERT_FALSE(document.empty());
+	// Выполняем сброс состояния документа
+	document.clear();
+	// По сбросу документ снова пуст
+	ASSERT_TRUE(document.empty());
+}

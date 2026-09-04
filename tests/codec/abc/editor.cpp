@@ -1248,10 +1248,27 @@ TEST_F(EditorFixture, CommitRollbackKeepsPreviousGeneration) {
 			<< "код отказа: " << abc::message(editor.error());
 		// Выполняем объявление предела удавшихся записей на носитель
 		medium.allow = allow;
-		// Выполняем учёт исхода фиксации, оборванной отказом записи
-		if(!editor.commit())
+		/**
+		 * Выполняем учёт исхода фиксации, оборванной отказом записи
+		 *
+		 * @note Сличается не один лишь ИСХОД, но и НАЗВАННАЯ причина: отказ носителя
+		 *       обязан называться отказом носителя, а не чем попало. До 05.09.2026
+		 *       причину здесь не спрашивал никто, и сплошной щуп по местам отказа
+		 *       показал четырнадцать мест `UNWRITABLE_SINK`, подмена каких не красила
+		 *       ничего. Обход же обрывает запись на РАЗНЫХ шагах, оттого одно и то же
+		 *       место назвать нельзя - зато можно потребовать, чтобы причина
+		 *       принадлежала записи и была объявлена непременно
+		 */
+		if(!editor.commit()){
 			// Выполняем учёт отказавшей фиксации
 			refused++;
+			// Выполняем проверку того, что отказ причину объявил
+			ASSERT_NE(editor.error(), abc::error_t::NONE) << "обрыв на записи " << allow;
+			// Выполняем проверку того, что причина принадлежит записи на носитель
+			ASSERT_TRUE((editor.error() == abc::error_t::UNWRITABLE_SINK) ||
+			 (editor.error() == abc::error_t::SIGNING_FAILED))
+			 << "обрыв на записи " << allow << ", причина: " << abc::message(editor.error());
+		}
 		// Выполняем снятие предела удавшихся записей на носитель
 		medium.allow = -1;
 		/**
@@ -2431,5 +2448,69 @@ TEST_F(EditorFixture, ForgedIndexLengthAsksNothingHuge) {
 		ASSERT_EQ(editor.error(), abc::error_t::INVALID_CHUNK);
 		// У источника не должно быть затребовано больше самого контейнера
 		ASSERT_LE(biggest, body.size()) << "затребовано октетов: " << biggest;
+	}
+}
+
+/**
+ * @brief Проверка отказов накопления записи, у каких причина своя
+ *
+ * @details Заслонов у накопления два, и оба отвечают СВОЕЙ причиной: правка неоткрытого
+ *          контейнера есть внутренний отказ, а запись пустая - не запись вовсе, и строка
+ *          оглавления о нуле октетов указывала бы в никуда
+ *
+ * @note Заведена находкой 05.09.2026, добытой сплошным щупом по местам отказа: обе
+ *       причины стояли ненаблюдаемыми. Дверь та же, что у сборщика контейнера
+ *       (`ContainerFixture.EmptyRecordRefusedByTheAssembler`), - и стеречь надлежит обе
+ *
+ */
+TEST_F(EditorFixture, AddNamesItsRefusals) {
+	// Собираемая запись, годная сама по себе
+	const vector <uint8_t> item = abc::value_t(string{"годная"}).dump();
+	/**
+	 * Половина первая: правка контейнера, ещё не открытого
+	 */
+	{
+		// Правщик контейнера, контейнера не открывавший
+		abc::editor_t editor(this->_log.get());
+		// Выполняем проверку отказа накопления записи у неоткрытого контейнера
+		ASSERT_FALSE(editor.append(item.data(), item.size()));
+		// Выполняем проверку названной причины отказа
+		ASSERT_EQ(editor.error(), abc::error_t::INTERNAL) << abc::message(editor.error());
+		// Вычитываемые октеты записи контейнера
+		vector <uint8_t> picked;
+		/**
+		 * Выборка записи у контейнера неоткрытого - вторая дверь того же заслона
+		 */
+		ASSERT_FALSE(editor.record(0, picked));
+		// Выполняем проверку названной причины отказа
+		ASSERT_EQ(editor.error(), abc::error_t::INTERNAL) << abc::message(editor.error());
+	}
+	/**
+	 * Половина вторая: пустая запись у контейнера ОТКРЫТОГО
+	 */
+	{
+		// Носитель, несущий правимый контейнер
+		Medium medium;
+		// Выполняем сборку контейнера с одной записью
+		this->build(medium, {"первая"});
+		// Правщик контейнера
+		abc::editor_t editor(this->_log.get());
+		// Выполняем открытие контейнера правщиком
+		ASSERT_TRUE(this->open(editor, medium)) << abc::message(editor.error());
+		// Выполняем проверку отказа накопления записи, поданной пустым указателем
+		ASSERT_FALSE(editor.append(nullptr, item.size()));
+		// Выполняем проверку названной причины отказа
+		ASSERT_EQ(editor.error(), abc::error_t::EMPTY_RECORD) << abc::message(editor.error());
+		// Выполняем проверку отказа накопления записи нулевой длины
+		ASSERT_FALSE(editor.append(item.data(), 0));
+		// Выполняем проверку названной причины отказа
+		ASSERT_EQ(editor.error(), abc::error_t::EMPTY_RECORD) << abc::message(editor.error());
+		/**
+		 * Накопление записи годной при том работает: без этой половины проверка прошла бы
+		 * и у правщика, не принимающего ничего вовсе
+		 */
+		ASSERT_TRUE(editor.append(item.data(), item.size())) << abc::message(editor.error());
+		// Выполняем проверку того, что отказа по накоплении годной записи не объявлено
+		ASSERT_EQ(editor.error(), abc::error_t::NONE) << abc::message(editor.error());
 	}
 }

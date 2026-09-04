@@ -172,7 +172,22 @@ namespace awh {
 					PARSING     = 0x01, // Разбор записи кодеком окончился отказом
 					WRITING     = 0x02, // Запись кодеком окончилась отказом
 					UNSUPPORTED = 0x03, // Записи кодека вид значения неведом
-					DEEP_TREE   = 0x04  // Глубина дерева превысила предел перевода
+					DEEP_TREE   = 0x04, // Глубина дерева превысила предел перевода
+					/**
+					 * Устройство записи кодека дерева не вмещает
+					 *
+					 * @details Код этот отделён от `UNSUPPORTED` намеренно: тот
+					 * означает «вид значения записи неведом», и чинится он сменою
+					 * ВИДА, а этот означает «устройство записи такого не вмещает», и
+					 * чинится он сменою УСТРОЙСТВА. Запись INI, к примеру, глубже
+					 * раздела со свойством не идёт, и перечень отображений в неё не
+					 * ложится ни при каком виде значений
+					 *
+					 * @note Различение это не украшение: потребитель, увидевший один
+					 *       код на обе беды, не знает, что ему править - значение либо
+					 *       дерево
+					 */
+					STRUCTURE   = 0x05
 				};
 				/**
 				 * \~russian
@@ -615,7 +630,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool feedINI(const abc::value_t & value, ini::document_t & document, const string & name, const string & section) noexcept;
+				[[nodiscard]] bool feedINI(const abc::value_t & value, ini::document_t & document, const string & name, const string & section, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись INI

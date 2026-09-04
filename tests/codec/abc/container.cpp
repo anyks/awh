@@ -1345,3 +1345,37 @@ TEST_F(ContainerFixture, LayoutOffsetsFollowBody) {
  * Возвращаем снятые макросы MS Windows
  */
 #include <sys/macro/restore.hpp>
+
+/**
+ * @brief Проверка отказа внесения пустой записи в собираемый контейнер
+ *
+ * @details Записи у контейнера отделяются строкою оглавления, а строка о нуле октетов
+ *          указывала бы в никуда: пустая запись и не запись вовсе. Отказ этот - решение,
+ *          и причина у него своя
+ *
+ * @note Заведена находкой 05.09.2026, добытой сплошным щупом по местам отказа: обе двери
+ *       заслона - указатель в никуда и нулевая длина - не стерёг НИКТО
+ *
+ */
+TEST_F(ContainerFixture, EmptyRecordRefusedByTheAssembler) {
+	// Сборщик контейнера
+	abc::assembler_t assembler(this->_log.get());
+	// Собранная запись, годная сама по себе
+	const vector <uint8_t> item = record("годная запись");
+	// Выполняем проверку отказа внесения записи, поданной пустым указателем
+	ASSERT_FALSE(assembler.append(nullptr, item.size(), abc::payload_t::TEXT));
+	// Выполняем проверку названной причины отказа
+	ASSERT_EQ(assembler.error(), abc::error_t::EMPTY_RECORD) << abc::message(assembler.error());
+	// Выполняем проверку отказа внесения записи нулевой длины
+	ASSERT_FALSE(assembler.append(item.data(), 0, abc::payload_t::TEXT));
+	// Выполняем проверку названной причины отказа
+	ASSERT_EQ(assembler.error(), abc::error_t::EMPTY_RECORD) << abc::message(assembler.error());
+	/**
+	 * Внесение записи годной при том работает: без этой половины проверка прошла бы и у
+	 * сборщика, не принимающего ничего вовсе
+	 */
+	ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+	 << abc::message(assembler.error());
+	// Выполняем проверку того, что отказа по внесении годной записи не объявлено
+	ASSERT_EQ(assembler.error(), abc::error_t::NONE) << abc::message(assembler.error());
+}

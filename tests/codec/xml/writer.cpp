@@ -749,13 +749,15 @@ TEST(CodecXmlWriter, ReservedNamespaces) {
 		const char * prefix;
 		// Обозначение объявляемого пространства имён
 		string uri;
+		// Ожидаемый код отказа записи объявления
+		xml::error_t code;
 	} items[] = {
-		{"foo",   string(xml::XML_NAMESPACE)},
-		{"foo",   string(xml::XMLNS_NAMESPACE)},
-		{"",      string(xml::XML_NAMESPACE)},
-		{"",      string(xml::XMLNS_NAMESPACE)},
-		{"xmlns", string("urn:x")},
-		{"foo",   string()}
+		{"foo",   string(xml::XML_NAMESPACE),   xml::error_t::RESERVED_PREFIX},
+		{"foo",   string(xml::XMLNS_NAMESPACE), xml::error_t::INVALID_NAMESPACE},
+		{"",      string(xml::XML_NAMESPACE),   xml::error_t::INVALID_NAMESPACE},
+		{"",      string(xml::XMLNS_NAMESPACE), xml::error_t::INVALID_NAMESPACE},
+		{"xmlns", string("urn:x"),              xml::error_t::RESERVED_PREFIX},
+		{"foo",   string(),                     xml::error_t::INVALID_NAMESPACE}
 	};
 	/**
 	 * Выполняем перебор всех объявлений пространств имён
@@ -767,6 +769,43 @@ TEST(CodecXmlWriter, ReservedNamespaces) {
 		ASSERT_TRUE(writer.open("root"));
 		// Выполняем проверку отказа записи объявления пространства имён
 		ASSERT_FALSE(writer.binding(item.prefix, item.uri)) << item.prefix << " -> " << item.uri;
+		/**
+		 * Выполняем проверку КОДА отказа, а не одного лишь признака его
+		 *
+		 * @note Замерено щупом по местам отказа 04.09.2026: перебор сличал признак
+		 *       отказа, а код не спрашивал, и подмена кода в любом из пяти заслонов
+		 *       проходила незамеченной. Коды же здесь РАЗНЫЕ и смысл несут разный:
+		 *       занятый префикс - вина зовущего, а негодное обозначение - вина данных
+		 */
+		ASSERT_EQ(writer.error(), item.code) << item.prefix << " -> " << item.uri;
+	}
+	/**
+	 * Отказ объявления пространства имён, поданного вне открытой метки узла
+	 *
+	 * @note Заслон этот шестой и стоит ПЕРВЫМ по счёту: объявление ложится в метку узла
+	 *       свойством, а метка, уже завершённая, свойств не принимает. Оттого и код у
+	 *       него `INVALID_ATTRIBUTE`, а не о пространстве имён: не то объявлено, а не
+	 *       туда записано
+	 */
+	{
+		// Объект записи текста разметки
+		xml::writer_t writer(::logger());
+		// Выполняем проверку отказа объявления до открытия всякого узла
+		ASSERT_FALSE(writer.binding("p", "urn:x"));
+		// Выполняем проверку кода отказа записи объявления
+		ASSERT_EQ(writer.error(), xml::error_t::INVALID_ATTRIBUTE);
+	}
+	{
+		// Объект записи текста разметки
+		xml::writer_t writer(::logger());
+		// Выполняем открытие корневого узла разметки
+		ASSERT_TRUE(writer.open("root"));
+		// Выполняем запись содержимого узла, метку его завершая
+		ASSERT_TRUE(writer.text("значение"));
+		// Выполняем проверку отказа объявления при завершённой метке узла
+		ASSERT_FALSE(writer.binding("p", "urn:x"));
+		// Выполняем проверку кода отказа записи объявления
+		ASSERT_EQ(writer.error(), xml::error_t::INVALID_ATTRIBUTE);
 	}
 	// Объект записи текста разметки
 	xml::writer_t writer(::logger());

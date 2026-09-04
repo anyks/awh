@@ -255,6 +255,10 @@ namespace {
 			// Выводим количество выданных событий разбора
 			return ::consume(text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Устанавливаем измеренную пропускную способность чтения
 		result.value = awh::benchmark::event::perSecond(output);
 		// Устанавливаем сведения о прогоне сценария
@@ -283,6 +287,10 @@ namespace {
 			// Выводим количество выданных событий разбора
 			return ::consume(text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Устанавливаем измеренную пропускную способность чтения
 		result.value = awh::benchmark::event::perSecond(output);
 		// Устанавливаем сведения о прогоне сценария
@@ -311,6 +319,10 @@ namespace {
 			// Выводим количество выданных событий разбора
 			return ::consume(text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Устанавливаем измеренную пропускную способность чтения
 		result.value = awh::benchmark::event::perSecond(output);
 		// Устанавливаем сведения о прогоне сценария
@@ -343,6 +355,10 @@ namespace {
 			// Выводим количество выданных событий разбора
 			return ::consume(text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Итоги прогона, пересчитанные на отдельные записи потока
 		awh::benchmark::event::outcome_t records = output;
 		// Устанавливаем количество разобранных записей потока
@@ -417,6 +433,10 @@ namespace {
 			// Выводим количество выданных событий разбора
 			return ::consume(text);
 		});
+		// Если измеряемая работа кругами не состоялась
+		if(!awh::benchmark::event::worked(output, result))
+			// Выводим результат измерения
+			return result;
 		// Если учёт выделений памяти неработоспособен
 		if(!awh::benchmark::event::counted(output, result))
 			// Выводим результат измерения

@@ -1615,3 +1615,481 @@ TEST(CodecBridge, EveryRoadAgreesOnUnknownKinds){
 		ASSERT_EQ(stamp, 0) << "собрано: " << text;
 	}
 }
+
+/**
+ * @brief Проверка неподвижности круга на именах, у моста особое значение имеющих
+ *
+ * @details Имена `value`, `item` и `array` несут у моста правила: первое означает
+ * текст узла, второе обнос перечня, третье пометку. Всякое из них законно и как
+ * ОБЫЧНОЕ имя поля, и утверждения эти закрепляют, что правило не съедает данное
+ *
+ * @warning Все три случая найдены ворошителем 04.09.2026, и все три ползли МЕДЛЕННО
+ *          - сбрасывали по уровню за проход, оставаясь при том разбираемыми
+ *
+ */
+TEST(CodecBridge, SpecialNamesSurviveTheCircle){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&fmk, &log);
+	// Перечень записей, круг которых обязан быть неподвижен
+	const string samples[] = {
+		// Поле текста, стоящее в одиночку
+		"<config><node><value>значение</value></node></config>",
+		// Поле текста при свойстве одноимённом
+		"<config><node value=\"свойство\">текст</node></config>",
+		// Имя пометки перечня обычным полем
+		"<config><node array=\"false\"/></config>",
+		// Имя обноса перечня обычным полем
+		"<config><node><item>значение</item></node></config>"
+	};
+	// Выполняем перебор всех записей
+	for(const string & text : samples){
+		// Собираемое дерево значений первого прохода
+		abc::value_t first;
+		// Выполняем разбор записи разметки
+		ASSERT_TRUE(bridge.decode(text, first, bridge_t::format_t::XML)) << "запись: " << text;
+		// Собираемая запись второго прохода
+		string second = "";
+		// Выполняем перевод дерева значений обратно в запись
+		ASSERT_TRUE(bridge.encode(first, second, bridge_t::format_t::XML)) << "запись: " << text;
+		// Собираемое дерево значений второго прохода
+		abc::value_t back;
+		// Выполняем разбор собранной записи
+		ASSERT_TRUE(bridge.decode(second, back, bridge_t::format_t::XML)) << "собрано: " << second;
+		// Собираемая запись третьего прохода
+		string third = "";
+		// Выполняем перевод дерева второго прохода в запись
+		ASSERT_TRUE(bridge.encode(back, third, bridge_t::format_t::XML)) << "собрано: " << second;
+		/**
+		 * Выполняем проверку неподвижности круга
+		 *
+		 * @warning Утверждение это ловит МЕДЛЕННОЕ сползание: запись остаётся годной
+		 *          на всяком проходе, и наружу порок выходит лишь сличением проходов
+		 *          между собою
+		 */
+		ASSERT_EQ(second, third) << "круг ползёт; исходно: " << text;
+	}
+}
+
+/**
+ * @brief Проверка сличения образцов сочленения JSON и XML
+ *
+ * @details Образцы даны владельцем и лежат парами: одна и та же запись выражена
+ * разом видом JSON и видом XML. Разбор обеих обязан давать ОДНО дерево, а круг
+ * `JSON → XML → JSON` обязан быть замкнут
+ *
+ * @warning Образцы вложены сюда записями, а не файлами, намеренно: набор проверок
+ *          запускается из каталога сборки, и всякий путь к соседнему файлу делал бы
+ *          проверку зависимой от места запуска. Средство `tools/fuzz/bridge-joint.cpp`
+ *          гоняет те же правила по каталогу образцов, когда их много
+ *
+ */
+TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
+	// Создаём объект фреймворка
+	const fmk_t fmk;
+	// Создаём объект работы с логами
+	const log_t log(&fmk);
+	// Создаём мост между контейнером ABC и текстовыми кодеками
+	bridge_t bridge(&fmk, &log);
+	// Перечень образцов сличения, парою записей заданных
+	const vector <pair <string, string>> samples = {
+		// Образец 1
+		{R"AWH({
+    "story": {
+        "storyinfo": {
+            "author": "John Fleck",
+            "datewritten": "June 2, 2002",
+            "keyword": "example keyword"
+        },
+        "body": {
+            "headline": "This is the headline",
+            "para": "This is the body text."
+        }
+    }
+})AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE story>
+<story>
+	<storyinfo author="John Fleck" datewritten="June 2, 2002" keyword="example keyword"/>
+	<body headline="This is the headline" para="This is the body text."/>
+</story>)AWH"},
+		// Образец 2
+		{R"AWH({
+    "Event": {
+        "test": "24dsdsf",
+        "System": {
+            "Provider": {
+                "Name": "Service Control Manager",
+                "Guid": "{555908d1-a6d7-4695-8e1e-26931d2012f4}",
+                "EventSourceName": "Service Control Manager"
+            },
+            "EventID": {
+                "Qualifiers": 16384,
+                "value": 7045
+            },
+            "Version": 0,
+            "Level": 4,
+            "Task": 0,
+            "Opcode": 0,
+            "Keywords": "0x8080000000000000",
+            "TimeCreated": {
+                "SystemTime": "2024-07-23T21:04:52.445801+00:00"
+            },
+            "EventRecordID": 5513,
+            "Correlation": true,
+            "Execution": {
+                "ProcessID": 612,
+                "ThreadID": 3748
+            },
+            "Channel": "System",
+            "Computer": "img-win2019",
+            "Security": {
+                "UserID": "S-1-333056-21-4289332999-2345533736-3613513034-500"
+            }
+        },
+        "EventData": {
+            "Data": [
+                {
+                    "Name": "ServiceName",
+                    "value": "GoogleUpdater InternalService 128.0.6597.0 (GoogleUpdaterInternalService128.0.6597.0)"
+                },
+                {
+                    "Name": "ImagePath",
+                    "value": "Goga",
+                    "_value": "\"C:\\Program Files (x86)\\Google\\GoogleUpdater\\128.0.6597.0\\updater.exe\" --system --windows-service --service=update-internal"
+                },
+                {
+                    "Name": "ServiceType",
+                    "value": "user mode service"
+                },
+                {
+                    "Name": "StartType",
+                    "value": "auto start"
+                },
+                {
+                    "Name": "AccountName",
+                    "value": "LocalSystem"
+                }
+            ]
+        }
+    }
+})AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE Event>
+<Event>
+	<test>24dsdsf</test>
+	<System>
+		<Provider Name="Service Control Manager" Guid="{555908d1-a6d7-4695-8e1e-26931d2012f4}" EventSourceName="Service Control Manager"/>
+		<EventID Qualifiers="16384">7045</EventID>
+		<Version>0</Version>
+		<Level>4</Level>
+		<Task>0</Task>
+		<Opcode>0</Opcode>
+		<Keywords>0x8080000000000000</Keywords>
+		<TimeCreated SystemTime="2024-07-23T21:04:52.445801+00:00"/>
+		<EventRecordID>5513</EventRecordID>
+		<Correlation/>
+		<Execution ProcessID="612" ThreadID="3748"/>
+		<Channel>System</Channel>
+		<Computer>img-win2019</Computer>
+		<Security UserID="S-1-333056-21-4289332999-2345533736-3613513034-500"/>
+	</System>
+	<EventData>
+		<Data Name="ServiceName">GoogleUpdater InternalService 128.0.6597.0 (GoogleUpdaterInternalService128.0.6597.0)</Data>
+		<Data Name="ImagePath" value="Goga">&quot;C:\Program Files (x86)\Google\GoogleUpdater\128.0.6597.0\updater.exe&quot; --system --windows-service --service=update-internal</Data>
+		<Data Name="ServiceType">user mode service</Data>
+		<Data Name="StartType">auto start</Data>
+		<Data Name="AccountName">LocalSystem</Data>
+	</EventData>
+</Event>)AWH"},
+		// Образец 3
+		{R"AWH({
+    "recipe": {
+        "name": "хлеб",
+        "preptime": "5min",
+        "cooktime": "180min",
+        "title": "Простой хлеб",
+        "composition": {
+            "ingredient": [
+                {
+                    "amount": 3,
+                    "unit": "стакан",
+                    "value": "Мука"
+                },
+                {
+                    "amount": 0.25,
+                    "unit": "грамм",
+                    "value": "Дрожжи"
+                },
+                {
+                    "amount": 1.5,
+                    "unit": "стакан",
+                    "value": "Тёплая вода"
+                }
+            ]
+        },
+        "instructions": {
+            "step": [
+                "Смешать все ингредиенты и тщательно замесить. ",
+                "Закрыть тканью и оставить на один час в тёплом помещении.",
+                "Замесить ещё раз, положить на противень и поставить в духовку."
+            ]
+        }
+    }
+})AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE recipe>
+<recipe>
+	<name>хлеб</name>
+	<preptime>5min</preptime>
+	<cooktime>180min</cooktime>
+	<title>Простой хлеб</title>
+	<composition>
+		<ingredient amount="3" unit="стакан">Мука</ingredient>
+		<ingredient amount="0.25" unit="грамм">Дрожжи</ingredient>
+		<ingredient amount="1.5" unit="стакан">Тёплая вода</ingredient>
+	</composition>
+	<instructions>
+		<step>Смешать все ингредиенты и тщательно замесить. </step>
+		<step>Закрыть тканью и оставить на один час в тёплом помещении.</step>
+		<step>Замесить ещё раз, положить на противень и поставить в духовку.</step>
+	</instructions>
+</recipe>)AWH"},
+		// Образец 4
+		{R"AWH({
+    "root": {
+        "item": {
+            "item": [
+                {
+                    "name": "Ogre",
+                    "position": [
+                        0,
+                        5,
+                        0
+                    ],
+                    "powers": [
+                        {
+                            "damage": 10,
+                            "name": "Club"
+                        },
+                        {
+                            "damage": 8,
+                            "name": "Fist"
+                        }
+                    ]
+                },
+                {
+                    "name": "Dragon",
+                    "position": [
+                        1,
+                        0,
+                        10
+                    ],
+                    "powers": [
+                        {
+                            "damage": 25,
+                            "name": "Fire Breath"
+                        },
+                        {
+                            "damage": 15,
+                            "name": "Claws"
+                        }
+                    ]
+                },
+                {
+                    "name": "Wizard",
+                    "position": [
+                        5,
+                        -3,
+                        0
+                    ],
+                    "powers": [
+                        "damage",
+                        8
+                    ]
+                }
+            ]
+        }
+    }
+})AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE root>
+<root>
+	<item>
+		<item>
+			<name>Ogre</name>
+			<position>0</position>
+			<position>5</position>
+			<position>0</position>
+			<powers damage="10" name="Club"/>
+			<powers damage="8" name="Fist"/>
+		</item>
+		<item>
+			<name>Dragon</name>
+			<position>1</position>
+			<position>0</position>
+			<position>10</position>
+			<powers damage="25" name="Fire Breath"/>
+			<powers damage="15" name="Claws"/>
+		</item>
+		<item>
+			<name>Wizard</name>
+			<position>5</position>
+			<position>-3</position>
+			<position>0</position>
+			<powers>damage</powers>
+			<powers>8</powers>
+		</item>
+	</item>
+</root>)AWH"},
+		// Образец 5
+		{R"AWH({
+    "root": {
+        "id": "test",
+        "item": {
+            "item": [
+                {
+                    "name": "Ogre",
+                    "position": [
+                        0,
+                        5,
+                        0
+                    ],
+                    "powers": [
+                        {
+                            "damage": 10,
+                            "name": "Club"
+                        },
+                        {
+                            "damage": 8,
+                            "name": "Fist"
+                        }
+                    ],
+                    "id": "a"
+                },
+                {
+                    "name": "Dragon",
+                    "position": [
+                        1,
+                        0,
+                        10
+                    ],
+                    "powers": [
+                        {
+                            "damage": 25,
+                            "name": "Fire Breath"
+                        },
+                        {
+                            "damage": 15,
+                            "name": "Claws"
+                        }
+                    ],
+                    "id": "b"
+                },
+                {
+                    "name": "Wizard",
+                    "position": [
+                        5,
+                        -3,
+                        0
+                    ],
+                    "powers": [
+                        "damage",
+                        10
+                    ],
+                    "id": "c"
+                }
+            ]
+        }
+    }
+})AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE root>
+<root>
+	<id>test</id>
+	<item>
+		<item>
+			<name>Ogre</name>
+			<position>0</position>
+			<position>5</position>
+			<position>0</position>
+			<powers damage="10" name="Club"/>
+			<powers damage="8" name="Fist"/>
+			<id>a</id>
+		</item>
+		<item>
+			<name>Dragon</name>
+			<position>1</position>
+			<position>0</position>
+			<position>10</position>
+			<powers damage="25" name="Fire Breath"/>
+			<powers damage="15" name="Claws"/>
+			<id>b</id>
+		</item>
+		<item>
+			<name>Wizard</name>
+			<position>5</position>
+			<position>-3</position>
+			<position>0</position>
+			<powers>damage</powers>
+			<powers>10</powers>
+			<id>c</id>
+		</item>
+	</item>
+</root>)AWH"},
+		// Образец 6
+		{R"AWH({
+    "Hello": "World!!!"
+})AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE Hello>
+<Hello>World!!!</Hello>)AWH"},
+		// Образец 7
+		{R"AWH({
+    "Hello": {
+        "id": "name",
+        "data": "test",
+        "value": "World!!!"
+    }
+})AWH", R"AWH(<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE Hello>
+<Hello id="name" data="test">World!!!</Hello>)AWH"},
+	};
+	// Порядковый номер сличаемого образца
+	size_t number = 0;
+	// Выполняем перебор всех образцов сличения
+	for(auto & sample : samples){
+		// Увеличиваем порядковый номер образца
+		number++;
+		// Собираемые деревья значений обеих записей
+		abc::value_t fromJSON, fromXML;
+		// Выполняем разбор записи JSON
+		ASSERT_TRUE(bridge.decode(sample.first, fromJSON, bridge_t::format_t::JSON)) << "образец " << number;
+		// Выполняем разбор записи XML
+		ASSERT_TRUE(bridge.decode(sample.second, fromXML, bridge_t::format_t::XML)) << "образец " << number;
+		// Собираемые записи обоих деревьев
+		string first = "", second = "";
+		// Выполняем перевод обоих деревьев в запись JSON
+		ASSERT_TRUE(bridge.encode(fromJSON, first, bridge_t::format_t::JSON)) << "образец " << number;
+		ASSERT_TRUE(bridge.encode(fromXML, second, bridge_t::format_t::JSON)) << "образец " << number;
+		/**
+		 * Выполняем проверку совпадения деревьев обеих записей
+		 *
+		 * @warning Утверждение это стережёт СОГЛАСИЕ двух дорог: правила сочленения
+		 *          у прямого и обратного ходов обязаны совпадать, и расхождение здесь
+		 *          означает, что одна дорога понимает запись иначе, чем другая
+		 */
+		ASSERT_EQ(first, second) << "образец " << number << ": деревья разошлись";
+		// Собираемая запись кругового перевода
+		string markup = "";
+		// Выполняем перевод дерева в запись разметки
+		ASSERT_TRUE(bridge.encode(fromJSON, markup, bridge_t::format_t::XML)) << "образец " << number;
+		// Собираемое дерево кругового перевода
+		abc::value_t back;
+		// Выполняем разбор собранной записи разметки
+		ASSERT_TRUE(bridge.decode(markup, back, bridge_t::format_t::XML)) << "образец " << number << ": собрано " << markup;
+		// Собираемая запись дерева кругового перевода
+		string third = "";
+		// Выполняем перевод дерева кругового перевода в запись JSON
+		ASSERT_TRUE(bridge.encode(back, third, bridge_t::format_t::XML)) << "образец " << number;
+		// Выполняем проверку замкнутости круга перевода
+		ASSERT_EQ(markup, third) << "образец " << number << ": круг перевода разомкнут";
+	}
+}

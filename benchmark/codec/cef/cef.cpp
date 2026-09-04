@@ -55,6 +55,28 @@ std::string awh::benchmark::event::details(const outcome_t & output) noexcept {
  * @return       пропускная способность в мегабайтах в секунду
  *
  */
+/**
+ * @brief Функция поверки того, что измеряемая работа кругами состоялась
+ *
+ * @param output итоги прогона сценария
+ * @param result заполняемый результат измерения
+ * @return       признак того, что работа кругами состоялась
+ *
+ */
+bool awh::benchmark::event::worked(const outcome_t & output, awh::benchmark::result_t & result) noexcept {
+	// Если итог работы числа кругов не достиг
+	if(output.produced < output.operations){
+		// Помечаем измерение недействительным
+		result.invalid = true;
+		// Устанавливаем причину недействительности измерения
+		result.reason = "измеряемая работа отказом хотя бы одного круга завершилась";
+		// Выводим отсутствие состоявшейся работы
+		return false;
+	}
+	// Выводим признак состоявшейся работы
+	return true;
+}
+
 double awh::benchmark::event::perSecond(const outcome_t & output) noexcept {
 	// Если время прогона не измерено
 	if(output.seconds <= 0.0)
