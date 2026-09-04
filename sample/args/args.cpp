@@ -105,8 +105,14 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	static_cast <void> (args.env());
 	// Если задан файл настроек
 	if(args.has("config")){
-		// Выполняем чтение файла настроек записью JSON
-		if(!args.filename(args.get <string> ("config"), codec::Bridge::format_t::JSON))
+		/**
+		 * Выполняем чтение файла настроек
+		 *
+		 * @note Вид записи выводится расширением имени: `.json`, `.yaml`, `.toml`,
+		 *       `.ini` либо `.xml`. Знай потребитель вид заранее - задал бы его
+		 *       вторым доводом и имя файла ему было бы не указ
+		 */
+		if(!args.filename(args.get <string> ("config")))
 			// Выводим сообщение об отказе чтения файла настроек
 			log.print("Файл настроек прочитать не удалось", log_t::flag_t::WARNING);
 	}

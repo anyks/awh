@@ -479,6 +479,29 @@ namespace awh {
 				 * \~
 				 */
 				[[nodiscard]] bool filename(const string & filename, const codec::Bridge::format_t format) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод чтения файла настроек с выводом вида записи из его имени
+				 *
+				 * @details Вид записи берётся РАСШИРЕНИЕМ имени файла: `.json`, `.yaml`
+				 * либо `.yml`, `.toml`, `.ini` либо `.conf`, `.xml`. Расширение неведомое
+				 * отвечает отказом, а не догадкою по содержимому: догадка на записи,
+				 * годной двум видам разом, выбирала бы молча
+				 *
+				 * @note Ход этот ДОБАВЛЕН к прежнему, а не заменяет его: потребитель,
+				 *       вид записи знающий, задаёт его сам, и имя файла ему не указ
+				 *
+				 * @param filename путь к файлу настроек
+				 * @return         результат чтения
+				 *
+				 * \~english
+				 * @brief Method of the reading of a file of the settings with the deduction of the kind of the record from its name
+				 * @param filename path to the file of the settings
+				 * @return result of the reading
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool filename(const string & filename) noexcept;
 			public:
 				/**
 				 * \~russian

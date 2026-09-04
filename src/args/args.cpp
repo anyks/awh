@@ -713,6 +713,30 @@ bool awh::args::Args::config(const string_view text, const codec::Bridge::format
 		// Выходим из метода, разбор отвечен отказом
 		return false;
 	}
+	/**
+	 * Если записью настроек оказалась разметка
+	 *
+	 * @details У документа разметки ровно один корневой узел, и узел этот есть
+	 * ОБНОС записи, а не настройка: имя ему даётся снаружи и означает лишь то, что
+	 * безымянным корень быть не может. Прочие четыре вида обноса не требуют вовсе
+	 *
+	 * @warning Без снятия обноса настройка `port` из записи разметки ложилась бы
+	 *          путём `config.port` и доводом запуска `--port` НЕ перекрывалась бы:
+	 *          старшинство источников считается по одному и тому же пути, а пути
+	 *          расходились. Замерено 05.09.2026 - запись разметки давала порт `0`
+	 *          там, где прочие четыре вида давали свой
+	 *
+	 * @note Обнос снимается лишь при ОДНОМ поле верхнего уровня: запись с двумя
+	 *       корнями разметке негодна вовсе, и снимать там нечего
+	 */
+	if((format == codec::Bridge::format_t::XML) && value.is(codec::abc::type_t::MAP) && (value.size() == 1)){
+		// Извлекаемое имя единственного поля дерева
+		string name = "";
+		// Если имя поля извлекается и поле его является отображением
+		if(value.key(0).value(name) && value[name].is(codec::abc::type_t::MAP))
+			// Выполняем слияние содержимого корневого узла с деревом настроек
+			return this->merge(value[name], "", source_t::FILE);
+	}
 	// Выполняем слияние разобранного дерева с деревом настроек
 	return this->merge(value, "", source_t::FILE);
 }
@@ -747,6 +771,65 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
 	}
 	// Выполняем разбор прочитанной записи настроек
 	return this->config(text, format);
+}
+
+/**
+ * @brief Метод чтения файла настроек с выводом вида записи из его имени
+ *
+ * @param filename путь к файлу настроек
+ * @return         результат чтения
+ *
+ * @warning Вид записи берётся РАСШИРЕНИЕМ имени, а не догадкою по содержимому:
+ *          запись, годной двум видам разом, догадка выбирала бы молча, и
+ *          потребитель узнал бы о выборе лишь по неверно прочтённым настройкам.
+ *          Запись `port = 8080` годится и INI, и TOML, и прочтения их расходятся
+ *
+ * @note Расширение `.conf` отдано наречию INI, а не TOML: у систем POSIX им
+ *       зовутся именно файлы вида «ключ = значение» с разделами
+ *
+ */
+bool awh::args::Args::filename(const string & filename) noexcept {
+	// Выполняем поиск расширения имени файла настроек
+	const size_t pos = filename.rfind('.');
+	// Если расширения у имени файла нет вовсе
+	if((pos == string::npos) || ((pos + 1) >= filename.length())){
+		// Выполняем запоминание отказа чтения файла настроек
+		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
+		// Выводим в лог сообщение об отсутствии расширения имени
+		this->_log->print("Args: вид записи файла настроек \"%s\" из имени не выводится", log_t::flag_t::WARNING, filename.c_str());
+		// Выходим из метода, читать нечего
+		return false;
+	}
+	// Извлекаемое расширение имени файла настроек
+	string extension = filename.substr(pos + 1);
+	// Выполняем перевод расширения в нижний регистр
+	this->_fmk->transform(extension, fmk_t::transform_t::LOWER_CASE);
+	// Если расширение означает запись JSON
+	if(extension.compare("json") == 0)
+		// Выполняем чтение файла настроек записью JSON
+		return this->filename(filename, codec::Bridge::format_t::JSON);
+	// Если расширение означает запись YAML
+	else if((extension.compare("yaml") == 0) || (extension.compare("yml") == 0))
+		// Выполняем чтение файла настроек записью YAML
+		return this->filename(filename, codec::Bridge::format_t::YAML);
+	// Если расширение означает запись TOML
+	else if(extension.compare("toml") == 0)
+		// Выполняем чтение файла настроек записью TOML
+		return this->filename(filename, codec::Bridge::format_t::TOML);
+	// Если расширение означает запись INI
+	else if((extension.compare("ini") == 0) || (extension.compare("conf") == 0))
+		// Выполняем чтение файла настроек записью INI
+		return this->filename(filename, codec::Bridge::format_t::INI);
+	// Если расширение означает запись XML
+	else if(extension.compare("xml") == 0)
+		// Выполняем чтение файла настроек записью XML
+		return this->filename(filename, codec::Bridge::format_t::XML);
+	// Выполняем запоминание отказа чтения файла настроек
+	this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
+	// Выводим в лог сообщение о неведомом расширении имени
+	this->_log->print("Args: вид записи \"%s\" файла настроек \"%s\" неведом", log_t::flag_t::WARNING, extension.c_str(), filename.c_str());
+	// Выходим из метода, читать нечего
+	return false;
 }
 
 /**
