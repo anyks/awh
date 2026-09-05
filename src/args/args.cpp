@@ -1160,7 +1160,7 @@ void awh::args::Args::lexing(const lexer_t::settings_t & settings) noexcept {
  *
  */
 awh::args::Args::Args(const fmk_t * fmk, const log_t * log) noexcept :
- _prefix{""}, _schema(fmk, log), _lexer(fmk, log), _bridge(fmk, log), _fs(fmk, log),
+ _schema(fmk, log), _prefix{""}, _lexer(fmk, log), _bridge(fmk, log), _fs(fmk, log),
  _root(codec::abc::kind_t::MAP), _fmk(fmk), _log(log) {
 	// Выполняем установку объекта работы с логами дереву настроек
 	this->_root.setLogger(log);
