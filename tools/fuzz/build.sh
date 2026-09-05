@@ -826,8 +826,20 @@ if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "bri
 		# Добавляем собранное к перечню объектных файлов
 		OBJECTS="$OBJECTS $OUTPUT/$NAME.o"
 	done
+	##
 	# Выполняем подключение собранных сторонних библиотек
+	#
+	# @note Имя собранной библиотеки от системы ЗАВИСИТ: сборка под MSYS2 и MinGW
+	#       кладёт её «libdependence.lib», а не «libdependence.a». Отбор по одному
+	#       лишь «.a» валил сборку не нехваткою библиотеки, а нехваткою заголовка
+	#       стороннего («snappy.h»), и корень отказа по отчёту не читался вовсе
+	##
 	DEPEND="$ROOT/third_party/lib/libdependence.a"
+	# Если библиотека под привычным именем не найдена
+	if [ ! -f "$DEPEND" ] && [ -f "$ROOT/third_party/lib/libdependence.lib" ]; then
+		# Выполняем подключение библиотеки под именем целей MS Windows
+		DEPEND="$ROOT/third_party/lib/libdependence.lib"
+	fi
 fi
 
 # Выполняем сборку самого ворошителя
