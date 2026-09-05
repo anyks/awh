@@ -674,7 +674,7 @@ bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & resul
  *          коих мост писан, смешанного содержимого не бывает вовсе
  *
  */
-bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept {
+bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth, const bool slot) noexcept {
 	// Если глубина обхода превысила предел перевода
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
@@ -772,6 +772,27 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 		 *          пустую запись
 		 */
 		if(text.empty() && !outer){
+			/**
+			 * Если пустой узел стоит ЗВЕНОМ ПЕРЕЧНЯ
+			 *
+			 * @details Звено перечня и поле отображения — вещи разные, и настройка
+			 *          `empty` до звена не достаёт. Поле `<NewEnabled/>` у настроек
+			 *          означает НАЛИЧИЕ без значения, оттого умолчанием и взята
+			 *          истина; звено же `<item></item>` места своего в перечне не
+			 *          выбирает и наличием быть не может — оно ровно пустое значение
+			 *
+			 * @note Решение владельца от 06.09.2026: «<item></item> там был пустым
+			 *       элементом массива, по сути пустая строка». Правило это мирит
+			 *       два его же образца, требовавших умолчаний ПРОТИВОПОЛОЖНЫХ:
+			 *       журнал событий Windows кладёт `<Correlation/>` истиной, а
+			 *       перечень восьмого образца — пустою строкою
+			 */
+			if(slot){
+				// Выполняем укладку звена перечня пустою последовательностью знаков
+				result = abc::value_t(string(""));
+				// Выводим результат укладки
+				return true;
+			}
 			// Определяем правило укладки пустого узла разметки
 			switch(static_cast <uint8_t> (this->_settings.empty)){
 				// Если пустой узел ложится логическою истиной
@@ -843,7 +864,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 				// Собираемое значение звена перечня
 				abc::value_t item;
 				// Выполняем укладку значения звена перечня
-				if(!this->absorbXML(document, path + "/" + link, item, depth + 1))
+				if(!this->absorbXML(document, path + "/" + link, item, depth + 1, true))
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 				// Выполняем добавление собранного значения звеном перечня
@@ -928,7 +949,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 			// Выполняем перебор всех звеньев пути одноимённых потомков
 			for(size_t i = 0; i < child.second.size(); i++){
 				// Выполняем укладку значения потомка в значение вместимого
-				if(!this->absorbXML(document, path + "/" + child.second.at(i), result[child.first][i], depth + 1))
+				if(!this->absorbXML(document, path + "/" + child.second.at(i), result[child.first][i], depth + 1, true))
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 			}

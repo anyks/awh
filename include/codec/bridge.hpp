@@ -712,7 +712,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth) noexcept;
+				[[nodiscard]] bool absorbXML(const xml::document_t & document, const string & path, abc::value_t & result, const uint32_t depth, const bool slot = false) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод перевода записи XML в дерево ABC
