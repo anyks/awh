@@ -429,7 +429,7 @@ TEST(CodecCsvReader, Strict) {
 	 * @note Поле «a» выдаётся до отказа: завершила его запятая, стоящая прежде
 	 *       недопустимого знака, и выданного назад не берут
 	 */
-	ASSERT_EQ(::parse("a,b\nc,d\n", settings), "F[a]!invalid character");
+	ASSERT_EQ(::parse("a,b\nc,d\n", settings), "F[a]!bare line break instead of CRLF");
 	/**
 	 * Выполняем проверку отказа одинокому возврату каретки посреди текста
 	 *
@@ -440,7 +440,7 @@ TEST(CodecCsvReader, Strict) {
 	 *       causa её была та же. Вольный разбор оба знака принимает концом записи,
 	 *       и оттого места эти вне строгого режима недостижимы вовсе
 	 */
-	ASSERT_EQ(::parse("a,b\rc,d\r\n", settings), "F[a]!invalid character");
+	ASSERT_EQ(::parse("a,b\rc,d\r\n", settings), "F[a]!bare line break instead of CRLF");
 	/**
 	 * Выполняем проверку отказа тексту, оборванному на возврате каретки
 	 *
@@ -449,7 +449,7 @@ TEST(CodecCsvReader, Strict) {
 	 *       текст выпадает так же, как и возврат каретки посреди текста, а место отказа
 	 *       у него отдельное - конец подачи, а не разбор знака
 	 */
-	ASSERT_EQ(::parse("a,b\r", settings), "F[a]!invalid character");
+	ASSERT_EQ(::parse("a,b\r", settings), "F[a]!bare line break instead of CRLF");
 	// Выполняем проверку разбора записи, договору отвечающей
 	ASSERT_EQ(::parse("a,\"b\"\r\n", settings), "F[a]F[b]R;");
 }
@@ -1835,8 +1835,13 @@ TEST(CodecCsvReader, StrictRefusesLoneLineFeed) {
 	csv::reader_t reader(::logger(), settings);
 	// Выполняем проверку отказа разбора текста с одиночным переводом строки
 	ASSERT_FALSE(reader.feed("a,b\nc,d\n"));
-	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(reader.error(), csv::error_t::INVALID_CHARACTER);
+	/**
+	 * Выполняем проверку кода отказа разбора
+	 *
+	 * @note Код здесь СВОЙ, а не общий `INVALID_CHARACTER`: нарушен не состав знаков, а
+	 *       грамматика конца записи, и потребителю разница эта видна кодом
+	 */
+	ASSERT_EQ(reader.error(), csv::error_t::BARE_LINE_BREAK);
 	// Чтение текста таблицы знаками конца строки по договору
 	csv::reader_t strict(::logger(), settings);
 	// Выполняем проверку разбора текста знаками конца строки по договору
@@ -2104,7 +2109,7 @@ TEST(CodecCsvReader, QuotedFieldsWithBackslashEscape) {
 		// Выполняем проверку отказа разбора одиночного перевода строки за полем в кавычках
 		ASSERT_FALSE(reader.feed("\"a\",\"b\"\n"));
 		// Выполняем проверку кода отказа разбора
-		ASSERT_EQ(reader.error(), csv::error_t::INVALID_CHARACTER);
+		ASSERT_EQ(reader.error(), csv::error_t::BARE_LINE_BREAK);
 	}
 }
 

@@ -249,6 +249,7 @@ namespace {
  */
 awh::codec::ini::Writer::Settings::Settings() noexcept :
  marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), trimSections(true), greedySections(false),
+ strictNames(false),
  separators(separator_t::EQUALS), quotes(true), quoting(quoting_t::AUTO),
  subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), spacedComments(true), comments(marker_t::BOTH),
  spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
@@ -492,6 +493,56 @@ bool awh::codec::ini::Writer::verify(const string_view name, const bool section)
 		this->report();
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
+	/**
+	 * Если имя поверяется строгою грамматикой наречия
+	 *
+	 * @details Наречие Git строит имя раздела из букв, цифр, черты да точки, а имя
+	 *          свойства - из буквы первым знаком да букв, цифр и черты далее. Имена иные
+	 *          средство «git config» отвергает, и читающий, грамматику поверяющий,
+	 *          отвергает их наравне с ним
+	 *
+	 * @warning Зеркала этой настройки у записи прежде не было вовсе: имя `[раздел]`
+	 *          кириллицей записывалось как есть, а обратное чтение тем же наречием
+	 *          отвергало его отказом построения объявления. Дерево выдавало текст, какого
+	 *          своё же чтение не принимает, и отказа при записи не было. Нашёл это
+	 *          ворошитель, как только набор его научился перебирать саму настройку
+	 *
+	 * @note Имя подраздела сюда не приходит вовсе: поверку проходит одно лишь имя раздела,
+	 *       а подраздел в кавычках вольным остаётся и у читающего
+	 */
+	if(this->_settings.strictNames){
+		/**
+		 * Если первый знак имени свойства буквою не является
+		 */
+		if(!section && !ascii::isAlpha(name.front())){
+			// Запоминаем код ошибки записи
+			this->_error = error_t::INVALID_KEY;
+			// Выполняем вывод сообщения об отказе в лог
+			this->report();
+			// Выводим отрицательный результат выполнения операции
+			return false;
+		}
+		/**
+		 * Выполняем перебор всех знаков имени
+		 */
+		for(size_t i = 0; i < name.length(); i++){
+			/**
+			 * Если знак имени грамматике наречия не отвечает
+			 *
+			 * @note Точка дозволена имени раздела и запрещена имени свойства: у раздела она
+			 *       разделяет имя подраздела, а у свойства знаком имени не является вовсе -
+			 *       правила эти взяты у читающего знак в знак
+			 */
+			if(!ascii::isAlnum(name[i]) && (name[i] != '-') && !(section && (name[i] == '.'))){
+				// Запоминаем код ошибки записи
+				this->_error = (section ? error_t::INVALID_SECTION : error_t::INVALID_KEY);
+				// Выполняем вывод сообщения об отказе в лог
+				this->report();
+				// Выводим отрицательный результат выполнения операции
+				return false;
+			}
+		}
 	}
 	/**
 	 * Выполняем перебор всех знаков имени

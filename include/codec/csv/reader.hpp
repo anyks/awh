@@ -229,12 +229,21 @@ namespace awh {
 						 * одиночный перевод строки в качестве конца записи. Обиход этого
 						 * не соблюдает, потому умолчанием разбор нестрогий
 						 *
+						 * @note Всякое из трёх правил называет свою причину СВОИМ кодом:
+						 * `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` и `BARE_LINE_BREAK`.
+						 * Последний заведён 05.09.2026: прежде негодный конец записи -
+						 * одиночный перевод строки и возврат каретки без пары - отвечал
+						 * общим `INVALID_CHARACTER`, и потребитель не отличал нарушения
+						 * грамматики от недопустимого знака в самом содержимом
+						 *
 						 * \~english
 						 * Flag of the strict following of RFC 4180
 						 * @note The strict parsing answers with a refusal to a single quote
 						 * inside a field without quotes, to the characters after a closing quote and to
 						 * a single line feed as the end of a record. The custom does not
 						 * observe this, therefore by default the parsing is a non-strict one
+						 * @note Each of the three rules names its cause with its OWN code:
+						 * `UNESCAPED_QUOTE`, `TRAILING_CHARACTERS` and `BARE_LINE_BREAK`
 						 *
 						 * \~
 						 */

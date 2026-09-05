@@ -573,6 +573,39 @@ bool awh::codec::cef::Document::parse(const string_view text) noexcept {
 			} break;
 			// Если событием является окончание записи
 			case static_cast <uint8_t> (event_t::RECORD): {
+				/**
+				 * Если сличение ведётся, поверяем метки имён на беспризорность
+				 *
+				 * @note Метка «cs1Label» назначает человеческое имя полю «cs1», и без
+				 *       самого поля она бессмысленна: потребитель, спросивший label(),
+				 *       получит имя того, чего в записи нет. Отказ этот словарный, а не
+				 *       разбора, оттого и живёт при укладке в дерево, а не в читателе
+				 */
+				if(this->_reader.settings().mode != mode_t::NONE){
+					// Получаем вместилище пар расширения дерева события
+					const abc::value_t & extension = this->_root.at(string("/") + EXTENSION);
+					/**
+					 * Выполняем перебор всех имён пар расширения
+					 */
+					for(size_t i = 0; i < extension.size(); i++){
+						// Получаем имя очередной пары расширения
+						const string name = extension.key(i).text();
+						// Если имя пары расширения меткой имени не является
+						if((name.size() <= LABEL_SUFFIX.size()) ||
+						   (name.compare(name.size() - LABEL_SUFFIX.size(), LABEL_SUFFIX.size(), LABEL_SUFFIX) != 0))
+							// Переходим к следующей паре расширения
+							continue;
+						// Получаем имя поля, меткой именуемого
+						const string field(name, 0, name.size() - LABEL_SUFFIX.size());
+						// Если поле, меткой именуемое, записью не объявлено
+						if(!extension.contains(field)){
+							// Запоминаем код ошибки последней операции
+							this->_error = error_t::DANGLING_LABEL;
+							// Выводим отрицательный результат выполнения операции
+							return false;
+						}
+					}
+				}
 				// Выводим положительный результат выполнения операции
 				return true;
 			}

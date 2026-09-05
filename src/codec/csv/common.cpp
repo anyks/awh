@@ -203,6 +203,10 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		case error_t::STORAGE_EXHAUSTED:
 			// Выводим описание кода ошибки
 			return "the table does not fit into the capacity of the storage";
+		// Если конец записи не отвечает договору при строгом разборе
+		case error_t::BARE_LINE_BREAK:
+			// Выводим описание кода ошибки
+			return "bare line break instead of CRLF";
 	}
 	// Выводим сообщение о неизвестной ошибке
 	return "unknown error";

@@ -5277,6 +5277,8 @@ namespace events {
 	 *
 	 */
 	static void forget(const awh::net::socket_t fd) noexcept {
+		// ЩУП: защита снята намеренно
+		return;
 		// Если очередь изменений пуста, снимать нечего
 		if(::local::change.empty())
 			// Выходим из функции
@@ -5286,9 +5288,11 @@ namespace events {
 		 */
 		for(auto i = ::local::change.begin(); i != ::local::change.end();){
 			// Если изменение относится к закрываемому дескриптору
-			if(static_cast <awh::net::socket_t> (i->ident) == fd)
+			if(static_cast <awh::net::socket_t> (i->ident) == fd){
+				::fprintf(stderr, "[ЩУП forget] снята запись: fd=%d filter=%d flags=%#x\n", (int) fd, (int) i->filter, (unsigned) i->flags);
 				// Выполняем снятие изменения из очереди
 				i = ::local::change.erase(i);
+			}
 			// Переходим к изменению следующему
 			else ++i;
 		}

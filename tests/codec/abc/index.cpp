@@ -1224,3 +1224,130 @@ TEST_F(IndexFixture, UnpackFailureCarriesThePackerCause) {
 		ASSERT_TRUE(fetcher.record(0, item)) << "код отказа: " << abc::message(fetcher.error());
 	}
 }
+/**
+ * @brief Проверка того, что обрыв чтения назван причиною своего рода
+ *
+ * @details Выборщик читает носитель на четырёх местах: заголовок кадра оглавления, кадр
+ *          оглавления целиком, заголовок кадра записи и кадр записи целиком. Всякий обрыв
+ *          обязан объявляться `UNREADABLE_SOURCE`, а не причиною соседнего слоя
+ *
+ * @note Прежние проверки выборщика утверждали, что отказ СЛУЧИЛСЯ, а не какою причиною
+ *       назван, - и четыре места чтения стояли слепыми по роду причины до 05.09.2026.
+ *       Обход ведётся по числу удавшихся чтений: предел, до одного места не дошедший,
+ *       настигает другое
+ *
+ * @note Проверяется и обратное: при снятом пределе выборка проходит. Без того обход
+ *       прошёл бы и на выборщике, отказывающем всегда
+ */
+TEST_F(IndexFixture, ReadRefusalNamesItsKind) {
+	// Октеты собранного контейнера
+	vector <uint8_t> data;
+	{
+		// Сборщик контейнера
+		abc::assembler_t assembler(this->_log.get());
+		/**
+		 * Выполняем внесение череды записей в собираемый контейнер
+		 */
+		for(size_t i = 0; i < 4; i++){
+			// Выполняем сборку очередной записи
+			const vector <uint8_t> item = record(string{"запись номер "} + to_string(i));
+			// Выполняем внесение очередной записи в собираемый контейнер
+			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+				<< "код отказа: " << abc::message(assembler.error());
+		}
+		// Выполняем завершение сборки контейнера
+		ASSERT_TRUE(assembler.complete(data)) << "код отказа: " << abc::message(assembler.error());
+	}
+	// Количество застигнутых обрывов чтения
+	size_t refused = 0;
+	/**
+	 * Выполняем обход всех мест обрыва чтения носителя
+	 */
+	for(int sight = 0; sight < 24; sight++){
+		// Количество удавшихся чтений круга
+		int reads = 0;
+		/**
+		 * Источник октетов контейнера, отказывающий по исчерпании предела
+		 *
+		 * @param offset смещение читаемых октетов
+		 * @param size   размер читаемых октетов
+		 * @param result буфер, куда следует положить прочитанное
+		 * @return       признак успешности чтения
+		 */
+		const auto source = [&data, &reads, sight](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+			// Выполняем очистку буфера прочитанных октетов
+			result.clear();
+			// Если предел удавшихся чтений исчерпан
+			if(reads >= sight)
+				// Выводим признак неудачного чтения
+				return false;
+			// Выполняем учёт удавшегося чтения
+			reads++;
+			// Если затребованное чтение выходит за пределы записи контейнера
+			if((offset + static_cast <uint64_t> (size)) > static_cast <uint64_t> (data.size()))
+				// Выводим признак неудачного чтения
+				return false;
+			// Выполняем выдачу затребованных октетов записи контейнера
+			result.assign(data.begin() + static_cast <ptrdiff_t> (offset),
+			 data.begin() + static_cast <ptrdiff_t> (offset) + static_cast <ptrdiff_t> (size));
+			// Выводим признак успешного чтения
+			return true;
+		};
+		// Выборщик записей контейнера круга
+		abc::fetcher_t fetcher(this->_log.get());
+		// Признак успешно открытого контейнера
+		const bool opened = fetcher.open(source);
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> item;
+		// Признак успешно выбранных записей контейнера
+		const bool taken = (opened && fetcher.record(0, item) && fetcher.record(3, item));
+		/**
+		 * Если работа отвечена отказом, причина обязана быть обрывом чтения
+		 */
+		if(!taken){
+			// Выполняем учёт застигнутого обрыва чтения
+			refused++;
+			// Выполняем проверку того, что причина названа обрывом чтения носителя
+			ASSERT_EQ(fetcher.error(), abc::error_t::UNREADABLE_SOURCE)
+				<< "предел чтений: " << sight << ", причина: " << abc::message(fetcher.error());
+		}
+	}
+	// Выполняем проверку того, что обрывы чтения обходом застигнуты
+	ASSERT_GT(refused, static_cast <size_t> (0));
+	/**
+	 * Выполняем проверку того, что при СНЯТОМ пределе выборка проходит
+	 */
+	{
+		/**
+		 * Источник октетов контейнера без предела чтений
+		 *
+		 * @param offset смещение читаемых октетов
+		 * @param size   размер читаемых октетов
+		 * @param result буфер, куда следует положить прочитанное
+		 * @return       признак успешности чтения
+		 */
+		const auto source = [&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+			// Выполняем очистку буфера прочитанных октетов
+			result.clear();
+			// Если затребованное чтение выходит за пределы записи контейнера
+			if((offset + static_cast <uint64_t> (size)) > static_cast <uint64_t> (data.size()))
+				// Выводим признак неудачного чтения
+				return false;
+			// Выполняем выдачу затребованных октетов записи контейнера
+			result.assign(data.begin() + static_cast <ptrdiff_t> (offset),
+			 data.begin() + static_cast <ptrdiff_t> (offset) + static_cast <ptrdiff_t> (size));
+			// Выводим признак успешного чтения
+			return true;
+		};
+		// Выборщик записей контейнера
+		abc::fetcher_t fetcher(this->_log.get());
+		// Выполняем проверку того, что контейнер открывается
+		ASSERT_TRUE(fetcher.open(source)) << "код отказа: " << abc::message(fetcher.error());
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> item;
+		// Выполняем проверку того, что первая запись контейнера выбирается
+		ASSERT_TRUE(fetcher.record(0, item)) << "код отказа: " << abc::message(fetcher.error());
+		// Выполняем проверку того, что последняя запись контейнера выбирается
+		ASSERT_TRUE(fetcher.record(3, item)) << "код отказа: " << abc::message(fetcher.error());
+	}
+}

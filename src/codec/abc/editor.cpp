@@ -1181,6 +1181,14 @@ bool awh::codec::abc::Editor::record(const uint64_t number, vector <uint8_t> & r
 	/**
 	 * Если строка оглавления указывает за содержимое снятого кадра
 	 */
+	/**
+	 * @note Строка приходит С НОСИТЕЛЯ и недоверенна, оттого заслон этот - НЕ последняя
+	 *       рука, в отличие от близнеца своего у накопленного, где отрезок сличается со
+	 *       своей же памятью. Закреплено проверкою `EditorFixture.EntryBeyondChunkIsRefused`
+	 *       (близнец `IndexFixture.EntryBeyondChunk`, но у правщика): подмена причины
+	 *       красит одну лишь её (2029 прогнано, 2028 прошло, 05.09.2026). До того у
+	 *       выборщика заслон стерегли, а у правщика он стоял слепым
+	 */
 	if((static_cast <uint64_t> (entry.offset) + entry.length) > static_cast <uint64_t> (this->_chunk.size())){
 		// Выполняем установку кода отказа выборки записи
 		this->fail(error_t::INVALID_INDEX);
@@ -1280,6 +1288,19 @@ bool awh::codec::abc::Editor::commit() noexcept {
 		 *       сбором заново по кадрам тела
 		 */
 		if(this->_signer != nullptr){
+			/**
+			 * Выполняем запоминание объявленной причины отказа
+			 *
+			 * @warning Откат ЧИТАЕТ носитель сбором свёрток, и чтение это отказать может
+			 *          тоже - а всякий отказ причину ПЕРЕЗАПИСЫВАЕТ. Без запоминания
+			 *          наружу выходила причина отката, а не причина самого отказа:
+			 *          зовущий, встретивший отказ шифрования, читал бы «работа чтения
+			 *          октетов отвечена отказом» и чинил бы не то. На обрыве носителя обе
+			 *          причины совпадают, оттого подмена и была невидима - вскрыта щупом
+			 *          05.09.2026 сличением МЕСТА отказа с причиной, вышедшей наружу:
+			 *          место срабатывало, а закрепляющая проверка не краснела
+			 */
+			const error_t standing = this->_error;
 			// Выполняем очистку дерева свёрток
 			this->_merkle.clear();
 			/**
@@ -1296,6 +1317,11 @@ bool awh::codec::abc::Editor::commit() noexcept {
 				// Выполняем очистку дерева свёрток
 				this->_merkle.clear();
 			}
+			/**
+			 * Выполняем возврат объявленной причины отказа: откат состояния причины не
+			 * заводит, он лишь возвращает прежнее
+			 */
+			this->_error = standing;
 		}
 	};
 	// Смещение записи новых кадров правимого контейнера
@@ -1550,6 +1576,11 @@ bool awh::codec::abc::Editor::commit() noexcept {
 	vector <uint8_t> tail;
 	/**
 	 * Если уложить оглавление кадром не вышло
+	 */
+	/**
+	 * @note Причина ПЕРЕНОСИТСЯ от укладчика. Закреплено проверкою
+	 *       `EditorFixture.PackFailureCarriesThePackerCause`; устье разводится с укладкой
+	 *       накопленного порогом накопления (05.09.2026)
 	 */
 	if(!this->_packer.pack(entries.data(), entries.size(), payload_t::NUMERIC,
 	 this->_number, static_cast <uint32_t> (this->_header.generation + 1), tail)){
@@ -1842,6 +1873,10 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 		/**
 		 * Если уложить накопленные записи кадром не вышло
 		 */
+		/**
+		 * @note Причина ПЕРЕНОСИТСЯ от укладчика. Закреплено проверкою
+		 *       `EditorFixture.PackFailureCarriesThePackerCause` (05.09.2026)
+		 */
 		if(!this->_packer.pack(pending.data(), pending.size(), kind, number, 0, chunk)){
 			// Выполняем установку кода отказа укладки кадра
 			this->_error = this->_packer.error();
@@ -1987,6 +2022,13 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	vector <uint8_t> tail;
 	/**
 	 * Если уложить оглавление кадром не вышло
+	 */
+	/**
+	 * @note Причина ПЕРЕНОСИТСЯ от укладчика. Устье достижимо ЛИШЬ при пустом итоге уборки:
+	 *       уборка перекладывает всякую уцелевшую запись, и укладка их идёт прежде укладки
+	 *       оглавления. Оттого закрепляющая проверка
+	 *       `EditorFixture.PackFailureCarriesThePackerCause` сносит все записи до единой
+	 *       (05.09.2026)
 	 */
 	if(!this->_packer.pack(entries.data(), entries.size(), payload_t::NUMERIC, number, 0, tail)){
 		// Выполняем установку кода отказа укладки кадра оглавления
