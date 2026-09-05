@@ -885,7 +885,7 @@ T awh::BinBox::get(const uint64_t idw) noexcept {
 	// Переменная результата
 	T result;
 	// Если данные являются основными
-	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
+	if constexpr(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
 		// Буфер результата по умолчанию
 		uint8_t buffer[sizeof(T)];
 		// Заполняем нулями буфер данных
