@@ -388,7 +388,15 @@ fi
 #          Windows ниже: валится только сетевая зона, кодеки этих имён не зовут вовсе
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi" ;;
+	##
+	# Цели MS Windows
+	#
+	# @note Довод «-pthread» обязателен: BoringSSL, собранный для ARM64, зовёт
+	#       блокировки чтения-записи POSIX, и связывание валится десятком
+	#       «undefined symbol: pthread_*». У сборки x86-64 нехватки не видно —
+	#       там знаки эти приходят иным путём, — оттого довода и не было
+	##
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -pthread" ;;
 	SunOS) SYSTEM_LIBS="-lsocket -lnsl -ldladm" ;;
 	##
 	# @warning У NetBSD и OpenBSD «backtrace» и «backtrace_symbols_fd» лежат в
