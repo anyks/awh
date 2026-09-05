@@ -638,7 +638,7 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
  * @return описание ожидаемых параметров запуска
  *
  */
-schema_t & awh::args::Args::schema() noexcept {
+auto awh::args::Args::schema() noexcept -> schema_t & {
 	// Выводим описание ожидаемых параметров запуска
 	return this->_schema;
 }
@@ -901,7 +901,7 @@ bool awh::args::Args::has(const string_view key) const noexcept {
  * @return    источник значения параметра
  *
  */
-source_t awh::args::Args::source(const string_view key) const noexcept {
+auto awh::args::Args::source(const string_view key) const noexcept -> source_t {
 	// Выполняем поиск источника уложенного значения
 	auto i = this->_origins.find(this->route(key));
 	// Если источник уложенного значения найден
@@ -1081,7 +1081,7 @@ const awh::codec::abc::value_t & awh::args::Args::root() const noexcept {
  * @return отказы, случившиеся при последнем разборе
  *
  */
-const vector <pair <error_t, location_t>> & awh::args::Args::errors() const noexcept {
+auto awh::args::Args::errors() const noexcept -> const vector <pair <error_t, location_t>> & {
 	// Выводим отказы последнего разбора
 	return this->_errors;
 }
@@ -1114,7 +1114,7 @@ void awh::args::Args::prefix(const string_view prefix) noexcept {
  * @return настройки сбора параметров запуска
  *
  */
-const Args::settings_t & awh::args::Args::settings() const noexcept {
+auto awh::args::Args::settings() const noexcept -> const settings_t & {
 	// Выводим настройки сбора параметров запуска
 	return this->_settings;
 }
@@ -1136,7 +1136,7 @@ void awh::args::Args::settings(const settings_t & settings) noexcept {
  * @return настройки разбора параметров
  *
  */
-const Lexer::settings_t & awh::args::Args::lexing() const noexcept {
+auto awh::args::Args::lexing() const noexcept -> const lexer_t::settings_t & {
 	// Выводим настройки разбора параметров
 	return this->_lexer.settings();
 }

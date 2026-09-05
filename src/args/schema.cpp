@@ -137,7 +137,7 @@ bool awh::args::Schema::add(const string_view name, const char letter, const val
  * @return     описание параметра либо nullptr при его отсутствии
  *
  */
-const Schema::param_t * awh::args::Schema::get(const string_view name) const noexcept {
+auto awh::args::Schema::get(const string_view name) const noexcept -> const param_t * {
 	// Выполняем поиск описания по длинному имени параметра
 	auto i = this->_names.find(string(name));
 	// Если описание по длинному имени найдено
@@ -155,7 +155,7 @@ const Schema::param_t * awh::args::Schema::get(const string_view name) const noe
  * @return       описание параметра либо nullptr при его отсутствии
  *
  */
-const Schema::param_t * awh::args::Schema::get(const char letter) const noexcept {
+auto awh::args::Schema::get(const char letter) const noexcept -> const param_t * {
 	// Выполняем поиск описания по короткому имени параметра
 	auto i = this->_letters.find(letter);
 	// Если описание по короткому имени найдено
@@ -222,7 +222,7 @@ bool awh::args::Schema::cluster(const string_view cluster, vector <string> & res
  * @return описания в порядке их заведения
  *
  */
-const vector <Schema::param_t> & awh::args::Schema::params() const noexcept {
+auto awh::args::Schema::params() const noexcept -> const vector <param_t> & {
 	// Выводим описания ожидаемых параметров
 	return this->_params;
 }

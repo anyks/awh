@@ -399,7 +399,7 @@ bool awh::args::Lexer::parse(const string_view text, const callback_t & callback
  * @return настройки разбора параметров
  *
  */
-const Lexer::settings_t & awh::args::Lexer::settings() const noexcept {
+auto awh::args::Lexer::settings() const noexcept -> const settings_t & {
 	// Выводим настройки разбора параметров
 	return this->_settings;
 }
