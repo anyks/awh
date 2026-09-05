@@ -847,7 +847,9 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 					// Выходим из метода, укладка отвечена отказом
 					return false;
 				// Выполняем добавление собранного значения звеном перечня
-				result.push(item);
+				if(!result.push(item))
+					// Выходим из метода, добавление отвечено отказом
+					return false;
 			}
 		}
 		// Выводим результат укладки
