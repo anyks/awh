@@ -95,6 +95,7 @@ if (${GTest_FOUND})
             # Дополняем список источников тестами для модуля кластера
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 cluster/status.cpp
+                cluster/messaging.cpp
             )
         # Если не нужно собрать тесты для модуля кластера
         else()

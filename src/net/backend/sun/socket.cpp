@@ -999,7 +999,14 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	 *       системой из своих умолчаний
 	 *
 	 */
-	#if !__OpenBSD__
+	/**
+	 * @note Условия по системам здесь нет намеренно: наречие собирается ТОЛЬКО на
+	 *       SunOS, и признаки `__OpenBSD__`, `__APPLE__`, `__FreeBSD__`, `__NetBSD__`,
+	 *       достававшиеся ему переносом с наречия BSD, там не определены НИКОГДА.
+	 *       Одно такое условие уже отключало установку времени до первой проверки
+	 *       молча - ни отказа, ни записи в журнал
+	 *
+	 */
 	// Максимальное количество попыток
 	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt))))){
 		/**
@@ -1026,38 +1033,21 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		return result;
 	}
 	/**
-	 * Если мы работаем в macOS
+	 * Время, через которое происходит проверка подключения
+	 *
+	 * @warning Прежде ветка эта выбиралась признаками `__APPLE__` и
+	 *          `__FreeBSD__ || __NetBSD__` - перенесёнными с наречия BSD вместе с
+	 *          кодом. Наречие это собирается ТОЛЬКО на SunOS, где ни один из них не
+	 *          определён, и не срабатывала НИ ОДНА: заказчик передавал время до
+	 *          первой проверки, а к ядру оно не уходило. Ни отказа, ни записи в
+	 *          журнале - счёт попыток и промежуток при этом ставились
+	 *
+	 * @note `TCP_KEEPIDLE` есть у обеих систем Sun; номера разные (29 у Solaris 11.4,
+	 *       34 у OpenIndiana), потому берётся символ, а не число. Проверено опытом
+	 *       на обоих стендах
+	 *
 	 */
-	#if __APPLE__
-		// Время через которое происходит проверка подключения
-		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle))))){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug(
-					"%s", __PRETTY_FUNCTION__,
-					make_tuple(
-						sock, cnt,
-						idle, intvl
-					), log_t::flag_t::WARNING,
-					::strerror(errno)
-				);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-			#endif
-			// Выходим из функции
-			return result;
-		}
-	/**
-	 * Если мы работаем в Linux, FreeBSD, NetBSD или OpenBSD или Sun Solaris
-	 */
-	#elif __FreeBSD__ || __NetBSD__
+	{
 		// Время через которое происходит проверка подключения
 		if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle))))){
 			/**
@@ -1083,7 +1073,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			// Выходим из функции
 			return result;
 		}
-	#endif
+	}
 	// Время между попытками
 	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl))))){
 		/**
@@ -1107,25 +1097,6 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
-	/**
-	 * Если система посокетных сроков проверки живости не даёт
-	 */
-	#else
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Сообщаем, что заданные сроки взяты системой из своих умолчаний
-			this->_log->debug(
-				"Per-socket keep-alive tuning is unavailable, system defaults applied",
-				__PRETTY_FUNCTION__,
-				make_tuple(
-					sock, cnt,
-					idle, intvl
-				), log_t::flag_t::INFO
-			);
-		#endif
-	#endif
 	// Возвращаем результат
 	return result;
 }
@@ -4067,18 +4038,23 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
+						 * Печатаем дескриптор созданного сокета
+						 *
+						 * @warning Прежде вид этот выбирался признаками чужих систем -
+						 *          `__APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__` против
+						 *          `__FreeBSD__`, - доставшимися переносом с наречия BSD. На
+						 *          SunOS не определён ни один, и не срабатывала НИ ОДНА ветка:
+						 *          запрос обрывался, функция доходила до общего выхода и
+						 *          отдавала недействительный описатель БЕЗ ЕДИНОЙ ЗАПИСИ в
+						 *          журнал. Неизвестный вид сокета при этом объяснялся, а
+						 *          этот - нет
+						 *
+						 * @note Родной `SOCK_SEQPACKET` у AF_UNIX держат ОБЕ системы Sun -
+						 *       проверено опытом на Solaris 11.4 и OpenIndiana, - оттого
+						 *       подмены дейтаграммой здесь не требуется
+						 *
 						 */
-						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-							// Печатаем дескриптор созданного сокета
-							return ::socket(AF_UNIX, SOCK_DGRAM | mode, 0);
-						/**
-						 * Для операционной системы FreeBSD
-						 */
-						#elif __FreeBSD__
-							// Печатаем дескриптор созданного сокета
-							return ::socket(AF_UNIX, SOCK_SEQPACKET | mode, 0);
-						#endif
+						return ::socket(AF_UNIX, SOCK_SEQPACKET | mode, 0);
 					} break;
 					// Для неизвестного типа сокета
 					default: {

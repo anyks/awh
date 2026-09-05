@@ -8903,8 +8903,6 @@ namespace post {
 		buffer.len = 0;
 		// Устанавливаем указатель буфера обмена
 		buffer.buf = reinterpret_cast <CHAR *> (slot);
-		// Количество переданных байт, обращению обязательное
-		DWORD bytes = 0;
 		// Признак того, что обращение выполнено успешно
 		bool accepted = false;
 		/**
@@ -9051,7 +9049,7 @@ namespace post {
 				return ::post::submitted(accepted, static_cast <DWORD> (::GetLastError()), result, "read readiness");
 			}
 			// Выполняем подачу чтения нулевой длины
-			accepted = static_cast <bool> (::ReadFile(handle, buffer.buf, 0, &bytes, &slot->overlapped));
+			accepted = static_cast <bool> (::ReadFile(handle, buffer.buf, 0, nullptr, &slot->overlapped));
 			// Получаем код отказа подачи чтения
 			const DWORD error = (accepted ? ERROR_SUCCESS : ::GetLastError());
 			// Выводим результат подачи ожидания готовности к приёму
@@ -9078,7 +9076,7 @@ namespace post {
 				return ::post::submitted(accepted, static_cast <DWORD> (::GetLastError()), result, "write readiness");
 			}
 			// Выполняем подачу отправки нулевой длины
-			accepted = (::WSASend(static_cast <SOCKET> (sock), &buffer, 1, &bytes, 0, &slot->overlapped, nullptr) == 0);
+			accepted = (::WSASend(static_cast <SOCKET> (sock), &buffer, 1, nullptr, 0, &slot->overlapped, nullptr) == 0);
 			// Выводим результат подачи ожидания готовности к отправке
 			return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "write readiness");
 		}
@@ -9093,7 +9091,7 @@ namespace post {
 		 */
 		DWORD flags = (datagram ? static_cast <DWORD> (MSG_PEEK) : 0);
 		// Выполняем подачу приёма нулевой длины
-		accepted = (::WSARecv(static_cast <SOCKET> (sock), &buffer, 1, &bytes, &flags, &slot->overlapped, nullptr) == 0);
+		accepted = (::WSARecv(static_cast <SOCKET> (sock), &buffer, 1, nullptr, &flags, &slot->overlapped, nullptr) == 0);
 		// Выводим результат подачи ожидания готовности к приёму
 		return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "read readiness", owner);
 	}
@@ -9186,8 +9184,6 @@ namespace post {
 		chunk.buf = reinterpret_cast <CHAR *> (::pool::data(bid));
 		// Признак того, что приём подаётся именованному каналу
 		bool pipe = false;
-		// Количество принятых байт, обращению обязательное
-		DWORD bytes = 0;
 		// Признаки приёма данных, обращению обязательные
 		DWORD flags = 0;
 		// Признак того, что обращение выполнено успешно
@@ -9230,7 +9226,7 @@ namespace post {
 			// Отмечаем приём ведущимся со служебными метаданными
 			slot->metadata = true;
 			// Выполняем подачу приёма сообщения со служебными метаданными
-			accepted = (receive(static_cast <SOCKET> (sock), &slot->wsamsg, &bytes, &slot->overlapped, nullptr) == 0);
+			accepted = (receive(static_cast <SOCKET> (sock), &slot->wsamsg, nullptr, &slot->overlapped, nullptr) == 0);
 		// Если дескриптор дейтаграммный - принимаем вместе с адресом отправителя
 		} else if(datagram) {
 			// Устанавливаем длину адреса отправителя
@@ -9239,7 +9235,7 @@ namespace post {
 			::memset(&slot->addr, 0, sizeof(slot->addr));
 			// Выполняем подачу приёма дейтаграммы
 			accepted = (::WSARecvFrom(
-				static_cast <SOCKET> (sock), &chunk, 1, &bytes, &flags,
+				static_cast <SOCKET> (sock), &chunk, 1, nullptr, &flags,
 				reinterpret_cast <struct sockaddr *> (&slot->addr),
 				reinterpret_cast <LPINT> (&slot->length), &slot->overlapped, nullptr
 			) == 0);
@@ -9256,7 +9252,7 @@ namespace post {
 		 */
 		} else if((pipe = ::__awh_pipe__(static_cast <SOCKET> (sock)))){
 			// Выполняем подачу приёма данных из канала
-			accepted = static_cast <bool> (::ReadFile(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)), chunk.buf, chunk.len, &bytes, &slot->overlapped));
+			accepted = static_cast <bool> (::ReadFile(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)), chunk.buf, chunk.len, nullptr, &slot->overlapped));
 			/**
 			 * Конец канала без встречной стороны родному приёму не годится
 			 *
@@ -9292,7 +9288,7 @@ namespace post {
 			}
 		}
 		// Выполняем подачу приёма данных
-		else accepted = (::WSARecv(static_cast <SOCKET> (sock), &chunk, 1, &bytes, &flags, &slot->overlapped, nullptr) == 0);
+		else accepted = (::WSARecv(static_cast <SOCKET> (sock), &chunk, 1, nullptr, &flags, &slot->overlapped, nullptr) == 0);
 		/**
 		 * Получаем результат подачи родного приёма
 		 *
@@ -9356,10 +9352,8 @@ namespace post {
 		chunk.len = static_cast <ULONG> (size);
 		// Устанавливаем указатель буфера отправляемых данных
 		chunk.buf = reinterpret_cast <CHAR *> (const_cast <void *> (buffer));
-		// Количество отправленных байт, обращению обязательное
-		DWORD bytes = 0;
 		// Выполняем подачу отправки данных
-		const bool accepted = (::WSASend(static_cast <SOCKET> (sock), &chunk, 1, &bytes, 0, &slot->overlapped, nullptr) == 0);
+		const bool accepted = (::WSASend(static_cast <SOCKET> (sock), &chunk, 1, nullptr, 0, &slot->overlapped, nullptr) == 0);
 		// Выводим результат подачи отправки данных
 		return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "send");
 	}
@@ -9705,6 +9699,25 @@ namespace drain {
 	 *
 	 * @note Буфер здесь не перенимается и не копируется: держит его очередь передачи
 	 *       узла, и снимет она порцию лишь тогда, когда потребитель заберёт исход
+	 *
+	 * @warning Отсюда следует условие, невидимое по этому месту: покуда операция в
+	 *          полёте, память под отданным ядру куском не вправе ДВИГАТЬСЯ. Очередь
+	 *          передачи двигает её ровно в одном случае - `compact()` в очереди с
+	 *          границами сообщений (`net/queue.cpp:147`), где `push()` при нехватке
+	 *          хвоста сдвигает всё содержимое `memmove` в начало буфера. Случись это
+	 *          под поданной отправкой - ядро дочитывало бы уже сдвинутые данные, и
+	 *          собеседник получил бы мусор БЕЗ ВСЯКОГО отказа
+	 *
+	 * @note Сегодня условие не возникает, и это установлено разбором, а не надеждой:
+	 *       все шесть мест подачи родной отправки лежат в ветвях `STREAM`, а поток
+	 *       хранится двухчастным буфером (bip-buffer) без сдвигов вовсе - `memmove`
+	 *       во всём модуле очереди ровно один, и живёт он только в `compact()`.
+	 *       Дейтаграммные же узлы отправляются обычным обращением, синхронно
+	 *
+	 * @warning Условие это держится НЕ на замке и не на проверке, а на совпадении двух
+	 *          решений в разных модулях. Заведись родная отправка дейтаграммным узлам -
+	 *          порча пойдёт молча, и ни одна нынешняя проверка её не поймает. Прежде
+	 *          такой правки очередь обязана научиться отвечать «кусок отдан ядру»
 	 *
 	 * @param sock   дескриптор, в который пишутся данные
 	 * @param buffer буфер отправляемых данных
@@ -11565,10 +11578,8 @@ namespace kernel {
 			return ::inflight::INVALID;
 		// Запоминаем набор ожидаемых событий готовности
 		slot->mask = static_cast <uint32_t> (EPOLLOUT);
-		// Количество переданных байт, обращению обязательное
-		DWORD bytes = 0;
 		// Выполняем подачу наложенного подключения
-		const bool accepted = static_cast <bool> (connectex(static_cast <SOCKET> (sock), addr, size, nullptr, 0, &bytes, &slot->overlapped));
+		const bool accepted = static_cast <bool> (connectex(static_cast <SOCKET> (sock), addr, size, nullptr, 0, nullptr, &slot->overlapped));
 		// Выводим результат подачи наложенного подключения
 		return ::post::submitted(accepted, static_cast <DWORD> (::WSAGetLastError()), result, "connect");
 	}

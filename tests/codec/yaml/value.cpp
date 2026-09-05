@@ -4364,3 +4364,33 @@ TEST(CodecYamlValue, RefusedWritingNamesItsCause){
 	// Выполняем проверку того, что удачная запись кода отказа не поставила
 	ASSERT_EQ(plain.error(), yaml::error_t::NONE);
 }
+
+/**
+ * @brief Проверка розыска имени, ростом вместилища по номеру заведённого
+ *
+ * @details Рост отображения по номеру заводит поля с именем-номером, а указатель
+ * поиска, прежде заведённый, о них не знает. Розыск тогда отвечал по числу полей, а не
+ * по содержимому: до порога заведения указателя поле находилось, а за порогом пропадало
+ *
+ */
+TEST(CodecYamlValue, GrowthByIndexKeepsTheSearchTrue){
+	/**
+	 * Выполняем перебор числа полей по обе стороны порога заведения указателя
+	 */
+	for(const size_t count : {static_cast <size_t> (4), static_cast <size_t> (20)}){
+		// Значение отображения пар
+		yaml::value_t mapping;
+		/**
+		 * Выполняем заведение затребованного числа полей отображения
+		 */
+		for(size_t i = 0; i < count; i++)
+			// Выполняем установку очередного поля отображения
+			ASSERT_TRUE(mapping.insert("k" + std::to_string(i), yaml::value_t(static_cast <int64_t> (i))));
+		// Выполняем понуждение к заведению указателя поиска
+		ASSERT_TRUE(mapping.contains("k0"));
+		// Выполняем рост отображения по номеру, имена полей номерами заводящий
+		mapping[count + 1] = yaml::value_t(static_cast <int64_t> (777));
+		// Выполняем проверку того, что поле с именем-номером разыскивается
+		ASSERT_TRUE(mapping.contains(std::to_string(count))) << count;
+	}
+}

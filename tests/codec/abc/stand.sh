@@ -107,8 +107,26 @@ fi
 # Получаем собиратель
 COMPILER="${CXX:-c++}"
 
+##
+# Путь к набору GoogleTest добавляется, ЛИШЬ ЕСЛИ без него заголовок не находится
+#
+# @note Заслон этот заведён 05.09.2026 стендом Windows ARM64 (CLANGARM64), где набор
+#       лежит в самом корне собирателя («/clangarm64»). Ключ «-I/clangarm64/include»
+#       ставил заголовки языка C ВПЕРЕДИ заголовков libc++, и сборка валилась на
+#       «<cstring> tried including <string.h> but didn't find libc++'s <string.h>».
+#       Судить по имени пути нельзя - корень собирателя у всякой системы свой, - оттого
+#       судим ОПЫТОМ: пробуем собрать пробу без ключа
+##
+GTEST_INCLUDE="-I$GTEST/include"
+# Проба, опознающая доступность заголовка набора без ключа пути
+if printf '#include <gtest/gtest.h>\nint main(){return 0;}\n' |
+ "$COMPILER" -std=c++17 -fsyntax-only -x c++ - > /dev/null 2>&1; then
+	# Выполняем снятие ключа пути: заголовок находится и без него
+	GTEST_INCLUDE=""
+fi
+
 # Собираем ключи сборки стенда
-OPTIONS="-O2 -std=c++17 -I$ROOT/submodules/zlib -I$ROOT/include -I$GTEST/include $FLAGS"
+OPTIONS="-O2 -std=c++17 -I$ROOT/submodules/zlib -I$ROOT/include $GTEST_INCLUDE $FLAGS"
 
 # Собиратель языка C и ключи его: zlib подмодуля пишется на C
 #

@@ -398,6 +398,109 @@ TEST_F(EthFixture, SocketInbornOptionsTest){
 }
 
 /**
+ * @brief Тест подсматривания сообщения без изъятия его из очереди
+ *
+ * @details Проверка утверждает договор признака `MSG_PEEK` у приёма со служебными
+ *          метаданными: сообщение отдаётся целиком и ОСТАЁТСЯ в очереди, а следующий
+ *          обычный приём отдаёт его же
+ *
+ * @note Под MS Windows `recvmsg` нет вовсе, и приём ведётся посредником
+ *       `win::message::receive`. Посредник этот признак подсматривания прежде отвергал
+ *       отказом `WSAEOPNOTSUPP`, ссылаясь на то, что расширенный вызов его «не
+ *       поддерживает вовсе». Утверждение неверно, и проверка эта его закрепляет:
+ *       измерено щупом на стенде, что `WSARecvMsg` признак этот входным берёт
+ *
+ */
+TEST_F(EthFixture, SocketMessagePeekTest){
+	// Создаём UDP сокет получателя
+	auto rx = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Создаём UDP сокет отправителя
+	auto tx = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокеты созданы успешно
+	ASSERT_NE(rx, awh::net::invalid_socket_t);
+	ASSERT_NE(tx, awh::net::invalid_socket_t);
+	// Формируем адрес получателя на петлевом интерфейсе
+	struct sockaddr_in addr;
+	// Зануляем структуру адреса получателя
+	::memset(&addr, 0, sizeof(addr));
+	// Устанавливаем семейство адреса получателя
+	addr.sin_family = AF_INET;
+	// Устанавливаем адрес петлевого интерфейса
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	// Порт запрашиваем у системы: занятый порт давал бы отступление на ровном месте
+	addr.sin_port = 0;
+	// Выполняем привязку сокета получателя
+	ASSERT_EQ(::bind(rx, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)), 0);
+	// Размер адреса получателя
+	socklen_t length = static_cast <socklen_t> (sizeof(addr));
+	// Получаем выданный системой адрес получателя
+	ASSERT_EQ(::getsockname(rx, reinterpret_cast <struct sockaddr *> (&addr), &length), 0);
+	// Отправляем датаграмму получателю
+	ASSERT_EQ(::sendto(tx, "PEEKTEST", 8, 0, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)), 8);
+	// Дожидаемся готовности сокета получателя
+	ASSERT_TRUE(::waitReadable(static_cast <int32_t> (rx), 1000)) << "датаграмма не дошла до получателя";
+	/**
+	 * @brief Приём сообщения заданным набором признаков
+	 *
+	 * @param flags набор признаков приёма
+	 * @return      принятое сообщение, либо пустая строка при отказе
+	 *
+	 */
+	auto receive = [&](const int32_t flags) noexcept -> std::string {
+		// Буфер принимаемых данных
+		char buffer[64];
+		// Буфер принимаемых служебных сообщений
+		char control[256];
+		// Описание буфера принимаемых данных
+		struct iovec io = {buffer, sizeof(buffer)};
+		// Описание принимаемого сообщения
+		struct msghdr message;
+		// Зануляем описание принимаемого сообщения
+		::memset(&message, 0, sizeof(message));
+		// Устанавливаем буфер принимаемых данных
+		message.msg_iov = &io;
+		// Устанавливаем количество буферов принимаемых данных
+		message.msg_iovlen = 1;
+		// Устанавливаем буфер принимаемых служебных сообщений
+		message.msg_control = control;
+		// Устанавливаем размер буфера принимаемых служебных сообщений
+		message.msg_controllen = sizeof(control);
+		/**
+		 * Если проверка идёт под MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Код отказа приёма, отдаваемый посредником доводом
+			int32_t error = 0;
+			// Выполняем приём датаграммы вместе со служебными сообщениями
+			const int64_t received = awh::win::message::receive(rx, &message, flags, &error);
+		/**
+		 * Если проверка идёт под системой POSIX
+		 */
+		#else
+			// Выполняем приём датаграммы вместе со служебными сообщениями
+			const int64_t received = static_cast <int64_t> (::recvmsg(rx, &message, flags));
+		#endif
+		// Если приём отказом завершился - выводим пустое сообщение
+		if(received <= 0)
+			// Выводим пустое сообщение
+			return std::string{};
+		// Выводим принятое сообщение
+		return std::string(buffer, static_cast <size_t> (received));
+	};
+	// Подсматриваем сообщение, не вынимая его из очереди
+	const std::string peeked = receive(MSG_PEEK);
+	// Подсмотренное сообщение обязано дойти целиком
+	ASSERT_STREQ(peeked.c_str(), "PEEKTEST") << "подсматривание не отдало сообщения";
+	// Принимаем сообщение обычным порядком
+	const std::string taken = receive(0);
+	// Подсматривание не вправе изымать сообщение из очереди
+	ASSERT_STREQ(taken.c_str(), "PEEKTEST") << "подсматривание изъяло сообщение из очереди: следующий приём его уже не застал";
+	// Закрываем сокеты
+	::closesocket(rx);
+	::closesocket(tx);
+}
+
+/**
  * @brief Тест установки постоянного подключения (keepalive)
  *
  */
@@ -407,8 +510,19 @@ TEST_F(EthFixture, SocketKeepaliveTest){
 	// Проверяем что сокет создан успешно
 	ASSERT_NE(sock, awh::net::invalid_socket_t);
 
-	// Устанавливаем корректные параметры постоянного подключения
-	ASSERT_TRUE(this->_eth->socket.setKeepalive(sock, 5, 5, 5));
+	/**
+	 * Устанавливаем корректные параметры постоянного подключения
+	 *
+	 * @warning Время простоя здесь 30, а не 5, и это НЕ прихоть: у Solaris 11.4
+	 *          `TCP_KEEPIDLE` меньше ДЕСЯТИ секунд отвергается кодом `EINVAL`, тогда
+	 *          как OpenIndiana берёт и единицу. Замерено перебором на обоих стендах.
+	 *          Число попыток и промежуток нижнего предела не имеют нигде
+	 *
+	 * @note Прежде здесь стояло 5 и проверка была зелёной - потому что наречие Sun
+	 *       время простоя НЕ НАКЛАДЫВАЛО ВОВСЕ, и отказ ядра ей не доставался
+	 *
+	 */
+	ASSERT_TRUE(this->_eth->socket.setKeepalive(sock, 5, 30, 5));
 
 	/**
 	 * @brief Сличение заданных сроков с тем, что приняло ядро
@@ -422,8 +536,13 @@ TEST_F(EthFixture, SocketKeepaliveTest){
 	 *
 	 * @note Имена настроек у систем расходятся: время простоя у macOS зовётся
 	 *       TCP_KEEPALIVE, у прочих - TCP_KEEPIDLE. У OpenBSD посокетных сроков нет
-	 *       вовсе, у Sun Solaris и illumos наречие их не накладывает - там сличать
-	 *       нечего, и раздел этот опущен намеренно
+	 *       вовсе, и лишь для него раздел опущен
+	 *
+	 * @warning Прежде раздел опускался И для Sun с доводом «наречие их не накладывает,
+	 *          сличать нечего». Довод был верен, а вывод из него - нет: наречие не
+	 *          накладывало время простоя ПО ДЕФЕКТУ, доставшемуся переносом с наречия
+	 *          BSD вместе с чужими условиями по системам. Пояснение закрепляло изъян
+	 *          как намеренное решение, и проверка на него не смотрела
 	 *
 	 * @note У MS Windows имена эти объявлены не во всяком издании заголовков, оттого
 	 *       восполняются здесь теми же числами, что и у самого наречия
@@ -440,7 +559,7 @@ TEST_F(EthFixture, SocketKeepaliveTest){
 			#define TCP_KEEPINTVL 17
 		#endif
 	#endif
-	#if !defined(__OpenBSD__) && !defined(__sun__) && !defined(__sun)
+	#if !defined(__OpenBSD__)
 	{
 		// Прочитанное у ядра значение настройки
 		int32_t value = 0;
@@ -458,7 +577,7 @@ TEST_F(EthFixture, SocketKeepaliveTest){
 		ASSERT_EQ(::getsockopt(static_cast <awh::net::socket_t> (sock), IPPROTO_TCP, idle, reinterpret_cast <char *> (&value), &length), 0)
 		 << "время простоя подключения не читается обратно";
 		// Сличаем время простоя подключения с заданным
-		ASSERT_EQ(value, 5) << "ядру досталось время простоя подключения, отличное от заданного";
+		ASSERT_EQ(value, 30) << "ядру досталось время простоя подключения, отличное от заданного";
 		// Обнуляем прочитанное значение настройки
 		value = 0;
 		// Восстанавливаем размер прочитанного значения настройки

@@ -2692,6 +2692,174 @@ TEST(CodecTomlReader, NameSplitInsideCharacter) {
  *       потребителю причиною, и подмена его увела бы его искать иное
  *
  */
+/**
+ * @brief Проверка того, что отказы разбора называют СВОЮ причину
+ *
+ * @details Судится не отказ, а код его: отказ сам по себе честен всегда и оттого всегда
+ * молчалив, а код уходит потребителю причиною - и подмена кода увела бы его править не
+ * то. Записи подобраны так, чтобы каждая доходила до СВОЕГО места отказа
+ *
+ * @note Заведено щупом слепоты: всякое место `fail(error_t::X)` подменялось порознь на
+ *       причину иную, и печатались места, которых набор не заметил. По 104 местам TOML
+ *       вышло 50 без сторожа, из них 33 достижимых. Приём взят у соседа по кодекам
+ *
+ */
+TEST(CodecTomlReader, RefusalsNameTheirOwnCause) {
+	/**
+	 * @brief Описание проверяемого отказа
+	 *
+	 */
+	struct probe_t {
+		// Разбираемая запись текста настроек
+		const char * source;
+		// Ожидаемый код отказа разбора
+		toml::error_t error;
+	};
+	/**
+	 * Проверяемые отказы разбора
+	 */
+	const probe_t probes[] = {
+		{"a = 1\x01\n", toml::error_t::INVALID_CHARACTER},
+		{"[a\n", toml::error_t::INVALID_TABLE},
+		{"= 1\n", toml::error_t::EMPTY_KEY},
+		{"[a]\n[a]\n", toml::error_t::DUPLICATE_TABLE},
+		{"a\n", toml::error_t::MISSING_EQUALS},
+		{"\"\" = \n", toml::error_t::MISSING_VALUE},
+		{"a = {b = 1,}\n", toml::error_t::INVALID_VALUE},
+		{"a = \"раз\n", toml::error_t::UNTERMINATED_STRING},
+		{"a = 'раз\n", toml::error_t::UNTERMINATED_STRING},
+		{"a = \"\"\"раз\n", toml::error_t::UNTERMINATED_STRING},
+		{"a = \"\\q\"\n", toml::error_t::INVALID_ESCAPE},
+		{"a = \"\\u00\"\n", toml::error_t::INVALID_ESCAPE},
+		{"a = 0x\n", toml::error_t::INVALID_NUMBER},
+		{"a = 1__0\n", toml::error_t::INVALID_NUMBER},
+		{"a = 01\n", toml::error_t::INVALID_NUMBER},
+		{"a = 1e999\n", toml::error_t::NUMBER_OVERFLOW},
+		{"a = 2024-13-01\n", toml::error_t::INVALID_DATETIME},
+		{"a = 2024-02-30\n", toml::error_t::INVALID_DATETIME},
+		{"a = 25:00:00\n", toml::error_t::INVALID_DATETIME},
+		{"a = [1\n", toml::error_t::UNCLOSED_ARRAY},
+		{"a = [1,, 2]\n", toml::error_t::MISSING_VALUE},
+		{"a = truex\n", toml::error_t::INVALID_NUMBER},
+		{"a = 1.2.3\n", toml::error_t::INVALID_NUMBER},
+		{"a = .5\n", toml::error_t::INVALID_NUMBER},
+		{"a = 5.\n", toml::error_t::INVALID_NUMBER},
+		{"a = {}extra\n", toml::error_t::UNEXPECTED_CONTENT},
+		{"a = {b = 1\n", toml::error_t::UNCLOSED_INLINE_TABLE},
+		{"a = 1 b = 2\n", toml::error_t::UNEXPECTED_CONTENT},
+		{"# \x01" "\n", toml::error_t::INVALID_CHARACTER},
+		{"a = 1\rb = 2\n", toml::error_t::INVALID_CHARACTER},
+		{"a = [1,\r2]\n", toml::error_t::INVALID_CHARACTER},
+		{"a = \"\xd1\x80\xd0\xb0\xd0\xb7", toml::error_t::UNTERMINATED_STRING},
+		{"a = \"\xd1\x80\\", toml::error_t::INVALID_ESCAPE},
+		{"a = \"\"\"x\\ y\"\"\"\n", toml::error_t::INVALID_ESCAPE},
+		{"a = \"\\u12", toml::error_t::INVALID_ESCAPE},
+		{"a.", toml::error_t::EMPTY_KEY},
+		{"\"\"\"a\"\"\" = 1\n", toml::error_t::INVALID_KEY},
+		{"a = -0x1\n", toml::error_t::INVALID_NUMBER},
+		{"a = 0x_1\n", toml::error_t::INVALID_NUMBER},
+		{"a = [1 2]\n", toml::error_t::INVALID_VALUE},
+		{"a = [1, 2", toml::error_t::UNCLOSED_ARRAY},
+		{"a = {", toml::error_t::UNCLOSED_INLINE_TABLE},
+		{"a = {b = 1,", toml::error_t::UNCLOSED_INLINE_TABLE},
+		{"a = {b", toml::error_t::MISSING_EQUALS},
+		{"a = {b: 1}\n", toml::error_t::MISSING_EQUALS},
+		{"a", toml::error_t::MISSING_EQUALS},
+		{"a = {b = 1 c = 2}\n", toml::error_t::INVALID_VALUE},
+		{"[", toml::error_t::UNCLOSED_TABLE},
+		{"[[a", toml::error_t::UNCLOSED_TABLE},
+		{"[[a]b\n", toml::error_t::INVALID_TABLE},
+		{"[a]\nb.c = 1\n[a.b]\n", toml::error_t::DUPLICATE_TABLE},
+		{"[a.b]\nc = 1\n[a]\nb.d = 1\n", toml::error_t::DUPLICATE_TABLE},
+		{"a = \"\"\"", toml::error_t::UNTERMINATED_STRING},
+		{"a = [1, # c", toml::error_t::UNCLOSED_ARRAY},
+		{"a = {b = 1", toml::error_t::UNCLOSED_INLINE_TABLE},
+		{"[[a]", toml::error_t::UNCLOSED_TABLE}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых отказов разбора
+	 */
+	for(auto & probe : probes){
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(::logger());
+		// Разбираемая запись текста настроек
+		const string source(probe.source);
+		// Выполняем подачу разбираемой записи текста настроек
+		reader.feed(source.data(), source.size(), true);
+		/**
+		 * Выполняем вычитывание накопленных событий разбора
+		 */
+		while(reader.next());
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), probe.error) << probe.source;
+	}
+	/**
+	 * Выполняем проверку отказа вложенности при запрете её вовсе
+	 *
+	 * @note Запрет вложенности и предел её - две разные мысли, и место отказа у каждой
+	 *       своё: сверяются они порознь, и код обязан назвать причину одну
+	 */
+	{
+		// Настройки чтения текста настроек
+		toml::reader_t::settings_t settings;
+		// Устанавливаем запрет вложенности значений
+		settings.nesting = false;
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(::logger(), settings);
+		// Выполняем проверку отказа разбора перечня при запрете вложенности
+		ASSERT_FALSE(reader.feed("a = [1]\n", 8, true));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), toml::error_t::DEPTH_EXCEEDED);
+	}
+	/**
+	 * Выполняем проверку отказа встроенной таблицы при запрете вложенности
+	 *
+	 * @note Перечень и встроенная таблица приходят к сверке запрета порознь, и место
+	 *       отказа у каждой своё
+	 */
+	{
+		// Настройки чтения текста настроек
+		toml::reader_t::settings_t settings;
+		// Устанавливаем запрет вложенности значений
+		settings.nesting = false;
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(::logger(), settings);
+		// Выполняем проверку отказа разбора встроенной таблицы при запрете вложенности
+		ASSERT_FALSE(reader.feed("a = {b = 1}\n", 12, true));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), toml::error_t::DEPTH_EXCEEDED);
+	}
+	/**
+	 * Выполняем проверку отказа превышения предела вложенности
+	 */
+	{
+		// Настройки чтения текста настроек
+		toml::reader_t::settings_t settings;
+		// Устанавливаем предел вложенности в один уровень
+		settings.maxDepth = 1;
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(::logger(), settings);
+		// Выполняем проверку отказа разбора встроенной таблицы внутри перечня
+		ASSERT_FALSE(reader.feed("a = [{b = 1}]\n", 14, true));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), toml::error_t::DEPTH_EXCEEDED);
+	}
+	/**
+	 * Выполняем проверку отказа превышения предела длины имени ключа
+	 */
+	{
+		// Настройки чтения текста настроек
+		toml::reader_t::settings_t settings;
+		// Устанавливаем предел длины имени ключа в три знака
+		settings.maxKey = 3;
+		// Объект потокового чтения текста настроек
+		toml::reader_t reader(::logger(), settings);
+		// Выполняем проверку отказа разбора имени, предел длины превышающего
+		ASSERT_FALSE(reader.feed("abcd = 1\n", 9, true));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), toml::error_t::KEY_TOO_LONG);
+	}
+}
 TEST(CodecTomlReader, RefusalsNotCoveredBefore) {
 	/**
 	 * @brief Описание проверяемого захода отказа

@@ -239,16 +239,18 @@ namespace awh {
 					 * @details Снимает то, что поставила установка адреса: сам адрес и проложенный
 					 *          к тому концу связи путь.
 					 *
-					 * @note Метод заведён для MS Windows и для систем Sun, и отсутствие его у
-					 *       прочих систем - не пробел. У Linux и BSD устройство туннеля исчезает
-					 *       вместе с процессом, унося адреса с собою, и снимать нечего. Двум же
-					 *       этим системам устройство НЕ ПРИНАДЛЕЖИТ: у MS Windows устройство
-					 *       драйвера tap-windows6 живёт в системе постоянно и приложением не
-					 *       сносится, а у Sun Solaris и illumos связь канального уровня заводится
-					 *       административно (`dladm`) и движком не сносится тем более. Адрес на
-					 *       них ставил движок - убрать его за собою обязан он же
+					 * @note Метод заведён для MS Windows, для систем Sun и для macOS, и отсутствие
+					 *       его у прочих систем - не пробел. У Linux и у прочих систем BSD устройство
+					 *       туннеля исчезает вместе с процессом, унося адреса с собою, и снимать
+					 *       нечего. Этим же трём системам устройство либо НЕ ПРИНАДЛЕЖИТ, либо
+					 *       исчезает не сразу: у MS Windows устройство драйвера tap-windows6 живёт
+					 *       в системе постоянно и приложением не сносится, у Sun Solaris и illumos
+					 *       связь канального уровня заводится административно (`dladm`) и движком
+					 *       не сносится тем более, а у macOS устройство `utun` снести нечем - оно
+					 *       заводится управляющим сокетом ядра и исчезает само, но НЕ СРАЗУ. Адрес
+					 *       на них ставил движок - убрать его за собою обязан он же
 					 *
-					 * @note Метод объявлен в общем договоре, а нужен двум системам - и это в
+					 * @note Метод объявлен в общем договоре, а нужен не всякой системе - и это в
 					 *       порядке вещей: слои этих систем отдельны и с прочими не пересекаются.
 					 *       Решение владельца, 21.08.2026
 					 *
@@ -270,8 +272,11 @@ namespace awh {
 					 *
 					 * @details Removes what the setting of the address has put: the address itself and the route to the peer.
 					 *
-					 * @note The method exists for MS Windows ONLY: on POSIX systems the tunnel device
-					 *       disappears together with the process, while the tap-windows6 device outlives the run
+					 * @note The method exists for MS Windows, for the Sun systems and for macOS: on Linux and on
+					 *       the other BSD systems the tunnel device disappears together with the process, taking
+					 *       its addresses with it, while the tap-windows6 device outlives the run, the Sun link
+					 *       is created administratively (`dladm`) and is not removed by the engine at all, and the
+					 *       macOS `utun` device disappears on its own, but NOT AT ONCE
 					 *
 					 * @param name name of the network interface
 					 * @param ip   address to remove

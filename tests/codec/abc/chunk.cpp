@@ -1005,3 +1005,125 @@ TEST_F(ChunkFixture, ReservedOctetsRefused) {
 		EXPECT_EQ(packer.error(), abc::error_t::INVALID_CHUNK) << "смещение октета: " << i;
 	}
 }
+
+/**
+ * @brief Проверка отказов укладки кадра, у каких причина своя
+ *
+ * @details Заслонов у укладки два, и причины у них РАЗНЫЕ: буфер, поданный пустым
+ *          указателем при объявленных октетах, есть отказ внутренний, а содержимое,
+ *          в поле длины кадра не вмещающееся, - отказ длины
+ *
+ * @note Заведена находкой 05.09.2026, добытой сплошным щупом по местам отказа: обе
+ *       причины стояли ненаблюдаемыми
+ *
+ * @note Половина длины требует размера шире четырёх гигабайт и оттого пропускается там,
+ *       где разрядность размера системы полю кадра не шире: сторож там недостижим по
+ *       устройству, а не по недосмотру. Память при том НЕ отводится - подаётся один лишь
+ *       объявленный размер, ибо сличение стоит ДО обращения к буферу
+ *
+ */
+TEST_F(ChunkFixture, PackingNamesItsRefusals) {
+	// Укладчик кадра
+	abc::packer_t packer(this->_log.get());
+	// Буфер собираемого кадра
+	vector <uint8_t> record;
+	// Укладываемое содержимое кадра
+	const string payload(64, 'p');
+	/**
+	 * Половина первая: буфер, поданный пустым указателем при объявленных октетах
+	 */
+	ASSERT_FALSE(packer.pack(nullptr, payload.size(), abc::payload_t::TEXT, 1, 0, record));
+	// Выполняем проверку названной причины отказа
+	ASSERT_EQ(packer.error(), abc::error_t::INTERNAL) << abc::message(packer.error());
+	/**
+	 * Половина вторая: содержимое, в поле длины кадра не вмещающееся
+	 */
+	if(numeric_limits <size_t>::max() > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+		// Размер содержимого, поле длины кадра превышающий
+		const size_t size = (static_cast <size_t> (numeric_limits <uint32_t>::max()) + 1);
+		// Выполняем проверку отказа укладки содержимого сверх поля длины кадра
+		ASSERT_FALSE(packer.pack(payload.data(), size, abc::payload_t::TEXT, 1, 0, record));
+		// Выполняем проверку названной причины отказа
+		ASSERT_EQ(packer.error(), abc::error_t::INVALID_LENGTH) << abc::message(packer.error());
+	}
+	/**
+	 * Укладка годного содержимого при том работает: без этой половины проверка прошла бы
+	 * и у укладчика, не кладущего ничего вовсе
+	 */
+	ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+	 << abc::message(packer.error());
+	// Выполняем проверку того, что отказа по укладке годного содержимого не объявлено
+	ASSERT_EQ(packer.error(), abc::error_t::NONE) << abc::message(packer.error());
+}
+/**
+ * @brief Проверка того, что снятие сжатого кадра без разжимателя отвечено отказом
+ *
+ * @details Кадр несёт метод сжатия в себе, а разжиматель кадру не принадлежит: его отдаёт
+ *          зовущий. Оттого укладчик и снимающий могут разойтись оснасткою, и кадр,
+ *          уложенный сжимающим, попадёт снимающему, сжатия не знающему вовсе
+ *
+ * @note Это НЕ отказ подсистемы сжатия, каким место числилось прежде: подсистема здесь
+ *       исправна, её просто НЕТ. Отказ подсистемы требовал бы поддельного разжимателя,
+ *       разлад же оснастки воспроизводится прямо (05.09.2026)
+ */
+TEST_F(ChunkFixture, UnpackingCompressedWithoutTheCompressorIsRefused) {
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	// Укладываемое хорошо сжимаемое содержимое
+	const string payload = repeated(200);
+	{
+		// Укладчик кадров, сжатием оснащённый
+		abc::packer_t packer(this->_log.get());
+		// Выполняем установку модуля сжатия
+		packer.compressor(this->_compressor.get());
+		// Выполняем укладку кадра
+		ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+			<< "код отказа: " << abc::message(packer.error());
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем снятие кадра оснащённым укладчиком
+		ASSERT_TRUE(packer.unpack(record.data(), record.size(), offset, content, chunk))
+			<< "код отказа: " << abc::message(packer.error());
+		/**
+		 * Выполняем проверку того, что содержимое кадра действительно сжато: без сжатия
+		 * заслон ниже стерёг бы пустоту, и проверка проходила бы вхолостую
+		 */
+		ASSERT_NE(chunk.method, compressor::method_t::NONE)
+			<< "сжатие не выполнено, метод подобран: " << static_cast <uint32_t> (packer.suggest(abc::payload_t::TEXT));
+	}
+	{
+		// Укладчик кадров, сжатием НЕ оснащённый
+		abc::packer_t packer(this->_log.get());
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем проверку того, что снятие сжатого кадра отвечено отказом
+		ASSERT_FALSE(packer.unpack(record.data(), record.size(), offset, content, chunk));
+		// Выполняем проверку того, что отказ объявлен неудачей сжатия
+		ASSERT_EQ(packer.error(), abc::error_t::COMPRESSION_FAILED);
+		// Выполняем проверку того, что смещение снятия осталось нетронутым
+		ASSERT_EQ(offset, 0u);
+		/**
+		 * Выполняем проверку того, что заслон стережёт именно сжатие: кадр НЕсжатый тот же
+		 * укладчик снимает без всякой оснастки
+		 */
+		vector <uint8_t> plain;
+		// Выполняем укладку несжатого кадра
+		ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, plain))
+			<< "код отказа: " << abc::message(packer.error());
+		// Выполняем сброс смещения снятия кадра
+		offset = 0;
+		// Выполняем проверку того, что несжатый кадр снимается
+		ASSERT_TRUE(packer.unpack(plain.data(), plain.size(), offset, content, chunk))
+			<< "код отказа: " << abc::message(packer.error());
+		// Выполняем проверку снятого содержимого кадра
+		ASSERT_EQ(string(content.begin(), content.end()), payload);
+	}
+}

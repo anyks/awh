@@ -2621,6 +2621,349 @@ TEST_F(IoFixture, IoUDPTest){
  *       при отправке, и нулевым он не бывает
  *
  */
+/**
+ * @brief Тест доставки дейтаграммы при исчерпанном пуле буферов родного приёма
+ *
+ * @details Родной приём у MS Windows подаётся с буфером из пула, а пул этот конечен.
+ *          Исчерпав его, движок обязан отступить к ожиданию готовности и доставить
+ *          дейтаграмму всё равно - иначе исчерпание оборачивалось бы молчаливой
+ *          потерей под нагрузкой
+ *
+ * @note Исчерпание в наборе НЕ выдумано: счётный щуп 05.09.2026 показал, что за один
+ *       полный прогон набора буферов не хватает 66 раз, и ни одна проверка на это не
+ *       смотрела. Проверка эта закрывает именно тот долг
+ *
+ * @note Число событий взято с запасом над размером пула (256 буферов): каждое
+ *       запущенное событие сервера занимает под родной приём один буфер
+ *
+ */
+/**
+ * @brief Тест уничтожения события с отправкой, поданной ядру
+ *
+ * @details Под MS Windows отправка отдаётся ядру наложенным обращением, и ядро читает
+ *          очередь передачи узла САМО, покуда операция не завершится. Уничтожение узла
+ *          в этот миг обязано отменить поданную отправку - иначе ядро читало бы память
+ *          уничтоженного узла
+ *
+ * @note Отмена эта в наборе прежде НЕ ПРОВЕРЯЛАСЬ ни разу: перепись заслонов 05.09.2026
+ *       показала, что ветвь отмены в `drain::reset` за весь прогон не берётся. Проверка
+ *       эта закрывает именно тот пробел
+ *
+ * @note Утверждается не «не упало», а работоспособность движка ПОСЛЕ такого
+ *       уничтожения: следом заводится новое подключение к тому же серверу, и обмен по
+ *       нему обязан состояться
+ *
+ */
+TEST_F(IoFixture, IoStreamDestroyWithSendInFlightTest){
+	// Признак подключения первого клиента
+	bool connected = false;
+	// Идентификатор принятого сервером узла
+	awh::event::id_t accepted = 0;
+	// Признак дошедшего отклика второго клиента
+	bool echoed = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем новое событие клиента и сервера TCP
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	/**
+	 * Проверяем, что оба идентификатора события созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(events[i], 0);
+	// Устанавливаем порт события клиента
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Выставляем опции и параметры для каждого события
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Устанавливаем опции событий
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	/**
+	 * Серверное событие
+	 *
+	 * @note Принятое сервером НЕ ВЫЧИТЫВАЕТСЯ намеренно: непрочитанное наполняет окно
+	 *       собеседника, отправка клиента перестаёт уходить целиком, и в ядре остаётся
+	 *       поданная операция - ровно то состояние, какое проверка и ловит
+	 */
+	{
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на подключение нового клиента
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([&connected, &accepted, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Запоминаем принятый узел: отправлять будет ОН
+			accepted = cid;
+			/**
+			 * Урезаем буфер отправки принятого узла
+			 *
+			 * @note Урезание обоих буферов - и отправки здесь, и приёма у клиента ниже -
+			 *       единственный найденный способ заставить обмен на петле задержаться:
+			 *       без него ядро глотает мегабайты, ничего не оставляя в полёте
+			 */
+			(void) io->setBufferSize(cid, awh::event::action_t::WRITE, 4096);
+			// Отмечаем подключение клиента
+			connected = true;
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(events[1]));
+		// Переводим событие сервера в прослушивание
+		ASSERT_TRUE(this->_io->listen(events[1], 100));
+		// Запускаем событие сервера
+		ASSERT_TRUE(this->_io->launch(events[1]));
+	}
+	/**
+	 * Клиентское событие
+	 */
+	{
+		// Устанавливаем адрес события клиента
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+		/**
+		 * Урезаем буфер отправки сокета
+		 *
+		 * @details Без урезания петлевой обмен глотает мегабайты, ничего не задерживая:
+		 *          щуп показал 200 заходов отправки и НИ ОДНОЙ подачи ядру. Малый буфер
+		 *          наполняется сразу, и отправка остаётся у ядра - то самое состояние,
+		 *          какое проверка и ловит
+		 */
+		ASSERT_TRUE(this->_io->setBufferSize(events[0], awh::event::action_t::READ, 4096));
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(events[0]));
+		// Выполняем подключение события клиента
+		ASSERT_TRUE(this->_io->connect(events[0]));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(events[0]));
+	}
+	/**
+	 * Выполняем обороты цикла, покуда клиент не подключится
+	 */
+	for(uint16_t round = 0; (round < 300) && !connected; ++round)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	// Подключение обязано состояться
+	ASSERT_TRUE(connected) << "клиент не подключился к серверу";
+	/**
+	 * Заполняем очередь передачи, покуда та принимает
+	 *
+	 * @note Порция берётся крупной: мелкие уходят синхронно целиком, и поданной ядру
+	 *       операции не остаётся вовсе
+	 */
+	{
+		// Порция отправляемых данных
+		const std::vector <char> chunk(64 * 1024, 'S');
+		// Число порций, ушедших в очередь
+		size_t queued = 0;
+		/**
+		 * Выполняем заходы отправки, покуда очередь принимает
+		 *
+		 * @note Отправляет ПРИНЯТЫЙ сервером узел, а не клиент: щуп показал, что
+		 *       родная отправка ядру подаётся именно у принятых узлов, а клиентские
+		 *       порции на петле уходят обращением сразу и в ядре не задерживаются
+		 */
+		for(uint16_t round = 0; round < 200; ++round){
+			// Отправляем порцию данных клиенту
+			const size_t sent = this->_io->send(accepted, chunk.data(), chunk.size());
+			// Если очередь порцию не приняла - заполнено
+			if(sent == 0)
+				// Прекращаем заходы отправки
+				break;
+			// Увеличиваем счётчик принятых порций
+			queued++;
+			// Выполняем оборот цикла событий
+			this->_io->poll(0);
+		}
+		// Хоть одна порция обязана быть принята: иначе отправки в полёте нет
+		ASSERT_GT(queued, static_cast <size_t> (0)) << "очередь передачи не приняла ни одной порции";
+	}
+	/**
+	 * Даём движку обороты, чтобы отправка ушла ядру
+	 *
+	 * @note Родная отправка подаётся разбором готовности к записи, а не самим `send`:
+	 *       без оборотов цикла в ядре не окажется ничего, и проверка ловила бы совсем
+	 *       иное состояние - очередь с данными и БЕЗ поданной операции
+	 */
+	for(uint8_t round = 0; round < 5; ++round)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	// Уничтожаем принятый узел прямо с поданной ядру отправкой
+	this->_io->destroy(accepted);
+	/**
+	 * Выполняем обороты цикла: завершение отменённой отправки приходит уже без узла
+	 */
+	for(uint16_t round = 0; round < 50; ++round)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	/**
+	 * Заводим второе подключение к тому же серверу
+	 *
+	 * @note Здесь и утверждение проверки: движок обязан остаться работоспособным
+	 */
+	{
+		// Заводим событие второго клиента
+		const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(client, 0);
+		// Сбрасываем признак подключения
+		connected = false;
+		// Устанавливаем порт события второго клиента
+		ASSERT_TRUE(this->_io->setTargetPort(client, port));
+		// Устанавливаем опции события второго клиента
+		ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+		// Устанавливаем адрес события второго клиента
+		ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на чтение из события
+		this->_io->on(client, [&echoed]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Отмечаем приход отклика
+			echoed = true;
+		});
+		// Выполняем фиксацию настроек события второго клиента
+		ASSERT_TRUE(this->_io->commit(client));
+		// Выполняем подключение события второго клиента
+		ASSERT_TRUE(this->_io->connect(client));
+		// Запускаем событие второго клиента
+		ASSERT_TRUE(this->_io->launch(client));
+		/**
+		 * Выполняем обороты цикла, покуда второй клиент не подключится
+		 */
+		for(uint16_t round = 0; (round < 300) && !connected; ++round)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Движок обязан остаться работоспособным
+		ASSERT_TRUE(connected) << "после уничтожения узла с поданной отправкой движок нового подключения не принял";
+		// Уничтожаем событие второго клиента
+		this->_io->destroy(client);
+	}
+	// Уничтожаем событие сервера
+	this->_io->destroy(events[1]);
+	// Снимаем неиспользуемый признак
+	(void) echoed;
+}
+
+TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
+	// Флаг остановки проверки
+	bool stop = false;
+	// Список идентификаторов удерживающих событий
+	std::vector <awh::event::id_t> holders;
+	// Выполняем инициализацию асинхронного движка ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Заводим события, удерживающие буферы приёма
+	 */
+	for(uint16_t i = 0; i < 300; i++){
+		// Заводим событие сервера UDP
+		const awh::event::id_t eid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+		// Если событие завести не удалось - удерживающих довольно
+		if(eid == 0)
+			// Прекращаем заведение удерживающих событий
+			break;
+		// Устанавливаем порт события сервера
+		if(!(this->_io->setSourcePort(eid, ::port()) &&
+		     this->_io->setAddress(eid, awh::event::address_t::IPV4, "127.0.0.1") &&
+		     this->_io->setOptions(eid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::DGRAM_INFO) &&
+		     this->_io->commit(eid) && this->_io->launch(eid))){
+			// Уничтожаем событие, какое поднять не удалось
+			this->_io->destroy(eid);
+			// Прекращаем заведение удерживающих событий
+			break;
+		}
+		// Запоминаем удерживающее событие
+		holders.push_back(eid);
+	}
+	// Удерживающих событий обязано хватить, чтобы пул исчерпался
+	ASSERT_GT(holders.size(), static_cast <size_t> (256))
+	 << "удерживающих событий поднято " << holders.size() << " - пул буферов не исчерпан, проверять нечего";
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем новое событие клиента и сервера UDP
+	const auto events = this->_io->events(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	/**
+	 * Проверяем, что оба идентификатора события созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(events[i], 0);
+	// Устанавливаем порт события клиента
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	/**
+	 * Выставляем опции и параметры для каждого события
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Устанавливаем опции событий
+		ASSERT_TRUE(this->_io->setOptions(events[i], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK | awh::event::options::DGRAM_INFO));
+	/**
+	 * Серверное событие
+	 */
+	{
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setAddress(events[1], awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на подключение нового клиента
+		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Устанавливаем функцию обратного вызова на чтение из события
+			this->_io->on(cid, [this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Отправляем принятое обратно клиенту
+				this->_io->send(eid, reinterpret_cast <const char *> (data), size);
+			});
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(events[1]));
+		// Запускаем событие сервера
+		ASSERT_TRUE(this->_io->launch(events[1]));
+	}
+	/**
+	 * Клиентское событие
+	 */
+	{
+		// Устанавливаем адрес события клиента
+		ASSERT_TRUE(this->_io->setAddress(events[0], awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес сервера назначения
+		ASSERT_TRUE(this->_io->setTarget(events[0], "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на чтение из события
+		this->_io->on(events[0], [&stop]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Отмечаем проверку выполненной: отклик получен
+			stop = true;
+		});
+		// Устанавливаем таймаут события на чтение
+		this->_io->setTimeout(events[0], awh::event::action_t::READ, 3000);
+		// Устанавливаем таймаут события на запись
+		this->_io->setTimeout(events[0], awh::event::action_t::WRITE, 3000);
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(events[0]));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(events[0]));
+		// Текст исходящего сообщения
+		const std::string message = "POOL";
+		// Отправляем сообщение серверу
+		this->_io->send(events[0], message.c_str(), message.size());
+	}
+	/**
+	 * Выполняем обороты цикла, покуда отклик не придёт либо не выйдет срок
+	 */
+	for(uint16_t round = 0; (round < 600) && !stop; ++round)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	// Отклик обязан дойти и при исчерпанном пуле буферов приёма
+	ASSERT_TRUE(stop) << "при исчерпанном пуле буферов дейтаграмма не доставлена: отступление к ожиданию готовности не сработало";
+	/**
+	 * Уничтожаем удерживающие события
+	 */
+	for(auto & eid : holders)
+		// Уничтожаем удерживающее событие
+		this->_io->destroy(eid);
+	// Уничтожаем событие клиента
+	this->_io->destroy(events[0]);
+	// Уничтожаем событие сервера
+	this->_io->destroy(events[1]);
+}
+
 TEST_F(IoFixture, IoDatagramInfoTest){
 	// Флаг остановки теста
 	bool stop = false;

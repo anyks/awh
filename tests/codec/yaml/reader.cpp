@@ -5867,6 +5867,165 @@ TEST(CodecYamlReader, BlockHeaderAtCollectionIndentIsRefused){
 		ASSERT_TRUE(document.parse(text)) << text << ": " << yaml::message(document.error());
 	}
 }
+
+/**
+ * @brief Проверка того, что отказы разбора называют СВОЮ причину
+ *
+ * @details Судится не отказ, а код его: отказ сам по себе честен всегда и оттого всегда
+ * молчалив, а код уходит потребителю причиною - и подмена его увела бы потребителя
+ * править не то. Записи подобраны так, чтобы каждая доходила до СВОЕГО места отказа
+ *
+ * @note Заведено щупом слепоты: всякое место `fail(error_t::X)` подменялось порознь на
+ *       причину иную, и печатались места, которых набор не заметил. По 120 местам YAML
+ *       вышло 57 без сторожа, из них 46 достижимых
+ *
+ * @note Записей с кодом INVALID_CHARACTER взято двадцать разных: мест у этой причины
+ *       девятнадцать, и одна запись закрывает ровно одно из них - охрана меряется
+ *       щупом до и после, а не числом написанных строк
+ *
+ */
+TEST(CodecYamlReader, RefusalsNameTheirOwnCause) {
+	/**
+	 * @brief Описание проверяемого отказа
+	 *
+	 */
+	struct probe_t {
+		// Разбираемая запись текста документа
+		const char * source;
+		// Ожидаемый код отказа разбора
+		yaml::error_t error;
+	};
+	/**
+	 * Проверяемые отказы разбора
+	 */
+	const probe_t probes[] = {
+		{"%YAML\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%YAML 1\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%YAML 1.2.3\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%TAG\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%TAG !e!\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%YAML 1.2\n%YAML 1.2\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%YAML 3.0\n---\na: 1\n", yaml::error_t::UNSUPPORTED_VERSION},
+		{"a: 1\n\tb: 2\n", yaml::error_t::TAB_IN_INDENTATION},
+		{"\ta: 1\n", yaml::error_t::TAB_IN_INDENTATION},
+		{"a: |9\n  x\n", yaml::error_t::INVALID_INDENTATION},
+		{"a: 1\n b: 2\n", yaml::error_t::INVALID_CHARACTER},
+		{"a:\n  b: 1\n   c: 2\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: |0\n  x\n", yaml::error_t::INVALID_BLOCK_HEADER},
+		{"a: [1}\n", yaml::error_t::EXPECTED_COMMA},
+		{"a: [1, 2\n", yaml::error_t::UNCLOSED_FLOW},
+		{"a: {b: 1\n", yaml::error_t::UNCLOSED_FLOW},
+		{"a: *\xd0\xbd\xd0\xb5\xd1\x82\n", yaml::error_t::UNKNOWN_ALIAS},
+		{"a: !<> 1\n", yaml::error_t::INVALID_TAG},
+		{"a: !e!x 1\n", yaml::error_t::UNKNOWN_TAG_HANDLE},
+		{"a: \"\xd1\x80\xd0\xb0\xd0\xb7\"\xd0\xbb\xd0\xb8\xd1\x88\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"a: '\xd1\x80\xd0\xb0\xd0\xb7'\xd0\xbb\xd0\xb8\xd1\x88\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"a: [1] \xd0\xbb\xd0\xb8\xd1\x88\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"a: {b: 1} \xd0\xbb\xd0\xb8\xd1\x88\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"a: \x01" "\n", yaml::error_t::INVALID_CHARACTER},
+		{"\x01" ": 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: \"\x01" "\"\n", yaml::error_t::INVALID_CHARACTER},
+		{"[1, \x01" "]\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: |\n  \x01" "\n", yaml::error_t::INVALID_CHARACTER},
+		{"&\x01" " a: 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"!\x01" " a: 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: 1\n\x01" "\n", yaml::error_t::INVALID_CHARACTER},
+		{"? \x01" "\n: 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: [\x01" "]\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: {\x01" ": 1}\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: >\n  \x01" "\n", yaml::error_t::INVALID_CHARACTER},
+		{"*\x01" "\n", yaml::error_t::INVALID_CHARACTER},
+		{"a:\n- \x01" "\n", yaml::error_t::INVALID_CHARACTER},
+		{"---\x01" "\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: \xd1\x80\xd0\xb0\xd0\xb7\xEF\xBB\xBF\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: & 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: * 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: !!str !!int 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"- !!str, x\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: !%zz 1\n", yaml::error_t::INVALID_TAG},
+		{"% TAG !e! tag:x,2000:\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%TAG e! tag:x,2000:\n---\na: 1\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"--- - a\n", yaml::error_t::INVALID_CHARACTER},
+		{"&\xd0\xbc - \xd0\xb7\n", yaml::error_t::INVALID_CHARACTER},
+		{"- \xd0\xbe\n&\xd0\xbc\n- \xd0\xb4\n", yaml::error_t::INVALID_CHARACTER},
+		{"\xd0\xb8: \"a\nb\"\n", yaml::error_t::INVALID_INDENTATION},
+		{"\"a\nb\": 1\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: b: c\n", yaml::error_t::INVALID_CHARACTER},
+		{"--- key1: value1\nkey2: value2\n", yaml::error_t::INVALID_CHARACTER},
+		{"a: | x\n  y\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"a: |\n\t\n", yaml::error_t::TAB_IN_INDENTATION},
+		{"a: |\n    \n  x\n", yaml::error_t::INVALID_INDENTATION},
+		{"a: [-]\n", yaml::error_t::INVALID_CHARACTER},
+		{"[\n--- ,\n]\n", yaml::error_t::INVALID_CHARACTER},
+		{"[1] \xd0\xbb\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"... \xd0\xbb\n", yaml::error_t::TRAILING_CHARACTERS},
+		{" - a\n- b\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"%YAML 1.2\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"%YAML 1.2\n...\n", yaml::error_t::INVALID_DIRECTIVE},
+		{"a:\n\t- b\n", yaml::error_t::TAB_IN_INDENTATION},
+		{"a: [1,\n 2] \xd0\xbb\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"[1]\n\xd0\xb4\n", yaml::error_t::TRAILING_CHARACTERS},
+		{"a: [}\n", yaml::error_t::UNCLOSED_FLOW},
+		{"a: {]\n", yaml::error_t::UNCLOSED_FLOW},
+		{"a:\n  b: 1\n - c\n", yaml::error_t::INVALID_INDENTATION},
+		{"a: [x]\n  - b\n", yaml::error_t::INVALID_INDENTATION}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых отказов разбора
+	 */
+	for(auto & probe : probes){
+		// Объект потокового чтения текста документа
+		yaml::reader_t reader(::logger());
+		// Разбираемая запись текста документа
+		const string source(probe.source);
+		// Выполняем подачу разбираемой записи текста документа
+		reader.feed(source.data(), source.size(), true);
+		/**
+		 * Выполняем вычитывание накопленных событий разбора
+		 */
+		while(reader.next());
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), probe.error) << probe.source;
+	}
+	/**
+	 * Выполняем проверку отказа превышения глубины у блочных построений
+	 *
+	 * @note Предел вложенности сверяется в нескольких местах разбора, и код отказа у
+	 *       каждого свой: перечень блочный, строками записанный, приходит сюда путём,
+	 *       отличным от пути записи поточной
+	 */
+	{
+		// Настройки чтения текста
+		yaml::reader_t::settings_t settings;
+		// Устанавливаем предел вложенности в два уровня
+		settings.maxDepth = 2;
+		// Объект потокового чтения текста
+		yaml::reader_t reader(::logger(), settings);
+		// Выполняем проверку отказа разбора трёх уровней блочных перечней
+		ASSERT_FALSE(reader.feed("- a\n- - b\n  - - c\n"));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::DEPTH_EXCEEDED);
+	}
+	/**
+	 * Выполняем проверку отказа превышения глубины у поточного построения, содержимым строки открытого
+	 *
+	 * @note Построение поточное, значением пары стоящее, приходит к сверке предела своим
+	 *       путём - не тем, каким приходит построение внутри скобок уже открытых
+	 */
+	{
+		// Настройки чтения текста
+		yaml::reader_t::settings_t settings;
+		// Устанавливаем предел вложенности в один уровень
+		settings.maxDepth = 1;
+		// Объект потокового чтения текста
+		yaml::reader_t reader(::logger(), settings);
+		// Выполняем проверку отказа разбора перечня значением пары
+		ASSERT_FALSE(reader.feed("a: [1]\n"));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::DEPTH_EXCEEDED);
+	}
+}
+
 /**
  * @brief Проверка склейки строки последней, переводом не закрытой
  *
@@ -5914,5 +6073,177 @@ TEST(CodecYamlReader, TaillessLastLineJoinsToOpenQuote){
 		yaml::document_t document(::logger());
 		// Выполняем проверку отказа разбора написания с незакрытой оградою
 		ASSERT_FALSE(document.parse("a: \"x\ny")) << document.dump();
+	}
+}
+/**
+ * @brief Проверка обрыва простого значения примечанием внутри скобок
+ *
+ * @details Описание правилом `ns-plain-multi-line` строке продолжения примечания не
+ * отводит: примечание значение оканчивает, и содержимое за ним значением того же
+ * значения быть не может. Прежде примечание значение НЕ обрывало, и запись `[a`,
+ * `# c`, `b]` склеивалась в одно значение `a b` - примечание пропадало, а два куска,
+ * им разделённые, выдавались одним
+ *
+ * @note Порок опознаётся сличением двух написаний, разнящихся ОДНИМ лишь местом
+ *       примечания: то же примечание строкою первой отвергалось по праву. Блочное
+ *       построение обрывает значение примечанием всюду, и расходиться поточному с ним
+ *       нельзя - написание `a: раз` с примечанием и продолжением ниже отвергается всеми
+ *       тремя своими видами
+ */
+TEST(CodecYamlReader, CommentBreaksThePlainValueInsideBrackets){
+	/**
+	 * Выполняем проверку отказа примечания внутри значения, на две строки растянутого
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader(::logger());
+		// Разбираемая запись текста документа
+		const string source = "[a\n# c\nb]\n";
+		// Выполняем подачу разбираемой записи текста документа
+		reader.feed(source.data(), source.size(), true);
+		/**
+		 * Выполняем вычитывание накопленных событий разбора
+		 */
+		while(reader.next());
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::EXPECTED_COMMA) << source;
+	}
+	/**
+	 * Выполняем проверку того, что отказ тот же, что и у примечания строкою первой
+	 */
+	{
+		// Объект потокового чтения текста
+		yaml::reader_t reader(::logger());
+		// Разбираемая запись текста документа
+		const string source = "[a # c\nb]\n";
+		// Выполняем подачу разбираемой записи текста документа
+		reader.feed(source.data(), source.size(), true);
+		/**
+		 * Выполняем вычитывание накопленных событий разбора
+		 */
+		while(reader.next());
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(reader.error(), yaml::error_t::EXPECTED_COMMA) << source;
+	}
+	/**
+	 * Выполняем проверку того, что законные написания приняты по-прежнему
+	 *
+	 * @note Написания эти примечание за ОКОНЧИВШИМСЯ значением несут, а знак примечания
+	 *       без пробела перед собою значением и остаётся
+	 */
+	{
+		/**
+		 * Проверяемые написания и значения, каким они отвечают
+		 */
+		const vector <pair <string, string>> probes = {
+			{"[a\nb # c\n]\n", "- a b\n"},
+			{"[a\n# c\n]\n", "- a\n"},
+			{"[a#b]\n", "- a#b\n"},
+			{"[\n  1,\n  2\n  ]\n", "- 1\n- 2\n"}
+		};
+		/**
+		 * Выполняем перебор всех проверяемых написаний
+		 */
+		for(auto & probe : probes){
+			// Объект дерева документа
+			yaml::document_t doc(::logger());
+			// Выполняем проверку успешности разбора написания
+			ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
+			// Выполняем проверку перезаписи разобранного написания
+			ASSERT_EQ(doc.dump(), probe.second) << probe.first;
+		}
+	}
+}
+/**
+ * @brief Проверка того, что строка продолжения простого значения указателей не несёт
+ *
+ * @details Описание строку продолжения простого значения берёт правилом
+ * `s-ns-plain-next-line`, а первый знак её - правилом `ns-plain-char`, а НЕ
+ * `ns-plain-first`. Разница между ними и есть предмет проверки: `ns-plain-first`
+ * указатели изымает, а `ns-plain-char` - лишь указатели построения поточного, сиречь
+ * запятую да скобки. Оттого метка, род узла, ссылка, ограда, вопрос и черта записи в
+ * строке продолжения суть знаки СОДЕРЖИМОГО
+ *
+ * @note Прежде они разбирались свойствами узла и оградою наравне с началом значения, и
+ *       записи выходили небывалые: `[a`, `&m`, `b]` давало значение `a b` с меткою
+ *       `&m` - запись метки из содержимого пропадала вовсе, - а `[a`, `"b"]` давало ДВА
+ *       значения, да ещё и в обратном порядке. Блочное построение того же кодека держит
+ *       эти знаки содержимым всюду, и расходиться поточному с ним нельзя: обе половины
+ *       проверки то и сличают
+ */
+TEST(CodecYamlReader, PlainValueContinuationCarriesNoIndicators){
+	/**
+	 * Проверяемые написания и перезаписи, каким они отвечают
+	 */
+	const vector <pair <string, string>> probes = {
+		{"[a\n&m\nb]\n", "- a &m b\n"},
+		{"[a\n!!str\nb]\n", "- a !!str b\n"},
+		{"[a\n*m\nb]\n", "- a *m b\n"},
+		{"[a\n\"b\"]\n", "- a \"b\"\n"},
+		{"[a\n'b']\n", "- a 'b'\n"},
+		{"[a\n? b\n]\n", "- a ? b\n"},
+		{"[a\n- b]\n", "- a - b\n"},
+		{"[a\n%YAML 1.2\nb]\n", "- a %YAML 1.2 b\n"}
+	};
+	/**
+	 * Выполняем перебор всех проверяемых написаний
+	 */
+	for(auto & probe : probes){
+		// Объект дерева документа
+		yaml::document_t doc(::logger());
+		// Выполняем проверку успешности разбора написания
+		ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
+		// Выполняем проверку перезаписи разобранного написания
+		ASSERT_EQ(doc.dump(), probe.second) << probe.first;
+	}
+	/**
+	 * Выполняем проверку того, что блочное построение отвечает тем же
+	 *
+	 * @note Написания эти те же самые, лишь построением блочным записанные: расхождение
+	 *       между построениями и было признаком порока
+	 */
+	{
+		/**
+		 * Проверяемые написания блочного построения
+		 */
+		const vector <pair <string, string>> blocks = {
+			{"a: \xd1\x80\n  &m \xd0\xb4\n", "a: \xd1\x80 &m \xd0\xb4\n"},
+			{"a: \xd1\x80\n  *m\n", "a: \xd1\x80 *m\n"},
+			{"a: \xd1\x80\n  !!str \xd0\xb4\n", "a: \xd1\x80 !!str \xd0\xb4\n"}
+		};
+		/**
+		 * Выполняем перебор всех проверяемых написаний блочного построения
+		 */
+		for(auto & block : blocks){
+			// Объект дерева документа
+			yaml::document_t doc(::logger());
+			// Выполняем проверку успешности разбора написания
+			ASSERT_TRUE(doc.parse(block.first)) << block.first;
+			// Выполняем проверку перезаписи разобранного написания
+			ASSERT_EQ(doc.dump(), block.second) << block.first;
+		}
+	}
+	/**
+	 * Выполняем проверку того, что указатели построения поточного значение обрывают
+	 *
+	 * @note Запятая да скобки правилом `ns-plain-safe-in` из содержимого изъяты: они
+	 *       значение оканчивают, и запись за ними требует запятой
+	 */
+	{
+		/**
+		 * Проверяемые написания, указателем построения оборванные
+		 */
+		for(auto & source : {string("[a\n[b]]\n"), string("[a\n{b: 1}]\n")}){
+			// Объект потокового чтения текста
+			yaml::reader_t reader(::logger());
+			// Выполняем подачу разбираемой записи текста документа
+			reader.feed(source.data(), source.size(), true);
+			/**
+			 * Выполняем вычитывание накопленных событий разбора
+			 */
+			while(reader.next());
+			// Выполняем проверку выданного кода отказа разбора
+			ASSERT_EQ(reader.error(), yaml::error_t::EXPECTED_COMMA) << source;
+		}
 	}
 }
