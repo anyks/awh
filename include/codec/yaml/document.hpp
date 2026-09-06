@@ -260,6 +260,28 @@ namespace awh {
 						uint32_t keyAnchored;
 						/**
 						 * \~russian
+						 * Смещение метки типа, ИМЕНИ ПАРЫ предпосланной, в хранилище знаков
+						 *
+						 * @details Метка эта принадлежит имени пары, а не значению её: написание
+						 * `!!str a: b` метит запись `a`, и держать её вместе с меткою значения нельзя -
+						 * они разные. Узла же у имени пары дерево не держит вовсе, оттого метка
+						 * его и кладётся сюда, к узлу самой пары - тем же порядком, каким кладётся
+						 * метка узла имени
+						 *
+						 * @warning Прежде метка эта отбрасывалась: держать её было негде. Перезапись
+						 * теряла её молча, и текст `!!str a: b` возвращался записью `a: b`
+						 *
+						 * \~english
+						 * Offset of the tag placed before the NAME OF A PAIR in the storage of characters
+						 * @details The tag belongs to the name of a pair rather than to its value
+						 *
+						 * \~
+						 */
+						uint32_t keyTag;
+						// Длина метки типа, имени пары предпосланной, в байтах
+						uint32_t keyTagged;
+						/**
+						 * \~russian
 						 * @brief Конструктор
 						 *
 						 *
@@ -268,7 +290,9 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						Properties() noexcept : anchor(0), anchored(0), tag(0), tagged(0), keyAnchor(0), keyAnchored(0) {}
+						Properties() noexcept :
+						 anchor(0), anchored(0), tag(0), tagged(0),
+						 keyAnchor(0), keyAnchored(0), keyTag(0), keyTagged(0) {}
 					} props_t;
 					/**
 					 * \~russian
@@ -753,6 +777,39 @@ namespace awh {
 							 * \~
 							 */
 							string_view tag() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения метки узла, ИМЕНИ ПАРЫ предпосланной
+							 *
+							 * @details Метка эта принадлежит имени пары, а не значению её: написание
+							 * `&m a: b` метит запись `a`. Узла у имени пары дерево не держит, и
+							 * свойства его кладутся к узлу самой пары
+							 *
+							 * @return имя метки, имени пары предпосланной, пустое - метки нет
+							 *
+							 * \~english
+							 * @brief Method of the obtaining of the anchor placed before the NAME OF A PAIR
+							 * @return name of the anchor placed before the name of the pair, empty if there is none
+							 *
+							 * \~
+							 */
+							string_view keyAnchor() const noexcept;
+							/**
+							 * \~russian
+							 * @brief Метод извлечения метки типа, ИМЕНИ ПАРЫ предпосланной
+							 *
+							 * @details Метка эта принадлежит имени пары, а не значению её: написание
+							 * `!!str a: b` метит запись `a`
+							 *
+							 * @return метка типа, имени пары предпосланная, пустая - метки нет
+							 *
+							 * \~english
+							 * @brief Method of the obtaining of the tag placed before the NAME OF A PAIR
+							 * @return tag placed before the name of the pair, empty if there is none
+							 *
+							 * \~
+							 */
+							string_view keyTag() const noexcept;
 						public:
 							/**
 							 * \~russian
@@ -1347,6 +1404,23 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Метод опознания предисловия, блочному значению соседа сверху принадлежащего
+					 *
+					 * @param index  номер узла, предисловие которому предпослано
+					 * @param origin начало предисловия узла в удержанном исходном тексте
+					 * @return       отступ строки блочного значения соседа сверху либо `npos`
+					 *
+					 * \~english
+					 * @brief Method of the recognition of a preface belonging to the block value of the neighbour above
+					 * @param index index of the node the preface is placed before
+					 * @param origin beginning of the preface of the node in the retained source text
+					 * @return indentation of the line of the block value of the neighbour above, or `npos`
+					 *
+					 * \~
+					 */
+					size_t blocked(const uint32_t index, const uint32_t origin) const noexcept;
 					bool verbatim(writer_t & writer, const uint32_t first, const uint32_t last, const bool entry, const bool gapped) const noexcept;
 					/**
 					 * \~russian
@@ -1611,6 +1685,20 @@ namespace awh {
 					 * \~
 					 */
 					bool place(const string & path, uint32_t & index, const bool create) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки свойств узла дерева
+					 *
+					 * @param index  номер узла, свойства которому ставятся
+					 * @param anchor устанавливаемая метка узла, пустая - метку снять
+					 * @param tag    устанавливаемая метка типа, пустая - метку снять
+					 *
+					 * \~english
+					 * @brief Method of the setting of the properties of a node of the tree
+					 *
+					 * \~
+					 */
+					void endow(const uint32_t index, const string_view anchor, const string_view tag) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки значения узла записью его без ограды
@@ -1879,6 +1967,33 @@ namespace awh {
 					 * \~
 					 */
 					bool reset(const string & path) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки свойств узла дерева по пути к нему
+					 *
+					 * @details Свойства узла - метка его да метка типа - переносом значения прежде
+					 * терялись: укладка вела запись одними значениями, а свойств узлу поставить было
+					 * нечем. Двоичное содержимое тем теряло вид свой - `!!binary 12:30`, в чужое
+					 * дерево перенесённое, наречием 1.1 читалось обратно числом семьсот пятьдесят
+					 *
+					 * @note Пустая запись свойство СНИМАЕТ: тем зовущий волен и снять метку, а не
+					 * только поставить
+					 *
+					 * @param path   путь к узлу, свойства которому ставятся
+					 * @param anchor устанавливаемая метка узла, пустая - метку снять
+					 * @param tag    устанавливаемая метка типа, пустая - метку снять
+					 * @return       признак успешной установки свойств
+					 *
+					 * \~english
+					 * @brief Method of the setting of the properties of a node of the tree by the path to it
+					 * @param path path to the node the properties are being set to
+					 * @param anchor anchor being set, empty to remove it
+					 * @param tag tag being set, empty to remove it
+					 * @return sign of the successful setting of the properties
+					 *
+					 * \~
+					 */
+					bool endow(const string & path, const string_view anchor, const string_view tag) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод объявления узла вместилищем

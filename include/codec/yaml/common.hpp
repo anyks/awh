@@ -1244,6 +1244,47 @@ namespace awh {
 			 * \~
 			 */
 			__AWH_SHARED_EXPORT__ style_t quoting(const string_view text, const schema_t schema, const bool key) noexcept;
+			/**
+			 * \~russian
+			 * @brief Функция выбора вида записи скалярного значения с указанным удержанием строкою
+			 *
+			 * @details Вид тот же, что и у собрата о трёх доводах, однако правило удержания
+			 * строкою здесь отключаемо: запись, разрешаемую числом, собрат обносит оградою
+			 * **необходимо**, дабы строка `12` числом не вернулась
+			 *
+			 * @details Отключается правило то там, где значение строкою и не является:
+			 * запись числа, исходным текстом удержанная, обязана вернуться числом же, и
+			 * ограда ей не нужна вовсе. Потребна ей лишь та часть приговора, что говорит
+			 * о записи возможной: знак неотменимый, пробел ведущий либо завершающий,
+			 * знак укладки потоковой. Оттого правило и разделено доводом, а не переписано
+			 *
+			 * @warning Довод `stringly` ложью ставить дозволено ЛИШЬ значению, строкою не
+			 *          являющемуся: строка, приговор сей ложью получившая, вернулась бы
+			 *          числом либо логическим значением
+			 *
+			 * @param text     записываемое значение
+			 * @param schema   действующая схема разрешения
+			 * @param key      признак того, что значение записывается именем пары
+			 * @param stringly признак того, что значение удержать строкою необходимо
+			 * @return         наименее навязчивый допустимый вид записи
+			 *
+			 * \~english
+			 * @brief Function of the choice of the kind of the notation of a scalar value with the specified retention as a string
+			 * @details The kind is the same as that of the counterpart of three arguments, however the rule
+			 * of the retention as a string is switchable here: a record resolved as a number is **necessarily**
+			 * surrounded by a quoting by the counterpart, so that the string `12` would not come back as a number
+			 * @details That rule is switched off there where the value is not a string at all: a record of a number
+			 * retained by the source text must come back as a number, and a quoting is not needed by it at all
+			 * @warning The argument `stringly` is permitted to be set false ONLY for a value which is not a string
+			 * @param text value being written
+			 * @param schema acting schema of the resolution
+			 * @param key sign of the fact that the value is written as the name of a pair
+			 * @param stringly sign of the fact that it is necessary to retain the value as a string
+			 * @return least obtrusive admissible kind of the notation
+			 *
+			 * \~
+			 */
+			__AWH_SHARED_EXPORT__ style_t quoting(const string_view text, const schema_t schema, const bool key, const bool stringly) noexcept;
 		};
 	};
 };

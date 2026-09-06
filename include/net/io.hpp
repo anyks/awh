@@ -2612,16 +2612,37 @@ namespace awh {
 				uint8_t getCountHops(const event::id_t id) const noexcept;
 				/**
 				 * \~russian
-				 * @brief Метод установки количества хопов последнего принятого пакета
+				 * @brief Метод установки максимального количества хопов точным числом
+				 *
+				 * @details Задаёт предел жизни ИСХОДЯЩИХ пакетов числом от 0 до 255 и
+				 *          выставляет его сокету. Отличается от `setHops` лишь видом
+				 *          довода: тот принимает разряд `hops_t`, этот - точное число.
+				 *
+				 * @warning Метод НЕ является парой к `getCountHops`, вопреки имени: тот
+				 *          отдаёт число переходов ПОСЛЕДНЕГО ПРИНЯТОГО пакета, а этот
+				 *          правит предел жизни отправляемых. Прежний довод здесь был
+				 *          списан с геттера и описывал совсем другое дело
+				 *
+				 * @note Заданное число огрубляется до ближайшего разряда `hops_t` в
+				 *       состоянии узла, поэтому `getHops` отдаёт разряд, а не то самое
+				 *       число: задав 100, обратно получишь `REGION` (64)
 				 *
 				 * @param id   идентификатор события
-				 * @param hops количество хопов последнего принятого пакета
+				 * @param hops максимальное количество хопов (0-255)
 				 * @return     результат выполнения установки
 				 *
 				 * \~english
-				 * @brief Method of setting the number of the hops of the last received packet
+				 * @brief Method of setting the maximum number of the hops by an exact number
+				 * @details Sets the lifetime of the OUTGOING packets by a number from 0 to 255 and
+				 *          applies it to the socket. It differs from setHops only by the kind of the argument:
+				 *          that one takes a hops_t rank, this one takes an exact number.
+				 * @warning The method is NOT a counterpart of getCountHops, in spite of the name: that one
+                 *          returns the number of the hops of the LAST RECEIVED packet, while this one
+                 *          corrects the lifetime of the sent ones
+                 * @note The given number is coarsened to the nearest hops_t rank in the state of the node,
+                 *       so getHops returns a rank and not that very number
 				 * @param id   identifier of the event
-				 * @param hops number of the hops of the last received packet
+				 * @param hops maximum number of the hops (0-255)
 				 * @return     result of the performance of the setting
 				 *
 				 * \~
@@ -2631,6 +2652,14 @@ namespace awh {
 				/**
 				 * \~russian
 				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+				 *
+				 * @details Отдаётся ЗАДАННОЕ значение, а не действующее на сокете: сокет движок
+				 *          не спрашивает
+				 *
+				 * @note Значение `WORLD` служит признаком «не задано»: при нём фиксация настроек
+				 *       сокета не трогает вовсе, и пакеты уходят с умолчанием системы (замерено:
+				 *       64 у macOS), а не с 255. Ответ `WORLD` читается как «предел не
+				 *       ограничивался», а не как «пакет пройдёт 255 переходов»
 				 *
 				 * @param id идентификатор события
 				 * @return   максимальное количество хопов

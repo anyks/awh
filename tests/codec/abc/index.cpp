@@ -1351,3 +1351,121 @@ TEST_F(IndexFixture, ReadRefusalNamesItsKind) {
 		ASSERT_TRUE(fetcher.record(3, item)) << "код отказа: " << abc::message(fetcher.error());
 	}
 }
+/**
+ * @brief Проверка того, что выборщик отвергает работу до открытия и подделку смещения
+ *
+ * @details Выборка у выборщика, контейнера не открывшего, отвечается отказом внутренним:
+ *          оглавления у него ещё нет, и брать запись неоткуда. Смещение же кадра приходит
+ *          ИЗ ОГЛАВЛЕНИЯ и недоверенно: сложение его с длиной заголовка при смещении близ
+ *          предела разрядной сетки завернулось бы, подав источнику малое смещение
+ *
+ * @note Оба места стояли слепыми до 05.09.2026. Первое - потому что до открытия выборщика
+ *       не тревожил никто, второе - потому что подделку строки оглавления у выборщика не
+ *       наводили. Близнец второго у правщика:
+ *       `EditorFixture.ChunkOffsetBeyondTheBodyIsRefused`
+ */
+TEST_F(IndexFixture, RefusalsOfTheFetcher) {
+	/**
+	 * Устье первое: выборка до открытия контейнера
+	 */
+	{
+		// Выборщик записей контейнера
+		abc::fetcher_t fetcher(this->_log.get());
+		// Буфер выбранной записи контейнера
+		vector <uint8_t> item;
+		// Выполняем проверку того, что выборка до открытия отвечена отказом
+		ASSERT_FALSE(fetcher.record(0, item));
+		// Выполняем проверку того, что отказ объявлен внутренним
+		ASSERT_EQ(fetcher.error(), abc::error_t::INTERNAL) << abc::message(fetcher.error());
+	}
+	// Октеты собранного контейнера
+	vector <uint8_t> data;
+	{
+		// Сборщик контейнера
+		abc::assembler_t assembler(this->_log.get());
+		/**
+		 * Выполняем внесение череды записей в собираемый контейнер
+		 */
+		for(size_t i = 0; i < 4; i++){
+			// Выполняем сборку очередной записи
+			const vector <uint8_t> item = record(string{"запись номер "} + to_string(i));
+			// Выполняем внесение очередной записи в собираемый контейнер
+			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT))
+				<< "код отказа: " << abc::message(assembler.error());
+		}
+		// Выполняем завершение сборки контейнера
+		ASSERT_TRUE(assembler.complete(data)) << "код отказа: " << abc::message(assembler.error());
+	}
+	/**
+	 * Источник октетов контейнера
+	 *
+	 * @param offset смещение читаемых октетов
+	 * @param size   размер читаемых октетов
+	 * @param result буфер, куда следует положить прочитанное
+	 * @return       признак успешности чтения
+	 */
+	const auto source = [&data](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
+		// Выполняем очистку буфера прочитанных октетов
+		result.clear();
+		// Если затребованное чтение выходит за пределы записи контейнера
+		if((offset + static_cast <uint64_t> (size)) > static_cast <uint64_t> (data.size()))
+			// Выводим признак неудачного чтения
+			return false;
+		// Выполняем выдачу затребованных октетов записи контейнера
+		result.assign(data.begin() + static_cast <ptrdiff_t> (offset),
+		 data.begin() + static_cast <ptrdiff_t> (offset) + static_cast <ptrdiff_t> (size));
+		// Выводим признак успешного чтения
+		return true;
+	};
+	// Снятый заголовок опознания контейнера
+	abc::header_t header;
+	// Код отказа снятия заголовка
+	abc::error_t error = abc::error_t::NONE;
+	// Выполняем снятие заголовка опознания контейнера
+	ASSERT_TRUE(header.unpack(data.data(), data.size(), error)) << abc::message(error);
+	// Выполняем проверку того, что оглавление контейнера объявлено
+	ASSERT_GT(header.index, 0u);
+	/**
+	 * Выполняем проверку того, что оглавление легло в кадр открыто: сжатое содержимое
+	 * правке строки не поддаётся
+	 */
+	ASSERT_EQ(data.at(static_cast <size_t> (header.index)), 0x00) << "оглавление уложено сжатым";
+	// Выполняем получение смещения первой строки оглавления в записи контейнера
+	const size_t entry = static_cast <size_t> (header.index) + abc::CHUNK_HEADER;
+	// Выполняем проверку того, что строка оглавления в записи контейнера умещается
+	ASSERT_LE(entry + abc::ENTRY_LENGTH, data.size());
+	/**
+	 * Выполняем подделку смещения кадра первой записи непомерным числом: смещение занимает
+	 * первые восемь октетов строки оглавления
+	 */
+	for(size_t i = 0; i < 8; i++)
+		// Выполняем укладку очередного октета поддельного смещения кадра
+		data.at(entry + i) = 0xFF;
+	/**
+	 * Выполняем обновление контрольной суммы кадра оглавления: иначе отказ придёт по сумме
+	 */
+	{
+		// Выполняем получение смещения кадра оглавления в записи контейнера
+		const size_t place = static_cast <size_t> (header.index);
+		// Выполняем получение длины уложенного содержимого кадра оглавления
+		const size_t length = static_cast <size_t> (abc::gather(data.data() + place + 4, 4));
+		// Выполняем укладку обновлённой контрольной суммы кадра оглавления
+		abc::fixed(data.data() + place + abc::CHUNK_DIGEST,
+		 abc::digest(data.data() + place, abc::CHUNK_HEADER + length), 8);
+	}
+	// Выборщик записей поддельного контейнера
+	abc::fetcher_t fetcher(this->_log.get());
+	// Выполняем открытие поддельного контейнера
+	ASSERT_TRUE(fetcher.open(source)) << "код отказа: " << abc::message(fetcher.error());
+	// Буфер выбранной записи контейнера
+	vector <uint8_t> item;
+	// Выполняем проверку того, что выборка поддельной записи отвечена отказом
+	ASSERT_FALSE(fetcher.record(0, item));
+	// Выполняем проверку того, что отказ объявлен повреждённой записью оглавления
+	ASSERT_EQ(fetcher.error(), abc::error_t::INVALID_CHUNK) << abc::message(fetcher.error());
+	/**
+	 * Выполняем проверку того, что соседняя запись по-прежнему выбирается: отказ
+	 * принадлежал ПОДДЕЛАННОЙ строке, а не устройству выборщика
+	 */
+	ASSERT_TRUE(fetcher.record(1, item)) << "код отказа: " << abc::message(fetcher.error());
+}

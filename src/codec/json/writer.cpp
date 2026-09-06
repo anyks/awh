@@ -98,7 +98,7 @@ namespace {
 			// Признак годности разобранной последовательности
 			bool valid = false;
 			// Выполняем разбор очередной последовательности содержимого
-			i += awh::codec::json::decode(text, i, code, valid);
+			i += awh::codec::json::readSequence(text, i, code, valid);
 			/**
 			 * Если разобранная последовательность негодна
 			 */
@@ -273,7 +273,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 					// Прекращаем поиск конца отрезка
 					break;
 				// Выполняем разбор последовательности UTF-8
-				length = awh::codec::json::decode(text, offset, code, valid);
+				length = awh::codec::json::readSequence(text, offset, code, valid);
 				/**
 				 * Если разобранная последовательность негодна
 				 */
@@ -385,7 +385,7 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 					 */
 					if(this->_settings.escape == escape_t::ASCII)
 						// Выполняем разбор последовательности UTF-8
-						length = awh::codec::json::decode(text, i, code, valid);
+						length = awh::codec::json::readSequence(text, i, code, valid);
 					/**
 					 * Если разобранная последовательность негодна, а пропуск её не затребован
 					 */

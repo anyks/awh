@@ -1239,10 +1239,51 @@ TEST_F(EthFixture, SocketMulticastIfaceTest){
 	this->_eth->addr.fillSource(source);
 	// Если интерфейс найден
 	if(!source.iface.empty()){
+		/**
+		 * Спрашиваем настройку у ядра ДО установки
+		 *
+		 * @note Без этого утверждение «после установки настройка не пуста» ничего не
+		 *       доказывало бы: она могла быть непустой и с самого начала. Свежий
+		 *       сокет обязан нести пустой выбор устройства
+		 */
+		{
+			// Прочитанный у ядра выбор устройства рассылки
+			struct in_addr chosen;
+			// Обнуляем прочитанный выбор устройства
+			::memset(&chosen, 0, sizeof(chosen));
+			// Размер прочитанного выбора устройства
+			socklen_t length = static_cast <socklen_t> (sizeof(chosen));
+			// Считываем выбор устройства рассылки у свежего сокета
+			ASSERT_EQ(::getsockopt(static_cast <awh::net::socket_t> (sock), IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast <char *> (&chosen), &length), 0)
+			 << "выбор устройства рассылки не читается обратно";
+			// У свежего сокета выбора устройства быть не должно
+			ASSERT_EQ(chosen.s_addr, htonl(INADDR_ANY)) << "свежий сокет уже несёт выбор устройства рассылки";
+		}
 		// Устанавливаем найденный интерфейс для multicast пакетов (первый вызов наполняет кеш)
 		ASSERT_TRUE(this->_eth->socket.setMulticastIface(sock, awh::event::family_t::IPV4, source.iface));
 		// Повторная установка должна использовать кеш и так же завершиться успехом
 		ASSERT_TRUE(this->_eth->socket.setMulticastIface(sock, awh::event::family_t::IPV4, source.iface));
+		/**
+		 * Спрашиваем настройку у ядра ПОСЛЕ установки
+		 *
+		 * @warning Утверждается ЗНАЧЕНИЕ, дошедшее до ядра, а не успех обращения:
+		 *          установка, молча ничего не делающая, отвечала бы успехом обоим
+		 *          вызовам выше, и проверка оставалась бы зелёной
+		 */
+		{
+			// Прочитанный у ядра выбор устройства рассылки
+			struct in_addr chosen;
+			// Обнуляем прочитанный выбор устройства
+			::memset(&chosen, 0, sizeof(chosen));
+			// Размер прочитанного выбора устройства
+			socklen_t length = static_cast <socklen_t> (sizeof(chosen));
+			// Считываем выбор устройства рассылки
+			ASSERT_EQ(::getsockopt(static_cast <awh::net::socket_t> (sock), IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast <char *> (&chosen), &length), 0)
+			 << "выбор устройства рассылки не читается обратно";
+			// Ядру обязан достаться выбор устройства, а не пустота
+			ASSERT_NE(chosen.s_addr, htonl(INADDR_ANY))
+			 << "установка ответила успехом, но выбор устройства " << source.iface << " до ядра не дошёл";
+		}
 	}
 
 	// Закрываем сокет

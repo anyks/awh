@@ -5277,8 +5277,6 @@ namespace events {
 	 *
 	 */
 	static void forget(const awh::net::socket_t fd) noexcept {
-		// ЩУП: защита снята намеренно
-		return;
 		// Если очередь изменений пуста, снимать нечего
 		if(::local::change.empty())
 			// Выходим из функции
@@ -5288,11 +5286,9 @@ namespace events {
 		 */
 		for(auto i = ::local::change.begin(); i != ::local::change.end();){
 			// Если изменение относится к закрываемому дескриптору
-			if(static_cast <awh::net::socket_t> (i->ident) == fd){
-				::fprintf(stderr, "[ЩУП forget] снята запись: fd=%d filter=%d flags=%#x\n", (int) fd, (int) i->filter, (unsigned) i->flags);
+			if(static_cast <awh::net::socket_t> (i->ident) == fd)
 				// Выполняем снятие изменения из очереди
 				i = ::local::change.erase(i);
-			}
 			// Переходим к изменению следующему
 			else ++i;
 		}
@@ -66659,10 +66655,14 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
 	return 0;
 }
 /**
- * @brief Метод установки количества хопов последнего принятого пакета
+ * @brief Метод установки максимального количества хопов точным числом
+ *
+ * @details Задаёт предел жизни ИСХОДЯЩИХ пакетов числом от 0 до 255. Парой к
+ *          `getCountHops` НЕ является: тот отдаёт число переходов последнего
+ *          ПРИНЯТОГО пакета. Договор - в `include/net/io.hpp`
  *
  * @param id   идентификатор события
- * @param hops количество хопов последнего принятого пакета
+ * @param hops максимальное количество хопов (0-255)
  * @return     результат выполнения установки
  *
  */

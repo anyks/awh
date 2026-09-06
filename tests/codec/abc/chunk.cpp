@@ -1127,3 +1127,215 @@ TEST_F(ChunkFixture, UnpackingCompressedWithoutTheCompressorIsRefused) {
 		ASSERT_EQ(string(content.begin(), content.end()), payload);
 	}
 }
+/**
+ * @brief Проверка того, что расхождение ключей отвечено отказом шифрования
+ *
+ * @details Кадр шифруется отданным извне модулем, а ключ тот выводится из соли и пароля
+ *          владельца. Снимающий волен подать модуль с ИНЫМ паролем - и расшифровка
+ *          вернёт пустое, а не чужое содержимое. Пустое при непустом исходном и есть
+ *          признак отказа
+ *
+ * @note Место числилось отказом самой подсистемы шифрования и оттого слепым. Подсистема
+ *       же здесь исправна: расходятся КЛЮЧИ, и наводится это прямо (05.09.2026)
+ */
+TEST_F(ChunkFixture, DecryptionWithAForeignKeyIsRefused) {
+	// Укладываемое содержимое кадра
+	const string payload = "тайное содержимое кадра";
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	{
+		// Укладчик кадров
+		abc::packer_t packer(this->_log.get());
+		// Настройки укладки кадра
+		abc::packer_t::settings_t settings;
+		// Выполняем объявление шифрования содержимого кадра
+		settings.encrypt = true;
+		// Выполняем установку настроек укладки кадра
+		packer.settings(settings);
+		// Выполняем установку модуля шифрования владельца
+		packer.crypto(this->_crypto.get());
+		// Выполняем укладку кадра
+		ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+			<< "код отказа: " << abc::message(packer.error());
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		/**
+		 * Выполняем проверку того, что своим же модулем кадр снимается: иначе отказ ниже
+		 * принадлежал бы укладке, а не расхождению ключей
+		 */
+		ASSERT_TRUE(packer.unpack(record.data(), record.size(), offset, content, chunk))
+			<< "код отказа: " << abc::message(packer.error());
+		// Выполняем проверку снятого содержимого кадра
+		ASSERT_EQ(string(content.begin(), content.end()), payload);
+	}
+	{
+		// Модуль шифрования постороннего, паролем расходящийся с владельцем
+		crypto_t foreign(this->_fmk.get(), this->_log.get());
+		// Выполняем установку соли шифрования постороннего
+		foreign.salt("соль контейнера");
+		// Выполняем установку пароля шифрования постороннего
+		foreign.password("пароль постороннего");
+		// Укладчик кадров постороннего
+		abc::packer_t packer(this->_log.get());
+		// Выполняем установку модуля шифрования постороннего
+		packer.crypto(&foreign);
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем проверку того, что снятие кадра чужим ключом отвечено отказом
+		ASSERT_FALSE(packer.unpack(record.data(), record.size(), offset, content, chunk));
+		// Выполняем проверку того, что отказ объявлен неудачей шифрования
+		ASSERT_EQ(packer.error(), abc::error_t::ENCRYPTION_FAILED) << abc::message(packer.error());
+		// Выполняем проверку того, что смещение снятия осталось нетронутым
+		ASSERT_EQ(offset, 0u);
+	}
+}
+/**
+ * @brief Проверка того, что шифрование без пароля отвечено отказом
+ *
+ * @details Ключ шифрования выводится из соли и ПАРОЛЯ владельца, а модуль шифрования
+ *          отдаётся извне и настраивается зовущим. Модуль, пароля не получивший, ключа не
+ *          выведет, и шифрование вернёт пустое при непустом исходном - то и есть отказ
+ *
+ * @note Место числилось отказом самой подсистемы шифрования и оттого слепым. Подсистема
+ *       здесь исправна, ей просто нечем работать: настройка модуля - забота зовущего, и
+ *       забыть её он волен (05.09.2026)
+ */
+TEST_F(ChunkFixture, EncryptionWithoutThePasswordIsRefused) {
+	// Укладываемое содержимое кадра
+	const string payload = "тайное содержимое кадра";
+	{
+		// Модуль шифрования, пароля не получивший
+		crypto_t bare(this->_fmk.get(), this->_log.get());
+		// Выполняем установку соли шифрования
+		bare.salt("соль контейнера");
+		// Укладчик кадров
+		abc::packer_t packer(this->_log.get());
+		// Настройки укладки кадра
+		abc::packer_t::settings_t settings;
+		// Выполняем объявление шифрования содержимого кадра
+		settings.encrypt = true;
+		// Выполняем установку настроек укладки кадра
+		packer.settings(settings);
+		// Выполняем установку модуля шифрования без пароля
+		packer.crypto(&bare);
+		// Буфер уложенного кадра
+		vector <uint8_t> record;
+		// Выполняем проверку того, что укладка кадра отвечена отказом
+		ASSERT_FALSE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record));
+		// Выполняем проверку того, что отказ объявлен неудачей шифрования
+		ASSERT_EQ(packer.error(), abc::error_t::ENCRYPTION_FAILED) << abc::message(packer.error());
+	}
+	/**
+	 * Выполняем проверку того, что отказ принадлежал НЕДОСТАЮЩЕМУ ПАРОЛЮ: с паролем тот
+	 * же кадр укладывается и снимается
+	 */
+	{
+		// Укладчик кадров
+		abc::packer_t packer(this->_log.get());
+		// Настройки укладки кадра
+		abc::packer_t::settings_t settings;
+		// Выполняем объявление шифрования содержимого кадра
+		settings.encrypt = true;
+		// Выполняем установку настроек укладки кадра
+		packer.settings(settings);
+		// Выполняем установку модуля шифрования владельца
+		packer.crypto(this->_crypto.get());
+		// Буфер уложенного кадра
+		vector <uint8_t> record;
+		// Выполняем укладку кадра
+		ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+			<< "код отказа: " << abc::message(packer.error());
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем снятие кадра
+		ASSERT_TRUE(packer.unpack(record.data(), record.size(), offset, content, chunk))
+			<< "код отказа: " << abc::message(packer.error());
+		// Выполняем проверку снятого содержимого кадра
+		ASSERT_EQ(string(content.begin(), content.end()), payload);
+	}
+}
+/**
+ * @brief Проверка того, что порча сжатого содержимого отвечена отказом сжатия
+ *
+ * @details Содержимое кадра сжато, а разжатие идёт по октетам, прочитанным из самого
+ *          контейнера: испорченные, они разжимателю негодны, и тот вернёт пустое.
+ *          Пустое при непустом ИСХОДНОМ и есть признак отказа - длина исходного объявлена
+ *          кадром и потому известна
+ *
+ * @note Сумма кадра пересчитывается: без того отказ придёт по ней, не дойдя до разжатия,
+ *       и проверка стерегла бы вовсе не то место. До 05.09.2026 место стояло слепым
+ */
+TEST_F(ChunkFixture, CorruptedCompressedContentIsRefused) {
+	// Укладчик кадров
+	abc::packer_t packer(this->_log.get());
+	// Выполняем установку модуля сжатия
+	packer.compressor(this->_compressor.get());
+	// Укладываемое хорошо сжимаемое содержимое
+	const string payload = repeated(200);
+	// Буфер уложенного кадра
+	vector <uint8_t> record;
+	// Выполняем укладку кадра
+	ASSERT_TRUE(packer.pack(payload.data(), payload.size(), abc::payload_t::TEXT, 1, 0, record))
+		<< "код отказа: " << abc::message(packer.error());
+	{
+		// Смещение снятия кадра
+		size_t offset = 0;
+		// Снятое содержимое кадра
+		vector <uint8_t> content;
+		// Снятые сведения о кадре
+		abc::chunk_t chunk;
+		// Выполняем снятие нетронутого кадра
+		ASSERT_TRUE(packer.unpack(record.data(), record.size(), offset, content, chunk))
+			<< "код отказа: " << abc::message(packer.error());
+		/**
+		 * Выполняем проверку того, что содержимое кадра сжато: без сжатия порча ниже
+		 * пришлась бы на открытые октеты, и отказ был бы не тот
+		 */
+		ASSERT_NE(chunk.method, compressor::method_t::NONE)
+			<< "сжатие не выполнено, метод подобран: " << static_cast <uint32_t> (packer.suggest(abc::payload_t::TEXT));
+	}
+	// Выполняем проверку того, что содержимое кадра в запись умещается
+	ASSERT_GT(record.size(), static_cast <size_t> (abc::CHUNK_HEADER) + 4);
+	/**
+	 * Выполняем порчу сжатого содержимого кадра: правятся октеты ЗА заголовком, сама же
+	 * объявленная длина остаётся прежней
+	 */
+	for(size_t i = 0; i < 4; i++)
+		// Выполняем порчу очередного октета сжатого содержимого
+		record.at(static_cast <size_t> (abc::CHUNK_HEADER) + i) ^= 0xFF;
+	/**
+	 * Выполняем обновление контрольной суммы кадра: без того отказ придёт по сумме, не
+	 * дойдя до разжатия
+	 */
+	{
+		// Выполняем получение длины уложенного содержимого кадра
+		const size_t length = static_cast <size_t> (abc::gather(record.data() + 4, 4));
+		// Выполняем укладку обновлённой контрольной суммы кадра
+		abc::fixed(record.data() + abc::CHUNK_DIGEST,
+		 abc::digest(record.data(), abc::CHUNK_HEADER + length), 8);
+	}
+	// Смещение снятия кадра
+	size_t offset = 0;
+	// Снятое содержимое кадра
+	vector <uint8_t> content;
+	// Снятые сведения о кадре
+	abc::chunk_t chunk;
+	// Выполняем проверку того, что снятие порченого кадра отвечено отказом
+	ASSERT_FALSE(packer.unpack(record.data(), record.size(), offset, content, chunk));
+	// Выполняем проверку того, что отказ объявлен неудачей сжатия
+	ASSERT_EQ(packer.error(), abc::error_t::COMPRESSION_FAILED) << abc::message(packer.error());
+	// Выполняем проверку того, что смещение снятия осталось нетронутым
+	ASSERT_EQ(offset, 0u);
+}

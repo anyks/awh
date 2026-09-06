@@ -1081,6 +1081,20 @@ bool awh::codec::yaml::anchored(const string_view text) noexcept {
  *
  */
 style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema, const bool key) noexcept {
+	// Выводим приговор, значение строкою удерживающий
+	return quoting(text, schema, key, true);
+}
+/**
+ * @brief Функция выбора вида записи скалярного значения с указанным удержанием строкою
+ *
+ * @param text     записываемое значение
+ * @param schema   действующая схема разрешения
+ * @param key      признак того, что значение записывается именем пары
+ * @param stringly признак того, что значение удержать строкою необходимо
+ * @return         наименее навязчивый допустимый вид записи
+ *
+ */
+style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema, const bool key, const bool stringly) noexcept {
 	/**
 	 * Если значение пусто
 	 *
@@ -1144,7 +1158,7 @@ style_t awh::codec::yaml::quoting(const string_view text, const schema_t schema,
 	 *       числом либо логическим значением, обязана получить ограду, иначе строка `12`
 	 *       вернётся числом
 	 */
-	if(resolve(text, schema) != type_t::STRING)
+	if(stringly && (resolve(text, schema) != type_t::STRING))
 		// Выводим вид записи одинарной оградой
 		return style_t::SINGLE;
 	/**

@@ -220,8 +220,9 @@ namespace {
  *
  */
 awh::codec::toml::Reader::Settings::Settings() noexcept :
- maxLine(MAX_LINE), maxKey(MAX_KEY), maxDepth(MAX_DEPTH), maxParts(MAX_PARTS),
- nesting(true), duplicates(true), unicode(false), emitComments(true), emitBlanks(false), encoding(encoding_t::NONE) {}
+ maxLine(MAX_LINE), maxKey(MAX_KEY), maxDepth(MAX_DEPTH),
+ nesting(true), maxParts(MAX_PARTS),
+ duplicates(true), unicode(false), emitComments(true), emitBlanks(false), encoding(encoding_t::NONE) {}
 /**
  * @brief Метод запоминания ошибки разбора вместе с местом её обнаружения
  *

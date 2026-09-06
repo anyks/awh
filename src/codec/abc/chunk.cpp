@@ -328,6 +328,12 @@ bool awh::codec::abc::Packer::pack(const void * buffer, const size_t size, const
 		vector <uint8_t> secured = this->_crypto->encrypt <vector <uint8_t>> (payload,
 		 this->_settings.hash, this->_settings.cipher);
 		// Если шифрование содержимого отвечено отказом
+		/**
+		 * @note Отказ здесь НЕ есть отказ самой подсистемы шифрования, каким место числилось
+		 *       прежде: ключ выводится из соли и ПАРОЛЯ, а настройка модуля - забота
+		 *       зовущего, и забыть её он волен. Закреплено проверкою
+		 *       `ChunkFixture.EncryptionWithoutThePasswordIsRefused` (05.09.2026)
+		 */
 		if(secured.empty() && !payload.empty()){
 			// Выполняем установку кода отказа шифрования
 			this->fail(error_t::ENCRYPTION_FAILED);
@@ -527,6 +533,11 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		vector <uint8_t> opened = this->_crypto->decrypt <vector <uint8_t>> (content,
 		 this->_settings.hash, this->_settings.cipher);
 		// Если расшифровка содержимого отвечена отказом
+		/**
+		 * @note Достижимо РАСХОЖДЕНИЕМ КЛЮЧЕЙ: уложено паролем владельца, снимается паролем
+		 *       постороннего, - и расшифровка вернёт пустое, а не чужое содержимое.
+		 *       Закреплено `ChunkFixture.DecryptionWithAForeignKeyIsRefused` (05.09.2026)
+		 */
 		if(opened.empty() && (chunk.origin > 0)){
 			// Выполняем установку кода отказа шифрования
 			this->fail(error_t::ENCRYPTION_FAILED);
@@ -562,6 +573,12 @@ bool awh::codec::abc::Packer::unpack(const void * buffer, const size_t size, siz
 		// Выполняем разжатие содержимого кадра
 		this->_compressor->decompress(content.data(), content.size(), chunk.method, opened);
 		// Если разжатие содержимого отвечено отказом
+		/**
+		 * @note Достижимо ПОРЧЕЙ сжатых октетов при пересчитанной сумме кадра: разжимателю
+		 *       они негодны, и тот вернёт пустое при непустом исходном. Длина исходного
+		 *       объявлена кадром, оттого пустое и опознаётся отказом. Закреплено
+		 *       `ChunkFixture.CorruptedCompressedContentIsRefused` (05.09.2026)
+		 */
 		if(opened.empty() && (chunk.origin > 0)){
 			// Выполняем установку кода отказа сжатия
 			this->fail(error_t::COMPRESSION_FAILED);

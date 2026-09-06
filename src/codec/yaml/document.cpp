@@ -1534,6 +1534,10 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 				properties.keyAnchor = keyed_props.keyAnchor;
 				// Запоминаем длину имени метки, имени пары предпосланной
 				properties.keyAnchored = keyed_props.keyAnchored;
+				// Запоминаем смещение метки типа, имени пары предпосланной
+				properties.keyTag = keyed_props.keyTag;
+				// Запоминаем длину метки типа, имени пары предпосланной
+				properties.keyTagged = keyed_props.keyTagged;
 				// Выполняем сброс признака метки, узла своего ожидающей
 				keyProperted = false;
 				// Выполняем сброс метки имени пары
@@ -1872,7 +1876,7 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 						 *       вместе со свойствами, и ссылка на неё давала отказ на
 						 *       тексте, договору отвечающем
 						 */
-						if(properties.anchored > 0){
+						if((properties.anchored > 0) || (properties.tagged > 0)){
 							// Собираемая запись метки, имени пары предпосланной
 							keyed_t record;
 							// Запоминаем вид записи имени пары
@@ -1881,12 +1885,32 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 							record.style = reader.value().style;
 							// Запоминаем саму запись имени пары
 							record.text.assign(reader.value().text);
-							// Запоминаем метку имени пары среди объявленных документом
-							keyed[string(this->_storage, properties.anchor, properties.anchored)] = ::std::move(record);
-							// Запоминаем смещение имени метки, имени пары предпосланной
-							keyed_props.keyAnchor = properties.anchor;
-							// Запоминаем длину имени метки, имени пары предпосланной
-							keyed_props.keyAnchored = properties.anchored;
+							/**
+							 * Если имени пары предпослана метка узла
+							 *
+							 * @note Метка эта запоминается ещё и среди объявленных документом:
+							 *       ссылка на неё разрешается записью имени пары
+							 */
+							if(properties.anchored > 0){
+								// Запоминаем метку имени пары среди объявленных документом
+								keyed[string(this->_storage, properties.anchor, properties.anchored)] = ::std::move(record);
+								// Запоминаем смещение имени метки, имени пары предпосланной
+								keyed_props.keyAnchor = properties.anchor;
+								// Запоминаем длину имени метки, имени пары предпосланной
+								keyed_props.keyAnchored = properties.anchored;
+							}
+							/**
+							 * Если имени пары предпослана метка типа
+							 *
+							 * @note Среди объявленных она не запоминается: ссылок на метку типа
+							 *       не бывает вовсе, и держится она лишь ради перезаписи
+							 */
+							if(properties.tagged > 0){
+								// Запоминаем смещение метки типа, имени пары предпосланной
+								keyed_props.keyTag = properties.tag;
+								// Запоминаем длину метки типа, имени пары предпосланной
+								keyed_props.keyTagged = properties.tagged;
+							}
 							// Запоминаем признак метки имени пары, узла своего ожидающей
 							keyProperted = true;
 						}
@@ -1929,8 +1953,18 @@ bool awh::codec::yaml::Document::digest(reader_t & reader) noexcept {
 					 *          УСПЕХОМ и выдавало нуль при записи `-1250`. Метка сказана
 					 *          прямо, и число под неё разбирается тою же схемой, какою
 					 *          разрешена сама метка. Нашёл это ворошитель круговым переносом
+					 *
+					 * @warning Схема JSON страдает тем же, и не отказом, а МОЛЧА: записей
+					 *          `.nan` да `.inf` грамматика её не знает вовсе, и разбор числа
+					 *          под нею клал НУЛЬ. Дерево запись держало, а извлечение выдавало
+					 *          нуль - бесконечность с нечислом обращались в ноль без слова.
+					 *          Метка `!!float` есть указание описания, а грамматика JSON лишь
+					 *          РАЗРЕШЕНИЕ вида сужает: сказанной прямо метке она не указ.
+					 *          Нашёл это ворошитель круговым переносом, как только сличение
+					 *          переноса перестало обходить помеченные значения
 					 */
-					const schema_t narrowing = ((!reader.value().tag.empty() && (reader.value().schema == schema_t::FAILSAFE)) ?
+					const schema_t narrowing = ((!reader.value().tag.empty() &&
+					 ((reader.value().schema == schema_t::FAILSAFE) || (reader.value().schema == schema_t::JSON))) ?
 						schema_t::CORE : reader.value().schema);
 					const type_t narrowed = narrow(reader.value().text, narrowing, number);
 					/**
@@ -2628,9 +2662,18 @@ static awh::codec::yaml::chomp_t __awh_chomping__(const string & text) noexcept 
  * @return         признак того, что обрезка предисловие изменила
  *
  */
-static bool __awh_trimmed__(const string_view preamble, string & result) noexcept {
+static bool __awh_trimmed__(const string_view preamble, string & result, const size_t blocked) noexcept {
 	// Признак того, что обрезка предисловие изменила
 	bool trimmed = false;
+	/**
+	 * Признак того, что разбираемая строка блочному значению соседа сверху принадлежит
+	 *
+	 * @details Строки одних пробелов, стоящие СРАЗУ за записью блочного значения, суть
+	 *          содержимое его, а не разделитель: обрезка их значение блока укорачивает.
+	 *          Кончается принадлежность первою строкою, содержимое несущей, - примечанием
+	 *          либо записью узла, - и дальше обрезка идёт своим чередом
+	 */
+	bool leading = (blocked != string::npos);
 	/**
 	 * Выполняем перебор строк предисловия узла
 	 */
@@ -2659,21 +2702,93 @@ static bool __awh_trimmed__(const string_view preamble, string & result) noexcep
 		 * Если строка из одних пробельных знаков составлена
 		 */
 		if(letter >= finish){
-			// Выполняем перенос одного знака конца строки
-			result.append(preamble.substr(finish, (following - finish)));
 			/**
-			 * Если пробелы в строке были
+			 * Если строка блочному значению соседа сверху принадлежит
 			 */
-			if(finish > i)
-				// Запоминаем признак изменённого предисловия
-				trimmed = true;
+			if(leading && ((finish - i) > blocked) &&
+			   (preamble.find('\t', i) >= finish))
+				// Выполняем перенос строки дословно, пробелы её сохраняя
+				result.append(preamble.substr(i, (following - i)));
+			/**
+			 * Если строка разделителем служит
+			 */
+			else {
+				// Выполняем перенос одного знака конца строки
+				result.append(preamble.substr(finish, (following - finish)));
+				/**
+				 * Если пробелы в строке были
+				 */
+				if(finish > i)
+					// Запоминаем признак изменённого предисловия
+					trimmed = true;
+			}
 		// Если строка содержимое несёт
-		} else result.append(preamble.substr(i, (following - i)));
+		} else {
+			// Выполняем сброс признака принадлежности блочному значению соседа
+			leading = false;
+			// Выполняем перенос строки дословно
+			result.append(preamble.substr(i, (following - i)));
+		}
 		// Выполняем переход к следующей строке предисловия
 		i = following;
 	}
 	// Выводим признак того, что обрезка предисловие изменила
 	return trimmed;
+}
+/**
+ * @brief Метод опознания предисловия, блочному значению соседа сверху принадлежащего
+ *
+ * @details Строка одних пробелов, стоящая СРАЗУ за записью блочного значения, есть
+ *          содержимое его: блок числит своим всякую строку глубже отступа своего.
+ *          Опознаётся принадлежность смежностью записей - началом предисловия, с границею
+ *          записи соседа совпадающим, - а не глубиною строки: глубина верна и у строки,
+ *          блоку НЕ принадлежавшей, когда между ними стоял узел, правкою снесённый. Ровно
+ *          ту беду обрезка и лечит, и различить их можно лишь удержанным текстом
+ *
+ * @param index  номер узла, предисловие которому предпослано
+ * @param origin начало предисловия узла в удержанном исходном тексте
+ * @return       отступ строки блочного значения соседа сверху либо `npos`
+ *
+ */
+size_t awh::codec::yaml::Document::blocked(const uint32_t index, const uint32_t origin) const noexcept {
+	/**
+	 * Если узел первым в дереве стоит
+	 */
+	if((index == 0) || (index > this->_nodes.size()))
+		// Выводим признак того, что соседа сверху нет вовсе
+		return string::npos;
+	// Получаем узел, разбираемому предшествующий
+	const node_t & former = this->_nodes.at(index - 1);
+	/**
+	 * Если сосед сверху блочным значением записан не был
+	 */
+	if((former.style != style_t::LITERAL) && (former.style != style_t::FOLDED))
+		// Выводим признак того, что предисловие блоку не принадлежит
+		return string::npos;
+	/**
+	 * Если предисловие с записью блочного значения не смежно
+	 */
+	if((former.edge == NO_ORIGIN) || (former.edge != origin))
+		// Выводим признак того, что предисловие блоку не принадлежит
+		return string::npos;
+	// Получаем начало собственной строки блочного значения
+	const uint32_t own = this->leading(index - 1);
+	/**
+	 * Если собственной строки у блочного значения нет
+	 */
+	if(own == NO_ORIGIN)
+		// Выводим признак того, что предисловие блоку не принадлежит
+		return string::npos;
+	// Смещение первого непробельного знака строки блочного значения
+	size_t letter = own;
+	/**
+	 * Выполняем пропуск пробельных знаков отступа строки блочного значения
+	 */
+	while((letter < this->_source.size()) && (this->_source.at(letter) == ' '))
+		// Выполняем переход к следующему знаку строки
+		letter++;
+	// Выводим отступ строки блочного значения соседа сверху
+	return (letter - own);
 }
 bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t first, const uint32_t last, const bool entry, const bool gapped) const noexcept {
 	/**
@@ -2826,7 +2941,8 @@ bool awh::codec::yaml::Document::verbatim(writer_t & writer, const uint32_t firs
 		/**
 		 * Если обрезка предисловие пролёта изменила
 		 */
-		if(::__awh_trimmed__(string_view(this->_source).substr(origin, (own - origin)), prepared)){
+		if(::__awh_trimmed__(string_view(this->_source).substr(origin, (own - origin)), prepared,
+		 this->blocked(first, origin))){
 			// Выполняем добавление записи пролёта за предисловием его
 			prepared.append(string_view(this->_source).substr(own, (edge - own)));
 			// Выполняем дословную запись пролёта с обрезанным предисловием
@@ -3935,7 +4051,7 @@ void awh::codec::yaml::Document::preamble(writer_t & writer, const uint32_t inde
 			// Собираемое предисловие узла со строками одних пробелов, обрезанными до пустоты
 			string prepared;
 			// Выполняем обрезку строк предисловия, из одних пробелов составленных
-			const bool trimmed = (gapped && ::__awh_trimmed__(preamble, prepared));
+			const bool trimmed = (gapped && ::__awh_trimmed__(preamble, prepared, this->blocked(index, origin)));
 			// Выполняем перенос предисловия узла дословными исходными байтами
 			writer.verbatim((trimmed ? string_view(prepared) : preamble), static_cast <uint32_t> (position - own));
 		}
@@ -4005,6 +4121,8 @@ bool awh::codec::yaml::Document::enter(writer_t & writer, const uint32_t index) 
 		 */
 		// Имя метки, имени пары предпосылаемой
 		string marker;
+		// Метка типа, имени пары предпосылаемая
+		string marking;
 		/**
 		 * Если узлу предпосланы свойства
 		 */
@@ -4017,9 +4135,16 @@ bool awh::codec::yaml::Document::enter(writer_t & writer, const uint32_t index) 
 			if(props.keyAnchored > 0)
 				// Запоминаем метку, имени пары предпосылаемую
 				marker.assign(this->_storage, props.keyAnchor, props.keyAnchored);
+			/**
+			 * Если свойства несут метку типа имени пары
+			 */
+			if(props.keyTagged > 0)
+				// Запоминаем метку типа, имени пары предпосылаемую
+				marking.assign(this->_storage, props.keyTag, props.keyTagged);
 		}
-		// Выполняем запись имени пары отображения вместе с меткою его
-		writer.key(string(this->_storage, node.offset, node.named), marker);
+		// Выполняем запись имени пары отображения вместе со свойствами его
+		writer.key(string(this->_storage, node.offset, node.named), marker, marking,
+		 (!marking.empty() && (marking.front() == '!')));
 	}
 	/**
 	 * Если узлу предпосланы свойства
@@ -4038,7 +4163,14 @@ bool awh::codec::yaml::Document::enter(writer_t & writer, const uint32_t index) 
 		 */
 		if(props.tagged > 0)
 			// Выполняем запись метки типа, узлу предпосылаемой
-			writer.tag(string(this->_storage, props.tag, props.tagged));
+			/**
+			 * Выполняем запись метки типа, узлу предпосланной
+			 *
+			 * @note Метка, чтением выданная, местною является всегда, коли начинается знаком
+			 *       `!`: сокращения описания чтение разворачивает в полный указатель
+			 */
+			writer.tag(string(this->_storage, props.tag, props.tagged),
+			 (props.tagged > 0) && (this->_storage.at(props.tag) == '!'));
 	}
 	/**
 	 * Определяем вид значения собираемого узла
@@ -4214,9 +4346,50 @@ bool awh::codec::yaml::Document::enter(writer_t & writer, const uint32_t index) 
 		 *          из неё разобранное: `0x1F` обязано вернуться записью `0x1F`, а не
 		 *          числом 31. Тем сохранение оформления и держится на самом простом уровне
 		 */
-		default:
+		default: {
+			// Получаем запись значения, исходным текстом данную
+			const string record(this->_storage, (node.offset + node.named), node.length());
+			/**
+			 * Если запись значения перевод строки несёт
+			 *
+			 * @details Дословная запись такого значения кладёт перевод в текст СЫРЫМ, и
+			 *          документ выходит иной: содержимое `!!binary`, блоком записанное в
+			 *          несколько строк, выдавалось записью `a: !!binary null`, за какою
+			 *          строками ниже стояли остатки содержимого - уже не значением её, а
+			 *          записями верхнего уровня. Ограда двойная перевод обращает долею и
+							 *          возвращает содержимое целым
+			 *
+			 * @note Ограда берётся двойная, а не блок: правило то же, каким записывается
+			 *       строка блочная выше - содержимое здесь уже РАЗВЁРНУТО, и запись блоком
+			 *       требовала бы отступа наново, тогда как ограда обходится долями знаков
+			 *
+			 * @note Нашёл это ворошитель, как только метка `!!binary` возвращена была в
+			 *       набор его - вместе с починкой переноса свойств узла
+			 *
+			 * @note Перевод строки был лишь одним знаком из числа неотменимых, и ограда,
+			 *       ему одному поставленная, прочих не ловила: запись `!!binary` с байтами
+			 *       управляющими выдавалась ими же сырыми, и текст обратным чтением
+			 *       отвергался вовсе. Правило берётся то же, каким выбирает оформление
+			 *       записи весь кодек, - второго правила заводить незачем
+			 *
+			 * @note Ограды требует не одна лишь неотменимость: запись ` "/\\`, меткою
+			 *       `!!binary` помеченная, знаки несёт печатные все до единого, а
+			 *       дословно записанная теряет пробел ведущий снятием отступа и
+			 *       обрывается косой чертою висячею. Оттого дословно пишется лишь то,
+			 *       что правило признаёт ПРОСТЫМ, а прочему ставится ограда, каковую
+			 *       оно же и назначает
+			 */
+			// Получаем вид оформления, записи значения потребный
+			const style_t style = quoting(record, this->_schema, false, false);
+			/**
+			 * Если запись значения ограды требует
+			 */
+			if(style != style_t::PLAIN)
+				// Выполняем запись значения оградою, правилом назначенной
+				writer.value(record, style);
 			// Выполняем запись значения дословно, как оно исходным текстом дано
-			writer.raw(string(this->_storage, (node.offset + node.named), node.length()));
+			else writer.raw(record);
+		}
 	}
 	// Выводим признак того, что вместилище не открыто
 	return false;
@@ -5792,6 +5965,207 @@ bool awh::codec::yaml::Document::settle(const string & path, const string_view t
 	return this->assign(index, text, style_t::PLAIN);
 }
 /**
+ * @brief Метод установки свойств узла дерева
+ *
+ * @details Свойства узла - метка его да метка типа - переносом значения прежде терялись:
+ *          укладка вела запись одними значениями, а свойств узлу поставить было нечем.
+ *          Двоичное содержимое тем теряло вид свой - `!!binary 12:30`, в чужое дерево
+ *          перенесённое, наречием 1.1 читалось обратно числом семьсот пятьдесят
+ *
+ * @note Пустая запись свойство СНИМАЕТ: тем зовущий волен и снять метку, а не только
+ *       поставить. Узел, свойств не имевший, их и не заводит - перечень свойств растёт
+ *       лишь тогда, когда ставить есть что
+ *
+ * @param index  номер узла, свойства которому ставятся
+ * @param anchor устанавливаемая метка узла, пустая - метку снять
+ * @param tag    устанавливаемая метка типа, пустая - метку снять
+ *
+ */
+void awh::codec::yaml::Document::endow(const uint32_t index, const string_view anchor, const string_view tag) noexcept {
+	/**
+	 * Если ставить нечего, а свойств у узла и не было
+	 */
+	if(anchor.empty() && tag.empty() && (this->_nodes.at(index).props == 0))
+		// Выходим из установки свойств узла
+		return;
+	/**
+	 * Если свойств узлу не предпослано вовсе
+	 */
+	if(this->_nodes.at(index).props == 0){
+		// Запоминаем номер свойств узла в перечне свойств
+		this->_nodes.at(index).props = static_cast <uint32_t> (this->_props.size() + 1);
+		// Выполняем постановку свойств узла в перечень свойств
+		this->_props.push_back(props_t());
+	}
+	// Получаем свойства узла дерева
+	props_t & props = this->_props.at(this->_nodes.at(index).props - 1);
+	/**
+	 * Запись метки типа, описанием закреплённая
+	 */
+	static constexpr string_view STANDARD_TAG = "tag:yaml.org,2002:";
+	/**
+	 * Если метка узла ставится
+	 */
+	if(!anchor.empty()){
+		// Запоминаем смещение имени метки в хранилище знаков
+		props.anchor = this->deposit(string(anchor));
+		// Запоминаем длину имени метки
+		props.anchored = static_cast <uint32_t> (anchor.size());
+	// Если метка узла снимается
+	} else props.anchored = 0;
+	/**
+	 * Если метка типа ставится
+	 */
+	if(!tag.empty()){
+		// Запоминаем смещение метки типа в хранилище знаков
+		props.tag = this->deposit(string(tag));
+		// Запоминаем длину метки типа
+		props.tagged = static_cast <uint32_t> (tag.size());
+	// Если метка типа снимается
+	} else props.tagged = 0;
+	/**
+	 * Если метка типа описанием закреплена
+	 *
+	 * @details Вид значения решается СОДЕРЖИМЫМ его, а метка разрешение это пересиливает:
+	 *          запись `12:30`, меткою `!!binary` помеченная, есть содержимое двоичное, а
+	 *          без метки - строка. Установка свойств идёт ПОСЛЕ укладки значения, и вид,
+	 *          укладкою решённый, метки той не видел: перенос значения двоичного в чужое
+	 *          дерево клал туда строку, метку при ней несущую, - дерево держало строку, а
+	 *          текст говорил двоичное
+	 *
+	 * @note Правятся лишь те три вида, каких содержимым не разрешить: строка, двоичное
+	 *       содержимое да отметка времени. Число же с логическим значением разрешаются
+	 *       содержимым верно, и метка их не меняет
+	 */
+	if((tag.size() > STANDARD_TAG.size()) && (tag.compare(0, STANDARD_TAG.size(), STANDARD_TAG) == 0)){
+		// Получаем окончание метки типа, вид значения задающее
+		const string_view suffix = tag.substr(STANDARD_TAG.size());
+		/**
+		 * Если метка типа задаёт двоичное содержимое
+		 */
+		if(suffix == "binary")
+			// Запоминаем вид значения, меткою типа заданный
+			this->_nodes.at(index).type = type_t::BINARY;
+		/**
+		 * Если метка типа задаёт отметку времени
+		 */
+		else if(suffix == "timestamp")
+			// Запоминаем вид значения, меткою типа заданный
+			this->_nodes.at(index).type = type_t::STAMP;
+		/**
+		 * Если метка типа задаёт строку
+		 */
+		else if(suffix == "str")
+			// Запоминаем вид значения, меткою типа заданный
+			this->_nodes.at(index).type = type_t::STRING;
+		/**
+		 * Если метка типа задаёт число
+		 *
+		 * @details Разбирается число схемою ЯДРОВОЙ, а не схемою дерева: метка сказана
+		 *          прямо, и схема лишь разрешение вида сужает. Схема защитная числа не
+		 *          знает вовсе, а схема JSON не знает записей `.nan` да `.inf` - под ними
+		 *          разбор клал нуль, и перенос значения `!!float .nan` в чужое дерево
+		 *          обращал нечисло СТРОКОЮ, вида не сохранив
+		 *
+		 * @note Правило то же, каким разбирает помеченное число сама постройка дерева:
+		 *       разойдись они - и перенос давал бы вид, отличный от разбора
+		 */
+		else if((suffix == "int") || (suffix == "float")){
+			// Получаем запись значения узла
+			const string record(this->_storage, (this->_nodes.at(index).offset +
+			 this->_nodes.at(index).named), this->_nodes.at(index).length());
+			// Разобранное число значения
+			numeric_t number;
+			/**
+			 * Схема, которою разбирается запись числа
+			 *
+			 * @details Схема ядровая берётся лишь там, где своя числа не разрешает: защитная
+			 *          не знает чисел вовсе, а JSON не знает записей `.nan` да `.inf`. Схему
+			 *          же наречия 1.1 подменять ядровой НЕЛЬЗЯ: запись `0777` наречием тем
+			 *          есть число восьмеричное, а ядровою схемой - десятичное, и подмена
+			 *          обращала бы 511 в 777 молча
+			 *
+			 * @note Правило то же, каким разбирает помеченное число сама постройка дерева
+			 */
+			const schema_t narrowing = (((this->_schema == schema_t::FAILSAFE) ||
+			 (this->_schema == schema_t::JSON)) ? schema_t::CORE : this->_schema);
+			// Выполняем разбор записи числа к самому узкому вмещающему виду
+			const type_t narrowed = narrow(record, narrowing, number);
+			/**
+			 * Если разобрать запись числа удалось
+			 */
+			if(narrowed != type_t::UNDEFINED){
+				// Запоминаем вид разобранного числа
+				this->_nodes.at(index).type = narrowed;
+				/**
+				 * Если число является целым родного вида
+				 */
+				if(static_cast <uint32_t> (narrowed) & static_cast <uint32_t> (type_t::INT))
+					// Запоминаем разобранное число целым видом
+					this->_nodes.at(index).number_of(number.integer);
+				/**
+				 * Если число является дробным
+				 */
+				else if(static_cast <uint32_t> (narrowed) & static_cast <uint32_t> (type_t::REAL))
+					// Запоминаем разобранное число дробным видом
+					this->_nodes.at(index).number_of(number.real);
+			}
+		}
+		/**
+		 * Если метка типа задаёт логическое значение
+		 */
+		else if(suffix == "bool"){
+			// Получаем запись значения узла
+			const string record(this->_storage, (this->_nodes.at(index).offset +
+			 this->_nodes.at(index).named), this->_nodes.at(index).length());
+			// Признак истинности логического значения
+			const bool truth = (!record.empty() && ((record.front() == 't') || (record.front() == 'T') ||
+			 (record.front() == 'y') || (record.front() == 'Y') || (record.compare("on") == 0) ||
+			 (record.compare("On") == 0) || (record.compare("ON") == 0)));
+			// Запоминаем вид значения, меткою типа заданный
+			this->_nodes.at(index).type = type_t::BOOL;
+			// Запоминаем разобранное логическое значение
+			this->_nodes.at(index).number_of(static_cast <int64_t> (truth ? 1 : 0));
+		}
+	}
+}
+/**
+ * @brief Метод установки свойств узла дерева по пути к нему
+ *
+ * @param path   путь к узлу, свойства которому ставятся
+ * @param anchor устанавливаемая метка узла, пустая - метку снять
+ * @param tag    устанавливаемая метка типа, пустая - метку снять
+ * @return       признак успешной установки свойств
+ *
+ */
+bool awh::codec::yaml::Document::endow(const string & path, const string_view anchor, const string_view tag) noexcept {
+	/**
+	 * Выполняем сброс кода отказа прежней работы
+	 *
+	 * @note Код отвечает за ПОСЛЕДНЮЮ работу над деревом, а не за последнюю неудачную
+	 */
+	this->_error = error_t::NONE;
+	// Номер узла дерева, свойства которому ставятся
+	uint32_t index = 0;
+	/**
+	 * Если разыскать узел по пути не удалось
+	 */
+	if(!this->place(path, index, false))
+		// Выводим признак неудачной установки свойств
+		return false;
+	// Выполняем установку свойств разысканного узла
+	this->endow(index, anchor, tag);
+	/**
+	 * Запоминаем признак правки узла
+	 *
+	 * @note Без пометки запись узла ушла бы дословным переносом, и свойства, только что
+	 *       поставленные, в текст бы не попали вовсе
+	 */
+	this->_nodes.at(index).touched = true;
+	// Выводим признак успешной установки свойств
+	return true;
+}
+/**
  * @brief Метод снятия детей узла
  *
  * @details Вместилище, значением иным заменяемое, детей своих лишается: держать их
@@ -6749,6 +7123,65 @@ string_view awh::codec::yaml::Document::Value::tag() const noexcept {
 	const props_t & props = this->_doc->_props.at(node.props - 1);
 	// Выводим метку типа узла
 	return string_view((this->_doc->_storage.data() + props.tag), props.tagged);
+}
+/**
+ * @brief Метод извлечения метки узла, ИМЕНИ ПАРЫ предпосланной
+ *
+ * @details Метка эта принадлежит имени пары, а не значению её: написание `&m a: b` метит
+ *          запись `a`. Узла у имени пары дерево не держит, и свойства его кладутся к узлу
+ *          самой пары - оттого и выдаются они отсюда, а не с иного узла
+ *
+ * @return имя метки, имени пары предпосланной, пустое - метки нет
+ *
+ */
+string_view awh::codec::yaml::Document::Value::keyAnchor() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим пустое имя метки
+		return string_view();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узлу свойства не предпосланы
+	 */
+	if(node.props == 0)
+		// Выводим пустое имя метки
+		return string_view();
+	// Получаем свойства узла, на какой указывает ссылка
+	const props_t & props = this->_doc->_props.at(node.props - 1);
+	// Выводим имя метки, имени пары предпосланной
+	return string_view((this->_doc->_storage.data() + props.keyAnchor), props.keyAnchored);
+}
+/**
+ * @brief Метод извлечения метки типа, ИМЕНИ ПАРЫ предпосланной
+ *
+ * @details Метка эта принадлежит имени пары, а не значению её: написание `!!str a: b`
+ *          метит запись `a`
+ *
+ * @return метка типа, имени пары предпосланная, пустая - метки нет
+ *
+ */
+string_view awh::codec::yaml::Document::Value::keyTag() const noexcept {
+	/**
+	 * Если ссылка недействительна
+	 */
+	if(!this->valid())
+		// Выводим пустую метку типа
+		return string_view();
+	// Получаем узел, на какой указывает ссылка
+	const node_t & node = this->_doc->_nodes.at(this->_index);
+	/**
+	 * Если узлу свойства не предпосланы
+	 */
+	if(node.props == 0)
+		// Выводим пустую метку типа
+		return string_view();
+	// Получаем свойства узла, на какой указывает ссылка
+	const props_t & props = this->_doc->_props.at(node.props - 1);
+	// Выводим метку типа, имени пары предпосланную
+	return string_view((this->_doc->_storage.data() + props.keyTag), props.keyTagged);
 }
 /**
  * @brief Метод получения ссылки на первого ребёнка вместилища

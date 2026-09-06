@@ -615,6 +615,14 @@ const string & awh::codec::yaml::Value::tag() const noexcept {
 void awh::codec::yaml::Value::tag(const string & tag) noexcept {
 	// Выполняем установку метки значения
 	this->_tag = tag;
+	/**
+	 * Выполняем снятие признака местного вида метки
+	 *
+	 * @note Метку, вручную поставленную, зовущий пишет обыкновенно сокращением - `!!str`, -
+	 *       и местною она не является. Признак ставится одним лишь снятием с дерева, где
+	 *       сокращения чтением уже развёрнуты в полный указатель
+	 */
+	this->_local = false;
 }
 /**
  * @brief Метод проверки наличия поля отображения с указанным именем
@@ -1516,6 +1524,13 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 	// Выполняем снятие метки значения
 	this->_tag.assign(value.tag());
 	/**
+	 * Запоминаем признак местного вида метки значения
+	 *
+	 * @note Метка, чтением выданная, местною является всегда, коли начинается знаком `!`:
+	 *       сокращения описания чтение разворачивает в полный указатель
+	 */
+	this->_local = (!this->_tag.empty() && (this->_tag.front() == '!'));
+	/**
 	 * Если значение вместилищем является
 	 */
 	if((this->_kind == kind_t::MAPPING) || (this->_kind == kind_t::SEQUENCE)){
@@ -1535,6 +1550,22 @@ void awh::codec::yaml::Value::absorb(const Document::value_t & value) noexcept {
 			this->_items.emplace_back();
 			// Выполняем снятие значения вместилища
 			this->_items.back().absorb(item);
+			/**
+			 * Если вместилище является отображением пар
+			 *
+			 * @note Свойства имени пары кладутся к значению её - тому, что стоит за
+			 *       двоеточием: узла у имени пары нет ни у дерева, ни здесь, и держать их
+			 *       больше негде. Правило то же, каким держит их дерево
+			 */
+			if(mapping){
+				// Выполняем снятие метки узла, имени пары предпосланной
+				this->_items.back()._keyAnchor.assign(item.keyAnchor());
+				// Выполняем снятие метки типа, имени пары предпосланной
+				this->_items.back()._keyTag.assign(item.keyTag());
+				// Запоминаем признак местного вида метки типа имени пары
+				this->_items.back()._keyLocal = (!this->_items.back()._keyTag.empty() &&
+				 (this->_items.back()._keyTag.front() == '!'));
+			}
 		}
 		// Выходим из снятия значения
 		return;
@@ -1600,7 +1631,22 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 	 */
 	if(!this->_tag.empty())
 		// Выполняем запись метки, значению предпосылаемой
-		writer.tag(this->_tag);
+		/**
+		 * Выполняем запись метки типа, значению предпосланной
+		 *
+		 * @note Вид метки берётся признаком происхождения её, а не записью: метку
+		 *       владеющему значению вправе назначить сам зовущий, и назначает он её
+		 *       обыкновенно сокращением - `tag("!!str")`, - тогда как дереву метка
+		 *       достаётся одним лишь чтением, какое сокращения разворачивает в полный
+		 *       указатель. Записи их совпадают, и различить два вида можно лишь тем,
+		 *       откуда метка пришла: признак ставится снятием с дерева и снимается
+		 *       установкою вручную
+		 *
+		 * @warning Без признака этого метка местная круга не переживала: `!%21y`,
+		 *          с дерева снятая, возвращалась сокращением `!!y` - меткою ИНОЙ,
+		 *          описанием закреплённой, - и молча
+		 */
+		writer.tag(this->_tag, this->_local);
 	/**
 	 * Определяем вид записываемого значения
 	 */
@@ -1620,7 +1666,14 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 			 */
 			for(size_t i = 0; i < this->_items.size(); i++){
 				// Выполняем запись имени поля отображения
-				writer.key(this->key(i));
+				/**
+				 * Выполняем запись имени пары отображения вместе со свойствами его
+				 *
+				 * @note Свойства эти держит значение самой пары: узла у имени пары нет, и
+				 *       снятие их с дерева кладёт их именно туда
+				 */
+				writer.key(this->key(i), this->_items.at(i)._keyAnchor,
+				 this->_items.at(i)._keyTag, this->_items.at(i)._keyLocal);
 				// Выполняем запись значения поля отображения
 				this->_items.at(i).compose(writer);
 			}
@@ -1786,9 +1839,31 @@ void awh::codec::yaml::Value::compose(writer_t & writer) const noexcept {
 		/**
 		 * Если значение иного вида является
 		 */
-		default:
+		default: {
+			/**
+			 * Если запись значения перевод строки несёт
+			 *
+			 * @note Правило то же, каким пишет такое значение дерево: дословная запись
+			 *       кладёт перевод в текст сырым, и остаток содержимого становится
+			 *       записями верхнего уровня. Ограда двойная перевод обращает долею
+			 *
+			 * @note Ловится здесь всякий знак неотменимый, а не перевод строки один:
+			 *       правило берётся общее, кодеком для выбора оформления и заведённое
+			 *
+			 * @note Дословно пишется лишь то, что правило признаёт ПРОСТЫМ: правило то
+			 *       же, каким пишет такое значение дерево
+			 */
+			// Получаем вид оформления, записи значения потребный
+			const style_t style = quoting(this->_text, this->_schema, false, false);
+			/**
+			 * Если запись значения ограды требует
+			 */
+			if(style != style_t::PLAIN)
+				// Выполняем запись значения оградою, правилом назначенной
+				writer.value(this->_text, style);
 			// Выполняем запись значения дословно, как оно записью дано
-			writer.raw(this->_text);
+			else writer.raw(this->_text);
+		}
 	}
 }
 /**
@@ -2083,6 +2158,40 @@ bool awh::codec::yaml::Value::graft(Document & document, const string & path) co
 }
 bool awh::codec::yaml::Value::implant(Document & document, const string & path) const noexcept {
 	/**
+	 * @brief Функция установки свойств уложенному узлу
+	 *
+	 * @details Свойства ставятся ПОСЛЕ укладки значения: установка значения перестраивает
+	 *          перечень узлов, и свойства, поставленные прежде, достались бы узлу иному
+	 *
+	 * @note Прежде свойства не переносились вовсе, и двоичное содержимое теряло вид свой:
+	 *       `!!binary 12:30`, в чужое дерево перенесённое, наречием 1.1 читалось обратно
+	 *       числом семьсот пятьдесят. Метка `!!binary` оттого и была изъята из набора
+	 *       ворошителя - вернуть её надлежало вместе с починкой
+	 *
+	 * @param laid признак успешной укладки значения
+	 * @return     признак успешности укладки вместе со свойствами
+	 *
+	 */
+	const auto propped = [this, &document, &path](const bool laid) noexcept -> bool {
+		/**
+		 * Если уложить значение не удалось
+		 */
+		if(!laid)
+			// Выводим признак неудачного переноса
+			return false;
+		/**
+		 * Если свойств у переносимого значения нет вовсе
+		 *
+		 * @note Пустая установка узлу свойств не заводит, однако и звать её незачем:
+		 *       узел, свойств не имеющий, обходится дешевле
+		 */
+		if(this->_anchor.empty() && this->_tag.empty())
+			// Выводим признак успешного переноса
+			return true;
+		// Выводим признак успешности установки свойств уложенному узлу
+		return document.endow(path, this->_anchor, this->_tag);
+	};
+	/**
 	 * Определяем вид переносимого значения
 	 */
 	switch(static_cast <uint8_t> (this->_kind)){
@@ -2090,7 +2199,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 		case static_cast <uint8_t> (kind_t::NONE):
 		case static_cast <uint8_t> (kind_t::NUL):
 			// Выводим признак успешности переноса пустого значения
-			return document.reset(path);
+			return propped(document.reset(path));
 		/**
 		 * Если значение является строковым
 		 *
@@ -2099,7 +2208,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 		 */
 		case static_cast <uint8_t> (kind_t::STRING):
 			// Выводим признак успешности переноса строкового значения
-			return document.set(path, string_view(this->_text), this->_style);
+			return propped(document.set(path, string_view(this->_text), this->_style));
 		/**
 		 * Если значение является перечнем значений
 		 */
@@ -2121,8 +2230,13 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 					// Выводим признак неудачного переноса
 					return false;
 			}
-			// Выводим признак успешного переноса
-			return true;
+			/**
+			 * Выводим признак успешности установки свойств вместилищу
+			 *
+			 * @note Свойства ставятся ПОСЛЕ укладки детей: укладка перестраивает перечень
+			 *       узлов, и свойства, поставленные прежде, достались бы узлу иному
+			 */
+			return propped(true);
 		}
 		/**
 		 * Если значение является отображением пар
@@ -2187,8 +2301,8 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 					// Выводим признак неудачного переноса
 					return false;
 			}
-			// Выводим признак успешного переноса
-			return true;
+			// Выводим признак успешности установки свойств отображению
+			return propped(true);
 		}
 	}
 	/**
@@ -2198,7 +2312,7 @@ bool awh::codec::yaml::Value::implant(Document & document, const string & path) 
 	 *       содержимое: записью своею они и держатся, а вид их решается обратным
 	 *       чтением её. Ограды они не получают: она обратила бы их в строки
 	 */
-	return document.imprint(path, string_view(this->_text));
+	return propped(document.imprint(path, string_view(this->_text)));
 }
 /**
  * @brief Метод записи значения в файл
@@ -2547,6 +2661,14 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	this->_anchor = value._anchor;
 	// Выполняем копирование метки значения
 	this->_tag = value._tag;
+	// Выполняем копирование признака местного вида метки
+	this->_local = value._local;
+	// Выполняем копирование метки узла, имени пары предпосланной
+	this->_keyAnchor = value._keyAnchor;
+	// Выполняем копирование метки типа, имени пары предпосланной
+	this->_keyTag = value._keyTag;
+	// Выполняем копирование признака местного вида метки типа имени пары
+	this->_keyLocal = value._keyLocal;
 	// Выполняем копирование имён полей отображения
 	this->_names = value._names;
 	// Выполняем снос указателя поиска: заведётся он заново при первом же поиске
@@ -2599,6 +2721,14 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	this->_anchor = std::move(value._anchor);
 	// Выполняем перенос метки значения
 	this->_tag = std::move(value._tag);
+	// Выполняем перенос признака местного вида метки
+	this->_local = value._local;
+	// Выполняем перенос метки узла, имени пары предпосланной
+	this->_keyAnchor = ::std::move(value._keyAnchor);
+	// Выполняем перенос метки типа, имени пары предпосланной
+	this->_keyTag = ::std::move(value._keyTag);
+	// Выполняем перенос признака местного вида метки типа имени пары
+	this->_keyLocal = value._keyLocal;
 	// Выполняем перенос имён полей отображения
 	this->_names = std::move(value._names);
 	// Выполняем перенесение указателя поиска вместе с именами
@@ -2626,7 +2756,8 @@ void awh::codec::yaml::Value::setLogger(const log_t * log) noexcept {
  */
 awh::codec::yaml::Value::Value() noexcept :
  _log(nullptr), _kind(kind_t::NONE), _type(type_t::UNDEFINED), _schema(schema_t::CORE),
- _style(style_t::PLAIN), _chomp(chomp_t::KEEP), _layout(layout_t::BLOCK) {}
+ _style(style_t::PLAIN), _chomp(chomp_t::KEEP), _layout(layout_t::BLOCK), _local(false),
+ _keyLocal(false) {}
 /**
  * @brief Конструктор вместилища указанного вида
  *

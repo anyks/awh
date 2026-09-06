@@ -267,6 +267,8 @@ namespace awh {
 					string _anchor;
 					// Имя метки, ИМЕНИ ПАРЫ предпосылаемой
 					string _keyAnchor;
+					// Метка типа, ИМЕНИ ПАРЫ предпосылаемая
+					string _keyTag;
 					// Метка типа, узлу предпосланная, ожидающая узла своего
 					string _tag;
 					// Признак того, что имя пары записано, а значение её ещё нет
@@ -608,6 +610,51 @@ namespace awh {
 					bool key(const string & name, const string & anchor) noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод записи имени пары отображения со свойствами, ему предпосланными
+					 *
+					 * @details Свойства эти принадлежат ИМЕНИ пары, а не значению её: написание
+					 * `&m !!str a: b` метит запись `a` меткою узла и меткою типа разом. Свойства
+					 * значения ставятся обычным способом - методами @c anchor да @c tag, - и путать
+					 * их нельзя: они относятся к разным записям
+					 *
+					 * @param name   записываемое имя пары отображения
+					 * @param anchor метка, имени пары предпосылаемая
+					 * @param tag    метка типа, имени пары предпосылаемая
+					 * @return       признак успешной записи имени пары
+					 *
+					 * \~english
+					 * @brief Method of the writing of the name of a pair of a mapping with the properties placed before it
+					 * @param name name of the pair of the mapping being written
+					 * @param anchor anchor being placed before the name of the pair
+					 * @param tag tag being placed before the name of the pair
+					 * @return sign of the successful writing of the name of the pair
+					 *
+					 * \~
+					 */
+					bool key(const string & name, const string & anchor, const string & tag) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи имени пары отображения со свойствами и видом метки типа
+					 *
+					 * @param name   записываемое имя пары отображения
+					 * @param anchor метка, имени пары предпосылаемая
+					 * @param tag    метка типа, имени пары предпосылаемая
+					 * @param local  признак местного вида метки типа: рукоять её есть один знак `!`
+					 * @return       признак успешной записи имени пары
+					 *
+					 * \~english
+					 * @brief Method of the writing of the name of a pair with the properties and the kind of the tag
+					 * @param name name of the pair of the mapping being written
+					 * @param anchor anchor being placed before the name of the pair
+					 * @param tag tag being placed before the name of the pair
+					 * @param local sign of the local kind of the tag: its handle is a single `!`
+					 * @return sign of the successful writing of the name of the pair
+					 *
+					 * \~
+					 */
+					bool key(const string & name, const string & anchor, const string & tag, const bool local) noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод записи метки, следующему узлу предпосылаемой
 					 *
 					 * @param name записываемое имя метки
@@ -642,6 +689,30 @@ namespace awh {
 					 * \~
 					 */
 					bool tag(const string & name) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи метки типа с указанием местного её вида
+					 *
+					 * @details Метка местная от сокращения описания неотличима записью своею:
+					 * чтение разворачивает сокращение `!!вид` в полный указатель, и всё, что
+					 * приходит обратно со знака `!`, есть метка МЕСТНАЯ - даже когда за первым
+					 * знаком стоит второй такой же. Написание `!%21y` есть метка местная с
+					 * указателем `!y`, и записать её сокращением `!!y` значит выдать метку
+					 * ИНУЮ - описанием закреплённую, - да ещё и молча
+					 *
+					 * @param name  записываемая метка типа
+					 * @param local признак местного вида метки: рукоять её есть один знак `!`
+					 * @return      признак успешной записи метки типа
+					 *
+					 * \~english
+					 * @brief Method of the writing of a tag with the indication of its local kind
+					 * @param name tag being written
+					 * @param local sign of the local kind of the tag: its handle is a single `!`
+					 * @return sign of the successful writing of the tag
+					 *
+					 * \~
+					 */
+					bool tag(const string & name, const bool local) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи ссылки на объявленную метку
