@@ -1300,9 +1300,10 @@ TEST(CodecXmlDocument, WideParentReparse) {
 		/**
 		 * Если разбор был вторым
 		 */
-		if(round == 1)
+		if(round == 1){
 			// Выполняем проверку отсутствия узла, разобранного первым кругом
 			ASSERT_FALSE(root.child("node_0").valid());
+		}
 	}
 }
 /**
@@ -2555,7 +2556,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		} guard{directory};
 		// Выполняем заведение каталога, целевой путь занимающего
 		::rmdir(directory.c_str());
-		ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0);
+		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево разметки
 		xml::document_t document(::logger());
 		// Выполняем проверку разбора текста разметки

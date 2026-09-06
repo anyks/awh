@@ -467,9 +467,10 @@ TEST(CodecJsonCommon, EscapableAgreesWithExternalJudge){
 		 * @note Негодная последовательность экранирования требует всегда: дословно
 		 *       перенести её нельзя ни при каком правиле
 		 */
-		if(malformed)
+		if(malformed){
 			// Выполняем проверку того, что кодек негодность распознал
 			ASSERT_TRUE(json::escapable(text, json::escape_t::MINIMAL)) << text;
+		}
 	}
 	/**
 	 * Выполняем проверку того, что годные строки без особых знаков экранирования не требуют
@@ -522,10 +523,11 @@ TEST(CodecJsonCommon, EscapableAgreesWithWriter){
 				 * Выполняем проверку того, что судья дословный перенос не разрешил там,
 				 * где запись содержимое изменила
 				 */
-				if(!verbatim)
+				if(!verbatim){
 					// Выполняем проверку суждения о необходимости экранирования
 					ASSERT_TRUE(json::escapable(text, escape))
 						<< static_cast <uint16_t> (mode) << "/" << static_cast <uint16_t> (escape) << ": " << text;
+				}
 			}
 		}
 	}

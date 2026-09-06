@@ -30,7 +30,17 @@
 #include <cstdio>
 #include <cstdint>
 #include <csignal>
-#include <sys/resource.h>
+
+/**
+ * Заголовок пределов ресурсов нужен лишь системам POSIX
+ *
+ * @note У MS Windows его нет вовсе, а проверки кодеков собираются ОДНОЙ программой:
+ *       подключение без заслона валит цель целиком, вместе с проверками всех прочих
+ *       кодеков. Вскрыто Генри 06.09.2026 на стенде MSYS2 MinGW64
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <sys/resource.h>
+#endif
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -1024,7 +1034,15 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	// Выполняем снос каталога, оставшегося от прошлого прогона
 	(void) ::rmdir(directory.c_str());
 	// Выполняем заведение каталога под файл контейнера
-	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0) << directory;
+	/**
+	 * Выполняем заведение каталога ОБЩИМ средством проверок кодеков
+	 *
+	 * @note У MinGW `mkdir` берёт один довод, а не два, и посредник на этот случай один
+	 *       на все наборы - `makeDirectory` в `tests/codec/temporary.hpp`. Свой такой же
+	 *       здесь заводился и снят: две одноимённые работы о разной подписи и разной
+	 *       отдаче в одном наборе суть мина, а то, что они собирались, - худший исход
+	 */
+	ASSERT_TRUE(makeDirectory(directory)) << directory;
 	// Название файла контейнера
 	const string filename = (directory + "/контейнер.abc");
 	// Прежнее содержимое файла контейнера
@@ -1114,7 +1132,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 		// Название каталога, стоящего назначением записи
 		const string occupied = (directory + "/занято");
 		// Выполняем заведение каталога, стоящего назначением записи
-		ASSERT_EQ(::mkdir(occupied.c_str(), 0755), 0) << occupied;
+		ASSERT_TRUE(makeDirectory(occupied)) << occupied;
 		// Выполняем заведение файла ВНУТРИ каталога, дабы тот не был пуст
 		{
 			// Объект потока записываемого файла
@@ -1517,6 +1535,7 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
  * @note Знак `SIGXFSZ` глушится: ядро шлёт его прежде отказа вызова, и без глушения
  *       набор проверок умер бы вместо отказа записи
  */
+#if !defined(_WIN32) && !defined(_WIN64)
 namespace {
 	/**
 	 * @brief Предел размера файла, снимаемый разрушителем
@@ -1567,6 +1586,7 @@ namespace {
 			}
 	};
 }
+#endif
 /**
  * @brief Проверка того, что отказ записи октетов контейнера назван отказом носителя
  *
@@ -1576,6 +1596,13 @@ namespace {
  *          а не откладывается до сброса
  */
 TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
+	/**
+	 * Проверка эта опирается на предел размера файла, какого у MS Windows нет
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем пропуск проверки за отсутствием предела размера файла
+		GTEST_SKIP() << "У MS Windows предела RLIMIT_FSIZE не имеется";
+	#else
 	// Объект фреймворка
 	unique_ptr <fmk_t> fmk(new fmk_t);
 	// Объект работы с логами
@@ -1638,6 +1665,7 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 	::remove(filename.c_str());
 	// Выполняем снос временного файла хранилища
 	::remove((filename + ".part").c_str());
+	#endif
 }
 /**
  * @brief Проверка того, что отказ сброса записанного назван отказом носителя
@@ -1652,6 +1680,13 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
  *       а не сила отказа
  */
 TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
+	/**
+	 * Проверка эта опирается на предел размера файла, какого у MS Windows нет
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем пропуск проверки за отсутствием предела размера файла
+		GTEST_SKIP() << "У MS Windows предела RLIMIT_FSIZE не имеется";
+	#else
 	// Объект фреймворка
 	unique_ptr <fmk_t> fmk(new fmk_t);
 	// Объект работы с логами
@@ -1709,4 +1744,5 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 	::remove(filename.c_str());
 	// Выполняем снос временного файла хранилища
 	::remove((filename + ".part").c_str());
+	#endif
 }

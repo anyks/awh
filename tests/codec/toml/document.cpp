@@ -30,7 +30,16 @@
 #include <algorithm>
 #include <csignal>
 #include <fstream>
-#include <sys/resource.h>
+/**
+ * Заголовок пределов ресурсов процесса нужен лишь системам POSIX
+ *
+ * @note У MS Windows его нет вовсе, и подключение без заслона валило сборку ВСЕГО
+ *       набора кодеков - собираются они одной программой, и брешь одного файла
+ *       уносила с собою проверки всех прочих
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <sys/resource.h>
+#endif
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -2481,6 +2490,23 @@ TEST(CodecTomlDocument, ZeroMeansNoLimitAndNestingIsRefusedByItsOwnSign){
  *
  */
 TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
+	/**
+	 * Проверка эта опирается на предел размера файла, которого у MS Windows нет
+	 *
+	 * @note Отступление это ОГЛАШАЕТСЯ, а не проглатывается: отказ записи добывается
+	 *       здесь сужением предела `RLIMIT_FSIZE`, какого у MS Windows не имеется
+	 *       вовсе, и повторить им усечённую запись нечем. Образец взят у общего
+	 *       договора кодеков - `CodecContract.SavingKeepsThePreviousFileOnWriteFailure`
+	 *
+	 * @note Заголовок `sys/resource.h` огорожен по той же причине: подключение его
+	 *       без заслона валило сборку ВСЕГО набора кодеков - собираются они одной
+	 *       программой. Указал на это владелец кодека CEF, у себя сборку и потерявший
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выполняем пропуск проверки за отсутствием предела размера файла
+		GTEST_SKIP() << "У MS Windows предела RLIMIT_FSIZE не имеется";
+	#else
+
 	// Путь к записываемому файлу
 	const string filename("/tmp/awh-toml-failed-save.txt");
 	// Прежнее содержимое записываемого файла
@@ -2643,6 +2669,7 @@ TEST(CodecTomlDocument, FailedSaveKeepsThePreviousContent){
 	}
 	// Выполняем снятие записываемого файла
 	::remove(filename.c_str());
+	#endif
 }
 /**
  * @brief Проверка попадания правки по записанному звену в то самое поле

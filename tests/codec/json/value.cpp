@@ -2848,9 +2848,10 @@ TEST(CodecJsonValue, StringExtractionIsKindCheck) {
 		/**
 		 * Если строковое извлечение удалось
 		 */
-		if(probe.extracted)
+		if(probe.extracted){
 			// Выполняем проверку извлечённого содержимого
 			ASSERT_EQ(result, "строка") << probe.text;
+		}
 		/**
 		 * Выполняем проверку доступности записи значения
 		 *

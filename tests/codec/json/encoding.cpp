@@ -239,9 +239,10 @@ TEST(CodecJsonEncoding, Bulk) {
 			/**
 			 * Если знак допустим
 			 */
-			if(json::isChar(letter))
+			if(json::isChar(letter)){
 				// Выполняем проверку того, что проход знаков не потерял
 				ASSERT_EQ(result.size(), text.size()) << "знак " << letter << " в положении " << offset;
+			}
 		}
 	}
 	/**

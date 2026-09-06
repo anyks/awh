@@ -32,6 +32,14 @@
  */
 #include <string>
 #include <cstdlib>
+#include <sys/stat.h>
+
+/**
+ * Если операционная система является MS Windows
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <direct.h>
+#endif
 
 /**
  * @brief Функция выдачи пути во временном каталоге системы
@@ -80,6 +88,68 @@ inline std::string temporary(const std::string & name) noexcept {
 		result.append(1, '/');
 	// Выводим собранный путь к временному файлу
 	return result.append(name);
+}
+
+/**
+ * \~russian
+ * @brief Функция заведения каталога, переносимая между системами
+ *
+ * @details Вызов `::mkdir()` разнится сигнатурой: POSIX берёт путь и права доступа, а
+ *          MinGW у MS Windows - один лишь путь, ибо прав доступа в его виде там нет
+ *          вовсе. Вызов с двумя доводами валит сборку с «too many arguments to function»,
+ *          а проверки кодеков собираются ОДНОЙ программой - и не собирается вместе с
+ *          нею ни одна проверка ни одного кодека, включая чужие
+ *
+ * @warning Беда эта была настоящей: наборы XML, JSON и CSV перестали собираться под
+ *          MinGW с 04.09.2026, о чём сообщил владелец кодека CEF, у которого от этого
+ *          не шли собственные проверки. Довод общий с ограждением `sys/resource.h` в
+ *          самих наборах
+ *
+ * @note Работа объявлена `inline` и безымянного пространства имён не имеет по тому же
+ *       доводу, что и `temporary()` выше: копия у всякого файла завела бы повод к
+ *       расхождению
+ *
+ * @param path путь к заводимому каталогу
+ * @return     признак успешного заведения каталога
+ *
+ * \~english
+ * @brief Function of the creation of a directory, portable between the systems
+ * @details The `::mkdir()` call differs in its signature: POSIX takes a path and the access
+ *          rights, while MinGW at MS Windows takes the path alone
+ * @param path path to the directory being created
+ * @return     sign of the successful creation of the directory
+ *
+ * \~
+ */
+inline bool makeDirectory(const std::string & path) noexcept {
+	/**
+	 * Для операционной системы, MS Windows не являющейся
+	 */
+	#if !defined(_WIN32) && !defined(_WIN64)
+		// Выполняем заведение каталога с правами доступа
+		return (::mkdir(path.c_str(), 0755) == 0);
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#else
+		/**
+		 * Выполняем заведение каталога без прав доступа
+		 *
+		 * @note Зовётся `_mkdir`, а не `mkdir`: последний объявлен в `direct.h` с пометкой
+		 *       `__MINGW_ATTRIB_DEPRECATED_MSVC2005`, а непомеченный близнец его - это и
+		 *       есть `_mkdir`, объявленный строкою выше в том же заголовке
+		 *
+		 * @warning Предупреждения об устаревании на стенде MinGW x86-64 (g++ 16.1)
+		 *          НЕ наблюдалось - ни при `-Wall -Wextra`, ни при
+		 *          `-Wdeprecated-declarations`, ни при неопределённом
+		 *          `_CRT_NONSTDC_NO_DEPRECATE`, - и замер этот записан, чтобы следующий не
+		 *          искал его заново. Замена сделана по самому ФАКТУ пометки в заголовке, а
+		 *          не по наблюдаемому предупреждению: заголовок этот включают одиннадцать
+		 *          наборов проверок, и предупреждение, всплыв у иного собирателя, придёт
+		 *          сразу всем. Указал на пометку владелец кодека CEF
+		 */
+		return (::_mkdir(path.c_str()) == 0);
+	#endif
 }
 
 #endif // __AWH_TESTS_CODEC_TEMPORARY__

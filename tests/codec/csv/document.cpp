@@ -1009,7 +1009,7 @@ TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 	} guard{directory};
 	// Выполняем заведение каталога, целевой путь занимающего
 	::rmdir(directory.c_str());
-	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0);
+	ASSERT_TRUE(::makeDirectory(directory));
 	// Таблица значений
 	csv::document_t document(::logger());
 	// Выполняем разбор текста таблицы
@@ -2204,11 +2204,20 @@ TEST(CodecCsvDocument, ViewsLiveUntilTheNearestChange){
 	/**
 	 * Выполняем долив записей, пока хранилище знаков не переедет
 	 */
-	for(size_t i = 0; i < 200; i++)
+	for(size_t i = 0; i < 200; i++){
 		// Выполняем занесение очередной записи
 		doc.append(vector <string> {string(64, 'x'), string(64, 'y')});
-		// Выполняем проверку того, что занесение прошло без отказа
-		ASSERT_EQ(doc.error(), csv::error_t::NONE);
+		/**
+		 * Выполняем проверку того, что занесение прошло без отказа
+		 *
+		 * @warning Скобки здесь ЗНАЧАЩИЕ, а не украшение: без них проверка стояла ВНЕ
+		 *          цикла и спрашивалась однажды, после всех двухсот доливов, - отказ же,
+		 *          случившийся в середине и сброшенный доливом следующим, уходил незамечен.
+		 *          Отступ при этом обманывал: половина выглядела частью цикла. Найдено
+		 *          предупреждением `-Wmisleading-indentation` на стенде MinGW 06.09.2026
+		 */
+		ASSERT_EQ(doc.error(), csv::error_t::NONE) << "долив " << i;
+	}
 	// Выполняем проверку того, что копия долив пережила
 	ASSERT_EQ(copied, "один");
 	/**
@@ -2929,9 +2938,10 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		/**
 		 * Если запись извлечению целым без знака не поддалась
 		 */
-		if(!document.numeric <uint64_t> (i, 0, big))
+		if(!document.numeric <uint64_t> (i, 0, big)){
 			// Выполняем проверку неприкосновенности приёмника при отказе
 			EXPECT_EQ(big, 12345u);
+		}
 		/**
 		 * Если запись извлечению целым со знаком не поддалась
 		 *
@@ -2939,9 +2949,10 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 *       слепа к половине путей отказа: проба зрячести 01.09.2026 записью в
 		 *       приёмник ВНУТРИ знаковой ветви оставалась зелёной
 		 */
-		if(!document.numeric <int64_t> (i, 0, signedBig))
+		if(!document.numeric <int64_t> (i, 0, signedBig)){
 			// Выполняем проверку неприкосновенности приёмника при отказе
 			EXPECT_EQ(signedBig, -777);
+		}
 	}
 }
 

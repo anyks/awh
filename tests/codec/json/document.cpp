@@ -2131,9 +2131,10 @@ TEST(CodecJsonDocument, NumberCheckJudgesMagnitudeNotPrecision) {
 		/**
 		 * Если разбор завершился отказом
 		 */
-		if(probe.refused)
+		if(probe.refused){
 			// Выполняем проверку кода отказа разбора
 			ASSERT_EQ(document.error(), json::error_t::NUMBER_OUT_OF_RANGE) << probe.text;
+		}
 	}
 	/**
 	 * Выполняем проверку округления записи, более точной, чем double
@@ -3695,7 +3696,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 		} guard{directory};
 		// Выполняем заведение каталога, целевой путь занимающего
 		::rmdir(directory.c_str());
-		ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0);
+		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево значений документа
 		json::document_t document(::logger());
 		// Выполняем проверку разбора текста документа

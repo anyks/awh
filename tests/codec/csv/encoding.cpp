@@ -240,9 +240,10 @@ TEST(CodecCsvEncoding, Bulk) {
 			/**
 			 * Если знак допустим
 			 */
-			if(csv::isChar(letter))
+			if(csv::isChar(letter)){
 				// Выполняем проверку того, что проход знаков не потерял
 				ASSERT_EQ(result.size(), text.size()) << "знак " << letter << " в положении " << offset;
+			}
 		}
 	}
 	/**

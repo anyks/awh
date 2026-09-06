@@ -1605,9 +1605,10 @@ TEST(CodecJsonWriter, DoubleSurvivesRoundTripBitForBit){
 			/**
 			 * Если поднормальные числа машиною поддержаны
 			 */
-			if((probe * 1.) != 0.)
+			if((probe * 1.) != 0.){
 				// Выполняем проверку оборота наименьшего поднормального числа
 				ASSERT_TRUE(оборот(std::numeric_limits <double>::denorm_min()));
+			}
 		}
 		ASSERT_TRUE(оборот(std::numeric_limits <double>::epsilon()));
 		// Выполняем проверку оборота у предела точного представления целых

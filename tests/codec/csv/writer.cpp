@@ -1837,9 +1837,10 @@ TEST(CodecCsvWriter, StrictReadingAcceptsOnlyContractNewline) {
 			/**
 			 * Если собранный текст строгим разбором принят
 			 */
-			if(accepted)
+			if(accepted){
 				// Выполняем проверку дословности вычитанного содержимого
 				ASSERT_EQ(back, source);
+			}
 		}
 	}
 }
