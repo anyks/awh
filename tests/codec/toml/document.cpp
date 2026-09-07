@@ -3557,3 +3557,235 @@ TEST(CodecTomlDocument, HugeIndexInThePathIsRefusedNotFatal){
 	 */
 	ASSERT_TRUE(document.at("/fruit/0").valid());
 }
+
+/**
+ * @brief Проверка кодировки, разбору назначенной настройкою
+ *
+ * @details Настройка кодировки задаёт чтение НАПЕРЁД, минуя опознание по метке порядка
+ * байтов: текст без метки, однобайтовой кодировкой писанный, иначе не прочесть вовсе -
+ * опознание сочло бы его негодным UTF-8. Обездвиживание настройки умолчанием набора не
+ * роняло: разборщик кодировок проверен свой, а настройка дерева не звалась ни разу
+ *
+ * @note Образцы подобраны РАЗЛИЧАЮЩИЕ: одни и те же байты под тремя кодировками дают
+ *       три разных итога
+ *
+ */
+TEST(CodecTomlDocument, ForcedEncodingIsObeyed) {
+	/**
+	 * Выполняем проверку отказа опознания байтов, годным UTF-8 не являющихся
+	 */
+	{
+		// Собираемое дерево настроек умолчальных
+		toml::document_t document(::logger());
+		// Выполняем проверку отказа разбора текста с байтом кодировки однобайтовой
+		ASSERT_FALSE(document.parse(string("a = \"\xE9\"\n")));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(document.error(), toml::error_t::INVALID_ENCODING);
+	}
+	/**
+	 * Выполняем проверку чтения тех же байтов кодировкой ISO-8859-1
+	 */
+	{
+		// Настройки дерева настроек
+		toml::document_t::settings_t settings;
+		// Устанавливаем кодировку разбираемого текста
+		settings.reader.encoding = toml::encoding_t::LATIN1;
+		// Собираемое дерево настроек
+		toml::document_t document(::logger(), settings);
+		// Выполняем проверку успешности разбора текста кодировки заданной
+		ASSERT_TRUE(document.parse(string("a = \"\xE9\"\n"))) << toml::message(document.error());
+		// Выполняем проверку того, что байт прочтён знаком é и записан в UTF-8
+		ASSERT_EQ(document.dump(), string("a = \"\xC3\xA9\"\n")) << document.dump();
+	}
+	/**
+	 * Выполняем проверку чтения кодировки двухбайтовой без метки порядка байтов
+	 */
+	{
+		// Собираемый текст кодировки UTF-16 обратного порядка байтов
+		string source;
+		/**
+		 * Выполняем перебор знаков собираемого текста
+		 */
+		for(const char letter : string("a = 1\n")){
+			// Выполняем добавление младшего байта знака
+			source.append(1, letter);
+			// Выполняем добавление старшего байта знака
+			source.append(1, '\0');
+		}
+		// Настройки дерева настроек
+		toml::document_t::settings_t settings;
+		// Устанавливаем кодировку разбираемого текста
+		settings.reader.encoding = toml::encoding_t::UTF16LE;
+		// Собираемое дерево настроек
+		toml::document_t document(::logger(), settings);
+		// Выполняем проверку успешности разбора текста кодировки заданной
+		ASSERT_TRUE(document.parse(source)) << toml::message(document.error());
+		// Выполняем проверку прочитанного дерева настроек
+		ASSERT_EQ(document.dump(), "a = 1\n") << document.dump();
+		/**
+		 * Выполняем проверку того, что без настройки тот же текст не читается
+		 */
+		{
+			// Собираемое дерево настроек умолчальных
+			toml::document_t bare(::logger());
+			// Выполняем проверку отказа разбора текста без метки порядка байтов
+			ASSERT_FALSE(bare.parse(source)) << bare.dump();
+		}
+	}
+}
+
+/**
+ * @brief Проверка пределов имени, дереву настроек заданных
+ *
+ * @details Правка дерева принимает путь от потребителя, и путь этот стерегут два предела -
+ * число звеньев да длина звена. Замер обездвиживания по исходникам нашёл обе заставы не
+ * задетыми: пределы проверены у чтения текста, а путь правки под ними не ходил ни разу
+ *
+ * @note Пределы сличаются ОБЕИМИ сторонами: путь, пределу отвечающий, принимается, а
+ *       превышающий его - отвергается своим кодом отказа
+ *
+ */
+TEST(CodecTomlDocument, PathLimitsAreObeyedByTheEditing) {
+	/**
+	 * Выполняем проверку предела числа звеньев пути
+	 */
+	{
+		// Настройки дерева настроек
+		toml::document_t::settings_t settings;
+		// Устанавливаем предел числа звеньев имени
+		settings.reader.maxParts = 3;
+		// Собираемое дерево настроек
+		toml::document_t document(::logger(), settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("a = 1\n")) << toml::message(document.error());
+		// Выполняем проверку принятия пути, пределу отвечающего
+		ASSERT_TRUE(document.set("/x/y", toml::value_t(1))) << toml::message(document.error());
+		// Выполняем проверку отказа пути, предел превышающего
+		ASSERT_FALSE(document.set("/a/b/c/d/e", toml::value_t(1)));
+		// Выполняем проверку выданного кода отказа правки
+		ASSERT_EQ(document.error(), toml::error_t::PARTS_EXCEEDED);
+	}
+	/**
+	 * Выполняем проверку предела длины звена пути
+	 */
+	{
+		// Настройки дерева настроек
+		toml::document_t::settings_t settings;
+		// Устанавливаем предел длины звена имени
+		settings.reader.maxKey = 4;
+		// Собираемое дерево настроек
+		toml::document_t document(::logger(), settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("a = 1\n")) << toml::message(document.error());
+		// Выполняем проверку принятия звена, пределу отвечающего
+		ASSERT_TRUE(document.set("/abc", toml::value_t(1))) << toml::message(document.error());
+		// Выполняем проверку отказа звена, предел превышающего
+		ASSERT_FALSE(document.set("/abcdefghi", toml::value_t(1)));
+		// Выполняем проверку выданного кода отказа правки
+		ASSERT_EQ(document.error(), toml::error_t::KEY_TOO_LONG);
+	}
+	/**
+	 * Выполняем проверку предела числа звеньев у разбора текста
+	 *
+	 * @note Предел этот стоит у чтения своим стражем: замер нашёл не задетым и его
+	 */
+	{
+		// Настройки дерева настроек
+		toml::document_t::settings_t settings;
+		// Устанавливаем предел числа звеньев имени
+		settings.reader.maxParts = 3;
+		// Собираемое дерево настроек
+		toml::document_t shallow(::logger(), settings);
+		// Выполняем проверку успешности разбора имени, пределу отвечающего
+		ASSERT_TRUE(shallow.parse("a.b = 1\n")) << toml::message(shallow.error());
+		// Собираемое дерево настроек
+		toml::document_t deep(::logger(), settings);
+		// Выполняем проверку отказа разбора имени, предел превышающего
+		ASSERT_FALSE(deep.parse("a.b.c.d.e = 1\n"));
+		// Выполняем проверку выданного кода отказа разбора
+		ASSERT_EQ(deep.error(), toml::error_t::PARTS_EXCEEDED);
+	}
+}
+
+/**
+ * @brief Проверка передачи настроек записи от дерева к сборке текста
+ *
+ * @details Дерево собирает настройки записи по настройкам чтения своим: наречие письма
+ * обязано отвечать наречию, каким текст прочтён. Замер обездвиживания по исходникам нашёл
+ * передачу двух настроек не задетой - признания знаков Юникода в имени без кавычек и
+ * предела длины строки: у самой записи они проверены, а путь «настройка дерева → запись»
+ * не звался ни разу
+ *
+ * @note Расхождение видно лишь на имени, записываемом ЗАНОВО: имя, из текста прочитанное,
+ *       уходит в перезапись дословными байтами и настройки записи не спрашивает вовсе
+ *
+ */
+TEST(CodecTomlDocument, WritingSettingsReachTheWriter) {
+	/**
+	 * Выполняем проверку передачи признания знаков Юникода в имени без кавычек
+	 */
+	{
+		/**
+		 * Проверяемые лады настройки вместе с ожидаемой записью имени
+		 */
+		const vector <pair <bool, string>> samples = {
+			// Знаки Юникода в имени без кавычек не признаются
+			{false, "a = 1\n\"ключ\" = 2\n"},
+			// Знаки Юникода в имени без кавычек признаются
+			{true,  "a = 1\nключ = 2\n"}
+		};
+		/**
+		 * Выполняем перебор всех проверяемых ладов настройки
+		 */
+		for(const auto & item : samples){
+			// Настройки дерева настроек
+			toml::document_t::settings_t settings;
+			// Устанавливаем признание знаков Юникода в имени без кавычек
+			settings.reader.unicode = item.first;
+			// Собираемое дерево настроек
+			toml::document_t document(::logger(), settings);
+			// Выполняем разбор текста настроек
+			ASSERT_TRUE(document.parse("a = 1\n")) << toml::message(document.error());
+			// Выполняем постановку значения по имени со знаками Юникода
+			ASSERT_TRUE(document.set("/ключ", toml::value_t(2))) << toml::message(document.error());
+			// Выполняем проверку собранной перезаписи дерева настроек
+			ASSERT_EQ(document.dump(), item.second) << item.first;
+		}
+	}
+	/**
+	 * Выполняем проверку передачи предела длины строки записи
+	 */
+	{
+		// Настройки дерева настроек
+		toml::document_t::settings_t settings;
+		// Устанавливаем предел длины строки записи
+		settings.reader.maxLine = 8;
+		// Собираемое дерево настроек
+		toml::document_t document(::logger(), settings);
+		// Выполняем разбор текста настроек
+		ASSERT_TRUE(document.parse("a = 1\n")) << toml::message(document.error());
+		// Выполняем постановку значения, строку записи удлиняющего
+		ASSERT_TRUE(document.set("/имя", toml::value_t("значение подлиннее"))) << toml::message(document.error());
+		/**
+		 * Выполняем проверку того, что запись отвергнута пределом длины строки
+		 *
+		 * @note Текст, отказом задетый, выдачи не даёт: правило это общее у кодеков рамки
+		 */
+		ASSERT_TRUE(document.dump().empty());
+		/**
+		 * Выполняем проверку того, что без предела та же правка записывается
+		 */
+		{
+			// Настройки дерева настроек
+			toml::document_t::settings_t unbounded;
+			// Собираемое дерево настроек
+			toml::document_t document(::logger(), unbounded);
+			// Выполняем разбор текста настроек
+			ASSERT_TRUE(document.parse("a = 1\n")) << toml::message(document.error());
+			// Выполняем постановку значения, строку записи удлиняющего
+			ASSERT_TRUE(document.set("/имя", toml::value_t("значение подлиннее"))) << toml::message(document.error());
+			// Выполняем проверку того, что перезапись собрана
+			ASSERT_FALSE(document.dump().empty());
+		}
+	}
+}

@@ -2126,6 +2126,72 @@ bool awh::codec::yaml::Writer::value(const bool value) noexcept {
 	return this->raw(value ? "true" : "false");
 }
 /**
+ * @brief Метод записи знака
+ *
+ * @details Написание знака есть ТЕКСТ, а не число: вида знака у наречия YAML нет вовсе, и
+ *          числовое прочтение отдало бы `value('z')` числом 122 молча. Правило то же, каким
+ *          знак заводится владеющим значением
+ *
+ * @param value записываемый знак
+ * @return      признак успешной записи значения
+ *
+ */
+bool awh::codec::yaml::Writer::value(const char value) noexcept {
+	// Выполняем запись знака строковым значением из одного знака
+	return this->value(string(1, value));
+}
+/**
+ * @brief Метод записи целого числа записи любой
+ *
+ * @details Приём этот отвечает за написания, ширины которым отведено менее восьми байтов,
+ *          - `short`, `int`, `long`, `size_t` и прочие. Без него запись `value(1)`
+ *          расходилась бы между целым со знаком, целым без знака и дробным видами
+ *          приведением равной силы, и сборка отвечала бы двусмысленностью
+ *
+ * @note Знаковость выбирает вид, которому число доводится: число без знака уходит через
+ *       `uint64_t`, а со знаком через `int64_t`. Обход через один лишь `int64_t` обращал
+ *       бы `4294967295u` в отрицательное
+ *
+ * @param value записываемое целое число
+ * @return      признак успешной записи значения
+ *
+ */
+template <typename T, typename>
+bool awh::codec::yaml::Writer::value(const T value) noexcept {
+	/**
+	 * Если записывается целое число без знака
+	 */
+	if constexpr(is_unsigned <T>::value)
+		// Выполняем запись целого числа без знака
+		return this->value(static_cast <uint64_t> (value));
+	// Выполняем запись целого числа со знаком
+	else return this->value(static_cast <int64_t> (value));
+}
+/**
+ * Выполняем порождение приёма записи целого числа для всех целых видов языка
+ *
+ * @warning Порождение ведётся видами ЯЗЫКА, а не видами заданной разрядности: `size_t`
+ *          у macOS arm64 есть `unsigned long`, а `uint64_t` есть `unsigned long long` -
+ *          виды это РАЗНЫЕ, и список из `uint8_t`…`uint32_t` оставлял `size_t` без
+ *          порождения. Замерено отказом связывания: `value(size_t(9))` не находил
+ *          обозначения. У Linux же разрядность ложится на иные виды языка, и список
+ *          видов разрядных разошёлся бы со стендом
+ *
+ * @note Виды `bool` и `char` порождению не подлежат: им отведены свои приёмы, точным
+ *       совпадением шаблон обходящие, - логическое значение пишется словом описания, а
+ *       знак пишется текстом
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <signed char, void> (const signed char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned char, void> (const unsigned char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <short, void> (const short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned short, void> (const unsigned short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <int, void> (const int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned int, void> (const unsigned int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <long, void> (const long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned long, void> (const unsigned long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <long long, void> (const long long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::yaml::Writer::value <unsigned long long, void> (const unsigned long long) noexcept;
+/**
  * @brief Метод записи строкового значения заданной оградою
  *
  * @param value записываемое строковое значение

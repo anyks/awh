@@ -180,11 +180,11 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		// Если последовательность байтов не отвечает объявленной кодировке
 		case error_t::INVALID_ENCODING:
 			// Выводим описание кода ошибки
-			return "malformed byte sequence for the declared encoding";
+			return "invalid byte sequence for the declared encoding";
 		// Если объявленная кодировка не поддерживается
 		case error_t::UNSUPPORTED_ENCODING:
 			// Выводим описание кода ошибки
-			return "unsupported character encoding";
+			return "unsupported encoding";
 		// Если объявление разметки построено ошибочно
 		case error_t::INVALID_DECLARATION:
 			// Выводим описание кода ошибки

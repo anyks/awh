@@ -525,15 +525,45 @@ bool awh::codec::csv::Writer::number(const T value) noexcept {
 /**
  * Выполняем явное порождение метода записи числового поля для всех числовых типов
  */
+/**
+ * Порождение ведётся видами ЯЗЫКА, а не разрядными обозначениями
+ *
+ * @warning Обозначения `int8_t`…`uint64_t` суть ПСЕВДОНИМЫ, и какому виду языка они
+ *          отвечают, решает система. У macOS ARM64 `uint64_t` есть `unsigned long long`,
+ *          а `size_t` — `unsigned long`: виды РАЗНЫЕ, и перечень разрядный оставлял
+ *          `size_t` без порождения вовсе. Замерено 07.09.2026 отказом связывания:
+ *          `number(size_t(9))`, `number(long(5))` и `number('z')` не связывались,
+ *          тогда как `number(7)` и `number(short(3))` связывались
+ *
+ * @note Виды языка между собою не совпадают НИКОГДА - `char`, `signed char` и
+ *       `unsigned char` суть три разных вида, - и перечень их одинаков на всякой
+ *       системе. Перечень же разрядный на иной системе ложится на иные виды языка
+ *       и расходится со стендом МОЛЧА: у Linux `int64_t` есть `long`, и порождение
+ *       по обоим обозначениям сразу оказалось бы двойным
+ */
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <bool> (const bool) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int8_t> (const int8_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint8_t> (const uint8_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int16_t> (const int16_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint16_t> (const uint16_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int32_t> (const int32_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint32_t> (const uint32_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int64_t> (const int64_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <uint64_t> (const uint64_t) noexcept;
+/**
+ * Вид `char` не порождается НАМЕРЕННО
+ *
+ * @warning Порождённый, он обращал бы `number('z')` в число 122 МОЛЧА: `char` есть вид
+ *          целочисленный, и приведение это законно, а потребитель, знак записать
+ *          желавший, получал бы его код. Отказ сборки здесь честнее: для знака есть
+ *          запись поля текстом. Замерено 07.09.2026 - до правки `number('z')` не
+ *          связывался вовсе, и порождение по видам языка вернуло бы его молчком
+ *
+ * @note `signed char` и `unsigned char` порождаются: они суть `int8_t` и `uint8_t`,
+ *       и берутся осознанно как числа, а не как знаки
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <signed char> (const signed char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned char> (const unsigned char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <short> (const short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned short> (const unsigned short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <int> (const int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned int> (const unsigned int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <long> (const long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned long> (const unsigned long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <long long> (const long long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <unsigned long long> (const unsigned long long) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <float> (const float) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Writer::number <double> (const double) noexcept;
 /**

@@ -1882,7 +1882,7 @@ TEST(CodecCsvDocument, StorageOverflowHasItsOwnRefusal){
 	 *       именно это условие. Наименьшее изменение, обращающее прежнее сличение в ложь,
 	 *       было пустою строкою, и всякая иная подмена текста его переживала
 	 */
-	ASSERT_STREQ(csv::message(csv::error_t::STORAGE_EXHAUSTED), "the table does not fit into the capacity of the storage");
+	ASSERT_STREQ(csv::message(csv::error_t::STORAGE_EXHAUSTED), "the text does not fit the width of the parser storage");
 	// Выполняем проверку того, что код отказа отличен от прочих отказов чтения
 	ASSERT_STRNE(csv::message(csv::error_t::STORAGE_EXHAUSTED), csv::message(csv::error_t::FILE_NOT_READ));
 	/**
@@ -3315,4 +3315,58 @@ TEST(CodecCsvDocument, EmptyFieldIsNotAnAbsentField) {
 	ASSERT_TRUE(again.parse(doc.dump())) << csv::message(again.error());
 	// Выполняем проверку сохранности числа полей записи после кругового хода
 	ASSERT_EQ(again.size(1), static_cast <size_t> (2));
+}
+/**
+ * @brief Проверка опросных вызовов документа и сборки логическим полем
+ *
+ * @details Пробел вскрыт объединённой картой охвата 07.09.2026: «size», «empty»,
+ * «encoding» у документа и подача логического поля сборщиком не звались НИ набором,
+ * ни ворошителем. Вызовы эти просты, и оттого их и не проверяли: опросный вызов,
+ * отвечающий неверно, ломает не разбор, а суждение потребителя О разборе
+ *
+ * @note Опрос ведётся и до разбора, и после: значение до подачи текста обязано быть
+ *       пустым, и без этой половины «empty», отвечающий ложью всегда, прошёл бы
+ *
+ */
+TEST(CodecCsvDocument, QueriesAnswerBeforeAndAfterParsing) {
+	// Выполняем создание объекта журнала проверок
+	awh::log_t log(&Silent::framework());
+	// Выполняем отключение вывода журнала работы
+	log.mode({});
+	// Выполняем создание объекта документа таблицы
+	csv::document_t doc(&log);
+	// Выполняем проверку пустоты документа до разбора текста
+	ASSERT_TRUE(doc.empty());
+	// Выполняем проверку отсутствия записей до разбора текста
+	ASSERT_EQ(doc.size(), static_cast <size_t> (0));
+	// Выполняем проверку неопределённости кодировки до разбора текста
+	ASSERT_EQ(doc.encoding(), csv::encoding_t::NONE);
+	// Выполняем разбор текста таблицы
+	ASSERT_TRUE(doc.parse("a,b\r\n1,2\r\n3,4\r\n"));
+	// Выполняем проверку непустоты документа после разбора текста
+	ASSERT_FALSE(doc.empty());
+	/**
+	 * Выполняем проверку числа записей после разбора текста
+	 *
+	 * @note Заголовок в счёт записей не входит: настройка «header» его не объявляла,
+	 *       и все три строки суть записи
+	 */
+	ASSERT_EQ(doc.size(), static_cast <size_t> (3));
+	// Выполняем проверку определения кодировки исходного текста
+	ASSERT_EQ(doc.encoding(), csv::encoding_t::UTF8);
+	/**
+	 * Выполняем проверку подачи логического поля сборщиком
+	 *
+	 * @note Вид записи логического значения принадлежит договору: сборщик обязан
+	 *       писать «true» и «false» словами, а не числами, - таблица читается людьми
+	 */
+	csv::builder_t builder;
+	// Выполняем подачу поля значением истины
+	ASSERT_TRUE(builder.field(true));
+	// Выполняем подачу поля значением лжи
+	ASSERT_TRUE(builder.field(false));
+	// Выполняем завершение записи собираемой таблицы
+	ASSERT_TRUE(builder.close());
+	// Выполняем проверку выдачи текста собранной таблицы
+	ASSERT_EQ(builder.finish().dump(), "true,false\r\n");
 }

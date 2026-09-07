@@ -318,11 +318,11 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(this->_state){
+	switch(this->_phase){
 		/**
 		 * Если разбор находится внутри строки
 		 */
-		case state_t::STRING: {
+		case phase_t::STRING: {
 			/**
 			 * Выполняем проход по восьми байтам разом
 			 *
@@ -391,9 +391,9 @@ size_t awh::codec::json::Reader::bulk(const char * buffer, const size_t size) no
 		/**
 		 * Если разбор находится внутри записи числа там, где цифра состояния не меняет
 		 */
-		case state_t::NUMBER_INTEGER:
-		case state_t::NUMBER_FRACTION:
-		case state_t::NUMBER_POWER: {
+		case phase_t::NUMBER_INTEGER:
+		case phase_t::NUMBER_FRACTION:
+		case phase_t::NUMBER_POWER: {
 			/**
 			 * Выполняем проход по цифрам записи числа
 			 *
@@ -585,10 +585,10 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 	 *       они умещаются в одно слово
 	 */
 	static constexpr uint64_t BULK = (
-		(1ULL << static_cast <uint8_t> (state_t::STRING)) |
-		(1ULL << static_cast <uint8_t> (state_t::NUMBER_INTEGER)) |
-		(1ULL << static_cast <uint8_t> (state_t::NUMBER_FRACTION)) |
-		(1ULL << static_cast <uint8_t> (state_t::NUMBER_POWER))
+		(1ULL << static_cast <uint8_t> (phase_t::STRING)) |
+		(1ULL << static_cast <uint8_t> (phase_t::NUMBER_INTEGER)) |
+		(1ULL << static_cast <uint8_t> (phase_t::NUMBER_FRACTION)) |
+		(1ULL << static_cast <uint8_t> (phase_t::NUMBER_POWER))
 	);
 	// Положение разбираемого знака в тексте
 	size_t index = 0;
@@ -640,7 +640,7 @@ bool awh::codec::json::Reader::process(const char * text, const size_t size) noe
 		/**
 		 * Если состояние разбора отрезок дать способно
 		 */
-		if(((BULK >> static_cast <uint8_t> (this->_state)) & 1ULL) != 0){
+		if(((BULK >> static_cast <uint8_t> (this->_phase)) & 1ULL) != 0){
 			// Выполняем быстрый проход по знакам, состояния не меняющим
 			const size_t length = this->bulk(text + index, size - index);
 			/**
@@ -896,7 +896,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		 *       строки либо конец текста. Оттого оно закрывается прежде разбора
 		 *       состояния, а разбор судит уже по тому, к чему примечание вернулось
 		 */
-		if(this->_state == state_t::COMMENT_LINE){
+		if(this->_phase == phase_t::COMMENT_LINE){
 			/**
 			 * Если закрытие примечания концом текста завершилось отказом
 			 */
@@ -907,12 +907,12 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		/**
 		 * Определяем состояние разбора текста
 		 */
-		switch(this->_state){
+		switch(this->_phase){
 			// Если разбор находится внутри записи числа
-			case state_t::NUMBER_ZERO:
-			case state_t::NUMBER_INTEGER:
-			case state_t::NUMBER_FRACTION:
-			case state_t::NUMBER_POWER:
+			case phase_t::NUMBER_ZERO:
+			case phase_t::NUMBER_INTEGER:
+			case phase_t::NUMBER_FRACTION:
+			case phase_t::NUMBER_POWER:
 				/**
 				 * Завершаем запись числа концом текста
 				 *
@@ -925,7 +925,7 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 					return false;
 			break;
 			// Если разбор находится в начале документа
-			case state_t::DOCUMENT_START:
+			case phase_t::DOCUMENT_START:
 				// Выводим ошибку пустого текста
 				return this->fail(error_t::EMPTY_TEXT);
 			/**
@@ -935,30 +935,30 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 			 *       указывает на незакрытую кавычку прямо, а общий обрыв текста
 			 *       заставил бы разыскивать причину самому
 			 */
-			case state_t::STRING:
-			case state_t::ESCAPE:
-			case state_t::UNICODE_1:
-			case state_t::UNICODE_2:
-			case state_t::UNICODE_3:
-			case state_t::UNICODE_4:
-			case state_t::SURROGATE_SLASH:
-			case state_t::SURROGATE_U:
-			case state_t::SURROGATE_1:
-			case state_t::SURROGATE_2:
-			case state_t::SURROGATE_3:
-			case state_t::SURROGATE_4:
+			case phase_t::STRING:
+			case phase_t::ESCAPE:
+			case phase_t::UNICODE_1:
+			case phase_t::UNICODE_2:
+			case phase_t::UNICODE_3:
+			case phase_t::UNICODE_4:
+			case phase_t::SURROGATE_SLASH:
+			case phase_t::SURROGATE_U:
+			case phase_t::SURROGATE_1:
+			case phase_t::SURROGATE_2:
+			case phase_t::SURROGATE_3:
+			case phase_t::SURROGATE_4:
 				// Выводим ошибку незакрытой строки
 				return this->fail(error_t::UNTERMINATED_STRING);
 			// Если разбор находится внутри примечания в скобках
-			case state_t::SLASH:
-			case state_t::COMMENT_BLOCK:
-			case state_t::COMMENT_STAR:
+			case phase_t::SLASH:
+			case phase_t::COMMENT_BLOCK:
+			case phase_t::COMMENT_STAR:
 				// Выводим ошибку незакрытого примечания
 				return this->fail(error_t::UNTERMINATED_COMMENT);
 			// Если разбор окончен
-			case state_t::DOCUMENT_END:
+			case phase_t::DOCUMENT_END:
 			// Если разбор прекращён отказом
-			case state_t::FAILED:
+			case phase_t::FAILED:
 			break;
 			/**
 			 * Если разбор находится посреди значения
@@ -1027,7 +1027,7 @@ bool awh::codec::json::Reader::feed(const string_view text) noexcept {
  */
 void awh::codec::json::Reader::reset() noexcept {
 	// Сбрасываем состояние разбора текста
-	this->_state = state_t::DOCUMENT_START;
+	this->_phase = phase_t::DOCUMENT_START;
 	// Снимаем признак прекращения разбора по требованию потребителя
 	this->_stopped = false;
 	// Сбрасываем код отказа разбора
@@ -1227,6 +1227,40 @@ const awh::codec::json::location_t & awh::codec::json::Reader::errorLocation() c
 	return this->_failure;
 }
 /**
+ * @brief Метод получения текущего состояния чтения
+ *
+ * @return текущее состояние чтения текста JSON
+ *
+ */
+awh::codec::json::state_t awh::codec::json::Reader::state() const noexcept {
+	/**
+	 * Если разбор прекращён отказом
+	 *
+	 * @note Отказ старше прочего: очередь может нести события, собранные ДО отказа,
+	 *       и наличие их состоянием `READY` заслонило бы отказ от потребителя
+	 */
+	if(this->_error != error_t::NONE)
+		// Выводим состояние прекращённого отказом разбора
+		return state_t::FAILED;
+	/**
+	 * Если очередь собранных событий не исчерпана
+	 */
+	if(this->_head < this->_items.size())
+		// Выводим состояние доступного к чтению события
+		return state_t::READY;
+	/**
+	 * Если подан последний кусок исходного текста либо разбор прекращён потребителем
+	 *
+	 * @note Прекращение по требованию отражается тем же членом: событий разбор больше
+	 *       не даст и продолжения не ждёт, а причина известна тому, кто его затребовал
+	 */
+	if(this->_last || this->_stopped)
+		// Выводим состояние разобранного до конца текста
+		return state_t::FINISHED;
+	// Выводим состояние ожидания следующего куска исходного текста
+	return state_t::HUNGRY;
+}
+/**
  * @brief Метод извлечения кода отказа разбора
  *
  * @return код отказа разбора
@@ -1312,7 +1346,7 @@ void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
  *
  */
 awh::codec::json::Reader::Reader(const log_t * log) noexcept :
- _state(state_t::DOCUMENT_START), _error(error_t::NONE), _log(log),
+ _phase(phase_t::DOCUMENT_START), _error(error_t::NONE), _log(log),
  _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
  _origin(0), _head(0), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false),
  _offset(0), _line(1), _column(1), _length(0),
@@ -1380,7 +1414,7 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	// Устанавливаем код отказа разбора
 	this->_error = error;
 	// Переводим разбор в состояние отказа
-	this->_state = state_t::FAILED;
+	this->_phase = phase_t::FAILED;
 	// Устанавливаем смещение отказа от начала текста
 	this->_position.offset = this->_offset;
 	// Устанавливаем номер строки отказа
@@ -1506,7 +1540,7 @@ bool awh::codec::json::Reader::settle() noexcept {
 	 */
 	if(!this->_nesting.empty())
 		// Переводим разбор к ожиданию запятой либо закрывающей скобки
-		this->_state = state_t::AFTER_VALUE;
+		this->_phase = phase_t::AFTER_VALUE;
 	/**
 	 * Если значение является документом целиком
 	 */
@@ -1522,7 +1556,7 @@ bool awh::codec::json::Reader::settle() noexcept {
 		// Выполняем выдачу события окончания документа
 		this->emit(event_t::DOCUMENT, 0, 0);
 		// Переводим разбор к состоянию окончания документа
-		this->_state = state_t::DOCUMENT_END;
+		this->_phase = phase_t::DOCUMENT_END;
 	}
 	// Выводим признак успешного разбора
 	return true;
@@ -1558,7 +1592,7 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 			// Сбрасываем признак разбора имени поля объекта
 			this->_keyed = false;
 			// Переводим разбор внутрь строки
-			this->_state = state_t::STRING;
+			this->_phase = phase_t::STRING;
 		} return true;
 		// Если значение является массивом
 		case '[':
@@ -1581,7 +1615,7 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 			// Сбрасываем признак прочитанной запятой
 			this->_comma = false;
 			// Переводим разбор к ожиданию имени поля объекта либо значения массива
-			this->_state = ((kind == kind_t::OBJECT) ? state_t::KEY_START : state_t::VALUE_START);
+			this->_phase = ((kind == kind_t::OBJECT) ? phase_t::KEY_START : phase_t::VALUE_START);
 		} return true;
 		// Если значение является литералом истины
 		case 't': {
@@ -1643,7 +1677,7 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 				// Сбрасываем признак разбора имени поля объекта
 				this->_keyed = false;
 				// Переводим разбор внутрь строки
-				this->_state = state_t::STRING;
+				this->_phase = phase_t::STRING;
 				// Выводим признак успешного разбора
 				return true;
 			}
@@ -1656,7 +1690,7 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 				// Увеличиваем длину собираемого значения
 				this->_length = 1;
 				// Переводим разбор к разбору записи числа
-				this->_state = ((letter == '-') ? state_t::NUMBER_MINUS : ((letter == '0') ? state_t::NUMBER_ZERO : state_t::NUMBER_INTEGER));
+				this->_phase = ((letter == '-') ? phase_t::NUMBER_MINUS : ((letter == '0') ? phase_t::NUMBER_ZERO : phase_t::NUMBER_INTEGER));
 				// Выводим признак успешного разбора
 				return true;
 			}
@@ -1671,7 +1705,7 @@ bool awh::codec::json::Reader::begins(const char letter) noexcept {
 	// Устанавливаем длину собираемого значения
 	this->_length = 1;
 	// Переводим разбор к разбору литерала
-	this->_state = state_t::LITERAL;
+	this->_phase = phase_t::LITERAL;
 	// Выводим признак успешного разбора
 	return true;
 }
@@ -1693,15 +1727,15 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора записи числа
 	 */
-	switch(this->_state){
+	switch(this->_phase){
 		// Если прочитан знак минуса
-		case state_t::NUMBER_MINUS: {
+		case phase_t::NUMBER_MINUS: {
 			/**
 			 * Если за знаком минуса следует нуль
 			 */
 			if(letter == '0'){
 				// Переводим разбор к состоянию ведущего нуля
-				this->_state = state_t::NUMBER_ZERO;
+				this->_phase = phase_t::NUMBER_ZERO;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			/**
@@ -1709,7 +1743,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 */
 			} else if((letter >= '1') && (letter <= '9')) {
 				// Переводим разбор к состоянию целой части числа
-				this->_state = state_t::NUMBER_INTEGER;
+				this->_phase = phase_t::NUMBER_INTEGER;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			/**
@@ -1727,7 +1761,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				// Увеличиваем длину собираемого значения
 				this->_length++;
 				// Переводим разбор к разбору литерала
-				this->_state = state_t::LITERAL;
+				this->_phase = phase_t::LITERAL;
 				// Выводим признак успешного разбора
 				return true;
 			/**
@@ -1738,7 +1772,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				return this->fail(error_t::INVALID_NUMBER);
 		} break;
 		// Если прочитан ведущий нуль
-		case state_t::NUMBER_ZERO: {
+		case phase_t::NUMBER_ZERO: {
 			/**
 			 * Если за ведущим нулём следует цифра
 			 *
@@ -1752,7 +1786,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 */
 			if(letter == '.'){
 				// Переводим разбор к состоянию точки
-				this->_state = state_t::NUMBER_POINT;
+				this->_phase = phase_t::NUMBER_POINT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			/**
@@ -1760,13 +1794,13 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 */
 			} else if((letter == 'e') || (letter == 'E')) {
 				// Переводим разбор к состоянию порядка
-				this->_state = state_t::NUMBER_EXPONENT;
+				this->_phase = phase_t::NUMBER_EXPONENT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			}
 		} break;
 		// Если разбор находится внутри целой части числа
-		case state_t::NUMBER_INTEGER: {
+		case phase_t::NUMBER_INTEGER: {
 			/**
 			 * Если знак является цифрой
 			 */
@@ -1787,7 +1821,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 */
 			else if(letter == '.') {
 				// Переводим разбор к состоянию точки
-				this->_state = state_t::NUMBER_POINT;
+				this->_phase = phase_t::NUMBER_POINT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			/**
@@ -1795,13 +1829,13 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 */
 			} else if((letter == 'e') || (letter == 'E')) {
 				// Переводим разбор к состоянию порядка
-				this->_state = state_t::NUMBER_EXPONENT;
+				this->_phase = phase_t::NUMBER_EXPONENT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			}
 		} break;
 		// Если прочитана точка
-		case state_t::NUMBER_POINT: {
+		case phase_t::NUMBER_POINT: {
 			/**
 			 * Если за точкой не следует цифра
 			 */
@@ -1809,12 +1843,12 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				// Выводим ошибку негодной записи числа
 				return this->fail(error_t::INVALID_NUMBER);
 			// Переводим разбор к состоянию дробной части числа
-			this->_state = state_t::NUMBER_FRACTION;
+			this->_phase = phase_t::NUMBER_FRACTION;
 			// Устанавливаем признак принадлежности знака записи числа
 			belongs = true;
 		} break;
 		// Если разбор находится внутри дробной части числа
-		case state_t::NUMBER_FRACTION: {
+		case phase_t::NUMBER_FRACTION: {
 			/**
 			 * Если знак является цифрой
 			 */
@@ -1835,19 +1869,19 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 */
 			else if((letter == 'e') || (letter == 'E')) {
 				// Переводим разбор к состоянию порядка
-				this->_state = state_t::NUMBER_EXPONENT;
+				this->_phase = phase_t::NUMBER_EXPONENT;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			}
 		} break;
 		// Если прочитана буква порядка
-		case state_t::NUMBER_EXPONENT: {
+		case phase_t::NUMBER_EXPONENT: {
 			/**
 			 * Если за буквой порядка следует знак
 			 */
 			if((letter == '+') || (letter == '-')){
 				// Переводим разбор к состоянию знака порядка
-				this->_state = state_t::NUMBER_SIGN;
+				this->_phase = phase_t::NUMBER_SIGN;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			/**
@@ -1855,7 +1889,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 			 */
 			} else if((letter >= '0') && (letter <= '9')) {
 				// Переводим разбор к состоянию цифр порядка
-				this->_state = state_t::NUMBER_POWER;
+				this->_phase = phase_t::NUMBER_POWER;
 				// Устанавливаем признак принадлежности знака записи числа
 				belongs = true;
 			/**
@@ -1866,7 +1900,7 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				return this->fail(error_t::INVALID_NUMBER);
 		} break;
 		// Если прочитан знак порядка
-		case state_t::NUMBER_SIGN: {
+		case phase_t::NUMBER_SIGN: {
 			/**
 			 * Если за знаком порядка не следует цифра
 			 */
@@ -1874,12 +1908,12 @@ bool awh::codec::json::Reader::number(const char letter) noexcept {
 				// Выводим ошибку негодной записи числа
 				return this->fail(error_t::INVALID_NUMBER);
 			// Переводим разбор к состоянию цифр порядка
-			this->_state = state_t::NUMBER_POWER;
+			this->_phase = phase_t::NUMBER_POWER;
 			// Устанавливаем признак принадлежности знака записи числа
 			belongs = true;
 		} break;
 		// Если разбор находится внутри цифр порядка
-		case state_t::NUMBER_POWER: {
+		case phase_t::NUMBER_POWER: {
 			/**
 			 * Если знак является цифрой
 			 */
@@ -1964,7 +1998,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 	/**
 	 * Определяем состояние разбора текста
 	 */
-	switch(this->_state){
+	switch(this->_phase){
 		// Если разбор прекращён отказом
 		/**
 		 * @note Ветвь эта НЕДОСТИЖИМА и оттого не покрыта: разбор, прекращённый отказом, до
@@ -1972,13 +2006,13 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 		 *
 		 * @warning Снимать ветвь нельзя: она и есть страж того, что отказ не будет обойдён
 		 */
-		case state_t::FAILED:
+		case phase_t::FAILED:
 			// Выводим признак неудачного разбора
 			return false;
 		// Если разбор находится в начале документа либо ожидает значения
-		case state_t::DOCUMENT_START:
-		case state_t::VALUE_START:
-		case state_t::AFTER_COMMA: {
+		case phase_t::DOCUMENT_START:
+		case phase_t::VALUE_START:
+		case phase_t::AFTER_COMMA: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2000,9 +2034,9 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Выводим ошибку запрещённого примечания
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
-				this->_resume = this->_state;
+				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
-				this->_state = state_t::SLASH;
+				this->_phase = phase_t::SLASH;
 				// Пропускаем знак примечания
 				break;
 			}
@@ -2039,7 +2073,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				return false;
 		} break;
 		// Если разбор ожидает имени поля объекта
-		case state_t::KEY_START: {
+		case phase_t::KEY_START: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2061,9 +2095,9 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Выводим ошибку запрещённого примечания
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
-				this->_resume = this->_state;
+				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
-				this->_state = state_t::SLASH;
+				this->_phase = phase_t::SLASH;
 				// Пропускаем знак примечания
 				break;
 			}
@@ -2113,7 +2147,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Сбрасываем признак изменения содержимого разбором
 				this->_modified = false;
 				// Переводим разбор внутрь строки
-				this->_state = state_t::STRING;
+				this->_phase = phase_t::STRING;
 				// Пропускаем знак кавычек
 				break;
 			}
@@ -2121,7 +2155,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			return this->fail(error_t::EXPECTED_KEY);
 		}
 		// Если разбор ожидает двоеточия за именем поля объекта
-		case state_t::AFTER_KEY: {
+		case phase_t::AFTER_KEY: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2143,9 +2177,9 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Выводим ошибку запрещённого примечания
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
-				this->_resume = this->_state;
+				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
-				this->_state = state_t::SLASH;
+				this->_phase = phase_t::SLASH;
 				// Пропускаем знак примечания
 				break;
 			}
@@ -2156,10 +2190,10 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Выводим ошибку ожидания двоеточия
 				return this->fail(error_t::EXPECTED_COLON);
 			// Переводим разбор к ожиданию значения поля объекта
-			this->_state = state_t::VALUE_START;
+			this->_phase = phase_t::VALUE_START;
 		} break;
 		// Если разбор ожидает запятой либо закрывающей скобки
-		case state_t::AFTER_VALUE: {
+		case phase_t::AFTER_VALUE: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2181,9 +2215,9 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Выводим ошибку запрещённого примечания
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
-				this->_resume = this->_state;
+				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
-				this->_state = state_t::SLASH;
+				this->_phase = phase_t::SLASH;
 				// Пропускаем знак примечания
 				break;
 			}
@@ -2206,7 +2240,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Устанавливаем признак прочитанной запятой
 				this->_comma = true;
 				// Переводим разбор к ожиданию имени поля объекта либо значения массива
-				this->_state = ((this->_nesting.back() == kind_t::OBJECT) ? state_t::KEY_START : state_t::AFTER_COMMA);
+				this->_phase = ((this->_nesting.back() == kind_t::OBJECT) ? phase_t::KEY_START : phase_t::AFTER_COMMA);
 				// Пропускаем знак запятой
 				break;
 			}
@@ -2236,7 +2270,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			return this->fail(error_t::EXPECTED_COMMA);
 		}
 		// Если разбор находится внутри строки
-		case state_t::STRING: {
+		case phase_t::STRING: {
 			/**
 			 * Если знак закрывает строку
 			 */
@@ -2254,7 +2288,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Сбрасываем признак разбора имени поля объекта
 					this->_keyed = false;
 					// Переводим разбор к ожиданию двоеточия
-					this->_state = state_t::AFTER_KEY;
+					this->_phase = phase_t::AFTER_KEY;
 					// Пропускаем знак кавычек
 					break;
 				}
@@ -2277,7 +2311,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			 */
 			if(letter == '\\'){
 				// Переводим разбор к разбору отменяющей последовательности
-				this->_state = state_t::ESCAPE;
+				this->_phase = phase_t::ESCAPE;
 				// Устанавливаем признак изменения содержимого разбором
 				this->_modified = true;
 				// Пропускаем знак отмены
@@ -2295,7 +2329,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			this->_length++;
 		} break;
 		// Если разбор находится внутри отменяющей последовательности
-		case state_t::ESCAPE: {
+		case phase_t::ESCAPE: {
 			// Знак, каким отменяющая последовательность заменяется
 			char replacement = '\0';
 			/**
@@ -2334,7 +2368,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Сбрасываем собираемый знак Юникода
 					this->_unicode = 0;
 					// Переводим разбор к разбору кодового значения знака
-					this->_state = state_t::UNICODE_1;
+					this->_phase = phase_t::UNICODE_1;
 					// Пропускаем знак кодового значения
 					goto advance;
 				}
@@ -2365,17 +2399,17 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			// Увеличиваем длину собираемого значения
 			this->_length++;
 			// Возвращаем разбор внутрь строки
-			this->_state = state_t::STRING;
+			this->_phase = phase_t::STRING;
 		} break;
 		// Если разбор находится внутри кодового значения знака
-		case state_t::UNICODE_1:
-		case state_t::UNICODE_2:
-		case state_t::UNICODE_3:
-		case state_t::UNICODE_4:
-		case state_t::SURROGATE_1:
-		case state_t::SURROGATE_2:
-		case state_t::SURROGATE_3:
-		case state_t::SURROGATE_4: {
+		case phase_t::UNICODE_1:
+		case phase_t::UNICODE_2:
+		case phase_t::UNICODE_3:
+		case phase_t::UNICODE_4:
+		case phase_t::SURROGATE_1:
+		case phase_t::SURROGATE_2:
+		case phase_t::SURROGATE_3:
+		case phase_t::SURROGATE_4: {
 			// Значение шестнадцатеричного знака
 			uint32_t digit = 0;
 			/**
@@ -2389,16 +2423,16 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			/**
 			 * Если прочитан не последний знак кодового значения
 			 */
-			if((this->_state != state_t::UNICODE_4) && (this->_state != state_t::SURROGATE_4)){
+			if((this->_phase != phase_t::UNICODE_4) && (this->_phase != phase_t::SURROGATE_4)){
 				// Переводим разбор к следующему знаку кодового значения
-				this->_state = static_cast <state_t> (static_cast <uint8_t> (this->_state) + 1);
+				this->_phase = static_cast <phase_t> (static_cast <uint8_t> (this->_phase) + 1);
 				// Пропускаем знак кодового значения
 				break;
 			}
 			/**
 			 * Если прочитан младший суррогат пары
 			 */
-			if(this->_state == state_t::SURROGATE_4){
+			if(this->_phase == phase_t::SURROGATE_4){
 				/**
 				 * Если прочитанное значение младшим суррогатом не является
 				 */
@@ -2421,7 +2455,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Сбрасываем удержанный старший суррогат
 				this->_surrogate = 0;
 				// Возвращаем разбор внутрь строки
-				this->_state = state_t::STRING;
+				this->_phase = phase_t::STRING;
 				// Пропускаем знак кодового значения
 				break;
 			}
@@ -2440,7 +2474,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				 *       ожидание это и разложено на состояния: иначе выдача зависела бы от
 				 *       того, как текст нарезан
 				 */
-				this->_state = state_t::SURROGATE_SLASH;
+				this->_phase = phase_t::SURROGATE_SLASH;
 				// Пропускаем знак кодового значения
 				break;
 			}
@@ -2457,10 +2491,10 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			// Увеличиваем длину собираемого значения на число записанных байтов
 			this->_length += static_cast <uint32_t> (this->_storage.size() - before);
 			// Возвращаем разбор внутрь строки
-			this->_state = state_t::STRING;
+			this->_phase = phase_t::STRING;
 		} break;
 		// Если разбор ожидает знака отмены младшего суррогата
-		case state_t::SURROGATE_SLASH: {
+		case phase_t::SURROGATE_SLASH: {
 			/**
 			 * Если знак отмены не пришёл
 			 */
@@ -2468,10 +2502,10 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Выводим ошибку непарного суррогата
 				return this->fail(error_t::UNPAIRED_SURROGATE);
 			// Переводим разбор к ожиданию буквы кодового значения
-			this->_state = state_t::SURROGATE_U;
+			this->_phase = phase_t::SURROGATE_U;
 		} break;
 		// Если разбор ожидает буквы кодового значения младшего суррогата
-		case state_t::SURROGATE_U: {
+		case phase_t::SURROGATE_U: {
 			/**
 			 * Если буква кодового значения не пришла
 			 */
@@ -2481,17 +2515,17 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			// Сбрасываем собираемый знак Юникода
 			this->_unicode = 0;
 			// Переводим разбор к разбору кодового значения младшего суррогата
-			this->_state = state_t::SURROGATE_1;
+			this->_phase = phase_t::SURROGATE_1;
 		} break;
 		// Если разбор находится внутри записи числа
-		case state_t::NUMBER_MINUS:
-		case state_t::NUMBER_ZERO:
-		case state_t::NUMBER_INTEGER:
-		case state_t::NUMBER_POINT:
-		case state_t::NUMBER_FRACTION:
-		case state_t::NUMBER_EXPONENT:
-		case state_t::NUMBER_SIGN:
-		case state_t::NUMBER_POWER: {
+		case phase_t::NUMBER_MINUS:
+		case phase_t::NUMBER_ZERO:
+		case phase_t::NUMBER_INTEGER:
+		case phase_t::NUMBER_POINT:
+		case phase_t::NUMBER_FRACTION:
+		case phase_t::NUMBER_EXPONENT:
+		case phase_t::NUMBER_SIGN:
+		case phase_t::NUMBER_POWER: {
 			// Запоминаем смещение от начала текста прежде разбора знака
 			const uint64_t offset = this->_offset;
 			/**
@@ -2511,7 +2545,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				return true;
 		} break;
 		// Если разбор находится внутри литерала
-		case state_t::LITERAL: {
+		case phase_t::LITERAL: {
 			/**
 			 * Если знак расходится с разбираемым литералом
 			 */
@@ -2542,7 +2576,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			return this->settle();
 		}
 		// Если разбор определяет вид примечания
-		case state_t::SLASH: {
+		case phase_t::SLASH: {
 			/**
 			 * Определяем знак, задающий вид примечания
 			 */
@@ -2558,7 +2592,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Сбрасываем длину собираемого значения
 					this->_length = 0;
 					// Переводим разбор внутрь примечания до конца строки
-					this->_state = state_t::COMMENT_LINE;
+					this->_phase = phase_t::COMMENT_LINE;
 				} break;
 				// Если примечание закрывается звёздочкой с косой чертой
 				case '*': {
@@ -2571,7 +2605,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Сбрасываем длину собираемого значения
 					this->_length = 0;
 					// Переводим разбор внутрь закрываемого примечания
-					this->_state = state_t::COMMENT_BLOCK;
+					this->_phase = phase_t::COMMENT_BLOCK;
 				} break;
 				/**
 				 * Если за косой чертой стоит иной знак
@@ -2582,7 +2616,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 		} break;
 		// Если разбор находится внутри примечания до конца строки
-		case state_t::COMMENT_LINE: {
+		case phase_t::COMMENT_LINE: {
 			/**
 			 * Если примечание окончено переводом строки
 			 */
@@ -2599,7 +2633,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Сбрасываем длину собираемого значения
 				this->_length = 0;
 				// Возвращаем разбор к состоянию, прерванному примечанием
-				this->_state = this->_resume;
+				this->_phase = this->_resume;
 				// Пропускаем знак перевода строки
 				break;
 			}
@@ -2614,13 +2648,13 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 		} break;
 		// Если разбор находится внутри закрываемого примечания
-		case state_t::COMMENT_BLOCK: {
+		case phase_t::COMMENT_BLOCK: {
 			/**
 			 * Если знак вправе закрывать примечание
 			 */
 			if(letter == '*'){
 				// Переводим разбор к определению закрытия примечания
-				this->_state = state_t::COMMENT_STAR;
+				this->_phase = phase_t::COMMENT_STAR;
 				// Пропускаем знак звёздочки
 				break;
 			}
@@ -2635,7 +2669,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 			}
 		} break;
 		// Если разбор определяет закрытие примечания
-		case state_t::COMMENT_STAR: {
+		case phase_t::COMMENT_STAR: {
 			/**
 			 * Если примечание закрыто
 			 */
@@ -2652,7 +2686,7 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 				// Сбрасываем длину собираемого значения
 				this->_length = 0;
 				// Возвращаем разбор к состоянию, прерванному примечанием
-				this->_state = this->_resume;
+				this->_phase = this->_resume;
 				// Пропускаем знак косой черты
 				break;
 			}
@@ -2679,11 +2713,11 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					this->_length++;
 				}
 				// Возвращаем разбор внутрь закрываемого примечания
-				this->_state = state_t::COMMENT_BLOCK;
+				this->_phase = phase_t::COMMENT_BLOCK;
 			}
 		} break;
 		// Если документ разобран до конца
-		case state_t::DOCUMENT_END: {
+		case phase_t::DOCUMENT_END: {
 			/**
 			 * Если знак является пробельным
 			 */
@@ -2705,9 +2739,9 @@ bool awh::codec::json::Reader::parse(const char letter) noexcept {
 					// Выводим ошибку запрещённого примечания
 					return this->fail(error_t::COMMENT_NOT_ALLOWED);
 				// Запоминаем состояние, к какому разбор вернётся по окончании примечания
-				this->_resume = this->_state;
+				this->_resume = this->_phase;
 				// Переводим разбор к определению вида примечания
-				this->_state = state_t::SLASH;
+				this->_phase = phase_t::SLASH;
 				// Пропускаем знак примечания
 				break;
 			}

@@ -59,6 +59,13 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <atomic>
+#include <thread>
+#include <chrono>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
 #include <codec/bridge.hpp>
@@ -382,9 +389,78 @@ int main(int argc, char * argv[]) noexcept {
 	// Названия видов записи, мостом переводимых
 	const char * names[] = {"JSON", "YAML", "XML", "TOML", "INI"};
 	/**
+	 * Сторож зависания и номер прохода, им стерегомого
+	 *
+	 * @details Ворошитель судит мост по договорам, но НИ ОДИН из них не стережёт
+	 *          самого страшного - того, что перевод не кончится вовсе. Повисший
+	 *          прогон молчит, и молчание это неотличимо от согласия: ворошитель
+	 *          просто не доходит до отчёта, а смотрящий видит работающий процесс
+	 *
+	 * @note Замер 07.09.2026 показал цену: два прогона проверок на рабочей машине
+	 *       висели 10 и 4 часа, и заметил их не запустивший, а владелец машины по
+	 *       нагрузке. Оба стояли в вечном обороте - разбор YAML и снятие кадра ABC
+	 *
+	 * @warning Приговор сторожа - «ПРОГОН ПОВИС», а НЕ «находка договора»: причина
+	 *          может лежать и вне моста, - но молчанием он не будет никогда
+	 */
+	static std::atomic <uint64_t> watched{0};
+	static std::atomic <bool> working{true};
+	/**
+	 * Заводим сторож зависания отдельным потоком
+	 *
+	 * @warning Поток ОТВЯЗЫВАЕТСЯ, а стерегомое лежит переменными уровня приложения:
+	 *          выходов из прогона несколько - и по находке договора, и по концу
+	 *          проходов, - и связанный поток пришлось бы дожидаться у каждого, а
+	 *          ссылки его на стек главного потока пережили бы сам стек
+	 */
+	std::thread watchdog([seed, deep]() noexcept {
+		// Номер прохода, на каком сторож застал прогон прежде
+		uint64_t previous = 0;
+		// Число подряд идущих замеров без движения
+		uint32_t frozen = 0;
+		// Выполняем надзор, покуда прогон идёт
+		while(working.load()){
+			// Выполняем выдержку между замерами
+			std::this_thread::sleep_for(std::chrono::seconds(10));
+			// Если прогон уже кончился, выходим из надзора
+			if(!working.load())
+				break;
+			// Получаем номер прохода, на каком стоит прогон
+			const uint64_t current = watched.load();
+			// Если номер прохода с прошлого замера не сдвинулся
+			if(current == previous){
+				// Увеличиваем счёт замеров без движения
+				frozen++;
+				/**
+				 * Если движения нет уже полминуты
+				 *
+				 * @note Порог взят с запасом: самый долгий проход у стенда NetBSD
+				 *       не доходит и до секунды, а полминуты не наберёт вовсе
+				 */
+				if(frozen >= 3){
+					// Выводим приговор сторожа с точными настройками прохода
+					::fprintf(stderr, "\nПРОГОН ПОВИС на проходе %llu: ЗЕРНО=%llu ГЛУБИНА=%u\n",
+					 static_cast <unsigned long long> (current), static_cast <unsigned long long> (seed), deep);
+					::fprintf(stderr, "Судить нельзя, разбирать чтением: снять стек «sample <номер> 2»\n");
+					// Выполняем сброс потока вывода, иначе приговор пропадёт
+					::fflush(stderr);
+					// Выходим из приложения с отдельным кодом зависания
+					::_exit(124);
+				}
+			// Если прогон сдвинулся, сбрасываем счёт замеров без движения
+			} else frozen = 0;
+			// Запоминаем номер прохода для следующего замера
+			previous = current;
+		}
+	});
+	// Выполняем отвязку потока сторожа от главного потока
+	watchdog.detach();
+	/**
 	 * Выполняем проходы генератора
 	 */
 	for(uint64_t pass = 0; pass < count; pass++){
+		// Сообщаем сторожу, на каком проходе стоит прогон
+		watched.store(pass + 1);
 		// Собираемое дерево значений контейнера ABC
 		codec::abc::value_t value;
 		// Выполняем сборку дерева значений
@@ -636,6 +712,8 @@ int main(int argc, char * argv[]) noexcept {
 				::fprintf(stderr, "НАХОДКА %s: собранная запись разбору не поддалась: «%s»\n  дерево: «%s»\n  сужение: %u, пустой узел: %u, пометка: «%s», глубина: %u\n", names[i], first.c_str(), dump.c_str(), static_cast <uint32_t> (bridge.settings().narrow), static_cast <uint32_t> (bridge.settings().empty), bridge.settings().array.c_str(), bridge.settings().depth);
 				// Если остановка на первой находке затребована
 				if(halt)
+					// Сообщаем сторожу, что прогон окончен
+					working.store(false);
 					// Выходим из приложения с признаком находки
 					return 1;
 				// Продолжаем перебор видов записи дальше
@@ -711,12 +789,16 @@ int main(int argc, char * argv[]) noexcept {
 				::fprintf(stderr, "НАХОДКА %s: круг ползёт\n  второй проход: «%s»\n  третий проход: «%s»\n  первый проход: «%s»\n  дерево: «%s»\n  сужение: %u, пустой узел: %u, пометка: «%s», глубина: %u\n", names[i], next.c_str(), last.c_str(), first.c_str(), [&]{ string dump = ""; static_cast <void> (bridge.encode(value, dump, codec::bridge_t::format_t::JSON)); return dump; }().c_str(), static_cast <uint32_t> (bridge.settings().narrow), static_cast <uint32_t> (bridge.settings().empty), bridge.settings().array.c_str(), bridge.settings().depth);
 				// Если остановка на первой находке затребована
 				if(halt)
+					// Сообщаем сторожу, что прогон окончен
+					working.store(false);
 					// Выходим из приложения с признаком находки
 					return 1;
 			}
 		}
 	}
 	// Выводим итог проделанной работы
+	// Сообщаем сторожу, что прогон окончен и надзора больше не нужно
+	working.store(false);
 	::fprintf(stdout, "ЗЕРНО=%llu ПРОХОДОВ=%llu ГЛУБИНА=%u\n", static_cast <unsigned long long> (seed), static_cast <unsigned long long> (count), deep);
 	::fprintf(stdout, "  деревьев построено: %llu\n", static_cast <unsigned long long> (totals.trees));
 	::fprintf(stdout, "  находок договора: %llu\n", static_cast <unsigned long long> (totals.findings));

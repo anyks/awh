@@ -56,8 +56,18 @@ class LogTestParameterizedFixture : public LogFixture, public ::testing::WithPar
  *
  */
 TEST_P(LogTestParameterizedFixture, LogPrintTest){
+	/**
+	 * Счётчик записей, дошедших до подписчика
+	 *
+	 * @note Без него проверка эта проходила бы и при молчащем модуле: все её
+	 *       утверждения живут в отклике, а не дошедший отклик означает лишь то,
+	 *       что утверждать оказалось нечего. Счётчик обращает молчание в отказ
+	 */
+	uint16_t received = 0;
 	// Подписываемся на получение логов
-	this->_log->subscribe([this](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	this->_log->subscribe([this, &received](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		// Запоминаем, что запись до подписчика дошла
+		received++;
 		// Проверяем корректность полученного флага лога
 		ASSERT_EQ(this->_parameter.flag, flag);
 		// Проверяем корректность текста лога
@@ -71,6 +81,15 @@ TEST_P(LogTestParameterizedFixture, LogPrintTest){
 	this->_log->mode({awh::log_t::mode_t::DEFERRED});
 	// Выполняем формирование лога в отложенном режиме
 	this->_log->print(this->_parameter.format, this->_parameter.flag, this->_parameter.args);
+	/**
+	 * До подписчика обязана дойти ровно одна запись - та, что сделана в режиме DEFERRED
+	 *
+	 * @note Их именно одна, а не две: `DEFERRED` и есть разрешение выводить логи в
+	 *       функцию обратного вызова, а `CONSOLE` его не даёт. Запись, сделанная выше
+	 *       в консольном режиме, до подписчика не доходит - и не должна. Замерено
+	 *       щупом: после `debug` счётчик нулевой, после `print` - единица
+	 */
+	ASSERT_EQ(received, static_cast <uint16_t> (1));
 }
 
 /**

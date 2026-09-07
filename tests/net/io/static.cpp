@@ -63,6 +63,12 @@
 	#include <netinet/in.h>
 	#include <sys/socket.h>
 	/**
+	 * @note Адрес сокета UNIX-домена нужен проверке столкновения имён: она занимает
+	 *       имя временного файла клиента ДО заведения узла, обычным сокетом системы,
+	 *       и без этого заголовка `struct sockaddr_un` не объявлен
+	 */
+	#include <sys/un.h>
+	/**
 	 * @note Название устройства по его номеру нужно проверке зоны канального адреса.
 	 *       У MS Windows `IF_NAMESIZE` и `if_indextoname` приходят своей цепочкой, а у
 	 *       систем POSIX живут здесь: без этого заголовка набор не собирался вовсе на
@@ -3274,6 +3280,616 @@ TEST_F(IoFixture, IoAcceptedReadTimeoutTest){
 	// Срок ожидания чтения у принятого узла обязан истечь
 	ASSERT_TRUE(expired) << "срок ожидания чтения у принятого сервером узла не сработал";
 	// Уничтожаем событие сервера
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест срока ожидания чтения под СЛОЖНОЙ структурой таймеров
+ *
+ * @details Сроки сокетов движок ведёт двумя устройствами разом: простым
+ *          (`timer::simple`) умолчанием и сложным (`timer::difficult`), включаемым
+ *          `setInternalTimer`. Выбор идёт разбором `__awh_internal_timer__` у КАЖДОГО
+ *          места постановки срока, и перепись показала, что вся ветвь сложного
+ *          устройства - `difficult::set`, `cancel`, `reschedule`, `empty`, `size` -
+ *          не входилась ни разу: набор включает сложную структуру лишь у событий
+ *          таймера (`IoTimerPairDifficultTest`), а те идут иным путём, не сроками
+ *          сокетов.
+ *
+ *          Проверка гоняет под сложной структурой ТОТ ЖЕ договор, что и
+ *          `IoAcceptedReadTimeoutTest` под простой: собеседник подключается и МОЛЧИТ,
+ *          а сервер обязан сообщить о сроке. Устройства взаимозаменяемы, и разниться
+ *          им дозволено лишь ценою
+ *
+ * @note Настройка живёт в ПРОЦЕССЕ и переживает проверку; возвращает её простой
+ *       фикстура, и оттого пересев её здесь безопасен
+ *
+ */
+TEST_F(IoFixture, IoAcceptedReadTimeoutDifficultTest){
+	// Признак пришедшего срока и признак подключения
+	bool expired = false, connected = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Переводим движок на сложную структуру таймеров
+	this->_io->setInternalTimer(awh::event::timer_t::DIFFICULT);
+	// Настройка обязана встать: без неё проверка гоняла бы простую структуру
+	ASSERT_EQ(awh::event::timer_t::DIFFICULT, this->_io->getInternalTimer());
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события больше нуля
+	ASSERT_GT(server, 0u);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем срок ожидания чтения данных, наследуемый принятым узлом
+	this->_io->setTimeout(server, awh::event::action_t::READ, 500);
+	// Переводим срок чтения в повторно используемый: одноразовый молчащего собеседника не режет
+	this->_io->setUsageReadTimeout(server, awh::event::usage_t::REUSABLE);
+	// Устанавливаем функцию обратного вызова на подключение нового клиента
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&connected, &expired, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем подключение собеседника
+		connected = true;
+		// Выставляем принятому узлу опции неблокирующего события: без них срок не заводится вовсе
+		(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+		// Устанавливаем функцию обратного вызова на срок ожидания принятого узла
+		io->on(cid, static_cast <awh::engine::callback::timeout_t> ([&expired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			// Если сроком истекло ожидание чтения данных
+			if(action == awh::event::action_t::READ)
+				// Отмечаем приход срока
+				expired = true;
+			// Отвечаем отказом от уничтожения события: узел снимается проверкой самой
+			return false;
+		}));
+	}));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(this->_io->listen(server, 10));
+	// Запускаем событие сервера
+	ASSERT_TRUE(this->_io->launch(server));
+	// Собеседник - сырой сокет, который подключается и МОЛЧИТ
+	const int32_t stranger = ::socket(AF_INET, SOCK_STREAM, 0);
+	// Сокет собеседника обязан быть заведён
+	ASSERT_GT(stranger, 0);
+	{
+		// Адрес сервера, к которому выполняется подключение
+		struct sockaddr_in address;
+		// Заполняем адрес сервера нулями
+		::memset(&address, 0, sizeof(address));
+		// Устанавливаем семейство адреса
+		address.sin_family = AF_INET;
+		// Устанавливаем порт сервера
+		address.sin_port = htons(port);
+		// Устанавливаем адрес сервера
+		address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+		// Выполняем подключение собеседника к серверу
+		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)), 0) << "сырой собеседник не подключился к серверу";
+	}
+	/**
+	 * Выполняем обороты цикла, покуда срок не придёт либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла, покуда срок не пришёл
+		while(!expired && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
+			// Выполняем оборот цикла событий
+			this->_io->poll(50);
+	}
+	// Закрываем сокет сырого собеседника
+	::closesocket(stranger);
+	// Подключение обязано состояться
+	ASSERT_TRUE(connected) << "сервер подключения не принял";
+	// Срок ожидания чтения обязан истечь и под сложной структурой таймеров
+	ASSERT_TRUE(expired) << "срок ожидания чтения под сложной структурой таймеров не сработал";
+	// Уничтожаем событие сервера
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест доставки данных, записанных собеседником перед самым закрытием
+ *
+ * @details Закрытие встречной стороной и опустошение буфера приёма - события разные, а
+ *          приходят они одним уведомлением: ядро сообщает признак конца потока сразу,
+ *          как только отправитель закрыл соединение, не дожидаясь разбора уже
+ *          доставленного. Освобождение узла без чтения потеряло бы в таком обмене весь
+ *          последний ответ целиком, и движок отделяет одно от другого разбором
+ *          объявленного ядром объёма (`io::pending`).
+ *
+ *          Перепись показала, что разбор этот не входился НИ РАЗУ: обмен вида
+ *          запрос-ответ-закрытие в наборе не ставился, хотя в теле самой функции он
+ *          назван обычным случаем, а не редкостью.
+ *
+ * @note Собеседник закрывается ВЕЖЛИВО, а не сбросом: сброс отбрасывает доставленное
+ *       вместе с соединением, и проверка тогда мерила бы не то. Соседняя проверка
+ *       возврата неотправленного (`IoSpoolReturnTest`) берёт как раз сброс - и по
+ *       обратному поводу
+ *
+ */
+TEST_F(IoFixture, IoDeliverBeforeHangupTest){
+	// Принятое сервером содержимое и признак подключения
+	std::string received;
+	// Признак принятого сервером подключения
+	bool connected = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	// Проверяем, что идентификатор события больше нуля
+	ASSERT_GT(server, 0u);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова на подключение нового клиента
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&connected, &received, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем подключение собеседника
+		connected = true;
+		// Устанавливаем функцию обратного вызова на чтение данных принятого подключения
+		io->on(cid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Дописываем принятое к уже полученному
+			received.append(reinterpret_cast <const char *> (buffer), size);
+		});
+	}));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	// Переводим событие сервера в прослушивание
+	ASSERT_TRUE(this->_io->listen(server, 10));
+	// Запускаем событие сервера
+	ASSERT_TRUE(this->_io->launch(server));
+	// Содержимое, отдаваемое собеседником перед самым закрытием
+	const std::string body = "LAST-ANSWER-BEFORE-CLOSE";
+	{
+		// Собеседник - сырой сокет, который пишет и сразу закрывается
+		const int32_t stranger = ::socket(AF_INET, SOCK_STREAM, 0);
+		// Сокет собеседника обязан быть заведён
+		ASSERT_GT(stranger, 0);
+		// Адрес сервера, к которому выполняется подключение
+		struct sockaddr_in address;
+		// Заполняем адрес сервера нулями
+		::memset(&address, 0, sizeof(address));
+		// Устанавливаем семейство адреса
+		address.sin_family = AF_INET;
+		// Устанавливаем порт сервера
+		address.sin_port = htons(port);
+		// Устанавливаем адрес сервера
+		address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+		// Выполняем подключение собеседника к серверу
+		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)), 0) << "сырой собеседник не подключился к серверу";
+		/**
+		 * Отдаём содержимое и закрываемся, НЕ дав движку оборота цикла
+		 *
+		 * @note В этом вся суть опыта: закрытие обязано догнать данные и прийти движку
+		 *       одним уведомлением с ними
+		 */
+		ASSERT_EQ(::send(stranger, body.data(), static_cast <int32_t> (body.size()), 0), static_cast <int32_t> (body.size()));
+		// Закрываем сокет собеседника вежливо
+		::closesocket(stranger);
+	}
+	/**
+	 * Крутим цикл, покуда содержимое не придёт целиком
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться
+	ASSERT_TRUE(connected) << "сервер подключения не принял";
+	/**
+	 * Содержимое обязано дойти целиком
+	 *
+	 * @note Утверждается содержимое, а не сам приход: потеря хвоста при закрытии
+	 *       выглядела бы приходом обрезанного тела и прошла бы при утверждении факта
+	 */
+	ASSERT_EQ(received, body) << "принято сервером: " << received;
+	// Уничтожаем событие сервера
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест продолжения прерванного ожидания ОСТАТКОМ
+ *
+ * @details Готовность сокета к чтению снимает срок ожидания ДО разбора самих данных:
+ *          движок к этому мигу знает лишь, что данные пришли, а чем они окажутся -
+ *          выяснится в отклике потребителя. Окажись они не ответом, срока уже нет, и
+ *          сколько его оставалось - не знал бы никто. Оттого движок остаток запоминает, а
+ *          `rearmTimeout` с нулевой задержкой ожидание этим остатком продолжает.
+ *
+ *          Перепись показала, что ветвь остатка (`timer::__dropped__`) не входилась ни
+ *          разу: продолжение в наборе звалось только с явной задержкой, а это иной путь -
+ *          там остаток не спрашивается вовсе.
+ *
+ * @note Проверка отличает остаток от перезапуска ЧИСЛОМ, и иначе она ничего не стоила бы:
+ *       при перезапуске полным сроком срок пришёл бы примерно на 700 мс позже, и оба
+ *       исхода выглядели бы одинаково успешными. Порог взят посередине между ними
+ *
+ */
+TEST_F(IoFixture, IoRearmTimeoutFromRemainderTest){
+	// Признак пришедшего срока, признак подключения и признак продолжения
+	bool expired = false, connected = false, rearmed = false;
+	// Времена начала ожидания и прихода срока
+	std::chrono::steady_clock::time_point armed, fired;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	ASSERT_GT(server, 0u);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем порт, опции и адрес события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем срок ожидания чтения, наследуемый принятым узлом
+	this->_io->setTimeout(server, awh::event::action_t::READ, 1500);
+	/**
+	 * Переводим срок чтения в повторно используемый
+	 *
+	 * @warning Измеренный договор, и первая редакция проверки на нём отказала: у
+	 *          принятого узла ОДНОРАЗОВЫЙ срок чтения не взводится вовсе - он считается
+	 *          от отправки запроса и молчащего собеседника не режет по замыслу. Раз срок
+	 *          не взводился, снимать при чтении было нечего, остатка не появилось, и
+	 *          продолжение честно ответило отказом. То же записано у соседней проверки
+	 *          `IoAcceptedReadTimeoutTest`
+	 *
+	 * @note Повторный режим утверждения не портит: продолжение ставит отметку, по которой
+	 *       движок сроком сам не распоряжается, а перезапуск полным сроком отличается от
+	 *       остатка числом - на то и порог
+	 */
+	this->_io->setUsageReadTimeout(server, awh::event::usage_t::REUSABLE);
+	// Устанавливаем функцию обратного вызова на подключение нового клиента
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&connected, &expired, &rearmed, &fired, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем подключение собеседника
+		connected = true;
+		// Выставляем принятому узлу опции неблокирующего события: без них срок не заводится
+		(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+		/**
+		 * Устанавливаем функцию обратного вызова на чтение принятого узла
+		 *
+		 * @note Здесь и ставится опыт: пришедшее объявляется НЕ ОТВЕТОМ, и ожидание
+		 *       продолжается остатком - ровно тот случай, ради которого продолжение
+		 *       и заведено
+		 */
+		io->on(cid, [&rearmed, io](const awh::event::id_t sid, [[maybe_unused]] const uint8_t * buffer, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Если продолжение ещё не заказывалось
+			if(!rearmed)
+				// Продолжаем прерванное ожидание ОСТАТКОМ прежнего срока
+				rearmed = io->rearmTimeout(sid, awh::event::action_t::READ, 0);
+		});
+		// Устанавливаем функцию обратного вызова на срок ожидания принятого узла
+		io->on(cid, static_cast <awh::engine::callback::timeout_t> ([&expired, &fired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept -> bool {
+			// Если сроком истекло ожидание чтения данных
+			if(action == awh::event::action_t::READ){
+				// Запоминаем миг прихода срока
+				fired = std::chrono::steady_clock::now();
+				// Отмечаем приход срока
+				expired = true;
+			}
+			// Отвечаем отказом от уничтожения события: узел снимается проверкой самой
+			return false;
+		}));
+	}));
+	// Фиксируем, переводим в прослушивание и запускаем событие сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->listen(server, 10));
+	ASSERT_TRUE(this->_io->launch(server));
+	// Собеседник - сырой сокет
+	const int32_t stranger = ::socket(AF_INET, SOCK_STREAM, 0);
+	ASSERT_GT(stranger, 0);
+	{
+		// Адрес сервера, к которому выполняется подключение
+		struct sockaddr_in address;
+		// Заполняем адрес сервера нулями
+		::memset(&address, 0, sizeof(address));
+		// Устанавливаем семейство адреса
+		address.sin_family = AF_INET;
+		// Устанавливаем порт сервера
+		address.sin_port = htons(port);
+		// Устанавливаем адрес сервера
+		address.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+		// Выполняем подключение собеседника к серверу
+		ASSERT_EQ(::connect(stranger, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)), 0) << "сырой собеседник не подключился к серверу";
+	}
+	/**
+	 * Крутим цикл, покуда подключение не примут: с него и пойдёт отсчёт срока
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться
+	ASSERT_TRUE(connected) << "сервер подключения не принял";
+	// Запоминаем миг, от которого отсчитывается срок ожидания чтения
+	armed = std::chrono::steady_clock::now();
+	/**
+	 * Выдерживаем ЧАСТЬ срока и лишь затем шлём не-ответ
+	 *
+	 * @note Выдержка здесь и делает опыт разрешимым: продолжение остатком даст срок
+	 *       примерно на исходной отметке, а перезапуск полным сроком - на 700 мс позже
+	 */
+	{
+		// Запоминаем миг начала выдержки
+		const auto start = std::chrono::steady_clock::now();
+		// Крутим цикл событий отведённую часть срока
+		while(std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 700)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Отправляем не-ответ, снимающий срок ожидания чтения
+	ASSERT_EQ(::send(stranger, "x", 1, 0), 1);
+	/**
+	 * Крутим цикл, покуда срок не придёт либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!expired && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Закрываем сокет сырого собеседника
+	::closesocket(stranger);
+	// Продолжение ожидания обязано быть принято движком
+	ASSERT_TRUE(rearmed) << "движок отказал в продолжении прерванного ожидания остатком";
+	// Срок обязан прийти
+	ASSERT_TRUE(expired) << "продолженный остатком срок не сработал вовсе";
+	// Считаем, сколько прошло от завода срока до его прихода
+	const auto elapsed = std::chrono::duration_cast <std::chrono::milliseconds> (fired - armed).count();
+	/**
+	 * Срок обязан прийти ОСТАТКОМ, а не полным сроком заново
+	 *
+	 * @note Порог 1900 мс взят посередине между исходной отметкой (1500 мс) и
+	 *       перезапуском полным сроком (700 + 1500 = 2200 мс): при перезапуске остаток
+	 *       был бы неотличим от продолжения, если утверждать один лишь приход срока
+	 */
+	ASSERT_LT(elapsed, 1900) << "срок пришёл через " << elapsed
+	 << " мс: ожидание продолжено не остатком, а полным сроком заново";
+	// Уничтожаем событие сервера
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест переноса срока у ИДУЩЕГО таймера
+ *
+ * @details Правка задержки у таймера, уже стоящего в ожидании, идёт отдельным путём -
+ *          перевзведением (`timer::reschedule`): оно переносит дедлайн одним обращением к
+ *          структуре дедлайнов, вместо снятия таймера и повторной его постановки. Путь
+ *          этот в наборе не входился ни разу: срок правился только у таймеров, ещё не
+ *          запущенных, а там перевзводить нечего.
+ *
+ *          Перенос считается от МИГА ПРАВКИ, а не от завода таймера, - так он и устроен, -
+ *          и проверка утверждает это числом: таймер заводится на 3000 мс, через 200 мс
+ *          срок правится на 600 мс, и сработать он обязан около 800 мс от завода. Без
+ *          числа проверка ничего не стоила бы: при вовсе не работающем перевзведении
+ *          таймер всё равно сработал бы - позже, на исходных 3000 мс, - и утверждение
+ *          «сработал» прошло бы
+ *
+ */
+TEST_F(IoFixture, IoTimerRescheduleWhilePendingTest){
+	// Признак срабатывания таймера
+	bool fired = false;
+	// Миг срабатывания таймера
+	std::chrono::steady_clock::time_point moment;
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие таймаута
+	const awh::event::id_t timer = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем что событие таймера создано
+	ASSERT_GT(timer, 0u);
+	// Устанавливаем заведомо долгий срок ожидания
+	this->_io->setTimeout(timer, awh::event::action_t::NONE, 3000);
+	// Выполняем фиксацию настроек события таймера
+	ASSERT_TRUE(this->_io->commit(timer));
+	/**
+	 * Устанавливаем функцию обратного вызова на срабатывание таймера
+	 *
+	 * @warning Измеренный договор, и первая редакция проверки на нём отказала: узел
+	 *          таймера отчитывается ОТКЛИКОМ СОСТОЯНИЯ, а не откликом срока ожидания.
+	 *          Отклик срока движок у таймера не принимает и отвечает предупреждением в
+	 *          журнал, а проверка тогда ждёт события, какого не будет. Так же подписаны
+	 *          и соседние проверки таймеров
+	 */
+	this->_io->on(timer, [&fired, &moment]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Если состояние события успешно
+		if(status == awh::event::status_t::SUCCESS){
+			// Запоминаем миг срабатывания таймера
+			moment = std::chrono::steady_clock::now();
+			// Отмечаем срабатывание таймера
+			fired = true;
+		}
+	});
+	ASSERT_TRUE(this->_io->launch(timer));
+	// Запоминаем миг завода таймера
+	const auto armed = std::chrono::steady_clock::now();
+	/**
+	 * Даём таймеру ПОСТОЯТЬ в ожидании и лишь затем правим срок
+	 *
+	 * @note Без этой выдержки таймер правился бы ещё не идущим, и перевзведение не
+	 *       случилось бы вовсе - путь ушёл бы в обычную постановку
+	 */
+	{
+		// Запоминаем миг начала выдержки
+		const auto start = std::chrono::steady_clock::now();
+		// Крутим цикл событий отведённую часть срока
+		while(!fired && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 200))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Таймер сработать раньше правки не должен
+	ASSERT_FALSE(fired) << "таймер сработал до правки срока";
+	// Правим срок у ИДУЩЕГО таймера
+	this->_io->setTimeout(timer, awh::event::action_t::NONE, 600);
+	/**
+	 * Крутим цикл, покуда таймер не сработает либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!fired && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Таймер обязан сработать
+	ASSERT_TRUE(fired) << "таймер с перенесённым сроком не сработал вовсе";
+	// Считаем, сколько прошло от завода таймера до его срабатывания
+	const auto elapsed = std::chrono::duration_cast <std::chrono::milliseconds> (moment - armed).count();
+	/**
+	 * Срабатывание обязано прийти по НОВОМУ сроку, а не по исходному
+	 *
+	 * @note Порог 1500 мс взят между переносом (около 800 мс) и исходным сроком (3000 мс),
+	 *       с запасом на зерно таймера системы: у MS Windows оно округляет всякое ожидание
+	 */
+	ASSERT_LT(elapsed, 1500) << "таймер сработал через " << elapsed
+	 << " мс: срок у идущего таймера не перенесён, сработал исходный";
+	// Уничтожаем событие таймера
+	this->_io->destroy(timer);
+}
+
+/**
+ * @brief Тест отправки клиента при умном неблокирующем вводе-выводе
+ *
+ * @details Опция `SM_IO_BLOCK` заводит у отправки СВОЙ путь: движок переводит сокет в
+ *          блокирующий режим, ставит ему срок записи и шлёт, - и путь этот отличен и от
+ *          родной подачи, и от обычной очереди. Перепись показала у него нули, а разбор
+ *          дерева проверок - что опция эта не встречается НИ В ОДНОЙ проверке вовсе,
+ *          хотя объявлена открытой.
+ *
+ *          Проверка ведёт ДВА обмена подряд, и второй здесь главный: переключив сокет в
+ *          блокирующий режим ради отправки, движок обязан вернуть его обратно. Не вернув,
+ *          он оставил бы узел блокирующим, и следующий приём встал бы намертво - а при
+ *          одном обмене такая беда прошла бы незамеченной
+ *
+ */
+TEST_F(IoFixture, IoClientSemiBlockingSendTest){
+	// Принятое сервером содержимое и принятые клиентом ответы
+	std::string received, answered;
+	// Признак принятого сервером подключения
+	bool connected = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	ASSERT_GT(server, 0u);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем порт, опции и адрес события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова на подключение нового клиента: сервер отражает принятое
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&connected, &received, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем подключение собеседника
+		connected = true;
+		// Выставляем принятому узлу опции неблокирующего события
+		(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+		// Устанавливаем функцию обратного вызова на чтение принятого узла
+		io->on(cid, [&received, io](const awh::event::id_t sid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Дописываем принятое к уже полученному
+			received.append(reinterpret_cast <const char *> (buffer), size);
+			// Отражаем принятое обратно собеседнику
+			(void) io->send(sid, buffer, size);
+		});
+	}));
+	// Фиксируем, переводим в прослушивание и запускаем событие сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->listen(server, 10));
+	ASSERT_TRUE(this->_io->launch(server));
+	// Заводим событие клиента
+	const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	ASSERT_GT(client, 0u);
+	/**
+	 * Выставляем клиенту УМНЫЙ неблокирующий ввод-вывод
+	 *
+	 * @note Это и заводит проверяемый путь: обычного неблокирующего признака здесь нет
+	 *       намеренно - с ним отправка ушла бы иной дорогой
+	 */
+	ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::SM_IO_BLOCK));
+	// Устанавливаем адрес, цель и порт назначения события клиента
+	ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+	ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setTargetPort(client, port));
+	// Устанавливаем функцию обратного вызова на чтение ответов клиентом
+	this->_io->on(client, [&answered]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученным ответам
+		answered.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Фиксируем, подключаем и запускаем событие клиента
+	ASSERT_TRUE(this->_io->commit(client));
+	ASSERT_TRUE(this->_io->connect(client));
+	ASSERT_TRUE(this->_io->launch(client));
+	/**
+	 * Крутим цикл, покуда сервер не примет подключение
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться
+	ASSERT_TRUE(connected) << "сервер подключения не принял";
+	// Содержимое первого и второго обменов
+	const std::string first = "SEMI-BLOCKING-FIRST", second = "SEMI-BLOCKING-SECOND";
+	// Выполняем первый обмен
+	ASSERT_GT(this->_io->send(client, first.data(), first.size()), static_cast <size_t> (0)) << "первый обмен: данные к отправке не приняты";
+	/**
+	 * Крутим цикл, покуда первый ответ не придёт целиком
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((answered.size() < first.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Первый обмен обязан пройти целиком
+	ASSERT_EQ(answered, first) << "первый обмен: принято " << answered;
+	// Выполняем второй обмен
+	ASSERT_GT(this->_io->send(client, second.data(), second.size()), static_cast <size_t> (0)) << "второй обмен: данные к отправке не приняты";
+	/**
+	 * Крутим цикл, покуда второй ответ не придёт целиком
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((answered.size() < (first.size() + second.size())) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	/**
+	 * Второй обмен обязан пройти так же, как первый
+	 *
+	 * @note Это и есть главное утверждение: переключив сокет в блокирующий режим ради
+	 *       отправки, движок обязан вернуть его обратно. Не вернув, он оставил бы узел
+	 *       блокирующим, и второй приём встал бы намертво
+	 */
+	ASSERT_EQ(answered, (first + second)) << "второй обмен не прошёл: принято " << answered;
+	// Сервер обязан принять оба содержимого
+	ASSERT_EQ(received, (first + second)) << "сервером принято: " << received;
+	// Уничтожаем заведённые события
+	this->_io->destroy(client);
 	this->_io->destroy(server);
 }
 
@@ -8928,6 +9544,125 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
 	ASSERT_FALSE(expired);
 }
 #endif // _WIN32 || _WIN64
+
+/**
+ * Проверка столкновения имён - только для систем POSIX
+ *
+ * @note Дело не в сборке, а в применимости: дейтаграммных сокетов AF_UNIX у MS
+ *       Windows нет вовсе - семейство есть, а `SOCK_DGRAM` в нём система не
+ *       поддерживает (замерено Андреем, движок IOCP). Занимающий сокет проверки там
+ *       не заведётся, и клиентский узел дейтаграммного UNIX-домена тоже. Вдобавок
+ *       `sockaddr_un` объявлен у MinGW не в `sys/un.h`, а в `<afunix.h>`, и без
+ *       ограды цель `awh_UNITTEST_net` не собиралась там вовсе
+ */
+#if !_WIN32 && !_WIN64
+/**
+ * Проверка столкновения имён неприменима к MS Windows
+ *
+ * @details Ограда стоит по ДВУМ доводам, и второй включением заголовка не лечится:
+ *            - `sockaddr_un` у MinGW объявлен в `<afunix.h>`, а не в `sys/un.h`, и без
+ *              него тип неполон - сборка цели набора валится целиком;
+ *            - дейтаграммных сокетов AF_UNIX у MS Windows НЕТ ВОВСЕ: семейство есть, а
+ *              `SOCK_DGRAM` в нём система не поддерживает. Занимающий сокет проверки
+ *              заводится именно дейтаграммным, и завестись он тут не может.
+ *
+ * @note Проверка написана Гришей по общей находке подбора имени (движки POSIX, коммит
+ *       8c7efaf5c); тело её не менялось ни строкой, добавлена только эта ограда. Сама
+ *       правка в моём движке внесена и живёт своей жизнью
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+/**
+ * @brief Тест столкновения имён временного файла клиента UNIX-домена
+ *
+ * @details Клиент дейтаграммного UNIX-домена привязывается к своему временному файлу,
+ *          подбирая имя счётчиком: `cid1_<имя>`, `cid2_<имя>` и так далее. Имя
+ *          занимается через `open(O_CREAT|O_EXCL)`, тут же освобождается и по нему
+ *          идёт привязка, - а между освобождением и привязкой имя вправе занять кто
+ *          угодно. Проверка занимает первое имя ЗАРАНЕЕ, обычным сокетом системы, и
+ *          требует от движка двух вещей сразу: подобрать следующее имя и НЕ ТРОГАТЬ
+ *          чужое
+ *
+ * @warning Что проверка закрепляет, а что НЕТ. Занятое имя отвергается уже
+ *          `open(O_EXCL)` отказом `EEXIST`, и подбор уходит на следующее имя ОТТУДА;
+ *          до привязки дело не доходит вовсе. Замерено точками останова: голова цикла
+ *          подбора - два захода, ветвь отказа привязки - НОЛЬ. Стало быть, закреплены
+ *          здесь переход к следующему имени и неприкосновенность чужого файла, а
+ *          разбор отказа ПРИВЯЗКИ - не закреплён
+ *
+ * @note Ветвь отказа привязки не проходится ни одной проверкой набора (замерено тем же
+ *       способом по всему набору: голова цикла - три захода, ветвь - ноль), и
+ *       воспроизвести её проверкой нечем: имя обязано быть свободным в миг `open` и
+ *       занятым в миг `bind`, а это состязание, а не порядок действий. Ветвь эта
+ *       опирается на разбор кода и на замеры номеров ошибок щупами (EADDRINUSE 48 на
+ *       занятом имени, EINVAL 22 на повторной привязке), и так это и записано в
+ *       `src/net/backend/AUDIT-FINDINGS.md`
+ *
+ */
+TEST_F(IoFixture, IoUnixClientNameCollisionTest){
+	// Путь к файлу сокета сервера
+	const std::string target = ::uds("awh-collide.sock");
+	// Путь к первому временному имени, какое подберёт клиент
+	const std::string squatted = ::uds("cid1_awh-collide.sock");
+	// Заранее сносим оставшееся от прошлых прогонов
+	::unlink(target.c_str());
+	::unlink(squatted.c_str());
+	::unlink(::uds("cid2_awh-collide.sock").c_str());
+	// Занимаем первое временное имя обычным сокетом системы
+	const int32_t squatter = ::socket(AF_UNIX, SOCK_DGRAM, 0);
+	// Проверяем, что сокет занимающего создан
+	ASSERT_NE(squatter, -1);
+	// Объект адреса занимаемого имени
+	struct sockaddr_un occupied;
+	// Заполняем объект адреса нулями
+	::memset(&occupied, 0, sizeof(occupied));
+	// Устанавливаем семейство адреса
+	occupied.sun_family = AF_UNIX;
+	// Копируем занимаемое имя
+	::strncpy(occupied.sun_path, squatted.c_str(), (sizeof(occupied.sun_path) - 1));
+	// Занимаем имя привязкой
+	ASSERT_EQ(::bind(squatter, reinterpret_cast <struct sockaddr *> (&occupied), sizeof(occupied)), 0) << "имя занять не удалось: " << ::strerror(errno);
+	// Добавляем новое событие клиента дейтаграммного UNIX-домена
+	awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+	// Проверяем корректность создания события
+	ASSERT_GT(cid, 0);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем адрес сервера назначения
+	ASSERT_TRUE(this->_io->setTarget(cid, target));
+	/**
+	 * Заведение узла обязано пройти: занято лишь ПЕРВОЕ имя, а имён у подбора много
+	 *
+	 * @note Прежде отказ привязки уводил подбор в бесконечное вращение по всякой
+	 *       причине, кроме занятости; занятость же обходилась сносом чужого файла
+	 */
+	ASSERT_TRUE(this->_io->commit(cid));
+	// Объект сведений о занятом файле
+	struct stat info;
+	// Заполняем объект сведений нулями
+	::memset(&info, 0, sizeof(info));
+	// Чужое имя обязано пережить заведение узла
+	EXPECT_EQ(::stat(squatted.c_str(), &info), 0) << "движок снёс чужой файл сокета: " << squatted;
+	// Занимающий обязан остаться привязанным к своему имени
+	struct sockaddr_un current;
+	// Заполняем объект адреса нулями
+	::memset(&current, 0, sizeof(current));
+	// Размер объекта адреса
+	socklen_t length = sizeof(current);
+	// Спрашиваем у ядра имя, к которому привязан занимающий
+	EXPECT_EQ(::getsockname(squatter, reinterpret_cast <struct sockaddr *> (&current), &length), 0);
+	// Имя занимающего обязано остаться прежним
+	EXPECT_STREQ(current.sun_path, squatted.c_str());
+	// Останавливаем работу движка
+	ASSERT_TRUE(this->_io->deinitialize());
+	// Закрываем сокет занимающего
+	::close(squatter);
+	// Сносим за собой всё созданное
+	::unlink(squatted.c_str());
+	::unlink(::uds("cid2_awh-collide.sock").c_str());
+	::unlink(target.c_str());
+}
+#endif // !(_WIN32 || _WIN64)
+#endif // !(_WIN32 || _WIN64)
 
 /**
  * @brief Тест приёма нескольких подключений одним UNIX-доменным сервером
@@ -19495,6 +20230,304 @@ TEST_F(IoFixture, IoOriginKeyedRoutingTest){
  *          ключами: по его достижении новые сессии не создаются
  *
  */
+/**
+ * @brief Тест отложенной отправки у сессии-источника
+ *
+ * @details Отправка у движка идёт двумя путями. Обычный - отдать данные ядру сразу; когда
+ *          ядро отвечает отказом по переполнению, данные копятся в очереди узла и
+ *          дописываются позже, по готовности к записи (`io::write`). Перепись показала,
+ *          что у сессий-источников второй путь не входился НИ РАЗУ: обмен по петле
+ *          датаграммами ядру не переполняется, и соседние проверки сессий всегда уходили
+ *          первым путём.
+ *
+ *          Путь этот не пустяковый: ровно такого вида дефект уже найден у канального узла
+ *          (отдача по каналу свыше 65536 октетов встаёт намертво, потому что у отдающего
+ *          конца нет записи учёта, и родная отправка недостижима). Тот же вопрос обязан
+ *          быть задан и сессиям.
+ *
+ *          Опыт ставится так: буфер отправки сервера ужимается до предела, а сессия
+ *          отвечает пачкой датаграмм разом. Утверждается, что клиент получает ИХ ВСЕ:
+ *          потеря на отложенном пути выглядела бы приходом части, и утверждение «пришло
+ *          хоть что-то» её бы пропустило
+ *
+ * @note Отброс датаграммы переполненным буфером - обычное дело для UDP, и потому порог
+ *       взят не строгим равенством, а долей: доказывается работа отложенного пути, а не
+ *       надёжность датаграмм, какой у них нет вовсе
+ *
+ */
+TEST_F(IoFixture, IoOriginDeferredWriteTest){
+	// Количество созданных сессий и принятых клиентом ответов
+	size_t sessions = 0, answers = 0;
+	// Идентификатор события созданной сессии
+	awh::event::id_t session = 0;
+	// Количество датаграмм в пачке ответа
+	const size_t burst = 64;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем событие сервера UDP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что событие сервера создано
+	ASSERT_GT(server, 0u);
+	// Добавляем событие клиента UDP
+	const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что событие клиента создано
+	ASSERT_GT(client, 0u);
+	// Устанавливаем порт события сервера и порт назначения события клиента
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	ASSERT_TRUE(this->_io->setTargetPort(client, port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова определения сессии: ключом служат первые четыре октета
+	this->_io->on(server, static_cast <awh::engine::callback::origin_t> ([](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size, awh::net::origin_key_t & key
+	) noexcept -> bool {
+		// Если датаграмма короче ключа сессии
+		if(size < 4)
+			// Выводим отрицательный результат - датаграмма посторонняя
+			return false;
+		// Формируем ключ сессии из первых октетов датаграммы
+		key = awh::net::origin_key_t(data, 4);
+		// Выводим положительный результат
+		return true;
+	}));
+	// Устанавливаем функцию обратного вызова на создание сессии
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&sessions, &session, io = this->_io.get()](
+		[[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t oid
+	) noexcept -> void {
+		// Увеличиваем количество созданных сессий
+		sessions++;
+		// Запоминаем идентификатор события созданной сессии
+		session = oid;
+		// Устанавливаем функцию обратного вызова на чтение из сессии
+		io->on(oid, [io](const awh::event::id_t sid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Тело одного ответа: узнаваемое и заведомо крупнее ужатого буфера в пачке
+			std::string body("KEY0");
+			// Наполняем тело ответа
+			body.append(512, 'Z');
+			/**
+			 * Отвечаем пачкой датаграмм разом, не давая обороту цикла
+			 *
+			 * @note В этом и опыт: ужатый буфер отправки принимает лишь первые, а
+			 *       остальные обязаны лечь в очередь узла и уйти отложенным путём
+			 */
+			for(size_t i = 0; i < burst; i++)
+				// Выполняем отправку очередного ответа
+				(void) io->send(sid, body.data(), body.size());
+		});
+	}));
+	// Устанавливаем функцию обратного вызова на чтение ответов клиентом
+	this->_io->on(client, [&answers]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+		// Увеличиваем количество принятых ответов
+		answers++;
+	});
+	// Устанавливаем опции события клиента
+	ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события клиента
+	ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+	// Устанавливаем адрес назначения события клиента
+	ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	/**
+	 * Ужимаем буфер отправки сервера ПОСЛЕ фиксации
+	 *
+	 * @warning Измеренный договор: размер буфера ставится самому сокету, а сокет
+	 *          заводится фиксацией настроек - до неё дескриптора нет вовсе, и вызов
+	 *          отвечает отказом. Порядок здесь обратный опциям и адресу, какие ставятся
+	 *          до фиксации; первая редакция проверки на этом и отказала
+	 *
+	 * @note Это и заводит отложенный путь: пачка ответов в ужатый буфер разом не входит,
+	 *       и ядро отвечает отказом по переполнению
+	 */
+	ASSERT_TRUE(this->_io->setBufferSize(server, awh::event::action_t::WRITE, 2048));
+	// Выполняем запуск события сервера
+	ASSERT_TRUE(this->_io->launch(server));
+	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	ASSERT_TRUE(this->_io->commit(client));
+	ASSERT_TRUE(this->_io->connect(client));
+	ASSERT_TRUE(this->_io->launch(client));
+	// Выполняем отправку запроса, заводящего сессию
+	(void) this->_io->send(client, "KEY0request", 11);
+	/**
+	 * Крутим цикл, покуда пачка не придёт целиком либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((answers < burst) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Сессия обязана быть заведена
+	ASSERT_EQ(sessions, static_cast <size_t> (1)) << "сессия-источник не заведена";
+	ASSERT_GT(session, 0u);
+	/**
+	 * Пачка обязана дойти хотя бы наполовину
+	 *
+	 * @note Порог долей, а не равенством: отброс переполненным буфером у UDP законен.
+	 *       Незаконно молчание отложенного пути - при нём пришли бы лишь те немногие,
+	 *       что вместились в ужатый буфер разом
+	 */
+	ASSERT_GT(answers, (burst / 2)) << "принято ответов " << answers << " из " << burst
+	 << ": отложенная отправка у сессии-источника не работает";
+	// Уничтожаем заведённые события
+	this->_io->destroy(client);
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест вытягивающей модели у сессии-источника
+ *
+ * @details Отдача данных бывает двух видов: потребитель отдаёт готовый буфер, либо движок
+ *          САМ спрашивает у него очередную долю по мере опустошения очереди. Второй вид -
+ *          вытягивание - у сессий-источников не входился ни разу.
+ *
+ *          Место, где движок спрашивает источник, выбрано не случайно и записано в самом
+ *          движке: он спрашивает ПО ОПУСТОШЕНИИ очереди, а не раньше, - иначе данные
+ *          копились бы впрок, а весь смысл вытягивания в обратном. Оттого проверка и
+ *          утверждает ЧИСЛО обращений к источнику: одно обращение означало бы, что
+ *          продолжение вытягивания у сессии не случилось вовсе, и первая же доля ушла бы
+ *          как обычная отправка.
+ *
+ * @note У канального узла этот же путь оказался недостижим по дефекту учёта (аудит 111),
+ *       и потому вопрос задаётся каждому узлу порознь, а не решается по одному
+ *
+ */
+TEST_F(IoFixture, IoOriginDataSourcePullTest){
+	// Количество созданных сессий и принятых клиентом ответов
+	size_t sessions = 0, answers = 0;
+	// Число обращений движка к источнику и число отданных долей
+	size_t requests = 0, parts = 0;
+	// Идентификатор события созданной сессии
+	awh::event::id_t session = 0;
+	// Количество долей, отдаваемых источником
+	const size_t total = 16;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем событие сервера UDP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что событие сервера создано
+	ASSERT_GT(server, 0u);
+	// Добавляем событие клиента UDP
+	const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что событие клиента создано
+	ASSERT_GT(client, 0u);
+	// Устанавливаем порт события сервера и порт назначения события клиента
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	ASSERT_TRUE(this->_io->setTargetPort(client, port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова определения сессии: ключом служат первые четыре октета
+	this->_io->on(server, static_cast <awh::engine::callback::origin_t> ([](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size, awh::net::origin_key_t & key
+	) noexcept -> bool {
+		// Если датаграмма короче ключа сессии
+		if(size < 4)
+			// Выводим отрицательный результат - датаграмма посторонняя
+			return false;
+		// Формируем ключ сессии из первых октетов датаграммы
+		key = awh::net::origin_key_t(data, 4);
+		// Выводим положительный результат
+		return true;
+	}));
+	// Тело одной отдаваемой доли: узнаваемое и одинаковой длины
+	static const std::string body("KEY0-PULLED-DATAGRAM");
+	// Устанавливаем функцию обратного вызова на создание сессии
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&sessions, &session, &requests, &parts, io = this->_io.get()](
+		[[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t oid
+	) noexcept -> void {
+		// Увеличиваем количество созданных сессий
+		sessions++;
+		// Запоминаем идентификатор события созданной сессии
+		session = oid;
+		/**
+		 * Устанавливаем источник данных сессии
+		 *
+		 * @note Источник ставится в отклике приёма: сессия заводится движком сама, и
+		 *       раньше этого мига её идентификатора у проверки нет
+		 */
+		io->on(oid, static_cast <awh::engine::callback::source_t> ([&requests, &parts](
+			[[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size
+		) noexcept -> bool {
+			// Учитываем обращение движка к источнику
+			requests++;
+			// Если отдавать больше нечего
+			if(parts >= total){
+				// Сообщаем движку об исчерпании источника
+				size = 0;
+				// Выводим признак исчерпания источника
+				return false;
+			}
+			// Учитываем отданную долю
+			parts++;
+			// Отдаём движку указатель прямо в своё тело, без копирования
+			(* buffer) = reinterpret_cast <const uint8_t *> (body.data());
+			// Сообщаем движку размер отданной доли
+			size = body.size();
+			// Выводим признак наличия данных в источнике
+			return true;
+		}));
+		// Заводим отправку вытягивающей моделью
+		(void) io->send(oid, nullptr, 0);
+	}));
+	// Устанавливаем функцию обратного вызова на чтение ответов клиентом
+	this->_io->on(client, [&answers]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+		// Увеличиваем количество принятых ответов
+		answers++;
+	});
+	// Устанавливаем опции события клиента
+	ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Устанавливаем адрес события клиента и адрес назначения
+	ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+	ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+	// Выполняем фиксацию настроек и запуск события сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->launch(server));
+	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	ASSERT_TRUE(this->_io->commit(client));
+	ASSERT_TRUE(this->_io->connect(client));
+	ASSERT_TRUE(this->_io->launch(client));
+	// Выполняем отправку запроса, заводящего сессию
+	(void) this->_io->send(client, "KEY0request", 11);
+	/**
+	 * Крутим цикл, покуда доли не придут либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((answers < total) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Сессия обязана быть заведена
+	ASSERT_EQ(sessions, static_cast <size_t> (1)) << "сессия-источник не заведена";
+	ASSERT_GT(session, 0u);
+	/**
+	 * Обращений к источнику обязано быть много
+	 *
+	 * @note Это и есть утверждение о продолжении вытягивания: одно обращение означало бы,
+	 *       что движок спросил источник единожды и умолк, а доли ушли бы не вытягиванием
+	 */
+	ASSERT_GT(requests, static_cast <size_t> (1)) << "движок обратился к источнику " << requests
+	 << " раз: продолжения вытягивания у сессии-источника не случилось";
+	// Доли обязаны дойти до клиента хотя бы наполовину: отброс датаграмм законен
+	ASSERT_GT(answers, (total / 2)) << "принято долей " << answers << " из " << total
+	 << " при " << requests << " обращениях к источнику";
+	// Уничтожаем заведённые события
+	this->_io->destroy(client);
+	this->_io->destroy(server);
+}
+
 TEST_F(IoFixture, IoOriginLimitTest){
 	// Флаг остановки теста
 	bool stop = false;
@@ -26175,3 +27208,170 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	// Сворачиваем движок
 	ASSERT_TRUE(this->_io->deinitialize());
 }
+
+/**
+ * Проверка снятия снимка события и поднятия события из снимка
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Проверка передачи живого подключения снимком
+	 *
+	 * @details Пара `snapshot`/`restore` заводится ради переноса описателя через
+	 *          границу процесса, и набор кластера гоняет её именно так. Здесь она
+	 *          гоняется В ОДНОМ процессе, и это законно: система принимает своим
+	 *          получателем и сам снимающий процесс, а движку разницы нет вовсе -
+	 *          получателя он спрашивает у канала-переносчика и работает с тем
+	 *          номером, какой система назвала
+	 *
+	 * @warning Снимок оставляет исходное событие ХОЛОДНЫМ: описатель у него жив, а
+	 *          подписок, привязки к порту и состояния больше нет. Оттого обмен после
+	 *          снятия ведётся ТОЛЬКО поднятым событием
+	 */
+	TEST_F(IoFixture, IoSnapshotRestoreTest){
+		// Принятое сервером подключение
+		awh::event::id_t peer = 0;
+		// Принятое сервером содержимое
+		std::string received;
+		// Выполняем генерацию порта
+		const uint16_t port = ::port();
+		// Инициализируем асинхронный движок ввода-вывода
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим событие сервера TCP
+		const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		ASSERT_GT(server, 0);
+		// Устанавливаем опции события сервера
+		ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+		// Устанавливаем адрес и порт события сервера
+		ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setSourcePort(server, port));
+		// Устанавливаем функцию обратного вызова на подключение нового клиента
+		this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([this, &peer, &received]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Запоминаем принятое подключение
+			peer = cid;
+			// Устанавливаем функцию обратного вызова на чтение данных принятого подключения
+			this->_io->on(cid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+				// Дописываем принятое к уже полученному
+				received.append(reinterpret_cast <const char *> (buffer), size);
+			});
+		}));
+		// Фиксируем, переводим в прослушивание и запускаем событие сервера
+		ASSERT_TRUE(this->_io->commit(server));
+		ASSERT_TRUE(this->_io->listen(server, 10));
+		ASSERT_TRUE(this->_io->launch(server));
+		// Заводим событие клиента, чей описатель и будет передан снимком
+		const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		ASSERT_GT(client, 0);
+		// Выставляем настройки события клиента
+		ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+		ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTargetPort(client, port));
+		// Фиксируем, подключаем и запускаем событие клиента
+		ASSERT_TRUE(this->_io->commit(client));
+		ASSERT_TRUE(this->_io->connect(client));
+		ASSERT_TRUE(this->_io->launch(client));
+		/**
+		 * Крутим цикл, покуда сервер не примет подключение
+		 */
+		{
+			// Запоминаем миг начала ожидания
+			const auto start = std::chrono::steady_clock::now();
+			// Выполняем обороты цикла событий
+			while((peer == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+				// Выполняем оборот цикла событий
+				this->_io->poll(10);
+		}
+		// Подключение обязано быть принято: без него передавать нечего
+		ASSERT_GT(peer, 0) << "сервер не принял подключение, передавать нечего";
+		// Создаём пару обмена именованным каналом - переносчика снимка
+		const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+		/**
+		 * Проводим оба конца канала обычным путём
+		 */
+		for(uint8_t i = 0; i < 2; i++){
+			// Проверяем, что идентификатор события создан
+			ASSERT_GT(channels[i], 0);
+			// Фиксируем и запускаем конец канала
+			ASSERT_TRUE(this->_io->commit(channels[i]));
+			ASSERT_TRUE(this->_io->launch(channels[i]));
+		}
+		// Буфер снимка
+		std::vector <uint8_t> snapshot;
+		/**
+		 * Негодный переносчик обязан отвечать отказом
+		 *
+		 * @note Спрашивается это ДО снятия настоящего снимка: снятие оставляет
+		 *       исходное событие холодным, и после него отказ был бы неотличим от
+		 *       отказа по разобранному событию
+		 */
+		ASSERT_FALSE(this->_io->snapshot(client, server, snapshot)) << "снимок снят через переносчик, каким система описателей не носит";
+		// Снимаем снимок живого подключения через канал-переносчик
+		ASSERT_TRUE(this->_io->snapshot(client, channels[1], snapshot)) << "снимок живого подключения не снят";
+		// Снимок обязан нести содержимое
+		ASSERT_FALSE(snapshot.empty()) << "снимок снят пустым";
+		// Заводим событие того же устройства, куда снимок и будет поднят
+		const awh::event::id_t revived = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+		ASSERT_GT(revived, 0);
+		/**
+		 * Задаём поднимаемому событию адрес встречной стороны
+		 *
+		 * @note Измеренный договор: узлу клиента адрес обязателен, и фиксация без
+		 *       него отвечает отказом `Invalid argument` - подъём из снимка идёт
+		 *       обычной фиксацией и наследует её требования целиком. К установке
+		 *       связи адрес отношения не имеет: подключение уже связано, адрес лишь
+		 *       описывает встречную сторону
+		 */
+		ASSERT_TRUE(this->_io->setTarget(revived, "127.0.0.1"));
+		ASSERT_TRUE(this->_io->setTargetPort(revived, port));
+		/**
+		 * Испорченный снимок принят быть не должен
+		 *
+		 * @note Утверждение это не о размере, а о разборчивости: приняв обрезанный
+		 *       снимок, движок поднял бы описатель по мусору в памяти
+		 */
+		ASSERT_FALSE(this->_io->restore(revived, snapshot.data(), snapshot.size() - 1)) << "принят обрезанный снимок";
+		// Незаведённому событию снимок доставаться не должен
+		ASSERT_FALSE(this->_io->restore(static_cast <awh::event::id_t> (0xFFFFFFF0), snapshot.data(), snapshot.size())) << "снимок достался незаведённому событию";
+		/**
+		 * Событию с живым описателем снимок доставаться не должен
+		 *
+		 * @note Подмена описателя у работающего события оставила бы прежний висеть
+		 */
+		ASSERT_FALSE(this->_io->restore(server, snapshot.data(), snapshot.size())) << "снимок достался событию с живым описателем";
+		// Поднимаем событие из снимка
+		ASSERT_TRUE(this->_io->restore(revived, snapshot.data(), snapshot.size())) << "событие из снимка не поднято";
+		// Запускаем поднятое событие
+		ASSERT_TRUE(this->_io->launch(revived));
+		// Содержимое, отправляемое поднятым событием
+		const std::string body = "SNAPSHOT-RESTORE-PAYLOAD";
+		// Выполняем отправку содержимого поднятым событием
+		ASSERT_GT(this->_io->send(revived, body.data(), body.size()), static_cast <size_t> (0)) << "поднятое событие не приняло данные к отправке";
+		/**
+		 * Крутим цикл, покуда содержимое не придёт целиком
+		 */
+		{
+			// Запоминаем миг начала ожидания
+			const auto start = std::chrono::steady_clock::now();
+			// Выполняем обороты цикла событий
+			while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+				// Выполняем оборот цикла событий
+				this->_io->poll(10);
+		}
+		/**
+		 * Содержимое обязано прийти тем же самым подключением
+		 *
+		 * @note Это и делает проверку доказательной: пришло оно принятому серверному
+		 *       подключению, заведённому ДО снятия снимка, - значит поднятое событие
+		 *       работает тем же самым описателем, а не новым сокетом
+		 */
+		ASSERT_EQ(received, body) << "принято серверной стороной: " << received;
+		// Уничтожаем заведённые события
+		this->_io->destroy(revived);
+		this->_io->destroy(client);
+		this->_io->destroy(channels[0]);
+		this->_io->destroy(channels[1]);
+		this->_io->destroy(server);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif

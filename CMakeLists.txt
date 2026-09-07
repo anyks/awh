@@ -1177,6 +1177,11 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/codec/cef/writer.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/cef/document.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/cef/dictionary.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/syslog/common.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/syslog/reader.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/syslog/writer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/syslog/document.cpp"
+    "${CMAKE_SOURCE_DIR}/src/codec/syslog/dictionary.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/common.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/encoding.cpp"
     "${CMAKE_SOURCE_DIR}/src/codec/ini/reader.cpp"
@@ -1749,6 +1754,15 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CODEC_APP_CEF_WRITER_NAME codec-cef-writer)
     # Указываем что нужно собрать приложение работы с контейнером CEF
     option(CMAKE_BUILD_CODEC_CEF_APP_SAMPLE "Build CEF codec app sample" ON)
+
+    # Устанавливаем имя приложения потокового чтения сообщений системного журнала
+    SET(CODEC_APP_SYSLOG_READER_NAME codec-syslog-reader)
+    # Устанавливаем имя приложения работы с деревом события системного журнала
+    SET(CODEC_APP_SYSLOG_DOCUMENT_NAME codec-syslog-document)
+    # Устанавливаем имя приложения сборки сообщения системного журнала
+    SET(CODEC_APP_SYSLOG_WRITER_NAME codec-syslog-writer)
+    # Указываем что нужно собрать приложение работы с контейнером SysLog
+    option(CMAKE_BUILD_CODEC_SYSLOG_APP_SAMPLE "Build SysLog codec app sample" ON)
 
     # Устанавливаем имя приложения потокового чтения текста документа JSON
     SET(CODEC_APP_JSON_READER_NAME codec-json-reader)
@@ -2576,6 +2590,22 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample CEF Codec: No\n")
     endif (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с контейнером SysLog
+    if (${CMAKE_BUILD_CODEC_SYSLOG_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SysLog Codec: Yes\n")
+        # Выполняем создание приложения потокового чтения записей
+        add_sample(${CODEC_APP_SYSLOG_READER_NAME} sample/codec/syslog-reader.cpp codec)
+        # Выполняем создание приложения работы с деревом события
+        add_sample(${CODEC_APP_SYSLOG_DOCUMENT_NAME} sample/codec/syslog-document.cpp codec)
+        # Выполняем создание приложения сборки записи
+        add_sample(${CODEC_APP_SYSLOG_WRITER_NAME} sample/codec/syslog-writer.cpp codec)
+    # Если не нужно собирать семплы для работы с контейнером SysLog
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SysLog Codec: No\n")
+    endif (${CMAKE_BUILD_CODEC_SYSLOG_APP_SAMPLE})
 
     if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
@@ -3718,6 +3748,31 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером SysLog
+        if (${CMAKE_BUILD_CODEC_SYSLOG_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения записей
+            target_link_libraries(
+                ${CODEC_APP_SYSLOG_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом события
+            target_link_libraries(
+                ${CODEC_APP_SYSLOG_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения сборки записи
+            target_link_libraries(
+                ${CODEC_APP_SYSLOG_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_SYSLOG_APP_SAMPLE})
 
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
             # Выполняем сборку приложения потокового чтения текста документа
@@ -4994,6 +5049,31 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CODEC_CEF_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с контейнером SysLog
+        if (${CMAKE_BUILD_CODEC_SYSLOG_APP_SAMPLE})
+            # Выполняем сборку приложения потокового чтения записей
+            target_link_libraries(
+                ${CODEC_APP_SYSLOG_READER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с деревом события
+            target_link_libraries(
+                ${CODEC_APP_SYSLOG_DOCUMENT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения сборки записи
+            target_link_libraries(
+                ${CODEC_APP_SYSLOG_WRITER_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_CODEC_SYSLOG_APP_SAMPLE})
 
         if (${CMAKE_BUILD_CODEC_JSON_APP_SAMPLE})
             # Выполняем сборку приложения потокового чтения текста документа

@@ -36,6 +36,7 @@
  * Стандартные заголовочные файлы
  */
 #include <vector>
+#include <type_traits>
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -122,6 +123,11 @@ namespace awh {
 						 * @note Значение `PLAIN` означает не запись без ограды всегда, а решение
 						 *       по содержимому: ограда ставится там, где без неё запись прочлась бы
 						 *       иначе - числом, признаком либо построением
+						 *
+						 * @warning Виды блочные `LITERAL` и `FOLDED` настройкою этой НЕ ЧТУТСЯ:
+						 *          настройка задаёт ОГРАДУ, а блок оградою не является - запись
+						 *          отходит к ограде двойной. Вид блочный назначается значению
+						 *          своему, а не записи целиком
 						 */
 						style_t quoting;
 						// Ширина отступа в пробелах, ноль не принимается
@@ -791,6 +797,63 @@ namespace awh {
 					 * \~
 					 */
 					bool value(const bool value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод записи знака
+					 *
+					 * @details Написание знака есть ТЕКСТ, а не число: вида знака у наречия YAML
+					 * нет вовсе, и числовое прочтение отдало бы `value('z')` числом 122 молча.
+					 * Правило то же, каким знак заводится владеющим значением
+					 *
+					 * @param value записываемый знак
+					 * @return      признак успешной записи значения
+					 *
+					 * \~english
+					 * @brief Method of the writing of a character
+					 * @param value character being written
+					 * @return sign of the successful writing of the value
+					 *
+					 * \~
+					 */
+					bool value(const char value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон вида записываемого целого числа
+					 * @tparam T вид записываемого целого числа
+					 *
+					 * \~english
+					 * @brief Template of the kind of the integer being written
+					 * @tparam T kind of the integer being written
+					 *
+					 * \~
+					 */
+					template <typename T, typename = typename enable_if <is_integral <T>::value>::type>
+					/**
+					 * \~russian
+					 * @brief Метод записи целого числа записи любой
+					 *
+					 * @details Приём этот отвечает за написания, ширины которым отведено менее
+					 * восьми байтов, - `short`, `int`, `long`, `size_t` и прочие. Без него запись
+					 * `value(1)` расходилась бы между целым со знаком, целым без знака и дробным
+					 * видами приведением равной силы, и сборка отвечала бы двусмысленностью:
+					 * годились ЛИШЬ `int64_t`, `uint64_t` и `double`. Правило то же, каким целое
+					 * число заводится владеющим значением
+					 *
+					 * @note Знаковость выбирает вид, которому число доводится: число без знака
+					 *       уходит через `uint64_t`, а со знаком через `int64_t`. Обход через
+					 *       один лишь `int64_t` обращал бы `4294967295u` в отрицательное
+					 *
+					 * @param value записываемое целое число
+					 * @return      признак успешной записи значения
+					 *
+					 * \~english
+					 * @brief Method of the writing of an integer of any record
+					 * @param value integer being written
+					 * @return sign of the successful writing of the value
+					 *
+					 * \~
+					 */
+					bool value(const T value) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи строкового значения

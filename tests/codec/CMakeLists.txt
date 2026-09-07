@@ -80,6 +80,11 @@ if (${GTest_FOUND})
             cef/writer.cpp
             cef/document.cpp
             cef/dictionary.cpp
+            syslog/common.cpp
+            syslog/reader.cpp
+            syslog/writer.cpp
+            syslog/document.cpp
+            syslog/dictionary.cpp
             ini/common.cpp
             ini/encoding.cpp
             ini/reader.cpp

@@ -757,6 +757,8 @@ DEPENDS=""
 case "$CODEC_DIR" in
 	# Кодек CEF стоит на дереве ABC, а проверку адресов сети ведёт «net_addr_t»
 	cef) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp) $ROOT/src/net/addr.cpp $ROOT/src/net/net.cpp" ;;
+	# Кодек SysLog стоит на дереве ABC; сетей он не разбирает вовсе, и «net_addr_t» ему не нужен
+	syslog) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp)" ;;
 	##
 	# Мост стоит на ВСЕХ кодеках разом
 	#
@@ -831,7 +833,7 @@ ZLIB="${ZLIB:--lz}"
 # шифрованием независимо от того, чьим ворошителем он собран, - а мост стоит на ABC
 # осью своей и тянет его целиком
 DEPEND=""
-if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "bridge" ]; then
+if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "syslog" ] || [ "$CODEC_DIR" = "bridge" ]; then
 	##
 	# Собираем каталоги сторонних заголовков ПОИМЁННО
 	#

@@ -39,6 +39,7 @@
 #include <vector>
 #include <cstdint>
 #include <string_view>
+#include <type_traits>
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -574,6 +575,42 @@ namespace awh {
 					 * \~
 					 */
 					bool value(const uint64_t value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Шаблон записи целого числа записи любой
+					 *
+					 * @details Приём этот отвечает за написания, точного вида не несущие, -
+					 * `value(7)`, `value(size_t(9))`, `value(short(3))`. Без него запись
+					 * расходилась бы между целым со знаком, целым без знака и дробным видами
+					 * приведением РАВНОЙ силы, и сборка отвечала бы двусмысленностью:
+					 * годились ЛИШЬ `int64_t`, `uint64_t` и `double` дословно
+					 *
+					 * @note Знаковость выбирает вид, которому число доводится: без знака через
+					 *       `uint64_t`, со знаком через `int64_t`. Обход через один лишь
+					 *       `int64_t` обращал бы `4294967295u` в отрицательное
+					 *
+					 * @warning Ограда `enable_if` обязательна: без неё шаблон перехватывал бы
+					 *          и написание дробное - `value(1.5f)` доводится до `float`
+					 *          точным совпадением, а до `double` приведением
+					 *
+					 * @warning Знак `char` намеренно НЕ порождается: он есть вид целочисленный,
+					 *          и `value('z')` записал бы число 122 молча. Для знака есть запись
+					 *          строкою. Кодек CSV держится того же правила
+					 *
+					 * @tparam T вид записываемого целого числа
+					 * @param number записываемое целое число
+					 * @return       признак успешности записи
+					 *
+					 * \~english
+					 * @brief Template of the writing of an integer of any record
+					 * @tparam T kind of the integer being written
+					 * @param number integer being written
+					 * @return sign of the success of the writing
+					 *
+					 * \~
+					 */
+					template <typename T, typename = typename std::enable_if <std::is_integral <T>::value>::type>
+					bool value(const T number) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи числа с плавающей запятой

@@ -35,6 +35,10 @@ if (${CMAKE_BUILD_${BENCHMARK_NAME}_BENCHMARKS})
             cef/reader.cpp
             cef/writer.cpp
             cef/document.cpp
+            syslog/syslog.cpp
+            syslog/reader.cpp
+            syslog/writer.cpp
+            syslog/document.cpp
         )
     # Если не нужно собрать бенчмарки для контейнера CEF
     else()

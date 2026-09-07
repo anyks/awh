@@ -23,6 +23,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/syslog/common.hpp>
+#include <codec/syslog/dictionary.hpp>
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
@@ -106,66 +107,19 @@ const char * awh::codec::syslog::message(const error_t error) noexcept {
  * @return         имя источника сообщения
  */
 const char * awh::codec::syslog::name(const facility_t facility) noexcept {
+	// Выполняем розыск источника сообщения в словаре
+	const entry_t * entry = facilities::at(static_cast <uint8_t> (facility));
 	/**
-	 * Определяем источник сообщения
+	 * Выводим краткое имя источника сообщения
 	 *
-	 * @note Имена взяты из RFC 5424, таблица 1, и совпадают с принятыми у служб
-	 *       журналов: по ним настраиваются правила отбора, и расхождение сделало бы
-	 *       правила несовместимыми
+	 * @note Имена держатся словарём и ТОЛЬКО им: держать их вторым списком тут
+	 *       значило бы завести две таблицы, расходящиеся молча при правке одной.
+	 *       Запись словаря строится из строкового литерала, и знак конца строки у
+	 *       неё есть всегда - выдача указателя на его начало безопасна
 	 */
-	switch(static_cast <uint8_t> (facility)){
-		// Если сообщение составлено ядром системы
-		case static_cast <uint8_t> (facility_t::KERNEL): return "kern";
-		// Если сообщение составлено на уровне пользователя
-		case static_cast <uint8_t> (facility_t::USER): return "user";
-		// Если сообщение составлено почтовой службой
-		case static_cast <uint8_t> (facility_t::MAIL): return "mail";
-		// Если сообщение составлено службой системы
-		case static_cast <uint8_t> (facility_t::DAEMON): return "daemon";
-		// Если сообщение составлено службой опознания
-		case static_cast <uint8_t> (facility_t::AUTH): return "auth";
-		// Если сообщение составлено самой службой журнала
-		case static_cast <uint8_t> (facility_t::SYSLOG): return "syslog";
-		// Если сообщение составлено службой печати
-		case static_cast <uint8_t> (facility_t::PRINTER): return "lpr";
-		// Если сообщение составлено службой новостей
-		case static_cast <uint8_t> (facility_t::NEWS): return "news";
-		// Если сообщение составлено службой UUCP
-		case static_cast <uint8_t> (facility_t::UUCP): return "uucp";
-		// Если сообщение составлено службой часов
-		case static_cast <uint8_t> (facility_t::CLOCK): return "cron";
-		// Если сообщение составлено службой опознания, набор второй
-		case static_cast <uint8_t> (facility_t::SECURITY): return "authpriv";
-		// Если сообщение составлено службой передачи файлов
-		case static_cast <uint8_t> (facility_t::FTP): return "ftp";
-		// Если сообщение составлено службой сетевого времени
-		case static_cast <uint8_t> (facility_t::NTP): return "ntp";
-		// Если сообщение есть запись наблюдения за журналом
-		case static_cast <uint8_t> (facility_t::AUDIT): return "audit";
-		// Если сообщение есть тревога наблюдения за журналом
-		case static_cast <uint8_t> (facility_t::ALERT): return "alert";
-		// Если сообщение составлено службой часов, набор второй
-		case static_cast <uint8_t> (facility_t::CLOCK2): return "cron2";
-		// Если сообщение отнесено к местному употреблению, набор нулевой
-		case static_cast <uint8_t> (facility_t::LOCAL0): return "local0";
-		// Если сообщение отнесено к местному употреблению, набор первый
-		case static_cast <uint8_t> (facility_t::LOCAL1): return "local1";
-		// Если сообщение отнесено к местному употреблению, набор второй
-		case static_cast <uint8_t> (facility_t::LOCAL2): return "local2";
-		// Если сообщение отнесено к местному употреблению, набор третий
-		case static_cast <uint8_t> (facility_t::LOCAL3): return "local3";
-		// Если сообщение отнесено к местному употреблению, набор четвёртый
-		case static_cast <uint8_t> (facility_t::LOCAL4): return "local4";
-		// Если сообщение отнесено к местному употреблению, набор пятый
-		case static_cast <uint8_t> (facility_t::LOCAL5): return "local5";
-		// Если сообщение отнесено к местному употреблению, набор шестой
-		case static_cast <uint8_t> (facility_t::LOCAL6): return "local6";
-		// Если сообщение отнесено к местному употреблению, набор седьмой
-		case static_cast <uint8_t> (facility_t::LOCAL7): return "local7";
-	}
-	// Выводим пустую строку для значения, за предел таблицы выходящего
-	return "";
+	return ((entry != nullptr) ? entry->name.data() : "");
 }
+
 /**
  * @brief Метод получения имени степени важности сообщения
  *
@@ -173,27 +127,8 @@ const char * awh::codec::syslog::name(const facility_t facility) noexcept {
  * @return         имя степени важности сообщения
  */
 const char * awh::codec::syslog::name(const severity_t severity) noexcept {
-	/**
-	 * Определяем степень важности сообщения
-	 */
-	switch(static_cast <uint8_t> (severity)){
-		// Если система непригодна к работе
-		case static_cast <uint8_t> (severity_t::EMERGENCY): return "emerg";
-		// Если вмешательство требуется немедленно
-		case static_cast <uint8_t> (severity_t::ALERT): return "alert";
-		// Если состояние тяжёлое
-		case static_cast <uint8_t> (severity_t::CRITICAL): return "crit";
-		// Если наступило условие отказа
-		case static_cast <uint8_t> (severity_t::ERROR): return "err";
-		// Если наступило условие предостережения
-		case static_cast <uint8_t> (severity_t::WARNING): return "warning";
-		// Если состояние обычное, но внимания достойное
-		case static_cast <uint8_t> (severity_t::NOTICE): return "notice";
-		// Если сообщение осведомительное
-		case static_cast <uint8_t> (severity_t::INFO): return "info";
-		// Если сообщение отладочное
-		case static_cast <uint8_t> (severity_t::DEBUG): return "debug";
-	}
-	// Выводим пустую строку для значения, за предел таблицы выходящего
-	return "";
+	// Выполняем розыск степени важности сообщения в словаре
+	const entry_t * entry = severities::at(static_cast <uint8_t> (severity));
+	// Выводим краткое имя степени важности сообщения
+	return ((entry != nullptr) ? entry->name.data() : "");
 }

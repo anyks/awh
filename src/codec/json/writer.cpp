@@ -749,6 +749,49 @@ bool awh::codec::json::Writer::value(const string & value) noexcept {
 	return true;
 }
 /**
+ * @brief Шаблон записи целого числа записи любой
+ *
+ * @tparam T     вид записываемого целого числа
+ * @param number записываемое целое число
+ * @return       признак успешности записи
+ *
+ */
+template <typename T, typename>
+bool awh::codec::json::Writer::value(const T number) noexcept {
+	/**
+	 * Выполняем запись числа видом, знаковости его отвечающим
+	 *
+	 * @note Ветвь решается на СБОРКЕ, а не в работе: `is_signed` есть постоянная
+	 *       времени сборки, и лишней ветви в порождённом коде не остаётся
+	 */
+	if(std::is_signed <T>::value)
+		// Выполняем запись целого числа со знаком
+		return this->value(static_cast <int64_t> (number));
+	// Выполняем запись целого числа без знака
+	return this->value(static_cast <uint64_t> (number));
+}
+/**
+ * Порождение ведётся видами ЯЗЫКА, а не разрядными обозначениями
+ *
+ * @warning Обозначения `int8_t`…`uint64_t` суть ПСЕВДОНИМЫ: у macOS ARM64 `uint64_t`
+ *          есть `unsigned long long`, а `size_t` — `unsigned long`, и перечень
+ *          разрядный оставлял бы `size_t` без порождения. Виды языка между собою не
+ *          совпадают никогда и одинаковы на всякой системе
+ *
+ * @note `bool` и `char` не порождаются намеренно: у `bool` есть свой приём точным
+ *       видом, а `char` записал бы знак числом молча
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <signed char, void> (const signed char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned char, void> (const unsigned char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <short, void> (const short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned short, void> (const unsigned short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <int, void> (const int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned int, void> (const unsigned int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <long, void> (const long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned long, void> (const unsigned long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <long long, void> (const long long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned long long, void> (const unsigned long long) noexcept;
+/**
  * @brief Метод записи целого числа
  *
  * @param value записываемое целое число

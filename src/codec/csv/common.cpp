@@ -202,7 +202,7 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		// Если разбираемая таблица не помещается в разрядность хранилища
 		case error_t::STORAGE_EXHAUSTED:
 			// Выводим описание кода ошибки
-			return "the table does not fit into the capacity of the storage";
+			return "the text does not fit the width of the parser storage";
 		// Если конец записи не отвечает договору при строгом разборе
 		case error_t::BARE_LINE_BREAK:
 			// Выводим описание кода ошибки

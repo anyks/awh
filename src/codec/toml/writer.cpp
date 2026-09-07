@@ -2563,17 +2563,31 @@ bool awh::codec::toml::Writer::number(const string_view key, const T value) noex
 }
 
 /**
- * Выполняем порождение метода записи пары с числовым значением для всех поддерживаемых типов
+ * Выполняем порождение приёма записи пары с числовым значением
+ *
+ * @warning Порождение целых видов ведётся видами ЯЗЫКА, а не видами заданной разрядности:
+ *          `size_t` у macOS arm64 есть `unsigned long`, а `uint64_t` есть `unsigned long
+ *          long` - виды это РАЗНЫЕ, и перечень разрядный оставлял `size_t` с `long` без
+ *          порождения вовсе. Замерено отказом связывания. У Linux же `int64_t` есть `long`,
+ *          и перечень, оба обозначения несущий, дал бы порождение двойное - перечень
+ *          разрядный ломается на ОБЕИХ системах, только по-разному
+ *
+ * @note Голый `char` порождению не подлежит намеренно: приём зовётся записью ЧИСЛА, и знак,
+ *       в него попавший, вышел бы числом 122 молча. Отказ сборки здесь честнее - для знака
+ *       есть запись текстом. Виды `signed char` и `unsigned char` порождаются: они берутся
+ *       числами осознанно
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <bool> (const string_view, const bool) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <int8_t> (const string_view, const int8_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <uint8_t> (const string_view, const uint8_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <int16_t> (const string_view, const int16_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <uint16_t> (const string_view, const uint16_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <int32_t> (const string_view, const int32_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <uint32_t> (const string_view, const uint32_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <int64_t> (const string_view, const int64_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <uint64_t> (const string_view, const uint64_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <signed char> (const string_view, const signed char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned char> (const string_view, const unsigned char) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <short> (const string_view, const short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned short> (const string_view, const unsigned short) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <int> (const string_view, const int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned int> (const string_view, const unsigned int) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <long> (const string_view, const long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned long> (const string_view, const unsigned long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <long long> (const string_view, const long long) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <unsigned long long> (const string_view, const unsigned long long) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <float> (const string_view, const float) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::toml::Writer::number <double> (const string_view, const double) noexcept;
 
