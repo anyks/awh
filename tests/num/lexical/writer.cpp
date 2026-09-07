@@ -375,7 +375,7 @@ TEST_F(LexicalFixture, WriteInsufficientBufferTest){
 			// Проверяем что запись числа отвергнута
 			ASSERT_FALSE(static_cast <bool> (result)) << "value = " << value << ", size = " << size;
 			// Проверяем что причиной отказа указан недостаток места
-			ASSERT_EQ(result.error, error_t::INSUFFICIENT_BUFFER) << "value = " << value;
+			ASSERT_EQ(result.error, lexical::error_t::INSUFFICIENT_BUFFER) << "value = " << value;
 			/**
 			 * Выполняем перебор байтов за пределами отведённого места
 			 */
