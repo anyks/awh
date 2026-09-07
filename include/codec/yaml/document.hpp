@@ -36,6 +36,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+#include <type_traits>
 #include <vector>
 #include <unordered_map>
 
@@ -1054,6 +1055,31 @@ namespace awh {
 							 * \~
 							 */
 							bool value(double & result) const noexcept;
+						/**
+						 * \~russian
+						 * @brief Метод извлечения целого числа вида языка
+						 *
+						 * @tparam T    вид извлекаемого числа
+						 * @param result извлечённое число
+						 * @return       признак успешного извлечения числа
+						 *
+						 * @warning Приём этот заведён ради видов ЯЗЫКА (long, size_t и прочих), кои
+						 *          с видами РАЗРЯДНЫМИ не совпадают. У macOS int64_t есть long long,
+						 *          а у Linux - long; перечень одних разрядных видов негоден на обеих
+						 *          системах, только по-разному. Извлечение ведётся тождественным
+						 *          разрядным видом той же ширины и той же знаковости, потому потери
+						 *          разряда тут нет вовсе.
+						 *
+						 * \~english
+						 * @brief Method of the extraction of an integer of a language kind
+						 * @tparam T kind of the number being extracted
+						 * @param result extracted number
+						 * @return sign of the successful extraction of the number
+						 *
+						 * \~
+						 */
+						template <typename T, typename = typename ::std::enable_if <::std::is_integral <T>::value>::type>
+						bool value(T & result) const noexcept;
 							/**
 							 * \~russian
 							 * @brief Метод извлечения строкового значения

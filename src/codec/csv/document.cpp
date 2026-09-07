@@ -52,6 +52,50 @@ namespace {
 	 *
 	 */
 	constexpr size_t CHUNK = 0x10000;
+
+	/**
+	 * @brief Посредник приведения вида ЯЗЫКА к тождественному разрядному виду
+	 *
+	 * @details Общее место кодеков порождено разрядными обозначениями - `int8_t`…`uint64_t`, -
+	 * и телами располагает только по ним. Порождение же здесь ведётся видами ЯЗЫКА, ибо
+	 * лишь их перечень одинаков на всякой системе. Посредник этот и сводит одно с другим:
+	 * всякому виду языка он отвечает разрядным видом ТОЙ ЖЕ ширины и ТОЙ ЖЕ знаковости, а
+	 * такой вид есть то же самое представление, и перенос через него не теряет ни разряда
+	 *
+	 * @warning Обозначения `int8_t`…`uint64_t` суть ПСЕВДОНИМЫ, и какому виду языка они
+	 *          отвечают, решает система. У macOS ARM64 `int64_t` есть `long long`, у Linux
+	 *          x86-64 - `long`: перечень разрядный даёт на двух системах РАЗНЫЕ наборы
+	 *          видов, и потребитель, писавший `long long`, у Linux не связывался вовсе.
+	 *          Замерено 07.09.2026 составом библиотеки на обеих системах: сборка молчит,
+	 *          дефект виден только `nm` с `c++filt`
+	 *
+	 * @note Тела в общем месте для этого не требуется: посредник не порождает нового
+	 *       обращения, а ведёт вызов к уже порождённому. Общее место остаётся заботою
+	 *       того, кто зовёт `awh::codec::numeric` НАПРЯМУЮ, минуя кодек
+	 */
+	template <typename T, typename = void>
+	struct fixed_t {
+		// Виду неразрядному отвечает он сам
+		typedef T type;
+	};
+	/**
+	 * @brief Посредник приведения для видов целочисленных
+	 *
+	 * @note Признак `bool` исключён намеренно: ширина его системою не задана, и разрядного
+	 *       вида, ему тождественного, не существует вовсе
+	 */
+	template <typename T>
+	struct fixed_t <T, typename std::enable_if <std::is_integral <T>::value && !std::is_same <T, bool>::value>::type> {
+		// Разрядный вид той же ширины и той же знаковости
+		typedef typename std::conditional <std::is_signed <T>::value,
+			typename std::conditional <sizeof(T) == 1, int8_t,
+				typename std::conditional <sizeof(T) == 2, int16_t,
+					typename std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
+			typename std::conditional <sizeof(T) == 1, uint8_t,
+				typename std::conditional <sizeof(T) == 2, uint16_t,
+					typename std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type
+		>::type type;
+	};
 }
 
 /**
@@ -1510,21 +1554,56 @@ template <typename T>
 bool awh::codec::csv::Document::numeric(const size_t row, const size_t col, T & result) const noexcept {
 	// Получаем содержимое искомого поля
 	const string_view value = this->get(row, col);
-	// Выводим признак успешности извлечения числа общим для кодеков местом
-	return awh::codec::numeric <T> (value, result);
+	// Разрядный вид, тождественный виду языка приёмника
+	typedef typename fixed_t <T>::type fixed;
+	/**
+	 * Если вид приёмника разрядному виду тождествен сам
+	 */
+	if constexpr(std::is_same <T, fixed>::value)
+		// Выводим признак успешности извлечения числа общим для кодеков местом
+		return awh::codec::numeric <T> (value, result);
+	/**
+	 * Если вид приёмника есть иной вид языка той же ширины
+	 */
+	else {
+		// Приёмник разрядного вида для извлечения числа
+		fixed number = fixed();
+		// Выполняем извлечение числа общим для кодеков местом
+		const bool ok = awh::codec::numeric <fixed> (value, number);
+		/**
+		 * Если извлечение числа удалось
+		 *
+		 * @note Приёмник ставится ЛИШЬ при успехе: общее место при отказе приёмника не
+		 *       трогает, и перенос безусловный портил бы прежнее его содержимое
+		 */
+		if(ok)
+			// Выполняем перенос извлечённого числа приёмнику вида языка
+			result = static_cast <T> (number);
+		// Выводим признак успешности извлечения числа
+		return ok;
+	}
 }
 /**
- * Выполняем явное порождение метода приведения содержимого поля для всех числовых типов
+ * Выполняем явное порождение метода приведения содержимого поля по всем видам ЯЗЫКА
+ *
+ * @warning Перечень ведётся видами языка, а не разрядными обозначениями: последние суть
+ *          псевдонимы, и на разных системах ложатся на разные виды - подробности при
+ *          посреднике `fixed_t` в начале исходника
+ *
+ * @note Вид `char` не порождается НАМЕРЕННО, и довод тот же, что у записи: `char` есть
+ *       вид знака, а не числа. Виды `signed char` и `unsigned char` порождаются
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <bool> (const size_t, const size_t, bool &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <int8_t> (const size_t, const size_t, int8_t &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <uint8_t> (const size_t, const size_t, uint8_t &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <int16_t> (const size_t, const size_t, int16_t &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <uint16_t> (const size_t, const size_t, uint16_t &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <int32_t> (const size_t, const size_t, int32_t &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <uint32_t> (const size_t, const size_t, uint32_t &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <int64_t> (const size_t, const size_t, int64_t &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <uint64_t> (const size_t, const size_t, uint64_t &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <signed char> (const size_t, const size_t, signed char &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned char> (const size_t, const size_t, unsigned char &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <short> (const size_t, const size_t, short &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned short> (const size_t, const size_t, unsigned short &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <int> (const size_t, const size_t, int &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned int> (const size_t, const size_t, unsigned int &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <long> (const size_t, const size_t, long &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned long> (const size_t, const size_t, unsigned long &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <long long> (const size_t, const size_t, long long &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned long long> (const size_t, const size_t, unsigned long long &) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <float> (const size_t, const size_t, float &) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <double> (const size_t, const size_t, double &) const noexcept;
 /**

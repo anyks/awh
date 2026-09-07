@@ -25,6 +25,7 @@
  */
 #include <cstdio>
 #include <fstream>
+#include <sys/stat.h>
 #include <encoding/ascii.hpp>
 #include <set>
 #include <codec/ini/document.hpp>
@@ -67,6 +68,31 @@ using namespace std;
  * Пространство имён, местными помощниками занятое
  */
 namespace {
+	/**
+	 * @brief Функция проверки того, что путь указывает на каталог
+	 *
+	 * @param filename проверяемый путь к файлу
+	 * @return         признак того, что путь указывает на каталог
+	 *
+	 * @note Каталог ОТКРЫВАЕТСЯ успешно, а читается признаками конца и отказа - теми же,
+	 *       какими отзывается файл пустой. Без проверки этой разбор принимал бы каталог
+	 *       за файл пустой и отвечал бы УСПЕХОМ, отдавая документ без записей
+	 *
+	 * @note Распознавание ведётся ДО открытия потока намеренно, и порядок этот держит
+	 *       договор одним на все системы: у MS Windows каталог не открывается вовсе, и
+	 *       распознавание, стоящее после открытия, там мертво
+	 *
+	 * @warning Устройство это взято у кодеков JSON, XML и CSV, где стояло прежде. У YAML,
+	 *          TOML и INI распознавания не было вовсе, и подача каталога давала УСПЕХ с
+	 *          кодом отказа нулевым - замерено 07.09.2026 подачею пути `/tmp`
+	 *
+	 */
+	static bool directory(const string & filename) noexcept {
+		// Сведения об объекте файловой системы
+		struct stat info;
+		// Выводим результат проверки того, что путь указывает на каталог
+		return ((::stat(filename.c_str(), & info) == 0) && S_ISDIR(info.st_mode));
+	}
 	/**
 	 * @brief Функция снятия отменяющих записей звена пути
 	 *
@@ -193,6 +219,18 @@ string_view awh::codec::ini::Document::get(const span_t & span) const noexcept {
 	 *          закрыто, а всякий зовущий берёт отрезок из самого хранилища и подать
 	 *          негодный не может. Сносу заход не подлежит: отрезок, при правке дерева
 	 *          устаревший, обратил бы выдачу чтением памяти чужой
+	 *
+	 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь им
+	 *       и различных. Наборы трёх кодеков зелены (397, 278, 276), ворошители на трёх
+	 *       зёрнах по 20 000 текстов дают выдачу побайтно ту же
+	 *
+	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+	 *          слоями, и разойдись слои - станет видимым немедля
+	 *
+	 * @warning Метка эта долго стояла ВНЕ обхода: розыск шёл по слову «НЕДОСТИЖИМ», а здесь
+	 *          написано «ничем не задетая». Искать надлежит МЕСТО - сторож при доводе, - а не
+	 *          слово: слог у одной руки в разное время разный
 	 */
 	if((static_cast <size_t> (span.offset) + static_cast <size_t> (span.length)) > this->_store.length())
 		// Выводим пустую последовательность знаков
@@ -1229,6 +1267,18 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 	 * @note Сносу заход не подлежит: он есть застава последнего рубежа. Перевод разбора
 	 *       на чтение, между вызовами переживающее, вернёт сюда управление, и отказ
 	 *       подачи пропал бы молча - дерево вышло бы пустым при успешном ответе
+	 *
+	 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь
+	 *       им и различных. Наборы трёх кодеков зелены (397, 278, 276), а ворошители на
+	 *       трёх зёрнах по 20 000 текстов дают выдачу побайтно ту же - девять сличений
+	 *
+	 * @warning Порча ставилась ВЕРНОЮ формою: действие вынесено отдельной строкою, а
+	 *          условие обращено в ложь. Прямая подмена условия убрала бы САМОЁ ДЕЙСТВИЕ,
+	 *          и различие вышло бы от него, а не от снятой проверки
+	 *
+	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+	 *          слоями, и разойдись слои - станет видимым немедля
 	 */
 	if(!reader.feed(text)){
 		// Запоминаем код ошибки разбора
@@ -1522,6 +1572,14 @@ vector <string_view> awh::codec::ini::Document::keys(const string_view section, 
 	 * @note Сносу заход не подлежит: он есть застава последнего рубежа. Правка,
 	 *       разведшая счёт разделов с длиною перечня порядка, вернёт сюда управление, и
 	 *       чтение ушло бы за конец перечня
+	 *
+	 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь им
+	 *       и различных. Наборы трёх кодеков зелены (397, 278, 276), ворошители на трёх
+	 *       зёрнах по 20 000 текстов дают выдачу побайтно ту же
+	 *
+	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+	 *          слоями, и разойдись слои - станет видимым немедля
 	 */
 	if(index >= this->_order.size())
 		// Выводим собранный перечень имён свойств
@@ -1547,6 +1605,14 @@ vector <string_view> awh::codec::ini::Document::keys(const string_view section, 
 		 * @note Сносу заход не подлежит: он есть застава последнего рубежа. Пополнение
 		 *       порядка записью иного вида либо снос, порядок не правящий, вернёт сюда
 		 *       управление, и снесённое свойство попало бы в перечень имён
+		 *
+		 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь им
+		 *       и различных. Наборы трёх кодеков зелены (397, 278, 276), ворошители на трёх
+		 *       зёрнах по 20 000 текстов дают выдачу побайтно ту же
+		 *
+		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+		 *          слоями, и разойдись слои - станет видимым немедля
 		 */
 		if(this->_records.at(item).kind != kind_t::PROPERTY)
 			// Выполняем переход к следующему объявлению
@@ -2002,6 +2068,27 @@ bool awh::codec::ini::Document::graft(const string & path, const ::awh::codec::i
 	 * @warning Заход этот НЕДОСТИЖИМ входными данными: наличие вместилища проверено
 	 *          строкою выше самим деревом, и заведение по тому же пути отдаёт его же.
 	 *          Сносу заход не подлежит: он есть застава последнего рубежа
+	 *
+	 * @note Довод выше стоит на устройстве соседнего слоя, и оттого он ПОДКРЕПЛЁН
+	 *       замером: тело захода даёт ноль у всех трёх подач - набор кодека,
+	 *       ворошитель за 60 000 проходов и общий набор кодеков, - при живом
+	 *       стороже. Замерено родным покрытием clang
+	 *
+	 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ: он лишь не нашёл подачи. Доводы
+	 *          рода сего - «соседний слой отсеивает прежде» - падали не раз, и
+	 *          всякий раз оттого, что закрыта была дорога ИЗВЕСТНАЯ, а не всякая
+	 *
+	 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь
+	 *       им и различных. Наборы трёх кодеков зелены (397, 278, 276), а ворошители на
+	 *       трёх зёрнах по 20 000 текстов дают выдачу побайтно ту же - девять сличений
+	 *
+	 * @warning Порча ставилась ВЕРНОЮ формою: действие вынесено отдельной строкою, а
+	 *          условие обращено в ложь. Прямая подмена условия убрала бы САМОЁ ДЕЙСТВИЕ,
+	 *          и различие вышло бы от него, а не от снятой проверки
+	 *
+	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+	 *          слоями, и разойдись слои - станет видимым немедля
 	 */
 	if(!owner.valid()){
 		// Запоминаем код отказа постановки значения
@@ -2086,6 +2173,35 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 	if(!this->acceptable(key, false))
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	/**
+	 * @note Годность ЗНАЧЕНИЯ к записи здесь НЕ судится намеренно: значение, какое оградить
+	 *       настройками нечем, деревом принимается, а отвергается выдачей текста. Решение
+	 *       это договор, закреплённый проверками `WriteFailure`, `UnquotableValues` и
+	 *       `WritingKeptQuotes`, и описано оно при самом дереве в разделе намеренных решений.
+	 *       Застава пробною записью пробовалась 07.09.2026 и отвергнута теми проверками:
+	 *       ищущему здесь дефект довод этот сбережёт дорогу, пройденную дважды
+	 *
+	 * Если свойство ставится вне разделов, а читающий таких свойств не признаёт
+	 *
+	 * @details Записать такое свойство нечем: запись отвергает его тем же признаком, и
+	 *          дерево, свойство это принявшее, обращается в НЕЗАПИСЫВАЕМОЕ целиком - выдача
+	 *          текста отвечает пустотою, а прежнее содержимое дерева уходит вместе с нею.
+	 *          Правка же отвечала УСПЕХОМ, и потребитель узнавал о потере лишь при записи,
+	 *          в месте ином и позже
+	 *
+	 * @note Правило это записи было известно всегда, а к правке дерева не прикладывалось:
+	 *       заставы имени свойства и имени раздела здесь стоят, а эта - не стояла. Нашёл
+	 *       расхождение владелец кодеков JSON, XML и CSV у своей разметки, где обращение по
+	 *       несуществующему имени заводило второй корень тем же самым порядком
+	 */
+	if(section.empty() && subsection.empty() && !this->_settings.reader.global){
+		// Запоминаем код ошибки правки дерева настроек
+		this->fault(error_t::KEY_OUTSIDE_SECTION);
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Порядковый номер найденного раздела
 	uint32_t index = 0;
 	/**
@@ -2127,6 +2243,18 @@ bool awh::codec::ini::Document::set(const string_view key, const string_view val
 		 * @note Сносу заход не подлежит: он есть застава последнего рубежа. Расхождение
 		 *       заведения с указателем - правкой любого из них - вернёт сюда управление,
 		 *       и свойство легло бы в раздел чужой либо в никуда
+		 *
+		 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь
+		 *       им и различных. Наборы трёх кодеков зелены (397, 278, 276), а ворошители на
+		 *       трёх зёрнах по 20 000 текстов дают выдачу побайтно ту же - девять сличений
+		 *
+		 * @warning Порча ставилась ВЕРНОЮ формою: действие вынесено отдельной строкою, а
+		 *          условие обращено в ложь. Прямая подмена условия убрала бы САМОЁ ДЕЙСТВИЕ,
+		 *          и различие вышло бы от него, а не от снятой проверки
+		 *
+		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+		 *          слоями, и разойдись слои - станет видимым немедля
 		 */
 		if(!this->search(section, subsection, index)){
 			// Запоминаем код ошибки правки дерева настроек
@@ -2401,6 +2529,18 @@ bool awh::codec::ini::Document::push(const string_view key, const string_view va
 		 * @note Сносу заход не подлежит: он есть застава последнего рубежа. Расхождение
 		 *       заведения с указателем - правкой любого из них - вернёт сюда управление,
 		 *       и свойство легло бы в раздел чужой либо в никуда
+		 *
+		 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь
+		 *       им и различных. Наборы трёх кодеков зелены (397, 278, 276), а ворошители на
+		 *       трёх зёрнах по 20 000 текстов дают выдачу побайтно ту же - девять сличений
+		 *
+		 * @warning Порча ставилась ВЕРНОЮ формою: действие вынесено отдельной строкою, а
+		 *          условие обращено в ложь. Прямая подмена условия убрала бы САМОЁ ДЕЙСТВИЕ,
+		 *          и различие вышло бы от него, а не от снятой проверки
+		 *
+		 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+		 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+		 *          слоями, и разойдись слои - станет видимым немедля
 		 */
 		if(!this->search(section, subsection, index)){
 			// Запоминаем код ошибки правки дерева настроек
@@ -2791,6 +2931,18 @@ awh::codec::ini::Writer::Settings awh::codec::ini::Document::writing() const noe
 	// Устанавливаем признак признания свойств до первого раздела читающим
 	result.global = this->_settings.reader.global;
 	// Устанавливаем признак признания свойства без значения читающим
+	/**
+	 * @warning Передача эта ныне НЕ НАБЛЮДАЕМА через дерево: свойство без значения дерево
+	 *          несёт дословным переносом исходной строки, и приём записи `property(имя)`,
+	 *          настройкою этой ведомый, с пути дерева не зовётся ни разу. Замерено порчею
+	 *          ОБЕИМИ сторонами: и подмена умолчанием, и постоянная истина оставляют набор
+	 *          зелёным целиком. Построить случай, где перенос дословный обошёлся бы, мне
+	 *          не удалось - снос соседа по разделу строку эту всё равно переносит дословно
+	 *
+	 * @note Сносу передача не подлежит: она держит соразмерность настроек чтения и записи,
+	 *       и разойдись дословный перенос с записью заново - свойство ушло бы в текст,
+	 *       читающему негодный, молча
+	 */
 	result.valueless = this->_settings.reader.valueless;
 	// Устанавливаем признак признания добавления к перечню значений читающим
 	result.arrays = this->_settings.reader.arrays;
@@ -2830,6 +2982,36 @@ string awh::codec::ini::Document::text() const noexcept {
  *
  */
 bool awh::codec::ini::Document::load(const string & filename) noexcept {
+	/**
+	 * Если путь указывает на каталог
+	 *
+	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
+	 *       какими отзывается файл пустой. Без проверки этой чтение отвечало УСПЕХОМ,
+	 *       отдавая дерево без записей. Замерено 07.09.2026 подачею пути `/tmp`
+	 *
+	 * @note Распознавание ведётся ДО открытия потока намеренно: у MS Windows каталог не
+	 *       открывается вовсе, и распознавание после открытия там мертво
+	 *
+	 * @warning Код отказа здесь `FILE_NOT_OPENED`, тогда как кодеки JSON, XML и CSV на ту же
+	 *          подачу отвечают `FILE_NOT_READ`. Расхождение НЕ намеренное: кода «прочитать
+	 *          не удалось» у YAML, TOML и INI в перечне нет вовсе - есть лишь «открыть не
+	 *          удалось» да «записать не удалось». Сличены перечни всех семи 07.09.2026
+	 *
+	 * @note По существу вернее был бы код чтения: каталог ОТКРЫВАЕТСЯ успешно и у macOS, и
+	 *       у Linux - замерено, - а отказ приходит на чтении. Заведение нового члена перечня
+	 *       меняет договор наружу, и решение ВЫНЕСЕНО ВЛАДЕЛЬЦУ; разрешись оно в пользу
+	 *       общего кода - править надлежит все три кодека разом
+	 */
+	if(::directory(filename)){
+		// Выполняем сброс дерева настроек
+		this->clear();
+		// Запоминаем код отказа чтения файла настроек
+		this->_error = error_t::FILE_NOT_OPENED;
+		// Выполняем вывод сообщения об отказе в лог
+		this->report();
+		// Выводим признак неудачного чтения настроек
+		return false;
+	}
 	// Выполняем открытие читаемого файла настроек
 	::std::ifstream file(filename, ::std::ios::binary);
 	/**
@@ -3249,16 +3431,26 @@ bool awh::codec::ini::Document::value(T & result, const string_view key, const s
 
 /**
  * Выполняем порождение метода получения значения свойства числом для всех поддерживаемых типов
+ *
+ * @warning Порождаются виды ЯЗЫКА, а не разрядные. У macOS int64_t есть long long, а
+ *          size_t - unsigned long; у Linux int64_t есть long. Перечень одних разрядных
+ *          видов негоден на ОБЕИХ системах, только по-разному: у macOS не связывался
+ *          разбор видом long и size_t, у Linux не связался бы видом long long
+ *
+ * @note Вид char голым намеренно не порождён: число им не разбирают
+ *
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <bool> (bool &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <int8_t> (int8_t &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <uint8_t> (uint8_t &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <int16_t> (int16_t &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <uint16_t> (uint16_t &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <int32_t> (int32_t &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <uint32_t> (uint32_t &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <int64_t> (int64_t &, const string_view, const string_view, const string_view) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <uint64_t> (uint64_t &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <signed char> (signed char &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <unsigned char> (unsigned char &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <short> (short &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <unsigned short> (unsigned short &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <int> (int &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <unsigned int> (unsigned int &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <long> (long &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <unsigned long> (unsigned long &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <long long> (long long &, const string_view, const string_view, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <unsigned long long> (unsigned long long &, const string_view, const string_view, const string_view) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <float> (float &, const string_view, const string_view, const string_view) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Document::value <double> (double &, const string_view, const string_view, const string_view) const noexcept;
 

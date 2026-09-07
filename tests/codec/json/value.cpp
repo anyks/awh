@@ -39,6 +39,19 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <unistd.h>
+
+/**
+ * Заголовок номера процесса у MS Windows лежит отдельно
+ *
+ * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
+ *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
+ *       два прогона разных процессов иначе пишут в один и тот же файл
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <process.h>
+#endif
+
 #include <gtest/gtest.h>
 
 /**
@@ -62,6 +75,50 @@
  *
  */
 namespace {
+	/**
+	 * @brief Функция получения имени временного файла, единственного для процесса
+	 *
+	 * @details Имена временных файлов проверок были жёсткими, и покуда набор гоняли
+	 * поодиночке, вреда не было. Два же прогона РАЗНЫХ процессов, идущие разом, писали
+	 * в один и тот же файл, и проверка, сохранность содержимого утверждающая, получала
+	 * содержимое соседа
+	 *
+	 * @warning Отказ этот плавал и воспроизведению не поддавался: виновно соседство
+	 *          ПРОЦЕССОВ, а не соседство проверок. Доказано опытом 07.09.2026 - прогоны
+	 *          поодиночке чисты, два одновременных дают красную строку с первого раза
+	 *
+	 * @note Расширение ищется ЛИШЬ за последним разделителем пути: имя вида
+	 *       `./имя-каталога` точку несёт в начале, и поиск по всей строке обращал бы
+	 *       его в путь к несуществующему каталогу
+	 *
+	 * @param name имя временного файла
+	 * @return     имя с номером процесса перед расширением
+	 *
+	 */
+	static std::string unique(const std::string & name) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = name.rfind('/');
+		// Положение найденной точки
+		const size_t found = name.rfind('.');
+		// Положение расширения в имени файла
+		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
+		// Собираемое имя без расширения
+		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
+		// Дописываем номер процесса
+		result.append("-").append(std::to_string(static_cast <uint32_t> (
+#if defined(_WIN32) || defined(_WIN64)
+			::_getpid()
+#else
+			::getpid()
+#endif
+		)));
+		// Дописываем расширение, коли оно было
+		if(dot != std::string::npos)
+			// Выполняем дописывание расширения
+			result.append(name.substr(dot));
+		// Выводим собранное имя
+		return result;
+	}
 	/**
 	 * @brief Сторож временного файла проверки
 	 *
@@ -98,7 +155,7 @@ namespace {
 			 * @param name имя временного файла проверки
 			 *
 			 */
-			explicit Scratch(const std::string & name) noexcept : _path(temporary(name)) {
+			explicit Scratch(const std::string & name) noexcept : _path(temporary(unique(name))) {
 				// Выполняем снос файла, оставшегося от прогона прежнего
 				::remove(this->_path.c_str());
 			}

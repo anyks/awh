@@ -16,6 +16,12 @@
 /**
  * Стандартные заголовочные файлы
  */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <unistd.h>
+#else
+	#include <process.h>
+	#define getpid _getpid
+#endif
 #include <cmath>
 #include <limits>
 #include <string>
@@ -43,6 +49,39 @@
  *
  */
 namespace {
+	/**
+	 * @brief Функция выдачи имени временного файла, по процессу уникального
+	 *
+	 * @param name имя временного файла без уникализации
+	 * @return     имя с номером процесса перед расширением
+	 *
+	 * @details Имена постоянные годны, покуда набор гонится в одиночку. Два прогона РАЗНЫХ
+	 *          процессов из одного дерева пишут в один и тот же файл, и проверка записи
+	 *          получает содержимое соседа. Воспроизведено опытом: десять прогонов подряд
+	 *          чисто, два прогона разом - `FailedSaveKeepsThePreviousContent` красна
+	 *
+	 * @warning Помощник `temporary()` от этого НЕ спасает: он выбирает каталог, а имя берёт
+	 *          как есть. Уникализация нужна именно имени
+	 *
+	 */
+	static ::std::string unique(const ::std::string & name) noexcept {
+		/**
+		 * Разыскиваем место расширения имени ЗА последним разделителем пути
+		 *
+		 * @warning Розыск точки по всему имени негоден: у имени `./каталог/файл` точка
+		 *          начала пути была бы принята за расширение, и имя обратилось бы в
+		 *          `.-1234/каталог/файл` - путь в каталог несуществующий
+		 */
+		const ::std::size_t slash = name.find_last_of("/\\");
+		// Разыскиваем место расширения имени
+		const ::std::size_t found = name.rfind('.');
+		// Получаем место расширения имени, за разделителем стоящее
+		const ::std::size_t dot = (((found == ::std::string::npos) || ((slash != ::std::string::npos) && (found < slash))) ? ::std::string::npos : found);
+		// Получаем номер текущего процесса
+		const ::std::string pid = ::std::to_string(static_cast <long> (::getpid()));
+		// Выводим имя с номером процесса перед расширением
+		return ((dot == ::std::string::npos) ? (name + "-" + pid) : (name.substr(0, dot) + "-" + pid + name.substr(dot)));
+	}
 	/**
 	 * @brief Объект журнала проверок с отключённым выводом
 	 *
@@ -1924,7 +1963,7 @@ TEST(CodecTomlValue, Storing) {
 		"port = 8080\n"
 	));
 	// Выполняем проверку успешности записи значения в файл
-	ASSERT_TRUE(value.save("./value.toml"));
+	ASSERT_TRUE(value.save(::unique("./value.toml")));
 	/**
 	 * Выполняем проверку чтения значения из файла
 	 */
@@ -1932,7 +1971,7 @@ TEST(CodecTomlValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		toml::value_t loaded;
 		// Выполняем проверку успешности чтения значения из файла
-		ASSERT_TRUE(loaded.load("./value.toml"));
+		ASSERT_TRUE(loaded.load(::unique("./value.toml")));
 		// Выполняем проверку совпадения записанного и прочитанного
 		ASSERT_TRUE(loaded == value);
 	}
@@ -1945,12 +1984,12 @@ TEST(CodecTomlValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		toml::value_t loaded;
 		// Выполняем проверку успешности чтения значения из файла настройками разбора
-		ASSERT_TRUE(loaded.load("./value.toml", settings));
+		ASSERT_TRUE(loaded.load(::unique("./value.toml"), settings));
 		// Выполняем проверку совпадения записанного и прочитанного
 		ASSERT_TRUE(loaded == value);
 	}
 	// Выполняем снятие записанного файла
-	::remove("./value.toml");
+	::remove(::unique("./value.toml").c_str());
 	/**
 	 * Выполняем проверку отказа чтения отсутствующего файла
 	 *
@@ -2566,7 +2605,7 @@ TEST(CodecTomlValue, ParseLoadSaveRefusals) {
 	 */
 	{
 		// Имя временного файла с содержимым негодным
-		const string filename = temporary("awh-toml-value-refusal.txt");
+		const string filename = temporary(::unique("awh-toml-value-refusal.txt"));
 		// Поток записи временного файла
 		ofstream file(filename, ios::binary | ios::trunc);
 		// Выполняем проверку того, что временный файл открыт
@@ -3360,7 +3399,7 @@ TEST(CodecTomlValue, DumpSkipsHolesAndRefusesUndefined) {
 		// Выполняем проверку того, что снятое значение пусто
 		ASSERT_TRUE(value.dump().empty());
 		// Выполняем проверку отказа записи такого значения в файл
-		ASSERT_FALSE(value.save(temporary("awh-toml-value-undefined.toml")));
+		ASSERT_FALSE(value.save(temporary(::unique("awh-toml-value-undefined.toml"))));
 	}
 	/**
 	 * Выполняем проверку пропуска дыры при снятии значения
@@ -4238,4 +4277,94 @@ TEST(CodecTomlValue, GrowthByIndexKeepsTheSearchTrue){
 		 */
 		ASSERT_EQ(empties, static_cast <size_t> (2)) << count;
 	}
+}
+
+
+/**
+ * @brief Проверка того, что отказавшая запись значения следов не оставляет
+ *
+ * @details Запись ведётся во временный файл, а цель подменяется переименованием: отказ
+ * подмены обязан убрать за собою временный файл, иначе рядом с целью копился бы мусор,
+ * потребителю невидимый. У ДЕРЕВА уборка эта проверена тремя путями, а у владеющего
+ * ЗНАЧЕНИЯ - ни одним: приём записи у него свой, и уборка в нём своя же
+ *
+ * @note Отказ добывается каталогом, целью записи поставленным: каталог отвергает ПОДМЕНУ,
+ *       а не открытие, и временный файл к этому мигу уже заведён - иной отказ уборку эту
+ *       не задел бы вовсе
+ *
+ * @note Разряд этот проверок указал владелец кодеков JSON, XML и CSV, сверявший у себя
+ *       два пути отказа против моих трёх
+ *
+ */
+TEST(CodecTomlValue, RefusedSaveLeavesNoTemporaryFile){
+	// Путь к каталогу, целью записи ставимому
+	const string folder = ::unique("./цель-значения-toml");
+	/**
+	 * Выполняем уборку каталога, прежним прогоном оставленного
+	 *
+	 * @warning Уборка идёт ПЕРЕД заведением и сносит содержимое: заведение отвечает
+	 *          отказом на каталог уже сущий, а `::rmdir` берёт лишь каталог пустой
+	 */
+	removeDirectory(folder);
+	// Выполняем заведение каталога, целью записи ставимого
+	ASSERT_TRUE(makeDirectory(folder));
+	// Собираемое владеющее значение
+	toml::value_t value(toml::type_t::TABLE);
+	value["ключ"] = toml::value_t("значение");
+	// Выполняем проверку отказа записи значения в каталог
+	ASSERT_FALSE(value.save(folder));
+	/**
+	 * Выполняем проверку того, что временного файла рядом с целью не осталось
+	 */
+	{
+		// Поток чтения временного файла, рядом с целью кладущегося
+		ifstream leftover(folder + ".awh-tmp", ios::binary);
+		// Выполняем проверку того, что временного файла не осталось
+		ASSERT_FALSE(leftover.is_open());
+	}
+	// Выполняем уборку каталога, целью записи служившего
+	removeDirectory(folder);
+}
+
+/**
+ * @brief Проверка оглашения отказа записи значения при заведённом журнале
+ *
+ * @details Отказ обязан быть ОГЛАШЁН, а не проглочен молча. Сеть безопасности, отказ
+ *          этот выдающая, проверкою `DumpSkipsHolesAndRefusesUndefined` берётся, но
+ *          оглашение внутри неё оставалось непройденным: значение там заводится БЕЗ
+ *          объекта ведения журнала, и выдача сообщения обходится стороною
+ *
+ * @note Разница существенна: недостижимость захода и ненастроенность журнала - причины
+ *       разные, и прежний довод при коде смешивал их, числя непройденным весь заход
+ *
+ */
+TEST(CodecTomlValue, RefusedSaveIsAnnouncedWhenTheLoggerIsSet) {
+	// Объект ведения журнала работы проверки со своим каркасом
+	awh::fmk_t fmk;
+	// Объект ведения журнала работы
+	awh::log_t log(& fmk);
+	// Число сообщений, журналом принятых
+	size_t announced = 0;
+	/**
+	 * Выполняем подписку на сообщения журнала
+	 *
+	 * @note Подписка нужна затем, чтобы проверка ловила МОЛЧАНИЕ: утверждение об отказе
+	 *       записи снятия оглашения не замечает вовсе - отказ выдаётся и без него
+	 */
+	log.subscribe([&announced](const awh::log_t::flag_t, const string_view) noexcept -> void {
+		// Выполняем счёт принятых сообщений
+		announced++;
+	});
+	// Значение с парою таблицы
+	toml::value_t value(toml::type_t::TABLE);
+	// Выполняем установку объекта ведения журнала работы
+	value.setLogger(& log);
+	// Выполняем обращение к паре таблицы, места под неё заводящее
+	value["пустая"];
+	// Выполняем проверку того, что снятое значение пусто
+	ASSERT_TRUE(value.dump().empty());
+	// Выполняем проверку отказа записи такого значения в файл
+	ASSERT_FALSE(value.save(temporary(::unique("awh-toml-value-announced.toml"))));
+	// Выполняем проверку того, что отказ ОГЛАШЁН, а не проглочен молча
+	ASSERT_EQ(announced, static_cast <size_t> (1));
 }

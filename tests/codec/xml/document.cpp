@@ -40,6 +40,18 @@
 #include <unistd.h>
 
 /**
+ * Заголовок номера процесса у MS Windows лежит отдельно
+ *
+ * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
+ *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
+ *       два прогона разных процессов иначе пишут в один и тот же файл
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <process.h>
+#endif
+
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/document.hpp>
@@ -61,6 +73,52 @@
  *
  */
 namespace {
+	/**
+	 * @brief Функция получения имени временного файла, единственного для процесса
+	 *
+	 * @details Проверки пишут временные файлы в рабочий каталог, а имена их до 07.09.2026
+	 * были жёсткими. Покуда набор гоняли поодиночке, вреда не было; два же прогона РАЗНЫХ
+	 * процессов, идущие разом, писали в один и тот же файл, и проверка, сохранность
+	 * прежнего содержимого утверждающая, получала содержимое соседа
+	 *
+	 * @warning Отказ этот плавал и воспроизведению не поддавался: сосед по набору тут ни
+	 *          при чём, виновно соседство ПРОЦЕССОВ. Доказано опытом на кодеке TOML -
+	 *          десять прогонов поодиночке чисты, два одновременных дают красную строку
+	 *          с первого раза
+	 *
+	 * @param name имя временного файла
+	 * @return     имя с номером процесса перед расширением
+	 *
+	 */
+	static std::string unique(const std::string & name) noexcept {
+		/**
+		 * Положение расширения в имени файла
+		 *
+		 * @warning Расширение ищется ЛИШЬ за последним разделителем пути: имя вида
+		 *          `./имя-каталога` точку несёт в начале, и поиск по всей строке
+		 *          обращал бы её в `.-1234/имя-каталога` - путь в несуществующий
+		 *          каталог. Найдено 07.09.2026 красною строкою набора
+		 */
+		const size_t slash = name.rfind('/');
+		const size_t found = name.rfind('.');
+		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
+		// Собираемое имя без расширения
+		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
+		// Дописываем номер процесса
+		result.append("-").append(std::to_string(static_cast <uint32_t> (
+#if defined(_WIN32) || defined(_WIN64)
+			::_getpid()
+#else
+			::getpid()
+#endif
+		)));
+		// Дописываем расширение, коли оно было
+		if(dot != std::string::npos)
+			// Выполняем дописывание расширения
+			result.append(name.substr(dot));
+		// Выводим собранное имя
+		return result;
+	}
 	/**
 	 * @brief Объект журнала проверок с отключённым выводом
 	 *
@@ -1837,7 +1895,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	 */
 	{
 		// Получаем путь к временному файлу разметки
-		const string filename = temporary("awh_xml_document.xml");
+		const string filename = temporary(unique("awh_xml_document.xml"));
 		// Выполняем проверку записи дерева разметки в файл
 		ASSERT_TRUE(doc.save(filename)) << xml::message(doc.error());
 		// Объект дерева разметки, читаемого из файла
@@ -1883,7 +1941,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 		// Выполняем проверку пустоты записи пустого дерева
 		ASSERT_TRUE(empty.dump().empty());
 		// Получаем путь к временному файлу разметки
-		const string filename = temporary("awh_xml_empty.xml");
+		const string filename = temporary(unique("awh_xml_empty.xml"));
 		// Выполняем проверку отказа записи пустого дерева в файл
 		ASSERT_FALSE(empty.save(filename));
 		// Выполняем проверку кода отказа записи дерева без корневого узла
@@ -2509,7 +2567,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		// Выполняем проверку разбора собранного текста разметки
 		ASSERT_TRUE(document.parse(text));
 		// Адрес файла, в который ведётся запись разметки
-		const string filename = "./xml-document-write-failure.xml";
+		const string filename = ::unique("./xml-document-write-failure.xml");
 		// Выполняем снос прежнего файла разметки
 		::remove(filename.c_str());
 		{
@@ -2541,7 +2599,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 	 */
 	{
 		// Адрес каталога, целевой путь занимающего
-		const string directory = "./xml-document-rename-dir";
+		const string directory = ::unique("./xml-document-rename-dir");
 		/**
 		 * @brief Сторож временного каталога проверки
 		 */
@@ -2551,11 +2609,11 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 			// Деструктор сторожа каталога
 			~Guard() noexcept {
 				// Выполняем снос стерегомого каталога
-				::rmdir(this->path.c_str());
+				::removeDirectory(this->path);
 			}
 		} guard{directory};
 		// Выполняем заведение каталога, целевой путь занимающего
-		::rmdir(directory.c_str());
+		::removeDirectory(directory);
 		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево разметки
 		xml::document_t document(::logger());
@@ -2673,5 +2731,118 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 		ASSERT_FALSE(doc.parse(text));
 		// Выполняем проверку названности причины отказа
 		ASSERT_EQ(doc.error(), xml::error_t::INVALID_ENCODING);
+	}
+}
+
+/**
+ * @brief Проверка извлечения числа по видам ЯЗЫКА, а не по разрядным псевдонимам
+ *
+ * @details Извлечение порождается видами языка, ибо перечень их одинаков на всякой
+ *          системе. Перечень разрядный давал на разных системах РАЗНЫЕ наборы видов:
+ *          у macOS ARM64 `int64_t` есть `long long`, у Linux x86-64 - `long`, и
+ *          потребитель, писавший приёмником `long`, здесь не связывался вовсе, а
+ *          писавший `long long` не связался бы там
+ *
+ * @warning Проверка эта держится СБОРКОЙ, а не утверждениями: дефект был отказом
+ *          СВЯЗЫВАНИЯ, и увидеть его можно лишь тем, что вызов вообще есть в наборе.
+ *          Утверждения при нём стерегут вторую половину правки - перенос числа из
+ *          разрядного вида в вид языка, - и без них перенос мог бы терять разряды
+ *          либо не доходить до приёмника вовсе
+ *
+ * @note Замерено 07.09.2026 на двух системах составом библиотеки: сборка молчит, и
+ *       дефект виден только `nm` с `c++filt`
+ */
+TEST(CodecXmlCommon, NumberExtractionAcceptsLanguageKinds) {
+	// Приёмники видов языка, расходящихся между системами
+	long lesser = 0;
+	long long greater = 0;
+	unsigned long unsignedLesser = 0;
+	unsigned long long unsignedGreater = 0;
+	size_t sized = 0;
+	// Выполняем извлечение числа приёмником вида `long`
+	ASSERT_TRUE(xml::numeric <long> ("-9223372036854775807", lesser));
+	// Выполняем проверку извлечённого числа
+	ASSERT_EQ(lesser, -9223372036854775807L);
+	// Выполняем извлечение числа приёмником вида `long long`
+	ASSERT_TRUE(xml::numeric <long long> ("-9223372036854775807", greater));
+	// Выполняем проверку извлечённого числа
+	ASSERT_EQ(greater, -9223372036854775807LL);
+	// Выполняем извлечение числа приёмником вида `unsigned long`
+	ASSERT_TRUE(xml::numeric <unsigned long> ("18446744073709551615", unsignedLesser));
+	// Выполняем проверку извлечённого числа
+	ASSERT_EQ(unsignedLesser, 18446744073709551615UL);
+	// Выполняем извлечение числа приёмником вида `unsigned long long`
+	ASSERT_TRUE(xml::numeric <unsigned long long> ("18446744073709551615", unsignedGreater));
+	// Выполняем проверку извлечённого числа
+	ASSERT_EQ(unsignedGreater, 18446744073709551615ULL);
+	/**
+	 * Выполняем извлечение числа приёмником вида `size_t`
+	 *
+	 * @note Вид этот берётся отдельно оттого, что потребителю он привычнее прочих:
+	 *       им меряются длины, и извлечение размера из текста дело обиходное
+	 */
+	ASSERT_TRUE(xml::numeric <size_t> ("4096", sized));
+	// Выполняем проверку извлечённого числа
+	ASSERT_EQ(sized, static_cast <size_t> (4096));
+	// Приёмники видов языка узких
+	signed char narrow = 0;
+	unsigned short middle = 0;
+	// Выполняем извлечение числа приёмником вида `signed char`
+	ASSERT_TRUE(xml::numeric <signed char> ("-128", narrow));
+	// Выполняем проверку извлечённого числа
+	ASSERT_EQ(narrow, static_cast <signed char> (-128));
+	// Выполняем извлечение числа приёмником вида `unsigned short`
+	ASSERT_TRUE(xml::numeric <unsigned short> ("65535", middle));
+	// Выполняем проверку извлечённого числа
+	ASSERT_EQ(middle, static_cast <unsigned short> (65535));
+	/**
+	 * Выполняем проверку того, что отказ приёмника не трогает
+	 *
+	 * @warning Половина эта стережёт перенос: извлечение через разрядный вид ставит
+	 *          приёмник ЛИШЬ при успехе, и перенос безусловный портил бы прежнее его
+	 *          содержимое отказом
+	 */
+	long keeper = 42;
+	// Выполняем проверку отказа извлечения числа из непригодного текста
+	ASSERT_FALSE(xml::numeric <long> ("не число", keeper));
+	// Выполняем проверку того, что приёмник отказом не тронут
+	ASSERT_EQ(keeper, 42L);
+}
+
+/**
+ * @brief Проверка отказа загрузки при подаче каталога вместо файла
+ *
+ * @details Распознавание каталога стоит ДО открытия потока: у POSIX каталог
+ * открывается исправно, а чтение из него отвечает отказом, и без распознавания
+ * подача каталога дала бы «загружено» при пустом дереве. Заведена 07.09.2026
+ * после находки, что у кодеков INI, YAML и TOML распознавания не было вовсе и
+ * подача каталога отвечала там признаком УСПЕХА
+ *
+ * @note Проверка ведётся по обоим входам загрузки - у документа и у значения:
+ *       открытие потока у них своё, и распознавание требуется каждому
+ *
+ */
+TEST(CodecXmlDocument, DirectoryIsRefusedNotLoaded) {
+	/**
+	 * Выполняем проверку отказа загрузки каталога документом
+	 */
+	{
+		// Дерево значений документа
+		xml::document_t document(::logger());
+		// Выполняем проверку отказа загрузки каталога
+		ASSERT_FALSE(document.load("."));
+		// Выполняем проверку кода отказа загрузки
+		ASSERT_EQ(document.error(), xml::error_t::FILE_NOT_READ);
+	}
+	/**
+	 * Выполняем проверку отказа загрузки каталога значением
+	 */
+	{
+		// Значение документа
+		xml::value_t value;
+		// Выполняем проверку отказа загрузки каталога
+		ASSERT_FALSE(value.load("."));
+		// Выполняем проверку кода отказа загрузки
+		ASSERT_EQ(value.error(), xml::error_t::FILE_NOT_READ);
 	}
 }

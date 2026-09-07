@@ -35,7 +35,7 @@
 #   tests/codec/stands.sh [перечень стендов]
 #
 # Перечень стендов задаётся путями от корня дерева и по умолчанию таков:
-#   tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/stand.sh
+#   tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/syslog/stand.sh tests/codec/stand.sh
 #
 # Переменные окружения:
 #   AWH_STANDS — перечень машин видом «доступ|корень GoogleTest|краткое имя|собиратель»
@@ -49,7 +49,7 @@ set -u
 ROOT="${AWH_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
 # Получаем перечень прогоняемых стендов
-STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/stand.sh}"
+STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/syslog/stand.sh tests/codec/stand.sh}"
 
 # Получаем перечень машин, по каким ведётся раскладка
 #
@@ -123,8 +123,17 @@ echo "Собираем свёрток: $BUNDLE"
 #       Apple: `bsdtar` у FreeBSD отвергает их отказом «Special header too large», а
 #       весу они прибавляют вчетверо
 #
+#
+# @warning Перечень этот ведётся ВРУЧНУЮ и обязан отвечать тому, что зовут САМИ стенды.
+#          Разойдись они - раскладка печатает «СБОРКА ОТКАЗАЛА» на всех машинах разом, и
+#          отказ выглядит бедою кодека, тогда как беда в свёртке. Так и вышло 07.09.2026:
+#          стенды давно тянут ведение журнала со всеми его опорами - часами, оснасткою,
+#          кодировками, выделением памяти, - а свёрток нёс по-прежнему один «src/codec»,
+#          и восемь машин отказали разом на «./src/sys/log.cpp: нет такого файла»
+#
 ( cd "$ROOT" && COPYFILE_DISABLE=1 tar --format=ustar -czf "$BUNDLE" \
-	include src/codec src/num/lexical/table.cpp tests/main.hpp tests/codec tools/verify ) || exit 1
+	include src/codec src/num src/sys src/net/nwt.cpp src/encoding src/alloc \
+	src/cryptography/hash.cpp submodules/zlib tests/main.hpp tests/codec tools/verify ) || exit 1
 
 # Собираемый сценарий прогона на стороне машины
 RUNNER="/tmp/awh-codec-runner-$STAMP.sh"

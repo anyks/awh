@@ -43,6 +43,16 @@
 #endif
 
 /**
+ * Заголовок номера процесса у MS Windows лежит отдельно
+ *
+ * @note У POSIX `getpid` живёт в `<unistd.h>`, уже подключённом выше, а у MS Windows -
+ *       `_getpid` в `<process.h>`. Номер этот нужен именам временных файлов
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <process.h>
+#endif
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
@@ -94,6 +104,48 @@ namespace {
 		return & log;
 	}
 	/**
+	 * @brief Метод уточнения названия временного файла номером процесса
+	 *
+	 * @details Имя без номера процесса делает проверки НЕПРИГОДНЫМИ к одновременным
+	 * прогонам: два процесса пишут в один файл, и проверка, сохранность содержимого
+	 * утверждающая, получает содержимое соседа. Поодиночке набор при этом чист сколько
+	 * угодно раз, оттого отказ и выглядит плавающим - ищут его в соседстве ПРОВЕРОК, а
+	 * виновно соседство ПРОЦЕССОВ. Установлено опытом Василия и Николая 07.09.2026 на
+	 * четырёх кодеках сразу, у меня воспроизведено двумя прогонами разом: четыре красных
+	 * из восемнадцати, а поодиночке ноль
+	 *
+	 * @note Точка расширения ищется ЛИШЬ за последним разделителем пути: имя вида
+	 *       `./abc-storage-fifo` расширения не имеет вовсе, а `rfind` нашёл бы точку
+	 *       НАЧАЛА ПУТИ и обратил бы имя в `.-1234/abc-storage-fifo` - путь в
+	 *       несуществующий каталог. Грабли принесены Василием, у него же и намятые
+	 *
+	 * @param name уточняемое название временного файла
+	 * @return     название, несущее номер процесса
+	 *
+	 */
+	string unique(const string & name) noexcept {
+		// Выполняем поиск последнего разделителя пути в названии
+		const size_t slash = name.find_last_of("/\\");
+		// Выполняем получение места начала собственно имени файла
+		const size_t start = (slash == string::npos ? 0 : slash + 1);
+		// Выполняем поиск точки расширения в названии
+		const size_t dot = name.find_last_of('.');
+		/**
+		 * Выполняем сборку хвоста, несущего номер процесса
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			const string tail = ("-" + std::to_string(static_cast <long> (::_getpid())));
+		#else
+			const string tail = ("-" + std::to_string(static_cast <long> (::getpid())));
+		#endif
+		// Если расширения у названия нет, дописываем номер процесса в конец
+		if((dot == string::npos) || (dot < start))
+			// Выводим название, несущее номер процесса
+			return (name + tail);
+		// Выводим название с номером процесса перед расширением
+		return (name.substr(0, dot) + tail + name.substr(dot));
+	}
+	/**
 	 * @brief Класс временного файла проверки
 	 *
 	 * @details Файл сносится деструктором: проверка, оставившая файл на диске, портит
@@ -124,7 +176,7 @@ namespace {
 			 */
 			explicit Temporary(const string & name) noexcept {
 				// Выполняем сборку названия временного файла проверки
-				this->_filename = ("abc-storage-" + name + ".bin");
+				this->_filename = unique("abc-storage-" + name + ".bin");
 				/**
 				 * Выполняем снос временного файла проверки, ПРОШЛЫМ прогоном оставленного
 				 *
@@ -759,7 +811,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 		// Хранилище контейнера на носителе
 		abc::storage_t storage(::logger());
 		// Укладка без буфера обязана быть отвечена отказом
-		ASSERT_FALSE(storage.store(temporary("abc-проверка-без-буфера.abc"), nullptr, 16));
+		ASSERT_FALSE(storage.store(temporary(unique("abc-проверка-без-буфера.abc")), nullptr, 16));
 		// Отказ обязан быть объявлен внутренним
 		ASSERT_EQ(storage.error(), abc::error_t::INTERNAL);
 		// Файл хранилища заведён быть не должен
@@ -900,7 +952,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 		// Выдача, наполненная прежде чтения
 		vector <uint8_t> previous = {0x01, 0x02, 0x03};
 		// Выполняем чтение отсутствующего файла
-		ASSERT_FALSE(storage.fetch("abc-storage-нет-такого-файла.bin", previous));
+		ASSERT_FALSE(storage.fetch(unique("abc-storage-нет-такого-файла.bin"), previous));
 		// Выполняем проверку названной причины отказа чтения
 		ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE) << abc::message(storage.error());
 		// Выполняем проверку опустошения выдачи отказом
@@ -1009,7 +1061,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 * @note Каталог заводится СВОЙ, а не берётся временный каталог целиком: половина
 	 *       первая правит права каталога, и править их у чужого нельзя
 	 */
-	const string directory = temporary("abc-atomic-store");
+	const string directory = temporary(unique("abc-atomic-store"));
 	/**
 	 * Выполняем снос следов, оставшихся от прошлого прогона
 	 *
@@ -1017,6 +1069,32 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 	 * отказом, и прогон второй падал бы не на том, что проверяет, а на уборке первого.
 	 * Замечено на втором же прогоне 04.09.2026
 	 */
+	/**
+	 * Выполняем ВОЗВРАТ ПРАВ каталогу прежде всякой уборки
+	 *
+	 * @warning Без этого уборка бессильна, и краснота самовоспроизводится. Половина
+	 * первая снимает у каталога право записи, чтобы добыть отказ, и возвращает его
+	 * сразу за отказом, - но прогон, УБИТЫЙ между тем и другим, оставляет каталог с
+	 * правами 0555 и файлом внутри. Далее круг замкнут: файл не снести (нет `w` у
+	 * каталога), пустым каталог не станет, `rmdir` его не берёт, и `makeDirectory`
+	 * отвечает «уже существует». Первый прогон зелен, всякий следующий красен, покуда
+	 * каталог не снести руками
+	 *
+	 * @note Убитый прогон здесь не выдумка: временный каталог общий на всех, а щупы
+	 *       кодека бьют прогон по сроку и снимают его силою. Нашёл Василий 07.09.2026
+	 *       чужим набором - краснота ушла к соседу, породившись у меня
+	 *
+	 * @note Отдача не сличается: каталога может не быть вовсе, и это обычный случай
+	 */
+	(void) ::chmod(directory.c_str(), 0755);
+	/**
+	 * Выполняем возврат прав самому файлу контейнера
+	 *
+	 * @note У MS Windows отказ добывается запретом записи в САМУ ЦЕЛЬ, а не в каталог,
+	 *       и убитый там прогон оставляет файл с правами 0444. Снести такой файл `remove`
+	 *       у MS Windows отказывается, и круг замыкается тем же образом
+	 */
+	(void) ::chmod((directory + "/контейнер.abc").c_str(), 0644);
 	(void) ::remove((directory + "/контейнер.abc").c_str());
 	(void) ::remove((directory + "/контейнер.abc.part").c_str());
 	/**
@@ -1289,7 +1367,7 @@ TEST(CodecAbcStorage, EveryWorkBeforeOpeningNamesItsRefusal){
 	 */
 	{
 		// Путь файла хранилища проверки
-		const string filename = "./abc-storage-before-opening.abc";
+		const string filename = unique("./abc-storage-before-opening.abc");
 		// Выполняем снос остатков прежнего прогона
 		::remove(filename.c_str());
 		// Собираемые октеты контейнера
@@ -1343,7 +1421,7 @@ TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
 	// Выполняем отключение вывода журнала на приставку
 	log->mode({});
 	// Путь файла хранилища проверки
-	const string filename = "./abc-storage-truncated.abc";
+	const string filename = unique("./abc-storage-truncated.abc");
 	// Выполняем снос остатков прежнего прогона
 	::remove(filename.c_str());
 	// Собираемые октеты контейнера
@@ -1436,7 +1514,7 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
 	unique_ptr <fmk_t> fmk(new fmk_t);
 	unique_ptr <log_t> log(new log_t(fmk.get()));
 	log->mode({});
-	const string path = "./abc-storage-fifo";
+	const string path = unique("./abc-storage-fifo");
 	::remove(path.c_str());
 	ASSERT_EQ(::mkfifo(path.c_str(), 0600), 0) << "завести именованный канал не удалось";
 	const int reader = ::open(path.c_str(), O_RDONLY | O_NONBLOCK);
@@ -1453,7 +1531,7 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
 	::close(reader);
 	::remove(path.c_str());
 	{
-		const string filename = "./abc-storage-seekable.abc";
+		const string filename = unique("./abc-storage-seekable.abc");
 		::remove(filename.c_str());
 		vector <uint8_t> data;
 		{
@@ -1490,7 +1568,7 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 	// Выполняем отключение вывода журнала на приставку
 	log->mode({});
 	// Путь файла хранилища проверки
-	const string filename = "./abc-storage-editor-bind.abc";
+	const string filename = unique("./abc-storage-editor-bind.abc");
 	// Выполняем снос остатков прежнего прогона
 	::remove(filename.c_str());
 	// Собираемые октеты контейнера
@@ -1656,7 +1734,7 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 	// Выполняем отключение вывода журнала на приставку
 	log->mode({});
 	// Путь файла хранилища проверки
-	const string filename = "./abc-storage-fsize-write.abc";
+	const string filename = unique("./abc-storage-fsize-write.abc");
 	// Выполняем снос остатков прежнего прогона
 	::remove(filename.c_str());
 	// Собираемые октеты контейнера
@@ -1752,7 +1830,7 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 	// Выполняем отключение вывода журнала на приставку
 	log->mode({});
 	// Путь файла хранилища проверки
-	const string filename = "./abc-storage-fsize-flush.abc";
+	const string filename = unique("./abc-storage-fsize-flush.abc");
 	// Выполняем снос остатков прежнего прогона
 	::remove(filename.c_str());
 	// Собираемые октеты контейнера

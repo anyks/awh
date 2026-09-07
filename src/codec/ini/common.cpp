@@ -52,6 +52,21 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Тождественный разрядный вид той же ширины и той же знаковости
+	 *
+	 * @tparam T вид языка, коему ищется разрядное соответствие
+	 *
+	 * @details Виды языка и виды разрядные равными не являются: у macOS int64_t есть
+	 * long long, а у Linux - long. Обращение общее awh::codec::convert порождено
+	 * перечнем видов РАЗРЯДНЫХ, потому разбор видом языка ведётся через вид разрядный
+	 * той же ширины и знаковости - перенос этот точен и разряда не теряет
+	 *
+	 */
+	template <typename T>
+	using fixed_t = typename ::std::conditional <::std::is_signed <T>::value,
+		typename ::std::conditional <sizeof(T) == 1, int8_t, typename ::std::conditional <sizeof(T) == 2, int16_t, typename ::std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
+		typename ::std::conditional <sizeof(T) == 1, uint8_t, typename ::std::conditional <sizeof(T) == 2, uint16_t, typename ::std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type>::type;
+	/**
 	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
@@ -724,92 +739,115 @@ template <typename T>
  */
 bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_t forms) noexcept {
 	/**
-	 * Если запрошено логическое значение
+	 * Если разбор ведётся видом ЯЗЫКА, разрядному не тождественным
 	 *
-	 * @note Сличение ведётся прежде целых чисел намеренно: логический тип языком
-	 *       причислен к целым, и без этого «on» бы отвергалось
+	 * @note Перенос ведётся видом разрядным той же ширины и той же знаковости, потому
+	 *       разряда тут не теряется вовсе. Прямой разбор видом языка невозможен: общее
+	 *       обращение awh::codec::convert порождено перечнем видов разрядных, и у macOS
+	 *       long, а у Linux long long в нём отсутствуют - зеркально друг другу
+	 *
 	 */
-	if constexpr(is_same <T, bool>::value)
-		// Выполняем разбор логического значения
-		return boolean(text, result, forms);
-	/**
-	 * Если запрошено число с плавающей точкой
-	 */
-	else if constexpr(is_floating_point <T>::value) {
-		// Значение числа с плавающей точкой наибольшей точности
-		double value = 0.;
-		/**
-		 * Если разбор числа с плавающей точкой выполнить не удалось
-		 */
-		if(!real(text, value))
+	if constexpr(is_integral <T>::value && !is_same <T, bool>::value && !is_same <T, fixed_t <T>>::value){
+		// Разбираемое число видом разрядным
+		fixed_t <T> number = 0;
+		// Если разбор числа не выполнен
+		if(!::awh::codec::ini::numeric(text, number, forms))
 			// Выводим признак неудачного разбора
 			return false;
-		/**
-		 * Запоминаем разобранное число
-		 *
-		 * @note Проверка выхода за предел запрошенного вида здесь прежде стояла отказом.
-		 *       Отменена она владельцем 20.08.2026 доводом о том, что приведение языка не
-		 *       отказывает нигде, а признак успешности разбора отведён одному лишь случаю,
-		 *       когда значение числом не является вовсе
-		 */
-		result = static_cast <T> (value);
+		// Выполняем перенос разобранного числа
+		result = static_cast <T> (number);
 		// Выводим признак успешного разбора
 		return true;
-	/**
-	 * Если запрошено целое число
-	 */
+	// Если разбор ведётся видом разрядным
 	} else {
-		{
-			// Значение целого числа со знаком наибольшей разрядности
-			int64_t value = 0;
-			/**
-			 * Если разбор целого числа со знаком удался
-			 *
-			 * @note Вид со знаком пробуется первым и при запросе вида без знака: запись
-			 *       «-1» тем самым переносится младшими разрядами, ровно как это делает
-			 *       приведение языка, а не сводится к нулю зажимом дробного пути
-			 */
-			if(integer(text, value)){
-				// Запоминаем разобранное число
-				result = static_cast <T> (value);
-				// Выводим признак успешного разбора
-				return true;
-			}
-		}
-		{
-			// Значение целого числа без знака наибольшей разрядности
-			uint64_t value = 0;
-			/**
-			 * Если разбор целого числа без знака удался
-			 *
-			 * @note Заход этот берёт записи, в вид со знаком не вместившиеся, - вроде
-			 *       «18446744073709551615»
-			 */
-			if(integer(text, value)){
-				// Запоминаем разобранное число
-				result = static_cast <T> (value);
-				// Выводим признак успешного разбора
-				return true;
-			}
-		}
-		// Значение числа с плавающей точкой наибольшей точности
-		double value = 0.;
 		/**
-		 * Если разбор числа с плавающей точкой выполнить не удалось
-		 */
-		if(!real(text, value))
-			// Выводим признак неудачного разбора
-			return false;
-		/**
-		 * Запоминаем разобранное число приведением дробного
+		 * Если запрошено логическое значение
 		 *
-		 * @note Заход этот берёт записи дробные - «1.5», «1e3» - и записи, ни в один целый
-		 *       вид не вместившиеся. Отказ им прежде выдавался оттого, что целого разбора
-		 *       они не проходят вовсе
+		 * @note Сличение ведётся прежде целых чисел намеренно: логический тип языком
+		 *       причислен к целым, и без этого «on» бы отвергалось
 		 */
-		result = ::awh::codec::convert <T> (value);
-		// Выводим признак успешного разбора
-		return true;
+		if constexpr(is_same <T, bool>::value)
+			// Выполняем разбор логического значения
+			return boolean(text, result, forms);
+		/**
+		 * Если запрошено число с плавающей точкой
+		 */
+		else if constexpr(is_floating_point <T>::value) {
+			// Значение числа с плавающей точкой наибольшей точности
+			double value = 0.;
+			/**
+			 * Если разбор числа с плавающей точкой выполнить не удалось
+			 */
+			if(!real(text, value))
+				// Выводим признак неудачного разбора
+				return false;
+			/**
+			 * Запоминаем разобранное число
+			 *
+			 * @note Проверка выхода за предел запрошенного вида здесь прежде стояла отказом.
+			 *       Отменена она владельцем 20.08.2026 доводом о том, что приведение языка не
+			 *       отказывает нигде, а признак успешности разбора отведён одному лишь случаю,
+			 *       когда значение числом не является вовсе
+			 */
+			result = static_cast <T> (value);
+			// Выводим признак успешного разбора
+			return true;
+		/**
+		 * Если запрошено целое число
+		 */
+		} else {
+			{
+				// Значение целого числа со знаком наибольшей разрядности
+				int64_t value = 0;
+				/**
+				 * Если разбор целого числа со знаком удался
+				 *
+				 * @note Вид со знаком пробуется первым и при запросе вида без знака: запись
+				 *       «-1» тем самым переносится младшими разрядами, ровно как это делает
+				 *       приведение языка, а не сводится к нулю зажимом дробного пути
+				 */
+				if(integer(text, value)){
+					// Запоминаем разобранное число
+					result = static_cast <T> (value);
+					// Выводим признак успешного разбора
+					return true;
+				}
+			}
+			{
+				// Значение целого числа без знака наибольшей разрядности
+				uint64_t value = 0;
+				/**
+				 * Если разбор целого числа без знака удался
+				 *
+				 * @note Заход этот берёт записи, в вид со знаком не вместившиеся, - вроде
+				 *       «18446744073709551615»
+				 */
+				if(integer(text, value)){
+					// Запоминаем разобранное число
+					result = static_cast <T> (value);
+					// Выводим признак успешного разбора
+					return true;
+				}
+			}
+			// Значение числа с плавающей точкой наибольшей точности
+			double value = 0.;
+			/**
+			 * Если разбор числа с плавающей точкой выполнить не удалось
+			 */
+			if(!real(text, value))
+				// Выводим признак неудачного разбора
+				return false;
+			/**
+			 * Запоминаем разобранное число приведением дробного
+			 *
+			 * @note Заход этот берёт записи дробные - «1.5», «1e3» - и записи, ни в один целый
+			 *       вид не вместившиеся. Отказ им прежде выдавался оттого, что целого разбора
+			 *       они не проходят вовсе
+			 */
+			result = ::awh::codec::convert <T> (value);
+			// Выводим признак успешного разбора
+			return true;
+		}
 	}
 }
 
@@ -821,13 +859,15 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
  *       в перечень не входящего, отвечает отказом сборки на этапе связывания
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <bool> (const string_view, bool &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <int8_t> (const string_view, int8_t &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <uint8_t> (const string_view, uint8_t &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <int16_t> (const string_view, int16_t &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <uint16_t> (const string_view, uint16_t &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <int32_t> (const string_view, int32_t &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <uint32_t> (const string_view, uint32_t &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <int64_t> (const string_view, int64_t &, const boolean_t) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <uint64_t> (const string_view, uint64_t &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <signed char> (const string_view, signed char &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned char> (const string_view, unsigned char &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <short> (const string_view, short &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned short> (const string_view, unsigned short &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <int> (const string_view, int &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned int> (const string_view, unsigned int &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <long> (const string_view, long &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned long> (const string_view, unsigned long &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <long long> (const string_view, long long &, const boolean_t) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned long long> (const string_view, unsigned long long &, const boolean_t) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <float> (const string_view, float &, const boolean_t) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <double> (const string_view, double &, const boolean_t) noexcept;

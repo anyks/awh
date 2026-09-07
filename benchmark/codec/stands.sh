@@ -137,8 +137,16 @@ echo "Собираем свёрток: $BUNDLE"
 # @note Свёрток собирается видом `ustar` с погашенными довесками файловой системы
 #       Apple: `bsdtar` у FreeBSD отвергает их отказом «Special header too large»
 #
+#
+# @warning Перечень этот ведётся ВРУЧНУЮ и обязан отвечать тому, что зовут САМИ стенды.
+#          Разойдись они - раскладка печатает «СБОРКА ОТКАЗАЛА» на всех машинах разом, и
+#          отказ выглядит бедою кодека, тогда как беда в свёртке. Ровно то же вышло
+#          07.09.2026 у раскладки проверок: стенды давно тянут ведение журнала со всеми
+#          опорами, а свёрток нёс по-прежнему один «src/codec»
+#
 ( cd "$ROOT" && COPYFILE_DISABLE=1 tar --format=ustar -czf "$BUNDLE" \
-	include src/codec src/num/lexical/table.cpp benchmark tools/benchmark/syscount ) || exit 1
+	include src/codec src/num src/sys src/net/nwt.cpp src/encoding src/alloc \
+	src/cryptography/hash.cpp benchmark tools/benchmark/syscount ) || exit 1
 
 # Собираемый сценарий прогона на стороне машины
 RUNNER="/tmp/awh-bench-runner-$STAMP.sh"

@@ -97,7 +97,8 @@ namespace {
 	 *          сценария на самой медленной машине - работа ПОСЛЕ прогона по стендам
 	 *
 	 */
-	constexpr double READ_LEGACY_THRESHOLD = 10.0;
+	// Дно ряда: 10.79 МБ/с у DragonFly (замер 07.09.2026 по двенадцати машинам)
+	constexpr double READ_LEGACY_THRESHOLD = 8.0;
 
 	/**
 	 * @brief Порог пропускной способности чтения записи нынешнего описания
@@ -106,7 +107,8 @@ namespace {
 	 *          ожиданием и подлежит уточнению по стендам
 	 *
 	 */
-	constexpr double READ_MODERN_THRESHOLD = 10.0;
+	// Дно ряда: 9.93 МБ/с у DragonFly (замер 07.09.2026 по двенадцати машинам)
+	constexpr double READ_MODERN_THRESHOLD = 7.0;
 
 	/**
 	 * @brief Порог пропускной способности чтения записи со многими блоками данных

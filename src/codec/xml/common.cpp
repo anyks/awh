@@ -43,6 +43,50 @@ namespace {
 	using namespace awh;
 
 	/**
+	 * @brief Посредник приведения вида ЯЗЫКА к тождественному разрядному виду
+	 *
+	 * @details Общее место кодеков порождено разрядными обозначениями - `int8_t`…`uint64_t`, -
+	 * и телами располагает только по ним. Порождение же здесь ведётся видами ЯЗЫКА, ибо
+	 * лишь их перечень одинаков на всякой системе. Посредник этот и сводит одно с другим:
+	 * всякому виду языка он отвечает разрядным видом ТОЙ ЖЕ ширины и ТОЙ ЖЕ знаковости, а
+	 * такой вид есть то же самое представление, и перенос через него не теряет ни разряда
+	 *
+	 * @warning Обозначения `int8_t`…`uint64_t` суть ПСЕВДОНИМЫ, и какому виду языка они
+	 *          отвечают, решает система. У macOS ARM64 `int64_t` есть `long long`, у Linux
+	 *          x86-64 - `long`: перечень разрядный даёт на двух системах РАЗНЫЕ наборы
+	 *          видов, и потребитель, писавший `long long`, у Linux не связывался вовсе.
+	 *          Замерено 07.09.2026 составом библиотеки на обеих системах: сборка молчит,
+	 *          дефект виден только `nm` с `c++filt`
+	 *
+	 * @note Тела в общем месте для этого не требуется: посредник не порождает нового
+	 *       обращения, а ведёт вызов к уже порождённому. Общее место остаётся заботою
+	 *       того, кто зовёт `awh::codec::numeric` НАПРЯМУЮ, минуя кодек
+	 */
+	template <typename T, typename = void>
+	struct fixed_t {
+		// Виду неразрядному отвечает он сам
+		typedef T type;
+	};
+	/**
+	 * @brief Посредник приведения для видов целочисленных
+	 *
+	 * @note Признак `bool` исключён намеренно: ширина его системою не задана, и разрядного
+	 *       вида, ему тождественного, не существует вовсе
+	 */
+	template <typename T>
+	struct fixed_t <T, typename std::enable_if <std::is_integral <T>::value && !std::is_same <T, bool>::value>::type> {
+		// Разрядный вид той же ширины и той же знаковости
+		typedef typename std::conditional <std::is_signed <T>::value,
+			typename std::conditional <sizeof(T) == 1, int8_t,
+				typename std::conditional <sizeof(T) == 2, int16_t,
+					typename std::conditional <sizeof(T) == 4, int32_t, int64_t>::type>::type>::type,
+			typename std::conditional <sizeof(T) == 1, uint8_t,
+				typename std::conditional <sizeof(T) == 2, uint16_t,
+					typename std::conditional <sizeof(T) == 4, uint32_t, uint64_t>::type>::type>::type
+		>::type type;
+	};
+
+	/**
 	 * @brief Метод сличения последовательностей знаков без учёта регистра
 	 *
 	 * @details Сличение ведётся по правилам US-ASCII: прочие знаки сличаются как есть.
@@ -663,20 +707,56 @@ bool awh::codec::xml::boolean(const string_view text, bool & result) noexcept {
  */
 template <typename T>
 bool awh::codec::xml::numeric(const string_view text, T & result) noexcept {
-	// Выводим признак успешности извлечения числа общим для кодеков местом
-	return awh::codec::numeric <T> (text, result);
+	// Разрядный вид, тождественный виду языка приёмника
+	typedef typename fixed_t <T>::type fixed;
+	/**
+	 * Если вид приёмника разрядному виду тождествен сам
+	 */
+	if constexpr(std::is_same <T, fixed>::value)
+		// Выводим признак успешности извлечения числа общим для кодеков местом
+		return awh::codec::numeric <T> (text, result);
+	/**
+	 * Если вид приёмника есть иной вид языка той же ширины
+	 */
+	else {
+		// Приёмник разрядного вида для извлечения числа
+		fixed value = fixed();
+		// Выполняем извлечение числа общим для кодеков местом
+		const bool ok = awh::codec::numeric <fixed> (text, value);
+		/**
+		 * Если извлечение числа удалось
+		 *
+		 * @note Приёмник ставится ЛИШЬ при успехе: общее место при отказе приёмника не
+		 *       трогает, и перенос безусловный портил бы прежнее его содержимое
+		 */
+		if(ok)
+			// Выполняем перенос извлечённого числа приёмнику вида языка
+			result = static_cast <T> (value);
+		// Выводим признак успешности извлечения числа
+		return ok;
+	}
 }
 /**
- * Выполняем явное создание тел разбора числа по всем поддерживаемым видам
+ * Выполняем явное создание тел разбора числа по всем поддерживаемым видам ЯЗЫКА
+ *
+ * @warning Перечень ведётся видами языка, а не разрядными обозначениями: последние суть
+ *          псевдонимы, и на разных системах ложатся на разные виды - подробности при
+ *          посреднике `fixed_t` в начале исходника
+ *
+ * @note Вид `char` не порождается НАМЕРЕННО, и довод тот же, что у записи: `char` есть
+ *       вид знака, а не числа, и разбор текста в него потребителю ни к чему. Виды
+ *       `signed char` и `unsigned char` порождаются - они берутся числами осознанно
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <bool> (const string_view, bool &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int8_t> (const string_view, int8_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int16_t> (const string_view, int16_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int32_t> (const string_view, int32_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int64_t> (const string_view, int64_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint8_t> (const string_view, uint8_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint16_t> (const string_view, uint16_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint32_t> (const string_view, uint32_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <uint64_t> (const string_view, uint64_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <signed char> (const string_view, signed char &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned char> (const string_view, unsigned char &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <short> (const string_view, short &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned short> (const string_view, unsigned short &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <int> (const string_view, int &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned int> (const string_view, unsigned int &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <long> (const string_view, long &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned long> (const string_view, unsigned long &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <long long> (const string_view, long long &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <float> (const string_view, float &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::xml::numeric <double> (const string_view, double &) noexcept;

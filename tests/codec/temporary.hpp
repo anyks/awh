@@ -33,6 +33,19 @@
 #include <string>
 #include <cstdlib>
 #include <sys/stat.h>
+#include <dirent.h>
+
+/**
+ * Заголовок этот несёт `::rmdir`, работою `removeDirectory` зовомую
+ *
+ * @note У прочих наборов он приходил стороною - через `sys/stat.h` либо через чужие
+ *       включения, - и недостача его всплыла лишь тогда, когда заголовок включил
+ *       набор общего договора, таких включений не несущий
+ */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <unistd.h>
+#endif
+#include <cstdio>
 
 /**
  * Если операционная система является MS Windows
@@ -150,6 +163,70 @@ inline bool makeDirectory(const std::string & path) noexcept {
 		 */
 		return (::_mkdir(path.c_str()) == 0);
 	#endif
+}
+/**
+ * \~russian
+ * @brief Функция сноса каталога ВМЕСТЕ С СОДЕРЖИМЫМ, переносимая между системами
+ *
+ * @details Снос `::rmdir` берёт лишь каталог ПУСТОЙ, и уборка перед проверкой,
+ * состоящая из одного его вызова, бессильна против остатка, оставленного прогоном
+ * прежним. Дальше выходит замкнутый круг: каталог не пуст — `::rmdir` не сносит,
+ * каталога нет как нового — заведение отвечает «уже существует», и проверка красна
+ * при всяком прогоне, кроме первого
+ *
+ * @warning Замерено наведённою порчей 07.09.2026: остаток в каталоге валит проверки
+ *          отказа записи у всех трёх кодеков — JSON, XML и CSV. Прогон, убитый между
+ *          заведением каталога и уборкой его, такой остаток и оставляет; у владельца
+ *          кодека ABC тем же порядком остался каталог без права записи, и красная
+ *          пришла в общий набор
+ *
+ * @note Обход ведётся `readdir`, а не `std::filesystem`: заголовок этот включают
+ *       одиннадцать наборов проверок, и опора на C++17 у всех стендов не проверена
+ *
+ * @param path путь к сносимому каталогу
+ * @return     признак того, что каталога по этому пути более нет
+ *
+ * \~english
+ * @brief Function of the removal of a directory TOGETHER WITH ITS CONTENT
+ * @param path path to the directory being removed
+ * @return     sign that the directory at this path no longer exists
+ *
+ * \~
+ */
+inline bool removeDirectory(const std::string & path) noexcept {
+	// Объект открытого каталога
+	DIR * directory = ::opendir(path.c_str());
+	/**
+	 * Если каталог открыт
+	 */
+	if(directory != nullptr){
+		/**
+		 * Выполняем перебор состава каталога
+		 */
+		while(struct dirent * entry = ::readdir(directory)){
+			// Название состава каталога
+			const std::string name(entry->d_name);
+			// Если название является ссылкою на сам каталог либо на родителя
+			if((name.compare(".") == 0) || (name.compare("..") == 0))
+				// Выполняем переход к следующему составу каталога
+				continue;
+			// Полный путь к составу каталога
+			const std::string full(path + "/" + name);
+			/**
+			 * Выполняем снос состава каталога
+			 *
+			 * @note Снос ведётся ОБОИМИ средствами подряд: что не взял `remove`, берёт
+			 *       `rmdir`, и разбирать вид состава заранее не нужно
+			 */
+			if(::remove(full.c_str()) != 0)
+				// Выполняем снос вложенного каталога
+				removeDirectory(full);
+		}
+		// Выполняем закрытие открытого каталога
+		::closedir(directory);
+	}
+	// Выполняем снос самого каталога и выводим признак его отсутствия
+	return ((::rmdir(path.c_str()) == 0) || (::opendir(path.c_str()) == nullptr));
 }
 
 #endif // __AWH_TESTS_CODEC_TEMPORARY__

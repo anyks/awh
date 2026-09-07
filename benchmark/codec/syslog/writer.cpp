@@ -91,7 +91,8 @@ namespace {
 	 *          успеха
 	 *
 	 */
-	constexpr double WRITE_LEGACY_THRESHOLD = 10.0;
+	// Дно ряда: 9.70 МБ/с у DragonFly (замер 07.09.2026 по двенадцати машинам)
+	constexpr double WRITE_LEGACY_THRESHOLD = 7.0;
 
 	/**
 	 * @brief Порог пропускной способности сборки записи нынешнего описания
@@ -99,7 +100,8 @@ namespace {
 	 * @details Мера та же, что и у сборки записи устаревшего описания
 	 *
 	 */
-	constexpr double WRITE_MODERN_THRESHOLD = 10.0;
+	// Дно ряда: 8.28 МБ/с у DragonFly (замер 07.09.2026 по двенадцати машинам)
+	constexpr double WRITE_MODERN_THRESHOLD = 6.0;
 
 	/**
 	 * @brief Порог пропускной способности сборки записи со многими блоками данных

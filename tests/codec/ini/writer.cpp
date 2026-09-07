@@ -2528,6 +2528,18 @@ TEST(CodecIniWriter, EveryLanguageIntegerRecordIsWritten) {
 	ASSERT_TRUE(writer.number("f", static_cast <unsigned char> (255)));
 	// Выполняем запись числа написанием беззнакового длинного
 	ASSERT_TRUE(writer.number("g", static_cast <unsigned long> (4294967295u)));
+	// Выполняем запись числа написанием беззнакового короткого
+	ASSERT_TRUE(writer.number("h", static_cast <unsigned short> (65535)));
+	// Выполняем запись числа написанием длинного длинного целого
+	ASSERT_TRUE(writer.number("i", static_cast <long long> (-9007199254740993LL)));
+	/**
+	 * Выполняем запись числа написанием беззнакового длинного длинного
+	 *
+	 * @note Число берётся в пределах знакового: описание TOML отводит целому шестьдесят
+	 *       четыре разряда СО ЗНАКОМ, и число сверх того запись отвергает своим кодом
+	 */
+	ASSERT_TRUE(writer.number("j", static_cast <unsigned long long> (9007199254740993ULL)));
 	// Выполняем проверку собранного текста
-	ASSERT_EQ(writer.text(), "[s]\na = 9\nb = 5\nc = 3\nd = 7\ne = -128\nf = 255\ng = 4294967295\n");
+	ASSERT_EQ(writer.text(), "[s]\na = 9\nb = 5\nc = 3\nd = 7\ne = -128\nf = 255\ng = 4294967295\n"
+		"h = 65535\ni = -9007199254740993\nj = 9007199254740993\n");
 }

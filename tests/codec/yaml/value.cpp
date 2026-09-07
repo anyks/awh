@@ -16,6 +16,12 @@
 /**
  * Стандартные заголовочные файлы
  */
+#if !defined(_WIN32) && !defined(_WIN64)
+	#include <unistd.h>
+#else
+	#include <process.h>
+	#define getpid _getpid
+#endif
 #include <cmath>
 #include <fstream>
 #include <limits>
@@ -43,6 +49,39 @@
  *
  */
 namespace {
+	/**
+	 * @brief Функция выдачи имени временного файла, по процессу уникального
+	 *
+	 * @param name имя временного файла без уникализации
+	 * @return     имя с номером процесса перед расширением
+	 *
+	 * @details Имена постоянные годны, покуда набор гонится в одиночку. Два прогона РАЗНЫХ
+	 *          процессов из одного дерева пишут в один и тот же файл, и проверка записи
+	 *          получает содержимое соседа. Воспроизведено опытом: десять прогонов подряд
+	 *          чисто, два прогона разом - `FailedSaveKeepsThePreviousContent` красна
+	 *
+	 * @warning Помощник `temporary()` от этого НЕ спасает: он выбирает каталог, а имя берёт
+	 *          как есть. Уникализация нужна именно имени
+	 *
+	 */
+	static ::std::string unique(const ::std::string & name) noexcept {
+		/**
+		 * Разыскиваем место расширения имени ЗА последним разделителем пути
+		 *
+		 * @warning Розыск точки по всему имени негоден: у имени `./каталог/файл` точка
+		 *          начала пути была бы принята за расширение, и имя обратилось бы в
+		 *          `.-1234/каталог/файл` - путь в каталог несуществующий
+		 */
+		const ::std::size_t slash = name.find_last_of("/\\");
+		// Разыскиваем место расширения имени
+		const ::std::size_t found = name.rfind('.');
+		// Получаем место расширения имени, за разделителем стоящее
+		const ::std::size_t dot = (((found == ::std::string::npos) || ((slash != ::std::string::npos) && (found < slash))) ? ::std::string::npos : found);
+		// Получаем номер текущего процесса
+		const ::std::string pid = ::std::to_string(static_cast <long> (::getpid()));
+		// Выводим имя с номером процесса перед расширением
+		return ((dot == ::std::string::npos) ? (name + "-" + pid) : (name.substr(0, dot) + "-" + pid + name.substr(dot)));
+	}
 	/**
 	 * @brief Объект журнала проверок с отключённым выводом
 	 *
@@ -646,15 +685,15 @@ TEST(CodecYamlValue, Storing) {
 	// Выполняем занесение числового поля
 	value["port"] = yaml::value_t(static_cast <int64_t> (8080));
 	// Выполняем проверку успешности записи значения в файл
-	ASSERT_TRUE(value.save("./value.yaml"));
+	ASSERT_TRUE(value.save(::unique("./value.yaml")));
 	// Прочитанное обратно значение
 	yaml::value_t loaded;
 	// Выполняем проверку успешности чтения значения из файла
-	ASSERT_TRUE(loaded.load("./value.yaml"));
+	ASSERT_TRUE(loaded.load(::unique("./value.yaml")));
 	// Выполняем проверку совпадения записанного и прочитанного
 	ASSERT_TRUE(loaded == value);
 	// Выполняем снятие записанного файла
-	::remove("./value.yaml");
+	::remove(::unique("./value.yaml").c_str());
 }
 /**
  * @brief Проверка отказов потоковой сборки
@@ -2754,7 +2793,7 @@ TEST(CodecYamlValue, BuilderRefusesAfterFinish) {
  */
 TEST(CodecYamlValue, FileRoundTrip) {
 	// Адрес файла, в какой записывается владеющее значение
-	const string filename = "./awh_yaml_value.yaml";
+	const string filename = ::unique("./awh_yaml_value.yaml");
 	// Владеющее значение, в файл записываемое
 	yaml::value_t value;
 	// Выполняем назначение поля отображения простым значением
@@ -3199,7 +3238,7 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 	 */
 	{
 		// Имя временного файла с содержимым негодным
-		const string filename = temporary("awh-yaml-value-refusal.txt");
+		const string filename = temporary(::unique("awh-yaml-value-refusal.txt"));
 		// Поток записи временного файла
 		ofstream file(filename, ios::binary | ios::trunc);
 		// Выполняем проверку того, что временный файл открыт
@@ -3609,7 +3648,7 @@ TEST(CodecYamlValue, RefusalDoesNotWipeTarget) {
  */
 TEST(CodecYamlValue, LoadRefusesMultipleDocuments) {
 	// Путь записи временного файла текста
-	const string filename = "./awh_yaml_несколько_документов.yaml";
+	const string filename = ::unique("./awh_yaml_несколько_документов.yaml");
 	// Объект записи временного файла текста
 	ofstream file(filename, ios::binary);
 	// Выполняем проверку того, что временный файл заведён
@@ -3629,7 +3668,7 @@ TEST(CodecYamlValue, LoadRefusesMultipleDocuments) {
 	// Выполняем удаление записанного временного файла текста
 	::remove(filename.c_str());
 	// Путь записи второго временного файла текста
-	const string single = "./awh_yaml_один_документ.yaml";
+	const string single = ::unique("./awh_yaml_один_документ.yaml");
 	// Объект записи второго временного файла текста
 	ofstream one(single, ios::binary);
 	// Выполняем проверку того, что второй временный файл заведён
@@ -3919,11 +3958,11 @@ TEST(CodecYamlValue, SaveRefusesUndefinedValue) {
 	 * @note Поверка эта стоит прежде открытия файла: поток записи усекает цель при
 	 *       открытии, и значение, текста не дающее, сносило бы прежнее содержимое
 	 */
-	ASSERT_FALSE(undefined.save("./awh_yaml_недействительное.yaml"));
+	ASSERT_FALSE(undefined.save(::unique("./awh_yaml_недействительное.yaml")));
 	// Выполняем проверку того, что отказ записи в журнал ушёл
 	ASSERT_EQ(messages.size(), 1u);
 	// Выполняем проверку того, что файл записи заведён не был
-	ASSERT_FALSE(::std::ifstream("./awh_yaml_недействительное.yaml").good());
+	ASSERT_FALSE(::std::ifstream(::unique("./awh_yaml_недействительное.yaml")).good());
 }
 /**
  * @brief Проверка разбора пути с частью пустою
@@ -4773,4 +4812,51 @@ TEST(CodecYamlValue, GraftOfTheEmptyValueLaysTheVoid) {
 		ASSERT_TRUE(document.root().at("z").is(yaml::type_t::NUL))
 			<< "схема " << static_cast <uint16_t> (schema) << ": " << document.dump();
 	}
+}
+
+
+/**
+ * @brief Проверка того, что отказавшая запись значения следов не оставляет
+ *
+ * @details Запись ведётся во временный файл, а цель подменяется переименованием: отказ
+ * подмены обязан убрать за собою временный файл, иначе рядом с целью копился бы мусор,
+ * потребителю невидимый. У ДЕРЕВА уборка эта проверена тремя путями, а у владеющего
+ * ЗНАЧЕНИЯ - ни одним: приём записи у него свой, и уборка в нём своя же
+ *
+ * @note Отказ добывается каталогом, целью записи поставленным: каталог отвергает ПОДМЕНУ,
+ *       а не открытие, и временный файл к этому мигу уже заведён - иной отказ уборку эту
+ *       не задел бы вовсе
+ *
+ * @note Разряд этот проверок указал владелец кодеков JSON, XML и CSV, сверявший у себя
+ *       два пути отказа против моих трёх
+ *
+ */
+TEST(CodecYamlValue, RefusedSaveLeavesNoTemporaryFile){
+	// Путь к каталогу, целью записи ставимому
+	const string folder = ::unique("./цель-значения-yaml");
+	/**
+	 * Выполняем уборку каталога, прежним прогоном оставленного
+	 *
+	 * @warning Уборка идёт ПЕРЕД заведением и сносит содержимое: заведение отвечает
+	 *          отказом на каталог уже сущий, а `::rmdir` берёт лишь каталог пустой
+	 */
+	removeDirectory(folder);
+	// Выполняем заведение каталога, целью записи ставимого
+	ASSERT_TRUE(makeDirectory(folder));
+	// Собираемое владеющее значение
+	yaml::value_t value;
+	value["ключ"] = yaml::value_t("значение");
+	// Выполняем проверку отказа записи значения в каталог
+	ASSERT_FALSE(value.save(folder));
+	/**
+	 * Выполняем проверку того, что временного файла рядом с целью не осталось
+	 */
+	{
+		// Поток чтения временного файла, рядом с целью кладущегося
+		ifstream leftover(folder + ".awh-tmp", ios::binary);
+		// Выполняем проверку того, что временного файла не осталось
+		ASSERT_FALSE(leftover.is_open());
+	}
+	// Выполняем уборку каталога, целью записи служившего
+	removeDirectory(folder);
 }

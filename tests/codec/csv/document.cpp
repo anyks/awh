@@ -48,6 +48,19 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <unistd.h>
+
+/**
+ * Заголовок номера процесса у MS Windows лежит отдельно
+ *
+ * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
+ *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
+ *       два прогона разных процессов иначе пишут в один и тот же файл
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <process.h>
+#endif
+
 #include <gtest/gtest.h>
 
 /**
@@ -66,6 +79,50 @@
  *
  */
 namespace {
+	/**
+	 * @brief Функция получения имени временного файла, единственного для процесса
+	 *
+	 * @details Имена временных файлов проверок были жёсткими, и покуда набор гоняли
+	 * поодиночке, вреда не было. Два же прогона РАЗНЫХ процессов, идущие разом, писали
+	 * в один и тот же файл, и проверка, сохранность содержимого утверждающая, получала
+	 * содержимое соседа
+	 *
+	 * @warning Отказ этот плавал и воспроизведению не поддавался: виновно соседство
+	 *          ПРОЦЕССОВ, а не соседство проверок. Доказано опытом 07.09.2026 - прогоны
+	 *          поодиночке чисты, два одновременных дают красную строку с первого раза
+	 *
+	 * @note Расширение ищется ЛИШЬ за последним разделителем пути: имя вида
+	 *       `./имя-каталога` точку несёт в начале, и поиск по всей строке обращал бы
+	 *       его в путь к несуществующему каталогу
+	 *
+	 * @param name имя временного файла
+	 * @return     имя с номером процесса перед расширением
+	 *
+	 */
+	static std::string unique(const std::string & name) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = name.rfind('/');
+		// Положение найденной точки
+		const size_t found = name.rfind('.');
+		// Положение расширения в имени файла
+		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
+		// Собираемое имя без расширения
+		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
+		// Дописываем номер процесса
+		result.append("-").append(std::to_string(static_cast <uint32_t> (
+#if defined(_WIN32) || defined(_WIN64)
+			::_getpid()
+#else
+			::getpid()
+#endif
+		)));
+		// Дописываем расширение, коли оно было
+		if(dot != std::string::npos)
+			// Выполняем дописывание расширения
+			result.append(name.substr(dot));
+		// Выводим собранное имя
+		return result;
+	}
 	/**
 	 * @brief Сторож временного файла проверки
 	 *
@@ -129,7 +186,7 @@ namespace {
 			 * @param name имя временного файла проверки
 			 *
 			 */
-			explicit Scratch(const std::string & name) noexcept : _path(temporary(name)) {
+			explicit Scratch(const std::string & name) noexcept : _path(temporary(unique(name))) {
 				// Выполняем снос файла, оставшегося от прогона прежнего
 				::remove(this->_path.c_str());
 			}
@@ -575,7 +632,7 @@ TEST(CodecCsvDocument, RoundTrip) {
  */
 TEST(CodecCsvDocument, File) {
 	// Выполняем запись временного файла таблицы
-	const string & filename = temporary("awh_csv_file.csv", "name,value\r\na,1\r\nb,2\r\n");
+	const string & filename = temporary(unique("awh_csv_file.csv"), "name,value\r\na,1\r\nb,2\r\n");
 	// Объект контейнера таблицы
 	csv::document_t document(::logger());
 	// Выполняем чтение таблицы из файла
@@ -994,7 +1051,7 @@ TEST(CodecCsvDocument, WriteFailureIsNotSuccess) {
  */
 TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 	// Адрес каталога, целевой путь занимающего
-	const string directory = "./csv-document-rename-dir";
+	const string directory = ::unique("./csv-document-rename-dir");
 	/**
 	 * @brief Сторож временного каталога проверки
 	 */
@@ -1004,11 +1061,11 @@ TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 		// Деструктор сторожа каталога
 		~Guard() noexcept {
 			// Выполняем снос стерегомого каталога
-			::rmdir(this->path.c_str());
+			::removeDirectory(this->path);
 		}
 	} guard{directory};
 	// Выполняем заведение каталога, целевой путь занимающего
-	::rmdir(directory.c_str());
+	::removeDirectory(directory);
 	ASSERT_TRUE(::makeDirectory(directory));
 	// Таблица значений
 	csv::document_t document(::logger());
@@ -3369,4 +3426,103 @@ TEST(CodecCsvDocument, QueriesAnswerBeforeAndAfterParsing) {
 	ASSERT_TRUE(builder.close());
 	// Выполняем проверку выдачи текста собранной таблицы
 	ASSERT_EQ(builder.finish().dump(), "true,false\r\n");
+}
+
+/**
+ * @brief Проверка приведения содержимого поля по видам ЯЗЫКА, а не по разрядным псевдонимам
+ *
+ * @details Довод дословно тот же, что у разметки: обозначения `int8_t`…`uint64_t` суть
+ *          псевдонимы, и на разных системах ложатся на разные виды языка. У macOS ARM64
+ *          `int64_t` есть `long long`, у Linux x86-64 - `long`, и потребитель, писавший
+ *          приёмником `long`, здесь не связывался вовсе
+ *
+ * @warning Проверка держится СБОРКОЙ, а не утверждениями: дефект был отказом связывания.
+ *          Утверждения при нём стерегут перенос числа из разрядного вида в вид языка
+ *
+ * @note Замерено 07.09.2026 на двух системах составом библиотеки
+ */
+TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
+	// Объект таблицы для разбора текста
+	csv::document_t document(::logger());
+	// Выполняем разбор таблицы об одной записи
+	ASSERT_TRUE(document.parse("4096,-9223372036854775807,18446744073709551615,-128\r\n"));
+	// Приёмники видов языка, расходящихся между системами
+	long lesser = 0;
+	long long greater = 0;
+	unsigned long unsignedLesser = 0;
+	size_t sized = 0;
+	signed char narrow = 0;
+	/**
+	 * Выполняем приведение содержимого поля приёмником вида `size_t`
+	 *
+	 * @note Вид этот берётся первым оттого, что потребителю он привычнее прочих
+	 */
+	ASSERT_TRUE(document.numeric <size_t> (0, 0, sized));
+	// Выполняем проверку приведённого числа
+	ASSERT_EQ(sized, static_cast <size_t> (4096));
+	// Выполняем приведение содержимого поля приёмником вида `long`
+	ASSERT_TRUE(document.numeric <long> (0, 1, lesser));
+	// Выполняем проверку приведённого числа
+	ASSERT_EQ(lesser, -9223372036854775807L);
+	// Выполняем приведение содержимого поля приёмником вида `long long`
+	ASSERT_TRUE(document.numeric <long long> (0, 1, greater));
+	// Выполняем проверку приведённого числа
+	ASSERT_EQ(greater, -9223372036854775807LL);
+	// Выполняем приведение содержимого поля приёмником вида `unsigned long`
+	ASSERT_TRUE(document.numeric <unsigned long> (0, 2, unsignedLesser));
+	// Выполняем проверку приведённого числа
+	ASSERT_EQ(unsignedLesser, 18446744073709551615UL);
+	// Выполняем приведение содержимого поля приёмником вида `signed char`
+	ASSERT_TRUE(document.numeric <signed char> (0, 3, narrow));
+	// Выполняем проверку приведённого числа
+	ASSERT_EQ(narrow, static_cast <signed char> (-128));
+	/**
+	 * Выполняем проверку того, что отказ приёмника не трогает
+	 *
+	 * @warning Половина эта стережёт перенос: приведение через разрядный вид ставит
+	 *          приёмник ЛИШЬ при успехе
+	 */
+	long keeper = 42;
+	// Выполняем проверку отказа приведения поля отсутствующего
+	ASSERT_FALSE(document.numeric <long> (9, 9, keeper));
+	// Выполняем проверку того, что приёмник отказом не тронут
+	ASSERT_EQ(keeper, 42L);
+}
+
+/**
+ * @brief Проверка отказа загрузки при подаче каталога вместо файла
+ *
+ * @details Распознавание каталога стоит ДО открытия потока: у POSIX каталог
+ * открывается исправно, а чтение из него отвечает отказом, и без распознавания
+ * подача каталога дала бы «загружено» при пустом дереве. Заведена 07.09.2026
+ * после находки, что у кодеков INI, YAML и TOML распознавания не было вовсе и
+ * подача каталога отвечала там признаком УСПЕХА
+ *
+ * @note Проверка ведётся по обоим входам загрузки - у документа и у значения:
+ *       открытие потока у них своё, и распознавание требуется каждому
+ *
+ */
+TEST(CodecCsvDocument, DirectoryIsRefusedNotLoaded) {
+	/**
+	 * Выполняем проверку отказа загрузки каталога документом
+	 */
+	{
+		// Дерево значений документа
+		csv::document_t document(::logger());
+		// Выполняем проверку отказа загрузки каталога
+		ASSERT_FALSE(document.load("."));
+		// Выполняем проверку кода отказа загрузки
+		ASSERT_EQ(document.error(), csv::error_t::FILE_NOT_READ);
+	}
+	/**
+	 * Выполняем проверку отказа загрузки каталога значением
+	 */
+	{
+		// Значение документа
+		csv::value_t value;
+		// Выполняем проверку отказа загрузки каталога
+		ASSERT_FALSE(value.load("."));
+		// Выполняем проверку кода отказа загрузки
+		ASSERT_EQ(value.error(), csv::error_t::FILE_NOT_READ);
+	}
 }

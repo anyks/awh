@@ -27,6 +27,19 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <unistd.h>
+
+/**
+ * Заголовок номера процесса у MS Windows лежит отдельно
+ *
+ * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
+ *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
+ *       два прогона разных процессов иначе пишут в один и тот же файл
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <process.h>
+#endif
+
 #include <gtest/gtest.h>
 
 /**
@@ -44,6 +57,50 @@
  *
  */
 namespace {
+	/**
+	 * @brief Функция получения имени временного файла, единственного для процесса
+	 *
+	 * @details Имена временных файлов проверок были жёсткими, и покуда набор гоняли
+	 * поодиночке, вреда не было. Два же прогона РАЗНЫХ процессов, идущие разом, писали
+	 * в один и тот же файл, и проверка, сохранность содержимого утверждающая, получала
+	 * содержимое соседа
+	 *
+	 * @warning Отказ этот плавал и воспроизведению не поддавался: виновно соседство
+	 *          ПРОЦЕССОВ, а не соседство проверок. Доказано опытом 07.09.2026 - прогоны
+	 *          поодиночке чисты, два одновременных дают красную строку с первого раза
+	 *
+	 * @note Расширение ищется ЛИШЬ за последним разделителем пути: имя вида
+	 *       `./имя-каталога` точку несёт в начале, и поиск по всей строке обращал бы
+	 *       его в путь к несуществующему каталогу
+	 *
+	 * @param name имя временного файла
+	 * @return     имя с номером процесса перед расширением
+	 *
+	 */
+	static std::string unique(const std::string & name) noexcept {
+		// Положение последнего разделителя пути
+		const size_t slash = name.rfind('/');
+		// Положение найденной точки
+		const size_t found = name.rfind('.');
+		// Положение расширения в имени файла
+		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
+		// Собираемое имя без расширения
+		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
+		// Дописываем номер процесса
+		result.append("-").append(std::to_string(static_cast <uint32_t> (
+#if defined(_WIN32) || defined(_WIN64)
+			::_getpid()
+#else
+			::getpid()
+#endif
+		)));
+		// Дописываем расширение, коли оно было
+		if(dot != std::string::npos)
+			// Выполняем дописывание расширения
+			result.append(name.substr(dot));
+		// Выводим собранное имя
+		return result;
+	}
 	/**
 	 * @brief Сторож временного файла проверки
 	 *
@@ -80,7 +137,7 @@ namespace {
 			 * @param name имя временного файла проверки
 			 *
 			 */
-			explicit Scratch(const std::string & name) noexcept : _path(temporary(name)) {
+			explicit Scratch(const std::string & name) noexcept : _path(temporary(unique(name))) {
 				// Выполняем снос файла, оставшегося от прогона прежнего
 				::remove(this->_path.c_str());
 			}
@@ -1931,6 +1988,25 @@ TEST(CodecJsonWriter, IntegerWritingAcceptsEveryRecord) {
 	ASSERT_TRUE(writer.value(static_cast <size_t> (9)));
 	// Выполняем запись числа видом короткого целого языка
 	ASSERT_TRUE(writer.value(static_cast <short> (3)));
+	/**
+	 * Выполняем запись числа всеми прочими видами языка
+	 *
+	 * @note Порождены десять видов, и звать надо ВСЕ: вид, из перечня выпавший, даёт
+	 *       отказ связывания, какой набор без такого вызова не заметит. Замерено картой
+	 *       охвата 07.09.2026 - половина эта звала четыре вида из десяти, и шесть
+	 *       порождённых оставались непроверенными
+	 */
+	ASSERT_TRUE(writer.value(static_cast <unsigned short> (4)));
+	// Выполняем запись числа видом беззнакового целого языка
+	ASSERT_TRUE(writer.value(static_cast <unsigned int> (6)));
+	// Выполняем запись числа видом длинного целого языка
+	ASSERT_TRUE(writer.value(static_cast <long> (8)));
+	// Выполняем запись числа видом длиннейшего целого языка
+	ASSERT_TRUE(writer.value(static_cast <long long> (10)));
+	// Выполняем запись числа видом длиннейшего беззнакового целого языка
+	ASSERT_TRUE(writer.value(static_cast <unsigned long long> (12)));
+	// Выполняем запись числа видом однобайтового беззнакового целого языка
+	ASSERT_TRUE(writer.value(static_cast <unsigned char> (14)));
 	// Выполняем запись числа краевым значением однобайтового целого со знаком
 	ASSERT_TRUE(writer.value(static_cast <int8_t> (-128)));
 	/**
@@ -1949,5 +2025,5 @@ TEST(CodecJsonWriter, IntegerWritingAcceptsEveryRecord) {
 	// Выполняем завершение записи текста JSON
 	ASSERT_TRUE(writer.finish());
 	// Выполняем проверку собранного текста
-	ASSERT_EQ(writer.text(), "[7,9,3,-128,18446744073709551615,1.5,true]");
+	ASSERT_EQ(writer.text(), "[7,9,3,4,6,8,10,12,14,-128,18446744073709551615,1.5,true]");
 }

@@ -44,6 +44,19 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <unistd.h>
+
+/**
+ * Заголовок номера процесса у MS Windows лежит отдельно
+ *
+ * @note У POSIX `getpid` живёт в `<unistd.h>`, а у MS Windows - `_getpid` в
+ *       `<process.h>`. Номер этот нужен именам временных файлов проверок:
+ *       два прогона разных процессов иначе пишут в один и тот же файл
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	#include <process.h>
+#endif
+
 #include <gtest/gtest.h>
 
 /**
@@ -61,6 +74,52 @@
  *
  */
 namespace {
+	/**
+	 * @brief Функция получения имени временного файла, единственного для процесса
+	 *
+	 * @details Проверки пишут временные файлы в рабочий каталог, а имена их до 07.09.2026
+	 * были жёсткими. Покуда набор гоняли поодиночке, вреда не было; два же прогона РАЗНЫХ
+	 * процессов, идущие разом, писали в один и тот же файл, и проверка, сохранность
+	 * прежнего содержимого утверждающая, получала содержимое соседа
+	 *
+	 * @warning Отказ этот плавал и воспроизведению не поддавался: сосед по набору тут ни
+	 *          при чём, виновно соседство ПРОЦЕССОВ. Доказано опытом на кодеке TOML -
+	 *          десять прогонов поодиночке чисты, два одновременных дают красную строку
+	 *          с первого раза
+	 *
+	 * @param name имя временного файла
+	 * @return     имя с номером процесса перед расширением
+	 *
+	 */
+	static std::string unique(const std::string & name) noexcept {
+		/**
+		 * Положение расширения в имени файла
+		 *
+		 * @warning Расширение ищется ЛИШЬ за последним разделителем пути: имя вида
+		 *          `./имя-каталога` точку несёт в начале, и поиск по всей строке
+		 *          обращал бы её в `.-1234/имя-каталога` - путь в несуществующий
+		 *          каталог. Найдено 07.09.2026 красною строкою набора
+		 */
+		const size_t slash = name.rfind('/');
+		const size_t found = name.rfind('.');
+		const size_t dot = ((found == std::string::npos) || ((slash != std::string::npos) && (found < slash))) ? std::string::npos : found;
+		// Собираемое имя без расширения
+		std::string result((dot == std::string::npos) ? name : name.substr(0, dot));
+		// Дописываем номер процесса
+		result.append("-").append(std::to_string(static_cast <uint32_t> (
+#if defined(_WIN32) || defined(_WIN64)
+			::_getpid()
+#else
+			::getpid()
+#endif
+		)));
+		// Дописываем расширение, коли оно было
+		if(dot != std::string::npos)
+			// Выполняем дописывание расширения
+			result.append(name.substr(dot));
+		// Выводим собранное имя
+		return result;
+	}
 	/**
 	 * @brief Сторож временного файла проверки
 	 *
@@ -97,7 +156,7 @@ namespace {
 			 * @param name имя временного файла проверки
 			 *
 			 */
-			explicit Scratch(const std::string & name) noexcept : _path(temporary(name)) {
+			explicit Scratch(const std::string & name) noexcept : _path(temporary(unique(name))) {
 				// Выполняем снос файла, оставшегося от прогона прежнего
 				::remove(this->_path.c_str());
 			}
@@ -3681,7 +3740,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 	 */
 	{
 		// Адрес каталога, целевой путь занимающего
-		const string directory = "./json-document-rename-dir";
+		const string directory = ::unique("./json-document-rename-dir");
 		/**
 		 * @brief Сторож временного каталога проверки
 		 */
@@ -3691,11 +3750,11 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 			// Деструктор сторожа каталога
 			~Guard() noexcept {
 				// Выполняем снос стерегомого каталога
-				::rmdir(this->path.c_str());
+				::removeDirectory(this->path);
 			}
 		} guard{directory};
 		// Выполняем заведение каталога, целевой путь занимающего
-		::rmdir(directory.c_str());
+		::removeDirectory(directory);
 		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево значений документа
 		json::document_t document(::logger());
@@ -3754,7 +3813,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
  */
 TEST(CodecJsonDocument, SavingDocumentWithoutValueIsRefused) {
 	// Адрес файла, в который ведётся запись документа
-	const string filename = "./json-document-empty-save.json";
+	const string filename = ::unique("./json-document-empty-save.json");
 	// Выполняем снос прежнего файла документа
 	::remove(filename.c_str());
 	// Дерево значений документа без значения
@@ -3778,4 +3837,42 @@ TEST(CodecJsonDocument, SavingDocumentWithoutValueIsRefused) {
 	}
 	// Выполняем снос файла документа
 	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка отказа загрузки при подаче каталога вместо файла
+ *
+ * @details Распознавание каталога стоит ДО открытия потока: у POSIX каталог
+ * открывается исправно, а чтение из него отвечает отказом, и без распознавания
+ * подача каталога дала бы «загружено» при пустом дереве. Заведена 07.09.2026
+ * после находки, что у кодеков INI, YAML и TOML распознавания не было вовсе и
+ * подача каталога отвечала там признаком УСПЕХА
+ *
+ * @note Проверка ведётся по обоим входам загрузки - у документа и у значения:
+ *       открытие потока у них своё, и распознавание требуется каждому
+ *
+ */
+TEST(CodecJsonDocument, DirectoryIsRefusedNotLoaded) {
+	/**
+	 * Выполняем проверку отказа загрузки каталога документом
+	 */
+	{
+		// Дерево значений документа
+		json::document_t document(::logger());
+		// Выполняем проверку отказа загрузки каталога
+		ASSERT_FALSE(document.load("."));
+		// Выполняем проверку кода отказа загрузки
+		ASSERT_EQ(document.error(), json::error_t::FILE_NOT_READ);
+	}
+	/**
+	 * Выполняем проверку отказа загрузки каталога значением
+	 */
+	{
+		// Значение документа
+		json::value_t value;
+		// Выполняем проверку отказа загрузки каталога
+		ASSERT_FALSE(value.load("."));
+		// Выполняем проверку кода отказа загрузки
+		ASSERT_EQ(value.error(), json::error_t::FILE_NOT_READ);
+	}
 }

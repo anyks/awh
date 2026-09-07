@@ -1033,6 +1033,12 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	if(filename.empty()){
 		// Запоминаем код отказа сохранения таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV value failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного сохранения
 		return false;
 	}
@@ -1075,6 +1081,12 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	if(!file.is_open()){
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV value failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного сохранения
 		return false;
 	}
@@ -1090,6 +1102,12 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 		::remove(temporary.c_str());
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV value failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного сохранения
 		return false;
 	}
@@ -1101,6 +1119,12 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 		::remove(temporary.c_str());
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV value failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного сохранения
 		return false;
 	}

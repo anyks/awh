@@ -391,6 +391,18 @@ namespace {
 				 *          заход не задет ни разу
 				 *
 				 * @note Сносу заход не подлежит: без него отказ записи знака пропал бы молча
+				 *
+				 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь
+				 *       им и различных. Наборы трёх кодеков зелены (397, 278, 276), а ворошители на
+				 *       трёх зёрнах по 20 000 текстов дают выдачу побайтно ту же - девять сличений
+				 *
+				 * @warning Порча ставилась ВЕРНОЮ формою: действие вынесено отдельной строкою, а
+				 *          условие обращено в ложь. Прямая подмена условия убрала бы САМОЁ ДЕЙСТВИЕ,
+				 *          и различие вышло бы от него, а не от снятой проверки
+				 *
+				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+				 *          слоями, и разойдись слои - станет видимым немедля
 				 */
 				if(!encode(code, result))
 					// Выводим признак неудачного разбора
@@ -733,6 +745,23 @@ void awh::codec::ini::Reader::place(const size_t offset, uint32_t & line, uint32
 			 * @note Сносу заход не подлежит: он есть застава последнего рубежа. Правка
 			 *       сборки отрезков, оставившая между ними разрыв, вернёт сюда
 			 *       управление, и положение отказа считалось бы по чужому отрезку
+			 *
+			 * @note Довод выше стоит на устройстве соседнего слоя, и оттого он ПОДКРЕПЛЁН
+			 *       замером: тело захода даёт ноль у всех трёх подач - набор кодека,
+			 *       ворошитель за 60 000 проходов и общий набор кодеков, - при живом
+			 *       стороже. Замерено родным покрытием clang
+			 *
+			 * @warning Замер недостижимости НЕ ДОКАЗЫВАЕТ: он лишь не нашёл подачи. Доводы
+			 *          рода сего - «соседний слой отсеивает прежде» - падали не раз, и
+			 *          всякий раз оттого, что закрыта была дорога ИЗВЕСТНАЯ, а не всякая
+			 *
+			 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь им
+			 *       и различных. Наборы трёх кодеков зелены (397, 278, 276), ворошители на трёх
+			 *       зёрнах по 20 000 текстов дают выдачу побайтно ту же
+			 *
+			 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+			 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+			 *          слоями, и разойдись слои - станет видимым немедля
 			 */
 			if(index < piece.logical)
 				// Выполняем прекращение поиска отрезка
@@ -1307,6 +1336,14 @@ bool awh::codec::ini::Reader::header(const string_view line, const size_t offset
 				 * @note Сносу заход не подлежит: он есть застава последнего рубежа.
 				 *       Правка счёта кавычек у поиска скобки вернёт сюда управление, и
 				 *       имя подраздела без закрывающей кавычки легло бы в дерево молча
+				 *
+				 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь им
+				 *       и различных. Наборы трёх кодеков зелены (397, 278, 276), ворошители на трёх
+				 *       зёрнах по 20 000 текстов дают выдачу побайтно ту же
+				 *
+				 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+				 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+				 *          слоями, и разойдись слои - станет видимым немедля
 				 */
 				if(!closed)
 					// Выводим сообщение об ошибке разбора
@@ -2167,6 +2204,20 @@ void awh::codec::ini::Reader::reset() noexcept {
  * @param end    признак того, что кусок является последним
  * @return       результат выполнения операции
  *
+	 *
+	 * @warning ДОГОВОР ПОДАЧИ ПОСЛЕ КОНЦА расходится у семи кодеков рамки, замерено
+	 *          07.09.2026 щупом в два круга - с вычерпыванием событий и без него:
+	 *
+	 *            JSON, XML, CSV - отказ с кодом `TEXT_ALREADY_ENDED`, кодом своим
+	 *            YAML - отказ с кодом `TRAILING_CHARACTERS`, кодом ЧУЖОГО смысла
+	 *            TOML - БЕЗ вычерпывания УСПЕХ, с вычерпыванием отказ, оба при коде 0
+	 *            INI  - отказ при коде 0 в обоих кругах
+	 *
+	 * @warning Отказ при коде НУЛЕВОМ есть отказ немой: потребитель видит ложь и не
+	 *          узнаёт причины. Свести к общему нельзя - кода `TEXT_ALREADY_ENDED` у
+	 *          YAML, TOML и INI в перечне нет вовсе, и заведение его меняет договор
+	 *          наружу. ВЫНЕСЕНО ВЛАДЕЛЬЦУ вместе с расхождением кода на подачу каталога:
+	 *          оба упираются в узость перечня отказов трёх этих кодеков
  */
 bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const bool end) noexcept {
 	/**
@@ -2226,6 +2277,14 @@ bool awh::codec::ini::Reader::feed(const void * buffer, const size_t size, const
 	 * @note Сносу заход не подлежит: он есть застава последнего рубежа. Заведение
 	 *       состояния завершения без признака последнего куска вернёт сюда управление,
 	 *       и подача легла бы в закрытое чтение
+	 *
+	 * @note Снятие стража этого НЕРАЗЛИЧИМО: замерено сличением двух сборок, одним лишь им
+	 *       и различных. Наборы трёх кодеков зелены (397, 278, 276), ворошители на трёх
+	 *       зёрнах по 20 000 текстов дают выдачу побайтно ту же
+	 *
+	 * @warning Неразличимость есть НЕ ДОКАЗАТЕЛЬСТВО недостижимости, а лишь то, что ни одна
+	 *          подача её не отличит. Сносу страж не подлежит: он держит договор между
+	 *          слоями, и разойдись слои - станет видимым немедля
 	 */
 	if(this->_state == state_t::FINISHED)
 		// Выводим отрицательный результат выполнения операции
@@ -2700,16 +2759,26 @@ bool awh::codec::ini::Reader::value(T & result, const boolean_t forms) const noe
 
 /**
  * Выполняем порождение метода получения значения свойства числом для всех поддерживаемых типов
+ *
+ * @warning Порождаются виды ЯЗЫКА, а не разрядные. У macOS int64_t есть long long, а
+ *          size_t - unsigned long; у Linux int64_t есть long. Перечень одних разрядных
+ *          видов негоден на ОБЕИХ системах, только по-разному: у macOS не связывался
+ *          разбор видом long и size_t, у Linux не связался бы видом long long
+ *
+ * @note Вид char голым намеренно не порождён: число им не разбирают
+ *
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <bool> (bool &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <int8_t> (int8_t &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <uint8_t> (uint8_t &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <int16_t> (int16_t &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <uint16_t> (uint16_t &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <int32_t> (int32_t &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <uint32_t> (uint32_t &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <int64_t> (int64_t &, const boolean_t) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <uint64_t> (uint64_t &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <signed char> (signed char &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned char> (unsigned char &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <short> (short &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned short> (unsigned short &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <int> (int &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned int> (unsigned int &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <long> (long &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned long> (unsigned long &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <long long> (long long &, const boolean_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <unsigned long long> (unsigned long long &, const boolean_t) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <float> (float &, const boolean_t) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Reader::value <double> (double &, const boolean_t) const noexcept;
 
