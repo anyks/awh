@@ -587,7 +587,7 @@ TEST(ArgsArgs, ConfigFailure) {
 	// Выполняем проверку числа отказов разбора
 	ASSERT_EQ(args.errors().size(), 1);
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(args.errors().at(0).first, error_t::CODEC);
+	ASSERT_EQ(args.errors().at(0).first, args::error_t::CODEC);
 	// Выполняем проверку пустоты дерева собранных настроек
 	ASSERT_EQ(args.root().size(), 0);
 }
@@ -666,7 +666,7 @@ TEST(ArgsArgs, Filesystem) {
 	// Выполняем проверку отказа чтения снесённого файла настроек
 	ASSERT_FALSE(third.filename(filename, codec::Bridge::format_t::JSON));
 	// Выполняем проверку кода отказа чтения файла настроек
-	ASSERT_EQ(third.errors().at(0).first, error_t::FILESYSTEM);
+	ASSERT_EQ(third.errors().at(0).first, args::error_t::FILESYSTEM);
 }
 
 /**

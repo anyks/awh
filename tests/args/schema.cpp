@@ -237,7 +237,7 @@ TEST(ArgsSchema, StrictParsing) {
 	// Выполняем разбор того же параметра со взведённой строгостью
 	ASSERT_FALSE(args.parse({"--other=second"}));
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(args.errors().at(0).first, error_t::UNKNOWN);
+	ASSERT_EQ(args.errors().at(0).first, args::error_t::UNKNOWN);
 }
 
 /**
@@ -260,11 +260,11 @@ TEST(ArgsSchema, ValueNeeds) {
 	// Выполняем разбор признака с поданным значением
 	ASSERT_FALSE(args.parse({"--verbose=да"}));
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(args.errors().at(0).first, error_t::ODD_VALUE);
+	ASSERT_EQ(args.errors().at(0).first, args::error_t::ODD_VALUE);
 	// Выполняем разбор параметра без потребного значения
 	ASSERT_FALSE(args.parse({"--port"}));
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(args.errors().at(0).first, error_t::NO_VALUE);
+	ASSERT_EQ(args.errors().at(0).first, args::error_t::NO_VALUE);
 	/**
 	 * Выполняем разбор параметра, значение принимающего необязательно, ОБОИМИ
 	 * способами: без значения он есть взведённый признак, со значением - настройка
@@ -302,7 +302,7 @@ TEST(ArgsSchema, Duplicate) {
 	// Выполняем разбор набора с повторной подачей параметра
 	ASSERT_FALSE(args.parse({"--host=first", "--host=second"}));
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(args.errors().at(0).first, error_t::DUPLICATE);
+	ASSERT_EQ(args.errors().at(0).first, args::error_t::DUPLICATE);
 	// Выполняем очистку собранных параметров запуска
 	args.clear();
 	// Взводим признак дозволенности повторной подачи параметра
@@ -349,7 +349,7 @@ TEST(ArgsSchema, Verification) {
 	// Выполняем проверку отказа проверки собранного
 	ASSERT_FALSE(args.verify());
 	// Выполняем проверку кода отказа проверки
-	ASSERT_EQ(args.errors().back().first, error_t::REQUIRED);
+	ASSERT_EQ(args.errors().back().first, args::error_t::REQUIRED);
 	// Выполняем очистку собранных параметров запуска
 	args.clear();
 	// Выполняем разбор набора с обязательным параметром

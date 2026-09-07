@@ -87,7 +87,7 @@ namespace {
 	 * @return       результат разбора
 	 *
 	 */
-	bool collect(const lexer_t & lexer, const vector <string> & items, vector <shot_t> & shots, vector <error_t> & errors) noexcept {
+	bool collect(const lexer_t & lexer, const vector <string> & items, vector <shot_t> & shots, vector <args::error_t> & errors) noexcept {
 		// Выполняем очистку контейнера снимков разобранных лексем
 		shots.clear();
 		// Выполняем очистку контейнера кодов отказов разбора
@@ -98,7 +98,7 @@ namespace {
 			shots.emplace_back(lexeme);
 			// Сообщаем, что разбор следует продолжить
 			return true;
-		}, [&errors](const error_t error, const location_t &) noexcept -> bool {
+		}, [&errors](const args::error_t error, const location_t &) noexcept -> bool {
 			// Выполняем запоминание кода отказа разбора
 			errors.push_back(error);
 			// Сообщаем, что разбор следует продолжить
@@ -118,9 +118,9 @@ TEST(ArgsLexer, Messages) {
 	 * @warning Верхний предел перебора берётся ПОСЛЕДНИМ членом перечня, а не тем, что
 	 *          стоял последним в день написания
 	 */
-	for(uint8_t i = 0; i <= static_cast <uint8_t> (error_t::FILESYSTEM); i++){
+	for(uint8_t i = 0; i <= static_cast <uint8_t> (args::error_t::FILESYSTEM); i++){
 		// Получаем описание очередного кода ошибки разбора
-		const char * text = args::message(static_cast <error_t> (i));
+		const char * text = args::message(static_cast <args::error_t> (i));
 		// Выполняем проверку наличия описания кода ошибки
 		ASSERT_NE(text, nullptr);
 		// Выполняем проверку того, что описание кода ошибки не пусто
@@ -132,7 +132,7 @@ TEST(ArgsLexer, Messages) {
 		ASSERT_STRNE(text, "unknown error") << static_cast <uint32_t> (i);
 	}
 	// Выполняем проверку выдачи общего описания коду, отведённого не имеющему
-	ASSERT_STREQ(args::message(static_cast <error_t> (0xFF)), "unknown error");
+	ASSERT_STREQ(args::message(static_cast <args::error_t> (0xFF)), "unknown error");
 }
 
 /**
@@ -149,7 +149,7 @@ TEST(ArgsLexer, AssignedForm) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор записей параметра обоими видами тире
 	ASSERT_TRUE(collect(lexer, {"--name=value", "-other=second"}, shots, errors));
 	// Выполняем проверку отсутствия отказов разбора
@@ -184,7 +184,7 @@ TEST(ArgsLexer, SeparatedForm) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор записей параметра обоими видами тире
 	ASSERT_TRUE(collect(lexer, {"--name", "value", "-other", "second"}, shots, errors));
 	// Выполняем проверку отсутствия отказов разбора
@@ -215,7 +215,7 @@ TEST(ArgsLexer, OrderIndependence) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор набора, где записи перемешаны с позиционными доводами
 	ASSERT_TRUE(collect(lexer, {"first", "--name=value", "second", "-other", "third"}, shots, errors));
 	// Выполняем проверку отсутствия отказов разбора
@@ -250,7 +250,7 @@ TEST(ArgsLexer, FlagForm) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор набора двух признаков, идущих подряд
 	ASSERT_TRUE(collect(lexer, {"--verbose", "--debug"}, shots, errors));
 	// Выполняем проверку отсутствия отказов разбора
@@ -285,7 +285,7 @@ TEST(ArgsLexer, EmptyValue) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор записи с пустым значением и записи без значения вовсе
 	ASSERT_TRUE(collect(lexer, {"--name=", "--other"}, shots, errors));
 	// Выполняем проверку отсутствия отказов разбора
@@ -314,7 +314,7 @@ TEST(ArgsLexer, NegativeNumber) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор записи параметра с отрицательным числом значением
 	ASSERT_TRUE(collect(lexer, {"--count", "-5", "--rate", "-1.5e-3"}, shots, errors));
 	// Выполняем проверку отсутствия отказов разбора
@@ -357,7 +357,7 @@ TEST(ArgsLexer, Terminus) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор набора с признаком конца именованных параметров
 	ASSERT_TRUE(collect(lexer, {"--name=value", "--", "--other=second"}, shots, errors));
 	// Выполняем проверку отсутствия отказов разбора
@@ -389,13 +389,13 @@ TEST(ArgsLexer, EmptyKeyFailure) {
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор набора с пустым именем параметра
 	ASSERT_TRUE(collect(lexer, {"--=value", "--name=value"}, shots, errors));
 	// Выполняем проверку числа отказов разбора
 	ASSERT_EQ(errors.size(), 1);
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(errors.at(0), error_t::EMPTY_KEY);
+	ASSERT_EQ(errors.at(0), args::error_t::EMPTY_KEY);
 	/**
 	 * Выполняем проверку того, что разбор отказом НЕ ПРЕРВАН: набор разбирается
 	 * целиком, чтобы приложение показало сразу все огрехи набора
@@ -444,7 +444,7 @@ TEST(ArgsLexer, TextMatchesArgv) {
 	// Контейнер снимков лексем, разобранных из набора запуска
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Выполняем разбор набора доводов запуска
 	ASSERT_TRUE(collect(lexer, {"--name", "first second", "-flag", "operand"}, shots, errors));
 	// Контейнер снимков лексем, разобранных из текстового потока
@@ -485,9 +485,9 @@ TEST(ArgsLexer, TextFailures) {
 	// Контейнер слов, собранных разрезом текста
 	vector <string> items;
 	// Контейнер кодов отказов разбора
-	vector <error_t> errors;
+	vector <args::error_t> errors;
 	// Создаём отзыв извещения об отказе разбора
-	const lexer_t::failure_t failure = [&errors](const error_t error, const location_t &) noexcept -> bool {
+	const lexer_t::failure_t failure = [&errors](const args::error_t error, const location_t &) noexcept -> bool {
 		// Выполняем запоминание кода отказа разбора
 		errors.push_back(error);
 		// Сообщаем, что разбор следует продолжить
@@ -498,7 +498,7 @@ TEST(ArgsLexer, TextFailures) {
 	// Выполняем проверку числа отказов разбора
 	ASSERT_EQ(errors.size(), 1);
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(errors.at(0), error_t::UNPAIRED);
+	ASSERT_EQ(errors.at(0), args::error_t::UNPAIRED);
 	// Выполняем очистку контейнера кодов отказов разбора
 	errors.clear();
 	// Выполняем разрез текста, оканчивающегося обратной косой
@@ -506,5 +506,5 @@ TEST(ArgsLexer, TextFailures) {
 	// Выполняем проверку числа отказов разбора
 	ASSERT_EQ(errors.size(), 1);
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(errors.at(0), error_t::DANGLING);
+	ASSERT_EQ(errors.at(0), args::error_t::DANGLING);
 }
