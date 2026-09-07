@@ -227,6 +227,20 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp
 $COMPILER $OPTIONS -c "$ROOT/benchmark/main.cpp" -o "$OUTPUT/main.o"
 
 # Выполняем перебор всех частей ядра контейнера ABC
+# Выполняем сборку общих для кодеков частей
+#
+# @note Части эти лежат ВНЕ каталога кодека, а перечень стенда ведётся ВРУЧНУЮ: вынос
+#       общего кода из кодека ломает такую сборку молча, тогда как CMake остаётся зелёным.
+#       Так вышло 07.09.2026 при сведении приведения чисел к общему `awh::codec::convert` -
+#       пали стенд проверок и этот, а набор и ворошитель прошли
+#
+for SHARED in numeric; do
+	# Выполняем сборку очередной общей части
+	$COMPILER $OPTIONS -c "$ROOT/src/codec/$SHARED.cpp" -o "$OUTPUT/shared-$SHARED.o"
+	# Добавляем собранное к перечню объектных файлов стенда
+	OBJECTS="$OBJECTS $OUTPUT/shared-$SHARED.o"
+done
+
 for PART in common encoding reader writer document value; do
 	# Выполняем сборку очередной части ядра контейнера
 	$COMPILER $OPTIONS -c "$ROOT/src/codec/abc/$PART.cpp" -o "$OUTPUT/codec-$PART.o"

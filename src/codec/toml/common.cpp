@@ -232,6 +232,10 @@ const char * awh::codec::toml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
 			return "the file of the settings could not be opened";
+		// Если текст настроек записать в файл не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+			// Выводим описание кода ошибки
+			return "the text of the settings could not be written to the file";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

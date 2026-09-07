@@ -174,6 +174,17 @@ $COMPILER $OPTIONS -c "$ROOT/benchmark/main.cpp" -o "$OUTPUT/main.o"
 $COMPILER $OPTIONS -c "$ROOT/src/codec/numeric.cpp" -o "$OUTPUT/codec-numeric.o"
 OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
 
+#
+# Собираем переносимую подмену файла, общую всем кодекам
+#
+# @details Лежит в «src/codec», а не в каталоге кодека, и перебором частей кодека
+#          не берётся - как и «numeric.cpp», её нужно называть поимённо. У MS Windows
+#          «rename» существующего файла не заменяет, потому сохранение через временный
+#          файл ходит здесь, а не через вызов системы напрямую
+#
+$COMPILER $OPTIONS -c "$ROOT/src/codec/replace.cpp" -o "$OUTPUT/codec-replace.o"
+OBJECTS="$OBJECTS $OUTPUT/codec-replace.o"
+
 # Выполняем перебор всех частей кодека CSV
 for PART in common encoding reader writer document; do
 	# Выполняем сборку очередной части кодека CSV

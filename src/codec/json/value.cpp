@@ -41,6 +41,7 @@
  */
 #include <num/lexical/lexical.hpp>
 #include <codec/numeric.hpp>
+#include <codec/replace.hpp>
 #include <codec/json/value.hpp>
 
 /**
@@ -1881,7 +1882,7 @@ bool awh::codec::json::Value::save(const string & filename, const writer_t::sett
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 */
-	if(::rename(temporary.c_str(), filename.c_str()) != 0){
+	if(!awh::codec::replace(temporary, filename)){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */

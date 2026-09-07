@@ -274,7 +274,11 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 		 *       разобрано это сплошным щупом 05.09.2026. Дерево свёрток отказывает ровно
 		 *       втроём: нет модуля шифрования, нет буфера, нулевая длина, - а здесь модуль
 		 *       отдан, и кадр непуст всегда. Стеречь двадцать устий порознь нельзя, и
-		 *       стережётся ДОРОГА: `SignatureFixture.MerkleRefusesWithoutItsGear`
+		 *       стережётся ДОРОГА, и двумя проверками порознь: внесение кадра -
+		 *       `SignatureFixture.MerkleRefusesWithoutItsGear`, сведение с приданным
+		 *       кадром - `SignatureFixture.MerkleRootWithAnAppendedChunkRefusesWithoutItsGear`
+		 *       (вторая заведена 07.09.2026 щупом нужности: трёхдоводный `root` без
+		 *       оснастки не звался никем, а довод ссылался на первую проверку за обе)
 		 */
 		if(!this->_merkle.add(buffer.data(), buffer.size())){
 			// Выполняем установку кода отказа выработки свёртки

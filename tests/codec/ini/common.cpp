@@ -54,7 +54,7 @@ TEST(CodecIniCommon, Messages) {
 	 *          стоял последним в день написания: перебор до OVERFLOW_LIMIT оставлял за
 	 *          собою коды, заведённые после него, и описания их никем не проверялись
 	 */
-	for(uint8_t i = 0; i <= static_cast <uint8_t> (ini::error_t::STORAGE_EXHAUSTED); i++){
+	for(uint8_t i = 0; i <= static_cast <uint8_t> (ini::error_t::FILE_NOT_WRITTEN); i++){
 		// Получаем описание очередного кода ошибки разбора
 		const char * message = ini::message(static_cast <ini::error_t> (i));
 		// Выполняем проверку наличия описания кода ошибки
@@ -72,6 +72,19 @@ TEST(CodecIniCommon, Messages) {
 		 */
 		ASSERT_STRNE(message, "unknown error") << static_cast <uint32_t> (i);
 	}
+	/**
+	 * Выполняем проверку того, что предел перебора СТОИТ на последнем члене перечня
+	 *
+	 * @details Поверка эта обращает предупреждение выше в правило, само себя блюдущее:
+	 *          заведи кто код за пределом - описание ему будет отведено, и «unknown
+	 *          error» здесь не выйдет, а проверка отказом потребует предел подвинуть
+	 *
+	 * @warning Без неё предупреждение остаётся одними словами и гниёт молча: предел
+	 *          стоял на `STORAGE_EXHAUSTED`, а перечень с тех пор вырос на три кода, и описания
+	 *          их никем не проверялись - вторая та же беда на том же месте
+	 */
+	ASSERT_STREQ(ini::message(static_cast <ini::error_t> (
+	 static_cast <uint32_t> (ini::error_t::FILE_NOT_WRITTEN) + 1)), "unknown error");
 }
 
 /**

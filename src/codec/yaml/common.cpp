@@ -644,6 +644,10 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
 			return "cannot open the document file";
+		// Если текст документа записать в файл не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
+			// Выводим описание кода ошибки
+			return "cannot write the document text to the file";
 		// Если узла по такому пути документ не несёт
 		case static_cast <uint8_t> (error_t::UNKNOWN_NODE):
 			// Выводим описание кода ошибки

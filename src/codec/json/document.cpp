@@ -43,6 +43,7 @@
  */
 #include <num/lexical/lexical.hpp>
 #include <codec/numeric.hpp>
+#include <codec/replace.hpp>
 #include <codec/json/document.hpp>
 
 /**
@@ -2402,7 +2403,7 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 */
-	if(::rename(temporary.c_str(), filename.c_str()) != 0){
+	if(!awh::codec::replace(temporary, filename)){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */

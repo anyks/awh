@@ -31,6 +31,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <codec/replace.hpp>
 #include <codec/xml/document.hpp>
 #include <codec/xml/writer.hpp>
 
@@ -1066,7 +1067,7 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 */
-	if(::rename(temporary.c_str(), filename.c_str()) != 0){
+	if(!awh::codec::replace(temporary, filename)){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */

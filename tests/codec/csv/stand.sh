@@ -163,6 +163,17 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/numeric.cpp" -o "$OU
 OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
 
 #
+# Собираем переносимую подмену файла, общую всем кодекам
+#
+# @details Лежит в «src/codec», а не в каталоге кодека, и перебором частей кодека
+#          ниже не берётся — как и «numeric.cpp», её нужно называть поимённо.
+#          У MS Windows «rename» существующий файл не заменяет, потому сохранение
+#          через временный файл ходит здесь, а не через вызов системы напрямую.
+#
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/replace.cpp" -o "$OUTPUT/codec-replace.o"
+OBJECTS="$OBJECTS $OUTPUT/codec-replace.o"
+
+#
 # Выполняем перебор всех частей кодека CSV
 #
 # @warning Перечень обязан покрывать ВСЕ части кодека, и сверять его надо при заведении

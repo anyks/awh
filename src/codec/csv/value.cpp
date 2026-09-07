@@ -27,6 +27,7 @@
 /**
  * Подключаем заголовочный файл модуля
  */
+#include <codec/replace.hpp>
 #include <codec/csv/value.hpp>
 
 /**
@@ -1095,7 +1096,7 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	/**
 	 * Если подмена целевого файла временным завершилась отказом
 	 */
-	if(::rename(temporary.c_str(), filename.c_str()) != 0){
+	if(!awh::codec::replace(temporary, filename)){
 		// Выполняем снос временного файла записи
 		::remove(temporary.c_str());
 		// Запоминаем код отказа записи файла таблицы

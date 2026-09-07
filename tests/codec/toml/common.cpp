@@ -51,7 +51,7 @@ TEST(CodecTomlCommon, Messages) {
 	 *          никем не проверялись. Та же беда была у перебора кодировок, и найдена
 	 *          она снастью молчащих кодов, а не глазами
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::STORAGE_EXHAUSTED); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::FILE_NOT_WRITTEN); code++){
 		// Получаем описание очередного кода ошибки
 		const char * message = toml::message(static_cast <toml::error_t> (code));
 		// Выполняем проверку того, что описание кода ошибки выдано
@@ -61,6 +61,19 @@ TEST(CodecTomlCommon, Messages) {
 		// Выполняем проверку того, что код ошибки описанием опознан
 		ASSERT_STRNE(message, "unknown error") << code;
 	}
+	/**
+	 * Выполняем проверку того, что предел перебора СТОИТ на последнем члене перечня
+	 *
+	 * @details Поверка эта обращает предупреждение выше в правило, само себя блюдущее:
+	 *          заведи кто код за пределом - описание ему будет отведено, и «unknown
+	 *          error» здесь не выйдет, а проверка отказом потребует предел подвинуть
+	 *
+	 * @warning Без неё предупреждение остаётся одними словами и гниёт молча: предел
+	 *          стоял на `STORAGE_EXHAUSTED`, а перечень с тех пор вырос на два кода, и описания
+	 *          их никем не проверялись - вторая та же беда на том же месте
+	 */
+	ASSERT_STREQ(toml::message(static_cast <toml::error_t> (
+	 static_cast <uint32_t> (toml::error_t::FILE_NOT_WRITTEN) + 1)), "unknown error");
 	// Выполняем проверку описания кода ошибки за пределами перечисления
 	ASSERT_STREQ(toml::message(static_cast <toml::error_t> (0xFF)), "unknown error");
 }

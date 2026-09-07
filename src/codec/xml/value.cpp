@@ -41,6 +41,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <num/lexical/lexical.hpp>
+#include <codec/replace.hpp>
 #include <codec/xml/value.hpp>
 
 /**
@@ -3072,7 +3073,7 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 */
-	if(::rename(temporary.c_str(), filename.c_str()) != 0){
+	if(!awh::codec::replace(temporary, filename)){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
