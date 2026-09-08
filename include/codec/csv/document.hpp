@@ -983,28 +983,44 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод добавления записи в конец таблицы
 					 *
+					 * @note Содержимое, записи не подлежащее, отвергается ЗДЕСЬ отказом
+					 * `UNWRITABLE_FIELD`, а не при записи текста: прежде добавление
+					 * принимало его молча, и таблица оставалась непригодной к записи.
+					 * Разделитель, кавычка и перевод строки внутри поля отказом НЕ
+					 * являются - запись ограждает их кавычками
+					 *
 					 * @param fields поля добавляемой записи
+					 * @return       результат добавления записи
 					 *
 					 * \~english
 					 * @brief Method of adding a record to the end of the table
 					 * @param fields fields of the record being added
+					 * @return       result of the adding of the record
 					 *
 					 * \~
 					 */
-					void append(const vector <string> & fields) noexcept;
+					bool append(const vector <string> & fields) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод добавления записи в конец таблицы
 					 *
+					 * @note Содержимое, записи не подлежащее, отвергается ЗДЕСЬ отказом
+					 * `UNWRITABLE_FIELD`, а не при записи текста: прежде добавление
+					 * принимало его молча, и таблица оставалась непригодной к записи.
+					 * Разделитель, кавычка и перевод строки внутри поля отказом НЕ
+					 * являются - запись ограждает их кавычками
+					 *
 					 * @param fields поля добавляемой записи
+					 * @return       результат добавления записи
 					 *
 					 * \~english
 					 * @brief Method of adding a record to the end of the table
 					 * @param fields fields of the record being added
+					 * @return       result of the adding of the record
 					 *
 					 * \~
 					 */
-					void append(const vector <string_view> & fields) noexcept;
+					bool append(const vector <string_view> & fields) noexcept;
 				public:
 					/**
 					 * \~russian

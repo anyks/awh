@@ -131,9 +131,15 @@ echo "Собираем свёрток: $BUNDLE"
 #          кодировками, выделением памяти, - а свёрток нёс по-прежнему один «src/codec»,
 #          и восемь машин отказали разом на «./src/sys/log.cpp: нет такого файла»
 #
+# @note Каталоги берутся ЦЕЛИКОМ - «src/sys», «src/net», «src/cryptography», - а не
+#       поимённо. Поимённый перечень отставал дважды за сутки: сперва на опорах журнала,
+#       затем на «./src/cryptography/crypto.cpp», какой потянул обновлённый стенд
+#       сличения. Каталог целиком стоит десятка лишних килобайт в свёртке и снимает
+#       разряд отставания вовсе
+#
 ( cd "$ROOT" && COPYFILE_DISABLE=1 tar --format=ustar -czf "$BUNDLE" \
-	include src/codec src/num src/sys src/net/nwt.cpp src/encoding src/alloc \
-	src/cryptography/hash.cpp submodules/zlib tests/main.hpp tests/codec tools/verify ) || exit 1
+	include src/codec src/num src/sys src/net src/encoding src/alloc \
+	src/compressor src/cryptography submodules/zlib tests/main.hpp tests/codec tools/verify ) || exit 1
 
 # Собираемый сценарий прогона на стороне машины
 RUNNER="/tmp/awh-codec-runner-$STAMP.sh"

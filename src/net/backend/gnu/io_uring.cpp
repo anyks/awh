@@ -34060,7 +34060,13 @@ namespace io {
 			 * @note Величина эта служит ТОЛЬКО потолком одной дейтаграммы: сообщение крупнее
 			 *       буфера не уйдёт никогда. Для потока она не нужна вовсе
 			 */
-			const int32_t bufferSize = ((queue.type() == net_queue_t::type_t::UDP) ? eth->socket.getBufferSize(fd, net::socket_event_t::WRITE) : 0);
+			/**
+			 * @warning Канал исключён здесь намеренно. Очередь его заведена как у дейтаграмм,
+			 * потому что пара просилась разновидностью SEQPACKET, но сам он - ::pipe(), поток
+			 * октетов без сокетных опций: getsockopt на нём отвечает ENOTSOCK, а потолка одной
+			 * дейтаграммы у него не существует. Отсюда и нуль - тот же ответ, что у потока
+			 */
+			const int32_t bufferSize = (((queue.type() == net_queue_t::type_t::UDP) && (node->state.family != event::family_t::PIPE)) ? eth->socket.getBufferSize(fd, net::socket_event_t::WRITE) : 0);
 			/**
 			 * Вытягиваем данные пока источник отдаёт их и в очереди есть место
 			 */
@@ -69707,6 +69713,15 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					 * Определяем семейство адресов
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
+						/**
+						 * Для семейства межпроцессных соединений
+						 *
+						 * @warning ветки здесь не было вовсе, и дескриптор канала уходил в getsockopt,
+						 * отвечавший ENOTSOCK; размер буфера канала задаётся ядром, как и у узла IPC
+						 */
+						case static_cast <uint8_t> (event::family_t::PIPE):
+							// Извлекаем размер буфера на чтение и запись
+							return 0x1000;
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
