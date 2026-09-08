@@ -918,6 +918,25 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		return false;
 	// Выполняем запись собранной записи настроек в файл
 	this->_fs.write(filename, text.data(), text.size());
+	/**
+	 * Выполняем поверку исхода записи файла
+	 *
+	 * @warning Поверка эта обязательна: ход записи каркаса признака НЕ ВЫДАЁТ вовсе -
+	 *          он объявлен `void`, - и без неё запись в заведомо негодный путь
+	 *          отвечала УСПЕХОМ, а вызывающий полагал настройки сохранёнными.
+	 *          Замерено 08.09.2026 аудитом на пути `/нет/такого/каталога`
+	 *
+	 * @note Сличается и величина записанного, а не одно лишь наличие файла: запись,
+	 *       оборванная на середине, оставляет файл налицо и короче поданного
+	 */
+	if((this->_fs.type(filename) != fs_t::type_t::FILE) || (this->_fs.size(filename) != static_cast <uintmax_t> (text.size()))){
+		// Выполняем запоминание отказа записи файла настроек
+		this->_errors.emplace_back(error_t::UNSUPPORTED, location_t());
+		// Выводим в лог сообщение об отказе записи файла настроек
+		this->_log->print("Args: settings are not written to \"%s\"", log_t::flag_t::WARNING, filename.c_str());
+		// Выходим из метода, запись отвечена отказом
+		return false;
+	}
 	// Сообщаем, что запись дерева настроек выполнена
 	return true;
 }
