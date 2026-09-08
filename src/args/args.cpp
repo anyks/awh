@@ -255,10 +255,24 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
  *
  */
 bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, const source_t source) noexcept {
-	// Если путь укладки пуст вовсе
-	if(path.empty())
+	/**
+	 * Если путь укладки пуст вовсе либо несёт пустое звено
+	 *
+	 * @warning Отказ этот ЗАПОМИНАЕТСЯ, а не отвечается молча: прежде укладка по
+	 *          пустому имени выходила отказом без единого следа - ни записи об
+	 *          отказе, ни строки в журнале, - и вызывающий, признака не
+	 *          проверивший, не узнавал о ней ничем. Код `EMPTY_PATH` для случая
+	 *          этого заведён и описан был с самого начала, а выдаваться не
+	 *          выдавался ни разу. Замерено 08.09.2026 аудитом
+	 */
+	if(path.empty() || (path.front() == '/') || (path.back() == '/') || (path.find("//") != string::npos)){
+		// Выполняем запоминание отказа укладки значения
+		this->_errors.emplace_back(error_t::EMPTY_PATH, location_t());
+		// Выводим в лог сообщение о негодном пути укладки
+		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
 		// Выходим из метода, укладывать значение некуда
 		return false;
+	}
 	// Выполняем поиск источника уже уложенного значения
 	auto i = this->_origins.find(path);
 	// Если значение по этому пути уже уложено
