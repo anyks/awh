@@ -87,7 +87,7 @@ NET="src/sys/fs.cpp src/sys/os.cpp"
 TESTS="tests/main.cpp tests/args/args.cpp tests/args/lexer.cpp tests/args/schema.cpp"
 # Розыск gtest: путь его от системы к системе разный, а по умолчанию виден не везде
 GT=""
-for D in /opt/homebrew /usr/local /usr /opt/local /mingw64; do
+for D in /opt/homebrew /usr/local /usr /usr/pkg /opt/local /opt/csw /mingw64; do
 	if [ -f "$D/include/gtest/gtest.h" ]; then GT="-I$D/include -L$D/lib"; break; fi
 done
 [ -n "$GT" ] || { echo "gtest не найден: набор собрать нечем" >&2; exit 3; }
@@ -99,6 +99,13 @@ SSL=""
 for D in /usr/local/lib /usr/lib /usr/lib64 /opt/csw/lib; do
 	if [ -f "$D/libcrypto.so" ] || [ -f "$D/libcrypto.a" ]; then SSL="-L$D -lssl -lcrypto"; break; fi
 done
-echo "Собираем набор проверок args: $CXX ($SYS/$PLATFORM)"
-$CXX $GT -std=c++2b -O1 -g -Iinclude -Itests $FLAGS $THIRD $FRAMEWORK $CODEC $ARGS $EXTRA $NET $TESTS $DEPEND $SSL $LIBS -lz -o "$OUT/args-tests"
+# Наречие языка: у одних систем собиратель знает «c++2b», у других (NetBSD) нет вовсе;
+# отбираем его пробою, а не по имени системы
+STD=""
+for N in c++2b c++23 c++20 gnu++17; do
+	if echo 'int main(){return 0;}' | $CXX -x c++ -std=$N -fsyntax-only - 2>/dev/null; then STD="-std=$N"; break; fi
+done
+[ -n "$STD" ] || { echo "собиратель не знает ни одного годного наречия" >&2; exit 6; }
+echo "Собираем набор проверок args: $CXX ($SYS/$PLATFORM, $STD)"
+$CXX $GT $STD -O1 -g -Iinclude -Itests $FLAGS $THIRD $FRAMEWORK $CODEC $ARGS $EXTRA $NET $TESTS $DEPEND $SSL $LIBS -lz -o "$OUT/args-tests"
 echo "Набор собран: $OUT/args-tests"
