@@ -875,6 +875,15 @@ bool awh::codec::ini::numeric(const string_view text, T & result, const boolean_
  *       в перечень не входящего, отвечает отказом сборки на этапе связывания
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <bool> (const string_view, bool &, const boolean_t) noexcept;
+/**
+ * @warning Объявление вида `char` обязательно наравне с `signed char` и `unsigned char`:
+ *          `char` есть ТРЕТИЙ, самостоятельный вид языка, и у систем Sun `int8_t`
+ *          заведён именно им, а не `signed char`. Без объявления связывание там
+ *          валилось нехваткою `numeric<char>`, тогда как у Linux и macOS, где `int8_t`
+ *          есть `signed char`, дефекта не видно вовсе. Замерено 08.09.2026 на стенде
+ *          Solaris; у кодеков XML, CSV и общего приведения объявление это уже стоит
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <char> (const string_view, char &, const boolean_t) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <signed char> (const string_view, signed char &, const boolean_t) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <unsigned char> (const string_view, unsigned char &, const boolean_t) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::numeric <short> (const string_view, short &, const boolean_t) noexcept;
