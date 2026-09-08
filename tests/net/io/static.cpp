@@ -34,6 +34,7 @@
 #include <atomic>
 #include <set>
 #include <algorithm>
+#include <numeric>
 #include <thread>
 
 /**
@@ -5452,6 +5453,84 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 	// Уничтожаем новую пару
 	this->_io->destroy(fresh[0]);
 	this->_io->destroy(fresh[1]);
+}
+
+/**
+ * @brief Тест обмена по паре сокетов домена UNIX в одном процессе
+ *
+ * @details Проверка заведена разбором довода пропуска: параметрическая межпроцессная
+ *          проверка пропускает под MS Windows ВСЕ три вида сокета домена UNIX, объясняя
+ *          это тем, что видов таких у системы нет. Насчёт сохраняющего границы и
+ *          дейтаграммного это правда, а насчёт потокового - нет: он у системы есть, и
+ *          пара его набором уже заводится (`RebuildIpcPairTest`).
+ *
+ *          Спрашивается прямо: идёт ли по такой паре обмен. Ответ решает судьбу пропуска
+ *          одного из трёх случаев - если обмен идёт, мешает лишь способ порождения
+ *          второго процесса, а не система.
+ *
+ * @note Проверка внутрипроцессная намеренно: второй процесс здесь не нужен вовсе, а
+ *       именно он и был причиной пропуска
+ *
+ */
+TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару сокетов домена UNIX потокового вида
+	const auto & pair = this->_io->events(awh::event::family_t::UDS, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(pair[i], 0);
+	// Принятое встречным концом содержимое
+	std::string received;
+	// Устанавливаем функцию обратного вызова на чтение данных встречным концом
+	this->_io->on(pair[0], [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученному
+		received.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Выставляем обоим концам пары неблокирующий ввод-вывод
+	ASSERT_TRUE(this->_io->setOptions(pair[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setOptions(pair[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Фиксируем и запускаем оба конца пары
+	ASSERT_TRUE(this->_io->commit(pair[0]));
+	ASSERT_TRUE(this->_io->launch(pair[0]));
+	ASSERT_TRUE(this->_io->commit(pair[1]));
+	ASSERT_TRUE(this->_io->launch(pair[1]));
+	// Содержимое проверочной посылки
+	const std::string probe = "UDS-STREAM-PAIR-EXCHANGE";
+	// Выполняем отправку проверочной посылки
+	ASSERT_GT(this->_io->send(pair[1], probe.data(), probe.size()), static_cast <size_t> (0)) << "посылка парой не принята";
+	/**
+	 * Крутим цикл, покуда посылка не придёт либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((received.size() < probe.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Обмен по паре обязан состояться
+	ASSERT_EQ(received, probe) << "обмен по паре домена UNIX не состоялся: принято " << received;
+	/**
+	 * У пары домена UNIX есть точка встречи для чужого процесса
+	 *
+	 * @details Цель узла отдаётся именем, и у MS Windows домен UNIX изображён именованным
+	 *          каналом: имя это настоящее, по нему чужой процесс пару и находит. Прежде
+	 *          имени не было вовсе, и три случая межпроцессной проверки стояли
+	 *          пропущенными - встречать процессы было нечем.
+	 *
+	 * @note Утверждение стережёт именно это: пропадёт имя - и межпроцессный обмен домена
+	 *       UNIX под MS Windows отвалится молча, а виноватым будет выглядеть не то место
+	 */
+	ASSERT_FALSE(this->_io->getTarget(pair[1]).empty())
+	 << "у пары домена UNIX пропала цель: встречать процессы по имени стало нечем";
+	// Уничтожаем оба конца пары
+	this->_io->destroy(pair[0]);
+	this->_io->destroy(pair[1]);
 }
 
 TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
@@ -22779,6 +22858,8 @@ static bool bandwidth(awh::engine::io_t * io, std::vector <bandwidth_consumer_t>
 	bool ceased = false;
 	// Флаг остановки прогона
 	bool stop = false;
+	// Флаг незавершённости дослива очередей
+	bool starved = false;
 	// Набор блоков передаваемых данных, по одному на каждого потребителя нагрузки
 	std::vector <std::vector <uint8_t>> chunks(consumers.size());
 	/**
@@ -23104,8 +23185,33 @@ static bool bandwidth(awh::engine::io_t * io, std::vector <bandwidth_consumer_t>
 				std::cout << "  дослив не завершён: поставлено " << consumer.queued << ", принято " << consumer.received
 					<< ", недостаёт " << ((consumer.queued > consumer.received) ? (consumer.queued - consumer.received) : 0) << std::endl;
 		}
+		// Если дослив не уложился в отведённый срок - запоминаем это отказом
+		if(overdue && !drained)
+			// Отмечаем незавершённость дослива очередей
+			starved = true;
 		// Останавливаем прогон по завершении дослива очередей
 		stop = (drained || overdue);
+	}
+	/**
+	 * Если дослив очередей не завершился, отвечаем отказом
+	 *
+	 * @warning Прежде это место лишь ПЕЧАТАЛО состояние, а помощник возвращал истину
+	 *          всегда: прогон, оставивший часть поставленного неотданной, проходил, и
+	 *          скорости считались по неполной передаче. Печать - не утверждение, и
+	 *          молчащий движок она не ловит
+	 *
+	 * @note Срок дослива вчетверо с лишком превышает нужный: у пределов, какими
+	 *       пользуются проверки помощника (8...100 Мбит/с), запас очереди в 128 КБ
+	 *       уходит меньше чем за секунду
+	 */
+	if(starved){
+		// Записываем, чего именно не дождались
+		for(const auto & consumer : consumers)
+			// Выводим состояние дослива потребителя нагрузки
+			ADD_FAILURE() << "дослив очереди не завершён: поставлено " << consumer.queued
+			 << ", принято " << consumer.received;
+		// Выводим отрицательный результат
+		return false;
 	}
 	/**
 	 * Если прогон упёрся в предельный срок, отвечаем отказом
@@ -25595,8 +25701,8 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
  * @warning Оба конца заводятся НЕБЛОКИРУЮЩИМИ, и это условие обязательное: у
  *          блокирующего канала запись за пределом буфера встаёт в ядре, а вычитывает
  *          встречный конец тот же самый цикл, который в ней и стоит. Проверка-близнец
- *          `DISABLED_IoIpcLargeTransferTest` этой настройки не ставит и оттого пройти
- *          не может вовсе - ни с какой правкой движка
+ *          `IoIpcQueueCarriedLargeTransferTest` ставит её с 08.09.2026 - прежде не ставила
+ *          и оттого виснуть была обязана
  *
  * @note Проверка сличает принятое с отданным, а не только его размер: возобновление
  *       отдачи с потерей середины дало бы верный размер при испорченном теле
@@ -25684,19 +25790,28 @@ TEST_F(IoFixture, IoIpcNonBlockingLargeTransferTest){
  * @note Проверка сличает принятое с отданным, а не только его размер: возобновление
  *       отдачи с потерей середины дало бы верный размер при испорченном теле
  *
- * @warning Отключена она НЕ по прихоти: дефект жив, и проверка его ловит - принято
- *          65536 из 262144. Держится она отключённой ровно до починки, и включить её
- *          обязана та же работа, что потолок снимет. Разбор дефекта и мера, какой он
- *          был опробован, записаны аудитом 111 в `src/net/backend/win/README.md`
+ * @warning Держалась отключённой под дефект потолка канала (аудит 111,
+ *          `src/net/backend/win/README.md`). Включена 08.09.2026 после правки передачи
+ *          по каналу: сокетные `send`/`recv` на дескрипторе канала заменены на
+ *          `write`/`read`, и потолка на POSIX не стало. Проходит за 2 мс
  *
- * @note Опробованная мера потолка НЕ сняла, и причина установлена замером: у
- *       ОТПРАВЛЯЮЩЕГО конца канала нет записи подписки вовсе, оттого родная подача
- *       ему недостижима - `kernel::subscription` отвечает пустотой, и отправка всякий
- *       раз сваливается на обмен со стека. Чинить потолок обращением записи бесполезно,
- *       чинить надо учёт описателя. Разбор записан аудитом 111
+ * @warning Отдающий конец заводится НЕБЛОКИРУЮЩИМ, и это условие обязательное: у
+ *          блокирующего канала запись за пределом буфера встаёт в ядре, а вычитывает
+ *          встречный конец тот же самый цикл, который в ней и стоит. Прежде режим
+ *          здесь не выставлялся, и на POSIX проверка виснуть была обязана
+ *
+ * @warning Судить об уходе остатка позволено ТОЛЬКО по числу, что вернул `send`.
+ *          Прежде возврат уходил в `(void)`, и проверка сличала доставленное с тем,
+ *          что ей хотелось отдать: выходило 126976 из 262144, будто движок теряет
+ *          хвост. На деле остальное движок к отправке и НЕ ПРИНИМАЛ - очередь имеет
+ *          предел, и отдавать непринятое заново обязан отправитель
+ *
+ * @note У Windows предмет проверки иной и здешним замером не закрыт: там у
+ *       отправляющего конца канала нет записи подписки вовсе - `kernel::subscription`
+ *       отвечает пустотой. Разбор записан аудитом 111
  *
  */
-TEST_F(IoFixture, DISABLED_IoIpcLargeTransferTest){
+TEST_F(IoFixture, IoIpcQueueCarriedLargeTransferTest){
 	// Выполняем инициализацию сетевого движка
 	ASSERT_TRUE(this->_io->initialize());
 	// Создаём пару обмена именованным каналом
@@ -25717,6 +25832,18 @@ TEST_F(IoFixture, DISABLED_IoIpcLargeTransferTest){
 	std::string received;
 	// Признак завершения обмена
 	bool stop = false;
+	// Объём, принятый движком к отправке
+	size_t accepted = 0;
+	/**
+	 * Отдающий конец заводится неблокирующим
+	 *
+	 * @warning Прежде режим здесь не выставлялся вовсе, а у POSIX это значит запись
+	 *          блокирующую: оборотов цикла между долями проверка не даёт намеренно,
+	 *          вычитывать принятое некому, и ::write в полный канал ждал бы вечно.
+	 *          Неблокирующим режимом опыт и становится тем, чем задуман: остаток
+	 *          обязан унести САМ движок очередью, без единой новой отправки
+	 */
+	ASSERT_TRUE(this->_io->setOptions(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 	// Устанавливаем функцию обратного вызова на чтение данных встречным концом
 	this->_io->on(channels[0], [&received, &body, &stop]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
 		// Дописываем принятое к уже полученному телу
@@ -25741,7 +25868,8 @@ TEST_F(IoFixture, DISABLED_IoIpcLargeTransferTest){
 		// Определяем размер отдаваемой доли
 		const size_t part = (((body.size() - offset) < 4096) ? (body.size() - offset) : 4096);
 		// Отправляем очередную долю тела
-		(void) this->_io->send(channels[1], reinterpret_cast <const uint8_t *> (body.data() + offset), part);
+		// Копим объём, ПРИНЯТЫЙ движком: судить об уходе остатка можно лишь по нему
+		accepted += this->_io->send(channels[1], reinterpret_cast <const uint8_t *> (body.data() + offset), part);
 	}
 	/**
 	 * Выполняем обороты цикла, покуда тело не придёт целиком
@@ -25749,14 +25877,14 @@ TEST_F(IoFixture, DISABLED_IoIpcLargeTransferTest){
 	{
 		// Запоминаем миг начала ожидания
 		const auto start = std::chrono::steady_clock::now();
-		// Выполняем обороты цикла событий
-		while(!stop && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
+		// Крутим цикл, покуда движок не унесёт весь ПРИНЯТЫЙ им объём
+		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
 			// Выполняем оборот цикла событий
 			this->_io->poll(10);
 	}
 	// Тело обязано прийти целиком и совпасть до последнего октета
-	ASSERT_EQ(received.size(), body.size()) << "принято " << received.size() << " из " << body.size();
-	ASSERT_EQ(received, body) << "принятое каналом тело не совпало с отданным";
+	ASSERT_EQ(received.size(), accepted) << "принято движком " << accepted << ", доставлено " << received.size();
+	ASSERT_EQ(received, body.substr(0, accepted)) << "принятое каналом тело не совпало с отданным";
 	// Уничтожаем оба конца канала
 	this->_io->destroy(channels[1]);
 	this->_io->destroy(channels[0]);
@@ -26020,19 +26148,32 @@ TEST_F(IoFixture, IoPauseResumeTest){
 	ASSERT_FALSE(this->_io->isAlive(events[0]));
 	// Возобновляем чтение у клиента
 	ASSERT_TRUE(this->_io->resume(events[0]));
-	for(uint8_t i = 0; i < 10; i++)
-		this->_io->poll(10);
+	/**
+	 * Накопленное обязано подняться возобновлением, НЕ дожидаясь новой посылки
+	 *
+	 * @warning Прежде здесь стояла оговорка, что доставка не утверждается: замер
+	 *          аудита 113 давал ноль после возобновления. Замер тот снят на порте
+	 *          завершений MS Windows и к POSIX не относился: на kqueue подписка
+	 *          чтения заводится по УРОВНЮ, без EV_CLEAR, и включение фильтра
+	 *          поднимает накопленное само. Проверено 08.09.2026 - приходит
+	 *
+	 * @note Приход этот и доказывает целость связи, о чём сказано выше: разорванная
+	 *       связь не отдала бы ничего
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Крутим цикл, покуда накопленное не поднимется, не отправляя более ни октета
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Накопленное обязано подняться возобновлением
+	ASSERT_EQ(received.size(), body.size()) << "после возобновления поднято " << received.size() << " из " << body.size();
+	// Поднятое обязано совпасть с отданным
+	ASSERT_EQ(received, body) << "поднятое возобновлением тело не совпало с отданным";
 	// Повторное возобновление обязано отказать: возобновить можно лишь приостановленное
 	ASSERT_FALSE(this->_io->resume(events[0]));
-
-	/**
-	 * Доставка накопленного здесь НЕ утверждается, и это не упущение
-	 *
-	 * @details Возобновление накопленного не поднимает - дефект измерен и записан
-	 *          аудитом 113. Держит его отключённая проверка
-	 *          `DISABLED_IoResumeDeliversPendingTest`, а эта закрепляет ровно то, что
-	 *          работает: саму приостановку и отказы повторных вызовов
-	 */
 	// Уничтожаем оба события
 	this->_io->destroy(events[0]);
 	this->_io->destroy(events[1]);
@@ -26054,8 +26195,71 @@ TEST_F(IoFixture, IoPauseResumeTest){
  *       работа, что его починит. Разбор - аудит 113
  *
  */
-TEST_F(IoFixture, DISABLED_IoResumeDeliversPendingTest){
-	GTEST_SKIP() << "дефект жив: возобновление накопленного не поднимает, разбор в аудите 113";
+TEST_F(IoFixture, IoResumeDeliversPendingTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Принятое приостановленным концом тело
+	std::string received;
+	// Устанавливаем функцию обратного вызова на чтение данных приостановленным концом
+	this->_io->on(channels[0], [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученному телу
+		received.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Выполняем фиксацию настроек принимающего конца канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	// Выполняем запуск принимающего конца канала
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	// Выполняем фиксацию настроек отдающего конца канала
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	// Выполняем запуск отдающего конца канала
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	// Приостанавливаем принимающий конец канала
+	ASSERT_TRUE(this->_io->pause(channels[0]));
+	// Тело, отдаваемое покуда приёмник приостановлен
+	const std::string body(122, 'R');
+	// Отдаём тело приостановленному концу
+	ASSERT_EQ(this->_io->send(channels[1], body.data(), body.size()), body.size()) << "движок не принял тело к отправке";
+	/**
+	 * Даём циклу обороты: приостановленный конец принимать НЕ обязан
+	 */
+	for(uint8_t round = 0; round < 20; round++)
+		// Выполняем оборот цикла событий
+		this->_io->poll(1);
+	// Приостановленный конец принимать не должен
+	ASSERT_TRUE(received.empty()) << "приостановленный конец принял " << received.size() << " октетов";
+	// Возобновляем принимающий конец канала
+	ASSERT_TRUE(this->_io->resume(channels[0]));
+	/**
+	 * Даём циклу обороты, НЕ отправляя более ни октета
+	 *
+	 * @warning Ни одной новой отправки здесь нет намеренно: договор возобновления в
+	 *          том и состоит, что накопившееся поднимается само. Дописав сюда вторую
+	 *          порцию, проверка доказывала бы обратное - что накопленное ждёт чужой
+	 *          посылки, - и проходила бы при живом дефекте
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Крутим цикл, покуда накопленное не поднимется
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(1);
+	}
+	// Накопленное обязано подняться возобновлением
+	ASSERT_EQ(received.size(), body.size()) << "после возобновления поднято " << received.size() << " из " << body.size();
+	// Поднятое обязано совпасть с отданным
+	ASSERT_EQ(received, body) << "поднятое возобновлением тело не совпало с отданным";
+	// Уничтожаем оба конца канала
+	this->_io->destroy(channels[1]);
+	this->_io->destroy(channels[0]);
 }
 
 /**
@@ -26185,13 +26389,26 @@ TEST_F(IoFixture, IoActionSwitchTest){
 	// Опрос обязан отвечать возвращённым действием
 	ASSERT_EQ(this->_io->getAction(events[0], awh::event::action_t::READ), awh::event::mode_t::ENABLED);
 	/**
-	 * Доставка накопленного здесь НЕ утверждается, и это не упущение
+	 * Накопленное обязано подняться возвратом действия, НЕ дожидаясь новой посылки
 	 *
-	 * @details Замер: после возврата действия принято 0 из 98, сколько оборотов ни крути -
-	 *          ровно то же, что и у возобновления. Дефект общий, разобран аудитом 113 и
-	 *          подтверждён на этом методе аудитом 114; держит его отключённая проверка
-	 *          `DISABLED_IoActionSwitchDeliversPendingTest`
+	 * @warning Прежде здесь стояла оговорка, что доставка не утверждается: замер
+	 *          аудитов 113 и 114 давал 0 из 98 после возврата действия. Замер тот
+	 *          снят на порте завершений MS Windows и к POSIX не относился: на
+	 *          kqueue подписка чтения заводится по УРОВНЮ, без EV_CLEAR, и включение
+	 *          фильтра поднимает накопленное само. Проверено 08.09.2026 - приходит
 	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Крутим цикл, покуда накопленное не поднимется, не отправляя более ни октета
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Накопленное обязано подняться возвратом действия чтения
+	ASSERT_EQ(received.size(), body.size()) << "после возврата действия поднято " << received.size() << " из " << body.size();
+	// Поднятое обязано совпасть с отданным
+	ASSERT_EQ(received, body) << "поднятое возвратом действия тело не совпало с отданным";
 	// Уничтожаем оба события
 	this->_io->destroy(events[0]);
 	this->_io->destroy(events[1]);
@@ -26209,8 +26426,70 @@ TEST_F(IoFixture, IoActionSwitchTest){
  *       беда не в одной приостановке, её делит с нею и `setAction`. Разбор - аудит 114
  *
  */
-TEST_F(IoFixture, DISABLED_IoActionSwitchDeliversPendingTest){
-	GTEST_SKIP() << "дефект жив: возврат действия чтения накопленного не поднимает, разбор в аудитах 113 и 114";
+TEST_F(IoFixture, IoActionSwitchDeliversPendingTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Принятое телом концом со снятым действием чтения
+	std::string received;
+	// Устанавливаем функцию обратного вызова на чтение данных принимающим концом
+	this->_io->on(channels[0], [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученному телу
+		received.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Выполняем фиксацию настроек принимающего конца канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	// Выполняем запуск принимающего конца канала
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	// Выполняем фиксацию настроек отдающего конца канала
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	// Выполняем запуск отдающего конца канала
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	// Снимаем действие чтения у принимающего конца
+	ASSERT_TRUE(this->_io->setAction(channels[0], awh::event::action_t::READ, awh::event::mode_t::DISABLED));
+	// Тело, отдаваемое покуда действие чтения снято
+	const std::string body(98, 'A');
+	// Отдаём тело концу со снятым действием чтения
+	ASSERT_EQ(this->_io->send(channels[1], body.data(), body.size()), body.size()) << "движок не принял тело к отправке";
+	/**
+	 * Даём циклу обороты: со снятым действием чтения принимать НЕ обязан
+	 */
+	for(uint8_t round = 0; round < 20; round++)
+		// Выполняем оборот цикла событий
+		this->_io->poll(1);
+	// Со снятым действием чтения принимать не должен
+	ASSERT_TRUE(received.empty()) << "конец со снятым действием чтения принял " << received.size() << " октетов";
+	// Возвращаем действие чтения принимающему концу
+	ASSERT_TRUE(this->_io->setAction(channels[0], awh::event::action_t::READ, awh::event::mode_t::ENABLED));
+	/**
+	 * Даём циклу обороты, НЕ отправляя более ни октета
+	 *
+	 * @warning Ни одной новой отправки здесь нет намеренно: договор возврата действия
+	 *          тот же, что у возобновления, - накопившееся поднимается само. Дописав
+	 *          сюда вторую порцию, проверка проходила бы и при живом дефекте
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Крутим цикл, покуда накопленное не поднимется
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(1);
+	}
+	// Накопленное обязано подняться возвратом действия чтения
+	ASSERT_EQ(received.size(), body.size()) << "после возврата действия поднято " << received.size() << " из " << body.size();
+	// Поднятое обязано совпасть с отданным
+	ASSERT_EQ(received, body) << "поднятое возвратом действия тело не совпало с отданным";
+	// Уничтожаем оба конца канала
+	this->_io->destroy(channels[1]);
+	this->_io->destroy(channels[0]);
 }
 
 /**
@@ -26712,7 +26991,20 @@ TEST_F(IoFixture, IoQueueAvailableTest){
 		// Выставляем опции принятому узлу: они не наследуются
 		(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
 		// Устанавливаем функцию обратного вызова на освобождение места в очереди отправки
-		io->on(cid, static_cast <awh::engine::callback::available_t> ([&notices, &reported]([[maybe_unused]] const awh::event::id_t nid, [[maybe_unused]] const awh::event::status_t status, const size_t size) noexcept -> void {
+		io->on(cid, static_cast <awh::engine::callback::available_t> ([&notices, &reported]([[maybe_unused]] const awh::event::id_t nid, const awh::event::status_t status, const size_t size) noexcept -> void {
+			/**
+			 * Учитываем ТОЛЬКО извещения об освобождении места
+			 *
+			 * @warning Подписка эта зовётся и на переполнение очереди, и на освобождение
+			 * места в ней - признак состояния их и различает. Прежде признак не
+			 * разбирался вовсе, и счётчик набивался переполнениями ещё на наборе
+			 * очереди. Оттого цикл вычитывания не выполнялся НИ РАЗУ: условие его
+			 * входа уже было ложным, собеседник принятого не забирал, окно не
+			 * открывалось, и освобождения места не наступало по существу
+			 */
+			if(status != awh::event::status_t::QUEUE_AVAILABLE)
+				// Выходим, извещение о переполнении здесь не считается
+				return;
 			// Учитываем извещение об освобождении места
 			notices++;
 			// Запоминаем наибольший названный размер
@@ -29106,3 +29398,148 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	}
 #endif
 
+
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Проверка сохранения границ сообщений узлом SEQPACKET
+	 *
+	 * @details Тип узла задаёт ПОЛЬЗОВАТЕЛЬ, и API един для всех движков: раз выбран
+	 *          `SEQPACKET`, то одна отправка обязана дойти одним откликом чтения, каким
+	 *          бы размером она ни была. У систем POSIX это свойство самого сокета, у MS
+	 *          Windows под узлом лежит именованный канал в строе сообщений - границы там
+	 *          система тоже держит, и обязанность движка их не растерять.
+	 *
+	 * @note Утверждается ЧИСЛО откликов и размер каждого: сличение по содержимому потерю
+	 *       границ пропустит - сложенные доли дают тот же текст
+	 *
+	 */
+	TEST_F(IoFixture, IoIpcSeqpacketMessageBoundaryTest){
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Создаём пару обмена именованным каналом в строе сообщений
+		const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+		/**
+		 * Проверяем, что оба идентификатора пары созданы успешно
+		 */
+		for(uint8_t i = 0; i < 2; i++)
+			// Проверяем, что идентификатор события больше нуля
+			ASSERT_GT(channels[i], 0);
+		// Размеры отправляемых сообщений: одно короче доли чтения, два других длиннее
+		const std::vector <size_t> sizes = {100, 16384, 5000};
+		// Размеры принятых откликом чтения долей
+		std::vector <size_t> parts;
+		// Устанавливаем функцию обратного вызова на чтение данных встречным концом
+		this->_io->on(channels[0], [&parts]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Запоминаем размер принятой доли
+			parts.push_back(size);
+		});
+		// Выставляем обоим концам канала неблокирующий ввод-вывод
+		ASSERT_TRUE(this->_io->setOptions(channels[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->setOptions(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Фиксируем и запускаем оба конца канала
+		ASSERT_TRUE(this->_io->commit(channels[0]));
+		ASSERT_TRUE(this->_io->launch(channels[0]));
+		ASSERT_TRUE(this->_io->commit(channels[1]));
+		ASSERT_TRUE(this->_io->launch(channels[1]));
+		/**
+		 * Отдаём сообщения по одному, вычитывая каждое до отправки следующего
+		 */
+		for(size_t i = 0; i < sizes.size(); i++){
+			// Формируем тело очередного сообщения
+			const std::string body(sizes.at(i), static_cast <char> ('A' + i));
+			// Отдаём сообщение целиком одной отправкой
+			ASSERT_EQ(this->_io->send(channels[1], body.data(), body.size()), body.size())
+			 << "сообщение " << i << " очередью принято не целиком";
+			// Запоминаем миг начала ожидания
+			const auto start = std::chrono::steady_clock::now();
+			/**
+			 * Крутим цикл, покуда сообщение не дойдёт целиком
+			 */
+			while((std::accumulate(parts.begin(), parts.end(), static_cast <size_t> (0)) < std::accumulate(sizes.begin(), sizes.begin() + i + 1, static_cast <size_t> (0))) &&
+			 (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+				// Выполняем оборот цикла событий
+				this->_io->poll(10);
+		}
+		// Откликов обязано быть ровно столько же, сколько отправок
+		ASSERT_EQ(parts.size(), sizes.size()) << "границы сообщений не сохранены: откликов " << parts.size() << " на " << sizes.size() << " отправок";
+		/**
+		 * Сличаем размер каждого отклика с размером своей отправки
+		 */
+		for(size_t i = 0; i < sizes.size(); i++)
+			// Проверяем, что отклик принёс сообщение целиком
+			EXPECT_EQ(parts.at(i), sizes.at(i)) << "отклик " << i << " принёс не всё сообщение";
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
+
+
+#if defined(_WIN32) || defined(_WIN64)
+	// ЩУП: узлы клиента и сервера домена UNIX всеми тремя видами
+	TEST_F(IoFixture, DISABLED_IoUdsNodeProbeTest){
+		ASSERT_TRUE(this->_io->initialize());
+		const std::vector <std::pair <const char *, awh::event::type_t>> kinds = {
+			{"STREAM", awh::event::type_t::STREAM},
+			{"DATAGRAM", awh::event::type_t::DATAGRAM},
+			{"SEQPACKET", awh::event::type_t::SEQPACKET}
+		};
+		for(const auto & [title, type] : kinds){
+			const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, type);
+			const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, type);
+			const bool address = ((sid > 0) && this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("probe.sock")));
+			const bool target = ((cid > 0) && this->_io->setTarget(cid, ::uds("probe.sock")));
+			const bool scommit = (address && this->_io->commit(sid));
+			const bool ccommit = (target && this->_io->commit(cid));
+			::printf("ЩУП %s: сервер=%llu клиент=%llu адрес=%d цель=%d фиксация сервера=%d фиксация клиента=%d\n",
+			 title, static_cast <unsigned long long> (sid), static_cast <unsigned long long> (cid),
+			 static_cast <int32_t> (address), static_cast <int32_t> (target),
+			 static_cast <int32_t> (scommit), static_cast <int32_t> (ccommit));
+			if(sid > 0) this->_io->destroy(sid);
+			if(cid > 0) this->_io->destroy(cid);
+		}
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
+
+#if defined(_WIN32) || defined(_WIN64)
+	// ЩУП: обмен между сервером и клиентом домена UNIX недостающими видами
+	TEST_F(IoFixture, DISABLED_IoUdsServerProbeTest){
+		const std::vector <std::pair <const char *, awh::event::type_t>> kinds = {
+			{"SEQPACKET", awh::event::type_t::SEQPACKET},
+			{"DATAGRAM", awh::event::type_t::DATAGRAM}
+		};
+		for(const auto & [title, type] : kinds){
+			std::string received;
+			ASSERT_TRUE(this->_io->initialize());
+			const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, type);
+			const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, type);
+			::printf("ЩУП %s: сервер=%llu клиент=%llu\n", title, static_cast <unsigned long long> (sid), static_cast <unsigned long long> (cid));
+			const bool address = this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("probe2.sock"));
+			this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received](const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+				::printf("ЩУП: подключение принято, узел=%llu\n", static_cast <unsigned long long> (pid));
+				this->_io->setOptions(pid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+				this->_io->on(pid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					received.append(reinterpret_cast <const char *> (data), size);
+				});
+			}));
+			const bool sopt = this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+			const bool scommit = this->_io->commit(sid);
+			const bool slisten = this->_io->listen(sid, 10);
+			const bool slaunch = this->_io->launch(sid);
+			const bool target = this->_io->setTarget(cid, ::uds("probe2.sock"));
+			const bool copt = this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+			const bool ccommit = this->_io->commit(cid);
+			const bool cconnect = this->_io->connect(cid);
+			const bool claunch = this->_io->launch(cid);
+			::printf("ЩУП %s: адрес=%d опции=%d фиксация=%d слушание=%d запуск=%d | цель=%d опции=%d фиксация=%d подключение=%d запуск=%d\n",
+			 title, address, sopt, scommit, slisten, slaunch, target, copt, ccommit, cconnect, claunch);
+			const std::string body(1024, 'Q');
+			const size_t sent = this->_io->send(cid, body.data(), body.size());
+			const auto start = std::chrono::steady_clock::now();
+			while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 3))
+				this->_io->poll(10);
+			::printf("ЩУП %s: отдано=%zu принято=%zu\n", title, sent, received.size());
+			ASSERT_TRUE(this->_io->deinitialize());
+		}
+	}
+#endif

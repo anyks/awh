@@ -48,36 +48,21 @@ TEST(CodecYamlCommon, Messages) {
 	/**
 	 * Коды отказов разбора текста настроек
 	 */
-	const vector <yaml::error_t> errors = {
-		yaml::error_t::NONE, yaml::error_t::INTERNAL, yaml::error_t::UNEXPECTED_EOF,
-		yaml::error_t::INVALID_CHARACTER, yaml::error_t::INVALID_ENCODING,
-		yaml::error_t::UNSUPPORTED_ENCODING, yaml::error_t::INVALID_INDENTATION,
-		yaml::error_t::TAB_IN_INDENTATION, yaml::error_t::UNTERMINATED_SCALAR,
-		yaml::error_t::INVALID_ESCAPE, yaml::error_t::INVALID_UNICODE,
-		yaml::error_t::UNPAIRED_SURROGATE, yaml::error_t::INVALID_BLOCK_HEADER,
-		yaml::error_t::INVALID_NUMBER, yaml::error_t::NUMBER_OUT_OF_RANGE,
-		yaml::error_t::INVALID_BINARY, yaml::error_t::INVALID_STAMP,
-		yaml::error_t::EXPECTED_VALUE, yaml::error_t::EXPECTED_KEY,
-		yaml::error_t::EXPECTED_COLON, yaml::error_t::EXPECTED_COMMA,
-		yaml::error_t::UNCLOSED_FLOW, yaml::error_t::MIXED_COLLECTION,
-		yaml::error_t::DUPLICATE_KEY, yaml::error_t::COMPLEX_KEY,
-		yaml::error_t::UNKNOWN_ALIAS, yaml::error_t::DUPLICATE_ANCHOR,
-		yaml::error_t::RECURSIVE_ALIAS, yaml::error_t::EXPANSION_EXCEEDED,
-		yaml::error_t::INVALID_TAG, yaml::error_t::UNKNOWN_TAG_HANDLE,
-		yaml::error_t::TAG_MISMATCH, yaml::error_t::INVALID_DIRECTIVE,
-		yaml::error_t::UNSUPPORTED_VERSION, yaml::error_t::UNEXPECTED_DOCUMENT,
-		yaml::error_t::TRAILING_CHARACTERS, yaml::error_t::DEPTH_EXCEEDED,
-		yaml::error_t::SCALAR_TOO_LONG, yaml::error_t::NUMBER_TOO_LONG,
-		yaml::error_t::ANCHOR_TOO_LONG, yaml::error_t::TOO_MANY_NODES,
-		yaml::error_t::EMPTY_TEXT, yaml::error_t::OVERFLOW_LIMIT,
-		yaml::error_t::CONFLICTING_SETTINGS, yaml::error_t::STORAGE_EXHAUSTED
-	};
+	/**
+	 * @warning Перечень кодов писался ЗДЕСЬ РУКАМИ и отстал молча: в нём недоставало
+	 *          `FILE_NOT_OPENED`, `FILE_NOT_WRITTEN`, `UNKNOWN_NODE` и прочих, заведённых
+	 *          после его написания, - описания их никем не проверялись. Ныне перебор идёт
+	 *          по ПРЕДЕЛУ перечня, и всякий новый код попадает в него сам. Тем же складом
+	 *          устроены проверки кодеков INI и TOML
+	 */
 	// Собрание уже встреченных описаний
 	unordered_set <string> descriptions;
 	/**
 	 * Выполняем перебор всех кодов отказов разбора
 	 */
-	for(const yaml::error_t error : errors){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (yaml::error_t::SETTINGS_ALREADY_APPLIED); code++){
+		// Получаем очередной код отказа
+		const yaml::error_t error = static_cast <yaml::error_t> (code);
 		// Получаем описание очередного кода отказа
 		const char * message = yaml::message(error);
 		// Выполняем проверку того, что описание выдано

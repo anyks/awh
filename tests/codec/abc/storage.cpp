@@ -204,6 +204,52 @@ namespace {
 			}
 	};
 	/**
+	 * @brief Сторож сноса временного пути проверки
+	 *
+	 * @details Сносит поданный путь и ПРИ ЗАВЕДЕНИИ, и при уходе. Заведение снимает
+	 *          остатки прошлого прогона: проверка, читающая ею же записанное, при
+	 *          пережившем файле с верным содержимым проходит и тогда, когда запись не
+	 *          работает вовсе. Уход же снимает за собою НА ВСЯКОМ пути, включая путь
+	 *          отказа
+	 *
+	 * @warning Заведён 08.09.2026 по находке в корне дерева: снос стоял ПОСЛЕДНЕЮ
+	 *          строкою работы, а всякий `ASSERT_*` из работы выходит немедленно, и
+	 *          покрасневшая проверка мусор оставляла ВСЕГДА. Оставили его мои же щупы,
+	 *          красившие проверку нарочно, - то есть чаще всего мусор родится там, где
+	 *          проверку и разбирают. Класс тот же, что у `Temporary`, а места эти его
+	 *          сторожа не имели
+	 *
+	 * @note Сторож поверен ДВУМЯ опытами, ибо одного мало: сторож, поверенный лишь
+	 *       зелёным путём, неотличим от несуществующего. Проверка усечения принуждена
+	 *       краснеть нарочной порчей - со сторожем остатков НЕТ, без сторожа остаётся
+	 *       `abc-storage-truncated-55721.abc`. Замер 08.09.2026
+	 *
+	 */
+	class Remover {
+		private:
+			// Сносимый путь проверки
+			string _path;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param path сносимый путь проверки
+			 *
+			 */
+			explicit Remover(string path) noexcept : _path(::std::move(path)) {
+				// Выполняем снос остатков прошлого прогона
+				(void) ::remove(this->_path.c_str());
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Remover() noexcept {
+				// Выполняем снос временного пути проверки
+				(void) ::remove(this->_path.c_str());
+			}
+	};
+	/**
 	 * @brief Функция сборки контейнера с поданными записями
 	 *
 	 * @param records собираемые записи контейнера
@@ -1368,8 +1414,8 @@ TEST(CodecAbcStorage, EveryWorkBeforeOpeningNamesItsRefusal){
 	{
 		// Путь файла хранилища проверки
 		const string filename = unique("./abc-storage-before-opening.abc");
-		// Выполняем снос остатков прежнего прогона
-		::remove(filename.c_str());
+		// Сторож, сносящий файл и до проверки, и после неё - в том числе на пути отказа
+		const Remover guard(filename);
 		// Собираемые октеты контейнера
 		vector <uint8_t> data;
 		{
@@ -1393,8 +1439,6 @@ TEST(CodecAbcStorage, EveryWorkBeforeOpeningNamesItsRefusal){
 		ASSERT_TRUE(storage.bind(bound)) << "код отказа: " << abc::message(storage.error());
 		// Выполняем закрытие файла хранилища
 		storage.close();
-		// Выполняем снос файла хранилища проверки
-		::remove(filename.c_str());
 	}
 }
 /**
@@ -1422,8 +1466,8 @@ TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
 	log->mode({});
 	// Путь файла хранилища проверки
 	const string filename = unique("./abc-storage-truncated.abc");
-	// Выполняем снос остатков прежнего прогона
-	::remove(filename.c_str());
+	// Сторож, сносящий файл и до проверки, и после неё - в том числе на пути отказа
+	const Remover guard(filename);
 	// Собираемые октеты контейнера
 	vector <uint8_t> data;
 	{
@@ -1492,8 +1536,6 @@ TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
 		// Выполняем закрытие файла хранилища
 		storage.close();
 	}
-	// Выполняем снос файла хранилища проверки
-	::remove(filename.c_str());
 }
 /**
  * @brief Проверка того, что неперематываемый поток отвечен отказом чтения
@@ -1515,7 +1557,8 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
 	unique_ptr <log_t> log(new log_t(fmk.get()));
 	log->mode({});
 	const string path = unique("./abc-storage-fifo");
-	::remove(path.c_str());
+	// Сторож, сносящий канал и до проверки, и после неё - в том числе на пути отказа
+	const Remover guard(path);
 	ASSERT_EQ(::mkfifo(path.c_str(), 0600), 0) << "завести именованный канал не удалось";
 	const int reader = ::open(path.c_str(), O_RDONLY | O_NONBLOCK);
 	ASSERT_GE(reader, 0) << "открыть читателя канала не удалось";
@@ -1532,7 +1575,8 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
 	::remove(path.c_str());
 	{
 		const string filename = unique("./abc-storage-seekable.abc");
-		::remove(filename.c_str());
+		// Сторож, сносящий файл и до проверки, и после неё - в том числе на пути отказа
+		const Remover guard(filename);
 		vector <uint8_t> data;
 		{
 			abc::assembler_t assembler(log.get());
@@ -1547,7 +1591,6 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
 		ASSERT_TRUE(storage.open(filename)) << "код отказа: " << abc::message(storage.error());
 		ASSERT_EQ(storage.length(), static_cast <uint64_t> (data.size()));
 		storage.close();
-		::remove(filename.c_str());
 	}
 }
 #endif
@@ -1569,8 +1612,8 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 	log->mode({});
 	// Путь файла хранилища проверки
 	const string filename = unique("./abc-storage-editor-bind.abc");
-	// Выполняем снос остатков прежнего прогона
-	::remove(filename.c_str());
+	// Сторож, сносящий файл и до проверки, и после неё - в том числе на пути отказа
+	const Remover guard(filename);
 	// Собираемые октеты контейнера
 	vector <uint8_t> data;
 	{
@@ -1628,8 +1671,6 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 		// Выполняем закрытие файла хранилища
 		storage.close();
 	}
-	// Выполняем снос файла хранилища проверки
-	::remove(filename.c_str());
 }
 /**
  * @namespace Оснастка наведения отказа НОСИТЕЛЯ пределом размера файла
@@ -1735,8 +1776,8 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 	log->mode({});
 	// Путь файла хранилища проверки
 	const string filename = unique("./abc-storage-fsize-write.abc");
-	// Выполняем снос остатков прежнего прогона
-	::remove(filename.c_str());
+	// Сторож, сносящий файл и до проверки, и после неё - в том числе на пути отказа
+	const Remover guard(filename);
 	// Собираемые октеты контейнера
 	vector <uint8_t> data;
 	{
@@ -1785,8 +1826,6 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 		// Выполняем закрытие файла хранилища
 		storage.close();
 	}
-	// Выполняем снос файла хранилища проверки
-	::remove(filename.c_str());
 	// Выполняем снос временного файла хранилища
 	::remove((filename + ".part").c_str());
 	#endif
@@ -1831,8 +1870,8 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 	log->mode({});
 	// Путь файла хранилища проверки
 	const string filename = unique("./abc-storage-fsize-flush.abc");
-	// Выполняем снос остатков прежнего прогона
-	::remove(filename.c_str());
+	// Сторож, сносящий файл и до проверки, и после неё - в том числе на пути отказа
+	const Remover guard(filename);
 	// Собираемые октеты контейнера
 	vector <uint8_t> data;
 	{
@@ -1876,8 +1915,6 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 		// Выполняем закрытие файла хранилища
 		storage.close();
 	}
-	// Выполняем снос файла хранилища проверки
-	::remove(filename.c_str());
 	// Выполняем снос временного файла хранилища
 	::remove((filename + ".part").c_str());
 	#endif

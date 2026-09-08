@@ -1945,6 +1945,35 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * @brief Метод установки строкового значения узла записью дословною
+					 *
+					 * @details Перегрузка эта заведена от ЗАПАДНИ языка: без неё написание
+					 * `set(путь, "значение")` уходило в перегрузку от логического значения -
+					 * приведение `const char *` к `bool` есть приведение стандартное, а к
+					 * `string_view` пользовательское, и первое побеждает молча. Дерево получало
+					 * `ключ: true` вместо строки, и отказа при том не было никакого
+					 *
+					 * @note Устроено складом кодека TOML, где перегрузка эта заведена от того же
+					 *       довода. Пустой указатель обращается в пустую строку
+					 *
+					 * @param path  путь к устанавливаемому узлу дерева документа
+					 * @param value устанавливаемое значение узла
+					 * @param style вид записи устанавливаемого значения
+					 * @return      результат выполнения операции
+					 *
+					 * \~english
+					 * @brief The method for setting the string value of a node by a literal record
+					 *
+					 * @param path  the path to the node being set in the document tree
+					 * @param value the value being set for the node
+					 * @param style the record kind of the value being set
+					 * @return      the result of the operation
+					 *
+					 */
+					bool set(const string & path, const char * value, const style_t style = style_t::PLAIN) noexcept;
+
 					bool set(const string & path, const bool value) noexcept;
 					/**
 					 * \~russian

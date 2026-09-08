@@ -108,6 +108,13 @@ bool awh::codec::abc::Packer::fail(const error_t error) noexcept {
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
 	 */
+	/**
+	 * @note Закреплено `ChunkFixture.ThePackerFunnelReportsItsCauseToTheJournal`: щуп
+	 *       нужности 08.09.2026 нашёл воронку МОЛЧАЩЕЙ. Она ЧЕТВЁРТАЯ в своём роду -
+	 *       вместе с `Editor::fail`, `Fetcher::fail` и `Merkle::fail`, - и все четыре
+	 *       молчали об одном: набор спрашивал причину работою `error()`, а журнала не
+	 *       спрашивал никто. Закреплены порознь: работы разные
+	 */
 	if((error != error_t::NONE) && (this->_log != nullptr)){
 		/**
 		 * Если включён режим отладки
@@ -180,6 +187,14 @@ void awh::codec::abc::Packer::crypto(const crypto_t * value) noexcept {
 uint64_t awh::codec::abc::digest(const void * buffer, const size_t size) noexcept {
 	// Выполняем получение указателя на октеты кадра
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+	/**
+	 * @note Закреплено `ChunkFixture.TheDigestOfAShortChunkIsEmpty`: щуп нужности
+	 *       08.09.2026 нашёл место МОЛЧАЩИМ. Работа отвечает ЧИСЛОМ, а не отказом, и
+	 *       заслон - единственное, что стоит между коротким буфером и переносом
+	 *       тридцати двух октетов заголовка. Обесточенный, он валит прогон (исход 139),
+	 *       а не будь падения - отдал бы сумму по чужой памяти, НЕПОВТОРИМУЮ, отчего
+	 *       сличение её с уложенной отказывало бы то и дело
+	 */
 	// Если кадр короче заголовка своего
 	if((octets == nullptr) || (size < CHUNK_HEADER))
 		// Выводим пустую контрольную сумму

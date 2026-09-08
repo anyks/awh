@@ -433,16 +433,31 @@ bool awh::codec::numeric(const string_view text, T & result) noexcept {
  *
  * @note Тело разбора держится в исходном файле, а не в заголовочном, по укладу
  *       фреймворка: заголовочные файлы реализации не несут
+ *
+ * @warning Перечень правлен 08.09.2026: прежде он вёлся ПСЕВДОНИМАМИ РАЗРЯДНОСТИ -
+ *          `int8_t`, `int16_t` и прочими, - и держал одиннадцать тел вместо четырнадцати.
+ *          Псевдоним разрядности видом языка не является: он лишь ИМЯ одного из видов, и
+ *          какого именно - решает система. У macOS `int64_t` это `long long`, у Linux LP64
+ *          это `long`, и вид, псевдонимом не названный, тела не получал вовсе - потребитель,
+ *          позвавший его, получал отказ СВЯЗЫВАНИЯ, а не отказ сборки, и притом лишь на
+ *          части систем. Тремя же видами - `char`, `signed char` и `unsigned char` - не
+ *          назывался ни один псевдоним нигде, кроме систем Sun, где `int8_t` есть `char`
+ *
+ * @note Перечень ведётся ВИДАМИ ЯЗЫКА и совпадает с перечнями писателей кодеков JSON, XML
+ *       и CSV дословно; согласие это и есть договор о поддерживаемых видах числа
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <bool> (const string_view, bool &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <int8_t> (const string_view, int8_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <int16_t> (const string_view, int16_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <int32_t> (const string_view, int32_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <int64_t> (const string_view, int64_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <uint8_t> (const string_view, uint8_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <uint16_t> (const string_view, uint16_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <uint32_t> (const string_view, uint32_t &) noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <uint64_t> (const string_view, uint64_t &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <char> (const string_view, char &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <signed char> (const string_view, signed char &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned char> (const string_view, unsigned char &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <short> (const string_view, short &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned short> (const string_view, unsigned short &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <int> (const string_view, int &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned int> (const string_view, unsigned int &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <long> (const string_view, long &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned long> (const string_view, unsigned long &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <long long> (const string_view, long long &) noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <unsigned long long> (const string_view, unsigned long long &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <float> (const string_view, float &) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::numeric <double> (const string_view, double &) noexcept;
 /**
@@ -464,15 +479,22 @@ T awh::codec::convert(const double value) noexcept {
 }
 /**
  * Выполняем явное создание тел приведения числа по всем поддерживаемым видам
+ *
+ * @note Перечень этот обязан совпадать с перечнем разбора выше буква в букву: извлечение
+ *       числа кодеком идёт через оба тела, и вид, у одного из них отсутствующий, откажет
+ *       связыванием ровно так же
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::convert <bool> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ int8_t awh::codec::convert <int8_t> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ int16_t awh::codec::convert <int16_t> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ int32_t awh::codec::convert <int32_t> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ int64_t awh::codec::convert <int64_t> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ uint8_t awh::codec::convert <uint8_t> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ uint16_t awh::codec::convert <uint16_t> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ uint32_t awh::codec::convert <uint32_t> (const double) noexcept;
-template __AWH_SHARED_EXPORT__ uint64_t awh::codec::convert <uint64_t> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ char awh::codec::convert <char> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ signed char awh::codec::convert <signed char> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned char awh::codec::convert <unsigned char> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ short awh::codec::convert <short> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned short awh::codec::convert <unsigned short> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ int awh::codec::convert <int> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned int awh::codec::convert <unsigned int> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ long awh::codec::convert <long> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned long awh::codec::convert <unsigned long> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ long long awh::codec::convert <long long> (const double) noexcept;
+template __AWH_SHARED_EXPORT__ unsigned long long awh::codec::convert <unsigned long long> (const double) noexcept;
 template __AWH_SHARED_EXPORT__ float awh::codec::convert <float> (const double) noexcept;
 template __AWH_SHARED_EXPORT__ double awh::codec::convert <double> (const double) noexcept;

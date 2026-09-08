@@ -397,6 +397,10 @@ const char * awh::codec::xml::message(const error_t error) noexcept {
 		case error_t::INVALID_NODE:
 			// Выводим описание кода ошибки
 			return "the passed tree node is unfit";
+		// Если кодировка сменена посреди подачи текста
+		case error_t::ENCODING_ALREADY_CHOSEN:
+			// Выводим описание кода ошибки
+			return "the encoding cannot be changed in the middle of the feed";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

@@ -4585,14 +4585,14 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 	 * Проверяемые написания значения и метки, каким они отвечают
 	 */
 	const vector <pair <string, string>> probes = {
-		{"value: !!binary 12:30\n", "tag:yaml.org,2002:binary"},
+		{"value: !!binary aGkh\n", "tag:yaml.org,2002:binary"},
 		{"value: !!str 7\n", "tag:yaml.org,2002:str"},
 		{"value: !%21y v\n", "!!y"},
 		{"value: &m v\n", ""},
 		{"value: !!float .nan\n", "tag:yaml.org,2002:float"},
 		{"value: !!int -1250\n", "tag:yaml.org,2002:int"},
 		{"value: !!bool true\n", "tag:yaml.org,2002:bool"},
-		{"value: !!timestamp 12:30\n", "tag:yaml.org,2002:timestamp"},
+		{"value: !!timestamp 2001-12-14\n", "tag:yaml.org,2002:timestamp"},
 		{"value: !!float 0777\n", "tag:yaml.org,2002:float"},
 		{"value: !!int 0777\n", "tag:yaml.org,2002:int"}
 	};
@@ -4695,7 +4695,7 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 		// Дерево документа, откуда ведётся перенос
 		yaml::document_t source(::logger());
 		// Выполняем разбор написания с двоичным содержимым
-		ASSERT_TRUE(source.parse("value: !!binary 12:30\n"));
+		ASSERT_TRUE(source.parse("value: !!binary aGkh\n"));
 		// Владеющее значение, с дерева снятое
 		const yaml::value_t taken(source.root());
 		// Дерево документа, куда ведётся перенос

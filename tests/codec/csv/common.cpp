@@ -52,10 +52,15 @@ TEST(CodecCsvCommon, Messages) {
 	 * @note Перебор ведётся числом от нуля до последнего кода перечня: список кодов,
 	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
 	 *       последними, не сличались вовсе
+	 *
+	 * @warning Отставание это ПОВТОРИЛОСЬ и правлено 08.09.2026: предел перебора был
+	 *          записан именем кода, а не концом перечня, и коды, дописанные ПОСЛЕ него,
+	 *          снова выпали из сличения. Правя перечень кодов, правь и предел здесь -
+	 *          сторожа у этого предела нет, кроме сличения «конец перечня» ниже
 	 */
 	// Свод описаний кодов отказа для сличения их на различимость
 	set <string> distinct;
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::STORAGE_EXHAUSTED); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::ENCODING_ALREADY_CHOSEN); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = csv::message(static_cast <csv::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -79,7 +84,12 @@ TEST(CodecCsvCommon, Messages) {
 	 *
 	 * @note Замер 01.09.2026 по трём кодекам: 106 кодов и 106 различных описаний
 	 */
-	ASSERT_EQ(distinct.size(), 22u);
+	/**
+	 * Выполняем проверку числа различимых описаний
+	 *
+	 * @note Число правлено 08.09.2026 с 22 на 24 - прибавилось два: код `ENCODING_ALREADY_CHOSEN` и код `BARE_LINE_BREAK`, прежде из перебора выпадавший
+	 */
+	ASSERT_EQ(distinct.size(), 24u);
 	/**
 	 * Выполняем проверку того, что перечень кодов на том и оканчивается
 	 *
@@ -88,7 +98,7 @@ TEST(CodecCsvCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::BARE_LINE_BREAK) + 1)), "unknown error");
+	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::ENCODING_ALREADY_CHOSEN) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (0xFF)), "unknown error");
 }

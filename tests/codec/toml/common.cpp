@@ -51,7 +51,7 @@ TEST(CodecTomlCommon, Messages) {
 	 *          никем не проверялись. Та же беда была у перебора кодировок, и найдена
 	 *          она снастью молчащих кодов, а не глазами
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::FILE_NOT_WRITTEN); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::SETTINGS_ALREADY_APPLIED); code++){
 		// Получаем описание очередного кода ошибки
 		const char * message = toml::message(static_cast <toml::error_t> (code));
 		// Выполняем проверку того, что описание кода ошибки выдано
@@ -73,7 +73,7 @@ TEST(CodecTomlCommon, Messages) {
 	 *          их никем не проверялись - вторая та же беда на том же месте
 	 */
 	ASSERT_STREQ(toml::message(static_cast <toml::error_t> (
-	 static_cast <uint32_t> (toml::error_t::FILE_NOT_WRITTEN) + 1)), "unknown error");
+	 static_cast <uint32_t> (toml::error_t::SETTINGS_ALREADY_APPLIED) + 1)), "unknown error");
 	// Выполняем проверку описания кода ошибки за пределами перечисления
 	ASSERT_STREQ(toml::message(static_cast <toml::error_t> (0xFF)), "unknown error");
 }

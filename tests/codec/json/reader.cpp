@@ -2499,7 +2499,7 @@ TEST(CodecJsonReader, EncodingCannotBeChangedInTheMiddleOfTheFeed) {
 		// Выполняем проверку отказа подачи следующего куска
 		ASSERT_FALSE(reader.feed("1}", 2, true));
 		// Выполняем проверку кода отказа смены кодировки
-		ASSERT_EQ(reader.error(), json::error_t::UNSUPPORTED_ENCODING);
+		ASSERT_EQ(reader.error(), json::error_t::ENCODING_ALREADY_CHOSEN);
 	}
 	/**
 	 * Выполняем проверку того, что кодировка, распознанной отвечающая, подачи не рвёт

@@ -3228,3 +3228,27 @@ TEST(CodecTomlReader, CommentEmissionIsSwitchable){
 		ASSERT_EQ(reader.state(), toml::state_t::FINISHED) << emit;
 	}
 }
+
+/**
+ * @brief Проверка отказа подачи после объявленного конца текста
+ *
+ * @details Три кодека расходились здесь в трёх местах на одном и том же случае: INI
+ * отвергал подачу МОЛЧА - отказ без кода, - TOML принимал её УСПЕХОМ и дописывал текст
+ * за объявленным концом, а YAML отвечал `TRAILING_CHARACTERS`, называя не ту причину:
+ * лишних знаков в тексте не было, лишним был вызов у потребителя
+ *
+ */
+TEST(CodecTomlReader, FeedAfterTheDeclaredEndIsRefused) {
+	// Объект потокового чтения текста
+	toml::reader_t reader(::logger());
+	// Собираемая подача исходного текста
+	const string first = "k = 1\n";
+	// Выполняем проверку того, что первая подача с признаком конца принимается
+	ASSERT_TRUE(reader.feed(first.data(), first.size(), true)) << toml::message(reader.error());
+	// Собираемая подача, конец текста переступающая
+	const string second = "m = 2\n";
+	// Выполняем проверку отказа подачи после объявленного конца текста
+	ASSERT_FALSE(reader.feed(second.data(), second.size(), true));
+	// Выполняем проверку того, что отказ назван поимённо, а не отдан молча
+	ASSERT_EQ(reader.error(), toml::error_t::TEXT_ALREADY_ENDED) << toml::message(reader.error());
+}

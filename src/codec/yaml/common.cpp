@@ -25,6 +25,7 @@
 #include <cmath>
 #include <cerrno>
 #include <cstdlib>
+#include <cstring>
 #include <limits>
 
 /**
@@ -750,6 +751,22 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
 			// Выводим описание кода ошибки
 			return "cannot write the document text to the file";
+		// Если текст документа из файла прочитать не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_READ):
+			// Выводим описание кода ошибки
+			return "cannot read the document text from the file";
+		// Если подача текста продолжена после объявленного конца его
+		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
+			// Выводим описание кода ошибки
+			return "the text feed continued after the declared end of it";
+		// Если кодировка сменена посреди подачи текста
+		case static_cast <uint8_t> (error_t::ENCODING_ALREADY_CHOSEN):
+			// Выводим описание кода ошибки
+			return "the encoding cannot be changed in the middle of the feed";
+		// Если настройки сменены посреди подачи текста
+		case static_cast <uint8_t> (error_t::SETTINGS_ALREADY_APPLIED):
+			// Выводим описание кода ошибки
+			return "the settings cannot be changed in the middle of the feed";
 		// Если узла по такому пути документ не несёт
 		case static_cast <uint8_t> (error_t::UNKNOWN_NODE):
 			// Выводим описание кода ошибки

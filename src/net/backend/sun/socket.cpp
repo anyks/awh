@@ -48,6 +48,14 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
+/**
+ * Запрос занятого места буфера приёма у систем Sun отводится отдельным заголовком
+ *
+ * @note У Solaris и illumos FIONREAD объявлен в <sys/filio.h>, а не в <sys/ioctl.h>,
+ *       как у систем BSD, - без него сборка валится «use of undeclared identifier»
+ */
+#include <sys/filio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -549,20 +557,39 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
  *       вроде SO_NWRITE, ни запроса вроде SIOCOUTQ там нет. Потребитель обязан обходиться
  *       свободным местом собственной очереди
  *
- * @warning Про буфер ПРИЁМА то же самое неверно: `ioctl(FIONREAD)` этими системами
- *          поддержан, и замер его снят на обоих стендах - Solaris 11.4.90 и OpenIndiana
- *          Hipster 2026.04, 11.08.2026, см. `tools/benchmark/readpath`. Направление
- *          чтения здесь потому отвечает «неизвестно» не по отсутствию средства, а
- *          потому, что оно не заведено. Владельцу на решение: заводить ли его
+ * @note Про буфер ПРИЁМА то же самое неверно: `ioctl(FIONREAD)` этими системами
+ *       поддержан, замер его снят на обоих стендах - Solaris 11.4.90 и OpenIndiana
+ *       Hipster 2026.04, 11.08.2026, см. `tools/benchmark/readpath`, - и направление
+ *       чтения здесь отвечает настоящим числом. Заведено 08.09.2026 решением владельца
  *
  * @param sock  сетевой сокет
  * @param event событие сокета (чтение либо запись)
- * @return      признак того, что свободное место неизвестно
+ * @return      свободное место в буфере сокета либо -1, если оно неизвестно
  *
  */
-int32_t awh::eth::Socket::getBufferAvailable([[maybe_unused]] const net::socket_t sock, [[maybe_unused]] const net::socket_event_t event) const noexcept {
-	// Выводим признак того, что свободное место неизвестно
-	return -1;
+int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net::socket_event_t event) const noexcept {
+	// Если сокет передан неверно
+	if(sock == net::invalid_socket_t)
+		// Выводим признак того, что свободное место неизвестно
+		return -1;
+	// Если запрашивается место буфера отправки
+	if(event == net::socket_event_t::WRITE)
+		// Выводим признак того, что свободное место неизвестно
+		return -1;
+	// Количество байт, уже лежащих в буфере приёма сокета
+	int32_t pending = 0;
+	// Считываем занятое место буфера приёма
+	if(::ioctl(sock, FIONREAD, &pending) != 0)
+		// Выводим признак того, что свободное место неизвестно
+		return -1;
+	// Получаем вместимость буфера приёма
+	const int32_t size = this->getBufferSize(sock, event);
+	// Если вместимость буфера получить не удалось
+	if(size <= 0)
+		// Выводим признак того, что свободное место неизвестно
+		return -1;
+	// Выводим свободное место в буфере сокета
+	return ((size > pending) ? (size - pending) : 0);
 }
 /**
  * @brief Метод получения размера буфера

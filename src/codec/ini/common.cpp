@@ -318,6 +318,22 @@ const char * awh::codec::ini::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::FILE_NOT_WRITTEN):
 			// Выводим описание кода ошибки
 			return "the text of the settings could not be written to the file";
+		// Если текст настроек из файла прочитать не удалось
+		case static_cast <uint8_t> (error_t::FILE_NOT_READ):
+			// Выводим описание кода ошибки
+			return "the text of the settings could not be read from the file";
+		// Если подача текста продолжена после объявленного конца его
+		case static_cast <uint8_t> (error_t::TEXT_ALREADY_ENDED):
+			// Выводим описание кода ошибки
+			return "the text feed continued after the declared end of it";
+		// Если кодировка сменена посреди подачи текста
+		case static_cast <uint8_t> (error_t::ENCODING_ALREADY_CHOSEN):
+			// Выводим описание кода ошибки
+			return "the encoding cannot be changed in the middle of the feed";
+		// Если настройки сменены посреди подачи текста
+		case static_cast <uint8_t> (error_t::SETTINGS_ALREADY_APPLIED):
+			// Выводим описание кода ошибки
+			return "the settings cannot be changed in the middle of the feed";
 		// Если раздел с таким именем деревом не объявлен
 		case static_cast <uint8_t> (error_t::UNKNOWN_SECTION):
 			// Выводим описание кода ошибки

@@ -176,11 +176,11 @@ bool awh::codec::syslog::Reader::priority(const string_view record, size_t & off
 	// Если знак, приставку закрывающий, не найден
 	if(pos == string_view::npos)
 		// Выводим отказ разбора ошибочной приставкой приоритета
-		return this->fail(error_t::INVALID_PRIORITY, this->_offset);
+		return this->fail(error_t::INVALID_PRIORITY, this->_record);
 	// Если приставка приоритета пуста
 	if(pos == 1)
 		// Выводим отказ разбора ошибочной приставкой приоритета
-		return this->fail(error_t::INVALID_PRIORITY, this->_offset + 1);
+		return this->fail(error_t::INVALID_PRIORITY, this->_record + 1);
 	// Собираемое значение приоритета
 	uint32_t result = 0;
 	/**
@@ -190,13 +190,13 @@ bool awh::codec::syslog::Reader::priority(const string_view record, size_t & off
 		// Если знак приставки цифрой не является
 		if((record[i] < '0') || (record[i] > '9'))
 			// Выводим отказ разбора ошибочной приставкой приоритета
-			return this->fail(error_t::INVALID_PRIORITY, this->_offset + i);
+			return this->fail(error_t::INVALID_PRIORITY, this->_record + i);
 		// Наращиваем значение приоритета очередной цифрой
 		result = ((result * 10) + static_cast <uint32_t> (record[i] - '0'));
 		// Если значение приоритета за допустимый предел вышло
 		if(result > MAX_PRIORITY)
 			// Выводим отказ разбора приоритетом, за предел вышедшим
-			return this->fail(error_t::INVALID_PRIORITY, this->_offset + i);
+			return this->fail(error_t::INVALID_PRIORITY, this->_record + i);
 	}
 	// Запоминаем приоритет записи
 	this->_priority = result;
@@ -384,21 +384,21 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 		// Если опознаватель блока оборвался вместе с записью
 		if(offset >= record.size())
 			// Выводим отказ разбора незакрытой скобкой блока
-			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_offset + begin);
+			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
 		// Получаем опознаватель блока структурированных данных
 		const string_view name(record.data() + begin, offset - begin);
 		// Если опознаватель блока пуст
 		if(name.empty())
 			// Выводим отказ разбора ошибочным опознавателем блока
-			return this->fail(error_t::INVALID_STRUCTURE_ID, this->_offset + begin);
+			return this->fail(error_t::INVALID_STRUCTURE_ID, this->_record + begin);
 		// Если сличение ведётся и длина опознавателя допустимую превышает
 		if((this->_settings.mode == mode_t::STRONG) && (name.size() > static_cast <size_t> (MAX_NAME)))
 			// Выводим отказ разбора слишком длинным именем
-			return this->fail(error_t::NAME_TOO_LONG, this->_offset + begin);
+			return this->fail(error_t::NAME_TOO_LONG, this->_record + begin);
 		// Если количество блоков допустимое превышает
 		if(this->_structures.size() >= static_cast <size_t> (this->_settings.maxStructures))
 			// Выводим отказ разбора превышением предела настроек
-			return this->fail(error_t::OVERFLOW_LIMIT, this->_offset + begin);
+			return this->fail(error_t::OVERFLOW_LIMIT, this->_record + begin);
 		/**
 		 * Если сличение ведётся строго, проверяем неповторимость опознавателя блока
 		 *
@@ -414,7 +414,7 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 				// Если опознаватель блока уже объявлен
 				if(structure.first.compare(0, structure.first.size(), name.data(), name.size()) == 0)
 					// Выводим отказ разбора повторным опознавателем блока
-					return this->fail(error_t::DUPLICATE_STRUCTURE, this->_offset + begin);
+					return this->fail(error_t::DUPLICATE_STRUCTURE, this->_record + begin);
 			}
 		}
 		// Заводим блок структурированных данных записи
@@ -436,27 +436,27 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 			// Если имя поля оборвалось вместе с записью
 			if(offset >= record.size())
 				// Выводим отказ разбора незакрытой скобкой блока
-				return this->fail(error_t::UNCLOSED_STRUCTURE, this->_offset + start);
+				return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + start);
 			// Если за именем поля не следует знак равенства
 			if(record[offset] != '=')
 				// Выводим отказ разбора ошибочным именем поля
-				return this->fail(error_t::INVALID_PARAM_NAME, this->_offset + start);
+				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
 			// Получаем имя поля блока структурированных данных
 			const string_view key(record.data() + start, offset - start);
 			// Если имя поля блока пусто
 			if(key.empty())
 				// Выводим отказ разбора ошибочным именем поля
-				return this->fail(error_t::INVALID_PARAM_NAME, this->_offset + start);
+				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
 			// Если сличение ведётся и длина имени поля допустимую превышает
 			if((this->_settings.mode == mode_t::STRONG) && (key.size() > static_cast <size_t> (MAX_NAME)))
 				// Выводим отказ разбора слишком длинным именем
-				return this->fail(error_t::NAME_TOO_LONG, this->_offset + start);
+				return this->fail(error_t::NAME_TOO_LONG, this->_record + start);
 			// Сдвигаем смещение разбора за знак равенства
 			offset++;
 			// Если значение поля не взято в кавычки
 			if((offset >= record.size()) || (record[offset] != '"'))
 				// Выводим отказ разбора значением без кавычек
-				return this->fail(error_t::UNQUOTED_PARAM_VALUE, this->_offset + offset);
+				return this->fail(error_t::UNQUOTED_PARAM_VALUE, this->_record + offset);
 			// Сдвигаем смещение разбора за открывающую кавычку значения
 			offset++;
 			// Запоминаем смещение начала значения поля
@@ -486,11 +486,11 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 			// Если кавычка значения не закрыта
 			if(offset >= record.size())
 				// Выводим отказ разбора незакрытой кавычкой значения
-				return this->fail(error_t::UNCLOSED_PARAM_VALUE, this->_offset + value);
+				return this->fail(error_t::UNCLOSED_PARAM_VALUE, this->_record + value);
 			// Если количество полей блока допустимое превышает
 			if(this->_structures.back().second.size() >= static_cast <size_t> (this->_settings.maxParams))
 				// Выводим отказ разбора превышением предела настроек
-				return this->fail(error_t::OVERFLOW_LIMIT, this->_offset + start);
+				return this->fail(error_t::OVERFLOW_LIMIT, this->_record + start);
 			// Заводим поле блока структурированных данных
 			this->_structures.back().second.emplace_back();
 			// Устанавливаем имя поля блока структурированных данных
@@ -509,7 +509,7 @@ bool awh::codec::syslog::Reader::structured(const string_view record, size_t & o
 		// Если блок структурированных данных не закрыт
 		if((offset >= record.size()) || (record[offset] != ']'))
 			// Выводим отказ разбора незакрытой скобкой блока
-			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_offset + begin);
+			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
 		// Сдвигаем смещение разбора за закрывающую скобку блока
 		offset++;
 	}
@@ -545,7 +545,7 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		// Если поле заголовка оборвалось вместе с записью
 		if(offset >= record.size())
 			// Выводим отказ разбора недостачею полей заголовка
-			return this->fail(error_t::INCOMPLETE_HEADER, this->_offset + begin);
+			return this->fail(error_t::INCOMPLETE_HEADER, this->_record + begin);
 		// Запоминаем очередное поле заголовка записи
 		fields[i] = string_view(record.data() + begin, offset - begin);
 		// Сдвигаем смещение разбора за разделитель полей
@@ -558,18 +558,18 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		// Если знак номера описания цифрой не является
 		if((fields[0][i] < '0') || (fields[0][i] > '9'))
 			// Выводим отказ разбора ошибочным номером описания
-			return this->fail(error_t::INVALID_VERSION, this->_offset);
+			return this->fail(error_t::INVALID_VERSION, this->_record);
 		// Наращиваем номер описания очередной цифрой
 		this->_version = ((this->_version * 10) + static_cast <uint32_t> (fields[0][i] - '0'));
 	}
 	// Если номер описания записи пуст
 	if(fields[0].empty())
 		// Выводим отказ разбора ошибочным номером описания
-		return this->fail(error_t::INVALID_VERSION, this->_offset);
+		return this->fail(error_t::INVALID_VERSION, this->_record);
 	// Если номер описания записи не поддерживается
 	if(this->_version > MAX_VERSION)
 		// Выводим отказ разбора неподдерживаемым номером описания
-		return this->fail(error_t::UNSUPPORTED_VERSION, this->_offset);
+		return this->fail(error_t::UNSUPPORTED_VERSION, this->_record);
 	/**
 	 * Если сличение ведётся, проверяем пригодность даты сообщения
 	 *
@@ -585,7 +585,7 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		// Если запись даты разбору не поддалась
 		if(!valid)
 			// Выводим отказ разбора ошибочной датой сообщения
-			return this->fail(error_t::INVALID_TIMESTAMP, this->_offset);
+			return this->fail(error_t::INVALID_TIMESTAMP, this->_record);
 	}
 	/**
 	 * Если сличение ведётся строго, проверяем длины полей заголовка
@@ -598,19 +598,19 @@ bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset)
 		// Если длина имени узла допустимую превышает
 		if(fields[2].size() > static_cast <size_t> (MAX_HOSTNAME))
 			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_offset);
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
 		// Если длина названия приложения допустимую превышает
 		if(fields[3].size() > static_cast <size_t> (MAX_APPLICATION))
 			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_offset);
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
 		// Если длина опознавателя работы допустимую превышает
 		if(fields[4].size() > static_cast <size_t> (MAX_PROCESS))
 			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_offset);
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
 		// Если длина опознавателя сообщения допустимую превышает
 		if(fields[5].size() > static_cast <size_t> (MAX_MESSAGE_ID))
 			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_offset);
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
 	}
 	// Выполняем укладку номера описания записи
 	this->lay(field_t::VERSION, fields[0]);
@@ -813,7 +813,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	 */
 	if((length == 0) || !timing)
 		// Выводим отказ разбора недостачею полей заголовка
-		return this->fail(error_t::INCOMPLETE_HEADER, this->_offset + begin);
+		return this->fail(error_t::INCOMPLETE_HEADER, this->_record + begin);
 	// Получаем дату сообщения записи
 	const string_view timestamp(record.data() + offset, length);
 	/**
@@ -854,7 +854,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 		// Если запись даты разбору не поддалась
 		if(!valid)
 			// Выводим отказ разбора ошибочной датой сообщения
-			return this->fail(error_t::INVALID_TIMESTAMP, this->_offset + begin);
+			return this->fail(error_t::INVALID_TIMESTAMP, this->_record + begin);
 	}
 	// Выполняем укладку даты сообщения
 	this->lay(field_t::TIMESTAMP, timestamp);
@@ -929,7 +929,7 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 			// Если скобка опознавателя работы не закрыта
 			if(offset >= record.size())
 				// Выводим отказ разбора ошибочным опознавателем работы
-				return this->fail(error_t::INVALID_PROCESS, this->_offset + process);
+				return this->fail(error_t::INVALID_PROCESS, this->_record + process);
 			// Выполняем укладку опознавателя работы
 			this->lay(field_t::PROCESS, string_view(record.data() + process, offset - process));
 			// Сдвигаем смещение разбора за закрывающую скобку опознавателя
@@ -987,7 +987,7 @@ bool awh::codec::syslog::Reader::prepare(const string_view record) noexcept {
 	// Если длина записи допустимую превышает
 	if(record.size() > static_cast <size_t> (this->_settings.maxRecord))
 		// Выводим отказ разбора слишком длинной записью
-		return this->fail(error_t::RECORD_TOO_LONG, this->_offset);
+		return this->fail(error_t::RECORD_TOO_LONG, this->_record);
 	// Смещение, за приставкой приоритета следующее
 	size_t offset = 0;
 	// Если разбор приставки приоритета отказом завершился
@@ -1016,7 +1016,7 @@ bool awh::codec::syslog::Reader::prepare(const string_view record) noexcept {
 			return this->modern(record, offset);
 	}
 	// Выводим отказ разбора неопределённым описанием записи
-	return this->fail(error_t::UNKNOWN_STANDARD, this->_offset);
+	return this->fail(error_t::UNKNOWN_STANDARD, this->_record);
 }
 /**
  * @brief Метод получения настроек разбора записей
@@ -1323,7 +1323,17 @@ bool awh::codec::syslog::Reader::next() noexcept {
 					// Выводим отсутствие очередного события разбора
 					return false;
 				}
-				// Запоминаем смещение начала неразобранного остатка записи
+				/**
+				 * Запоминаем смещение начала текущей записи
+				 *
+				 * @warning Место отказа отсчитывается ОТ НЕГО, а не от `_offset`: тот
+				 *          сдвигается к началу СЛЕДУЮЩЕЙ записи прямо здесь, до разбора
+				 *          текущей, и все места отказов оттого указывали за конец
+				 *          записи. Замерено 08.09.2026: запись «<>1 ...» длиною 47
+				 *          октетов давала местом отказа 48, а «<999>1 ...» длиною 50 -
+				 *          53. Прежняя проверка места сличала лишь НОМЕР СТРОКИ, и он
+				 *          был верен - оттого дефект и жил незамеченным
+				 */
 				this->_record = this->_offset;
 				// Выполняем определение положения начала текущей записи
 				this->place(this->_offset, this->_position);

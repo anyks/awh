@@ -54,7 +54,7 @@ TEST(CodecIniCommon, Messages) {
 	 *          стоял последним в день написания: перебор до OVERFLOW_LIMIT оставлял за
 	 *          собою коды, заведённые после него, и описания их никем не проверялись
 	 */
-	for(uint8_t i = 0; i <= static_cast <uint8_t> (ini::error_t::FILE_NOT_WRITTEN); i++){
+	for(uint8_t i = 0; i <= static_cast <uint8_t> (ini::error_t::SETTINGS_ALREADY_APPLIED); i++){
 		// Получаем описание очередного кода ошибки разбора
 		const char * message = ini::message(static_cast <ini::error_t> (i));
 		// Выполняем проверку наличия описания кода ошибки
@@ -84,7 +84,7 @@ TEST(CodecIniCommon, Messages) {
 	 *          их никем не проверялись - вторая та же беда на том же месте
 	 */
 	ASSERT_STREQ(ini::message(static_cast <ini::error_t> (
-	 static_cast <uint32_t> (ini::error_t::FILE_NOT_WRITTEN) + 1)), "unknown error");
+	 static_cast <uint32_t> (ini::error_t::SETTINGS_ALREADY_APPLIED) + 1)), "unknown error");
 }
 
 /**

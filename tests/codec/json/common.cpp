@@ -109,10 +109,15 @@ TEST(CodecJsonCommon, Messages) {
 	 * @note Перебор ведётся числом от нуля до последнего кода перечня: список кодов,
 	 *       выписанный рукою, от перечня отстаёт молча - именно так коды, заведённые
 	 *       последними, не сличались вовсе
+	 *
+	 * @warning Отставание это ПОВТОРИЛОСЬ и правлено 08.09.2026: предел перебора был
+	 *          записан именем кода, а не концом перечня, и коды, дописанные ПОСЛЕ него,
+	 *          снова выпали из сличения. Правя перечень кодов, правь и предел здесь -
+	 *          сторожа у этого предела нет, кроме сличения «конец перечня» ниже
 	 */
 	// Свод описаний кодов отказа для сличения их на различимость
 	set <string> distinct;
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::STORAGE_EXHAUSTED); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::ENCODING_ALREADY_CHOSEN); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = json::message(static_cast <json::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -136,7 +141,12 @@ TEST(CodecJsonCommon, Messages) {
 	 *
 	 * @note Замер 01.09.2026 по трём кодекам: 106 кодов и 106 различных описаний
 	 */
-	ASSERT_EQ(distinct.size(), 37u);
+	/**
+	 * Выполняем проверку числа различимых описаний
+	 *
+	 * @note Число правлено 08.09.2026 с 37 на 40 - прибавилось три: код `ENCODING_ALREADY_CHOSEN` и два кода незакрытых скобок, прежде из перебора выпадавших
+	 */
+	ASSERT_EQ(distinct.size(), 40u);
 	/**
 	 * Выполняем проверку того, что перечень кодов на том и оканчивается
 	 *
@@ -145,7 +155,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::UNCLOSED_OBJECT) + 1)), "unknown error");
+	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::ENCODING_ALREADY_CHOSEN) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(json::message(static_cast <json::error_t> (0xFF)), "unknown error");
 }
@@ -756,4 +766,46 @@ TEST(CodecJsonCommon, DefaultLimitsAreWrittenTwice) {
 		// Выполняем проверку опущенного признака строгого следования стандарту
 		ASSERT_FALSE(settings.strict);
 	}
+}
+
+/**
+ * @brief Проверка того, что составные разряды вида хранения названия не получают
+ *
+ * @details Перечень видов хранения есть набор РАЗРЯДОВ, и составные имена - `SIGNED`,
+ * `UNSIGNED`, `INT`, `REAL`, `NUMBER` - собирают по нескольку разрядов сразу. Видом хранения
+ * отдельного значения они не бывают никогда, и своего названия им не отведено: выдаётся им
+ * название неизвестного вида
+ *
+ * @note Перечислены они в выдаче названий НАМЕРЕННО вместо `default`: ветвь `default` глушит
+ *       `-Wswitch`, и вид, в перечень дописанный, ушёл бы БЕЗ названия молча. Собиратель тут
+ *       и есть сторож, а проверка эта стережёт, чтобы перечисление не подменили умолчанием
+ *
+ * @note Заведено 08.09.2026 по карте покрытия: ветвь эта набором не проходилась ни разу, а
+ *       берётся простым вопросом названия у составного разряда
+ *
+ * @note Половина проверки отдана обратному: разряды ОДИНОЧНЫЕ названия имеют, и оно не есть
+ *       «unknown». Без неё «составные безымянны» достигалось бы безымянностью всех видов
+ *
+ */
+TEST(CodecJsonCommon, CompoundStorageKindsHaveNoNameOfTheirOwn) {
+	// Перечень составных разрядов вида хранения
+	const vector <json::type_t> compound = {
+		json::type_t::SIGNED, json::type_t::UNSIGNED,
+		json::type_t::INT, json::type_t::REAL, json::type_t::NUMBER
+	};
+	/**
+	 * Выполняем перебор всех составных разрядов вида хранения
+	 */
+	for(const json::type_t type : compound)
+		// Выполняем проверку того, что составной разряд названия своего не имеет
+		ASSERT_STREQ(json::name(type), "unknown") << static_cast <uint32_t> (type);
+	/**
+	 * Выполняем проверку того, что разряды одиночные названия имеют
+	 *
+	 * @note Виды эти взяты одиночными представителями трёх семейств - признак истинности,
+	 *       запись и целое число со знаком одной разрядности
+	 */
+	ASSERT_STRNE(json::name(json::type_t::BOOL), "unknown");
+	ASSERT_STRNE(json::name(json::type_t::STRING), "unknown");
+	ASSERT_STRNE(json::name(json::type_t::INT64), "unknown");
 }

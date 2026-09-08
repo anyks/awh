@@ -199,6 +199,10 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		case error_t::FILE_NOT_READ:
 			// Выводим описание кода ошибки
 			return "cannot read the table file";
+		// Если кодировка сменена посреди подачи текста
+		case error_t::ENCODING_ALREADY_CHOSEN:
+			// Выводим описание кода ошибки
+			return "the encoding cannot be changed in the middle of the feed";
 		// Если разбираемая таблица не помещается в разрядность хранилища
 		case error_t::STORAGE_EXHAUSTED:
 			// Выводим описание кода ошибки

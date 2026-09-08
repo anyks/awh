@@ -5886,6 +5886,14 @@ namespace io {
 	 */
 	static bool error(::io::node_t *, const int32_t, const log_t *) noexcept;
 	/**
+	 * @brief Прототип функции возврата неотданного остатка очереди потребителю
+	 *
+	 * @param  узел события
+	 * @param  объект работы с логами
+	 *
+	 */
+	static void spill(::io::node_t *, const log_t *) noexcept;
+	/**
 	 * @brief Прототип функции обновления токенов ограничения пропускной способности
 	 *
 	 * @param  узел в котором произошло событие
@@ -29583,6 +29591,22 @@ namespace io {
 	 *
 	 */
 	static bool destroy(::io::node_t * node, const eth_t * eth, const log_t * log) noexcept {
+	/**
+	 * Возвращаем потребителю неотданный остаток очереди
+	 *
+	 * @details Место это выбрано ЕДИНОЙ точкой намеренно. Снос узла - общий конец всех
+	 *          путей: обрыв на записи, обрыв на чтении, ошибка сокета, снос по воле
+	 *          потребителя. Признак же, каким ядро сообщает об обрыве, у систем разный
+	 *          (замерено 08.09.2026: kqueue ставит конец связи, epoll - ошибку, и
+	 *          приходит она на разбор ЧТЕНИЯ, а не записи). Раскладывать возврат по
+	 *          ветвям значит забыть его в очередной, и опыт этого дня тому порукой:
+	 *          первая правка закрыла одну ветвь из трёх
+	 *
+	 * @warning Отклик зовётся отсюда, из сноса, и вправе позвать снос повторно. Обхода
+	 *          это выдерживает: возврат ИЗЫМАЕТ записи из очереди по мере обхода, и
+	 *          повторный заход находит её уже пустой
+	 */
+	::io::spill(node, log);
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -33757,6 +33781,143 @@ namespace io {
 		return false;
 	}
 	/**
+	 * @brief Функция возврата неотданного остатка очереди потребителю
+	 *
+	 * @details Подписка возврата неотправленного - единственный способ потребителя
+	 *          узнать, что именно пропало. Обрыв связи снимает узел вместе с очередью,
+	 *          и без этого возврата остаток исчезает бесследно, хотя подписка на него
+	 *          стоит.
+	 *
+	 * @warning Разбор конца связи на ЧТЕНИИ спрашивает pending() прежде сноса узла, а
+	 *          разбор его же на ЗАПИСИ сносил узел без единого вопроса - очередь
+	 *          уходила в clear() внутри destroy(). Расхождение это и закрывается здесь.
+	 *
+	 * @param node узел события
+	 * @param log  объект работы с логами
+	 *
+	 */
+	static void spill(::io::node_t * node, [[maybe_unused]] const log_t * log) noexcept {
+		// Если узел не задан
+		if(node == nullptr)
+			// Выходим, возвращать нечего
+			return;
+		// Размер данных для извлечения из очереди
+		size_t size = 0;
+		// Указатель на данные в очереди
+		const void * buffer = nullptr;
+		/**
+		 * Определяем чем является текущий узел
+		 */
+		switch(static_cast <uint8_t> (node->state.node)){
+			// Если узел является одноранговым узлом
+			case static_cast <uint8_t> (event::node_t::PEER): {
+				// Получаем текущее значение объекта однорангового узла
+				::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+				// Если возвращать некому
+				if(peer->callbacks.spool == nullptr)
+					// Выходим, подписки на возврат нет
+					return;
+				/**
+				 * Перебираем все данные в очереди
+				 */
+				while(!peer->transfer.queue.empty()){
+					// Извлекаем данные из очереди для записи в сокет
+					if(peer->transfer.queue.front(&buffer, size)){
+						// Выполняем снятие головы настроек отправки с записи очереди
+						::sctp::head(peer, &buffer, size);
+						// Если после снятия головы разбирать нечего
+						if(size == 0)
+							// Прекращаем обход очереди
+							break;
+						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+						peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+					}
+					// Удаляем запись из очереди
+					peer->transfer.queue.pop(size);
+				}
+			} break;
+			// Если узел является принятым подключением
+			case static_cast <uint8_t> (event::node_t::ORIGIN): {
+				// Получаем текущее значение объекта принятого подключения
+				::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
+				// Если возвращать некому
+				if(origin->callbacks.spool == nullptr)
+					// Выходим, подписки на возврат нет
+					return;
+				/**
+				 * Перебираем все данные в очереди
+				 */
+				while(!origin->transfer.queue.empty()){
+					// Извлекаем данные из очереди для записи в сокет
+					if(origin->transfer.queue.front(&buffer, size)){
+						// Выполняем снятие головы настроек отправки с записи очереди
+						::sctp::head(origin, &buffer, size);
+						// Если после снятия головы разбирать нечего
+						if(size == 0)
+							// Прекращаем обход очереди
+							break;
+						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+						origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+					}
+					// Удаляем запись из очереди
+					origin->transfer.queue.pop(size);
+				}
+			} break;
+			// Если узел является клиентом
+			case static_cast <uint8_t> (event::node_t::CLIENT): {
+				// Получаем текущее значение объекта клиента
+				::io::client_t * client = awh_cast <::io::client_t *> (node);
+				// Если возвращать некому
+				if(client->callbacks.spool == nullptr)
+					// Выходим, подписки на возврат нет
+					return;
+				/**
+				 * Перебираем все данные в очереди
+				 */
+				while(!client->transfer.queue.empty()){
+					// Извлекаем данные из очереди для записи в сокет
+					if(client->transfer.queue.front(&buffer, size)){
+						// Выполняем снятие головы настроек отправки с записи очереди
+						::sctp::head(client, &buffer, size);
+						// Если после снятия головы разбирать нечего
+						if(size == 0)
+							// Прекращаем обход очереди
+							break;
+						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+						client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+					}
+					// Удаляем запись из очереди
+					client->transfer.queue.pop(size);
+				}
+			} break;
+			// Если узел является межпроцессным взаимодействием
+			case static_cast <uint8_t> (event::node_t::IPC): {
+				// Получаем текущее значение объекта межпроцессного взаимодействия
+				::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
+				// Если возвращать некому
+				if(ipc->callbacks.spool == nullptr)
+					// Выходим, подписки на возврат нет
+					return;
+				/**
+				 * Перебираем все данные в очереди
+				 */
+				while(!ipc->transfer.queue.empty()){
+					// Извлекаем данные из очереди для записи в сокет
+					if(ipc->transfer.queue.front(&buffer, size)){
+						// Если разбирать нечего
+						if(size == 0)
+							// Прекращаем обход очереди
+							break;
+						// Вызываем функцию обратного вызова для возврата данных при неудачной отправке
+						ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
+					}
+					// Удаляем запись из очереди
+					ipc->transfer.queue.pop(size);
+				}
+			} break;
+		}
+	}
+	/**
 	 * @brief Функция проверки наличия непрочитанных данных в буфере закрытого сокета
 	 *
 	 * @details Закрытие удалённой стороной и опустошение буфера приёма - события
@@ -34356,9 +34517,10 @@ namespace io {
 					return !::io::destroy(node, eth, log);
 				}
 				// Если удалённая сторона закрыла соединение
-				if(ev.flags & EV_EOF)
+				if(ev.flags & EV_EOF){
 					// Выполняем удаление узла без попытки записи в закрытый сокет
 					return !::io::destroy(node, eth, log);
+				}
 				// Если в сокете нет ошибок либо узел является каналом, где такой проверки не существует
 				if((node->state.family == event::family_t::PIPE) || (eth->socket.getError(ev.ident) == 0)){
 					/**

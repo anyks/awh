@@ -2447,6 +2447,20 @@ TEST(CodecTomlDocument, BarePredicateScopeAgainstWriter) {
 		ASSERT_TRUE(document.set(vector <string_view> {"ключ"}, string_view("v")));
 		// Выполняем проверку того, что умолчанием имя записано кавычками
 		ASSERT_NE(document.text().find("\"ключ\" = "), string::npos);
+		/**
+		 * @note Признак дозволения поднимается У ОБОИХ - у чтения и у записи, - и это не
+		 *       придирка проверки, а договор, при самом признаке записанный: поднимается он
+		 *       ЧИТАЮЩИМ, а не по желанию пишущего, иначе собранный текст прочитан быть не
+		 *       может. Прежде здесь поднимался он у одной записи, и проверка тем закрепляла
+		 *       разлад, от какого запись при признаке и предостерегает. Ныне разлад этот
+		 *       судится кодом `CONFLICTING_SETTINGS`
+		 */
+		// Настройки дерева настроек
+		toml::document_t::settings_t common = document.settings();
+		// Дозволяем знаки письменностей мира в имени ключа читающему
+		common.reader.unicode = true;
+		// Выполняем установку настроек дерева настроек
+		document.settings(common);
 		// Настройки записи текста настроек
 		toml::writer_t::settings_t settings;
 		// Дозволяем знаки письменностей мира в имени ключа
@@ -3951,4 +3965,58 @@ TEST(CodecTomlDocument, DirectoryIsRefusedNotLoaded){
 	ASSERT_FALSE(document.load("/tmp"));
 	// Выполняем проверку того, что код отказа выдан
 	ASSERT_NE(document.error(), toml::error_t::NONE);
+}
+
+/**
+ * @brief Проверка суда о противоречивых настройках записи и чтения
+ *
+ * @details Разлад судится ПО ПОСЛЕДСТВИЮ, а не по самому факту расхождения: запись,
+ * признаком `unicode` наделённая, кладёт имя с кириллицей голым, а чтение без того же
+ * признака такое имя отвергает - круг рвётся. Код `CONFLICTING_SETTINGS` был у кодека
+ * МЁРТВ: он обещал суд, какого не велось. У кодека INI суд этот был, у TOML и YAML нет,
+ * и расхождение то случайно
+ *
+ */
+TEST(CodecTomlDocument, ConflictingSettingsAreRefused) {
+	// Дерево настроек
+	toml::document_t document(::logger());
+	// Выполняем проверку успешности разбора пустого текста настроек
+	ASSERT_TRUE(document.parse(""));
+	// Выполняем установку свойства с именем из знаков письменности
+	ASSERT_TRUE(document.set(vector <string_view> {"ключ"}, string_view("значение")));
+	// Настройки записи, Юникод в голом имени дозволяющие
+	toml::writer_t::settings_t settings;
+	// Дозволяем знаки письменностей мира в имени ключа записи
+	settings.unicode = true;
+	// Выполняем проверку того, что запись при несогласном чтении отвергнута
+	ASSERT_TRUE(document.text(settings).empty());
+	// Выполняем проверку того, что разлад назван поимённо
+	ASSERT_EQ(document.error(), toml::error_t::CONFLICTING_SETTINGS) << toml::message(document.error());
+	/**
+	 * @warning Обратное сочетание разладом НЕ является: чтение Юникод признаёт, запись нет,
+	 *          - имя обносится оградою и читается тем же чтением вполне. Судить надлежит
+	 *          одну лишь пару, круг рвущую
+	 */
+	// Настройки дерева настроек
+	toml::document_t::settings_t common = document.settings();
+	// Дозволяем знаки письменностей мира в имени ключа читающему
+	common.reader.unicode = true;
+	// Выполняем установку настроек дерева настроек
+	document.settings(common);
+	// Настройки записи, Юникода в голом имени не дозволяющие
+	toml::writer_t::settings_t narrow;
+	// Записанный текст настроек при чтении, Юникод признающем
+	const string text = document.text(narrow);
+	// Выполняем проверку того, что запись при том не отвергнута
+	ASSERT_FALSE(text.empty()) << toml::message(document.error());
+	// Выполняем проверку того, что имя обнесено оградою
+	ASSERT_NE(text.find("\"ключ\""), string::npos) << text;
+	/**
+	 * @note Согласные настройки поверяются рядом: без того закрепился бы отказ, а не суд, -
+	 *       и запись, отвергающая ВСЯКОЕ сочетание, зеленела бы исправно
+	 */
+	// Выполняем проверку того, что согласные настройки принимаются
+	ASSERT_FALSE(document.text(settings).empty()) << toml::message(document.error());
+	// Выполняем проверку того, что при согласии имя записано голым
+	ASSERT_NE(document.text(settings).find("ключ = "), string::npos) << document.text(settings);
 }

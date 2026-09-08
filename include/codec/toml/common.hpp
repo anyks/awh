@@ -429,7 +429,11 @@ namespace awh {
 				UNKNOWN_TABLE         = 0x21, // Таблица с таким именем деревом не объявлена
 				STORAGE_EXHAUSTED     = 0x22, // Разбираемый текст не помещается в разрядность хранилища
 				FILE_NOT_OPENED       = 0x23, // Файл настроек открыть не удалось
-				FILE_NOT_WRITTEN      = 0x24  // Текст настроек записать в файл не удалось
+				FILE_NOT_WRITTEN      = 0x24, // Текст настроек записать в файл не удалось
+				FILE_NOT_READ         = 0x25, // Текст настроек из файла прочитать не удалось
+				TEXT_ALREADY_ENDED    = 0x26, // Подача текста продолжена после объявленного конца его
+				ENCODING_ALREADY_CHOSEN = 0x27, // Кодировка сменена посреди подачи текста
+				SETTINGS_ALREADY_APPLIED = 0x28 // Настройки сменены посреди подачи текста
 			};
 
 			/**
@@ -661,6 +665,47 @@ namespace awh {
 				VALID     = 0x01, // Последовательность прочитана целиком и правила соблюдает
 				BROKEN    = 0x02, // Последовательность построена ошибочно
 				TRUNCATED = 0x03  // Последовательности не хватает байт до конца текста
+			};
+
+			/**
+			 * \~russian
+			 * @brief Правила обхождения с негодной последовательностью UTF-8 при записи
+			 *
+			 * @details Читающий байты, кодировке не отвечающие, отвергает - того требует
+			 * описание. Писавший же их пропускал, и кодек выдавал текст, которого сам
+			 * прочесть не мог. Случай этот не выдуман: значения, взятые из журналов и
+			 * сетевых сообщений, битые байты несут делом обычным
+			 * @details Замена, а не отказ, взята правилом по умолчанию. Отказ записи режет
+			 * ВЕСЬ текст, а не одно значение, и один битый байт в одном сообщении обратил
+			 * бы в ничто целый документ. Знак же замены предписан самим Юникодом и в
+			 * выданном тексте виден глазом, а не проглатывается молча
+			 *
+			 * @note Правило это решено владельцем одинаковым у всех кодеков
+			 *
+			 * @note Описание TOML велит документу быть текстом в годной кодировке UTF-8, и
+			 *       правило `PASS` даёт текст, документом TOML НЕ являющийся. Правило это
+			 *       оставлено потребителю намеренно - тем же составом, что у прочих
+			 *       кодеков, - но выбор его есть выход за пределы описания, и умолчанием
+			 *       оно не служит
+			 *
+			 * \~english
+			 * @brief Rules of the treatment of a malformed UTF-8 sequence at the writing
+			 * @details The reading rejects the bytes not corresponding to the encoding — the specification
+			 * requires that. The writing, however, passed them through, and the codec gave away a text which it itself
+			 * could not read. This case is not invented: the values taken from the logs and
+			 * the network messages carry the broken bytes as a usual matter
+			 * @details The replacement rather than the refusal is taken as the default rule. A refusal of the writing
+			 * cuts off the **whole** text rather than a single value, and one broken byte in one
+			 * message would nullify an entire document. The replacement character, on the other hand, is prescribed by Unicode itself
+			 * and is visible to the eye in the given text rather than being swallowed silently
+			 * @note This rule is decided by the owner to be identical for all the codecs
+			 *
+			 * \~
+			 */
+			enum class malformed_t : uint8_t {
+				REPLACE = 0x00, // Негодная последовательность заменяется знаком U+FFFD
+				REFUSE  = 0x01, // Запись отвергается, ничего не записав
+				PASS    = 0x02  // Байты пропускаются как есть
 			};
 
 			/**

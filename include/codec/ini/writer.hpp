@@ -406,6 +406,21 @@ namespace awh {
 						newline_t newline;
 						/**
 						 * \~russian
+						 * Правило обхождения с негодной последовательностью UTF-8
+						 *
+						 * @note `REPLACE` подменяет негодную последовательность знаком U+FFFD, `REFUSE`
+						 * отвергает запись целиком, а `PASS` пропускает байты как есть
+						 *
+						 * \~english
+						 * Rule of the treatment of a malformed UTF-8 sequence
+						 * @note `REPLACE` substitutes a malformed sequence by the U+FFFD character, `REFUSE`
+						 * refuses the writing entirely, while `PASS` passes the bytes through as they are
+						 *
+						 * \~
+						 */
+						malformed_t malformed;
+						/**
+						 * \~russian
 						 * Флаг того, что читающий признаёт примечание в конце строки
 						 *
 						 * @note Задаёт не запись примечаний, а обращение со значением:
@@ -768,6 +783,32 @@ namespace awh {
 					 * \~
 					 */
 					bool escape(const string_view value) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод приведения записи к годной кодировке UTF-8
+					 *
+					 * @details Правило обхождения берётся у настроек: `REPLACE` подменяет негодную
+					 * последовательность знаком U+FFFD, `REFUSE` отвергает запись, ничего не записав,
+					 * а `PASS` пропускает байты как есть
+					 *
+					 * @param text   приводимое содержимое записи
+					 * @param result накопитель приведённой записи
+					 * @param record срез записи, к записи пригодной
+					 * @return       признак пригодности записи
+					 *
+					 * \~english
+					 * @brief Method of bringing a record to a valid UTF-8 encoding
+					 * @details The rule of the treatment is taken from the settings: `REPLACE` substitutes
+					 * a malformed sequence by the U+FFFD character, `REFUSE` refuses the record without writing
+					 * anything, while `PASS` passes the bytes through as they are
+					 * @param text   content of the record being brought
+					 * @param result accumulator of the brought record
+					 * @param record slice of the record fit for the writing
+					 * @return       sign of the fitness of the record
+					 *
+					 * \~
+					 */
+					bool brought(const string_view text, string & result, string_view & record) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод записи свойства со значением

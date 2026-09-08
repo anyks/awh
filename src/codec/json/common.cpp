@@ -167,6 +167,9 @@ const char * awh::codec::json::message(const error_t error) noexcept {
 		// Если файл документа прочитать не удалось
 		case error_t::FILE_NOT_READ:
 			return "cannot read the document file";
+		// Если кодировка сменена посреди подачи текста
+		case error_t::ENCODING_ALREADY_CHOSEN:
+			return "the encoding cannot be changed in the middle of the feed";
 		// Если разбираемый текст не помещается в разрядность хранилища
 		case error_t::STORAGE_EXHAUSTED:
 			return "the text does not fit the width of the parser storage";
