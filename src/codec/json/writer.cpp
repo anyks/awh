@@ -432,6 +432,18 @@ void awh::codec::json::Writer::quoted(const string & text) noexcept {
 				 *
 				 * @warning Снимать ветвь нельзя: она держит просмотр и разбор в согласии, и
 				 *          разойдись они - помеченный байт пропал бы из записи молча
+				 *
+				 * @note Довод проверен ЧТЕНИЕМ обоих условий 08.09.2026, и проверен сличением
+				 *       их ПОКРЫТИЯ, а не тождества: просмотр рвёт отрезок на байте ниже `20`,
+				 *       на кавычке, на знаке отмены, на косой черте при escape свыше
+				 *       `MINIMAL` и на байте свыше `7F` - при записи знаками US-ASCII либо
+				 *       при негодной последовательности; разбор же ниже разбирает ровно эти
+				 *       пять случаев, и шестого у него нет. Байт `7F` отрезка не рвёт и до
+				 *       разбора не доходит - граница у обоих одна
+				 *
+				 * @warning Условия эти РАЗНЫЕ по записи, и оттого сличать их надо покрытием,
+				 *          а не глазом: тождество записей проверяется дёшево, а согласие
+				 *          двух разных условий - лишь разбором всех случаев поимённо
 				 */
 				} else this->_result.push_back(static_cast <char> (letter));
 			}
@@ -781,6 +793,23 @@ bool awh::codec::json::Writer::value(const T number) noexcept {
  * @note `bool` и `char` не порождаются намеренно: у `bool` есть свой приём точным
  *       видом, а `char` записал бы знак числом молча
  */
+/**
+ * Порождение видом `char` заведено 08.09.2026 по находке на стендах Sun
+ *
+ * @warning Вид `char` НЕ СОВПАДАЕТ ни с `signed char`, ни с `unsigned char` - это третий,
+ *          самостоятельный вид языка. Обыкновенно `int8_t` есть псевдоним `signed char`, и
+ *          порождение без `char` беды не давало; у Solaris же и OpenIndiana `int8_t` есть
+ *          `char`, и всякий звучащий, подающий `int8_t`, не связывался вовсе
+ *
+ * @note Замерено на стенде: `is_same <int8_t, char>` истинно, `is_same <int8_t, signed char>`
+ *       ложно. Отказ связывания: `Writer::value <char>` не найден
+ *
+ * @note Правило отсюда общее: порождать надлежит ВИДАМИ ЯЗЫКА и всеми четырнадцатью, а не
+ *       разрядными псевдонимами и не тринадцатью - какому виду отвечает псевдоним, решает
+ *       система, и решает по-разному
+ *
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <char, void> (const char) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <signed char, void> (const signed char) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <unsigned char, void> (const unsigned char) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::json::Writer::value <short, void> (const short) noexcept;

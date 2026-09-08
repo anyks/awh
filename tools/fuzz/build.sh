@@ -757,8 +757,20 @@ DEPENDS=""
 case "$CODEC_DIR" in
 	# Кодек CEF стоит на дереве ABC, а проверку адресов сети ведёт «net_addr_t»
 	cef) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp) $ROOT/src/net/addr.cpp $ROOT/src/net/net.cpp" ;;
+	##
 	# Кодек SysLog стоит на дереве ABC; сетей он не разбирает вовсе, и «net_addr_t» ему не нужен
-	syslog) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp)" ;;
+	#
+	# @note Каталог ABC берётся здесь НЕ целиком, а восемью частями поимённо, и это
+	#       наименьшее замыкание, связывающееся БЕЗ третьей стороны: прочие части ABC
+	#       (container, editor, index, chunk, signature, storage) зовут шифрование и
+	#       сжатие. Замыкание это то же самое, каким обходятся отдельные стенды кодека,
+	#       «tests/codec/syslog/stand.sh» и «benchmark/codec/syslog/stand.sh»
+	#
+	# @details Сужение это не украшение: с каталогом целиком ворошитель требовал
+	#          «libdependence.a», а её на отладочных машинах нет и собирается она
+	#          десятками минут. Без третьей стороны ворошитель кодека собирается всюду
+	#
+	syslog) DEPENDS="$ROOT/src/codec/abc/common.cpp $ROOT/src/codec/abc/encoding.cpp $ROOT/src/codec/abc/reader.cpp $ROOT/src/codec/abc/writer.cpp $ROOT/src/codec/abc/document.cpp $ROOT/src/codec/abc/value.cpp $ROOT/src/codec/abc/header.cpp $ROOT/src/codec/abc/schedule.cpp $ROOT/src/cryptography/hash.cpp $ROOT/src/num/bignum.cpp" ;;
 	##
 	# Мост стоит на ВСЕХ кодеках разом
 	#
@@ -833,7 +845,7 @@ ZLIB="${ZLIB:--lz}"
 # шифрованием независимо от того, чьим ворошителем он собран, - а мост стоит на ABC
 # осью своей и тянет его целиком
 DEPEND=""
-if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "syslog" ] || [ "$CODEC_DIR" = "bridge" ]; then
+if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "bridge" ]; then
 	##
 	# Собираем каталоги сторонних заголовков ПОИМЁННО
 	#

@@ -435,19 +435,39 @@ namespace {
 		/**
 		 * Определяем вид наводимой порчи
 		 */
-		switch(engine() % 6){
+		/**
+		 * @warning Всякое случайное число берётся ОТДЕЛЬНОЙ переменной, а не вызовом
+		 *          прямо в доводе. Порядок вычисления доводов одного вызова стандартом
+		 *          не задан, и `text.insert(engine() % size, chunk(engine, engine() % 8))`
+		 *          вычерпывает поток зёрен в РАЗНОМ порядке у разных собирателей. Итог
+		 *          прогона по одному зерну расходился оттого по собирателям: машины на
+		 *          clang давали 12 185 деревьев, машины на gcc - 12 057, и сличение
+		 *          «число в число», каким доказывается неизменность поведения, между
+		 *          системами не работало вовсе. Установлено 08.09.2026 раскладкой по
+		 *          двенадцати машинам
+		 */
+		// Получаем вид наводимой порчи
+		const uint32_t kind = (engine() % 6);
+		// Получаем место наведения порчи
+		const size_t place = (engine() % text.size());
+		// Получаем длину куска, каким порча наводится
+		const size_t length = (1 + (engine() % 8));
+		/**
+		 * Определяем вид наводимой порчи
+		 */
+		switch(kind){
 			// Если знак записи заменяется произвольным
-			case 0: text[engine() % text.size()] = ::chunk(engine, 1).front(); break;
+			case 0: text[place] = ::chunk(engine, 1).front(); break;
 			// Если запись усекается по произвольному месту
-			case 1: text.resize(engine() % text.size()); break;
+			case 1: text.resize(place); break;
 			// Если в запись вставляется произвольный кусок текста
-			case 2: text.insert(engine() % text.size(), ::chunk(engine, 1 + (engine() % 8))); break;
+			case 2: text.insert(place, ::chunk(engine, length)); break;
 			// Если из записи вырезается произвольный кусок текста
-			case 3: text.erase(engine() % text.size(), 1 + (engine() % 8)); break;
+			case 3: text.erase(place, length); break;
 			// Если запись открывается произвольным куском текста
-			case 4: text.insert(static_cast <size_t> (0), ::chunk(engine, 1 + (engine() % 8))); break;
+			case 4: text.insert(static_cast <size_t> (0), ::chunk(engine, length)); break;
 			// Если запись замыкается произвольным куском текста
-			default: text.append(::chunk(engine, 1 + (engine() % 8)));
+			default: text.append(::chunk(engine, length));
 		}
 		// Выводим признак наведённой порчи
 		return true;

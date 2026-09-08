@@ -7757,6 +7757,41 @@ TEST(CodecYamlDocument, AmpersandInsideAWordIsNotAnAnchor) {
  *          там мертва
  *
  */
+/**
+ * @brief Проверка того, что отказ записи текста не теряется молча
+ *
+ */
+TEST(CodecYamlDocument, WritingReportsTheRefusalOfTheDeepTree) {
+	// Настройки разбора дерева с поднятым пределом вложенности
+	yaml::document_t::settings_t settings;
+	// Поднимаем предел вложенности разбора выше потолка записи
+	settings.maxDepth = static_cast <uint32_t> (yaml::MAX_DEPTH) * 8;
+	// Дерево документа, куда ведётся разбор
+	yaml::document_t document(::logger(), settings);
+	// Глубина вложенности, потолок записи превышающая
+	const size_t depth = static_cast <size_t> (yaml::MAX_DEPTH) + 64;
+	// Собираемый текст из одних скобок перечня
+	string text(depth, '[');
+	// Выполняем приписку закрывающих скобок перечня
+	text.append(depth, ']');
+	// Выполняем приписку перевода строки
+	text.push_back('\n');
+	// Выполняем проверку того, что разбор с поднятым пределом проходит
+	ASSERT_TRUE(document.parse(text)) << yaml::message(document.error());
+	// Выполняем проверку того, что запись отвечает пустым текстом
+	ASSERT_TRUE(document.dump().empty());
+	// Выполняем проверку того, что отказ записи назван поимённо, а не потерян молча
+	ASSERT_EQ(document.error(), yaml::error_t::DEPTH_EXCEEDED) << yaml::message(document.error());
+	// Дерево документа глубины, потолок записи не превышающей
+	yaml::document_t shallow(::logger(), settings);
+	// Выполняем проверку того, что глубина дозволенная разбирается по-прежнему
+	ASSERT_TRUE(shallow.parse("[[[[значение]]]]\n")) << yaml::message(shallow.error());
+	// Выполняем проверку того, что глубина дозволенная записывается по-прежнему
+	ASSERT_FALSE(shallow.dump().empty());
+	// Выполняем проверку того, что отказа при том не выставлено
+	ASSERT_EQ(shallow.error(), yaml::error_t::NONE) << yaml::message(shallow.error());
+}
+
 TEST(CodecYamlDocument, DirectoryIsRefusedNotLoaded){
 	// Выполняем создание объекта документа
 	yaml::document_t doc(::logger());

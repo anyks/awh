@@ -29688,8 +29688,8 @@ namespace io {
 						if(ipc->transfer.fd != net::invalid_socket_t){
 							// Если процесс является родительским
 							if(::__awh_pid__ == ::getpid()){
-								// Если в сокете нет ошибок
-								if(eth->socket.getError(ipc->transfer.fd) == 0){
+								// Если в сокете нет ошибок либо узел является каналом, где такой проверки не существует
+								if((ipc->state.family == event::family_t::PIPE) || (eth->socket.getError(ipc->transfer.fd) == 0)){
 									// Если Kqueue инициализирован
 									if(::__awh_kq__ != net::invalid_socket_t){
 										// Создаём объект события для Kqueue
@@ -34353,8 +34353,8 @@ namespace io {
 				if(ev.flags & EV_EOF)
 					// Выполняем удаление узла без попытки записи в закрытый сокет
 					return !::io::destroy(node, eth, log);
-				// Если в сокете нет ошибок
-				if(eth->socket.getError(ev.ident) == 0){
+				// Если в сокете нет ошибок либо узел является каналом, где такой проверки не существует
+				if((node->state.family == event::family_t::PIPE) || (eth->socket.getError(ev.ident) == 0)){
 					/**
 					 * Определяем чем является текущий узел
 					 */
@@ -65736,23 +65736,15 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					 */
 					switch(static_cast <uint8_t> (client->state.family)){
 						// Для семейства межпроцессных соединений
-						case static_cast <uint8_t> (event::family_t::PIPE): {
+						case static_cast <uint8_t> (event::family_t::PIPE):
 							/**
-							 * Определяем тип действия события
+							 * Размер буфера канала задаётся ядром и сокетными опциями не настраивается,
+							 * поэтому операция считается выполненной так же, как и для межпроцессного соединения.
+							 * @warning здесь вызывался getBufferSize на дескрипторе канала - сокетный вызов
+							 * отвечал ENOTSOCK, и настройка буфера клиента-канала всегда возвращала отказ.
 							 */
-							switch(static_cast <uint8_t> (action)){
-								// Если действие является чтением
-								case static_cast <uint8_t> (event::action_t::READ):
-									// Извлекаем размер буфера для чтения
-									result = (this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::READ) > 0);
-								break;
-								// Если действие является записью
-								case static_cast <uint8_t> (event::action_t::WRITE):
-									// Извлекаем размер буфера для записи
-									result = (this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::WRITE) > 0);
-								break;
-							}
-						} break;
+							result = true;
+						break;
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -71105,8 +71097,8 @@ void awh::engine::IO::clear() noexcept {
 						if(ipc->transfer.fd != net::invalid_socket_t){
 							// Если процесс является родительским
 							if(::__awh_pid__ == ::getpid()){
-								// Если в сокете нет ошибок
-								if(this->_eth.socket.getError(ipc->transfer.fd) == 0){
+								// Если в сокете нет ошибок либо узел является каналом, где такой проверки не существует
+								if((ipc->state.family == event::family_t::PIPE) || (this->_eth.socket.getError(ipc->transfer.fd) == 0)){
 									// Создаём объект события для Kqueue
 									struct kevent event{};
 									// Деактивируем событие на чтение данных из сокета

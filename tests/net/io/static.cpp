@@ -862,6 +862,97 @@ TEST_F(IoFixture, RebuildUnsupportedTypeTest){
 }
 
 /**
+ * @brief Тест ПЕРЕВЗВЕДЕНИЯ таймаута под обеими реализациями таймеров
+ *
+ * @details Перевзведение - перенос уже взведённого срока на новый - идёт отдельным
+ *          путём, а не снятием с повторной постановкой: у простой реализации оно
+ *          переносит запись за один поиск, у сложной правит срок прямо в куче и
+ *          просеивает её лишь в ту сторону, куда срок сдвинулся. Довод при сложной
+ *          структуре называет эту операцию САМОЙ ЧАСТОЙ у сервера - таймаут чтения
+ *          сдвигается на каждой принятой порции данных
+ *
+ * @warning До этой проверки перевзведение набором не проходилось НИ У КОГО. Замерено
+ *          покрытием по набору `net`: у простой реализации один заход за весь набор,
+ *          у сложной - ноль. Сложная реализация в целом заходилась восемь раз, и все
+ *          восемь приходились на проверки настроек, сличающие выданное значение с
+ *          заданным, а не гоняющие таймеры
+ *
+ * @note Обе реализации гоняются одной проверкой намеренно: выбор между ними идёт на
+ *       ходу, и в каждом месте взвода они стоят парой. Проверка одной из них
+ *       закрепляет ровно половину кода
+ *
+ * @note Доказательством служит СРАБАТЫВАНИЕ по новому, короткому сроку. Перевзведение,
+ *       потерявшее таймер, не сработало бы вовсе; перевзведение, не сдвинувшее срок,
+ *       заставило бы ждать прежние пять секунд. Оттого срок сперва ставится заведомо
+ *       длинным, и лишь затем переносится на короткий
+ *
+ */
+TEST_F(IoFixture, IoTimerRescheduleTest){
+	/**
+	 * Перебираем обе реализации таймеров движка
+	 */
+	for(const auto kind : {awh::event::timer_t::SIMPLE, awh::event::timer_t::DIFFICULT}){
+		// Устанавливаем разбираемую реализацию таймеров
+		this->_io->setInternalTimer(kind);
+		// Проверяем, что реализация таймеров принята движком
+		ASSERT_EQ(kind, this->_io->getInternalTimer());
+		// Количество срабатываний таймаута
+		uint16_t timeouts = 0;
+		// Добавляем событие таймаута
+		const awh::event::id_t timeout = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+		// Проверяем, что событие создано
+		ASSERT_GT(timeout, 0u);
+		/**
+		 * Ставим заведомо длинный срок: за время проверки он истечь не должен
+		 */
+		this->_io->setTimeout(timeout, awh::event::action_t::NONE, 5000);
+		// Инициализируем асинхронный движок ввода-вывода
+		ASSERT_TRUE(this->_io->initialize());
+		// Выполняем фиксацию настроек события
+		ASSERT_TRUE(this->_io->commit(timeout));
+		// Устанавливаем функцию обратного вызова на событие таймаута
+		this->_io->on(timeout, [&timeouts]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Если статус события успешен, увеличиваем количество срабатываний таймаута
+			if(status == awh::event::status_t::SUCCESS)
+				// Увеличиваем количество срабатываний таймаута
+				timeouts++;
+		});
+		// Выполняем запуск события
+		ASSERT_TRUE(this->_io->launch(timeout));
+		/**
+		 * Прокручиваем несколько оборотов цикла: таймер обязан быть взведён и молчать
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// По длинному сроку сработать было нечему
+		ASSERT_EQ(timeouts, static_cast <uint16_t> (0)) << "таймаут сработал по длинному сроку";
+		/**
+		 * ПЕРЕВЗВОДИМ срок на короткий - именно этот вызов и идёт путём перевзведения,
+		 * поскольку таймер уже взведён и находится в ожидании
+		 */
+		this->_io->setTimeout(timeout, awh::event::action_t::NONE, 60);
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Ждём срабатывания по новому сроку
+		 *
+		 * @note Ожидание ограничено сроком намеренно: перевзведение, потерявшее таймер,
+		 *       не даёт события никогда, и без ограничения проверка висела бы
+		 */
+		while((timeouts == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Таймаут обязан сработать по перевзведённому сроку
+		ASSERT_EQ(timeouts, static_cast <uint16_t> (1)) << "после перевзведения таймаут не сработал";
+		// Уничтожаем все события
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+	// Возвращаем простую реализацию таймеров, какую ставит фикстура
+	this->_io->setInternalTimer(awh::event::timer_t::SIMPLE);
+}
+
+/**
  * @brief Тест того, что перестройка несуществующего события возвращает ложь
  *
  */
@@ -4080,9 +4171,37 @@ TEST_F(IoFixture, IoDatagramClientSemiBlockingSendTest){
 	ASSERT_TRUE(this->_io->commit(server));
 	ASSERT_TRUE(this->_io->launch(server));
 	// Фиксируем, подключаем и запускаем событие клиента
+	// Признак того, что движок доложил о состоявшемся подключении
+	bool linked = false;
+	/**
+	 * Устанавливаем функцию обратного вызова на исход подключения
+	 *
+	 * @warning Дожидаться его ОБЯЗАТЕЛЬНО: `connect` у движка - событие, а не обращение
+	 *          к ядру, и об исходе он докладывает откликом. До отклика узел стоит в
+	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
+	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
+	 *          порцию прямо из этого отклика
+	 */
+	this->_io->on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Запоминаем исход подключения
+		linked = ok;
+	}));
 	ASSERT_TRUE(this->_io->commit(client));
 	ASSERT_TRUE(this->_io->connect(client));
 	ASSERT_TRUE(this->_io->launch(client));
+	/**
+	 * Крутим цикл, покуда движок не доложит об исходе подключения
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto linking = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться: без него отправлять некуда
+	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
 	// Содержимое первого и второго обменов: ключ сессии у обоих один
 	const std::string first = "KEY0-SEMI-FIRST", second = "KEY0-SEMI-SECOND";
 	// Выполняем первый обмен
@@ -4259,6 +4378,858 @@ TEST_F(IoFixture, IoAcceptedSemiBlockingSendTest){
 	this->_io->destroy(client);
 	this->_io->destroy(server);
 }
+
+/**
+ * @brief Тест заведения новой сессии, пока другая отвечает пачкой
+ *
+ * @details Проверка заведена разбором и СМЕНИЛА замысел по итогу опыта - о том стоит
+ *          сказать прямо. Замысел был такой: сессия-источник своего сокета не имеет
+ *          (`origin->transfer.fd = server->fd`), и, переполнив очередь, она взводит на
+ *          общем с сервером дескрипторе готовность к записи, называя владельцем СЕБЯ. А
+ *          учёт подписки держит одного владельца на дескриптор (`registry_t::udata`), и
+ *          события чтения выдаются наружу с тем же владельцем. Отсюда подозрение на
+ *          перехват приёма у сервера.
+ *
+ *          Опыт подозрения не подтвердил и подтвердить не смог: взведения не случилось
+ *          ни разу. Отправка датаграмм у MS Windows отказом «попробуйте позже» не
+ *          отвечает - ни при пачке 64 по 516 октетов, ни при 4000 по 1400 сквозь ужатый
+ *          до 2048 буфер (замерено построчным покрытием всех восьми мест взведения).
+ *          Очередь сессии попросту не наполняется, и отложенный путь записи у неё на этом
+ *          движке недостижим (аудит 135).
+ *
+ *          Оттого проверка утверждает то, что доказать МОЖЕТ: сервер продолжает принимать
+ *          и заводит НОВУЮ сессию, пока прежняя отвечает пачкой. Ключ второй датаграммы
+ *          выбран другим не случайно - приём в уже заведённую сессию мог бы пройти и
+ *          мимо сервера, а завести новую способен только он сам.
+ *
+ * @note Подозрение об одном владельце на общий дескриптор снятым считать нельзя: оно
+ *       лишь недостижимо сегодня. Записано в README движка отдельным наблюдением
+ *
+ */
+TEST_F(IoFixture, IoServerAcceptsNewOriginDuringBurstTest){
+	// Количество заведённых сессий и принятых клиентом ответов
+	size_t sessions = 0, answers = 0;
+	// Размер пачки ответов, заведомо переполняющей ужатый буфер
+	const size_t burst = 64;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера UDP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	ASSERT_GT(server, 0u);
+	// Заводим событие клиента UDP
+	const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	ASSERT_GT(client, 0u);
+	// Устанавливаем порт события сервера и порт назначения события клиента
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	ASSERT_TRUE(this->_io->setTargetPort(client, port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем опции и адрес события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова определения сессии: ключом служат первые четыре октета
+	this->_io->on(server, static_cast <awh::engine::callback::origin_t> ([](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size, awh::net::origin_key_t & key
+	) noexcept -> bool {
+		// Если датаграмма короче ключа сессии - она посторонняя
+		if(size < 4)
+			// Выводим отрицательный результат
+			return false;
+		// Формируем ключ сессии из первых октетов датаграммы
+		key = awh::net::origin_key_t(data, 4);
+		// Выводим положительный результат
+		return true;
+	}));
+	// Устанавливаем функцию обратного вызова на создание сессии
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&sessions, io = this->_io.get()](
+		[[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t oid
+	) noexcept -> void {
+		// Увеличиваем количество заведённых сессий
+		sessions++;
+		// Первая сессия отвечает пачкой, вторая молчит: её дело - лишь состояться
+		if(sessions > 1)
+			// Выходим, второй сессии отвечать нечем
+			return;
+		// Устанавливаем функцию обратного вызова на чтение из первой сессии
+		io->on(oid, [io](const awh::event::id_t sid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+			// Тело одного ответа: заведомо крупнее ужатого буфера отправки
+			std::string body("KEY0");
+			// Наполняем тело ответа
+			body.append(512, 'Z');
+			/**
+			 * Отвечаем пачкой датаграмм разом, не давая обороту цикла
+			 *
+			 * @note В этом и опыт: ужатый буфер принимает первые, остальные ложатся в
+			 *       очередь сессии, и она взводит готовность к записи на ОБЩЕМ с
+			 *       сервером дескрипторе
+			 */
+			for(size_t i = 0; i < burst; i++)
+				// Выполняем отправку очередного ответа
+				(void) io->send(sid, body.data(), body.size());
+		});
+	}));
+	// Устанавливаем функцию обратного вызова на чтение ответов клиентом
+	this->_io->on(client, [&answers]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept -> void {
+		// Увеличиваем количество принятых ответов
+		answers++;
+	});
+	// Устанавливаем опции, адрес и адрес назначения события клиента
+	ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+	ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+	// Выполняем фиксацию настроек события сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	// Ужимаем буфер отправки сервера ПОСЛЕ фиксации: до неё дескриптора нет вовсе
+	ASSERT_TRUE(this->_io->setBufferSize(server, awh::event::action_t::WRITE, 2048));
+	// Выполняем запуск события сервера
+	ASSERT_TRUE(this->_io->launch(server));
+	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	// Признак того, что движок доложил о состоявшемся подключении
+	bool linked = false;
+	/**
+	 * Устанавливаем функцию обратного вызова на исход подключения
+	 *
+	 * @warning Дожидаться его ОБЯЗАТЕЛЬНО: `connect` у движка - событие, а не обращение
+	 *          к ядру, и об исходе он докладывает откликом. До отклика узел стоит в
+	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
+	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
+	 *          порцию прямо из этого отклика
+	 */
+	this->_io->on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Запоминаем исход подключения
+		linked = ok;
+	}));
+	ASSERT_TRUE(this->_io->commit(client));
+	ASSERT_TRUE(this->_io->connect(client));
+	ASSERT_TRUE(this->_io->launch(client));
+	/**
+	 * Крутим цикл, покуда движок не доложит об исходе подключения
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto linking = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться: без него отправлять некуда
+	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
+	// Выполняем отправку запроса, заводящего первую сессию
+	(void) this->_io->send(client, "KEY0request", 11);
+	/**
+	 * Крутим цикл, покуда пачка не разойдётся либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((answers < (burst / 2)) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Первая сессия обязана быть заведена
+	ASSERT_EQ(sessions, static_cast <size_t> (1)) << "первая сессия-источник не заведена";
+	// Выполняем отправку запроса с НОВЫМ ключом сессии
+	(void) this->_io->send(client, "KEY1request", 11);
+	/**
+	 * Крутим цикл, покуда вторая сессия не заведётся либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((sessions < 2) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	/**
+	 * Сервер обязан принять датаграмму и завести вторую сессию
+	 *
+	 * @note Отказ здесь означал бы, что ответы одной сессии отнимают у сервера его
+	 *       собственные события чтения на общем с нею дескрипторе
+	 */
+	ASSERT_EQ(sessions, static_cast <size_t> (2)) << "сервер не завёл вторую сессию,"
+	 " пока первая отвечала пачкой: приём у него отнят";
+	// Уничтожаем заведённые события
+	this->_io->destroy(client);
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест впрыска перенаправленных данных в событие-приёмник
+ *
+ * @details Отклик `inject_t` заведён для транспортов, шифрующих данные на уровне
+ *          соединения (QUIC): перенаправленные из события-источника октеты такой
+ *          транспорт обязан принять СВОИМ потоком, а не записывать сырьём в сокет.
+ *          Подписка на этот отклик не звалась ни одной проверкой набора вовсе, а
+ *          договор у неё двойной, и вторая его половина важнее первой.
+ *
+ *          Первая половина: `relay` отдаёт впрыску тот же буфер и тот же размер и
+ *          отвечает размером принятого. Вторая: отказ впрыска - это отказ переноса,
+ *          и `relay` обязан ответить НУЛЁМ. Половина эта не косметическая: перенос
+ *          частями крутится по возвращённому числу, и приняв отказ за успех, движок
+ *          ушёл бы по кругу на несделанной работе.
+ *
+ * @note Сокет здесь не нужен и не заводится: при установленном впрыске `relay` до
+ *       отправки не доходит вовсе - в этом и смысл отклика
+ *
+ */
+TEST_F(IoFixture, IoRelayInjectionTest){
+	// Принятое впрыском содержимое и число обращений к нему
+	std::string injected;
+	// Число обращений к впрыску и признак приёма данных впрыском
+	size_t requests = 0;
+	// Признак согласия впрыска принять данные
+	bool accept = true;
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие клиента TCP
+	const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	ASSERT_GT(client, 0u);
+	// Устанавливаем функцию обратного вызова впрыска перенаправленных данных
+	this->_io->on(client, static_cast <awh::engine::callback::inject_t> ([&injected, &requests, &accept](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size
+	) noexcept -> bool {
+		// Увеличиваем число обращений к впрыску
+		requests++;
+		// Если впрыск согласен принять данные
+		if(accept)
+			// Дописываем принятое к уже полученному
+			injected.append(reinterpret_cast <const char *> (buffer), size);
+		// Выводим согласие либо отказ впрыска
+		return accept;
+	}));
+	// Содержимое, отдаваемое на перенаправление
+	const std::string body = "RELAY-INJECTED-PAYLOAD";
+	/**
+	 * Перенаправление обязано уйти впрыску целиком и ответить размером принятого
+	 */
+	ASSERT_EQ(this->_io->relay(client, body.data(), body.size()), body.size()) << "перенаправление не принято впрыском";
+	// Впрыск обязан быть позван единожды и получить содержимое дословно
+	ASSERT_EQ(requests, static_cast <size_t> (1)) << "обращений к впрыску " << requests << ", ожидалось одно";
+	ASSERT_EQ(injected, body) << "впрыском принято: " << injected;
+	// Переводим впрыск в отказ
+	accept = false;
+	/**
+	 * Отказ впрыска обязан обратиться нулём принятых октетов
+	 *
+	 * @note Это и есть главное утверждение: приняв отказ за успех, перенос частями
+	 *       ушёл бы по кругу на несделанной работе
+	 */
+	ASSERT_EQ(this->_io->relay(client, body.data(), body.size()), static_cast <size_t> (0)) << "отказ впрыска принят за успех переноса";
+	// Впрыск обязан быть позван второй раз, а принятое им - не измениться
+	ASSERT_EQ(requests, static_cast <size_t> (2)) << "обращений к впрыску " << requests << ", ожидалось два";
+	ASSERT_EQ(injected, body) << "отказавший впрыск дописал содержимое: " << injected;
+	// Уничтожаем событие клиента
+	this->_io->destroy(client);
+}
+
+/**
+ * @brief Тест переноса крупного тела по именованному каналу
+ *
+ * @details Закрепляет потолок, найденный аудитом 111: обмен по каналу вставал, когда
+ *          отданное переваливало за 65536 октетов, и не возобновлялся более никогда.
+ *          Причина разобрана там же - у отправляющего конца нет учёта подписки, и об
+ *          освобождении места в канале движку узнать нечем.
+ *
+ * @note Объём взят вчетверо выше потолка намеренно: проверка обязана отказать, покуда
+ *       потолок не снят, и пройти, когда он снят
+ *
+ */
+TEST_F(IoFixture, IoIpcLargeTransferTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Тело переноса: вчетверо выше найденного потолка
+	std::string body;
+	// Наполняем тело узнаваемым содержимым
+	while(body.size() < (256 * 1024))
+		// Дописываем к телу очередной кусок
+		body.append("0123456789ABCDEF");
+	// Принятое встречным концом тело
+	std::string received;
+	// Устанавливаем функцию обратного вызова на чтение данных встречным концом
+	this->_io->on(channels[0], [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученному телу
+		received.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	/**
+	 * Выставляем обоим концам канала неблокирующий ввод-вывод
+	 *
+	 * @warning Умолчание у канальной пары БЛОКИРУЮЩЕЕ, и это намеренно. Но блокирующая
+	 *          запись обязана дождаться места в канале, а дождаться его здесь нельзя:
+	 *          выбирает принятое читающий конец, живущий в ТОМ ЖЕ цикле событий, и
+	 *          ожидание обратилось бы взаимной блокировкой. У блокирующего узла перенос
+	 *          свыше вместимости канала однопоточным обменом недостижим по устройству -
+	 *          ровно как и у сокетной пары систем POSIX
+	 *
+	 * @note Неблокирующий узел ведёт себя иначе и здесь проверяется он: остаток, не
+	 *       вошедший в канал, ложится в очередь узла, и отдать его обязан движок сам
+	 */
+	ASSERT_TRUE(this->_io->setOptions(channels[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setOptions(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Фиксируем и запускаем принимающий конец канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	// Фиксируем и запускаем отдающий конец канала
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	/**
+	 * Отдаём тело долями по 4 КБ, считаясь с подпором очереди
+	 *
+	 * @warning Сыпать всё разом нельзя, и это не придирка: очередь узла имеет предел, и
+	 *          отправка, в неё не вошедшая, отвечает нулём и отбрасывается. Первая
+	 *          редакция проверки сыпала не глядя и получала 126976 из 262144 - предел
+	 *          очереди, а вовсе не потолок обмена
+	 *
+	 * @note Отказ отправки здесь не беда, а подпор: доля повторяется после оборота цикла,
+	 *       за который движок отдаёт накопленный остаток
+	 */
+	{
+		// Смещение отданного тела
+		size_t offset = 0;
+		// Запоминаем миг начала отдачи
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Отдаём тело, покуда оно не кончится либо не выйдет отведённое окно
+		 */
+		while((offset < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20)){
+			// Определяем размер очередной доли
+			const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
+			// Выполняем отправку очередной доли
+			const size_t sent = this->_io->send(channels[1], body.data() + offset, part);
+			// Если доля принята к отправке - сдвигаем смещение отданного
+			if(sent > 0)
+				// Сдвигаем смещение отданного тела
+				offset += sent;
+			// Выполняем оборот цикла событий: движку надо отдать накопленный остаток
+			this->_io->poll(10);
+		}
+		// Тело обязано быть отдано целиком
+		ASSERT_EQ(offset, body.size()) << "отдано " << offset << " из " << body.size()
+		 << ": очередь узла не освобождается";
+	}
+	/**
+	 * Крутим цикл, покуда тело не придёт целиком либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Тело обязано дойти целиком
+	ASSERT_EQ(received.size(), body.size()) << "принято " << received.size() << " из " << body.size()
+	 << ": обмен канала встал";
+	ASSERT_EQ(received, body) << "принятое тело разошлось с отданным";
+	// Уничтожаем оба конца канала
+	this->_io->destroy(channels[0]);
+	this->_io->destroy(channels[1]);
+}
+
+/**
+ * @brief Тест договора блокирующего канального узла при полном канале
+ *
+ * @details Проверка закрепляет разбор аудита 138 - тот самый, что отменил «потолок
+ *          канала» аудита 111. У канальной пары умолчание БЛОКИРУЮЩЕЕ, а описатель
+ *          канала под MS Windows привязан к порту завершений, и заблокироваться такая
+ *          запись не может вовсе: обмен снимает незавершённое обращение и отвечает
+ *          отказом «попробуйте позже».
+ *
+ *          Договор при этом остаётся честным, и закрепляется здесь именно он: отданное
+ *          НЕ пропадает молча. Отправка отвечает нулём принятых октетов, отклик записи
+ *          получает нуль, а отклик ошибки - `EVENT_FAIL`. Потребителю сказано всё, чтобы
+ *          он либо повторил долю, либо завёл узел неблокирующим.
+ *
+ * @note Без этой проверки поведение читалось бы как потолок обмена, каким его полтора
+ *       месяца и числили: число принятого у обеих причин одинаково, а отличает их
+ *       только режим узла
+ *
+ */
+TEST_F(IoFixture, IoIpcBlockingFullPipeContractTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Число обращений к отклику ошибки и последняя полученная ошибка
+	size_t errors = 0;
+	// Последняя полученная ошибка события
+	awh::event::error_t reason = awh::event::error_t::NONE;
+	// Число обращений к отклику записи с нулём октетов
+	size_t zeroes = 0;
+	// Устанавливаем функцию обратного вызова ошибки отдающего конца канала
+	this->_io->on(channels[1], static_cast <awh::engine::callback::error_t> ([&errors, &reason](
+		[[maybe_unused]] const awh::event::id_t eid, const awh::event::error_t error, [[maybe_unused]] const std::string & text
+	) noexcept -> void {
+		// Увеличиваем число обращений к отклику ошибки
+		errors++;
+		// Запоминаем полученную ошибку события
+		reason = error;
+	}));
+	// Устанавливаем функцию обратного вызова записи отдающего конца канала
+	this->_io->on(channels[1], static_cast <awh::engine::callback::write_t> ([&zeroes](
+		[[maybe_unused]] const awh::event::id_t eid, const size_t size
+	) noexcept -> void {
+		// Если запись отчиталась нулём октетов
+		if(size == 0)
+			// Увеличиваем число нулевых отчётов записи
+			zeroes++;
+	}));
+	/**
+	 * Режим узлам НЕ выставляется намеренно: проверяется умолчание
+	 */
+	// Фиксируем и запускаем оба конца канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	// Доля отдачи: канал наполняется заведомо быстрее, чем его успевают выбрать
+	const std::string part(4096, 'W');
+	// Признак полученного отказа отправки
+	bool refused = false;
+	/**
+	 * Наполняем канал, не давая читающему концу оборота цикла
+	 *
+	 * @note Оборот здесь не даётся намеренно: с ним встречный конец выбирал бы принятое,
+	 *       и канал не наполнился бы вовсе
+	 */
+	for(size_t i = 0; (i < 64) && !refused; i++)
+		// Отправка обязана рано или поздно ответить отказом
+		refused = (this->_io->send(channels[1], part.data(), part.size()) == 0);
+	/**
+	 * Отказ отправки обязан состояться
+	 *
+	 * @note Это не дефект, а договор: место в канале кончилось, а блокирующая запись у
+	 *       описателя, привязанного к порту завершений, ждать его не может
+	 */
+	ASSERT_TRUE(refused) << "канал не наполнился: отправка отказа не дала ни разу";
+	// Отклик записи обязан отчитаться нулём октетов
+	ASSERT_GT(zeroes, static_cast <size_t> (0)) << "отклик записи о нулевой отправке не сообщил";
+	/**
+	 * Отклик ошибки обязан быть позван, и ошибка - именно «попробуйте позже»
+	 *
+	 * @note Вот это и есть главное утверждение договора: отданное не пропадает молча.
+	 *       Потребителю сказано всё, чтобы повторить долю либо завести узел неблокирующим
+	 */
+	ASSERT_GT(errors, static_cast <size_t> (0)) << "отклик ошибки о переполнении канала не сообщил";
+	ASSERT_EQ(reason, awh::event::error_t::EVENT_FAIL) << "ошибка переполнения канала названа иначе";
+	// Уничтожаем оба конца канала
+	this->_io->destroy(channels[0]);
+	this->_io->destroy(channels[1]);
+}
+
+/**
+ * @brief Тест ухода хвоста очереди канала без новых отправок
+ *
+ * @details Опыт заведён разбором аудитов 137 и 138. У неблокирующего канального узла
+ *          остаток, не вошедший в канал, ложится в очередь. Отдать его обязан движок
+ *          САМ - на то и очередь. Но готовности к записи у именованного канала не
+ *          бывает вовсе, и место, где остаток уходит на деле, - следующая отправка.
+ *
+ *          Отсюда вопрос, важный для кластера: узлы его заведены неблокирующими, и
+ *          крупное сообщение он вправе отдать РАЗОМ, больше не отправляя ничего. Уйдёт
+ *          ли хвост? Проверка ставит опыт прямо: отдаёт вчетверо больше вместимости
+ *          канала и дальше ТОЛЬКО крутит цикл, не отправляя более ни октета.
+ *
+ * @note Отказ здесь означал бы потерю хвоста у всякого крупного межпроцессного
+ *       сообщения, а не беду проверки: отправлять больше нечего по замыслу обмена
+ *
+ */
+TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Тело переноса: заведомо крупнее вместимости канала
+	std::string body;
+	// Наполняем тело узнаваемым содержимым
+	while(body.size() < (256 * 1024))
+		// Дописываем к телу очередной кусок
+		body.append("0123456789ABCDEF");
+	// Принятое встречным концом тело
+	std::string received;
+	// Устанавливаем функцию обратного вызова на чтение данных встречным концом
+	this->_io->on(channels[0], [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученному телу
+		received.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Выставляем обоим концам канала неблокирующий ввод-вывод
+	ASSERT_TRUE(this->_io->setOptions(channels[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setOptions(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Фиксируем и запускаем оба конца канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	/**
+	 * Отдаём тело долями по 4 КБ РАЗОМ, не давая обороту цикла
+	 *
+	 * @note Принятое очередью считаем сами: что в неё не вошло, к делу не относится -
+	 *       спрашивается судьба принятого, а не отвергнутого
+	 */
+	size_t accepted = 0;
+	/**
+	 * Отдаём тело целиком, покуда очередь принимает
+	 */
+	for(size_t offset = 0; offset < body.size(); offset += 4096){
+		// Определяем размер очередной доли
+		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
+		// Выполняем отправку очередной доли
+		accepted += this->_io->send(channels[1], body.data() + offset, part);
+	}
+	// Принятого обязано быть больше вместимости канала: иначе опыт не поставлен
+	ASSERT_GT(accepted, static_cast <size_t> (65536)) << "принято очередью " << accepted
+	 << ": хвоста в очереди не осталось, опыт не поставлен";
+	/**
+	 * Крутим цикл, НЕ отправляя более ни октета
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	/**
+	 * Принятое очередью обязано дойти целиком
+	 *
+	 * @note Отказ означает потерю хвоста у всякого крупного межпроцессного сообщения:
+	 *       движок принял данные в очередь, а отдать их ему нечем
+	 */
+	ASSERT_EQ(received.size(), accepted) << "принято " << received.size() << " из " << accepted
+	 << ": хвост очереди канала не уходит без новых отправок";
+	// Уничтожаем оба конца канала
+	this->_io->destroy(channels[0]);
+	this->_io->destroy(channels[1]);
+}
+
+/**
+ * @brief Тест продолжения вытягивания у канального узла на крупном теле
+ *
+ * @details Место это - `io::pull` у канального узла - аудит 111 объявил недостижимым «в
+ *          принципе, покуда потолок не починен». Потолка не оказалось (аудит 138), а
+ *          настоящий дефект - неуходящий хвост очереди - исправлен аудитом 140. Дорога
+ *          туда появилась, и проверка её проходит.
+ *
+ *          Тело берётся вчетверо крупнее вместимости канала, а долями по 4 КБ - чтобы
+ *          очередь опустошалась и движок спрашивал источник СНОВА. Соседняя проверка
+ *          `IoDataSourcePullIpcTest` держит тело ниже вместимости канала намеренно, и
+ *          продолжения вытягивания на ней не случалось ни разу.
+ *
+ * @note Отправок здесь нет вовсе, кроме пуска вытягивания: всё, что уходит по каналу,
+ *       движок обязан вытянуть и отдать сам
+ *
+ */
+TEST_F(IoFixture, IoDataSourcePullIpcLargeTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Тело, отдаваемое источником: вчетверо крупнее вместимости канала
+	std::string body;
+	// Наполняем тело узнаваемым содержимым
+	while(body.size() < (256 * 1024))
+		// Дописываем к телу очередной кусок
+		body.append("0123456789ABCDEF");
+	// Принятое встречным концом тело
+	std::string received;
+	// Смещение отданного и число обращений движка к источнику
+	size_t offset = 0, requests = 0;
+	// Устанавливаем функцию обратного вызова на чтение данных встречным концом
+	this->_io->on(channels[0], [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученному телу
+		received.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Выставляем обоим концам канала неблокирующий ввод-вывод
+	ASSERT_TRUE(this->_io->setOptions(channels[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setOptions(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Фиксируем и запускаем принимающий конец канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	// Устанавливаем источник данных отдающего конца канала
+	this->_io->on(channels[1], static_cast <awh::engine::callback::source_t> ([&body, &offset, &requests](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size
+	) noexcept -> bool {
+		// Учитываем обращение движка к источнику
+		requests++;
+		// Определяем сколько тела осталось отдать
+		const size_t rest = (body.size() - offset);
+		// Если отдавать больше нечего
+		if(rest == 0){
+			// Сообщаем движку об исчерпании источника
+			size = 0;
+			// Выводим признак исчерпания источника
+			return false;
+		}
+		// Определяем размер отдаваемой доли: не крупнее 4 КБ, не крупнее остатка и не крупнее запрошенного
+		const size_t part = std::min(rest, std::min(size, static_cast <size_t> (4096)));
+		// Отдаём движку указатель прямо в своё тело, без копирования
+		(* buffer) = reinterpret_cast <const uint8_t *> (body.data() + offset);
+		// Сдвигаем смещение отданного тела
+		offset += part;
+		// Сообщаем движку размер отданной доли
+		size = part;
+		// Выводим признак наличия данных в источнике
+		return true;
+	}));
+	// Фиксируем и запускаем отдающий конец канала
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	// Заводим вытягивание пустой отправкой
+	(void) this->_io->send(channels[1], nullptr, 0);
+	/**
+	 * Крутим цикл, покуда тело не придёт целиком либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 20))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Тело обязано дойти целиком
+	ASSERT_EQ(received.size(), body.size()) << "принято " << received.size() << " из " << body.size();
+	ASSERT_EQ(received, body) << "принятое тело разошлось с отданным";
+	/**
+	 * Обращений к источнику обязано быть много больше одного
+	 *
+	 * @note Это и есть утверждение о ПРОДОЛЖЕНИИ вытягивания: одно обращение означало бы,
+	 *       что движок спросил источник единожды и дальше вёз уже отданное
+	 */
+	ASSERT_GT(requests, static_cast <size_t> (16)) << "обращений к источнику " << requests
+	 << ": продолжения вытягивания у канального узла не случилось";
+	// Уничтожаем оба конца канала
+	this->_io->destroy(channels[0]);
+	this->_io->destroy(channels[1]);
+}
+
+/**
+ * @brief Тест ухода очереди потокового узла без новых отправок
+ *
+ * @details Проверка родная сестра канальной (`IoIpcQueueTailDrainsWithoutSendsTest`) и
+ *          задаёт движку тот же вопрос на главном пути: принятое в очередь он обязан
+ *          отдать САМ, без новых отправок. У потока для этого есть готовность к записи -
+ *          в отличие от канала, где её нет вовсе и где такой хвост терялся (аудит 140).
+ *
+ *          Опыт ставится так: буфер отправки клиента ужимается, тело отдаётся разом и
+ *          заведомо крупнее буфера, а дальше цикл крутится без единой отправки.
+ *
+ * @note Утверждается доставка ровно ПРИНЯТОГО очередью, а не всего тела: что очередь не
+ *       приняла, к делу не относится - спрашивается судьба принятого
+ *
+ */
+TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
+	// Принятое сервером содержимое и признак принятого подключения
+	std::string received;
+	// Признак принятого сервером подключения
+	bool connected = false;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Заводим событие сервера TCP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	ASSERT_GT(server, 0u);
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем порт, опции и адрес события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова на подключение нового клиента
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&connected, &received, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+		// Отмечаем подключение собеседника
+		connected = true;
+		// Выставляем принятому узлу опции неблокирующего события
+		(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+		// Устанавливаем функцию обратного вызова на чтение принятого узла
+		io->on(cid, [&received]([[maybe_unused]] const awh::event::id_t sid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Дописываем принятое к уже полученному
+			received.append(reinterpret_cast <const char *> (buffer), size);
+		});
+	}));
+	// Фиксируем, переводим в прослушивание и запускаем событие сервера
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->listen(server, 10));
+	ASSERT_TRUE(this->_io->launch(server));
+	// Заводим событие клиента
+	const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+	ASSERT_GT(client, 0u);
+	// Устанавливаем опции, адрес, цель и порт назначения события клиента
+	ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+	ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+	ASSERT_TRUE(this->_io->setTargetPort(client, port));
+	// Фиксируем, подключаем и запускаем событие клиента
+	ASSERT_TRUE(this->_io->commit(client));
+	// Ужимаем буфер отправки клиента ПОСЛЕ фиксации: до неё дескриптора нет вовсе
+	ASSERT_TRUE(this->_io->setBufferSize(client, awh::event::action_t::WRITE, 2048));
+	ASSERT_TRUE(this->_io->connect(client));
+	ASSERT_TRUE(this->_io->launch(client));
+	/**
+	 * Крутим цикл, покуда сервер не примет подключение
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!connected && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 10))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться
+	ASSERT_TRUE(connected) << "сервер подключения не принял";
+	// Тело переноса: заведомо крупнее ужатого буфера отправки
+	std::string body;
+	// Наполняем тело узнаваемым содержимым
+	while(body.size() < (256 * 1024))
+		// Дописываем к телу очередной кусок
+		body.append("0123456789ABCDEF");
+	// Принятое очередью узла
+	size_t accepted = 0;
+	/**
+	 * Отдаём тело долями по 4 КБ РАЗОМ, не давая обороту цикла
+	 */
+	for(size_t offset = 0; offset < body.size(); offset += 4096){
+		// Определяем размер очередной доли
+		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
+		// Выполняем отправку очередной доли
+		accepted += this->_io->send(client, body.data() + offset, part);
+	}
+	/**
+	 * Принятого обязано быть много больше ужатого буфера: иначе опыт не поставлен
+	 *
+	 * @note Порог взят от БУФЕРА, а не от предела очереди: очередь потокового узла
+	 *       принимает 65536 октетов и ровно столько же отвечала первой редакции
+	 *       проверки, требовавшей «больше 65536». Хвост же меряется тем, что не
+	 *       вошло в ужатый до 2048 октетов буфер отправки
+	 */
+	ASSERT_GT(accepted, static_cast <size_t> (16384)) << "принято очередью " << accepted
+	 << ": хвоста в очереди не осталось, опыт не поставлен";
+	/**
+	 * Крутим цикл, НЕ отправляя более ни октета
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	/**
+	 * Принятое очередью обязано дойти целиком
+	 *
+	 * @note У потока это обеспечивает готовность к записи, и проверка её и стережёт:
+	 *       отказ означал бы, что отложенная запись у потокового узла не работает
+	 */
+	ASSERT_EQ(received.size(), accepted) << "принято " << received.size() << " из " << accepted
+	 << ": хвост очереди потокового узла не уходит без новых отправок";
+	// Уничтожаем заведённые события
+	this->_io->destroy(client);
+	this->_io->destroy(server);
+}
+
+/**
+ * @brief Тест отправки одной посылкой свыше вместимости очереди
+ *
+ * @details Опыт заведён разбором отказа кластера с крупной посылкой. Кластер отдаёт
+ *          сообщение ОДНИМ вызовом отправки, а очередь узла имеет предел. Спрашивается
+ *          прямо: что отвечает движок на посылку крупнее предела - принимает частью,
+ *          отвергает целиком, либо принимает молча и теряет?
+ *
+ * @note Ответ важен не сам по себе: `Cluster::send` возвращённое движком число никак не
+ *       проверяет, и всякий отказ там обращается молчаливой потерей сообщения
+ *
+ */
+TEST_F(IoFixture, IoIpcOversizedSingleSendTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Тело посылки: вчетверо крупнее вместимости очереди узла
+	std::string body;
+	// Наполняем тело узнаваемым содержимым
+	while(body.size() < (256 * 1024))
+		// Дописываем к телу очередной кусок
+		body.append("0123456789ABCDEF");
+	// Принятое встречным концом тело
+	std::string received;
+	// Устанавливаем функцию обратного вызова на чтение данных встречным концом
+	this->_io->on(channels[0], [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Дописываем принятое к уже полученному телу
+		received.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Выставляем обоим концам канала неблокирующий ввод-вывод
+	ASSERT_TRUE(this->_io->setOptions(channels[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setOptions(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Фиксируем и запускаем оба конца канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	// Выполняем отправку тела ОДНИМ вызовом
+	const size_t accepted = this->_io->send(channels[1], body.data(), body.size());
+	/**
+	 * Крутим цикл, покуда принятое не дойдёт либо не выйдет отведённое окно
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while((received.size() < accepted) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 15))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	/**
+	 * Договор здесь один, и он о честности числа: движок доставляет ровно столько,
+	 * сколько сам объявил принятым
+	 *
+	 * @note Отправитель по этому числу и судит: принято меньше отданного - остаток
+	 *       отдавать ему заново. Молчаливая потеря случается не здесь, а у того, кто
+	 *       возвращённое число не смотрит вовсе
+	 */
+	ASSERT_EQ(received.size(), accepted) << "объявлено принятым " << accepted
+	 << ", доставлено " << received.size();
+	// Уничтожаем оба конца канала
+	this->_io->destroy(channels[0]);
+	this->_io->destroy(channels[1]);
+}
+
 
 TEST_F(IoFixture, IoDatagramPoolExhaustionTest){
 	// Флаг остановки проверки
@@ -20714,9 +21685,37 @@ TEST_F(IoFixture, IoOriginDeferredWriteTest){
 	// Выполняем запуск события сервера
 	ASSERT_TRUE(this->_io->launch(server));
 	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	// Признак того, что движок доложил о состоявшемся подключении
+	bool linked = false;
+	/**
+	 * Устанавливаем функцию обратного вызова на исход подключения
+	 *
+	 * @warning Дожидаться его ОБЯЗАТЕЛЬНО: `connect` у движка - событие, а не обращение
+	 *          к ядру, и об исходе он докладывает откликом. До отклика узел стоит в
+	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
+	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
+	 *          порцию прямо из этого отклика
+	 */
+	this->_io->on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Запоминаем исход подключения
+		linked = ok;
+	}));
 	ASSERT_TRUE(this->_io->commit(client));
 	ASSERT_TRUE(this->_io->connect(client));
 	ASSERT_TRUE(this->_io->launch(client));
+	/**
+	 * Крутим цикл, покуда движок не доложит об исходе подключения
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto linking = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться: без него отправлять некуда
+	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
 	// Выполняем отправку запроса, заводящего сессию
 	(void) this->_io->send(client, "KEY0request", 11);
 	/**
@@ -20873,9 +21872,37 @@ TEST_F(IoFixture, IoOriginDataSourcePullTest){
 	ASSERT_TRUE(this->_io->commit(server));
 	ASSERT_TRUE(this->_io->launch(server));
 	// Выполняем фиксацию настроек, подключение и запуск события клиента
+	// Признак того, что движок доложил о состоявшемся подключении
+	bool linked = false;
+	/**
+	 * Устанавливаем функцию обратного вызова на исход подключения
+	 *
+	 * @warning Дожидаться его ОБЯЗАТЕЛЬНО: `connect` у движка - событие, а не обращение
+	 *          к ядру, и об исходе он докладывает откликом. До отклика узел стоит в
+	 *          ожидании, а отправка с такого узла отвечает нулём молча - ни отказа, ни
+	 *          записи в журнал. Образец `sample/net/udp/client-conn.cpp` шлёт первую
+	 *          порцию прямо из этого отклика
+	 */
+	this->_io->on(client, static_cast <awh::engine::callback::connect_t> ([&linked]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Запоминаем исход подключения
+		linked = ok;
+	}));
 	ASSERT_TRUE(this->_io->commit(client));
 	ASSERT_TRUE(this->_io->connect(client));
 	ASSERT_TRUE(this->_io->launch(client));
+	/**
+	 * Крутим цикл, покуда движок не доложит об исходе подключения
+	 */
+	{
+		// Запоминаем миг начала ожидания
+		const auto linking = std::chrono::steady_clock::now();
+		// Выполняем обороты цикла событий
+		while(!linked && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - linking).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+	}
+	// Подключение обязано состояться: без него отправлять некуда
+	ASSERT_TRUE(linked) << "движок не доложил о подключении клиента";
 	// Выполняем отправку запроса, заводящего сессию
 	(void) this->_io->send(client, "KEY0request", 11);
 	/**

@@ -2175,6 +2175,10 @@ void awh::Chrono::clear() noexcept {
 		 * Реестр временных зон здесь не затрагивается: пополняется он вызывающей
 		 * стороной и её же методом clearTimeZones очищается
 		 */
+		// Выполняем сброс временной зоны, выставленной вызывающей стороной
+		this->_zoneOffset = 0;
+		// Выполняем сброс обозначения временной зоны, выставленной вызывающей стороной
+		this->_zoneName = zone_t::NONE;
 		// Выполняем сброс локального объекта даты и времени
 		this->_dt = dt_t();
 		// Получаем текущий штамп времени
@@ -8758,6 +8762,10 @@ void awh::Chrono::setTimeZone(const int32_t zone) noexcept {
 	const int32_t offset = ::clampZone(zone);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = ((offset == 0) ? zone_t::UTC : zone_t::NONE);
+	// Запоминаем временную зону, выставленную вызывающей стороной
+	this->_zoneName = this->_dt.zone;
+	// Запоминаем смещение временной зоны, выставленной вызывающей стороной
+	this->_zoneOffset = offset;
 	// Перекладываем локальный объект даты в указанную временную зону
 	this->shiftDate(this->_dt, offset);
 }
@@ -8777,8 +8785,12 @@ void awh::Chrono::setTimeZone(const zone_t zone) noexcept {
 	const uint64_t date = this->makeStamp(this->_dt);
 	// Устанавливаем идентификатор временной зоны
 	this->_dt.zone = zone;
+	// Запоминаем временную зону, выставленную вызывающей стороной
+	this->_zoneName = zone;
+	// Запоминаем смещение временной зоны, выставленной вызывающей стороной
+	this->_zoneOffset = this->getTimeZone(zone, date);
 	// Перекладываем локальный объект даты в указанную временную зону
-	this->shiftDate(this->_dt, this->getTimeZone(zone, date));
+	this->shiftDate(this->_dt, this->_zoneOffset);
 }
 /**
  * @brief Метод установки временной зоны
@@ -8797,9 +8809,13 @@ void awh::Chrono::setTimeZone(string_view zone) noexcept {
 	 * запись смещения, а сопоставление обозначений видит в нём одну лишь зону UTC
 	 * и хвост теряет
 	 */
+	// Запоминаем временную зону, выставленную вызывающей стороной
+	this->_zoneName = this->_dt.zone;
+	// Запоминаем смещение временной зоны, выставленной вызывающей стороной
+	this->_zoneOffset = (::composite(this->_dt.zone)
+		? this->getTimeZone(this->_dt.zone, date) : this->getTimeZone(zone));
 	// Перекладываем локальный объект даты в указанную временную зону
-	this->shiftDate(this->_dt, (::composite(this->_dt.zone)
-		? this->getTimeZone(this->_dt.zone, date) : this->getTimeZone(zone)));
+	this->shiftDate(this->_dt, this->_zoneOffset);
 }
 /**
  * @brief Метод выполнения матчинга временной зоны
@@ -10487,10 +10503,17 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				result = this->makeStamp(this->_dt);
 				// Запоминаем текущий штамп времени
 				current = result;
-				// Запоминаем смещение временной зоны, выставленной объекту
-				zone = this->_dt.offset;
-				// Запоминаем обозначение временной зоны, выставленной объекту
-				designation = this->_dt.zone;
+				/**
+				 * Зона берётся из отдельных полей, а не из локального объекта даты:
+				 * разбор оставляет в объекте зону самой записи, и прежде следующий
+				 * разбор принимал её за выставленную методом setTimeZone - запись
+				 * «2003-10-11T22:14:15Z» уводила следующую за ней запись без зоны
+				 * на величину местного смещения
+				 */
+				// Запоминаем смещение временной зоны, выставленной вызывающей стороной
+				zone = this->_zoneOffset;
+				// Запоминаем обозначение временной зоны, выставленной вызывающей стороной
+				designation = this->_zoneName;
 				/**
 				 * Обозначение зоны сбрасывается наравне со смещением: запись, несущая
 				 * смещение числом, обозначения не несёт, а прежде при объекте оставалось
@@ -13766,6 +13789,7 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
  *
  */
 awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept :
+ _zoneOffset(0), _zoneName(zone_t::NONE),
  _leapSecond(true),
  _century(century_t::WINDOW),
  _yearWindow(DEFAULT_YEAR_WINDOW),

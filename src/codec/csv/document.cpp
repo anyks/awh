@@ -1594,6 +1594,23 @@ bool awh::codec::csv::Document::numeric(const size_t row, const size_t col, T & 
  *       вид знака, а не числа. Виды `signed char` и `unsigned char` порождаются
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <bool> (const size_t, const size_t, bool &) const noexcept;
+/**
+ * Порождение видом `char` заведено 08.09.2026 по находке на стендах Sun
+ *
+ * @warning Вид `char` НЕ СОВПАДАЕТ ни с `signed char`, ни с `unsigned char` - это третий,
+ *          самостоятельный вид языка. Обыкновенно `int8_t` есть псевдоним `signed char`, и
+ *          порождение без `char` беды не давало; у Solaris же и OpenIndiana `int8_t` есть
+ *          `char`, и всякий звучащий, подающий `int8_t`, не связывался вовсе
+ *
+ * @note Замерено на стенде: `is_same <int8_t, char>` истинно, `is_same <int8_t, signed char>`
+ *       ложно. Отказ связывания: `Writer::value <char>` не найден
+ *
+ * @note Правило отсюда общее: порождать надлежит ВИДАМИ ЯЗЫКА и всеми четырнадцатью, а не
+ *       разрядными псевдонимами и не тринадцатью - какому виду отвечает псевдоним, решает
+ *       система, и решает по-разному
+ *
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <char> (const size_t, const size_t, char &) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <signed char> (const size_t, const size_t, signed char &) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned char> (const size_t, const size_t, unsigned char &) const noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <short> (const size_t, const size_t, short &) const noexcept;

@@ -3603,7 +3603,7 @@ TEST(CodecYamlValue, ComparisonRefusesOnKindAndSize) {
  */
 TEST(CodecYamlValue, RefusalDoesNotWipeTarget) {
 	// Путь к записываемому файлу
-	const string filename = "./yaml_значение_снос.yaml";
+	const string filename = ::unique("./yaml_значение_снос.yaml");
 	// Прежнее содержимое записываемого файла
 	const string before = "прежнее содержимое, дорогое владельцу\n";
 	/**

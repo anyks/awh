@@ -549,3 +549,44 @@ TEST_F(ZoneFixture, ExecutionParseValidFlagChronoTest){
 	// Признак пригодности записи обязан быть опущен
 	ASSERT_FALSE(valid);
 }
+/**
+ * @brief Тест независимости разбора от зоны предыдущей записи
+ *
+ * @details Разбор оставляет в локальном объекте зону самой записи, и прежде
+ *          следующий разбор принимал её за выставленную методом setTimeZone:
+ *          запись с обозначением «Z» уводила следующую за ней запись без зоны
+ *          на величину местного смещения
+ *
+ */
+TEST_F(ChronoFixture, ExecutionZoneDoesNotLeakBetweenParsesChronoTest){
+	// Устанавливаем временную зону окружения
+	::setenv("TZ", "Europe/Moscow", 1);
+	// Выполняем сброс локальных данных объекта
+	this->_chrono->clear();
+	// Разбираем запись, временной зоны не несущую
+	const uint64_t first = this->_chrono->parse("2003-10-11T22:14:15", awh::chrono_t::standard_t::RFC3339, awh::chrono_t::storage_t::LOCAL);
+	// Разбираем ту же запись с обозначением нулевой зоны
+	ASSERT_EQ(this->_chrono->parse("2003-10-11T22:14:15Z", awh::chrono_t::standard_t::RFC3339, awh::chrono_t::storage_t::LOCAL), first + (3 * 3600 * 1000));
+	// Разбор записи без зоны от предыдущей записи не зависит
+	ASSERT_EQ(this->_chrono->parse("2003-10-11T22:14:15", awh::chrono_t::standard_t::RFC3339, awh::chrono_t::storage_t::LOCAL), first);
+	// То же по образцу записи со смещением зоны числом
+	const uint64_t plain = this->_chrono->parse("2003-10-11 22:14:15", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL);
+	// Разбираем запись, смещение зоны несущую
+	this->_chrono->parse("2003-10-11 22:14:15 -0700", "%Y-%m-%d %H:%M:%S %z", awh::chrono_t::storage_t::LOCAL);
+	// Смещение разобранной записи к следующей записи не применяется
+	ASSERT_EQ(this->_chrono->parse("2003-10-11 22:14:15", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL), plain);
+	// Выставленная вызывающей стороной зона на разбор влиять обязана
+	this->_chrono->setTimeZone(5 * 3600);
+	// Выполняем разбор записи под выставленной временной зоной
+	const uint64_t shifted = this->_chrono->parse("2003-10-11 22:14:15", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL);
+	// Выставленная зона от зоны окружения запись уводит
+	ASSERT_NE(shifted, plain);
+	// Разбор записи с чужой зоной выставленную зону не отменяет
+	this->_chrono->parse("2003-10-11 22:14:15 -0700", "%Y-%m-%d %H:%M:%S %z", awh::chrono_t::storage_t::LOCAL);
+	// Выполняем проверку сохранности выставленной временной зоны
+	ASSERT_EQ(this->_chrono->parse("2003-10-11 22:14:15", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL), shifted);
+	// Очистка локальных данных возвращает разбор к зоне окружения
+	this->_chrono->clear();
+	// Выполняем проверку возврата к временной зоне окружения
+	ASSERT_EQ(this->_chrono->parse("2003-10-11 22:14:15", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL), plain);
+}

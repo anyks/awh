@@ -680,6 +680,99 @@ TEST(CodecTomlValue, Rewriting) {
  * @brief Проверка переноса владеющего значения в дерево настроек
  *
  */
+/**
+ * @brief Проверка отказа переноса значения с содержимым, кодировке UTF-8 не отвечающим
+ *
+ * @details Дерево принимало такое значение УСПЕХОМ, а отказывала лишь запись - потребитель
+ *          получал «привито» и оставался с деревом, записи не подлежащим, при коде отказа
+ *          нулевом. Найдено сличением с кодеком XML, где ту же дорогу закрыл Василий
+ *
+ * @note Знак управляющий сюда не входит намеренно: запись TOML ограждает его
+ *       последовательностью `\u00XX`, и отвергать его правкою значило бы отказывать
+ *       содержимому вполне записываемому
+ *
+ */
+TEST(CodecTomlValue, GraftingRefusesTheMalformedEncoding) {
+	// Дерево настроек, куда переносится значение
+	toml::document_t document(::logger());
+	// Выполняем разбор пустого текста настроек
+	ASSERT_TRUE(document.parse(""));
+	/**
+	 * Выполняем перебор негодных последовательностей
+	 */
+	for(const string & content : {string("bad\xC3\x28ok"), string("bad\xE2\x82")}){
+		// Собираемое владеющее значение с негодным содержимым
+		toml::value_t value;
+		// Выполняем установку строкового значения с негодным содержимым
+		ASSERT_TRUE(value.insert("ключ", toml::value_t(content))) << content;
+		// Выполняем проверку отказа переноса значения
+		ASSERT_FALSE(value.graft(document, {})) << content;
+		// Выполняем проверку причины отказа, названной поимённо
+		ASSERT_EQ(document.error(), toml::error_t::INVALID_ENCODING) << toml::message(document.error());
+		// Выполняем проверку того, что дерево осталось нетронутым
+		ASSERT_TRUE(document.text().empty()) << document.text();
+	}
+	// Собираемое владеющее значение с годным содержимым
+	toml::value_t value;
+	// Выполняем установку строкового значения с годным содержимым
+	ASSERT_TRUE(value.insert("ключ", toml::value_t(string("значение"))));
+	// Выполняем проверку того, что годное содержимое переносится по-прежнему
+	ASSERT_TRUE(value.graft(document, {})) << toml::message(document.error());
+	// Выполняем проверку записи перенесённого значения
+	ASSERT_NE(document.text().find("значение"), string::npos) << document.text();
+}
+
+/**
+ * @brief Проверка отказа прививки значения глубже дозволенного
+ *
+ */
+TEST(CodecTomlValue, GraftingRefusesTheValueDeeperThanAllowed) {
+	// Дерево настроек, куда переносится значение
+	toml::document_t document(::logger());
+	// Выполняем разбор пустого текста настроек
+	ASSERT_TRUE(document.parse(""));
+	/**
+	 * @brief Способ сборки вложенных перечней заданной глубины
+	 *
+	 * @param depth собираемая глубина вложенности перечней
+	 * @return      собранное владеющее значение
+	 *
+	 */
+	const auto nested = [](const size_t depth) noexcept -> toml::value_t {
+		// Собираемое владеющее значение
+		toml::value_t result;
+		// Выполняем установку перечня в собираемое значение
+		result["ключ"] = toml::value_t(toml::type_t::ARRAY);
+		// Получаем указатель на текущий узел сборки
+		toml::value_t * node = &(result["ключ"]);
+		/**
+		 * Выполняем сборку вложенных перечней заданной глубины
+		 */
+		for(size_t i = 0; i < depth; i++){
+			// Выполняем установку вложенного перечня
+			(* node)[static_cast <size_t> (0)] = toml::value_t(toml::type_t::ARRAY);
+			// Выполняем переход к вложенному перечню
+			node = &((* node)[static_cast <size_t> (0)]);
+		}
+		// Выводим собранное владеющее значение
+		return result;
+	};
+	// Собранное владеющее значение глубже дозволенного
+	toml::value_t deep = nested(static_cast <size_t> (toml::MAX_DEPTH) + 8);
+	// Выполняем проверку отказа переноса значения глубже дозволенного
+	ASSERT_FALSE(deep.graft(document, {}));
+	// Выполняем проверку причины отказа, названной поимённо
+	ASSERT_EQ(document.error(), toml::error_t::DEPTH_EXCEEDED) << toml::message(document.error());
+	// Выполняем проверку того, что дерево осталось нетронутым
+	ASSERT_TRUE(document.text().empty()) << document.text();
+	// Собранное владеющее значение глубины дозволенной
+	toml::value_t shallow = nested(4);
+	// Выполняем проверку того, что глубина дозволенная прививается по-прежнему
+	ASSERT_TRUE(shallow.graft(document, {})) << toml::message(document.error());
+	// Выполняем проверку записи перенесённого значения
+	ASSERT_NE(document.text().find("ключ"), string::npos) << document.text();
+}
+
 TEST(CodecTomlValue, Grafting) {
 	// Собираемое владеющее значение
 	toml::value_t value;
