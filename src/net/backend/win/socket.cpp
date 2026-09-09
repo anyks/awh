@@ -507,9 +507,31 @@ int32_t awh::eth::Socket::getBufferAvailable(const net::socket_t sock, const net
 	// Занятое место буфера приёма
 	u_long pending = 0;
 	// Если занятое место буфера приёма получить не удалось
-	if(::ioctlsocket(static_cast <SOCKET> (sock), FIONREAD, &pending) != 0)
-		// Выводим признак того, что свободное место неизвестно
-		return -1;
+	if(::ioctlsocket(static_cast <SOCKET> (sock), FIONREAD, &pending) != 0){
+		/**
+		 * Занятое место приёмного буфера КАНАЛА
+		 *
+		 * @details Развилка здесь та же, что и у размера накопителя, и та же, что была
+		 *          найдена у этого самого обращения прежде: довод «средства нет» верен
+		 *          наполовину. `FIONREAD` отвечает гнезду, а описателю канала - отказом,
+		 *          и ответ терялся молча. Между тем у канала средство своё:
+		 *          `PeekNamedPipe` называет, сколько октет в нём лежит
+		 *
+		 * @note Порядок тот же, что и у размера накопителя: сокетное обращение
+		 *       спрашивается ПЕРВЫМ, и гнездо до канального пути не доходит вовсе
+		 *
+		 * @note Отказ самого `PeekNamedPipe` - у канала безымянного он спрашивается тем же
+		 *       описателем и отвечает - оставляет прежний ответ «неизвестно»
+		 */
+		DWORD waiting = 0;
+		// Если описатель каналом не является либо занятости своей не назвал
+		if((::GetFileType(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))) != FILE_TYPE_PIPE) ||
+		   !::PeekNamedPipe(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)), nullptr, 0, nullptr, &waiting, nullptr))
+			// Выводим признак того, что свободное место неизвестно
+			return -1;
+		// Запоминаем занятое место приёмного буфера канала
+		pending = static_cast <u_long> (waiting);
+	}
 	// Получаем вместимость буфера сокета
 	const int32_t size = this->getBufferSize(sock, event);
 	// Если вместимость буфера получить не удалось
@@ -534,15 +556,45 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 	int32_t size = static_cast <int32_t> (sizeof(result));
 	// Имя опции размера накопителя
 	const int32_t option = ((event == net::socket_event_t::READ) ? SO_RCVBUF : SO_SNDBUF);
-	// Если размер накопителя получить не удалось
-	if(::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, option, reinterpret_cast <char *> (&result), &size) != 0){
-		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
-		// Возвращаем пустой размер накопителя
+	// Если размер накопителя снять сокетным обращением удалось
+	if(::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, option, reinterpret_cast <char *> (&result), &size) == 0)
+		// Возвращаем снятый размер накопителя
+		return result;
+	/**
+	 * Размеры накопителей канала
+	 *
+	 * @details Спрашиваются они своим обращением: сокетное `getsockopt` каналу отвечает
+	 *          отказом 10038 (`WSAENOTSOCK`), и прежде отказ этот уходил в журнал
+	 *          потребителя записью уровня отказа - 38 записей за один прогон набора при
+	 *          вполне исправной работе. Между тем ответ у канала ЕСТЬ, и размеры эти
+	 *          задаются нами при заведении описателя
+	 *
+	 * @warning Порядок здесь ЗНАЧИМ, и обратный я уже поставил: спрос канала ПЕРВЫМ дал
+	 *          восемь отказов набора, среди них `SocketBufferSizeTest` и
+	 *          `SocketBufferAvailableTest` - те самые, что размер накопителя и меряют.
+	 *          Чем именно отвечает `GetNamedPipeInfo` гнезду Winsock, я не мерил и
+	 *          утверждать не берусь; знаю лишь, что спрошенный первым он ответ гнезда
+	 *          подменял. Спрошенный вторым он до гнезда не доходит вовсе - гнездо
+	 *          отвечает сокетному обращению само, и вопрос этот попросту не возникает
+	 *
+	 * @note Каналу БЕЗЫМЯННОМУ обращение это отвечает отказом: описатель его заведён без
+	 *       права на чтение свойств. Такому отвечаем пустым размером - вызывающая сторона
+	 *       пустой ответ и так разбирает, - но МОЛЧА, без записи в журнал потребителя
+	 */
+	if(::GetFileType(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))) == FILE_TYPE_PIPE){
+		// Размеры накопителей канала на отправку и на приём
+		DWORD outgoing = 0, incoming = 0;
+		// Если устройство канала снять удалось
+		if(::GetNamedPipeInfo(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock)), nullptr, &outgoing, &incoming, nullptr))
+			// Выводим размер накопителя канала по запрошенному событию
+			return static_cast <int32_t> ((event == net::socket_event_t::READ) ? incoming : outgoing);
+		// Выводим пустой размер накопителя
 		return 0;
 	}
-	// Возвращаем снятый размер накопителя
-	return result;
+	// Записываем ошибку в лог
+	this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	// Возвращаем пустой размер накопителя
+	return 0;
 }
 
 /**
@@ -562,6 +614,24 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 	const int32_t option = ((event == net::socket_event_t::READ) ? SO_RCVBUF : SO_SNDBUF);
 	// Если размер накопителя установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, option, reinterpret_cast <const char *> (&size), static_cast <int32_t> (sizeof(size))) != 0){
+		/**
+		 * Настройка накопителя у канала отвечает СОГЛАСИЕМ, не трогая ядра
+		 *
+		 * @details Размер накопителя канала задаётся при заведении описателя и сокетными
+		 *          настройками не меняется - менять там нечего, и просьба потребителя
+		 *          исполнена настолько, насколько исполнима. Отвечаем оттого размером
+		 *          действительным, снятым тем же порядком, что и у опроса
+		 *
+		 * @note Порядок здесь тот же, что и у опроса, и по тому же доводу: сокетное
+		 *       обращение спрашивается ПЕРВЫМ, и гнездо до канального пути не доходит
+		 *
+		 * @note Отказ этот прежде уходил в журнал потребителя записью уровня отказа -
+		 *       четыре записи за прогон набора, все в перестройке пары узлов IPC. Он и
+		 *       был последним, что оставалось от семидесяти одной записи аудита 160
+		 */
+		if(::GetFileType(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (sock))) == FILE_TYPE_PIPE)
+			// Выводим действительный размер накопителя канала
+			return this->getBufferSize(sock, event);
 		// Записываем ошибку в лог
 		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем пустой размер накопителя
@@ -1490,10 +1560,37 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 *       потока дожидается чтения из другого
 	 */
 	while((result = ::CreateFileW(pipe.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr)) == INVALID_HANDLE_VALUE){
-		// Если отказ вызван не занятостью всех экземпляров канала - открывать нечего
-		if(::GetLastError() != ERROR_PIPE_BUSY)
+		// Получаем код отказа открытия конца канала
+		const DWORD reason = ::GetLastError();
+		/**
+		 * Если отказ вызван отсутствием свободного экземпляра - заходим снова
+		 *
+		 * @details Отказов таких два, и оба временные: занятость всех экземпляров
+		 *          (`ERROR_PIPE_BUSY`) и отсутствие экземпляра вовсе
+		 *          (`ERROR_FILE_NOT_FOUND`). Второй приходит у изображённого домена UNIX:
+		 *          сервер держит свободным ровно один экземпляр - тот, на котором подано
+		 *          ожидание, - и между принятым подключением и подачей следующего
+		 *          ожидания свободного нет ни одного
+		 *
+		 * @note Прочие отказы заходов не повторяют: имя, какого нет вовсе, не появится
+		 */
+		if((reason != ERROR_PIPE_BUSY) && (reason != ERROR_FILE_NOT_FOUND))
 			// Прерываем ожидание освобождения экземпляра канала
 			break;
+		// Если экземпляра канала нет вовсе - ждём его появления недолгой выдержкой
+		if(reason == ERROR_FILE_NOT_FOUND){
+			// Если заходы на открытие экземпляра канала исчерпаны
+			if(++rounds > ROUNDS){
+				// Заносим исчерпание заходов на открытие канала в журнал
+				this->_log->print("%s: named pipe [%s] did not appear after %u rounds", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
+				// Выводим незаведённый описатель
+				return net::invalid_socket_t;
+			}
+			// Выполняем недолгое ожидание появления экземпляра канала
+			::Sleep(5);
+			// Переходим к следующему заходу
+			continue;
+		}
 		// Если заходы на открытие экземпляра канала исчерпаны
 		if(++rounds > ROUNDS){
 			// Заносим исчерпание заходов на открытие канала в журнал

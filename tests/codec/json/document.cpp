@@ -1818,7 +1818,7 @@ TEST(CodecJsonDocument, NotANumberToInteger) {
 	// Выполняем проверку успешного извлечения числа дробным видом
 	ASSERT_TRUE(document.root().at("/a").value(real));
 	// Выполняем проверку выдачи нечисла дробным видом
-	ASSERT_TRUE(::isnan(real));
+	ASSERT_TRUE(::std::isnan(real));
 	// Извлекаемое целое число
 	int32_t number = -1;
 	// Выполняем проверку успешного извлечения числа целым видом

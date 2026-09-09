@@ -500,6 +500,13 @@ bool awh::codec::abc::Reader::skip() noexcept {
 	/**
 	 * Если разбор отвечен отказом
 	 */
+	/**
+	 * @note Заслон ЗАТЕНЁН, и это измерено: щуп 09.09.2026 обесточил его порознь, и
+	 *       `CodecAbcReader.TheFailedReaderAcceptsNoFurtherWork` осталась зелена -
+	 *       работу отвергает разбор заново, причины при том не подменяя. Заслон есть
+	 *       путь СКОРЫЙ, а не единственный: он отвечает отказом, не трогая ни буфера, ни
+	 *       разбора. Собрат его у отведения места затенён НЕ был и закреплён порознь
+	 */
 	if(this->_state == state_t::FAILED)
 		// Выводим признак неудачного пропуска
 		return false;
@@ -2034,6 +2041,11 @@ bool awh::codec::abc::Reader::process() noexcept {
  */
 bool awh::codec::abc::Reader::feed(const void * buffer, const size_t size, const bool last) noexcept {
 	// Если разбор отвечен отказом
+	/**
+	 * @note Заслон ЗАТЕНЁН разбором наравне с собратом у пропуска значения - измерено
+	 *       щупом 09.09.2026. Довод тот же: подача, заслон миновавшая, доходит до разбора,
+	 *       а тот отвергает её заново прежней причиною
+	 */
 	if(this->_state == state_t::FAILED)
 		// Сообщаем, что разбор отвечен отказом
 		return false;
@@ -2169,6 +2181,13 @@ bool awh::codec::abc::Reader::digest(const bool last) noexcept {
  */
 void * awh::codec::abc::Reader::reserve(const size_t size) noexcept {
 	// Если разбор отвечен отказом
+	/**
+	 * @note Закреплено `CodecAbcReader.TheFailedReaderAcceptsNoFurtherWork`: щуп нужности
+	 *       09.09.2026 нашёл заслон МОЛЧАЩИМ. Из четырёх собратьев по отказавшему
+	 *       состоянию проверкою берётся ОДИН этот, и берётся он потому, что работа
+	 *       отвечает УКАЗАТЕЛЕМ: обесточенный, он отдал бы место под октеты разбирателю,
+	 *       разбор какого уже сломан
+	 */
 	if(this->_state == state_t::FAILED)
 		// Сообщаем, что места под приём октетов нет
 		return nullptr;
@@ -2245,6 +2264,10 @@ void * awh::codec::abc::Reader::reserve(const size_t size) noexcept {
  */
 bool awh::codec::abc::Reader::commit(const size_t size, const bool last) noexcept {
 	// Если разбор отвечен отказом
+	/**
+	 * @note Заслон ЗАТЕНЁН разбором - измерено щупом 09.09.2026, довод при собрате его у
+	 *       подачи октетов
+	 */
 	if(this->_state == state_t::FAILED)
 		// Сообщаем, что разбор отвечен отказом
 		return false;

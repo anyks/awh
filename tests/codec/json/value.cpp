@@ -711,7 +711,7 @@ TEST(CodecJsonValue, Extended) {
 	// Выполняем извлечение числа дробным видом
 	ASSERT_TRUE(value["огромное"].value(real));
 	// Выполняем проверку извлечённой бесконечности
-	ASSERT_TRUE(::isinf(real));
+	ASSERT_TRUE(::std::isinf(real));
 }
 
 /**

@@ -97,6 +97,7 @@ const char * awh::codec::cef::message(const error_t error) noexcept {
 		// Если настройки записи противоречат толкованию читающего
 		// Если файл записей открыть не удалось
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED): return "file of the records could not be opened";
+		case static_cast <uint8_t> (error_t::FILE_NOT_READ): return "file of the records could not be read";
 	}
 	// Выводим текст неизвестной ошибки
 	return "unknown error";

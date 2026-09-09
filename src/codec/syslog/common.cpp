@@ -96,6 +96,7 @@ const char * awh::codec::syslog::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::NESTED_VALUE): return "nested value is unknown to a SysLog record";
 		// Если файл записей открыть не удалось
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED): return "file of the records could not be opened";
+		case static_cast <uint8_t> (error_t::FILE_NOT_READ): return "file of the records could not be read";
 	}
 	// Выводим описание неизвестного кода отказа
 	return "unknown error";

@@ -24,6 +24,7 @@
  */
 #include <string>
 #include <clocale>
+#include <cstring>
 #include <cstdlib>
 #include <utility>
 
@@ -1173,4 +1174,159 @@ TEST(CodecSysLogWriter, PriorityFailures) {
 	EXPECT_FALSE(writer.write(four, result));
 	// Выполняем проверку кода отказа сборки записи
 	EXPECT_EQ(writer.error(), syslog::error_t::UNREPRESENTABLE_VALUE);
+}
+
+/**
+ * @brief Проверка отказа сборки записи вложенным полем заголовка
+ *
+ * @details Поле заголовка есть значение знаками, и дерево на его месте выразить нечем:
+ *          запись отмены знаков в заголовке не знает вовсе. Отказ обязан наступать у
+ *          ВСЯКОГО поля обоих описаний, а не у одного лишь имени узла: поля разбираются
+ *          порознь, и заслон, поставленный у одного, о прочих ничего не говорит
+ *
+ * @note Ход обращения значения зовётся для каждого поля свой, и непокрытая ветвь отказа
+ *       у одного из них неотличима от недостижимой, покуда не замерена. Оттого поля
+ *       перебираются перечнем, а не берутся выборочно
+ *
+ */
+TEST(CodecSysLogWriter, NestedHeaderFields) {
+	// Настройки записи событий без знака конца строки
+	syslog::writer_t::settings_t settings;
+	// Выключаем запись знака конца строки
+	settings.terminate = false;
+	// Объект записи событий
+	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	// Собранная запись системного журнала
+	string result = "";
+	/**
+	 * Выполняем перебор всех полей заголовка устаревшего описания
+	 *
+	 * @note Опознаватель работы стоит внутри метки приложения, и вложенным он выразим
+	 *       быть не может так же, как и прочие поля
+	 */
+	for(const char * name : {"timestamp", "hostname", "application", "process"}){
+		// Дерево собираемого события устаревшего описания
+		abc::value_t tree(abc::kind_t::MAP);
+		// Устанавливаем сборку записи устаревшим описанием
+		settings.standard = syslog::standard_t::RFC3164;
+		// Устанавливаем настройки записи событий
+		writer.settings(settings);
+		/**
+		 * Ставим вложенное значение очередным полем заголовка ПЕРВЫМ
+		 *
+		 * @warning Порядок постановки значим: `place` по пути сквозь узел, уже несущий
+		 *          знаки, видом карты его НЕ делает, и вложенное значение до дерева не
+		 *          дошло бы вовсе. Замерено 08.09.2026: сборка проходила успехом у трёх
+		 *          полей из четырёх, и проверка обвиняла кодек в своей же ошибке
+		 */
+		tree.place(string("/header/") + name + "/nested") = abc::value_t(string("value"));
+		// Если очередным полем заголовка дата сообщения не является
+		if(::strcmp(name, "timestamp") != 0)
+			// Ставим дату сообщения в дерево события
+			tree.place("/header/timestamp") = abc::value_t(string("Oct 22 12:34:56"));
+		// Если очередным полем заголовка имя узла не является
+		if(::strcmp(name, "hostname") != 0)
+			// Ставим имя узла в дерево события
+			tree.place("/header/hostname") = abc::value_t(string("host"));
+		// Если очередным полем заголовка название приложения не является
+		if(::strcmp(name, "application") != 0)
+			// Ставим название приложения в дерево события
+			tree.place("/header/application") = abc::value_t(string("app"));
+		// Выполняем проверку отказа сборки записи вложенным полем заголовка
+		EXPECT_FALSE(writer.write(tree, result)) << name;
+	}
+	/**
+	 * Выполняем перебор всех полей заголовка нынешнего описания
+	 */
+	for(const char * name : {"version", "timestamp", "hostname", "application", "process", "messageId"}){
+		// Дерево собираемого события нынешнего описания
+		abc::value_t tree(abc::kind_t::MAP);
+		// Устанавливаем сборку записи нынешним описанием
+		settings.standard = syslog::standard_t::RFC5424;
+		// Устанавливаем настройки записи событий
+		writer.settings(settings);
+		// Ставим вложенное значение очередным полем заголовка ПЕРВЫМ
+		tree.place(string("/header/") + name + "/nested") = abc::value_t(string("value"));
+		// Если очередным полем заголовка дата сообщения не является
+		if(::strcmp(name, "timestamp") != 0)
+			// Ставим дату сообщения в дерево события
+			tree.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+		// Выполняем проверку отказа сборки записи вложенным полем заголовка
+		EXPECT_FALSE(writer.write(tree, result)) << name;
+	}
+}
+
+/**
+ * @brief Проверка сборки текста сообщения и блоков данных
+ *
+ * @details Запись нынешнего описания несёт блоки структурированных данных позиционно, и
+ *          отсутствие их выражается знаком «-», а не пропуском поля: пропуск сдвинул бы
+ *          текст сообщения на место блоков. Пустой же текст сообщения выражается
+ *          ПРОБЕЛОМ без знаков за ним - тем и отличается «сообщение пусто» от
+ *          «сообщения нет вовсе»
+ *
+ * @note Вложенный текст сообщения при пропуске вложенных значений отвечается успехом
+ *       БЕЗ сообщения вовсе, а при строгом обращении - отказом с кодом вложенного
+ *       значения. Оба исхода намеренны, и выбор их - дело того, кто пишет
+ *
+ */
+TEST(CodecSysLogWriter, MessageAndStructures) {
+	// Настройки записи событий без знака конца строки
+	syslog::writer_t::settings_t settings;
+	// Выключаем запись знака конца строки
+	settings.terminate = false;
+	// Устанавливаем сборку записи нынешним описанием
+	settings.standard = syslog::standard_t::RFC5424;
+	// Объект записи событий
+	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	// Устанавливаем настройки записи событий
+	writer.settings(settings);
+	// Собранная запись системного журнала
+	string result = "";
+	// Дерево собираемого события без блоков структурированных данных
+	abc::value_t one(abc::kind_t::MAP);
+	// Ставим номер описания записи в дерево события
+	one.place("/header/version") = abc::value_t(static_cast <uint64_t> (1));
+	// Ставим дату сообщения в дерево события
+	one.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+	// Ставим ПУСТОЙ текст сообщения в дерево события
+	one.place("/message") = abc::value_t(string(""));
+	// Выполняем проверку успешности сборки записи без блоков данных
+	ASSERT_TRUE(writer.write(one, result));
+	// Выполняем проверку того, что блоки данных выражены знаком отсутствия
+	EXPECT_NE(result.find(" - "), string::npos) << "запись: " << result;
+	// Выполняем проверку того, что пустой текст сообщения выражен пробелом за записью
+	EXPECT_EQ(result.back(), ' ') << "запись: " << result;
+	// Дерево собираемого события с вложенным текстом сообщения
+	abc::value_t two(abc::kind_t::MAP);
+	// Ставим номер описания записи в дерево события
+	two.place("/header/version") = abc::value_t(static_cast <uint64_t> (1));
+	// Ставим дату сообщения в дерево события
+	two.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+	// Ставим вложенный текст сообщения в дерево события
+	two.place("/message/nested") = abc::value_t(string("value"));
+	// Выполняем проверку отказа сборки записи вложенным текстом сообщения
+	EXPECT_FALSE(writer.write(two, result));
+	// Выполняем проверку кода отказа сборки записи
+	EXPECT_EQ(writer.error(), syslog::error_t::NESTED_VALUE);
+	// Устанавливаем пропуск вложенного значения вовсе
+	settings.nested = syslog::nested_t::SKIP;
+	// Устанавливаем изменённые настройки записи событий
+	writer.settings(settings);
+	// Выполняем проверку успешности сборки записи пропуском текста сообщения
+	ASSERT_TRUE(writer.write(two, result));
+	// Выполняем проверку того, что вложенный текст сообщения в запись не попал
+	EXPECT_EQ(result.find("nested"), string::npos) << "запись: " << result;
+	// Дерево собираемого события с непредставимым опознавателем блока
+	abc::value_t three(abc::kind_t::MAP);
+	// Ставим номер описания записи в дерево события
+	three.place("/header/version") = abc::value_t(static_cast <uint64_t> (1));
+	// Ставим дату сообщения в дерево события
+	three.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+	// Ставим блок с опознавателем, пробел несущим, в дерево события
+	three.place(string("/structures/") + "bad id" + "/a") = abc::value_t(string("b"));
+	// Выполняем проверку успешности сборки записи пропуском непредставимого блока
+	ASSERT_TRUE(writer.write(three, result));
+	// Выполняем проверку того, что непредставимый блок в запись не попал
+	EXPECT_EQ(result.find("bad id"), string::npos) << "запись: " << result;
 }

@@ -64,6 +64,14 @@
 	#include <netinet/in.h>
 	#include <sys/socket.h>
 	/**
+	 * @note Заголовок настроек TCP нужен спросу ядра о годности времени до первой
+	 *       проверки живости. Без него `TCP_KEEPIDLE` невидим, помощник МОЛЧА уходит в
+	 *       ветвь «судить не о чем» и отвечает согласием - на Linux и FreeBSD это
+	 *       совпадало с правдой, а на Solaris разошлось, и проверка отказала, будучи
+	 *       зелёной по совпадению на трёх системах
+	 */
+	#include <netinet/tcp.h>
+	/**
 	 * @note Адрес сокета UNIX-домена нужен проверке столкновения имён: она занимает
 	 *       имя временного файла клиента ДО заведения узла, обычным сокетом системы,
 	 *       и без этого заголовка `struct sockaddr_un` не объявлен
@@ -5002,15 +5010,36 @@ TEST_F(IoFixture, IoIpcQueueTailDrainsWithoutSendsTest){
 	/**
 	 * Отдаём тело целиком, покуда очередь принимает
 	 */
+	// Признак того, что очередь наполнена до отказа
+	bool saturated = false;
+	/**
+	 * Отдаём тело, покуда очередь принимает
+	 *
+	 * @warning Насыщение меряется ОТКАЗОМ очереди, а не числом октет. Прежняя редакция
+	 *          требовала «принято больше 65536» - величина эта снята с вместимости канала
+	 *          у Linux, macOS и MS Windows, а всеобщей она не является: у Solaris канал
+	 *          вмещает 16384 октета, вчетверо меньше (замерено Гришей на стенде).
+	 *          Проверка с числом своей машины отказывала бы там, где движок работает верно
+	 */
 	for(size_t offset = 0; offset < body.size(); offset += 4096){
 		// Определяем размер очередной доли
 		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
 		// Выполняем отправку очередной доли
-		accepted += this->_io->send(channels[1], body.data() + offset, part);
+		const size_t taken = this->_io->send(channels[1], body.data() + offset, part);
+		// Складываем принятое очередью
+		accepted += taken;
+		// Если очередь приняла долю не целиком - она наполнена до отказа
+		if(taken < part){
+			// Отмечаем очередь наполненной
+			saturated = true;
+			// Прекращаем отдачу: хвост в очереди уже есть
+			break;
+		}
 	}
-	// Принятого обязано быть больше вместимости канала: иначе опыт не поставлен
-	ASSERT_GT(accepted, static_cast <size_t> (65536)) << "принято очередью " << accepted
-	 << ": хвоста в очереди не осталось, опыт не поставлен";
+	// Очередь обязана быть наполнена до отказа: иначе опыт не поставлен
+	ASSERT_TRUE(saturated) << "очередь приняла всё тело (" << accepted << " октет): хвоста в ней не осталось, опыт не поставлен";
+	// Принятое очередью обязано быть непустым
+	ASSERT_GT(accepted, static_cast <size_t> (0)) << "очередь не приняла ни октета";
 	/**
 	 * Крутим цикл, НЕ отправляя более ни октета
 	 */
@@ -5227,22 +5256,46 @@ TEST_F(IoFixture, IoStreamQueueTailDrainsWithoutSendsTest){
 	/**
 	 * Отдаём тело долями по 4 КБ РАЗОМ, не давая обороту цикла
 	 */
-	for(size_t offset = 0; offset < body.size(); offset += 4096){
-		// Определяем размер очередной доли
-		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
-		// Выполняем отправку очередной доли
-		accepted += this->_io->send(client, body.data() + offset, part);
-	}
+	// Признак того, что очередь наполнена до отказа
+	bool saturated = false;
 	/**
-	 * Принятого обязано быть много больше ужатого буфера: иначе опыт не поставлен
+	 * Отдаём тело долями по 4 КБ РАЗОМ, не давая обороту цикла
 	 *
-	 * @note Порог взят от БУФЕРА, а не от предела очереди: очередь потокового узла
-	 *       принимает 65536 октетов и ровно столько же отвечала первой редакции
-	 *       проверки, требовавшей «больше 65536». Хвост же меряется тем, что не
-	 *       вошло в ужатый до 2048 октетов буфер отправки
+	 * @warning Насыщение меряется ОТКАЗОМ очереди, а не числом октет. Прежние редакции
+	 *          сличали с порогом - сперва с пределом очереди (65536), потом с ужатым
+	 *          буфером отправки, - а всякое такое число снято с одной машины. Вместимости
+	 *          у систем разные, и проверка с чужим числом отказывает там, где движок
+	 *          работает верно
 	 */
-	ASSERT_GT(accepted, static_cast <size_t> (16384)) << "принято очередью " << accepted
-	 << ": хвоста в очереди не осталось, опыт не поставлен";
+	/**
+	 * Предел отдачи, оберегающий от бесконечной отдачи при неработающем отказе
+	 *
+	 * @warning Прежде отдача шла ровно по набранному телу в 256 КБ, и на Solaris очередь
+	 *          принимала его ЦЕЛИКОМ: насыщение не наступало, и проверка честно
+	 *          сообщала «опыт не поставлен» вместо молчаливого прохода. Буфер отправки
+	 *          у систем разный, и заранее набранного тела недостаточно ни при каком
+	 *          выбранном числе - оттого отдача идёт покуда очередь принимает, а телом
+	 *          служит одна и та же доля: содержимое здесь не сличается, только объёмы
+	 */
+	const size_t ceiling = (64 * 1024 * 1024);
+	/**
+	 * Отдаём долю за долей, покуда очередь принимает целиком
+	 */
+	while(accepted < ceiling){
+		// Выполняем отправку очередной доли
+		const size_t taken = this->_io->send(client, body.data(), 4096);
+		// Складываем принятое очередью
+		accepted += taken;
+		// Если очередь приняла долю не целиком - она наполнена до отказа
+		if(taken < 4096){
+			// Отмечаем очередь наполненной
+			saturated = true;
+			// Прекращаем отдачу: хвост в очереди уже есть
+			break;
+		}
+	}
+	// Очередь обязана быть наполнена до отказа: иначе опыт не поставлен
+	ASSERT_TRUE(saturated) << "очередь приняла " << accepted << " октет и не наполнилась: опыт не поставлен";
 	/**
 	 * Крутим цикл, НЕ отправляя более ни октета
 	 */
@@ -5391,12 +5444,31 @@ TEST_F(IoFixture, IoIpcDestroyWithPendingQueueTest){
 	/**
 	 * Наполняем очередь долями по 4 КБ, не давая обороту цикла
 	 */
-	for(size_t offset = 0; offset < body.size(); offset += 4096)
+	// Признак того, что очередь наполнена до отказа
+	bool saturated = false;
+	/**
+	 * Наполняем очередь, покуда она принимает
+	 *
+	 * @note Насыщение меряется отказом очереди, а не числом октет: вместимость канала у
+	 *       систем разная - 65536 у Linux, macOS и MS Windows против 16384 у Solaris
+	 */
+	for(size_t offset = 0; offset < body.size(); offset += 4096){
+		// Определяем размер очередной доли
+		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
 		// Выполняем отправку очередной доли
-		accepted += this->_io->send(channels[1], body.data() + offset, std::min(static_cast <size_t> (4096), body.size() - offset));
-	// Остаток в очереди обязан быть: иначе опыт не поставлен
-	ASSERT_GT(accepted, static_cast <size_t> (65536)) << "принято очередью " << accepted
-	 << ": остатка не осталось, опыт не поставлен";
+		const size_t taken = this->_io->send(channels[1], body.data() + offset, part);
+		// Складываем принятое очередью
+		accepted += taken;
+		// Если очередь приняла долю не целиком - она наполнена до отказа
+		if(taken < part){
+			// Отмечаем очередь наполненной
+			saturated = true;
+			// Прекращаем наполнение: остаток в очереди уже есть
+			break;
+		}
+	}
+	// Очередь обязана быть наполнена до отказа: иначе опыт не поставлен
+	ASSERT_TRUE(saturated) << "очередь приняла всё тело (" << accepted << " октет): остатка не осталось, опыт не поставлен";
 	/**
 	 * Уничтожаем ОБА конца, не дав опросу ни одного оборота
 	 *
@@ -5516,6 +5588,16 @@ TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
 	// Обмен по паре обязан состояться
 	ASSERT_EQ(received, probe) << "обмен по паре домена UNIX не состоялся: принято " << received;
 	/**
+	 * Имя у пары спрашивается только под MS Windows
+	 *
+	 * @note У систем POSIX пара домена UNIX заводится через `socketpair`, имени у неё нет
+	 *       и быть не должно: второй процесс получает описатель наследованием, встречаться
+	 *       по имени там незачем. Утверждение это о свойстве ИЗОБРАЖЕНИЯ, а не о договоре
+	 *       семейства, - оттого и обведено признаком системы. Расхождение нашёл Гриша
+	 *       замером на macOS/kqueue и Debian/epoll
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+	/**
 	 * У пары домена UNIX есть точка встречи для чужого процесса
 	 *
 	 * @details Цель узла отдаётся именем, и у MS Windows домен UNIX изображён именованным
@@ -5528,6 +5610,7 @@ TEST_F(IoFixture, IoUdsStreamPairExchangeTest){
 	 */
 	ASSERT_FALSE(this->_io->getTarget(pair[1]).empty())
 	 << "у пары домена UNIX пропала цель: встречать процессы по имени стало нечем";
+	#endif
 	// Уничтожаем оба конца пары
 	this->_io->destroy(pair[0]);
 	this->_io->destroy(pair[1]);
@@ -25587,6 +25670,226 @@ TEST_F(IoFixture, IoDataSourcePullContinuationTest){
  *       продолжение вытягивания не случится ни разу
  *
  */
+/**
+ * @brief Тест договора размеров буфера у КАНАЛЬНОГО узла
+ *
+ * @details Ветвь эта была исправлена 08.09.2026 - настройка буфера у клиента-канала
+ *          звала СОКЕТНЫЙ вызов на описателе канала и всегда отвечала отказом, - но
+ *          проверки на неё не было ни одной. Установлено ситом: щуп внутри
+ *          `getBufferSize` не дал НИ ОДНОЙ записи даже со снятой ветвью канала, то есть
+ *          набор не спрашивает размеров у канального узла вовсе.
+ *
+ *          Утверждается договор целиком: размер отдаётся положительным числом на обе
+ *          стороны, а настройка отвечает СОГЛАСИЕМ, не трогая ядра - размер канала
+ *          задаётся системой и сокетными настройками не меняется
+ *
+ * @note Проверка эта нужна не ради числа, а ради ветви: без неё всякая правка канального
+ *       пути размеров остаётся непроверенной, а сито - слепым
+ *
+ */
+TEST_F(IoFixture, IoIpcBufferSizeContractTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	/**
+	 * Фиксируем и запускаем оба конца канала
+	 */
+	for(uint8_t i = 0; i < 2; i++){
+		// Выполняем фиксацию настроек конца канала
+		ASSERT_TRUE(this->_io->commit(channels[i]));
+		// Выполняем запуск конца канала
+		ASSERT_TRUE(this->_io->launch(channels[i]));
+	}
+	/**
+	 * Спрашиваем размеры буфера у обоих концов канала
+	 */
+	for(uint8_t i = 0; i < 2; i++){
+		// Размер буфера канала на чтение
+		const size_t read = this->_io->getBufferSize(channels[i], awh::event::action_t::READ);
+		// Размер буфера канала на запись
+		const size_t write = this->_io->getBufferSize(channels[i], awh::event::action_t::WRITE);
+		// Размер на чтение обязан быть положительным
+		ASSERT_GT(read, static_cast <size_t> (0))
+		 << "конец канала " << static_cast <uint32_t> (i) << " отдал нулевой размер буфера чтения";
+		// Размер на запись обязан быть положительным
+		ASSERT_GT(write, static_cast <size_t> (0))
+		 << "конец канала " << static_cast <uint32_t> (i) << " отдал нулевой размер буфера записи";
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			/**
+			 * Число обязано быть СПРОШЕННЫМ у системы, а не поставленным нами
+			 *
+			 * @details Положительность числа сама по себе ничего не судит: движок отдавал
+			 *          здесь константу 0x1000 без всякого спроса, и утверждение «больше
+			 *          нуля» проходило при ней зелёным. Накопитель же канала заводится
+			 *          размером 65536, и всякое число, равное прежней подставке, означает,
+			 *          что спроса не случилось
+			 *
+			 * @note Утверждается не «равно 65536», а «больше подставки»: величину эту
+			 *       вправе выбрать заведение описателя, а вот вернуться к неспрошенному
+			 *       числу оно не вправе
+			 */
+			ASSERT_GT(read, static_cast <size_t> (0x1000))
+			 << "конец канала " << static_cast <uint32_t> (i) << " отдал размер буфера чтения " << read << ": число это не спрошено у системы, а поставлено движком";
+			ASSERT_GT(write, static_cast <size_t> (0x1000))
+			 << "конец канала " << static_cast <uint32_t> (i) << " отдал размер буфера записи " << write << ": число это не спрошено у системы, а поставлено движком";
+		#endif
+	}
+	/**
+	 * Настройка буфера канала обязана отвечать СОГЛАСИЕМ
+	 *
+	 * @note Согласие это не выдумка: размер буфера канала задаётся ядром при заведении и
+	 *       сокетными настройками не меняется, а просьба потребителя тем самым исполнена
+	 *       настолько, насколько исполнима. Отказ здесь означал бы сокетный вызов на
+	 *       описателе канала - ровно тот дефект, что и был исправлен
+	 */
+	for(uint8_t i = 0; i < 2; i++){
+		// Настройка буфера чтения обязана быть принята
+		ASSERT_TRUE(this->_io->setBufferSize(channels[i], awh::event::action_t::READ, 4096))
+		 << "настройка буфера чтения у конца канала " << static_cast <uint32_t> (i) << " отвергнута";
+		// Настройка буфера записи обязана быть принята
+		ASSERT_TRUE(this->_io->setBufferSize(channels[i], awh::event::action_t::WRITE, 4096))
+		 << "настройка буфера записи у конца канала " << static_cast <uint32_t> (i) << " отвергнута";
+	}
+	/**
+	 * Уничтожаем оба конца канала
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Уничтожаем очередной конец канала
+		this->_io->destroy(channels[i]);
+	// Сворачиваем движок
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Функция спроса ядра о годности времени до первой проверки живости
+ *
+ * @details Нижняя граница `TCP_KEEPIDLE` у систем СВОЯ, и признаком системы её не
+ *          выразить: Solaris 11.4 отвергает всё, что ниже десяти секунд, а OpenIndiana
+ *          - система той же родословной - принимает единицу (замерено на стендах
+ *          09.09.2026). Оттого проверка не берётся судить, какова граница, а спрашивает
+ *          ядро напрямую и требует от движка ТОГО ЖЕ ответа
+ *
+ * @param seconds время до первой проверки живости в секундах
+ * @return        истина, если ядро такое время принимает
+ *
+ */
+static bool keepIdleAccepted([[maybe_unused]] const int32_t seconds) noexcept {
+	/**
+	 * Если настройка времени до первой проверки живости системе известна
+	 */
+	#if defined(TCP_KEEPIDLE) && !defined(_WIN32) && !defined(_WIN64)
+		// Заводим отдельное гнездо, к проверяемому узлу отношения не имеющее
+		const int32_t sock = ::socket(AF_INET, SOCK_STREAM, 0);
+		// Если гнездо завести не удалось, судить не о чем
+		if(sock < 0)
+			// Выводим признак согласия: отказывать за ядро проверка не вправе
+			return true;
+		// Спрашиваем ядро о годности заданного времени
+		const bool result = (::setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &seconds, sizeof(seconds)) == 0);
+		// Закрываем заведённое гнездо
+		::close(sock);
+		// Выводим ответ ядра
+		return result;
+	/**
+	 * Если настройки нет вовсе
+	 */
+	#else
+		// Судить не о чем: движок задаёт время иным путём
+		return true;
+	#endif
+}
+/**
+ * @brief Функция признака того, что ядро вообще возможно спросить
+ *
+ * @details Помощник выше отвечает `true` в двух РАЗНЫХ случаях: «ядро согласно» и
+ *          «спросить нечем». Сличать ответ движка со вторым нельзя - выйдет
+ *          утверждение о том, чего не измеряли. Признак этот их и разделяет
+ *
+ * @return истина, если спрос ядра доступен
+ *
+ */
+static bool keepIdleQueryable() noexcept {
+	/**
+	 * Если настройка времени до первой проверки живости системе известна
+	 */
+	#if defined(TCP_KEEPIDLE) && !defined(_WIN32) && !defined(_WIN64)
+		// Спрос доступен
+		return true;
+	/**
+	 * Если настройки нет вовсе
+	 */
+	#else
+		// Спросить нечем
+		return false;
+	#endif
+}
+/**
+ * @brief Функция замера вместимости канала опытом
+ *
+ * @details Вместимость эта у каждой системы своя, и выбранным числом её не заменить:
+ *          65536 у Linux и macOS, **16384 у Solaris** (замерено на стенде). Прежде
+ *          здесь стояло число, снятое с рабочей машины, и проверка вставала намертво
+ *          внутри блокирующей записи там, где вместимость оказывалась меньше.
+ *
+ *          Заводится отдельный канал, пишется неблокирующим ходом до отказа, считается
+ *          принятое - и канал закрывается. К проверяемому каналу опыт этот отношения не
+ *          имеет вовсе
+ *
+ * @return вместимость канала в октетах либо нуль, если замерить не удалось
+ *
+ */
+static size_t pipeCapacity() noexcept {
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		/**
+		 * Вместимость канала там задаётся ПРИ ЗАВЕДЕНИИ описателя и равна 65536 обеим
+		 * сторонам: величина эта не системная, а наша собственная, и замерять её опытом
+		 * незачем
+		 */
+		return (64 * 1024);
+	/**
+	 * Для операционных систем POSIX
+	 */
+	#else
+		// Пара описателей заводимого канала
+		int32_t fds[2] = {-1, -1};
+		// Если канал завести не удалось, вместимость неизвестна
+		if(::pipe(fds) != 0)
+			// Выводим признак неудачи замера
+			return 0;
+		// Переводим пишущий конец в неблокирующий ход: иначе замер встанет сам
+		::fcntl(fds[1], F_SETFL, (::fcntl(fds[1], F_GETFL, 0) | O_NONBLOCK));
+		// Доля, которой ведётся замер
+		uint8_t portion[1024] = {0};
+		// Накопленная вместимость
+		size_t result = 0;
+		// Число октет, принятых очередной записью
+		ssize_t taken = 0;
+		/**
+		 * Пишем в канал, покуда он принимает
+		 */
+		while((taken = ::write(fds[1], portion, sizeof(portion))) > 0)
+			// Складываем принятое каналом
+			result += static_cast <size_t> (taken);
+		// Закрываем оба конца заведённого канала
+		::close(fds[0]);
+		::close(fds[1]);
+		// Выводим замеренную вместимость
+		return result;
+	#endif
+}
 TEST_F(IoFixture, IoDataSourcePullIpcTest){
 	// Выполняем инициализацию сетевого движка
 	ASSERT_TRUE(this->_io->initialize());
@@ -25601,14 +25904,36 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
 	/**
 	 * Тело, отдаваемое источником малыми долями
 	 *
-	 * @warning Объём взят НИЖЕ буфера канала намеренно: отдача по каналу свыше 65536
-	 *          октетов встаёт намертво и не возобновляется - находка эта записана
+	 * @warning Объём взят НИЖЕ буфера канала намеренно: отдача по каналу сверх его
+	 *          вместимости встаёт намертво и не возобновляется - находка эта записана
 	 *          отдельно, и к вытягиванию отношения не имеет. Сличение доказало это
 	 *          числом: обычная отправка того же объёма встаёт ровно там же
+	 *
+	 * @warning Объём этот ЗАМЕРЯЕТСЯ, а не выбирается. Прежде здесь стояло 48 КБ - от
+	 *          вместимости 65536, какова она у Linux и macOS. У Solaris вместимость
+	 *          вчетверо меньше, и проверка вставала намертво внутри блокирующей `write`:
+	 *          набор шёл час и не двигался, образец стека показал остановку в записи по
+	 *          описателю канала. Вычерпывать канал было некому - оба конца живут в одном
+	 *          цикле, а цикл стоял в записи.
+	 *
+	 *          Первая правка заменила одно число другим (12 КБ, «ниже вместимости у самой
+	 *          тесной из ИЗВЕСТНЫХ систем»), и формулировка эта ломается на первой же
+	 *          неизвестной - впереди DragonFly, вместимости которой не знает никто.
+	 *          Оттого берётся половина ЗАМЕРЕННОЙ вместимости, а доля считается от неё
+	 *          так, чтобы обращений к источнику вышло около двенадцати при требуемых
+	 *          свыше десяти
 	 */
+	// Замеряем вместимость канала опытом
+	const size_t capacity = ::pipeCapacity();
+	// Замер обязан удаться: без него опыт не поставить
+	ASSERT_GT(capacity, static_cast <size_t> (0)) << "вместимость канала замерить не удалось";
+	// Берём половину замеренной вместимости
+	const size_t volume = (capacity / 2);
+	// Доля отдачи, дающая около двенадцати обращений к источнику
+	const size_t portion = ((volume / 12) > 0 ? (volume / 12) : 1);
 	std::string body;
 	// Наполняем тело узнаваемым содержимым
-	while(body.size() < (48 * 1024))
+	while(body.size() < volume)
 		// Дописываем к телу очередной кусок
 		body.append("0123456789ABCDEF");
 	// Принятое встречным концом тело
@@ -25631,7 +25956,7 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
 	// Выполняем запуск принимающего конца канала
 	ASSERT_TRUE(this->_io->launch(channels[0]));
 	// Устанавливаем источник данных отдающего конца канала
-	this->_io->on(channels[1], static_cast <awh::engine::callback::source_t> ([&body, &offset, &requests]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
+	this->_io->on(channels[1], static_cast <awh::engine::callback::source_t> ([&body, &offset, &requests, portion]([[maybe_unused]] const awh::event::id_t eid, const uint8_t ** buffer, size_t & size) noexcept -> bool {
 		// Учитываем обращение движка к источнику
 		requests++;
 		// Определяем сколько тела осталось отдать
@@ -25644,7 +25969,7 @@ TEST_F(IoFixture, IoDataSourcePullIpcTest){
 			return false;
 		}
 		// Определяем размер отдаваемой доли: не крупнее 1 КБ, не крупнее остатка и не крупнее запрошенного
-		const size_t part = std::min(rest, std::min(size, static_cast <size_t> (1024)));
+		const size_t part = std::min(rest, std::min(size, portion));
 		// Отдаём движку указатель прямо в своё тело, без копирования
 		(* buffer) = reinterpret_cast <const uint8_t *> (body.data() + offset);
 		// Сдвигаем смещение отданного тела
@@ -26581,8 +26906,39 @@ TEST_F(IoFixture, IoDisconnectTest){
 		 *
 		 * @note Ставится оно ПОСЛЕ фиксации: до неё описателя ещё нет, а настройка эта
 		 *       уходит ядру по описателю
+		 *
+		 * @warning Сроки берутся ПО НИЖНЕЙ ГРАНИЦЕ самой строгой из систем. Прежде здесь
+		 *          стояла единица, и на Solaris проверка отказывала: замерено щупом на
+		 *          стенде 09.09.2026 - `TCP_KEEPIDLE` там отвергается с `EINVAL` при
+		 *          всяком значении МЕНЬШЕ 10 секунд (1, 2, 5, 9 отвергнуты; 10 и выше
+		 *          приняты), тогда как `TCP_KEEPCNT` и `TCP_KEEPINTVL` берут и единицу.
+		 *          Движок при этом отказал ЧЕСТНО, и это верно по тому же доводу, что
+		 *          записан у предела жизни: солгать согласием либо молча подменить
+		 *          заданное ему не позволено
 		 */
-		ASSERT_TRUE(this->_io->keepAlive(events[0], 3, 1, 1));
+		/**
+		 * Срок в десять секунд принимают ВСЕ известные системы
+		 */
+		ASSERT_TRUE(this->_io->keepAlive(events[0], 3, 10, 1));
+		/**
+		 * Ответ движка на срок в одну секунду обязан совпасть с ответом ЯДРА
+		 *
+		 * @warning Прежде здесь стояло разделение по признаку систем Sun: «Solaris
+		 *          отвергает, прочие принимают». Разделение это НЕВЕРНО - системы Sun
+		 *          здесь расходятся между собой. Замерено на стендах 09.09.2026:
+		 *          Solaris 11.4 отвергает `TCP_KEEPIDLE` ниже десяти секунд, а
+		 *          **OpenIndiana принимает единицу**. Проверка с признаком системы
+		 *          потребовала бы у illumos отказа там, где ядро согласно
+		 *
+		 * @note Оттого утверждается не поведение системы, а СОГЛАСИЕ движка с нею:
+		 *       ядро спрашивается напрямую по отдельному гнезду, и движок обязан
+		 *       ответить то же самое. Движку не позволено ни солгать согласием, ни
+		 *       отказать там, где ядро согласно
+		 */
+		if(::keepIdleQueryable())
+			// Ответ движка обязан совпасть с ответом ядра
+			ASSERT_EQ(this->_io->keepAlive(events[0], 3, 1, 1), ::keepIdleAccepted(1))
+			 << "ответ движка на срок в одну секунду разошёлся с ответом ядра";
 		// Выполняем подключение события клиента
 		ASSERT_TRUE(this->_io->connect(events[0]));
 		// Запускаем событие клиента
@@ -26798,7 +27154,7 @@ TEST_F(IoFixture, IoDatagramSettingsTest){
 	 */
 	if(this->_io->setMaximumTransmissionUnit(server, 1400))
 		// Опрос обязан отвечать установленным размером MTU
-		ASSERT_EQ(this->_io->getMaximumTransmissionUnit(server), static_cast <uint16_t> (1400));
+		ASSERT_EQ(this->_io->getMaximumTransmissionUnit(server), static_cast <uint32_t> (1400));
 	/**
 	 * Если размер MTU система ставить не дала - опрос обязан отвечать размером
 	 * устройства, а не пустотой
@@ -26806,7 +27162,7 @@ TEST_F(IoFixture, IoDatagramSettingsTest){
 	 * @note Отказ здесь свойство системы, а не движка: смена MTU устройства требует
 	 *       прав, и под обычным пользователем она законно отвергается
 	 */
-	else ASSERT_GT(this->_io->getMaximumTransmissionUnit(server), static_cast <uint16_t> (0));
+	else ASSERT_GT(this->_io->getMaximumTransmissionUnit(server), static_cast <uint32_t> (0));
 	// Размер отслеживаемого файла у сетевого узла нулевой: файла ему не назначено
 	ASSERT_EQ(this->_io->size(server), static_cast <size_t> (0));
 	// Уничтожаем событие сервера
@@ -29220,6 +29576,36 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 	 * Выполняем перебор пар
 	 */
 	for(const auto & rank : ranks){
+		/**
+		 * Нулевой предел жизни принимают НЕ ВСЕ системы
+		 *
+		 * @details Замерено щупом 08.09.2026: `setsockopt(IP_TTL, 0)` у macOS проходит,
+		 *          у Linux отвергается с `EINVAL`. Замерено там же 09.09.2026: **Solaris
+		 *          отвергает его тем же `EINVAL`**, и разделение по одному лишь Linux
+		 *          было поэтому уже, чем свойство. Разряд «петля» выражается пределом
+		 *          жизни 0, и у отвергающих систем выразить его этим путём нельзя вовсе -
+		 *          пакет с нулевым пределом ядро отправлять отказывается
+		 *
+		 * @warning Утверждение здесь не снято, а РАЗВЁРНУТО по системам: там, где ядро
+		 *          нуль принимает, разряд обязан стать «петлёй»; там, где отвергает,
+		 *          отказ обязан быть ЧЕСТНЫМ - движку не позволено ни солгать согласием,
+		 *          ни подменить нуль единицей. Молчаливая подмена и была бы дефектом
+		 */
+		if(rank.first == 0){
+			/**
+			 * Для систем, отвергающих нулевой предел жизни: Linux и системы Sun
+			 */
+			#if defined(__linux__) || defined(__sun) || defined(__sun__)
+				// Ядро обязано отказать, а движок - доложить об отказе
+				ASSERT_FALSE(this->_io->setCountHops(events[1], rank.first))
+				 << "нуль принят, хотя ядро системы его отвергает: движок солгал согласием";
+				// Разряд узла обязан остаться прежним, а не стать «петлёй»
+				ASSERT_NE(this->_io->getHops(events[1]), rank.second)
+				 << "отказ ядра не помешал узлу назваться петлёй";
+				// Переходим к следующей паре
+				continue;
+			#endif
+		}
 		// Устанавливаем предел жизни точным числом
 		ASSERT_TRUE(this->_io->setCountHops(events[1], rank.first))
 		 << "число " << static_cast <uint32_t> (rank.first) << " не принято";
@@ -29474,72 +29860,445 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 #endif
 
 
+
 #if defined(_WIN32) || defined(_WIN64)
-	// ЩУП: узлы клиента и сервера домена UNIX всеми тремя видами
-	TEST_F(IoFixture, DISABLED_IoUdsNodeProbeTest){
+	/**
+	 * @brief Проверка обмена между сервером и клиентом домена UNIX видом SEQPACKET
+	 *
+	 * @details Домен UNIX несёт у MS Windows один лишь поток, и вид, сохраняющий границы,
+	 *          изображается именованным каналом: сервер заводит слушающий конец по имени,
+	 *          выведенному из пути, а клиент по тому же пути к нему подключается. Путь у
+	 *          обоих один и тот же на всех системах - тем API и сходится.
+	 *
+	 * @note Утверждается весь ход: заведение, слушание, подключение, приём подключения и
+	 *       доставка тела. Прежде фиксация такого узла отвечала отказом
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsDatagramServerTest){
+		// Принятое сервером тело
+		std::string received;
+		// Выполняем инициализацию сетевого движка
 		ASSERT_TRUE(this->_io->initialize());
-		const std::vector <std::pair <const char *, awh::event::type_t>> kinds = {
-			{"STREAM", awh::event::type_t::STREAM},
-			{"DATAGRAM", awh::event::type_t::DATAGRAM},
-			{"SEQPACKET", awh::event::type_t::SEQPACKET}
-		};
-		for(const auto & [title, type] : kinds){
-			const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, type);
-			const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, type);
-			const bool address = ((sid > 0) && this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("probe.sock")));
-			const bool target = ((cid > 0) && this->_io->setTarget(cid, ::uds("probe.sock")));
-			const bool scommit = (address && this->_io->commit(sid));
-			const bool ccommit = (target && this->_io->commit(cid));
-			::printf("ЩУП %s: сервер=%llu клиент=%llu адрес=%d цель=%d фиксация сервера=%d фиксация клиента=%d\n",
-			 title, static_cast <unsigned long long> (sid), static_cast <unsigned long long> (cid),
-			 static_cast <int32_t> (address), static_cast <int32_t> (target),
-			 static_cast <int32_t> (scommit), static_cast <int32_t> (ccommit));
-			if(sid > 0) this->_io->destroy(sid);
-			if(cid > 0) this->_io->destroy(cid);
+		// Заводим событие сервера домена UNIX дейтаграммного вида
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+		// Заводим событие клиента домена UNIX дейтаграммного вида
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем путь, каким сервер и клиент встречаются
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("datagram.sock")));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+			// Выставляем принятому узлу неблокирующий обмен
+			EXPECT_TRUE(this->_io->setOptions(pid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			// Устанавливаем функцию обратного вызова на чтение данных принятым узлом
+			this->_io->on(pid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Дописываем принятое к уже полученному телу
+				received.append(reinterpret_cast <const char *> (data), size);
+			});
+		}));
+		// Выставляем серверу неблокирующий обмен и поднимаем его
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(sid)) << "узел сервера домена UNIX не зафиксирован";
+		ASSERT_TRUE(this->_io->listen(sid, 10)) << "узел сервера домена UNIX не встал на слушание";
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Устанавливаем клиенту путь сервера и поднимаем его
+		ASSERT_TRUE(this->_io->setTarget(cid, ::uds("datagram.sock")));
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(cid)) << "узел клиента домена UNIX не зафиксирован";
+		ASSERT_TRUE(this->_io->connect(cid)) << "узел клиента домена UNIX не подключился";
+		// Тело, каким проверяется обмен
+		const std::string body(1024, 'D');
+		// Отдаём тело серверу
+		ASSERT_EQ(this->_io->send(cid, body.data(), body.size()), body.size()) << "тело очередью принято не целиком";
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Крутим цикл, покуда тело не дойдёт до сервера
+		 */
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Тело обязано дойти до сервера целиком
+		ASSERT_EQ(received.size(), body.size()) << "сервер домена UNIX принял " << received.size() << " из " << body.size();
+		// Принятое обязано совпасть с отданным
+		ASSERT_EQ(received, body) << "принятое сервером тело не совпало с отданным";
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	TEST_F(IoFixture, IoUdsSeqpacketServerTest){
+		// Принятое сервером тело
+		std::string received;
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим событие сервера домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Заводим событие клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем путь, каким сервер и клиент встречаются
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("seqpacket.sock")));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+			// Выставляем принятому узлу неблокирующий обмен
+			EXPECT_TRUE(this->_io->setOptions(pid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			// Устанавливаем функцию обратного вызова на чтение данных принятым узлом
+			this->_io->on(pid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				// Дописываем принятое к уже полученному телу
+				received.append(reinterpret_cast <const char *> (data), size);
+			});
+		}));
+		// Выставляем серверу неблокирующий обмен и поднимаем его
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(sid)) << "узел сервера домена UNIX не зафиксирован";
+		ASSERT_TRUE(this->_io->listen(sid, 10)) << "узел сервера домена UNIX не встал на слушание";
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Устанавливаем клиенту путь сервера и поднимаем его
+		ASSERT_TRUE(this->_io->setTarget(cid, ::uds("seqpacket.sock")));
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(cid)) << "узел клиента домена UNIX не зафиксирован";
+		ASSERT_TRUE(this->_io->connect(cid)) << "узел клиента домена UNIX не подключился";
+		// Тело, каким проверяется обмен
+		const std::string body(1024, 'Q');
+		// Отдаём тело серверу
+		ASSERT_EQ(this->_io->send(cid, body.data(), body.size()), body.size()) << "тело очередью принято не целиком";
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Крутим цикл, покуда тело не дойдёт до сервера
+		 */
+		while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Тело обязано дойти до сервера целиком
+		ASSERT_EQ(received.size(), body.size()) << "сервер домена UNIX принял " << received.size() << " из " << body.size();
+		// Принятое обязано совпасть с отданным
+		ASSERT_EQ(received, body) << "принятое сервером тело не совпало с отданным";
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
+
+
+/**
+ * @brief Проверка возврата неотданного остатка очереди при сносе узла
+ *
+ * @details Отданное движку, но не ушедшее в сеть, принадлежит потребителю: снос узла
+ *          обязан вернуть остаток подпиской `spool_t`, а не выбросить его молча.
+ *
+ *          Место возврата у всех движков одно - сам снос узла: он общий конец всех путей
+ *          (обрыв на записи, обрыв на чтении, ошибка сокета, снос по воле потребителя), а
+ *          признаки обрыва у систем разные. Разложенный по ветвям возврат забывается в
+ *          очередной из них - установлено Гришей замером на kqueue и epoll 08.09.2026.
+ *
+ * @note Утверждается ЧИСЛО возвращённых октет против числа принятых очередью: сличение по
+ *       факту вызова отклика пропустило бы возврат неполного остатка
+ *
+ */
+TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Создаём пару обмена именованным каналом
+	const auto & channels = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::SEQPACKET);
+	/**
+	 * Проверяем, что оба идентификатора пары созданы успешно
+	 */
+	for(uint8_t i = 0; i < 2; i++)
+		// Проверяем, что идентификатор события больше нуля
+		ASSERT_GT(channels[i], 0);
+	// Возвращённое подпиской число октет
+	size_t returned = 0;
+	// Устанавливаем функцию обратного вызова на возврат неотданного остатка
+	this->_io->on(channels[1], static_cast <awh::engine::callback::spool_t> ([&returned]([[maybe_unused]] const awh::event::id_t nid, [[maybe_unused]] const awh::event::send_error_t code, [[maybe_unused]] const uint8_t * buffer, const size_t size) noexcept -> void {
+		// Складываем возвращённое
+		returned += size;
+	}));
+	// Выставляем обоим концам канала неблокирующий ввод-вывод
+	ASSERT_TRUE(this->_io->setOptions(channels[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	ASSERT_TRUE(this->_io->setOptions(channels[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+	// Фиксируем и запускаем оба конца канала
+	ASSERT_TRUE(this->_io->commit(channels[0]));
+	ASSERT_TRUE(this->_io->launch(channels[0]));
+	ASSERT_TRUE(this->_io->commit(channels[1]));
+	ASSERT_TRUE(this->_io->launch(channels[1]));
+	// Тело переноса: заведомо крупнее вместимости канала
+	std::string body;
+	// Наполняем тело узнаваемым содержимым
+	while(body.size() < (256 * 1024))
+		// Дописываем к телу очередной кусок
+		body.append("0123456789ABCDEF");
+	// Принятое очередью число октет
+	size_t accepted = 0;
+	/**
+	 * Отдаём тело долями, не давая обороту цикла: что не ушло - осядет в очереди
+	 */
+	// Признак того, что очередь наполнена до отказа
+	bool saturated = false;
+	/**
+	 * Отдаём тело, покуда очередь принимает
+	 *
+	 * @note Насыщение меряется отказом очереди, а не числом октет: вместимость канала у
+	 *       систем разная - 65536 у Linux, macOS и MS Windows против 16384 у Solaris
+	 */
+	for(size_t offset = 0; offset < body.size(); offset += 4096){
+		// Определяем размер очередной доли
+		const size_t part = std::min(static_cast <size_t> (4096), body.size() - offset);
+		// Выполняем отправку очередной доли
+		const size_t taken = this->_io->send(channels[1], body.data() + offset, part);
+		// Складываем принятое очередью
+		accepted += taken;
+		// Если очередь приняла долю не целиком - она наполнена до отказа
+		if(taken < part){
+			// Отмечаем очередь наполненной
+			saturated = true;
+			// Прекращаем отдачу: остаток в очереди уже есть
+			break;
 		}
+	}
+	// Очередь обязана быть наполнена до отказа: иначе опыт не поставлен
+	ASSERT_TRUE(saturated) << "очередь приняла всё тело (" << accepted << " октет): остатка в ней нет, опыт не поставлен";
+	// Сносим узел, не дав очереди уйти
+	ASSERT_TRUE(this->_io->destroy(channels[1]));
+	// Возврат обязан состояться: молчаливая потеря отданного движку недопустима
+	ASSERT_GT(returned, static_cast <size_t> (0)) << "снос узла не вернул ни октета из " << accepted << " принятых очередью";
+	// Сносим оставшийся конец пары
+	this->_io->destroy(channels[0]);
+	// Сворачиваем движок
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Проверка занятости пути домена UNIX вторым сервером
+	 *
+	 * @details У сокета домена UNIX второй сервер на том же пути получает отказ занятости:
+	 *          узел файловой системы уже занят первым. Изображение обязано отвечать тем же
+	 *          - иначе два сервера сядут на одно имя, и система разведёт подключающихся
+	 *          между ними как придётся: клиент, пришедший к первому, попадёт ко второму.
+	 *
+	 * @note Утверждается отказ ВТОРОГО при живом первом: занятость снимается сносом узла,
+	 *       и после него путь обязан освободиться
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsServerPathCollisionTest){
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим первый сервер домена UNIX
+		const awh::event::id_t first = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Заводим второй сервер домена UNIX
+		const awh::event::id_t second = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(first, 0u);
+		ASSERT_GT(second, 0u);
+		// Устанавливаем обоим один и тот же путь
+		ASSERT_TRUE(this->_io->setAddress(first, awh::event::address_t::UDS, ::uds("collision.sock")));
+		ASSERT_TRUE(this->_io->setAddress(second, awh::event::address_t::UDS, ::uds("collision.sock")));
+		// Выставляем обоим неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(first, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->setOptions(second, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Первый сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(first)) << "первый сервер домена UNIX не зафиксирован";
+		// Второй сервер на занятом пути обязан получить отказ
+		ASSERT_FALSE(this->_io->commit(second)) << "второй сервер сел на занятый путь: подключающихся разведёт между ними как придётся";
+		// Сносим первый сервер, освобождая путь
+		ASSERT_TRUE(this->_io->destroy(first));
+		/**
+		 * Путь обязан освободиться сносом узла
+		 *
+		 * @details Занятость держат ДВА описателя: опорный конец, стоящий на имени, и
+		 *          свободный экземпляр, заведённый наперёд под приём. Описатель второго
+		 *          движку не отдавался и в учёте подписок не числится - закрыть его больше
+		 *          некому, и останься он жить, имя оставалось бы занятым до конца работы
+		 *          приложения
+		 *
+		 * @note Утверждается это заведением ТРЕТЬЕГО сервера на том же пути: заведение
+		 *       удаётся лишь тогда, когда прежний освободил имя целиком
+		 */
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 *
+		 * @note Снос лишь помечает узел и откладывает разбор на оборот цикла - у сокета
+		 *       ровно так же, и путь его освобождается тем же порядком. Требовать
+		 *       освобождения ДО оборота значило бы требовать иного устройства сноса
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		const awh::event::id_t third = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(third, 0u);
+		// Устанавливаем ему тот же путь
+		ASSERT_TRUE(this->_io->setAddress(third, awh::event::address_t::UDS, ::uds("collision.sock")));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(third, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Освобождённый путь обязан приниматься
+		ASSERT_TRUE(this->_io->commit(third)) << "путь не освободился сносом узла: имя канала осталось занятым";
+		// Сносим третий сервер
+		ASSERT_TRUE(this->_io->destroy(third));
+		// Сворачиваем движок
 		ASSERT_TRUE(this->_io->deinitialize());
 	}
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
-	// ЩУП: обмен между сервером и клиентом домена UNIX недостающими видами
-	TEST_F(IoFixture, DISABLED_IoUdsServerProbeTest){
-		const std::vector <std::pair <const char *, awh::event::type_t>> kinds = {
-			{"SEQPACKET", awh::event::type_t::SEQPACKET},
-			{"DATAGRAM", awh::event::type_t::DATAGRAM}
+	/**
+	 * @brief Проверка однозначности выведения имени канала из пути домена UNIX
+	 *
+	 * @details Изображение выводит имя канала из пути, и выведение это обязано быть
+	 *          однозначным: разным путям - разные имена. Иначе два несвязанных сервера
+	 *          сходятся в одно имя, и второй получает отказ занятости по пути, никем не
+	 *          занятому, а сойдись они молча - клиент первого попадал бы ко второму.
+	 *
+	 * @note Утверждаются ДВА способа свести пути в одно имя: разделитель, обращаемый в
+	 *       тот же знак, каким его и записывают (`inject/case.sock` против
+	 *       `inject_case.sock`), и различие регистра, какого пространство имён каналов
+	 *       не различает (`Case.sock` против `case.sock`), тогда как путь домена UNIX
+	 *       различает его всегда
+	 *
+	 */
+	/**
+	 * @brief Проверка молчания журнала при обычной жизни сервера домена UNIX
+	 *
+	 * @details Изображение стоит на именованном канале, а движок местами спрашивает у
+	 *          дескриптора накопленный код отказа - обращением, годным одному лишь
+	 *          сокету. Каналу система отвечает `WSAENOTSOCK`, и ответ этот приходит
+	 *          значением `-1`: проверка вида `getError(fd) == 0` каналу не выполняется
+	 *          ВОВСЕ, и ветка под ней пропускается целиком. Сносу узла это стоило снятия
+	 *          подписки на чтение.
+	 *
+	 * @note Утверждается отсутствие записей уровня `CRITICAL` за полный оборот жизни
+	 *       узла: заведение, фиксация, обороты цикла и снос. Отказ обращения виден
+	 *       журналом, а пропущенная под ним ветка - нет, и ловится она тем же признаком
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsServerLifecycleIsQuietTest){
+		// Собранные записи журнала уровня отказа
+		std::vector <std::string> failures;
+		// Выполняем подписку на записи журнала
+		this->_log->subscribe([&failures](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+			// Если запись журнала является отказом
+			if(flag == awh::log_t::flag_t::CRITICAL)
+				// Запоминаем запись журнала
+				failures.emplace_back(text);
+		});
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Устанавливаем серверу путь
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("quiet.sock")));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		/**
+		 * Даём циклу обороты
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сносим сервер
+		ASSERT_TRUE(this->_io->destroy(sid));
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+		// Снимаем подписку на записи журнала
+		this->_log->subscribe(nullptr);
+		// Журнал обязан молчать: отказ обращения выдаёт пропущенную под ним ветку
+		ASSERT_TRUE(failures.empty()) << "обычная жизнь сервера домена UNIX дала " << failures.size() << " отказ(ов), первый: " << (failures.empty() ? std::string() : failures.front());
+	}
+
+	TEST_F(IoFixture, IoUdsPathMappingIsInjectiveTest){
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Пары путей, сходившихся прежде в одно имя канала
+		const std::pair <std::string, std::string> pairs[2] = {
+			{"inject/case.sock", "inject_case.sock"},
+			{"Case.sock", "case.sock"}
 		};
-		for(const auto & [title, type] : kinds){
-			std::string received;
-			ASSERT_TRUE(this->_io->initialize());
-			const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, type);
-			const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, type);
-			::printf("ЩУП %s: сервер=%llu клиент=%llu\n", title, static_cast <unsigned long long> (sid), static_cast <unsigned long long> (cid));
-			const bool address = this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("probe2.sock"));
-			this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &received](const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
-				::printf("ЩУП: подключение принято, узел=%llu\n", static_cast <unsigned long long> (pid));
-				this->_io->setOptions(pid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
-				this->_io->on(pid, [&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-					received.append(reinterpret_cast <const char *> (data), size);
-				});
-			}));
-			const bool sopt = this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
-			const bool scommit = this->_io->commit(sid);
-			const bool slisten = this->_io->listen(sid, 10);
-			const bool slaunch = this->_io->launch(sid);
-			const bool target = this->_io->setTarget(cid, ::uds("probe2.sock"));
-			const bool copt = this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
-			const bool ccommit = this->_io->commit(cid);
-			const bool cconnect = this->_io->connect(cid);
-			const bool claunch = this->_io->launch(cid);
-			::printf("ЩУП %s: адрес=%d опции=%d фиксация=%d слушание=%d запуск=%d | цель=%d опции=%d фиксация=%d подключение=%d запуск=%d\n",
-			 title, address, sopt, scommit, slisten, slaunch, target, copt, ccommit, cconnect, claunch);
-			const std::string body(1024, 'Q');
-			const size_t sent = this->_io->send(cid, body.data(), body.size());
-			const auto start = std::chrono::steady_clock::now();
-			while((received.size() < body.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 3))
+		/**
+		 * Переходим по всем парам путей
+		 */
+		for(auto & item : pairs){
+			// Заводим первый сервер домена UNIX
+			const awh::event::id_t first = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+			// Заводим второй сервер домена UNIX
+			const awh::event::id_t second = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+			// Проверяем, что оба события заведены
+			ASSERT_GT(first, 0u);
+			ASSERT_GT(second, 0u);
+			// Устанавливаем серверам разные пути
+			ASSERT_TRUE(this->_io->setAddress(first, awh::event::address_t::UDS, ::uds(item.first)));
+			ASSERT_TRUE(this->_io->setAddress(second, awh::event::address_t::UDS, ::uds(item.second)));
+			// Выставляем обоим неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(first, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			ASSERT_TRUE(this->_io->setOptions(second, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			// Первый сервер обязан подняться
+			ASSERT_TRUE(this->_io->commit(first)) << "сервер пути [" << item.first << "] не зафиксирован";
+			// Второй сервер на СВОБОДНОМ пути обязан подняться тоже
+			ASSERT_TRUE(this->_io->commit(second)) << "путь [" << item.second << "] признан занятым путём [" << item.first << "]: выведение имени канала неоднозначно";
+			// Сносим оба сервера
+			ASSERT_TRUE(this->_io->destroy(first));
+			ASSERT_TRUE(this->_io->destroy(second));
+			/**
+			 * Даём циклу обороты: окончательное уничтожение узла отложено
+			 */
+			for(uint8_t i = 0; i < 5; i++)
+				// Выполняем оборот цикла событий
 				this->_io->poll(10);
-			::printf("ЩУП %s: отдано=%zu принято=%zu\n", title, sent, received.size());
-			ASSERT_TRUE(this->_io->deinitialize());
 		}
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
+
+#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Проверка отказа клиента домена UNIX на пути, где сервера нет
+	 *
+	 * @details У сокета обращение к несуществующему узлу отвечает отказом немедленно.
+	 *          Изображение обязано отвечать так же: свободного экземпляра под именем нет
+	 *          ДВАЖДЫ - когда сервера нет вовсе и когда он есть, но между принятым
+	 *          подключением и подачей следующего ожидания, - и система отвечает на оба
+	 *          случая одинаково. Различает их наличие опорного конца сервера.
+	 *
+	 * @note Утверждается СРОК, а не один лишь отказ: до правки заходы на открытие
+	 *       выгорали впустую 1167 мс, и отказ приходил верный, но дорогой
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsClientNoServerTest){
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем путь, по которому сервера нет
+		ASSERT_TRUE(this->_io->setTarget(cid, ::uds("nobody.sock")));
+		// Выставляем клиенту неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Запоминаем миг начала опыта
+		const auto start = std::chrono::steady_clock::now();
+		// Фиксация обязана отказать: сервера по этому пути нет
+		ASSERT_FALSE(this->_io->commit(cid)) << "клиент подключился к пути, на котором сервера нет";
+		// Считаем потраченное время
+		const auto spent = std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count();
+		// Отказ обязан прийти сразу, а не выгоранием заходов
+		ASSERT_LT(spent, 200) << "отказ пришёл за " << spent << " мс: заходы на открытие выгорают впустую";
+		// Сносим узел клиента
+		this->_io->destroy(cid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
 	}
 #endif

@@ -2609,6 +2609,18 @@ TEST(CodecTomlWriter, EveryLanguageIntegerRecordIsWritten) {
 TEST(CodecTomlWriter, TheFirstCauseIsNotOverwrittenByItsConsequence) {
 	// Объект записи текста настроек
 	toml::writer_t writer(::logger());
+	/**
+	 * Настройки записи с правилом отказа при негодной кодировке
+	 *
+	 * @note Правило выбирается ЯВНО, ибо предмет проверки есть переживание первопричины
+	 *       отказом, а умолчанием положена замена, отказа не дающая вовсе. Взять здесь
+	 *       иную подачу, отказ дающую, значило бы подменить предмет проверки
+	 */
+	toml::writer_t::settings_t settings;
+	// Выполняем выбор правила отказа записи
+	settings.malformed = toml::malformed_t::REFUSE;
+	// Выполняем установку настроек записи
+	writer.settings(settings);
 	// Выполняем запись имени пары
 	ASSERT_TRUE(writer.key("k"));
 	// Выполняем проверку отказа записи значения с негодной последовательностью

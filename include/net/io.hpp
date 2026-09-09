@@ -1344,7 +1344,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				uint16_t getMaximumTransmissionUnit(const event::id_t id) const noexcept;
+				uint32_t getMaximumTransmissionUnit(const event::id_t id) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод установки MTU сетевого интерфейса

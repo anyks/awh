@@ -52,6 +52,14 @@
 	#include <unistd.h>
 	#include <sys/time.h>
 	#include <sys/socket.h>
+	/**
+	 * @note Заголовок работы с памятью подключается ЯВНО: `FD_ZERO` у систем Sun
+	 *       разворачивается в обращение `memset`, тогда как у стандартной библиотеки
+	 *       GNU и у macOS - в собственный цикл. Прежде заголовок этот подключался
+	 *       лишь под MS Windows, и сборка проверок на Solaris встала на `FD_ZERO`
+	 *       внутри `waitReadable`
+	 */
+	#include <cstring>
 
 	/**
 	 * @brief Функция закрытия гнезда

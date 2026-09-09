@@ -484,6 +484,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Метод получения MTU сетевого интерфейса
 			 *
+			 * @warning Тип ответа ИМЕННО `uint32_t`, а не `uint16_t`: установщик берёт
+			 *          `uint32_t`, и опрос обязан выражать всё, что установщик принимает.
+			 *          MTU петли у Linux равен 65536 - в 16 разрядов он не помещается и
+			 *          обращался в НОЛЬ, отчего опрос отдавал пустоту вместо размера
+			 *          устройства (замерено 08.09.2026 на Debian 12: lo=65536, ens18=1500)
+			 *
 			 * @param id идентификатор события
 			 * @return   MTU сетевого интерфейса
 			 *
@@ -494,7 +500,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			virtual uint16_t getMaximumTransmissionUnit(const event::id_t id) const noexcept = 0;
+			virtual uint32_t getMaximumTransmissionUnit(const event::id_t id) const noexcept = 0;
 			/**
 			 * \~russian
 			 * @brief Метод установки MTU сетевого интерфейса

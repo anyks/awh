@@ -260,6 +260,7 @@
 #include <atomic>
 #include <mutex>
 #include <memory>
+#include <deque>
 #include <vector>
 #include <cstdint>
 #include <cstdlib>
@@ -5776,7 +5777,8 @@ namespace inflight {
 		CANCEL   = 0x0C, /**< Отмена поданной операции */
 		WAKEUP   = 0x0D, /**< Пробуждение цикла событий */
 		SPLICE_WAIT = 0x0E, /**< Ожидание готовности приёмника ядерного объединения */
-		FILE        = 0x0F  /**< Чтение файла по смещению */
+		FILE        = 0x0F, /**< Чтение файла по смещению */
+		READY       = 0x10  /**< Выдача готовности по непрочитанному в буфере пула */
 	};
 
 	/**
@@ -5830,7 +5832,22 @@ namespace inflight {
 	 *          на ячейку способно прийти завершение операции, отменённой давно
 	 *
 	 */
-	static vector <slot_t> slots;
+	/**
+	 * Хранилище устойчиво к росту НАМЕРЕННО
+	 *
+	 * @warning Здесь стоял `vector`. Запись подачи приёма подключения отдаёт ядру
+	 *          адрес полей записи учёта (`addr` и `length`), а приём слушающего узла
+	 *          висит в кольце всё время, покуда заводятся прочие узлы. Всякое занятие
+	 *          новой ячейки грозило ростом вектора, а рост ПЕРЕСЕЛЯЕТ записи целиком:
+	 *          ядро писало адрес удалённой стороны по прежнему месту, в освобождённую
+	 *          память. Замерено щупом - подача отдала ячейку при вместимости 2, к
+	 *          приходу завершения та жила уже по другому адресу при вместимости 4,
+	 *          длина адреса осталась начальной, семейство нулевым. Списки доступа от
+	 *          того сличали 0.0.0.0 и не отказывали никому, а запись ядра уходила в
+	 *          чужую память. Двусторонняя очередь адреса своих записей при росте
+	 *          не меняет
+	 */
+	static deque <slot_t> slots;
 
 	/**
 	 * @brief Очередь свободных ячеек учёта
@@ -6708,6 +6725,40 @@ namespace post {
 		entry->fd = -1;
 		// Устанавливаем метку завершения отменяемой операции
 		entry->addr = token;
+		// Устанавливаем метку завершения
+		entry->user_data = result;
+		// Откладываем запись, если она заполнялась не потоком цикла
+		::post::publish(entry);
+		// Выводим метку завершения
+		return result;
+	}
+	/**
+	 * @brief Функция выдачи готовности по непрочитанному в буфере пула
+	 *
+	 * @details Родной приём кольца забирает данные из сокета САМ и складывает их в
+	 *          буфер пула. Сокет после того пуст: заново поданный приём ждёт того,
+	 *          что уже пришло, и событие немеет навсегда. Пустая операция даёт
+	 *          готовность СВОИМ завершением, тем же путём, что и всякая другая, -
+	 *          разбор о разнице не знает вовсе
+	 *
+	 * @param sock  дескриптор, по которому непрочитанное лежит
+	 * @param udata запись учёта подписки, которой готовность принадлежит
+	 * @return      метка завершения
+	 *
+	 */
+	static uint64_t ready(const net::socket_t sock, void * udata) noexcept {
+		// Выполняем добычу записи подачи
+		struct io_uring_sqe * entry = ::post::sqe();
+		// Если запись подачи добыть не удалось
+		if(entry == nullptr)
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
+		// Занимаем запись учёта под операцию
+		const uint64_t result = ::inflight::acquire(::inflight::kind_t::READY, sock, udata);
+		// Устанавливаем код пустой операции
+		entry->opcode = static_cast <uint8_t> (::ring::op_t::NOP);
+		// Указываем отсутствие дескриптора у операции
+		entry->fd = -1;
 		// Устанавливаем метку завершения
 		entry->user_data = result;
 		// Откладываем запись, если она заполнялась не потоком цикла
@@ -7886,6 +7937,16 @@ namespace kernel {
 		 *
 		 */
 		uint64_t token;
+		/**
+		 * @brief Признак выданной готовности по непрочитанному в пуле
+		 *
+		 * @details Родной приём кольца забирает данные из сокета САМ и складывает их
+		 *          в буфер пула. Сокет после того пуст, и заново поданный приём ждёт
+		 *          того, что уже пришло. Готовность по такому непрочитанному выдаётся
+		 *          своим завершением, а признак этот бережёт от повторной выдачи,
+		 *          покуда прежняя не разобрана
+		 */
+		bool raised;
 		// Узел, которому подписка принадлежит
 		void * udata;
 		/**
@@ -7895,7 +7956,7 @@ namespace kernel {
 		Registry() noexcept :
 		 sock(net::invalid_socket_t), declared(0), enabled(0), edge(false), oneshot(0),
 		 registered(false), pending(false), applied(0),
-		 token(::inflight::INVALID), udata(nullptr) {}
+		 token(::inflight::INVALID), raised(false), udata(nullptr) {}
 	} registry_t;
 
 	/**
@@ -8526,6 +8587,29 @@ namespace kernel {
 		 *       ядру неизвестная вовсе
 		 *
 		 */
+		/**
+		 * Если по дескриптору лежит непрочитанное в буфере пула - выдаём готовность
+		 *
+		 * @warning Место это ЕДИНОЕ намеренно, и стоит оно ПРЕЖДЕ отсечки «ядро и без
+		 *          того ждёт того же самого». Родной приём кольца забирает данные из
+		 *          сокета САМ, и сокет после того пуст. Приостановленное событие
+		 *          принятое отбрасывало, а возобновление уходило по отсечке, ничего не
+		 *          подав: набор ожидаемого с поданным совпадал. Событие немело
+		 *          навсегда - замерено щупом, `enabled=0x1 applied=0x2001 reg=1`, и
+		 *          накопленное поднималось лишь чужой посылкой. Это и есть приговор
+		 *          аудитов 113 и 114; у порта завершений он снят тем же доводом
+		 *          (аудит 147 Андрея)
+		 *
+		 * @note Признак `raised` бережёт от повторной выдачи, покуда прежняя не
+		 *       разобрана: разбор снимает его сам
+		 */
+		if((state.enabled & static_cast <uint32_t> (EPOLLIN)) && ::pool::pending(state.sock)){
+			// Если готовность по непрочитанному ещё не выдавалась
+			if(!state.raised)
+				// Отмечаем готовность выданной, если подать её удалось
+				state.raised = (::post::ready(state.sock, &state) != ::inflight::INVALID);
+		// Если непрочитанного не осталось, признак выдачи снимаем
+		} else state.raised = false;
 		if(state.registered && (state.applied == events) && (state.token != ::inflight::INVALID))
 			// Выводим успешный результат: ядро и без того ожидает того же самого
 			return true;
@@ -37386,8 +37470,20 @@ namespace io {
 					// Выходим из функции
 					return false;
 				}
-				// Заполняем структуру клиента нулями
-				::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
+				/**
+				 * Обнуляем структуру клиента, только если адрес ещё предстоит добыть
+				 *
+				 * @warning Обнуление стояло здесь безусловным, а приём через кольцо адрес
+				 *          удалённой стороны уже принёс: ядро заполнило его в записи учёта
+				 *          операции, и разбор завершения переписал его в узел сервера прямо
+				 *          перед этим вызовом. Обнуление стирало принесённое, `accept` заново
+				 *          не звался - и списки доступа сличали адрес 0.0.0.0 вместо
+				 *          настоящего. Чёрный список от того не отказывал в подключении ВОВСЕ,
+				 *          а белый отвергал бы всех подряд
+				 */
+				if(ready == net::invalid_socket_t)
+					// Заполняем структуру клиента нулями
+					::memset(&server->endpoint.client, 0, sizeof(server->endpoint.client));
 				/**
 				 * Определяем тип сокета
 				 */
@@ -37402,30 +37498,57 @@ namespace io {
 						switch(static_cast <uint8_t> (server->state.family)){
 							// Для семейства UNIX-доменных сокетов
 							case static_cast <uint8_t> (event::family_t::UDS): {
-								// Запоминаем размер структуры
-								server->endpoint.size = sizeof(struct sockaddr_un);
-								// Очищаем всю структуру для клиента
-								::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.client), 0, server->endpoint.size);
-								// Устанавливаем семейство IP-адресов
-								::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
+								/**
+								 * Заготовка структуры нужна лишь тому пути, где адрес ещё
+								 * добывается: приём через кольцо принёс и адрес, и его длину
+								 *
+								 * @warning Очистка и здесь стояла безусловной и стирала
+								 *          принесённое кольцом ровно так же, как и обнуление выше
+								 */
+								if(ready == net::invalid_socket_t){
+									// Запоминаем размер структуры
+									server->endpoint.size = sizeof(struct sockaddr_un);
+									// Очищаем всю структуру для клиента
+									::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.client), 0, server->endpoint.size);
+									// Устанавливаем семейство IP-адресов
+									::trust_cast <struct sockaddr_un> (server->endpoint.client).sun_family = AF_UNIX;
+								}
 							} break;
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
-								// Запоминаем размер структуры
-								server->endpoint.size = sizeof(struct sockaddr_in);
-								// Очищаем всю структуру для клиента
-								::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
-								// Устанавливаем семейство IP-адресов
-								::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
+								/**
+								 * Заготовка структуры нужна лишь тому пути, где адрес ещё
+								 * добывается: приём через кольцо принёс и адрес, и его длину
+								 *
+								 * @warning Очистка и здесь стояла безусловной и стирала
+								 *          принесённое кольцом ровно так же, как и обнуление выше
+								 */
+								if(ready == net::invalid_socket_t){
+									// Запоминаем размер структуры
+									server->endpoint.size = sizeof(struct sockaddr_in);
+									// Очищаем всю структуру для клиента
+									::memset(&::trust_cast <struct sockaddr_in> (server->endpoint.client), 0, server->endpoint.size);
+									// Устанавливаем семейство IP-адресов
+									::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_family = AF_INET;
+								}
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
-								// Запоминаем размер структуры
-								server->endpoint.size = sizeof(struct sockaddr_in6);
-								// Очищаем всю структуру для клиента
-								::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
-								// Устанавливаем семейство IP-адресов
-								::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
+								/**
+								 * Заготовка структуры нужна лишь тому пути, где адрес ещё
+								 * добывается: приём через кольцо принёс и адрес, и его длину
+								 *
+								 * @warning Очистка и здесь стояла безусловной и стирала
+								 *          принесённое кольцом ровно так же, как и обнуление выше
+								 */
+								if(ready == net::invalid_socket_t){
+									// Запоминаем размер структуры
+									server->endpoint.size = sizeof(struct sockaddr_in6);
+									// Очищаем всю структуру для клиента
+									::memset(&::trust_cast <struct sockaddr_in6> (server->endpoint.client), 0, server->endpoint.size);
+									// Устанавливаем семейство IP-адресов
+									::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_family = AF_INET6;
+								}
 							} break;
 						}
 						// Количество прочитанных байт
@@ -59379,7 +59502,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  * @return   MTU сетевого интерфейса
  *
  */
-uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
+uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -69753,8 +69876,25 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
 						case static_cast <uint8_t> (event::family_t::PIPE):
-							// Извлекаем размер буфера на чтение и запись
-							return 0x1000;
+							/**
+							 * Размер накопителя канала спрашивается У ЯДРА
+							 *
+							 * @details Прежде здесь стояла константа 0x1000, взятая по устройству
+							 *          канала «страницей». Замерено на стенде Debian 09.09.2026:
+							 *          настоящий размер накопителя **65536**, то есть вшестнадцатеро
+							 *          больше отдаваемого. Потребитель, соразмеряющий доли отдачи с
+							 *          ответом движка, дробил бы их без нужды
+							 *
+							 * @note Спрос этот есть только у Linux; у BSD и систем Sun обращения
+							 *       такого нет вовсе (проверено по заголовкам), и там ответом
+							 *       остаётся прежняя величина - вопрос договора вынесен владельцу
+							 */
+							{
+								// Спрашиваем у ядра размер накопителя канала
+								const int32_t size = ::fcntl(ipc->transfer.fd, F_GETPIPE_SZ);
+								// Отдаём ответ ядра, а при отказе - прежнюю величину
+								return ((size > 0) ? static_cast <size_t> (size) : static_cast <size_t> (0x1000));
+							}
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -69882,8 +70022,25 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 						 * отвечавший ENOTSOCK; размер буфера канала задаётся ядром, как и у узла IPC
 						 */
 						case static_cast <uint8_t> (event::family_t::PIPE):
-							// Извлекаем размер буфера на чтение и запись
-							return 0x1000;
+							/**
+							 * Размер накопителя канала спрашивается У ЯДРА
+							 *
+							 * @details Прежде здесь стояла константа 0x1000, взятая по устройству
+							 *          канала «страницей». Замерено на стенде Debian 09.09.2026:
+							 *          настоящий размер накопителя **65536**, то есть вшестнадцатеро
+							 *          больше отдаваемого. Потребитель, соразмеряющий доли отдачи с
+							 *          ответом движка, дробил бы их без нужды
+							 *
+							 * @note Спрос этот есть только у Linux; у BSD и систем Sun обращения
+							 *       такого нет вовсе (проверено по заголовкам), и там ответом
+							 *       остаётся прежняя величина - вопрос договора вынесен владельцу
+							 */
+							{
+								// Спрашиваем у ядра размер накопителя канала
+								const int32_t size = ::fcntl(client->transfer.fd, F_GETPIPE_SZ);
+								// Отдаём ответ ядра, а при отказе - прежнюю величину
+								return ((size > 0) ? static_cast <size_t> (size) : static_cast <size_t> (0x1000));
+							}
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -75344,7 +75501,19 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 					// Если клиент находится в состоянии подключено
 					if(i->second->state.status == event::status_t::CONNECTED)
 						// Возвращаем результат проверки
-						return (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0);
+						/**
+						 * У клиента-канала живость судится состоянием, а не кодом отказа
+						 *
+						 * @warning Канал сокетом НЕ является, и `getsockopt(SO_ERROR)` отвечает
+						 *          ему `ENOTSOCK`, а `getError` при отказе выдаёт -1. Сличение
+						 *          с нулём давало от того ЛОЖЬ всегда, и клиент-канал числился
+						 *          мёртвым, будучи живым. Обращение это опасно не отказом, а
+						 *          ЗНАЧЕНИЕМ отказа: отказ виден журналом, а ложный ответ под
+						 *          ним не виден ничем. Найдено сличением с находкой Андрея у
+						 *          порта завершений
+						 */
+						return ((i->second->state.family == event::family_t::PIPE) ||
+						 (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0));
 				} break;
 			}
 		}
@@ -75802,7 +75971,14 @@ void awh::engine::IO::clear() noexcept {
 						// Если дескриптор сокета действительный
 						if(client->transfer.fd != net::invalid_socket_t){
 							// Если в сокете нет ошибок
-							if(this->_eth.socket.getError(client->transfer.fd) == 0){
+							/**
+							 * @warning Заслон по семейству обязателен: у клиента-канала
+							 *          `getError` отвечает -1, и весь разбор ниже - снятие
+							 *          подписок чтения и записи - пропускался ЦЕЛИКОМ. Узел
+							 *          сносился, а подписки на его описатель оставались
+							 */
+							if((client->state.family == event::family_t::PIPE) ||
+							 (this->_eth.socket.getError(client->transfer.fd) == 0)){
 								// Количество событий для удаления
 								size_t count = 0;
 								// Объекты событий для удаления из списка ожидания
@@ -78243,6 +78419,20 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					}
 					uint32_t signalEvents = ((kind == ::inflight::kind_t::POLL) && (completion.res > 0) ? static_cast <uint32_t> (completion.res) : 0);
 					/**
+					 * Готовность по непрочитанному в буфере пула
+					 *
+					 * @note Операция пустая и дескриптора не касалась вовсе: признак
+					 *       готовности берётся не у ядра, а из самого смысла подачи
+					 */
+					if(kind == ::inflight::kind_t::READY){
+						// Выдаём наружу готовность к чтению
+						signalEvents = EPOLLIN;
+						// Если запись учёта подписки получена
+						if(owner != nullptr)
+							// Снимаем признак выданной готовности: она разбирается сейчас
+							reinterpret_cast <::kernel::registry_t *> (owner)->raised = false;
+					}
+					/**
 					 * Если ожидание готовности завершилось отказом - выдаём ошибку дескриптора
 					 *
 					 * @details Ядро отвечает отказом на само ожидание, когда ждать по
@@ -78478,7 +78668,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 						// Прекращаем перевод, остаток заберёт следующий оборот
 						break;
 					// Если завершение принадлежит не ожиданию готовности
-					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV) && (kind != ::inflight::kind_t::RECVMSG) && (kind != ::inflight::kind_t::SEND))
+					if((kind != ::inflight::kind_t::POLL) && (kind != ::inflight::kind_t::RECV) && (kind != ::inflight::kind_t::RECVMSG) && (kind != ::inflight::kind_t::SEND) && (kind != ::inflight::kind_t::READY))
 						// Переходим к завершению следующему
 						continue;
 					/**

@@ -3286,3 +3286,4 @@ TEST(CodecXmlReader, DeclaredTokenTypesAreNormalisedAndCdataIsNot) {
 		ASSERT_FALSE(spaced.dump().empty()) << xml::message(spaced.error());
 	}
 }
+

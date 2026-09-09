@@ -7501,8 +7501,9 @@ TEST(CodecContract, NumberExtractionSupportsEveryLanguageType) {
  *       причину и слал потребителя проверять права и путь вместо вида предмета. Шесть
  *       кодеков сошлись на одном коде, и здесь он утверждается ими всеми
  *
- * @note Кодеки CEF и syslog своего кода чтения файла в перечне не имеют, и от них
- *       утверждается САМ ОТКАЗ. Приводить ли их к общему коду - решение владельца их модуля
+ * @note Кодеки CEF и syslog приведены к тому же коду 08.09.2026: `FILE_NOT_READ` заведён
+ *       обоим перечням по слову владельца, и восемь кодеков, загрузку по имени файла
+ *       имеющих, сошлись на одном коде. Расхождение договора наружу закрыто целиком
  *
  * @note Половина проверки отдана обратному: годный файл обязан читаться по-прежнему. Без неё
  *       «отказ на каталоге» достигался бы отказом на всяком пути вовсе
@@ -7580,23 +7581,25 @@ TEST(CodecContract, DirectoryFedInsteadOfAFileIsRefused) {
 	 *       Каталог распознаётся ныне ДО открытия потока - у MS Windows он не
 	 *       открывается вовсе, и проверка после открытия была бы там мертва
 	 *
-	 * @note Утверждается САМ ОТКАЗ, а не код: расхождение кодов между кодеками
-	 *       (`FILE_NOT_READ` против `FILE_NOT_OPENED`) вынесено владельцу, и
-	 *       переписывать его проверкой нельзя
+	 * @note Расхождение кодов закрыто 08.09.2026 по слову владельца: код
+	 *       `FILE_NOT_READ` заведён обоим кодекам и поставлен на подачу каталога.
+	 *       Взят именно он, а не `FILE_NOT_OPENED`: каталог ОТКРЫВАЕТСЯ успешно, и
+	 *       беда его в том, что прочесть его нечем. Потребитель, увидевший «открыть не
+	 *       удалось», искал бы права доступа либо отсутствующий путь
 	 */
 	{
 		// Дерево записи системного журнала
 		syslog::document_t syslog(&Silent::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(syslog.load(directory));
-		// Выполняем проверку того, что отказ назван
-		ASSERT_NE(syslog.error(), syslog::error_t::NONE);
+		// Выполняем проверку того, что отказ назван кодом чтения файла
+		ASSERT_EQ(syslog.error(), syslog::error_t::FILE_NOT_READ);
 		// Дерево записи событий безопасности
 		cef::document_t cef(&Silent::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(cef.load(directory));
-		// Выполняем проверку того, что отказ назван
-		ASSERT_NE(cef.error(), cef::error_t::NONE);
+		// Выполняем проверку того, что отказ назван кодом чтения файла
+		ASSERT_EQ(cef.error(), cef::error_t::FILE_NOT_READ);
 	}
 	// Выполняем снос заведённого каталога
 	::rmdir(directory.c_str());
@@ -7781,7 +7784,7 @@ TEST(CodecContract, MalformedContentIsNotPassedSilentlyByWriters) {
 		ASSERT_FALSE(writer.text().empty());
 	}
 	/**
-	 * Кодек XML: отказ безусловен, код общий с INI, TOML и с JSON при `REFUSE`
+	 * Кодек XML: отказ безусловен, код общий с JSON, YAML, INI и TOML при `REFUSE`
 	 *
 	 * @note Код здесь `INVALID_ENCODING`, а не `INVALID_CHARACTER`: первая моя запись назвала
 	 *       второй, ибо счёт вёлся по ПОРЯДКУ строк перечня, где есть пропуски. Сличать коды
@@ -7809,22 +7812,54 @@ TEST(CodecContract, MalformedContentIsNotPassedSilentlyByWriters) {
 		ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
 	}
 	/**
-	 * Кодеки INI и TOML: отказ безусловен, код общий с JSON при `REFUSE`
+	 * Кодеки INI и TOML: та же настройка, что у JSON и YAML, и то же умолчание
+	 *
+	 * @note Отказ у обоих был БЕЗУСЛОВЕН, и блок этот того держался. Довод безусловности
+	 *       гласил, что отказ лучше подмены, - и ПРОТИВОРЕЧИЛ доводу наречия YAML, где
+	 *       записано решением владельца: правило одинаково у всех кодеков, а умолчанием
+	 *       ему замена. Разведено 08.09.2026 в пользу довода владельца, и блок сведён к
+	 *       виду блока JSON: утверждаются ОБА исхода настройки, а не один
 	 */
 	{
-		// Объект записи текста настроек
+		// Объект записи текста настроек при умолчании настроек
 		ini::writer_t ini(::logger());
+		// Выполняем проверку записи негодного октета при умолчании
+		ASSERT_TRUE(ini.property(string_view("k"), string_view(broken))) << ini::message(ini.error());
+		// Выполняем проверку того, что записанное не пусто - октет заменён, а не отброшен
+		ASSERT_FALSE(ini.text().empty());
+		// Настройки записи, негодную запись отвергающие
+		ini::writer_t::settings_t settings;
+		// Назначаем отказ на негодную запись
+		settings.malformed = ini::malformed_t::REFUSE;
+		// Объект записи текста настроек при отказе на негодную запись
+		ini::writer_t strict(::logger());
+		// Выполняем установку настроек записи
+		strict.settings(settings);
 		// Выполняем проверку отказа записи негодного октета
-		ASSERT_FALSE(ini.property(string_view("k"), string_view(broken)));
+		ASSERT_FALSE(strict.property(string_view("k"), string_view(broken)));
 		// Выполняем проверку кода отказа негодной кодировки
-		ASSERT_EQ(ini.error(), ini::error_t::INVALID_ENCODING);
-		// Объект записи текста настроек языка TOML
+		ASSERT_EQ(strict.error(), ini::error_t::INVALID_ENCODING);
+		// Объект записи текста настроек языка TOML при умолчании настроек
 		toml::writer_t toml(::logger());
 		// Выполняем заведение имени ключа
 		ASSERT_TRUE(toml.key(string_view("k")));
+		// Выполняем проверку записи негодного октета при умолчании
+		ASSERT_TRUE(toml.value(string_view(broken))) << toml::message(toml.error());
+		// Выполняем проверку того, что записанное не пусто - октет заменён, а не отброшен
+		ASSERT_FALSE(toml.text().empty());
+		// Настройки записи текста настроек языка TOML, негодную запись отвергающие
+		toml::writer_t::settings_t rigid;
+		// Назначаем отказ на негодную запись
+		rigid.malformed = toml::malformed_t::REFUSE;
+		// Объект записи текста настроек языка TOML при отказе на негодную запись
+		toml::writer_t severe(::logger());
+		// Выполняем установку настроек записи
+		severe.settings(rigid);
+		// Выполняем заведение имени ключа
+		ASSERT_TRUE(severe.key(string_view("k")));
 		// Выполняем проверку отказа записи негодного октета
-		ASSERT_FALSE(toml.value(string_view(broken)));
+		ASSERT_FALSE(severe.value(string_view(broken)));
 		// Выполняем проверку кода отказа негодной кодировки
-		ASSERT_EQ(toml.error(), toml::error_t::INVALID_ENCODING);
+		ASSERT_EQ(severe.error(), toml::error_t::INVALID_ENCODING);
 	}
 }

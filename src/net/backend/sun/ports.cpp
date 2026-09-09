@@ -56793,7 +56793,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  * @return   MTU сетевого интерфейса
  *
  */
-uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
+uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -72792,7 +72792,19 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 					// Если клиент находится в состоянии подключено
 					if(i->second->state.status == event::status_t::CONNECTED)
 						// Возвращаем результат проверки
-						return (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0);
+						/**
+						 * У клиента-канала живость судится состоянием, а не кодом отказа
+						 *
+						 * @warning Канал сокетом НЕ является, и `getsockopt(SO_ERROR)` отвечает
+						 *          ему `ENOTSOCK`, а `getError` при отказе выдаёт -1. Сличение
+						 *          с нулём давало от того ЛОЖЬ всегда, и клиент-канал числился
+						 *          мёртвым, будучи живым. Обращение это опасно не отказом, а
+						 *          ЗНАЧЕНИЕМ отказа: отказ виден журналом, а ложный ответ под
+						 *          ним не виден ничем. Найдено сличением с находкой Андрея у
+						 *          порта завершений
+						 */
+						return ((i->second->state.family == event::family_t::PIPE) ||
+						 (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0));
 				} break;
 			}
 		}

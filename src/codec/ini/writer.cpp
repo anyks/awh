@@ -1976,6 +1976,25 @@ bool awh::codec::ini::Writer::number(const string_view key, const T value) noexc
  *       числами осознанно
  */
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <bool> (const string_view, const bool) noexcept;
+/**
+ * @note Вид `char` порождается наравне с `signed char` и `unsigned char`, и лишним он НЕ
+ *       является: у систем Sun вид `int8_t` объявлен КАК `char`, а не как `signed char`
+ *       (замерено 09.09.2026 на 10.100.1.105 через `is_same`), и всякий зовущий, подающий
+ *       `int8_t`, порождает здесь именно `char`. Без порождения связывание отвечало отказом
+ *       «Undefined symbol», и стенды кодека не собирались на двух машинах раскладки из
+ *       восьми - при полной зелени на прочих шести
+ *
+ * @warning Снимать порождение это как «вид, никем не зовомый» НЕЛЬЗЯ: на рабочей машине и
+ *          на шести машинах раскладки его правда никто не зовёт, ибо там `int8_t` есть
+ *          `signed char`. Довод «не зовётся» здесь ЛОЖЕН по построению - он верен ровно
+ *          там, где его проверяют, и неверен там, где не проверяют
+ *
+ * @warning Беда эта была найдена 08.09.2026 и починена В ОДНОМ МЕСТЕ из шести - у свободной
+ *          связки `ini::numeric`, где довод при ней и стоит. Пять прочих мест остались, и
+ *          вскрылись они лишь раскладкою назавтра. Разряд тот же, что у тел разбора UTF-8:
+ *          починка, приложенная к одному списку из нескольких
+ */
+template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <char> (const string_view, const char) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <signed char> (const string_view, const signed char) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <unsigned char> (const string_view, const unsigned char) noexcept;
 template __AWH_SHARED_EXPORT__ bool awh::codec::ini::Writer::number <short> (const string_view, const short) noexcept;

@@ -4184,6 +4184,45 @@ TEST(CodecIniDocument, HugeIndexInThePathIsRefusedNotFatal){
  *       неопознанная - не задеты ни разу
  *
  */
+/**
+ * @brief Проверка того, что отказ записи по негодной кодировке причину называет
+ *
+ */
+TEST(CodecIniDocument, RefusalOfTheMalformedContentNamesItsCauseAtTheWriting) {
+	/**
+	 * @note Застава негодной кодировки стояла на пути ПРАВКИ и снята 08.09.2026 вместе с
+	 *       заведением правила `malformed_t`: дерево отвергает лишь то, чего не сделает
+	 *       записываемым ни одна настройка, а негодная последовательность записываема при
+	 *       `REPLACE` и `PASS`. Отказ тем самым переехал с правки на запись, и проверка
+	 *       эта сторожит, чтобы он там не ОНЕМЕЛ: отказ без кода есть беда тяжелее самого
+	 *       отказа - потребитель, спросивший причину, получил бы `NONE` при отказе
+	 */
+	ini::document_t document(::logger());
+	// Выполняем разбор текста настроек
+	ASSERT_TRUE(document.parse("[s]\nk = v\n"));
+	// Выполняем правку значения негодным содержимым
+	ASSERT_TRUE(document.set("k", string("bad\xC3\x28ok"), "s"));
+	// Выполняем проверку того, что правка кода отказа не поставила
+	ASSERT_EQ(document.error(), ini::error_t::NONE) << ini::message(document.error());
+	// Настройки записи, негодную последовательность отвергающие
+	ini::writer_t::settings_t settings;
+	// Назначаем отказ на негодную последовательность
+	settings.malformed = ini::malformed_t::REFUSE;
+	// Выполняем проверку того, что запись отвергнута пустотою
+	ASSERT_TRUE(document.text(settings).empty());
+	// Выполняем проверку того, что отказ записи причину назвал
+	ASSERT_EQ(document.error(), ini::error_t::INVALID_ENCODING) << ini::message(document.error());
+	/**
+	 * Выполняем проверку того, что умолчание то же содержимое записывает
+	 *
+	 * @note Половина эта сторожит заслон с другой стороны: отвергни он при всяком правиле -
+	 *       и настройка перестала бы значить что-либо
+	 */
+	ASSERT_FALSE(document.text().empty());
+	// Выполняем проверку того, что запись умолчанием кода отказа не поставила
+	ASSERT_EQ(document.error(), ini::error_t::NONE) << ini::message(document.error());
+}
+
 TEST(CodecIniDocument, MalformedEscapeInThePathIsRefused){
 	// Объект дерева настроек, текст разбирающего
 	ini::document_t document(::logger());

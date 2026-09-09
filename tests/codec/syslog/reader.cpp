@@ -26,6 +26,8 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include <cstring>
+#include <utility>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -904,14 +906,23 @@ TEST(CodecSysLogReader, ModernFailures) {
  *
  */
 TEST(CodecSysLogReader, FeedContract) {
+	// Годная запись системного журнала устаревшего описания
+	constexpr string_view RECORD = "<165>Oct 22 10:52:01 host app: Message";
 	// Выполняем создание объекта чтения записей
 	syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
 	// Настройки разбора записей
 	syslog::reader_t::settings_t settings;
 	// Выполняем проверку того, что настройки принимаются до начала разбора
 	EXPECT_TRUE(reader.settings(settings));
-	// Выполняем подачу записи целиком
-	ASSERT_TRUE(reader.feed("<165>Oct 22 10:52:01 host app: Message"));
+	/**
+	 * Выполняем подачу записи куском, последним НЕ являющимся
+	 *
+	 * @note Подача целиком - `feed(string_view)` - объявляет кусок последним сама, и
+	 *       всякая следующая подача ей отвечалась бы отказом. Проверка потока обязана
+	 *       звать подачу тремя доводами, иначе поверяла бы не то. Замерено 08.09.2026:
+	 *       первая редакция проверки падала на своей же неверной догадке
+	 */
+	ASSERT_TRUE(reader.feed(RECORD.data(), RECORD.size(), false));
 	// Выполняем проверку отказа смены настроек посреди разбора
 	EXPECT_FALSE(reader.settings(settings));
 	/**
@@ -921,16 +932,24 @@ TEST(CodecSysLogReader, FeedContract) {
 		// Если событием является поле заголовка записи
 		if(reader.event() == syslog::event_t::HEADER)
 			// Выполняем проверку того, что положение события лежит внутри записи
-			EXPECT_LT(reader.position().offset, static_cast <uint64_t> (38));
+			EXPECT_LT(reader.position().offset, static_cast <uint64_t> (RECORD.size()));
 	}
 	// Выполняем подачу последнего куска текста
 	ASSERT_TRUE(reader.feed(nullptr, 0, true));
 	// Выполняем проверку отказа подачи текста после последнего куска
-	EXPECT_FALSE(reader.feed("<165>Oct 22 10:52:01 host app: Message"));
+	EXPECT_FALSE(reader.feed(RECORD.data(), RECORD.size(), false));
+	/**
+	 * Запись с приставкой приоритета, за предел выходящей
+	 *
+	 * @note Знак конца строки ставится НЕПРЕМЕННО: без него и без последнего куска
+	 *       запись завершённой не считается, разбор её не начинает вовсе, и состояние
+	 *       остаётся голодным. Проверка отказа мерила бы тогда не отказ
+	 */
+	constexpr string_view BROKEN = "<999>Oct 22 10:52:01 host app: Message\n";
 	// Выполняем создание объекта чтения записей, отказом остановленного
 	syslog::reader_t failed(&SilentSysLog::framework(), ::logger());
 	// Выполняем подачу записи с приставкой приоритета, за предел выходящей
-	ASSERT_TRUE(failed.feed("<999>Oct 22 10:52:01 host app: Message"));
+	ASSERT_TRUE(failed.feed(BROKEN.data(), BROKEN.size(), false));
 	/**
 	 * Выполняем перебор событий разбора записи
 	 */
@@ -938,7 +957,9 @@ TEST(CodecSysLogReader, FeedContract) {
 	// Выполняем проверку состояния чтения по окончании разбора
 	ASSERT_EQ(failed.state(), syslog::state_t::FAILED);
 	// Выполняем проверку отказа подачи текста чтению, отказом остановленному
-	EXPECT_FALSE(failed.feed("<165>Oct 22 10:52:01 host app: Message"));
+	EXPECT_FALSE(failed.feed(RECORD.data(), RECORD.size(), false));
+	// Запись системного журнала со знаком конца строки за нею
+	constexpr string_view CHUNK = "<165>Oct 22 10:52:01 host app: Message\n";
 	// Выполняем создание объекта чтения записей для уплотнения хранилища
 	syslog::reader_t compact(&SilentSysLog::framework(), ::logger());
 	/**
@@ -952,7 +973,7 @@ TEST(CodecSysLogReader, FeedContract) {
 	// Выполняем подачу записей до тех пор, покуда порог уплотнения не пройден
 	for(size_t i = 0; i < 4096; i++){
 		// Выполняем подачу очередной записи системного журнала
-		ASSERT_TRUE(compact.feed("<165>Oct 22 10:52:01 host app: Message\n"));
+		ASSERT_TRUE(compact.feed(CHUNK.data(), CHUNK.size(), false));
 		/**
 		 * Выполняем перебор событий разбора поданных записей
 		 */
@@ -967,4 +988,189 @@ TEST(CodecSysLogReader, FeedContract) {
 	EXPECT_EQ(records, static_cast <size_t> (4096));
 	// Выполняем проверку того, что чтение отказом не завершилось
 	EXPECT_NE(compact.state(), syslog::state_t::FAILED);
+}
+
+/**
+ * @brief Проверка обращения с отсутствующими полями по настройке
+ *
+ * @details Отсутствующее поле записи обозначено знаком «-», и потребитель волен взять
+ *          его тремя способами: не класть вовсе, положить пустыми знаками либо положить
+ *          знаком «-» как есть. Разряды эти различимы лишь у ЧИТАЮЩЕГО: запись во всех
+ *          трёх случаях одна и та же
+ *
+ * @note Умолчанием поле не кладётся вовсе - так дерево различает «поля нет» отсутствием
+ *       ключа, а не значением. Прочие два разряда даны тем, кому дерево нужно полным
+ *
+ */
+TEST(CodecSysLogReader, NilModes) {
+	// Запись нынешнего описания с отсутствующим именем узла
+	constexpr string_view RECORD = "<34>1 2003-10-11T22:14:15.003Z - app 4711 ID47 - Message\n";
+	/**
+	 * Выполняем перебор всех разрядов обращения с отсутствующими полями
+	 */
+	for(const syslog::nil_t nil : {syslog::nil_t::OMIT, syslog::nil_t::EMPTY, syslog::nil_t::LITERAL}){
+		// Выполняем создание объекта чтения записей
+		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		// Настройки разбора записей
+		syslog::reader_t::settings_t settings;
+		// Устанавливаем очередной разряд обращения с отсутствующими полями
+		settings.nil = nil;
+		// Устанавливаем настройки разбора записей
+		ASSERT_TRUE(reader.settings(settings));
+		// Выполняем подачу записи целиком
+		ASSERT_TRUE(reader.feed(RECORD));
+		// Признак того, что имя узла событием разбора выдано
+		bool found = false;
+		// Значение имени узла, событием разбора выданное
+		string value = "";
+		/**
+		 * Выполняем перебор событий разбора записи
+		 */
+		while(reader.next()){
+			// Если событием является поле заголовка записи И полем этим имя узла
+			if((reader.event() == syslog::event_t::HEADER) && (reader.field() == syslog::field_t::HOSTNAME)){
+				// Запоминаем объявленность имени узла событием разбора
+				found = true;
+				// Запоминаем значение имени узла, событием выданное
+				value.assign(reader.value());
+			}
+		}
+		// Выполняем проверку того, что чтение отказом не завершилось
+		ASSERT_NE(reader.state(), syslog::state_t::FAILED) << static_cast <uint32_t> (nil);
+		/**
+		 * Определяем разряд обращения с отсутствующими полями
+		 */
+		switch(static_cast <uint8_t> (nil)){
+			// Если поле в дерево не кладётся вовсе
+			case static_cast <uint8_t> (syslog::nil_t::OMIT):
+				// Выполняем проверку того, что события по имени узла не было вовсе
+				EXPECT_FALSE(found);
+			break;
+			// Если поле кладётся пустой последовательностью знаков
+			case static_cast <uint8_t> (syslog::nil_t::EMPTY): {
+				// Выполняем проверку того, что событие по имени узла выдано
+				EXPECT_TRUE(found);
+				// Выполняем проверку того, что имя узла выдано пустым
+				EXPECT_TRUE(value.empty()) << value;
+			} break;
+			// Если поле кладётся знаками «-», как в записи и стоит
+			case static_cast <uint8_t> (syslog::nil_t::LITERAL): {
+				// Выполняем проверку того, что событие по имени узла выдано
+				EXPECT_TRUE(found);
+				// Выполняем проверку того, что имя узла выдано знаком отсутствия
+				EXPECT_EQ(value, string("-"));
+			} break;
+		}
+	}
+}
+
+/**
+ * @brief Проверка отказов чтения записей ошибочного строения
+ *
+ * @details Ветви эти стояли в карте покрытия непокрытыми, и всякая из них есть отказ,
+ *          какой запись живого устройства способна вызвать: оборванный блок данных,
+ *          незакрытая скобка опознавателя работы, пустой номер описания, длина сверх
+ *          дозволенной. Непокрытая ветвь отказа неотличима от недостижимой, покуда не
+ *          замерена
+ *
+ * @note Пустая запись между двумя знаками конца строки отказом НЕ является: поток
+ *       живого журнала несёт и такие, и разбор их пропускает, отыскивая следующую
+ *
+ */
+TEST(CodecSysLogReader, MalformedRecords) {
+	/**
+	 * Образцы записей ошибочного строения и коды отказов, каким они отвечаются
+	 */
+	const struct {
+		// Образец записи системного журнала
+		const char * record;
+		// Код отказа, каким образец отвечается
+		syslog::error_t error;
+	} SAMPLES[] = {
+		// Блок структурированных данных, оборванный на опознавателе
+		{"<34>1 2003-10-11T22:14:15.003Z host app 4711 ID47 [exampleSDID\n", syslog::error_t::UNCLOSED_STRUCTURE},
+		// Блок структурированных данных, оборванный на имени поля
+		{"<34>1 2003-10-11T22:14:15.003Z host app 4711 ID47 [id@1 param\n", syslog::error_t::UNCLOSED_STRUCTURE},
+		// Поле блока данных без знака равенства за именем
+		{"<34>1 2003-10-11T22:14:15.003Z host app 4711 ID47 [id@1 param\"v\"]\n", syslog::error_t::INVALID_PARAM_NAME},
+		// Блок структурированных данных без закрывающей скобки
+		{"<34>1 2003-10-11T22:14:15.003Z host app 4711 ID47 [id@1 p=\"v\"\n", syslog::error_t::UNCLOSED_STRUCTURE},
+		// Запись нынешнего описания с пустым номером описания
+		{"<34> 2003-10-11T22:14:15.003Z host app 4711 ID47 -\n", syslog::error_t::INVALID_VERSION}
+	};
+	/**
+	 * Выполняем перебор всех образцов записей ошибочного строения
+	 */
+	for(const auto & sample : SAMPLES){
+		// Выполняем создание объекта чтения записей
+		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		// Настройки разбора записей
+		syslog::reader_t::settings_t settings;
+		// Устанавливаем чтение записей нынешним описанием
+		settings.standard = syslog::standard_t::RFC5424;
+		// Устанавливаем настройки разбора записей
+		ASSERT_TRUE(reader.settings(settings));
+		// Выполняем подачу образца записи целиком
+		ASSERT_TRUE(reader.feed(sample.record));
+		/**
+		 * Выполняем перебор событий разбора записи
+		 */
+		while(reader.next()){}
+		// Выполняем проверку того, что чтение отказом завершилось
+		ASSERT_EQ(reader.state(), syslog::state_t::FAILED) << sample.record;
+		// Выполняем проверку кода отказа чтения записи
+		EXPECT_EQ(reader.error(), sample.error) << sample.record;
+		// Выполняем проверку того, что место отказа лежит внутри записи
+		EXPECT_LT(reader.errorPosition().offset, static_cast <uint64_t> (::strlen(sample.record))) << sample.record;
+	}
+	// Выполняем создание объекта чтения записей для отказа по длине записи
+	syslog::reader_t oversized(&SilentSysLog::framework(), ::logger());
+	// Настройки разбора записей
+	syslog::reader_t::settings_t settings;
+	// Устанавливаем предел длины записи заведомо малым
+	settings.maxRecord = 16;
+	// Устанавливаем настройки разбора записей
+	ASSERT_TRUE(oversized.settings(settings));
+	// Выполняем подачу записи, предел длины превышающей
+	ASSERT_TRUE(oversized.feed("<165>Oct 22 10:52:01 host app: Message\n"));
+	/**
+	 * Выполняем перебор событий разбора записи
+	 */
+	while(oversized.next()){}
+	// Выполняем проверку того, что чтение отказом завершилось
+	ASSERT_EQ(oversized.state(), syslog::state_t::FAILED);
+	// Выполняем проверку кода отказа чтения записи
+	EXPECT_EQ(oversized.error(), syslog::error_t::RECORD_TOO_LONG);
+	// Выполняем создание объекта чтения записей для пустых записей и возврата каретки
+	syslog::reader_t empty(&SilentSysLog::framework(), ::logger());
+	/**
+	 * Выполняем подачу записей, пустыми строками разделённых
+	 *
+	 * @note Записи оканчиваются возвратом каретки с переводом строки: знак возврата в
+	 *       запись не входит и снимается разбором, иначе текст сообщения нёс бы его
+	 */
+	ASSERT_TRUE(empty.feed("<165>Oct 22 10:52:01 host app: Message\r\n\n<165>Oct 22 10:52:02 host app: Second\r\n"));
+	// Количество прочтённых записей системного журнала
+	size_t records = 0;
+	// Текст сообщения последней прочтённой записи
+	string message = "";
+	/**
+	 * Выполняем перебор событий разбора записей
+	 */
+	while(empty.next()){
+		// Если событием является текст сообщения записи
+		if(empty.event() == syslog::event_t::MESSAGE)
+			// Запоминаем текст сообщения прочтённой записи
+			message.assign(empty.value());
+		// Если событием является окончание записи
+		else if(empty.event() == syslog::event_t::RECORD)
+			// Выполняем счёт прочтённых записей
+			records++;
+	}
+	// Выполняем проверку того, что пустая запись отказа не вызвала
+	EXPECT_NE(empty.state(), syslog::state_t::FAILED);
+	// Выполняем проверку числа прочтённых записей
+	EXPECT_EQ(records, static_cast <size_t> (2));
+	// Выполняем проверку того, что знак возврата каретки в текст сообщения не попал
+	EXPECT_EQ(message, string("Second"));
 }

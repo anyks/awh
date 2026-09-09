@@ -54698,7 +54698,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  * @return   MTU сетевого интерфейса
  *
  */
-uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
+uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -65068,8 +65068,25 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					switch(static_cast <uint8_t> (ipc->state.family)){
 						// Для семейства межпроцессных соединений
 						case static_cast <uint8_t> (event::family_t::PIPE):
-							// Извлекаем размер буфера на чтение и запись
-							return 0x1000;
+							/**
+							 * Размер накопителя канала спрашивается У ЯДРА
+							 *
+							 * @details Прежде здесь стояла константа 0x1000, взятая по устройству
+							 *          канала «страницей». Замерено на стенде Debian 09.09.2026:
+							 *          настоящий размер накопителя **65536**, то есть вшестнадцатеро
+							 *          больше отдаваемого. Потребитель, соразмеряющий доли отдачи с
+							 *          ответом движка, дробил бы их без нужды
+							 *
+							 * @note Спрос этот есть только у Linux; у BSD и систем Sun обращения
+							 *       такого нет вовсе (проверено по заголовкам), и там ответом
+							 *       остаётся прежняя величина - вопрос договора вынесен владельцу
+							 */
+							{
+								// Спрашиваем у ядра размер накопителя канала
+								const int32_t size = ::fcntl(ipc->transfer.fd, F_GETPIPE_SZ);
+								// Отдаём ответ ядра, а при отказе - прежнюю величину
+								return ((size > 0) ? static_cast <size_t> (size) : static_cast <size_t> (0x1000));
+							}
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -65197,8 +65214,25 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 						 * отвечавший ENOTSOCK; размер буфера канала задаётся ядром, как и у узла IPC
 						 */
 						case static_cast <uint8_t> (event::family_t::PIPE):
-							// Извлекаем размер буфера на чтение и запись
-							return 0x1000;
+							/**
+							 * Размер накопителя канала спрашивается У ЯДРА
+							 *
+							 * @details Прежде здесь стояла константа 0x1000, взятая по устройству
+							 *          канала «страницей». Замерено на стенде Debian 09.09.2026:
+							 *          настоящий размер накопителя **65536**, то есть вшестнадцатеро
+							 *          больше отдаваемого. Потребитель, соразмеряющий доли отдачи с
+							 *          ответом движка, дробил бы их без нужды
+							 *
+							 * @note Спрос этот есть только у Linux; у BSD и систем Sun обращения
+							 *       такого нет вовсе (проверено по заголовкам), и там ответом
+							 *       остаётся прежняя величина - вопрос договора вынесен владельцу
+							 */
+							{
+								// Спрашиваем у ядра размер накопителя канала
+								const int32_t size = ::fcntl(client->transfer.fd, F_GETPIPE_SZ);
+								// Отдаём ответ ядра, а при отказе - прежнюю величину
+								return ((size > 0) ? static_cast <size_t> (size) : static_cast <size_t> (0x1000));
+							}
 						// Для семейства UNIX-доменных сокетов
 						case static_cast <uint8_t> (event::family_t::UDS):
 						// Для семейства IPv4
@@ -70659,7 +70693,19 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 					// Если клиент находится в состоянии подключено
 					if(i->second->state.status == event::status_t::CONNECTED)
 						// Возвращаем результат проверки
-						return (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0);
+						/**
+						 * У клиента-канала живость судится состоянием, а не кодом отказа
+						 *
+						 * @warning Канал сокетом НЕ является, и `getsockopt(SO_ERROR)` отвечает
+						 *          ему `ENOTSOCK`, а `getError` при отказе выдаёт -1. Сличение
+						 *          с нулём давало от того ЛОЖЬ всегда, и клиент-канал числился
+						 *          мёртвым, будучи живым. Обращение это опасно не отказом, а
+						 *          ЗНАЧЕНИЕМ отказа: отказ виден журналом, а ложный ответ под
+						 *          ним не виден ничем. Найдено сличением с находкой Андрея у
+						 *          порта завершений
+						 */
+						return ((i->second->state.family == event::family_t::PIPE) ||
+						 (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0));
 				} break;
 			}
 		}
@@ -71115,7 +71161,14 @@ void awh::engine::IO::clear() noexcept {
 						// Если дескриптор сокета действительный
 						if(client->transfer.fd != net::invalid_socket_t){
 							// Если в сокете нет ошибок
-							if(this->_eth.socket.getError(client->transfer.fd) == 0){
+							/**
+							 * @warning Заслон по семейству обязателен: у клиента-канала
+							 *          `getError` отвечает -1, и весь разбор ниже - снятие
+							 *          подписок чтения и записи - пропускался ЦЕЛИКОМ. Узел
+							 *          сносился, а подписки на его описатель оставались
+							 */
+							if((client->state.family == event::family_t::PIPE) ||
+							 (this->_eth.socket.getError(client->transfer.fd) == 0)){
 								// Количество событий для удаления
 								size_t count = 0;
 								// Объекты событий для удаления из списка ожидания

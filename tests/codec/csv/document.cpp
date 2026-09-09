@@ -1156,7 +1156,7 @@ TEST(CodecCsvDocument, RealNarrowingGivesInfinityNotARefusal) {
 	// Выполняем проверку выдачи бесконечности числом, в одинарную точность не помещающимся
 	ASSERT_TRUE(document.numeric(0, 0, single));
 	// Выполняем проверку выданной бесконечности
-	ASSERT_TRUE(::isinf(single));
+	ASSERT_TRUE(::std::isinf(single));
 	// Выполняем проверку извлечения того же числа видом двойной точности
 	ASSERT_TRUE(document.numeric(0, 0, couple));
 	// Выполняем проверку извлечённого значения
@@ -1168,11 +1168,11 @@ TEST(CodecCsvDocument, RealNarrowingGivesInfinityNotARefusal) {
 	// Выполняем проверку выдачи бесконечности отрицательным числом, в вид не помещающимся
 	ASSERT_TRUE(document.numeric(0, 2, single));
 	// Выполняем проверку знака выданной бесконечности
-	ASSERT_TRUE(::isinf(single) && (single < 0.f));
+	ASSERT_TRUE(::std::isinf(single) && (single < 0.f));
 	// Выполняем проверку выдачи бесконечности числом, и в двойную точность не помещающимся
 	ASSERT_TRUE(document.numeric(0, 3, couple));
 	// Выполняем проверку выданной бесконечности
-	ASSERT_TRUE(::isinf(couple));
+	ASSERT_TRUE(::std::isinf(couple));
 	/**
 	 * Выполняем перебор записей бесконечности и не-числа
 	 *
@@ -2617,7 +2617,7 @@ TEST(CodecCsvDocument, BothEndsOfNumberLossAreAcceptedAlike) {
 		// Выполняем проверку принятия числа, вид переполняющего
 		ASSERT_TRUE(extract("1e308", single));
 		// Выполняем проверку выдачи бесконечности вместо отказа
-		ASSERT_TRUE(::isinf(single));
+		ASSERT_TRUE(::std::isinf(single));
 		// Выполняем проверку принятия того же числа видом, его вмещающим
 		ASSERT_TRUE(extract("1e308", real));
 		ASSERT_DOUBLE_EQ(real, 1e308);
