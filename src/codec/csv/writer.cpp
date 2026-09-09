@@ -709,6 +709,8 @@ bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
 	}
 	// Запоминаем код отказа записи, стоявший до завершения записи
 	const error_t previous = this->_error;
+	// Запоминаем счётчик занесённых отказов, стоявший до завершения записи
+	const uint32_t refusals = this->_refusals;
 	// Завершаем текущую запись
 	this->record();
 	/**
@@ -718,7 +720,15 @@ bool awh::codec::csv::Writer::record(const vector <string> & fields) noexcept {
 	 *       запрещённых кавычках пометить её нечем. Донести его обязаны и здесь, иначе
 	 *       запись целиком отвечала бы успехом, ничего не записав
 	 */
-	if(this->_error != previous){
+	/**
+	 * Если завершение записи занесло отказ
+	 *
+	 * @note Судим по СЧЁТЧИКУ отказов, а не по сличению кодов: второй отказ с тем же кодом
+	 *       сличением не опознавался вовсе, и запись, представления не имеющая, отвечала
+	 *       УСПЕХОМ - при том что в текст она не легла. Замерено 09.09.2026: один и тот же
+	 *       вызов у чистого писателя давал отказ, а у знавшего отказ с тем же кодом - успех
+	 */
+	if(this->_refusals != refusals){
 		// Выполняем возврат сборщика к виду, какой он имел до начала записи
 		this->revert(restore, beginning, opened, signature);
 		// Возвращаем код отказа записи
@@ -769,6 +779,8 @@ bool awh::codec::csv::Writer::record(const vector <string_view> & fields) noexce
 	}
 	// Запоминаем код отказа записи, стоявший до завершения записи
 	const error_t previous = this->_error;
+	// Запоминаем счётчик занесённых отказов, стоявший до завершения записи
+	const uint32_t refusals = this->_refusals;
 	// Завершаем текущую запись
 	this->record();
 	/**
@@ -778,7 +790,15 @@ bool awh::codec::csv::Writer::record(const vector <string_view> & fields) noexce
 	 *       запрещённых кавычках пометить её нечем. Донести его обязаны и здесь, иначе
 	 *       запись целиком отвечала бы успехом, ничего не записав
 	 */
-	if(this->_error != previous){
+	/**
+	 * Если завершение записи занесло отказ
+	 *
+	 * @note Судим по СЧЁТЧИКУ отказов, а не по сличению кодов: второй отказ с тем же кодом
+	 *       сличением не опознавался вовсе, и запись, представления не имеющая, отвечала
+	 *       УСПЕХОМ - при том что в текст она не легла. Замерено 09.09.2026: один и тот же
+	 *       вызов у чистого писателя давал отказ, а у знавшего отказ с тем же кодом - успех
+	 */
+	if(this->_refusals != refusals){
 		// Выполняем возврат сборщика к виду, какой он имел до начала записи
 		this->revert(restore, beginning, opened, signature);
 		// Возвращаем код отказа записи
@@ -874,6 +894,8 @@ bool awh::codec::csv::Writer::rollback(const size_t size, const size_t origin, c
 bool awh::codec::csv::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код отказа записи
 	this->_error = error;
+	// Выполняем учёт занесённого отказа записи
+	this->_refusals++;
 	// Выполняем вывод сообщения об отказе в журнал работы
 	this->_log->print("%s", log_t::flag_t::CRITICAL, message(error));
 	// Выводим признак отказа записи
@@ -1048,7 +1070,7 @@ void awh::codec::csv::Writer::setLogger(const log_t * log) noexcept {
  *
  */
 awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
- _log(log), _origin(0), _started(false), _marked(false), _error(error_t::NONE) {}
+ _log(log), _origin(0), _started(false), _marked(false), _error(error_t::NONE), _refusals(0) {}
 /**
  * @brief Конструктор
  *
@@ -1058,4 +1080,4 @@ awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
  */
 awh::codec::csv::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
  _log(log),
- _settings(settings), _origin(0), _started(false), _marked(false), _error(error_t::NONE) {}
+ _settings(settings), _origin(0), _started(false), _marked(false), _error(error_t::NONE), _refusals(0) {}

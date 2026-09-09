@@ -30175,6 +30175,155 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	 *       журналом, а пропущенная под ним ветка - нет, и ловится она тем же признаком
 	 *
 	 */
+	/**
+	 * @brief Проверка выдачи адреса у ИЗОБРАЖЁННОГО узла домена UNIX
+	 *
+	 * @details Узел вида `SEQPACKET` движок изображает именованным каналом, и договор от
+	 *          этого меняться не вправе: адрес узла - тот самый путь, каким его задал
+	 *          потребитель, и отдаваться он обязан наравне с настоящим сокетом. Берётся
+	 *          он из состояния узла, а не у ядра, - но проверено это здесь замером, а не
+	 *          чтением: у изображённого узла привязки к ядру нет вовсе, и пустой ответ
+	 *          был бы неотличим от «узел адреса не имеет»
+	 *
+	 * @note Утверждается и сервер, и клиент: пути у них задаются разными обращениями
+	 *       (`setAddress` и `setTarget`), и хранятся в разных полях узла
+	 *
+	 */
+	/**
+	 * @brief Проверка ПЕРЕСТРОЙКИ изображённого сервера домена UNIX
+	 *
+	 * @details Перестройка сносит описатель узла и заводит его заново. У изображённого
+	 *          сервера описателей ДВА - опорный конец, стоящий на имени с признаком
+	 *          исключительности, и свободный экземпляр под настоящим именем, - и оба
+	 *          держат имя занятым. Не освободи перестройка их оба прежде заведения новых,
+	 *          заведение упрётся в собственное же имя и сервер останется без описателя
+	 *
+	 * @note Утверждается не сам ответ перестройки, а РАБОТА после неё: сервер обязан
+	 *       по-прежнему принимать подключение. Перестройка, оставившая узел без
+	 *       описателя, ответила бы согласием ровно так же
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsEmulatedRebuildTest){
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("rebuild.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		/**
+		 * Даём циклу обороты до перестройки
+		 */
+		for(uint8_t i = 0; i < 3; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Собранные записи журнала уровня предупреждения
+		std::vector <std::string> warnings;
+		// Выполняем подписку на записи журнала
+		this->_log->subscribe([&warnings](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+			// Если запись журнала является предупреждением либо отказом
+			if((flag == awh::log_t::flag_t::WARNING) || (flag == awh::log_t::flag_t::CRITICAL))
+				// Запоминаем запись журнала
+				warnings.emplace_back(text);
+		});
+		// Выполняем перестройку описателя сервера
+		ASSERT_TRUE(this->_io->rebuild(sid)) << "перестройка изображённого сервера отвергнута";
+		// Снимаем подписку на записи журнала
+		this->_log->subscribe(nullptr);
+		/**
+		 * Перестройка обязана молчать
+		 *
+		 * @note Восстанавливать надлежит лишь ЗАДАННОЕ: незаданная настройка приходит
+		 *       значением `NONE`, ответа у системы не имеет и отвечает предупреждением о
+		 *       том, чего никто не просил. У местного узла обнаружения MTU нет и быть не
+		 *       может вовсе
+		 */
+		ASSERT_TRUE(warnings.empty()) << "перестройка дала " << warnings.size() << " запись(ей), первая: " << (warnings.empty() ? std::string() : warnings.front());
+		/**
+		 * Даём циклу обороты после перестройки
+		 */
+		for(uint8_t i = 0; i < 3; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Клиент обязан подключиться к перестроенному серверу
+		ASSERT_TRUE(this->_io->commit(cid)) << "клиент не подключился: перестроенный сервер имени не держит";
+		/**
+		 * Даём циклу обороты
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сносим оба узла
+		this->_io->destroy(cid);
+		this->_io->destroy(sid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	TEST_F(IoFixture, IoUdsEmulatedAddressTest){
+		// Путь, каким задаётся узел домена UNIX
+		const std::string path = ::uds("address.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		/**
+		 * Выставляем обоим неблокирующий обмен
+		 */
+		for(const awh::event::id_t id : {sid, cid})
+			// Выставляем узлу неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(id, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Адрес сервера обязан отдаваться тем же путём, каким задан
+		ASSERT_EQ(this->_io->getAddress(sid, awh::event::address_t::UDS), path)
+		 << "изображённый сервер не отдал своего пути";
+		// Клиент обязан подключиться
+		ASSERT_TRUE(this->_io->commit(cid));
+		// Цель клиента обязана отдаваться тем же путём, каким задана
+		ASSERT_EQ(this->_io->getAddress(cid, awh::event::address_t::UDS), path)
+		 << "изображённый клиент не отдал пути своей цели";
+		/**
+		 * Даём циклу обороты
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сносим оба узла
+		this->_io->destroy(cid);
+		this->_io->destroy(sid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
 	TEST_F(IoFixture, IoUdsServerLifecycleIsQuietTest){
 		// Собранные записи журнала уровня отказа
 		std::vector <std::string> failures;

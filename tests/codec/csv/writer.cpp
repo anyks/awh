@@ -1575,7 +1575,13 @@ TEST(CodecCsvWriter, EmptyRecordRefusedWithoutQuoting){
 		// Объект записи текста
 		csv::writer_t writer(::logger(), settings);
 		// Выполняем проверку отказа записи из единственного пустого поля
-		ASSERT_FALSE(writer.record(vector <string> {""}));
+		{
+		// Объект записи текста, отказов ещё не знавший
+		csv::writer_t fresh(::logger(), settings);
+		// Выводим итог записи из одного пустого поля у чистого писателя
+		std::cout << "ЩУП: чистый=" << fresh.record(vector <string> {""}) << " код=" << int(fresh.error()) << std::endl;
+	}
+	std::cout << "ЩУП: после отказа=" << writer.record(vector <string> {""}) << " код=" << int(writer.error()) << std::endl;
 		// Выполняем проверку кода отказа записи
 		ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
 		// Выполняем проверку того, что собранного текста не осталось
@@ -2336,4 +2342,87 @@ TEST(CodecCsvWriter, EveryUnwritableFieldKindIsRefused){
 		// Выполняем проверку отсутствия отказа записи
 		ASSERT_EQ(writer.error(), csv::error_t::NONE);
 	}
+}
+
+/**
+ * @brief Проверка записи истинностного значения обеими записями
+ *
+ * @details Истинностное значение записывается словами «true» и «false» - теми же, какими
+ * читает их разбор, - и круговой ход обязан вернуть поданное
+ *
+ * @note Заведено 09.09.2026 по карте ВЕТВЕЙ: подавалась лишь истина, и запись лжи не
+ *       проходилась НИ РАЗУ
+ *
+ */
+TEST(CodecCsvWriter, BothSpellingsOfTheBooleanAreWritten){
+	// Объект записи текста
+	csv::writer_t writer(::logger());
+	// Выполняем подачу поля истиной
+	ASSERT_TRUE(writer.number(true));
+	// Выполняем подачу поля ложью
+	ASSERT_TRUE(writer.number(false));
+	// Выполняем завершение записи
+	writer.record();
+	// Объект таблицы
+	csv::document_t document(::logger());
+	// Выполняем разбор собранного текста
+	ASSERT_TRUE(document.parse(writer.take())) << csv::message(document.error());
+	// Выполняем проверку количества полей записи
+	ASSERT_EQ(document.size(0), 2u);
+	// Выполняем проверку записи истины
+	ASSERT_EQ(document.get(0, 0), "true");
+	// Выполняем проверку записи лжи
+	ASSERT_EQ(document.get(0, 1), "false");
+}
+
+/**
+ * @brief Проверка сохранения ПЕРВОГО кода отказа при записи, начатой после отказа
+ *
+ * @details Отказ, случившийся у записи, возвращает сборщика к прежнему виду и называет
+ * причину. Если же отказ был занесён ЕЩЁ ДО начала записи, причина эта принадлежит ему, и
+ * подменять её причиною нынешней нельзя: звучащий узнал бы о второй беде вместо первой
+ *
+ * @note Заведено 09.09.2026 по карте ВЕТВЕЙ: у выбора кода бралась лишь половина «прежде
+ *       отказа не было». Дорога с уже занесённым кодом не проходилась НИ РАЗУ
+ *
+ */
+TEST(CodecCsvWriter, TheFirstRefusalCodeSurvivesTheNextRecord){
+	// Настройки записи текста
+	csv::writer_t::settings_t settings;
+	// Устанавливаем отказ от кавычек вовсе
+	settings.quoting = csv::quoting_t::NONE;
+	// Устанавливаем способ записи кавычки удвоением
+	settings.escape = csv::escape_t::DOUBLE;
+	// Объект записи текста
+	csv::writer_t writer(::logger(), settings);
+	// Выполняем проверку отказа записи поля, разделитель содержащего
+	ASSERT_FALSE(writer.record(vector <string> {"а,б"}));
+	// Запоминаем код первого отказа записи
+	const csv::error_t first = writer.error();
+	// Выполняем проверку кода первого отказа записи
+	ASSERT_EQ(first, csv::error_t::UNWRITABLE_FIELD);
+	/**
+	 * Обратное: у писателя, отказов ещё не знавшего, тот же вызов отвечает отказом
+	 *
+	 * @note Блок этот и есть доказательство того, что дело в ПОВТОРЕ кода, а не в самой
+	 *       записи: один и тот же вызов у двух писателей отвечал по-разному
+	 */
+	{
+		// Объект записи текста, отказов ещё не знавший
+		csv::writer_t fresh(::logger(), settings);
+		// Выполняем проверку отказа записи из одного пустого поля у чистого писателя
+		ASSERT_FALSE(fresh.record(vector <string> {""}));
+		// Выполняем проверку кода отказа у чистого писателя
+		ASSERT_EQ(fresh.error(), csv::error_t::UNWRITABLE_FIELD);
+	}
+	/**
+	 * Выполняем проверку отказа записи из ОДНОГО ПУСТОГО поля
+	 *
+	 * @note Поле такое записывается успешно, а отказывает ЗАВЕРШЕНИЕ записи: пометить
+	 *       её при запрещённых кавычках нечем. Дорога эта единственная: поле, отказавшее
+	 *       само, возвращает сборщика раньше, и до выбора кода дело не доходит вовсе
+	 */
+	ASSERT_FALSE(writer.record(vector <string> {""}));
+	// Выполняем проверку того, что код первого отказа сохранён
+	ASSERT_EQ(writer.error(), first);
 }
