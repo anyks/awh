@@ -386,7 +386,7 @@ TEST(CodecYamlReader, ImpliedSequence) {
 	 */
 	ASSERT_EQ(events("port: 80\n- alpha\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «port»\nSCALAR «80»\n"
-		"ОТКАЗ перечень и отображение смешаны на одном уровне строка 2 знак 1\n");
+		"ОТКАЗ a sequence and a mapping are mixed at the same level строка 2 знак 1\n");
 }
 /**
  * @brief Проверка выдачи пустоты на месте значения записи перечня
@@ -1618,11 +1618,11 @@ TEST(CodecYamlReader, SequenceOnKeyLine) {
 	// Выполняем проверку отказа черты записи перечня за именем пары
 	ASSERT_EQ(events("key: - a\n"),
 		"STREAM_START\n"
-		"ОТКАЗ перечень и отображение смешаны на одном уровне строка 1 знак 6\n");
+		"ОТКАЗ a sequence and a mapping are mixed at the same level строка 1 знак 6\n");
 	// Выполняем проверку отказа одинокой черты за именем пары
 	ASSERT_EQ(events("key: -\n"),
 		"STREAM_START\n"
-		"ОТКАЗ перечень и отображение смешаны на одном уровне строка 1 знак 6\n");
+		"ОТКАЗ a sequence and a mapping are mixed at the same level строка 1 знак 6\n");
 	/**
 	 * Выполняем проверку принятия перечня строкою ниже имени пары
 	 *
@@ -1675,7 +1675,7 @@ TEST(CodecYamlReader, SequenceScalar) {
 	// Выполняем проверку отказа значения, чертою записи не объявленного
 	ASSERT_EQ(events("a:\n  - x\n  y\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nSEQUENCE_START\nSCALAR «x»\n"
-		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 3\n");
+		"ОТКАЗ the indentation fits none of the opened levels строка 3 знак 3\n");
 	/**
 	 * Выполняем проверку отказа значения, чертою открывающегося
 	 *
@@ -1684,7 +1684,7 @@ TEST(CodecYamlReader, SequenceScalar) {
 	 */
 	ASSERT_EQ(events("a:\n  - x\n  -e\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nSEQUENCE_START\nSCALAR «x»\n"
-		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 3\n");
+		"ОТКАЗ the indentation fits none of the opened levels строка 3 знак 3\n");
 	/**
 	 * Выполняем проверку отказа значения глубже отступа перечня
 	 *
@@ -1694,7 +1694,7 @@ TEST(CodecYamlReader, SequenceScalar) {
 	 */
 	ASSERT_EQ(events("-\n  -\n 9\n"),
 		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSEQUENCE_START\n"
-		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 2\n");
+		"ОТКАЗ the indentation fits none of the opened levels строка 3 знак 2\n");
 	/**
 	 * Выполняем проверку принятия значения записи перечня строкою ниже черты
 	 *
@@ -1743,17 +1743,17 @@ TEST(CodecYamlReader, DeeperEntry) {
 	ASSERT_EQ(events("a:\n  b: {x: 1}\n      c: 2\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nMAPPING_START\nSCALAR «b»\n"
 		"MAPPING_START\nSCALAR «x»\nSCALAR «1»\nMAPPING_END\n"
-		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 7\n");
+		"ОТКАЗ the indentation fits none of the opened levels строка 3 знак 7\n");
 	// Выполняем проверку отказа пары глубже завершённой пары через пустую строку
 	ASSERT_EQ(events("a:\n  b: {x: 1}\n\n      c: 2\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nMAPPING_START\nSCALAR «b»\n"
 		"MAPPING_START\nSCALAR «x»\nSCALAR «1»\nMAPPING_END\n"
-		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 4 знак 7\n");
+		"ОТКАЗ the indentation fits none of the opened levels строка 4 знак 7\n");
 	// Выполняем проверку отказа пары глубже завершённой пары с перечнем значением
 	ASSERT_EQ(events("a:\n  b: [1]\n    c: 2\n"),
 		"STREAM_START\nDOCUMENT_START\nMAPPING_START\nSCALAR «a»\nMAPPING_START\nSCALAR «b»\n"
 		"SEQUENCE_START\nSCALAR «1»\nSEQUENCE_END\n"
-		"ОТКАЗ отступ не отвечает ни одному из открытых уровней строка 3 знак 5\n");
+		"ОТКАЗ the indentation fits none of the opened levels строка 3 знак 5\n");
 	/**
 	 * Выполняем проверку принятия вложенности в четыре уровня
 	 *
@@ -1829,11 +1829,11 @@ TEST(CodecYamlReader, FlowTags) {
 	// Выполняем проверку отказа метки скалярного значения над поточным перечнем
 	ASSERT_EQ(events("- !!str [ 1 ]\n"),
 		"STREAM_START\n"
-		"ОТКАЗ содержимое не отвечает виду, заданному меткой типа строка 1 знак 9\n");
+		"ОТКАЗ the content does not fit the type given by the tag строка 1 знак 9\n");
 	// Выполняем проверку отказа метки перечня над поточным отображением
 	ASSERT_EQ(events("- !!seq { a: 1 }\n"),
 		"STREAM_START\n"
-		"ОТКАЗ содержимое не отвечает виду, заданному меткой типа строка 1 знак 9\n");
+		"ОТКАЗ the content does not fit the type given by the tag строка 1 знак 9\n");
 	// Выполняем проверку принятия метки перечня над поточным перечнем
 	ASSERT_EQ(events("- !!seq [ 1 ]\n"),
 		"STREAM_START\nDOCUMENT_START\nSEQUENCE_START\nSEQUENCE_START <tag:yaml.org,2002:seq>\nSCALAR «1»\n"
@@ -1841,7 +1841,7 @@ TEST(CodecYamlReader, FlowTags) {
 	// Выполняем проверку отказа метки скалярного значения над вложенным поточным перечнем
 	ASSERT_EQ(events("- [ !!str [ 1 ] ]\n"),
 		"STREAM_START\n"
-		"ОТКАЗ содержимое не отвечает виду, заданному меткой типа строка 1 знак 11\n");
+		"ОТКАЗ the content does not fit the type given by the tag строка 1 знак 11\n");
 }
 /**
  * @brief Проверка отказа скалярного значения, парою отображения не объявленного
