@@ -84,7 +84,10 @@ DEPEND="$TP/third_party/lib/libdependence.a"
 [ -f "$DEPEND" ] || { echo "libdependence не найдена: $TP/third_party/lib" >&2; exit 4; }
 ARGS="src/args/args.cpp src/args/lexer.cpp src/args/schema.cpp src/args/common.cpp"
 NET="src/sys/fs.cpp src/sys/os.cpp"
-TESTS="tests/main.cpp tests/args/args.cpp tests/args/lexer.cpp tests/args/schema.cpp"
+# Проверки моста берутся сюда же: тела кодеков и самого моста стенд собирает и без
+# них, а стенда своего у моста нет вовсе - без этой строки правки его выверялись бы
+# на одной лишь рабочей машине, тогда как обе находки стендов были ей невидимы
+TESTS="tests/main.cpp tests/args/args.cpp tests/args/lexer.cpp tests/args/schema.cpp tests/codec/bridge.cpp"
 # Розыск gtest: путь его от системы к системе разный, а по умолчанию виден не везде
 GT=""
 for D in /opt/homebrew /usr/local /usr /usr/pkg /opt/local /opt/csw /mingw64; do
