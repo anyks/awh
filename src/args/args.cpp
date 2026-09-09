@@ -496,8 +496,19 @@ bool awh::args::Args::env() noexcept {
 	if(items == nullptr)
 		// Выходим из метода, собирать нечего
 		return false;
-	// Получаем начало имён переменных окружения в верхнем регистре
-	const string & prefix = this->_fmk->transform(this->_prefix, fmk_t::transform_t::UPPER_CASE);
+	/**
+	 * Получаем начало имён переменных окружения в верхнем регистре
+	 *
+	 * @warning Приведение идёт по КОПИИ, а не по самому полю: у каркаса два
+	 *          перегруженных хода приведения регистра, и для поля, изменяемого в
+	 *          неконстантном методе, выбирается ход, меняющий запись НА МЕСТЕ.
+	 *          Оттого первый же сбор переводил начало имён в верхний регистр
+	 *          необратимо, и выдача `prefix()` отвечала не тем, что установлено
+	 *          было потребителем. Замерено 09.09.2026 аудитом
+	 */
+	string prefix = this->_prefix;
+	// Выполняем перевод начала имён переменных окружения в верхний регистр
+	this->_fmk->transform(prefix, fmk_t::transform_t::UPPER_CASE);
 	// Признак успешности укладки собранного
 	bool result = true;
 	// Выполняем перебор всего набора переменных окружения
@@ -861,7 +872,7 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отсутствии расширения имени
-		this->_log->print("Args: вид записи файла настроек \"%s\" из имени не выводится", log_t::flag_t::WARNING, filename.c_str());
+		this->_log->print("Args: format of the settings file \"%s\" is not derivable from its name", log_t::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, читать нечего
 		return false;
 	}
@@ -892,7 +903,7 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 	// Выполняем запоминание отказа чтения файла настроек
 	this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 	// Выводим в лог сообщение о неведомом расширении имени
-	this->_log->print("Args: вид записи \"%s\" файла настроек \"%s\" неведом", log_t::flag_t::WARNING, extension.c_str(), filename.c_str());
+	this->_log->print("Args: unknown format \"%s\" of the settings file \"%s\"", log_t::flag_t::WARNING, extension.c_str(), filename.c_str());
 	// Выходим из метода, читать нечего
 	return false;
 }
