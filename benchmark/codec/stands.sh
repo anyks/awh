@@ -50,7 +50,34 @@ set -u
 ROOT="${AWH_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 
 # Получаем перечень прогоняемых стендов замеров
-STANDS="${*:-benchmark/codec/xml/stand.sh benchmark/codec/json/stand.sh}"
+#
+# @warning Перечень внесён не целиком: стенды syslog и CEF взяты сюда 09.09.2026 их
+#          владельцем, а стенды YAML, INI, TOML, CSV и ABC ждут слова своих. Поверка
+#          ниже называет всякий стенд, в перечень не попавший: стенд, замеры какого не
+#          гоняются, от стенда, замеры выдержавшего, ничем не отличается
+#
+STANDS="${*:-benchmark/codec/xml/stand.sh benchmark/codec/json/stand.sh benchmark/codec/syslog/stand.sh benchmark/codec/cef/stand.sh}"
+
+#
+# Выполняем поверку перечня стендов на полноту
+#
+# @details Стенд, в дереве лежащий, а в раскладку не внесённый, по машинам не гоняется
+# вовсе - и молчание это неотличимо от прогона, пороги выдержавшего. Поверка лишь
+# НАЗЫВАЕТ такие стенды, ничего не решая за владельца: внесение перечня есть его труд
+#
+# @note Заведено по образцу раскладки проверок, где тем же способом вскрылись пять
+#       стендов вне перечня
+#
+if [ $# -eq 0 ]; then
+	for FOUND in "$ROOT"/benchmark/codec/*/stand.sh; do
+		[ -f "$FOUND" ] || continue
+		FOUND="benchmark/codec/$(basename "$(dirname "$FOUND")")/stand.sh"
+		case " $STANDS " in
+			*" $FOUND "*) ;;
+			*) echo "!!! СТЕНД ВНЕ РАСКЛАДКИ: $FOUND - замеры кодека по машинам НЕ ГОНЯЮТСЯ" ;;
+		esac
+	done
+fi
 
 # Получаем число прогонов, снимаемых на каждой машине
 PASSES="${AWH_PASSES:-3}"
@@ -145,7 +172,8 @@ echo "Собираем свёрток: $BUNDLE"
 #          опорами, а свёрток нёс по-прежнему один «src/codec»
 #
 ( cd "$ROOT" && COPYFILE_DISABLE=1 tar --format=ustar -czf "$BUNDLE" \
-	include src/codec src/num src/sys src/net/nwt.cpp src/encoding src/alloc \
+	include src/codec src/num src/sys src/net/nwt.cpp src/net/addr.cpp src/net/net.cpp \
+	src/encoding src/alloc \
 	src/cryptography/hash.cpp benchmark tools/benchmark/syscount ) || exit 1
 
 # Собираемый сценарий прогона на стороне машины
@@ -330,7 +358,17 @@ echo "$MACHINES" | while IFS='|' read -r HOST TAG COMPILER BUILDFLAGS; do
 	#       столько же раз. Число это - мера беды, а не перечень сценариев; сами они
 	#       стоят выше в выводе машины, и свод лишь указывает, где их искать
 	#
-	echo "$TAG $(grep -c '^прогон' "$COUNTS.raw" 2>/dev/null || echo 0) $(grep -c '^прогон.*ХУЖЕ' "$COUNTS.raw" 2>/dev/null || echo 0)" >> "$COUNTS"
+	#
+	# Счёт прогонов и счёт непройденных порогов
+	#
+	# @warning Запасной ход пишется ОТДЕЛЬНЫМИ строками, а не через «|| echo 0»:
+	#          `grep -c` при нуле совпадений печатает «0» И отвечает кодом 1 разом,
+	#          оттого «||» дописывал второй нуль, и строка свода получала лишнее поле.
+	#          Вылезало это ровно при нуле прогонов - в случае, ради какого свод и заведён
+	#
+	RUNS=$(grep -c '^прогон' "$COUNTS.raw" 2>/dev/null) || RUNS=0
+	WORSE_COUNT=$(grep -c '^прогон.*ХУЖЕ' "$COUNTS.raw" 2>/dev/null) || WORSE_COUNT=0
+	echo "$TAG $RUNS $WORSE_COUNT" >> "$COUNTS"
 	# Выполняем очистку накопленного вывода очередной машины
 	: > "$COUNTS.raw"
 	# Выводим сообщение об окончании прогона на очередной машине с отметкой времени

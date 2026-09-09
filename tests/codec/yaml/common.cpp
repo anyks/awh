@@ -826,7 +826,22 @@ TEST(CodecYamlCommon, MessagesAndUnknownNames) {
 	 */
 	{
 		// Выполняем проверку описания, коду неведомому выдаваемого
-		ASSERT_STREQ(yaml::message(static_cast <yaml::error_t> (0xFE)), "неизвестный код отказа");
+		ASSERT_STREQ(yaml::message(static_cast <yaml::error_t> (0xFE)), "unknown error");
+		/**
+		 * Выполняем проверку того, что описание отказа дано по-английски
+		 *
+		 * @note Договор един у девяти кодеков рамки: описания отказов даются одним языком.
+		 *       Кодек YAML был единственным, кто отвечал по-русски, - и отвечал вперемешку,
+		 *       ибо коды, заведённые позже, описания имели уже английские
+		 */
+		for(uint16_t i = 0; i <= 0xFF; i++){
+			// Получаем описание очередного кода отказа
+			const string description(yaml::message(static_cast <yaml::error_t> (i)));
+			// Выполняем перебор всех знаков описания кода отказа
+			for(const char letter : description)
+				// Выполняем проверку того, что знак описания принадлежит набору ASCII
+				ASSERT_LT(static_cast <uint8_t> (letter), 0x80) << i << ": " << description;
+		}
 	}
 	/**
 	 * Выполняем проверку выдачи названий при виде неведомом

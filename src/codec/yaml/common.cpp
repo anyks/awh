@@ -696,93 +696,93 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 	 */
 	switch(static_cast <uint8_t> (error)){
 		// Если ошибок не обнаружено
-		case static_cast <uint8_t> (error_t::NONE): return "ошибок не обнаружено";
+		case static_cast <uint8_t> (error_t::NONE): return "no error";
 		// Если произошла внутренняя ошибка разбора
-		case static_cast <uint8_t> (error_t::INTERNAL): return "внутренняя ошибка разбора";
+		case static_cast <uint8_t> (error_t::INTERNAL): return "internal parsing error";
 		// Если текст оборвался посреди значения
-		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF): return "текст оборвался посреди значения";
+		case static_cast <uint8_t> (error_t::UNEXPECTED_EOF): return "the text broke off in the middle of a value";
 		// Если знак недопустим в этом месте текста
-		case static_cast <uint8_t> (error_t::INVALID_CHARACTER): return "знак недопустим в этом месте текста";
+		case static_cast <uint8_t> (error_t::INVALID_CHARACTER): return "the character is not allowed at this place of the text";
 		// Если последовательность байтов не отвечает объявленной кодировке
-		case static_cast <uint8_t> (error_t::INVALID_ENCODING): return "последовательность байтов не отвечает объявленной кодировке";
+		case static_cast <uint8_t> (error_t::INVALID_ENCODING): return "the sequence of bytes does not fit the declared encoding";
 		// Если объявленная кодировка не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING): return "объявленная кодировка не поддерживается";
+		case static_cast <uint8_t> (error_t::UNSUPPORTED_ENCODING): return "the declared encoding is not supported";
 		// Если отступ не отвечает ни одному из открытых уровней
-		case static_cast <uint8_t> (error_t::INVALID_INDENTATION): return "отступ не отвечает ни одному из открытых уровней";
+		case static_cast <uint8_t> (error_t::INVALID_INDENTATION): return "the indentation fits none of the opened levels";
 		// Если отступ содержит знак горизонтальной подачи
-		case static_cast <uint8_t> (error_t::TAB_IN_INDENTATION): return "отступ содержит знак горизонтальной подачи, описанием запрещённый";
+		case static_cast <uint8_t> (error_t::TAB_IN_INDENTATION): return "the indentation contains a tab character forbidden by the specification";
 		// Если скалярное значение не закрыто оградой
-		case static_cast <uint8_t> (error_t::UNTERMINATED_SCALAR): return "скалярное значение не закрыто оградой до конца текста";
+		case static_cast <uint8_t> (error_t::UNTERMINATED_SCALAR): return "unterminated scalar value";
 		// Если отменяющая последовательность не опознана
-		case static_cast <uint8_t> (error_t::INVALID_ESCAPE): return "отменяющая последовательность не опознана";
+		case static_cast <uint8_t> (error_t::INVALID_ESCAPE): return "unknown escape sequence";
 		// Если запись знака Юникода содержит недопустимые знаки
-		case static_cast <uint8_t> (error_t::INVALID_UNICODE): return "запись знака Юникода содержит недопустимые знаки";
+		case static_cast <uint8_t> (error_t::INVALID_UNICODE): return "the record of a Unicode character contains invalid characters";
 		// Если суррогат не образует пары
-		case static_cast <uint8_t> (error_t::UNPAIRED_SURROGATE): return "суррогат не образует пары";
+		case static_cast <uint8_t> (error_t::UNPAIRED_SURROGATE): return "unpaired surrogate";
 		// Если заголовок блочного значения построен ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_BLOCK_HEADER): return "заголовок блочного значения построен ошибочно";
+		case static_cast <uint8_t> (error_t::INVALID_BLOCK_HEADER): return "malformed header of a block value";
 		// Если запись числа не отвечает действующей схеме
-		case static_cast <uint8_t> (error_t::INVALID_NUMBER): return "запись числа не отвечает действующей схеме";
+		case static_cast <uint8_t> (error_t::INVALID_NUMBER): return "the record of a number does not fit the active schema";
 		// Если число не представимо затребованным видом
-		case static_cast <uint8_t> (error_t::NUMBER_OUT_OF_RANGE): return "число не представимо затребованным видом";
+		case static_cast <uint8_t> (error_t::NUMBER_OUT_OF_RANGE): return "the number is not representable by the requested type";
 		// Если содержимое метки двоичного значения записано ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_BINARY): return "содержимое метки !!binary не отвечает записи base64";
+		case static_cast <uint8_t> (error_t::INVALID_BINARY): return "the content of the !!binary tag does not fit the base64 record";
 		// Если отметка времени построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_STAMP): return "ошибочное построение отметки времени";
+		case static_cast <uint8_t> (error_t::INVALID_STAMP): return "malformed datetime";
 		// Если ожидалось значение
-		case static_cast <uint8_t> (error_t::EXPECTED_VALUE): return "ожидалось значение";
+		case static_cast <uint8_t> (error_t::EXPECTED_VALUE): return "a value was expected";
 		// Если ожидалось имя пары отображения
-		case static_cast <uint8_t> (error_t::EXPECTED_KEY): return "ожидалось имя пары отображения";
+		case static_cast <uint8_t> (error_t::EXPECTED_KEY): return "a name of a mapping pair was expected";
 		// Если ожидалось двоеточие после имени пары
-		case static_cast <uint8_t> (error_t::EXPECTED_COLON): return "ожидалось двоеточие после имени пары";
+		case static_cast <uint8_t> (error_t::EXPECTED_COLON): return "a colon after the name of a pair was expected";
 		// Если ожидалась запятая либо закрывающая скобка
-		case static_cast <uint8_t> (error_t::EXPECTED_COMMA): return "ожидалась запятая либо закрывающая скобка поточного построения";
+		case static_cast <uint8_t> (error_t::EXPECTED_COMMA): return "a comma or a closing bracket of a flow construction was expected";
 		// Если поточное построение не закрыто скобкой
-		case static_cast <uint8_t> (error_t::UNCLOSED_FLOW): return "поточное построение не закрыто скобкой";
+		case static_cast <uint8_t> (error_t::UNCLOSED_FLOW): return "unclosed flow construction";
 		// Если перечень и отображение смешаны на одном уровне
-		case static_cast <uint8_t> (error_t::MIXED_COLLECTION): return "перечень и отображение смешаны на одном уровне";
+		case static_cast <uint8_t> (error_t::MIXED_COLLECTION): return "a sequence and a mapping are mixed at the same level";
 		// Если имя пары отображения объявлено повторно
-		case static_cast <uint8_t> (error_t::DUPLICATE_KEY): return "имя пары отображения объявлено повторно";
+		case static_cast <uint8_t> (error_t::DUPLICATE_KEY): return "duplicate name of a mapping pair";
 		// Если составное имя пары встречено при запрещённых составных именах
-		case static_cast <uint8_t> (error_t::COMPLEX_KEY): return "составное имя пары при запрещённых составных именах";
+		case static_cast <uint8_t> (error_t::COMPLEX_KEY): return "a complex key while complex keys are forbidden";
 		// Если ссылка указывает на метку, ещё не объявленную
-		case static_cast <uint8_t> (error_t::UNKNOWN_ALIAS): return "ссылка указывает на метку, ещё не объявленную";
+		case static_cast <uint8_t> (error_t::UNKNOWN_ALIAS): return "the alias refers to an anchor not yet declared";
 		// Если метка с таким именем уже объявлена
-		case static_cast <uint8_t> (error_t::DUPLICATE_ANCHOR): return "метка с таким именем уже объявлена";
+		case static_cast <uint8_t> (error_t::DUPLICATE_ANCHOR): return "duplicate anchor name";
 		// Если ссылка указывает сама на себя
-		case static_cast <uint8_t> (error_t::RECURSIVE_ALIAS): return "ссылка указывает сама на себя через цепочку меток";
+		case static_cast <uint8_t> (error_t::RECURSIVE_ALIAS): return "the alias refers to itself through a chain of anchors";
 		// Если раскрытие ссылок порождает больше узлов, чем дозволено
-		case static_cast <uint8_t> (error_t::EXPANSION_EXCEEDED): return "раскрытие ссылок порождает больше узлов, чем дозволено";
+		case static_cast <uint8_t> (error_t::EXPANSION_EXCEEDED): return "the expansion of aliases produces more nodes than allowed";
 		// Если метка типа построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_TAG): return "метка типа построена ошибочно";
+		case static_cast <uint8_t> (error_t::INVALID_TAG): return "malformed tag";
 		// Если сокращение метки типа не объявлено директивой
-		case static_cast <uint8_t> (error_t::UNKNOWN_TAG_HANDLE): return "сокращение метки типа не объявлено директивой %TAG";
+		case static_cast <uint8_t> (error_t::UNKNOWN_TAG_HANDLE): return "the tag handle is not declared by a %TAG directive";
 		// Если содержимое не отвечает виду, заданному меткой типа
-		case static_cast <uint8_t> (error_t::TAG_MISMATCH): return "содержимое не отвечает виду, заданному меткой типа";
+		case static_cast <uint8_t> (error_t::TAG_MISMATCH): return "the content does not fit the type given by the tag";
 		// Если директива построена ошибочно
-		case static_cast <uint8_t> (error_t::INVALID_DIRECTIVE): return "директива построена ошибочно";
+		case static_cast <uint8_t> (error_t::INVALID_DIRECTIVE): return "malformed directive";
 		// Если объявленное наречие не поддерживается
-		case static_cast <uint8_t> (error_t::UNSUPPORTED_VERSION): return "наречие, объявленное директивой %YAML, не поддерживается";
+		case static_cast <uint8_t> (error_t::UNSUPPORTED_VERSION): return "the version declared by the %YAML directive is not supported";
 		// Если начало нового документа встречено посреди значения
-		case static_cast <uint8_t> (error_t::UNEXPECTED_DOCUMENT): return "начало нового документа посреди значения";
+		case static_cast <uint8_t> (error_t::UNEXPECTED_DOCUMENT): return "the start of a new document in the middle of a value";
 		// Если за окончанием документа стоят знаки
-		case static_cast <uint8_t> (error_t::TRAILING_CHARACTERS): return "знаки за окончанием документа";
+		case static_cast <uint8_t> (error_t::TRAILING_CHARACTERS): return "characters beyond the end of the document";
 		// Если глубина вложенности превышает допустимую
-		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED): return "глубина вложенности превышает допустимую";
+		case static_cast <uint8_t> (error_t::DEPTH_EXCEEDED): return "the depth of nesting exceeds the allowed one";
 		// Если длина скалярного значения превышает допустимую
-		case static_cast <uint8_t> (error_t::SCALAR_TOO_LONG): return "длина скалярного значения превышает допустимую";
+		case static_cast <uint8_t> (error_t::SCALAR_TOO_LONG): return "the length of a scalar value exceeds the allowed one";
 		// Если длина записи числа превышает допустимую
-		case static_cast <uint8_t> (error_t::NUMBER_TOO_LONG): return "длина записи числа превышает допустимую";
+		case static_cast <uint8_t> (error_t::NUMBER_TOO_LONG): return "the length of the record of a number exceeds the allowed one";
 		// Если длина имени метки превышает допустимую
-		case static_cast <uint8_t> (error_t::ANCHOR_TOO_LONG): return "длина имени метки превышает допустимую";
+		case static_cast <uint8_t> (error_t::ANCHOR_TOO_LONG): return "the length of an anchor name exceeds the allowed one";
 		// Если количество узлов документа превышает допустимое
-		case static_cast <uint8_t> (error_t::TOO_MANY_NODES): return "количество узлов документа превышает допустимое";
+		case static_cast <uint8_t> (error_t::TOO_MANY_NODES): return "the count of the nodes of the document exceeds the allowed one";
 		// Если текст пуст, а документ затребован
-		case static_cast <uint8_t> (error_t::EMPTY_TEXT): return "текст пуст, а документ затребован";
+		case static_cast <uint8_t> (error_t::EMPTY_TEXT): return "the text is empty while a document is requested";
 		// Если превышен предел, заданный настройками разбора
-		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT): return "превышен предел, заданный настройками разбора";
+		case static_cast <uint8_t> (error_t::OVERFLOW_LIMIT): return "a limit set by the settings of the parsing is exceeded";
 		// Если настройки записи противоречат толкованию читающего
-		case static_cast <uint8_t> (error_t::CONFLICTING_SETTINGS): return "настройки записи противоречат толкованию читающего";
+		case static_cast <uint8_t> (error_t::CONFLICTING_SETTINGS): return "the settings of the writing contradict the interpretation of the reader";
 		// Если файл документа открыть не удалось
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED):
 			// Выводим описание кода ошибки
@@ -825,7 +825,7 @@ const char * awh::codec::yaml::message(const error_t error) noexcept {
 			return "the text does not fit the width of the parser storage";
 	}
 	// Выводим описание неизвестного кода отказа
-	return "неизвестный код отказа";
+	return "unknown error";
 }
 /**
  * @brief Функция получения названия вида узла
