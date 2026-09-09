@@ -7863,3 +7863,65 @@ TEST(CodecContract, MalformedContentIsNotPassedSilentlyByWriters) {
 		ASSERT_EQ(severe.error(), toml::error_t::INVALID_ENCODING);
 	}
 }
+
+/**
+ * @brief Проверка единого договора подачи после объявленного конца текста
+ *
+ * @details Договор этот РАСХОДИЛСЯ у шести кодеков рамки и расходился молча: YAML
+ *          отвечал кодом чужого смысла, TOML без вычерпывания событий отдавал успех,
+ *          а INI отказывал при коде нулевом, то есть немо. Ныне все шесть отвечают
+ *          отказом при коде НЕнулевом и при названной причине
+ *
+ * @note Проверка ставится здесь, а не при каждом кодеке порознь: расхождение это
+ *       по кодекам порознь и не видно вовсе - у каждого свой ответ выглядел
+ *       намеренным, а неверным был лишь их СОСТАВ
+ *
+ * @warning Описание расхождения пережило само расхождение и стояло во всех трёх
+ *          кодеках сразу, утверждая вдобавок, что правка невозможна. Запись,
+ *          объявляющая нечто невозможным, обязана сноситься той правкой, какая
+ *          это возможным делает
+ *
+ */
+TEST(CodecContract, FeedingAfterTheDeclaredEndIsRefusedAlike) {
+	/**
+	 * @brief Способ подачи двух кусков подряд, обоих с признаком конца
+	 *
+	 * @param reader читатель текста, какому ведётся подача
+	 * @param first  первый подаваемый кусок текста
+	 * @param second второй подаваемый кусок текста
+	 *
+	 */
+	const auto feeding = [](auto & reader, const string & first, const string & second) noexcept -> bool {
+		// Выполняем подачу первого куска текста с признаком конца
+		reader.feed(first.data(), first.size(), true);
+		// Выводим исход подачи второго куска текста с признаком конца
+		return reader.feed(second.data(), second.size(), true);
+	};
+	/**
+	 * Выполняем проверку отказа подачи после конца у кодека INI
+	 */
+	{
+		ini::reader_t reader(::logger());
+		ASSERT_FALSE(feeding(reader, "k=1\n", "m=2\n"));
+		ASSERT_NE(static_cast <uint8_t> (reader.error()), 0) << ini::message(reader.error());
+		ASSERT_EQ(reader.error(), ini::error_t::TEXT_ALREADY_ENDED) << ini::message(reader.error());
+	}
+	/**
+	 * Выполняем проверку отказа подачи после конца у кодека TOML
+	 */
+	{
+		toml::reader_t reader(::logger());
+		ASSERT_FALSE(feeding(reader, "k = 1\n", "m = 2\n"));
+		ASSERT_NE(static_cast <uint8_t> (reader.error()), 0) << toml::message(reader.error());
+		ASSERT_EQ(reader.error(), toml::error_t::TEXT_ALREADY_ENDED) << toml::message(reader.error());
+	}
+	/**
+	 * Выполняем проверку отказа подачи после конца у кодека YAML
+	 */
+	{
+		yaml::reader_t reader(::logger());
+		ASSERT_FALSE(feeding(reader, "k: 1\n", "m: 2\n"));
+		ASSERT_NE(static_cast <uint8_t> (reader.error()), 0) << yaml::message(reader.error());
+		ASSERT_EQ(reader.error(), yaml::error_t::TEXT_ALREADY_ENDED) << yaml::message(reader.error());
+	}
+}

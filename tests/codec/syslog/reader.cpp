@@ -1141,6 +1141,31 @@ TEST(CodecSysLogReader, MalformedRecords) {
 	ASSERT_EQ(oversized.state(), syslog::state_t::FAILED);
 	// Выполняем проверку кода отказа чтения записи
 	EXPECT_EQ(oversized.error(), syslog::error_t::RECORD_TOO_LONG);
+	/**
+	 * Предел длины записи поверяется и ВТОРЫМ краем: запись ровно на пределе годна
+	 *
+	 * @note Наблюдение это заведено 09.09.2026 после ошибки на единицу, вскрытой у
+	 *       кодека CEF: проверка «сверх предела отказ» проходит и при заслоне,
+	 *       срабатывающем на единицу раньше, оттого предел судится обоими краями
+	 */
+	// Запись системного журнала, длиною предел поверяющая
+	const string exact = "<165>Oct 22 10:52:01 host app: Message";
+	// Выполняем создание объекта чтения записей для записи длиною ровно в предел
+	syslog::reader_t sized(&SilentSysLog::framework(), ::logger());
+	// Устанавливаем предел длины записи ровно по длине её самой
+	settings.maxRecord = static_cast <uint32_t> (exact.size());
+	// Устанавливаем настройки разбора записей
+	ASSERT_TRUE(sized.settings(settings));
+	// Выполняем подачу записи длиною ровно в предел
+	ASSERT_TRUE(sized.feed(exact + "\n"));
+	/**
+	 * Выполняем перебор событий разбора записи
+	 */
+	while(sized.next()){}
+	// Выполняем проверку того, что чтение записи отказом НЕ завершилось
+	EXPECT_NE(sized.state(), syslog::state_t::FAILED);
+	// Выполняем проверку того, что кода отказа чтение не выставило
+	EXPECT_EQ(sized.error(), syslog::error_t::NONE);
 	// Выполняем создание объекта чтения записей для пустых записей и возврата каретки
 	syslog::reader_t empty(&SilentSysLog::framework(), ::logger());
 	/**
@@ -1173,4 +1198,60 @@ TEST(CodecSysLogReader, MalformedRecords) {
 	EXPECT_EQ(records, static_cast <size_t> (2));
 	// Выполняем проверку того, что знак возврата каретки в текст сообщения не попал
 	EXPECT_EQ(message, string("Second"));
+}
+
+/**
+ * @brief Проверка приёма записей длиною ровно в предел
+ *
+ * @details Проверка `LimitFailures` судит пределы одним краем - записью, предел
+ *          превысившей, - а такое наблюдение проходит и при заслоне, срабатывающем на
+ *          единицу раньше: поле длиною ровно в предел отвергалось бы, и никто бы того не
+ *          заметил
+ *
+ * @note Заведено 09.09.2026 после ошибки на единицу, вскрытой у кодека CEF: там предел
+ *       числа пар расширения отвергал запись ровно на пределе, и держалось это ровно
+ *       потому, что второго края никто не поверял
+ *
+ */
+TEST(CodecSysLogReader, LimitBoundaries) {
+	// Приставка записи, всем образцам общая
+	const string prefix = "<13>1 2023-04-11T23:29:33Z ";
+	/**
+	 * Образцы записей, полями ровно в предел уложившихся
+	 */
+	const vector <string> samples = {
+		// Имя узла отправителя длиною ровно в предел
+		prefix + string(syslog::MAX_HOSTNAME, 'h') + " app - - - Message",
+		// Название приложения длиною ровно в предел
+		prefix + "host " + string(syslog::MAX_APPLICATION, 'a') + " - - - Message",
+		// Опознаватель работы длиною ровно в предел
+		prefix + "host app " + string(syslog::MAX_PROCESS, 'p') + " - - Message",
+		// Опознаватель сообщения длиною ровно в предел
+		prefix + "host app - " + string(syslog::MAX_MESSAGE_ID, 'm') + " - Message",
+		// Имя поля блока структурированных данных длиною ровно в предел
+		prefix + "host app - - [id@1 " + string(syslog::MAX_NAME, 'p') + "=\"b\"] Message"
+	};
+	/**
+	 * Выполняем перебор всех образцов записей, в предел уложившихся
+	 */
+	for(const string & sample : samples){
+		// Выполняем создание объекта чтения записей
+		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		// Настройки разбора записей
+		syslog::reader_t::settings_t settings;
+		// Устанавливаем чтение записей нынешним описанием
+		settings.standard = syslog::standard_t::RFC5424;
+		// Устанавливаем настройки разбора записей
+		ASSERT_TRUE(reader.settings(settings));
+		// Выполняем подачу образца записи целиком
+		ASSERT_TRUE(reader.feed(sample));
+		/**
+		 * Выполняем перебор событий разбора записи
+		 */
+		while(reader.next()){}
+		// Выполняем проверку того, что чтение записи отказом НЕ завершилось
+		EXPECT_NE(reader.state(), syslog::state_t::FAILED) << sample;
+		// Выполняем проверку того, что кода отказа чтение не выставило
+		EXPECT_EQ(reader.error(), syslog::error_t::NONE) << sample;
+	}
 }

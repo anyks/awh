@@ -24,6 +24,7 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <algorithm>
 #include <vector>
 #include <cstdio>
 #include <sys/stat.h>
@@ -757,14 +758,30 @@ TEST(CodecCefDocument, PathEdges) {
 	 */
 	EXPECT_FALSE(document.erase("/header/vendor/nested/deeper"));
 	/**
-	 * Выполняем проверку постановки значения сквозь звено, картой не являющееся
+	 * Выполняем проверку ОТКАЗА постановки значения сквозь звено, картой не являющееся
 	 *
-	 * @note Вместилище звена ЗАВОДИТСЯ картой, а прежнее значение знаками теряется:
-	 *       такова цена того, что путь достраивает дерево, и оттого проверяется прямо
+	 * @details Заводить вместилище поверх знаков нельзя: прежнее значение стёрлось бы
+	 * МОЛЧА, и потребитель, успех получивший, о потере не узнал бы. Кодеки YAML и TOML
+	 * тот же случай отвергают с названной причиной, а ход сноса `erase` этого кодека
+	 * отвечал отказом всегда - договор сведён к одному лицу 09.09.2026
 	 */
-	ASSERT_TRUE(document.set("/header/vendor/nested", abc::value_t(string("deep"))));
-	// Выполняем проверку того, что вместилище звена заведено картой
-	EXPECT_EQ(document.at("/header/vendor/nested").text(), string("deep"));
+	EXPECT_FALSE(document.set("/header/vendor/nested", abc::value_t(string("deep"))));
+	// Выполняем проверку того, что прежнее значение знаками уцелело
+	EXPECT_EQ(document.at("/header/vendor").text(), string("security"));
+	/**
+	 * Выполняем проверку достройки пути по звеньям, ОТСУТСТВУЮЩИМ вовсе
+	 *
+	 * @note Половина эта доказывает, что заслон выше не отнял назначения пути
+	 */
+	ASSERT_TRUE(document.set("/custom/deep/nested", abc::value_t(string("deep"))));
+	/**
+	 * Выполняем проверку того, что вместилища по пути заведены цепочкою
+	 *
+	 * @note Ветвь взята СВОЯ, а не «/extension»: проверка ниже считает ключи расширения
+	 *       числом, и достройка в ту же ветвь ломала бы её счёт. Замерено 09.09.2026 -
+	 *       проверка отказала, ожидая один ключ и получив два
+	 */
+	EXPECT_EQ(document.at("/custom/deep/nested").text(), string("deep"));
 	// Ставим пару расширения в дерево события
 	ASSERT_TRUE(document.set("/extension/src", abc::value_t(string("10.0.0.1"))));
 	// Выполняем проверку выдачи звеньев пути отображения
@@ -860,4 +877,229 @@ TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	ASSERT_TRUE(weak.parse("CEF:0|security|threatmanager|1.0|100|detected|10|cn1=сорок"));
 	// Выполняем проверку того, что значение легло в дерево знаками
 	EXPECT_EQ(weak.at("/extension/cn1").text(), string("сорок"));
+}
+
+/**
+ * @brief Проверка выдачи значения расширения по ПОЛНОМУ имени ключа
+ *
+ * @details Ключи расширения записью обозначены кратко - «src», «cn1», «rt», - а словарь
+ *          держит при них полные имена вида «sourceAddress». Спрос по полному имени
+ *          разыскивает ключ словарём и выдаёт значение по краткому: потребитель волен
+ *          звать поле так, как оно названо описанием, не держа таблицы сокращений
+ *
+ * @note Имя, словарю неизвестное, спрашивается у дерева КАК ЕСТЬ, а не отвечается
+ *       отказом: записи живых устройств несут ключи сверх описания, и терять их нельзя
+ *
+ */
+TEST(CodecCefDocument, FieldByFullName) {
+	// Объект события CEF
+	cef::document_t document(&::environment().fmk, &::environment().log);
+	// Выполняем разбор записи с ключами расширения
+	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1 ownKey=собственное"));
+	// Выполняем проверку выдачи значения по полному имени ключа
+	EXPECT_EQ(document.field("sourceAddress").text(), string("10.0.0.1"));
+	// Выполняем проверку выдачи значения по краткому имени ключа
+	EXPECT_EQ(document.field("src").text(), string("10.0.0.1"));
+	/**
+	 * Выполняем проверку выдачи значения по имени, словарю неизвестному
+	 *
+	 * @note Ключ этот описанием не задан вовсе, и спрос идёт у дерева как есть
+	 */
+	EXPECT_EQ(document.field("ownKey").text(), string("собственное"));
+	// Выполняем проверку того, что имя, дереву неведомое, годного значения не даёт
+	EXPECT_FALSE(document.field("отсутствующее").valid());
+}
+
+/**
+ * @brief Проверка отказов работы с файлом и настройками
+ *
+ * @details Запись в файл, открыть какой не удалось, отвечается отказом, а не тихим
+ *          успехом: потребитель, успех получивший, считал бы событие сохранённым.
+ *          Настройки же разбора принимаются лишь у чтения, ничего ещё не принявшего:
+ *          дерево, запись уже прочтённое, держит хранилище разбора непустым
+ *
+ * @note Заведено 09.09.2026 сличением наборов: у syslog проверка эта стояла, у CEF её не
+ *       было, при том что ходы работы с файлом у них одни и те же
+ *
+ */
+TEST(CodecCefDocument, FailurePaths) {
+	// Объект события CEF
+	cef::document_t document(&::environment().fmk, &::environment().log);
+	// Выполняем разбор годной записи событий безопасности
+	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
+	// Выполняем проверку отказа записи события в непригодный файл
+	EXPECT_FALSE(document.save("/nonexistent-directory-awh/cef.log"));
+	// Выполняем проверку отказа чтения события из отсутствующего файла
+	EXPECT_FALSE(document.load("/nonexistent-directory-awh/cef.log"));
+	// Настройки разбора записей
+	cef::reader_t::settings_t settings;
+	/**
+	 * Выполняем проверку УСПЕШНОСТИ смены настроек у дерева, запись прочтённое
+	 *
+	 * @details Условие потокового чтения - «правил посреди разбора не менять» - к
+	 * документу не относится: он держит одну запись целиком, и всякий его разбор сам
+	 * начинается со сброса. Настройки, поставленные после чтения, относятся к
+	 * СЛЕДУЮЩЕЙ записи
+	 *
+	 * @note Здесь сброс стоял с самого начала, а у кодека syslog его не было, и тот
+	 *       отвечал отказом: один договор о двух лицах. Сведено 09.09.2026 в пользу
+	 *       ЭТОГО поведения, разобранного по существу, а не по старшинству
+	 */
+	EXPECT_TRUE(document.settings(settings));
+	// Выполняем проверку того, что чтение следующей записи новыми настройками идёт
+	EXPECT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
+	// Объект события CEF для отказа разбора
+	cef::document_t broken(&::environment().fmk, &::environment().log);
+	// Выполняем проверку отказа разбора записи, описанию не отвечающей
+	EXPECT_FALSE(broken.parse("НЕ CEF ВОВСЕ|security"));
+	// Выполняем проверку того, что отказ назван кодом
+	EXPECT_NE(broken.error(), cef::error_t::NONE);
+	// Выполняем проверку того, что место отказа объявлено
+	EXPECT_EQ(broken.errorPosition().line, static_cast <uint64_t> (1));
+}
+
+/**
+ * @brief Проверка отменяющей записи в звене пути
+ *
+ * @details Путь звенья разделяет косой чертой, оттого имя, косую черту несущее, в пути
+ *          записывается «~1», а сам знак отмены - «~0». Перевод этот шёл в обе стороны -
+ *          `keys()` его ставит, обход пути снимает, - и ни одной проверкой затронут не
+ *          был: карта покрытия держала обе ветви пустыми
+ *
+ * @note Хвостовой знак отмены и запись неведомая остаются знаком как есть: перевода им
+ *       нет, и выбрасывать их значило бы терять имя
+ *
+ */
+TEST(CodecCefDocument, PathEscaping) {
+	// Объект события CEF
+	cef::document_t document(&::environment().fmk, &::environment().log);
+	// Выполняем разбор годной записи событий безопасности
+	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
+	// Выполняем проверку постановки значения именем с косой чертой
+	ASSERT_TRUE(document.set("/extension/a~1b", abc::value_t(string("косая"))));
+	// Выполняем проверку постановки значения именем со знаком отмены
+	ASSERT_TRUE(document.set("/extension/c~0d", abc::value_t(string("отмена"))));
+	// Выполняем проверку извлечения значения именем с косой чертой
+	EXPECT_EQ(document.at("/extension/a~1b").text(), "косая");
+	// Выполняем проверку извлечения значения именем со знаком отмены
+	EXPECT_EQ(document.at("/extension/c~0d").text(), "отмена");
+	// Выполняем проверку того, что звеном пути имя не разделилось
+	EXPECT_FALSE(document.at("/extension/a/b").valid());
+	// Получаем звенья пути, парами расширения объявленные
+	const vector <string> links = document.keys("/extension");
+	// Выполняем проверку того, что имя с косой чертой звеном записано отменяющей записью
+	EXPECT_NE(::std::find(links.begin(), links.end(), string("a~1b")), links.end());
+	// Выполняем проверку того, что имя со знаком отмены звеном записано отменяющей записью
+	EXPECT_NE(::std::find(links.begin(), links.end(), string("c~0d")), links.end());
+	// Выполняем проверку того, что хвостовой знак отмены остаётся знаком как есть
+	ASSERT_TRUE(document.set("/extension/tail~", abc::value_t(string("хвост"))));
+	// Выполняем проверку извлечения значения именем с хвостовым знаком отмены
+	EXPECT_EQ(document.at("/extension/tail~").text(), "хвост");
+	// Выполняем проверку того, что запись отмены неведомая остаётся знаком как есть
+	ASSERT_TRUE(document.set("/extension/mid~9end", abc::value_t(string("неведомо"))));
+	// Выполняем проверку извлечения значения именем с неведомой записью отмены
+	EXPECT_EQ(document.at("/extension/mid~9end").text(), "неведомо");
+}
+
+/**
+ * @brief Проверка сноса значения перечня по номеру звена
+ *
+ * @details Ключ расширения несколько значений удерживает перечнем, и снос по номеру
+ *          звена - единственный способ снять одно из них
+ *
+ */
+TEST(CodecCefDocument, EraseArrayItem) {
+	// Объект события CEF
+	cef::document_t document(&::environment().fmk, &::environment().log);
+	// Выполняем разбор записи с повторяющимся ключом расширения
+	ASSERT_TRUE(document.parse("CEF:0|A|B|C|D|E|1|cs1=первое cs1=второе cs1=третье"));
+	// Выполняем проверку того, что значения ключа сложены перечнем
+	ASSERT_EQ(document.at("/extension/cs1").type(), abc::type_t::ARRAY);
+	// Выполняем проверку сноса второго значения перечня по номеру звена
+	EXPECT_TRUE(document.erase("/extension/cs1/1"));
+	// Выполняем проверку того, что в перечне осталось два значения
+	EXPECT_EQ(document.at("/extension/cs1").size(), static_cast <size_t> (2));
+	// Выполняем проверку того, что снесено именно второе значение
+	EXPECT_EQ(document.at("/extension/cs1/1").text(), "третье");
+	// Выполняем проверку отказа сноса значения перечня звеном нечисловым
+	EXPECT_FALSE(document.erase("/extension/cs1/второе"));
+	// Выполняем проверку кода отказа сноса значения
+	EXPECT_EQ(document.error(), cef::error_t::UNKNOWN_FIELD);
+}
+
+/**
+ * @brief Проверка выдачи настроек разбора событий
+ *
+ * @details Выдающий ход настроек проверками затронут не был вовсе, а он есть половина
+ *          договора: поставленное обязано вернуться тем же
+ *
+ */
+TEST(CodecCefDocument, SettingsRoundtrip) {
+	// Объект события CEF
+	cef::document_t document(&::environment().fmk, &::environment().log);
+	// Настройки разбора событий
+	cef::reader_t::settings_t settings;
+	// Отключаем разбор приставки syslog перед словом «CEF:»
+	settings.syslog = !settings.syslog;
+	// Устанавливаем настройки разбора событий
+	ASSERT_TRUE(document.settings(settings));
+	// Выполняем проверку того, что поставленная настройка вернулась той же
+	EXPECT_EQ(document.settings().syslog, settings.syslog);
+}
+
+/**
+ * @brief Проверка отклонения постановки значения сквозь скаляр в середине пути
+ *
+ * @details Заслон от молчаливой потери скаляра стоит дважды - внутри обхода пути и за
+ *          ним, - и проверка краёв пути задевала лишь второй: путь «/a/b/c», где «b»
+ *          скаляром занято, доходит до заслона за обходом, а не до внутреннего. Заслон
+ *          внутренний срабатывает лишь на пути длиною от четырёх звеньев
+ *
+ * @note Карта покрытия и выдала пропуск: ветвь стояла пустой при проходящей проверке
+ *
+ */
+TEST(CodecCefDocument, SetThroughScalarDeepPath) {
+	// Объект события CEF
+	cef::document_t document(&::environment().fmk, &::environment().log);
+	// Ставим значение скаляром звеном будущего пути
+	ASSERT_TRUE(document.set("/extension/src", abc::value_t(string("1.2.3.4"))));
+	// Выполняем проверку отказа постановки значения сквозь скаляр в середине пути
+	EXPECT_FALSE(document.set("/extension/src/nested/deep", abc::value_t(string("значение"))));
+	// Выполняем проверку кода отказа постановки значения
+	EXPECT_EQ(document.error(), cef::error_t::UNKNOWN_FIELD);
+	// Выполняем проверку того, что скаляр остался нетронутым
+	EXPECT_EQ(document.at("/extension/src").text(), string("1.2.3.4"));
+}
+
+/**
+ * @brief Проверка оборота события через файл
+ *
+ * @details Запись в файл и чтение из него обязаны дать ТО ЖЕ дерево: файл здесь не
+ *          хранилище байтов, а способ передать событие целиком
+ *
+ * @note Заведено 09.09.2026 сличением наборов: у syslog проверка эта стояла, у CEF её
+ *       не было - отказ подачи каталога проверялся, а успешный оборот нет
+ *
+ */
+TEST(CodecCefDocument, FileRoundtrip) {
+	// Объект события, записываемого в файл
+	cef::document_t source(&::environment().fmk, &::environment().log);
+	// Выполняем проверку успешности разбора записи
+	ASSERT_TRUE(source.parse("CEF:0|security|threatmanager|1.0|100|detected a threat|10|src=10.0.0.1 spt=1232"));
+	// Адрес временного файла оборота
+	const string filename = "/tmp/awh-cef-roundtrip.log";
+	// Выполняем проверку успешности записи события в файл
+	ASSERT_TRUE(source.save(filename));
+	// Объект события, из файла читаемого
+	cef::document_t target(&::environment().fmk, &::environment().log);
+	// Выполняем проверку успешности чтения события из файла
+	ASSERT_TRUE(target.load(filename));
+	// Выполняем проверку того, что оборот через файл дал то же дерево
+	EXPECT_EQ(source.root(), target.root());
+	// Выполняем снос временного файла оборота
+	::remove(filename.c_str());
+	// Выполняем проверку отказа чтения из несуществующего файла
+	EXPECT_FALSE(target.load(filename));
+	// Выполняем проверку того, что отказ назван кодом открытия файла
+	EXPECT_EQ(target.error(), cef::error_t::FILE_NOT_OPENED);
 }

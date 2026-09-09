@@ -37,7 +37,8 @@
 # Перечень стендов задаётся путями от корня дерева и по умолчанию таков:
 #   tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/syslog/stand.sh
 #   tests/codec/cef/stand.sh tests/codec/yaml/stand.sh tests/codec/ini/stand.sh
-#   tests/codec/toml/stand.sh tests/codec/csv/stand.sh tests/codec/stand.sh
+#   tests/codec/toml/stand.sh tests/codec/csv/stand.sh tests/codec/abc/stand.sh
+#   tests/codec/stand.sh
 #
 # Переменные окружения:
 #   AWH_STANDS — перечень машин видом «доступ|корень GoogleTest|краткое имя|собиратель»
@@ -59,10 +60,14 @@ ROOT="${AWH_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 #       их руками. Поверка, на памяти держащаяся, поверкой не является
 #
 # @note Стенд CSV внесён тем же днём по слову Василия как владельца, и он же прогнал его
-#       перед тем начисто: 248 проверок, шесть наборов. Вне перечня остаётся один
-#       «tests/codec/abc/stand.sh» - ждёт слова Геннадия
+#       перед тем начисто: 248 проверок, шесть наборов
 #
-STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/syslog/stand.sh tests/codec/cef/stand.sh tests/codec/yaml/stand.sh tests/codec/ini/stand.sh tests/codec/toml/stand.sh tests/codec/csv/stand.sh tests/codec/stand.sh}"
+# @note Стенд ABC внесён тем же днём по слову Геннадия как владельца, и он же прогнал его
+#       перед тем начисто: 200 проверок в девяти наборах, третьей стороны нет вовсе
+#       (проверено `otool -L`, а не доводом «так задумано»). Тем перечень закрыт целиком:
+#       всякий кодек рамки, стенд имеющий, раскладкою гоняется
+#
+STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/syslog/stand.sh tests/codec/cef/stand.sh tests/codec/yaml/stand.sh tests/codec/ini/stand.sh tests/codec/toml/stand.sh tests/codec/csv/stand.sh tests/codec/abc/stand.sh tests/codec/stand.sh}"
 
 # Получаем перечень машин, по каким ведётся раскладка
 #
@@ -277,6 +282,23 @@ for SCRIPT in $AWH_SCRIPTS; do
 		if [ -n "$REASON" ]; then
 			# Выводим первые строки отказа сборки
 			echo "$REASON"
+			#
+			# Выводим хвост журнала сборки ВСЛЕД за строками отказа
+			#
+			# @warning Строк со словом «error» мало и они не всегда те: у связывания
+			#          Solaris печатает «ld: fatal: symbol referencing errors», а САМО
+			#          ИМЯ нехватающего символа стоит ВЫШЕ, отдельной строкою под шапкою
+			#          «Undefined first referenced», и слова «error» не несёт. Отбор
+			#          выдавал приговор без причины, и разбирать приходилось вручную на
+			#          самой машине
+			#
+			# @note Замерено 09.09.2026: стенд CEF не собрался на OpenIndiana, раскладка
+			#       напечатала две строки про «symbol referencing errors», а имена
+			#       `if_indextoname` и `if_nametoindex` остались за кадром
+			#
+			echo "(хвост журнала сборки)"
+			# Выводим хвост журнала сборки стенда
+			tail -8 "/tmp/awh-stand-$AWH_STAMP-$NAME.log"
 		#
 		# Если строк со словом «error» журнал сборки не несёт
 		#

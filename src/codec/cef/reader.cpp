@@ -590,8 +590,18 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 		this->_fmk->kv(0, extension, " ", [this](const uint64_t sid, const string_view key, const string_view value) noexcept -> void {
 			// Помечаем опознаватель разбора неиспользуемым
 			(void) sid;
-			// Если количество пар расширения превышает допустимое
-			if(this->_pairs.size() >= static_cast <size_t> (this->_settings.maxExtensions))
+			/**
+			 * Если количество пар расширения предел превысило
+			 *
+			 * @warning Сличение здесь строгое, а не «больше либо равно»: предел назван
+			 *          НАИБОЛЬШИМ ДОПУСТИМЫМ количеством, и запись ровно с таким числом
+			 *          пар годна. Одна пара сверх предела набирается намеренно - ею
+			 *          заслон за разбором и опознаёт превышение, - а прочие отбрасываются
+			 *
+			 * @note Найдено 09.09.2026 картой покрытия: ветвь предела стояла непроверенной
+			 *       вовсе, а поверка её вскрыла отклонение записи ровно на пределе
+			 */
+			if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
 				// Выходим из функции обратного вызова
 				return;
 			// Создаём пару расширения записи
@@ -617,8 +627,8 @@ bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
 			// Если снятие отмены знаков со значений выключено
 			else this->_pairs.back().second.assign(value.begin(), value.end());
 		});
-		// Если количество пар расширения превышает допустимое
-		if(this->_pairs.size() >= static_cast <size_t> (this->_settings.maxExtensions))
+		// Если количество пар расширения предел превысило
+		if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
 			// Выводим отказ разбора превышением количества пар
 			return this->fail(error_t::OVERFLOW_LIMIT, this->_offset + begin + offset);
 		/**

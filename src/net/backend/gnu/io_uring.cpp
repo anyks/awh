@@ -69892,6 +69892,14 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 							{
 								// Спрашиваем у ядра размер накопителя канала
 								const int32_t size = ::fcntl(ipc->transfer.fd, F_GETPIPE_SZ);
+								/**
+								 * @warning Отказ обращения обязан уйти СВОИМ каналом, а не
+								 *          раствориться в подставленной величине: потребитель
+								 *          получает число и по нему одному отказа не различит
+								 */
+								if(size <= 0)
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								// Отдаём ответ ядра, а при отказе - прежнюю величину
 								return ((size > 0) ? static_cast <size_t> (size) : static_cast <size_t> (0x1000));
 							}
@@ -70038,6 +70046,14 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 							{
 								// Спрашиваем у ядра размер накопителя канала
 								const int32_t size = ::fcntl(client->transfer.fd, F_GETPIPE_SZ);
+								/**
+								 * @warning Отказ обращения обязан уйти СВОИМ каналом, а не
+								 *          раствориться в подставленной величине: потребитель
+								 *          получает число и по нему одному отказа не различит
+								 */
+								if(size <= 0)
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								// Отдаём ответ ядра, а при отказе - прежнюю величину
 								return ((size > 0) ? static_cast <size_t> (size) : static_cast <size_t> (0x1000));
 							}

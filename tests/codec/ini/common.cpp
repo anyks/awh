@@ -622,7 +622,16 @@ TEST(CodecIniCommon, UnknownCodeAndEncodingFallback) {
 	// Выполняем проверку описания кода отказа, перечню не принадлежащего
 	ASSERT_STREQ(ini::message(static_cast <ini::error_t> (200)), "unknown error");
 	// Выполняем проверку названия кодировки, перечню не принадлежащей
-	ASSERT_STREQ(ini::name(static_cast <ini::encoding_t> (200)), "");
+	ASSERT_STREQ(ini::name(static_cast <ini::encoding_t> (200)), "unknown");
+	// Выполняем проверку того, что кодировка неопределённая имя своё имеет
+	ASSERT_STREQ(ini::name(ini::encoding_t::NONE), "none");
+	/**
+	 * Выполняем проверку того, что имя неопределённой кодировки от имени мусора отлично
+	 *
+	 * @note Договор един у INI, TOML, YAML, XML и JSON: член перечня имя имеет своё, а
+	 *       «unknown» достаётся значению, членом перечня не являющемуся
+	 */
+	ASSERT_STRNE(ini::name(ini::encoding_t::NONE), ini::name(static_cast <ini::encoding_t> (200)));
 	// Выполняем проверку того, что коды перечня описание своё сохраняют
 	ASSERT_STRNE(ini::message(ini::error_t::EMPTY_KEY), "unknown error");
 }

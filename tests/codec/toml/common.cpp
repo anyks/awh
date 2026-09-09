@@ -141,7 +141,16 @@ TEST(CodecTomlCommon, Encodings) {
 	// Выполняем проверку названия кодировки UTF-16 с прямым порядком байтов
 	ASSERT_STREQ(toml::name(toml::encoding_t::UTF16BE), "UTF-16BE");
 	// Выполняем проверку названия неопределённой кодировки
-	ASSERT_STREQ(toml::name(toml::encoding_t::NONE), "unknown");
+	ASSERT_STREQ(toml::name(toml::encoding_t::NONE), "none");
+	// Выполняем проверку названия кодировки, перечню не принадлежащей
+	ASSERT_STREQ(toml::name(static_cast <toml::encoding_t> (200)), "unknown");
+	/**
+	 * Выполняем проверку того, что имя неопределённой кодировки от имени мусора отлично
+	 *
+	 * @note Договор един у INI, TOML, YAML, XML и JSON: член перечня имя имеет своё, а
+	 *       «unknown» достаётся значению, членом перечня не являющемуся
+	 */
+	ASSERT_STRNE(toml::name(toml::encoding_t::NONE), toml::name(static_cast <toml::encoding_t> (200)));
 }
 /**
  * @brief Проверка названий кодировок и их обратного разбора

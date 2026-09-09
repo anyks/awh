@@ -2044,3 +2044,73 @@ TEST(CodecJsonWriter, IntegerWritingAcceptsEveryRecord) {
 	// Выполняем проверку собранного текста
 	ASSERT_EQ(writer.text(), "[7,9,3,4,6,8,10,12,14,-128,100,18446744073709551615,1.5,true]");
 }
+
+/**
+ * @brief Проверка записи ВСЕХ трёх слов, числами признаваемых по настройке
+ *
+ * @details Договор JSON бесконечности и не-числа не знает вовсе, и запись их дозволяется
+ * лишь настройкою. Слов таких ТРИ - «NaN», «Infinity» и «-Infinity», - и сложены они
+ * коротким замыканием: отказ следует, лишь когда запись не совпала ни с одним
+ *
+ * @note Заведено 09.09.2026 по карте ВЕТВЕЙ: сличение с «-Infinity» истинным не бывало НИ
+ *       РАЗУ - отрицательная бесконечность записью не подавалась, и треть договора этой
+ *       настройки стояла непроверенной
+ *
+ * @note Проверяется и обратное: при снятой настройке те же три слова отвергаются, а близкие
+ *       к ним записи - «Inf», «nan», «+Infinity» - отвергаются ВСЕГДА. Без этого «пишет
+ *       троих» достигалось бы записью всякого слова вовсе
+ *
+ */
+TEST(CodecJsonWriter, EveryWordOfInfinityAndNotANumberIsWritten){
+	/**
+	 * Три слова, настройкою дозволенные
+	 */
+	for(auto & word : vector <string> {"NaN", "Infinity", "-Infinity"}){
+		// Объект записи документа
+		json::writer_t writer(::logger());
+		// Настройки записи документа
+		json::writer_t::settings_t settings = writer.settings();
+		// Дозволяем запись бесконечности и не-числа
+		settings.allowInfinityAndNan = true;
+		// Выполняем установку настроек записи
+		writer.settings(settings);
+		// Выполняем проверку записи слова готовою записью числа
+		ASSERT_TRUE(writer.raw(word)) << "[" << word << "]";
+		// Выполняем проверку собранного текста документа
+		ASSERT_EQ(writer.text(), word) << "[" << word << "]";
+	}
+	/**
+	 * Те же три слова при снятой настройке
+	 */
+	for(auto & word : vector <string> {"NaN", "Infinity", "-Infinity"}){
+		// Объект записи документа
+		json::writer_t writer(::logger());
+		// Настройки записи документа
+		json::writer_t::settings_t settings = writer.settings();
+		// Запрещаем запись бесконечности и не-числа
+		settings.allowInfinityAndNan = false;
+		// Выполняем установку настроек записи
+		writer.settings(settings);
+		// Выполняем проверку отказа записи слова
+		ASSERT_FALSE(writer.raw(word)) << "[" << word << "]";
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::INVALID_NUMBER) << "[" << word << "]";
+	}
+	/**
+	 * Записи, близкие к дозволенным, но договором не названные
+	 */
+	for(auto & word : vector <string> {"Inf", "nan", "+Infinity", "infinity", "-NaN"}){
+		// Объект записи документа
+		json::writer_t writer(::logger());
+		// Настройки записи документа
+		json::writer_t::settings_t settings = writer.settings();
+		// Дозволяем запись бесконечности и не-числа
+		settings.allowInfinityAndNan = true;
+		// Выполняем установку настроек записи
+		writer.settings(settings);
+		// Выполняем проверку отказа записи слова, договором не названного
+		ASSERT_FALSE(writer.raw(word)) << "[" << word << "]";
+		// Выполняем проверку кода отказа записи
+		ASSERT_EQ(writer.error(), json::error_t::INVALID_NUMBER) << "[" << word << "]";
+	}
+}

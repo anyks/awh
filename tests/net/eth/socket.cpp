@@ -406,6 +406,58 @@ TEST_F(EthFixture, SocketBufferAvailableTest){
 #endif
 
 /**
+ * @brief Тест отказа настроек уровня IP у описателя, где IP нет
+ *
+ * @par Намеренные решения
+ *
+ * Настройки обнаружения MTU и уведомления о перегрузке есть у семейств СЕТЕВЫХ и только
+ * у них. Описателю местного узла они не годны вовсе, и обращение обязано отвечать отказом
+ * НЕ ТРОГАЯ СИСТЕМЫ: система ответила бы отказом сама, но отказ этот ушёл бы записью в
+ * журнал потребителя - о настройке, какой у его узла быть не может.
+ *
+ * @warning Разбор семейства у этих обращений стоял не везде: у обнаружения MTU он был
+ *          у опроса и отсутствовал у настройки, у уведомления о перегрузке - ни у той,
+ *          ни у другой. Всякое не-IPv6 семейство считалось за IPv4
+ *
+ * @note Утверждается И отказ, И молчание: отказ без молчания означал бы, что обращение
+ *       к системе всё-таки состоялось, а молчание без отказа - что просьба принята
+ *
+ */
+#if defined(_WIN32) || defined(_WIN64)
+	TEST_F(EthFixture, SocketIpOptionsRefusedOnLocalTest){
+		// Создаём пару описателей межпроцессного обмена
+		const auto & pair = this->_eth->socket.ipc(awh::event::family_t::PIPE, awh::event::type_t::STREAM, awh::event::protocol_t::NONE);
+		// Проверяем, что описатель пары заведён
+		ASSERT_NE(pair[0], awh::net::invalid_socket_t);
+		// Собранные записи журнала
+		std::vector <std::string> records;
+		// Выполняем подписку на записи журнала
+		this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+			// Если запись журнала является предупреждением либо отказом
+			if((flag == awh::log_t::flag_t::WARNING) || (flag == awh::log_t::flag_t::CRITICAL))
+				// Запоминаем запись журнала
+				records.emplace_back(text);
+		});
+		// Настройка обнаружения MTU у местного описателя обязана быть отвергнута
+		ASSERT_FALSE(this->_eth->socket.setMaximumTransmissionUnitDiscover(pair[0], awh::event::family_t::PIPE, awh::event::mtu_discover_t::DO))
+		 << "настройка обнаружения MTU принята у описателя, где IP нет";
+		// Настройка уведомления о перегрузке у местного описателя обязана быть отвергнута
+		ASSERT_FALSE(this->_eth->socket.setExplicitCongestionNotification(pair[0], awh::event::family_t::PIPE, awh::event::ecn_t::ECT0))
+		 << "настройка уведомления о перегрузке принята у описателя, где IP нет";
+		// Снимаем подписку на записи журнала
+		this->_log->subscribe(nullptr);
+		// Обращения обязаны молчать: до системы они доходить не вправе
+		ASSERT_TRUE(records.empty()) << "отказ дан, но с " << records.size() << " записью(ями) в журнал: обращение к системе состоялось, первая: " << (records.empty() ? std::string() : records.front());
+		/**
+		 * Закрываем оба конца пары
+		 */
+		for(uint8_t i = 0; i < 2; i++)
+			// Закрываем конец пары описателем системы
+			::CloseHandle(reinterpret_cast <HANDLE> (static_cast <uintptr_t> (pair[i])));
+	}
+#endif
+
+/**
  * @brief Тест настроек, накладываемых при самом заведении сокета
  *
  * @par Намеренные решения

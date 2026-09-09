@@ -7879,3 +7879,27 @@ TEST(CodecYamlDocument, DirectoryIsRefusedNotLoaded){
 	// Выполняем проверку того, что дерево документа осталось пустым
 	ASSERT_EQ(doc.size(), static_cast <size_t> (0));
 }
+
+/**
+ * @brief Проверка заведения цепочки недостающих вместилищ по пути
+ *
+ * @note Договор един у INI, TOML и YAML: вместилища по пути заводятся, и заводятся
+ *       цепочкою. Прежде заголовок YAML гласил обратное, а INI ссылался на него
+ *       дословно - расхождение записи с телом молчало у трёх мест разом
+ *
+ */
+TEST(CodecYamlDocument, MissingLinksOfThePathAreCreatedAsAChain) {
+	// Дерево настроек, куда ставится значение
+	yaml::document_t document(::logger());
+	// Выполняем разбор текста настроек с одним лишь узлом
+	ASSERT_TRUE(document.parse("есть: 1\n"));
+	// Выполняем проверку постановки значения по пути, звеньев не имеющему вовсе
+	ASSERT_TRUE(document.set("/а/б/в", "2")) << yaml::message(document.error());
+	// Выполняем проверку того, что оба недостающих вместилища заведены
+	ASSERT_TRUE(document.has("/а")) << document.dump();
+	ASSERT_TRUE(document.has("/а/б")) << document.dump();
+	// Выполняем проверку того, что значение поставлено концом цепочки
+	ASSERT_TRUE(document.has("/а/б/в")) << document.dump();
+	// Выполняем проверку того, что прежний узел дерева не пострадал
+	ASSERT_TRUE(document.has("/есть")) << document.dump();
+}

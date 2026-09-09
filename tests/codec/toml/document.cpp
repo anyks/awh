@@ -4059,3 +4059,32 @@ TEST(CodecTomlDocument, ConflictingSettingsAreRefused) {
 	// Выполняем проверку того, что при согласии имя записано голым
 	ASSERT_NE(document.text(settings).find("ключ = "), string::npos) << document.text(settings);
 }
+
+/**
+ * @brief Проверка заведения цепочки недостающих вместилищ по пути
+ *
+ * @note Договор един у INI, TOML и YAML: вместилища по пути заводятся, и заводятся
+ *       цепочкою. Прежде запись кодека INI числила TOML расходящимся с обоими,
+ *       и замер это опроверг
+ *
+ */
+TEST(CodecTomlDocument, MissingLinksOfThePathAreCreatedAsAChain) {
+	// Дерево настроек, куда ставится значение
+	toml::document_t document(::logger());
+	/**
+	 * Выполняем разбор текста настроек с одним лишь узлом
+	 *
+	 * @note Имя ключа ограждено кавычками намеренно: голое имя ключа TOML дозволяет
+	 *       лишь из ASCII, и кириллица без ограды разбору не подлежит вовсе
+	 */
+	ASSERT_TRUE(document.parse("\"есть\" = 1\n")) << toml::message(document.error());
+	// Выполняем проверку постановки значения по пути, звеньев не имеющему вовсе
+	ASSERT_TRUE(document.set({"а", "б", "в"}, "2")) << toml::message(document.error());
+	// Выполняем проверку того, что значение поставлено концом цепочки
+	ASSERT_NE(document.text().find("\"в\""), string::npos) << document.text();
+	// Выполняем проверку того, что оба недостающих звена записаны именем составным
+	ASSERT_NE(document.text().find("\"а\""), string::npos) << document.text();
+	ASSERT_NE(document.text().find("\"б\""), string::npos) << document.text();
+	// Выполняем проверку того, что прежний узел дерева не пострадал
+	ASSERT_NE(document.text().find("есть"), string::npos) << document.text();
+}

@@ -1330,3 +1330,62 @@ TEST(CodecSysLogWriter, MessageAndStructures) {
 	// Выполняем проверку того, что непредставимый блок в запись не попал
 	EXPECT_EQ(result.find("bad id"), string::npos) << "запись: " << result;
 }
+
+/**
+ * @brief Проверка краёв номера описания и пустых блоков структурированных данных
+ *
+ * @details Номер описания приходит из дерева отправителя и годным числом быть не обязан,
+ *          а блоки данных бывают объявлены ПУСТЫМ отображением - не тем же, что
+ *          отсутствие их вовсе. Обе ветви карта покрытия держала пустыми
+ *
+ */
+TEST(CodecSysLogWriter, ModernVersionAndEmptyStructures) {
+	// Настройки записи событий
+	syslog::writer_t::settings_t settings;
+	// Выключаем запись знака конца строки
+	settings.terminate = false;
+	// Устанавливаем сборку записи нынешним описанием
+	settings.standard = syslog::standard_t::RFC5424;
+	// Объект записи событий
+	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	// Устанавливаем настройки записи событий
+	writer.settings(settings);
+	// Собранная запись системного журнала
+	string result = "";
+	// Дерево собираемого события с пустыми блоками структурированных данных
+	abc::value_t empty(abc::kind_t::MAP);
+	// Ставим номер описания записи в дерево события
+	empty.place("/header/version") = abc::value_t(static_cast <uint64_t> (1));
+	// Ставим дату сообщения в дерево события
+	empty.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+	// Ставим ПУСТОЕ отображение блоков структурированных данных
+	empty.place("/structures") = abc::value_t(abc::kind_t::MAP);
+	// Ставим текст сообщения в дерево события
+	empty.place("/message") = abc::value_t(string("текст"));
+	// Выполняем проверку успешности сборки записи пустыми блоками данных
+	ASSERT_TRUE(writer.write(empty, result));
+	/**
+	 * @note Текст сообщения RFC 5424 предваряется меткой порядка байтов, оттого знак
+	 *       отсутствия блоков данных стоит перед нею, а не вплотную к тексту
+	 */
+	// Выполняем проверку того, что пустые блоки данных выражены знаком отсутствия
+	EXPECT_NE(result.find(" - - - - - "), string::npos) << "запись: " << result;
+	// Выполняем проверку того, что текст сообщения записью завершается
+	EXPECT_EQ(result.compare(result.size() - ::strlen("текст"), ::strlen("текст"), "текст"), 0) << "запись: " << result;
+	// Дерево собираемого события с ошибочным номером описания
+	abc::value_t broken(abc::kind_t::MAP);
+	// Ставим ошибочный номер описания записи в дерево события
+	broken.place("/header/version") = abc::value_t(string("один"));
+	// Ставим дату сообщения в дерево события
+	broken.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+	// Выполняем проверку отказа сборки записи ошибочным номером описания
+	EXPECT_FALSE(writer.write(broken, result));
+	// Выполняем проверку кода отказа сборки записи
+	EXPECT_EQ(writer.error(), syslog::error_t::INVALID_VERSION);
+	// Ставим номер описания записи, поддержке не подлежащий
+	broken.place("/header/version") = abc::value_t(static_cast <uint64_t> (9));
+	// Выполняем проверку отказа сборки записи неподдерживаемым номером описания
+	EXPECT_FALSE(writer.write(broken, result));
+	// Выполняем проверку кода отказа сборки записи
+	EXPECT_EQ(writer.error(), syslog::error_t::UNSUPPORTED_VERSION);
+}

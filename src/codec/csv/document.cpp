@@ -1134,8 +1134,14 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 			::remove(temporary.c_str());
 			// Запоминаем код отказа сохранения таблицы
+			/**
+			 * Запоминаем код отказа сохранения таблицы
+			 *
+			 * @note Сличения с пустым кодом записи здесь НЕ ведётся: условие входа ему
+			 *       тождественно, и запасной код `FILE_NOT_WRITTEN` был бы недостижим
+			 */
 			if(this->_error == error_t::NONE)
-				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
+				this->_error = writer.error();
 			// Выводим признак неудачного сохранения таблицы
 			return false;
 		}
@@ -1179,9 +1185,14 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 			file.close();
 			// Выполняем снос временного файла таблицы, цель при этом остаётся прежней
 			::remove(temporary.c_str());
-			// Запоминаем код отказа сохранения таблицы
+			/**
+			 * Запоминаем код отказа сохранения таблицы
+			 *
+			 * @note Сличения с пустым кодом записи здесь НЕ ведётся: условие входа ему
+			 *       тождественно, и запасной код `FILE_NOT_WRITTEN` был бы недостижим
+			 */
 			if(this->_error == error_t::NONE)
-				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::FILE_NOT_WRITTEN);
+				this->_error = writer.error();
 			// Выводим признак неудачного сохранения таблицы
 			return false;
 		}
@@ -2064,7 +2075,7 @@ string awh::codec::csv::Document::dump() const noexcept {
 			 *       звучащему таблицей законченной. Причину оглашает журналом сама
 			 *       запись, а таблица непустая пустого текста не даёт никогда
 			 */
-						if(!writer.field(string_view(this->_names.data() + name.offset, name.length))){
+			if(!writer.field(string_view(this->_names.data() + name.offset, name.length))){
 				// Запоминаем код отказа записи текста таблицы
 				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 				// Выводим пустой текст таблицы
@@ -2076,9 +2087,15 @@ string awh::codec::csv::Document::dump() const noexcept {
 		/**
 		 * Если завершение записи заголовка окончилось отказом
 		 */
-				if(writer.error() != error_t::NONE){
-			// Запоминаем код отказа записи текста таблицы
-			this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
+		if(writer.error() != error_t::NONE){
+			/**
+			 * Запоминаем код отказа записи текста таблицы
+			 *
+			 * @note Сличения с пустым кодом здесь НЕ ведётся: условие входа ему тождественно,
+			 *       и запасной код `INTERNAL` был бы недостижим. Стоит он там, где входом
+			 *       служит отказ записи поля - тот вправе прийти и без кода
+			 */
+			this->_error = writer.error();
 			// Выводим пустой текст таблицы
 			return string();
 		}
@@ -2094,7 +2111,7 @@ string awh::codec::csv::Document::dump() const noexcept {
 		 */
 		for(size_t j = 0; j < count; j++){
 			// Если очередное поле записи записать не удалось
-						if(!writer.field(this->get(this->_fields.at(this->_records.at(i) + j)))){
+			if(!writer.field(this->get(this->_fields.at(this->_records.at(i) + j)))){
 				// Запоминаем код отказа записи текста таблицы
 				this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
 				// Выводим пустой текст таблицы
@@ -2111,9 +2128,15 @@ string awh::codec::csv::Document::dump() const noexcept {
 		 *       таблица ушла бы МОЛЧА КОРОЧЕ на эту запись - ровно та потеря, ради какой
 		 *       отказ и заведён
 		 */
-				if(writer.error() != error_t::NONE){
-			// Запоминаем код отказа записи текста таблицы
-			this->_error = ((writer.error() != error_t::NONE) ? writer.error() : error_t::INTERNAL);
+		if(writer.error() != error_t::NONE){
+			/**
+			 * Запоминаем код отказа записи текста таблицы
+			 *
+			 * @note Сличения с пустым кодом здесь НЕ ведётся: условие входа ему тождественно,
+			 *       и запасной код `INTERNAL` был бы недостижим. Стоит он там, где входом
+			 *       служит отказ записи поля - тот вправе прийти и без кода
+			 */
+			this->_error = writer.error();
 			// Выводим пустой текст таблицы
 			return string();
 		}

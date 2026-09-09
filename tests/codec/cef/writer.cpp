@@ -23,6 +23,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <vector>
 #include <string>
 #include <clocale>
 #include <utility>
@@ -567,4 +568,223 @@ TEST(CodecCefWriter, NewlineEscaping) {
 	EXPECT_NE(result.find("первая\\r\\nвторая"), string::npos) << result;
 	// Выполняем проверку того, что настоящий перевод строки в значение не попал
 	EXPECT_EQ(result.find("первая\r"), string::npos) << result;
+}
+
+/**
+ * @brief Проверка обращения вложенного значения в знаки
+ *
+ * @details Режим `nested_t::TEXT` был третьим и единственным, ни одной проверкой не
+ *          затронутым: карта покрытия держала всю ветвь обращения пустой, а отсутствие
+ *          поверки от поверки пройденной неотличимо
+ *
+ */
+TEST(CodecCefWriter, NestedAsText) {
+	// Объект записи событий
+	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	// Настройки записи событий
+	cef::writer_t::settings_t settings;
+	// Заводим дерево события отображением
+	abc::value_t root(abc::kind_t::MAP);
+	// Заводим поля заголовка записи отображением
+	root.place("/header") = abc::value_t(abc::kind_t::MAP);
+	// Ставим поле заголовка поставщика устройства
+	root.place("/header/vendor") = abc::value_t(string("A"));
+	// Ставим поле заголовка изделия поставщика
+	root.place("/header/product") = abc::value_t(string("B"));
+	// Ставим поле заголовка редакции изделия
+	root.place("/header/release") = abc::value_t(string("C"));
+	// Ставим поле заголовка опознавателя события
+	root.place("/header/signature") = abc::value_t(string("D"));
+	// Ставим поле заголовка имени события
+	root.place("/header/name") = abc::value_t(string("E"));
+	// Ставим поле заголовка важности события
+	root.place("/header/severity") = abc::value_t(static_cast <int64_t> (1));
+	// Заводим пары расширения записи отображением
+	root.place("/extension") = abc::value_t(abc::kind_t::MAP);
+	// Ставим пару расширения со значением вложенным
+	root.place("/extension/nested") = abc::value_t(abc::kind_t::MAP);
+	// Ставим поле вложенного значения пары расширения
+	root.place("/extension/nested/key") = abc::value_t(string("значение"));
+	// Собираемая запись CEF
+	string result;
+	// Устанавливаем обращение вложенного значения в знаки
+	settings.nested = cef::nested_t::TEXT;
+	// Устанавливаем настройки записи событий
+	writer.settings(settings);
+	// Выполняем проверку успешности записи с обращением вложенного значения
+	ASSERT_TRUE(writer.write(root, result));
+	// Выполняем проверку того, что пара расширения записана
+	EXPECT_NE(result.find("nested="), string::npos) << result;
+	// Выполняем проверку того, что содержимое вложенного значения в запись попало
+	EXPECT_NE(result.find("key"), string::npos) << result;
+	// Выполняем проверку того, что вложенное значение пустым не осталось
+	EXPECT_GT(result.find("key"), result.find("nested=")) << result;
+}
+
+/**
+ * @brief Проверка пропуска вложенного поля заголовка записи
+ *
+ * @details Заголовок и расширение обращаются с вложенным значением порознь, и пропуск
+ *          в заголовке проверками затронут не был: поле остаётся пустым, а не выпадает
+ *          вовсе, ибо места полей заголовка CEF определены их порядком
+ *
+ */
+TEST(CodecCefWriter, NestedHeaderField) {
+	// Объект записи событий
+	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	// Настройки записи событий
+	cef::writer_t::settings_t settings;
+	// Заводим дерево события отображением
+	abc::value_t root(abc::kind_t::MAP);
+	// Заводим поля заголовка записи отображением
+	root.place("/header") = abc::value_t(abc::kind_t::MAP);
+	// Ставим поле заголовка поставщика устройства
+	root.place("/header/vendor") = abc::value_t(string("A"));
+	// Ставим поле заголовка изделия поставщика
+	root.place("/header/product") = abc::value_t(string("B"));
+	// Ставим поле заголовка редакции изделия
+	root.place("/header/release") = abc::value_t(string("C"));
+	// Ставим поле заголовка опознавателя события вложенным отображением
+	root.place("/header/signature") = abc::value_t(abc::kind_t::MAP);
+	// Ставим поле вложенного поля заголовка записи
+	root.place("/header/signature/key") = abc::value_t(string("V"));
+	// Ставим поле заголовка имени события
+	root.place("/header/name") = abc::value_t(string("E"));
+	// Ставим поле заголовка важности события
+	root.place("/header/severity") = abc::value_t(static_cast <int64_t> (1));
+	// Собираемая запись CEF
+	string result;
+	// Устанавливаем отказ на вложенное значение
+	settings.nested = cef::nested_t::STRICT;
+	// Устанавливаем настройки записи событий
+	writer.settings(settings);
+	// Выполняем проверку отказа записи на вложенном поле заголовка
+	EXPECT_FALSE(writer.write(root, result));
+	// Выполняем проверку кода отказа записи
+	EXPECT_EQ(writer.error(), cef::error_t::NESTED_VALUE);
+	// Устанавливаем пропуск вложенного значения вовсе
+	settings.nested = cef::nested_t::SKIP;
+	// Устанавливаем настройки записи событий
+	writer.settings(settings);
+	// Выполняем проверку записи с пропуском вложенного поля заголовка
+	ASSERT_TRUE(writer.write(root, result));
+	// Выполняем проверку того, что место поля заголовка осталось пустым
+	EXPECT_EQ(result, "CEF:0|A|B|C||E|1|\n") << result;
+}
+
+/**
+ * @brief Проверка отклонения негодных имён ключей расширения
+ *
+ * @details Ключ, пробельный знак несущий, разбирается обратно двумя парами, а пустой
+ *          ключ не разбирается вовсе. Заслон на пробельный знак был найден ворошителем
+ *          04.09.2026 и до сих пор ни одной проверкой не закреплён
+ *
+ */
+TEST(CodecCefWriter, ExtensionKeyEdges) {
+	// Объект записи событий
+	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	// Настройки записи событий
+	cef::writer_t::settings_t settings;
+	/**
+	 * Выполняем перебор негодных имён ключей расширения записи
+	 */
+	for(const auto & item : vector <pair <string, cef::error_t>> {
+		{"два слова", cef::error_t::UNREPRESENTABLE_VALUE},
+		{"таб\tключ", cef::error_t::UNREPRESENTABLE_VALUE},
+		{"", cef::error_t::EMPTY_KEY}
+	}) {
+		// Заводим дерево события отображением
+		abc::value_t root(abc::kind_t::MAP);
+		// Заводим поля заголовка записи отображением
+		root.place("/header") = abc::value_t(abc::kind_t::MAP);
+		// Ставим поле заголовка поставщика устройства
+		root.place("/header/vendor") = abc::value_t(string("A"));
+		// Ставим поле заголовка изделия поставщика
+		root.place("/header/product") = abc::value_t(string("B"));
+		// Ставим поле заголовка редакции изделия
+		root.place("/header/release") = abc::value_t(string("C"));
+		// Ставим поле заголовка опознавателя события
+		root.place("/header/signature") = abc::value_t(string("D"));
+		// Ставим поле заголовка имени события
+		root.place("/header/name") = abc::value_t(string("E"));
+		// Ставим поле заголовка важности события
+		root.place("/header/severity") = abc::value_t(static_cast <int64_t> (1));
+		// Заводим пары расширения записи отображением
+		root.place("/extension") = abc::value_t(abc::kind_t::MAP);
+		// Ставим годную пару расширения записи
+		root.place("/extension/src") = abc::value_t(string("1.2.3.4"));
+		// Ставим пару расширения с негодным именем ключа
+		ASSERT_TRUE(root.place("/extension").insert(item.first, abc::value_t(string("V")))) << item.first;
+		// Собираемая запись CEF
+		string result;
+		// Устанавливаем отказ на непредставимое значение
+		settings.nested = cef::nested_t::STRICT;
+		// Устанавливаем настройки записи событий
+		writer.settings(settings);
+		// Выполняем проверку отказа записи на негодном имени ключа расширения
+		EXPECT_FALSE(writer.write(root, result)) << item.first;
+		// Выполняем проверку кода отказа записи
+		EXPECT_EQ(writer.error(), item.second) << item.first;
+		// Устанавливаем пропуск непредставимого значения вовсе
+		settings.nested = cef::nested_t::SKIP;
+		// Устанавливаем настройки записи событий
+		writer.settings(settings);
+		// Выполняем проверку записи с пропуском негодной пары расширения
+		ASSERT_TRUE(writer.write(root, result)) << item.first;
+		// Выполняем проверку того, что негодная пара расширения в запись не попала
+		EXPECT_EQ(result, "CEF:0|A|B|C|D|E|1|src=1.2.3.4\n") << item.first << ": " << result;
+	}
+}
+
+/**
+ * @brief Проверка отклонения непредставимой приставки syslog
+ *
+ * @details Приставка syslog стоит перед словом «CEF:» отдельным полем дерева, и вложенным
+ *          значением быть не может: записать её было бы нечем, а молчаливый пропуск
+ *          отдал бы потребителю запись без приставки, о потере не сказав
+ *
+ */
+TEST(CodecCefWriter, UnrepresentableSyslogPrefix) {
+	// Объект записи событий
+	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	// Настройки записи событий
+	cef::writer_t::settings_t settings;
+	// Заводим дерево события отображением
+	abc::value_t root(abc::kind_t::MAP);
+	// Ставим приставку syslog ВЛОЖЕННЫМ значением
+	root.place("/syslog") = abc::value_t(abc::kind_t::MAP);
+	// Ставим поле вложенной приставки syslog
+	root.place("/syslog/key") = abc::value_t(string("значение"));
+	// Заводим поля заголовка записи отображением
+	root.place("/header") = abc::value_t(abc::kind_t::MAP);
+	// Ставим поле заголовка поставщика устройства
+	root.place("/header/vendor") = abc::value_t(string("A"));
+	// Ставим поле заголовка изделия поставщика
+	root.place("/header/product") = abc::value_t(string("B"));
+	// Ставим поле заголовка редакции изделия
+	root.place("/header/release") = abc::value_t(string("C"));
+	// Ставим поле заголовка опознавателя события
+	root.place("/header/signature") = abc::value_t(string("D"));
+	// Ставим поле заголовка имени события
+	root.place("/header/name") = abc::value_t(string("E"));
+	// Ставим поле заголовка важности события
+	root.place("/header/severity") = abc::value_t(static_cast <int64_t> (1));
+	// Собираемая запись CEF
+	string result;
+	// Устанавливаем отказ на вложенное значение
+	settings.nested = cef::nested_t::STRICT;
+	// Устанавливаем настройки записи событий
+	writer.settings(settings);
+	// Выполняем проверку отказа записи на непредставимой приставке syslog
+	EXPECT_FALSE(writer.write(root, result));
+	// Выполняем проверку кода отказа записи
+	EXPECT_EQ(writer.error(), cef::error_t::UNREPRESENTABLE_VALUE);
+	// Устанавливаем обращение вложенного значения в знаки
+	settings.nested = cef::nested_t::TEXT;
+	// Устанавливаем настройки записи событий
+	writer.settings(settings);
+	// Выполняем проверку успешности записи с обращением приставки в знаки
+	ASSERT_TRUE(writer.write(root, result));
+	// Выполняем проверку того, что приставка предшествует слову «CEF:»
+	EXPECT_LT(result.find("key"), result.find(cef::SIGNATURE)) << result;
 }

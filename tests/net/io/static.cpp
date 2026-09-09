@@ -91,6 +91,13 @@
 	 */
 	#include <sys/wait.h>
 	/**
+	 * @note Предел числа описателей процесса правится проверкой поведения при
+	 *       исчерпании: опыт обязан ДОВОДИТЬ до предельного состояния, а не выбирать
+	 *       величину. Правка идёт в дочернем процессе, поэтому предела самого набора
+	 *       она не задевает
+	 */
+	#include <sys/resource.h>
+	/**
 	 * @note Перебор открытых описателей процесса нужен проверке подписки, ядром
 	 *       отвергнутой: описатель события движок наружу не отдаёт, и найти его
 	 *       можно единственно разницей перечней - до заведения события и после
@@ -30146,6 +30153,68 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 
 #if defined(_WIN32) || defined(_WIN64)
 	/**
+	 * @brief Проверка отделённости служебных приписок от выведенных имён
+	 *
+	 * @details Изображение выводит из пути имя канала, а к имени этому приписывает
+	 *          служебные окончания: `-anchor` у опорного конца, стоящего на имени, и
+	 *          `-listen` у конца, служащего подключающемуся признаком объявленного
+	 *          слушания. Пространство приписок обязано быть ОТДЕЛЕНО от пространства
+	 *          выведенных имён: знак `-` оставался годным как есть, и путь, кончающийся
+	 *          на `-listen`, выводился в то самое имя, каким служебная приписка зовёт
+	 *          конец СОСЕДНЕГО пути. Два несвязанных узла сходились в одно имя.
+	 *
+	 * @note Утверждается это порядком, где первым поднимается узел с путём, кончающимся
+	 *       приписке: заняв имя, он отнимает у соседа возможность завести служебный
+	 *       конец, и сосед получает отказ слушания по пути, никем не занятому
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsSuffixNamespaceTest){
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		/**
+		 * Заводим узел, путь какого кончается служебной припиской
+		 */
+		const awh::event::id_t shadow = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(shadow, 0u);
+		// Устанавливаем ему путь, кончающийся служебной припиской
+		ASSERT_TRUE(this->_io->setAddress(shadow, awh::event::address_t::UDS, ::uds("suffix.sock-listen")));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(shadow, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Узел этот обязан подняться: путь его свободен
+		ASSERT_TRUE(this->_io->commit(shadow)) << "узел с путём, кончающимся припиской, не зафиксирован";
+		// Объявляем слушание
+		ASSERT_TRUE(this->_io->listen(shadow, 16)) << "узел с путём, кончающимся припиской, не объявил слушания";
+		/**
+		 * Заводим СОСЕДНИЙ узел, к имени какого приписка и добавляется
+		 */
+		const awh::event::id_t plain = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(plain, 0u);
+		// Устанавливаем ему соседний путь
+		ASSERT_TRUE(this->_io->setAddress(plain, awh::event::address_t::UDS, ::uds("suffix.sock")));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(plain, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Соседний путь никем не занят - узел обязан подняться
+		ASSERT_TRUE(this->_io->commit(plain)) << "соседний узел не зафиксирован: пути сошлись в одно имя";
+		// И обязан объявить слушание: служебный конец его заводится по имени, свободному от соседа
+		ASSERT_TRUE(this->_io->listen(plain, 16)) << "соседний узел не объявил слушания: служебная приписка сошлась с выведенным именем соседа";
+		// Сносим оба узла
+		ASSERT_TRUE(this->_io->destroy(plain));
+		ASSERT_TRUE(this->_io->destroy(shadow));
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
+
+#if defined(_WIN32) || defined(_WIN64)
+	/**
 	 * @brief Проверка однозначности выведения имени канала из пути домена UNIX
 	 *
 	 * @details Изображение выводит имя канала из пути, и выведение это обязано быть
@@ -30218,6 +30287,8 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 		// Сервер обязан подняться
 		ASSERT_TRUE(this->_io->commit(sid));
+		// Сервер обязан встать на слушание
+		ASSERT_TRUE(this->_io->listen(sid, 10));
 		// Запускаем сервер
 		ASSERT_TRUE(this->_io->launch(sid));
 		/**
@@ -30277,6 +30348,675 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		ASSERT_TRUE(this->_io->deinitialize());
 	}
 
+	/**
+	 * @brief Проверка ПЕРЕСТРОЙКИ изображённого клиента домена UNIX
+	 *
+	 * @details Путь перестройки у клиента иной, чем у сервера: описатель его заводится
+	 *          открытием по имени, и открытие это требует у сервера СВОБОДНОГО экземпляра
+	 *          канала. Экземпляр тот сервер держит ровно один, и после принятого
+	 *          подключения заводит следующий - стало быть перестройка клиента проверяет
+	 *          заодно и то, что сервер пополняет запас
+	 *
+	 * @note Утверждается работа после перестройки, а не её ответ: клиент, оставшийся без
+	 *       описателя, ответил бы согласием ровно так же. Оттого проверяется отдача
+	 *       данных - обмен по описателю, какого у него могло не оказаться
+	 *
+	 */
+	/**
+	 * @brief Проверка приёма ВТОРОГО подключения изображённым сервером
+	 *
+	 * @details Сервер держит под настоящим именем ровно один свободный экземпляр канала:
+	 *          больше одного нельзя - клиент попадает на любой свободный, и ожидание
+	 *          подключения обязано быть подано именно на тот, куда он попадёт. Приняв
+	 *          подключение, сервер обязан завести следующий экземпляр, иначе второй
+	 *          клиент упрётся в занятое имя
+	 *
+	 * @note Это разделяющий опыт: он отделяет «сервер не пополняет запас» от «сломан путь
+	 *       перестройки». Перестройки здесь нет вовсе, клиенты разные
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsEmulatedSecondClientTest){
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("second.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Сервер обязан встать на слушание
+		ASSERT_TRUE(this->_io->listen(sid, 10));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		/**
+		 * Подключаем двух клиентов подряд
+		 */
+		for(uint8_t k = 0; k < 2; k++){
+			// Заводим клиента домена UNIX
+			const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+			// Проверяем, что событие заведено
+			ASSERT_GT(cid, 0u);
+			// Устанавливаем клиенту путь подключения
+			ASSERT_TRUE(this->_io->setTarget(cid, path));
+			// Выставляем неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			// Клиент обязан подключиться
+			ASSERT_TRUE(this->_io->commit(cid)) << "клиент " << static_cast <uint32_t> (k) << " не подключился: сервер не завёл свободного экземпляра";
+			/**
+			 * Даём циклу обороты на приём подключения
+			 */
+			for(uint8_t i = 0; i < 10; i++)
+				// Выполняем оборот цикла событий
+				this->_io->poll(10);
+		}
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	TEST_F(IoFixture, IoUdsEmulatedClientRebuildTest){
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("clirebuild.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		/**
+		 * Выставляем обоим неблокирующий обмен
+		 */
+		for(const awh::event::id_t id : {sid, cid})
+			// Выставляем узлу неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(id, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Сервер обязан встать на слушание
+		ASSERT_TRUE(this->_io->listen(sid, 10));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Клиент обязан подключиться
+		ASSERT_TRUE(this->_io->commit(cid));
+		/**
+		 * Даём циклу обороты до перестройки
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Собранные записи журнала уровня предупреждения и отказа
+		std::vector <std::string> records;
+		// Выполняем подписку на записи журнала
+		this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+			// Если запись журнала является предупреждением либо отказом
+			if((flag == awh::log_t::flag_t::WARNING) || (flag == awh::log_t::flag_t::CRITICAL))
+				// Запоминаем запись журнала
+				records.emplace_back(text);
+		});
+		// Выполняем перестройку описателя клиента
+		ASSERT_TRUE(this->_io->rebuild(cid)) << "перестройка изображённого клиента отвергнута";
+		// Снимаем подписку на записи журнала
+		this->_log->subscribe(nullptr);
+		// Перестройка обязана молчать
+		ASSERT_TRUE(records.empty()) << "перестройка клиента дала " << records.size() << " запись(ей), первая: " << (records.empty() ? std::string() : records.front());
+		/**
+		 * Даём циклу обороты после перестройки
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Тело, отдаваемое перестроенным клиентом
+		const std::string body = "перестроенный клиент";
+		// Перестроенный клиент обязан принять тело в очередь отдачи
+		ASSERT_GT(this->_io->send(cid, body.data(), body.size()), static_cast <size_t> (0))
+		 << "перестроенный клиент не принял ни октета: описателя у него нет";
+		/**
+		 * Даём циклу обороты на отдачу
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сносим оба узла
+		this->_io->destroy(cid);
+		this->_io->destroy(sid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	/**
+	 * @brief Проверка отказа клиенту у сервера, НЕ ВСТАВШЕГО на слушание
+	 *
+	 * @details У сокета домена UNIX подключение к узлу привязанному, но не слушающему,
+	 *          отвечает отказом: слушание - отдельный шаг, и до него сервер подключений
+	 *          не принимает. Изображение обязано отвечать тем же.
+	 *
+	 *          У изображённого сервера свободный экземпляр канала заводится при заведении
+	 *          описателя, а ожидание подключения подаётся лишь слушанием. Клиент, пришедший
+	 *          между этими шагами, экземпляр ЗАБИРАЕТ - подключение состоялось, - а сервер
+	 *          о нём не узнаёт вовсе и остаётся без свободного экземпляра: следующий клиент
+	 *          упирается в занятое имя
+	 *
+	 * @note Найдено разбором собственной ошибки: три проверки я написал без `listen`, они
+	 *       отказали, и отказ этот был верен - но лишь оттого, что клиент к неслушающему
+	 *       серверу ПОДКЛЮЧИЛСЯ, чего быть не должно вовсе
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsNotListeningRefusesTest){
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("notlisten.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		/**
+		 * Выставляем обоим неблокирующий обмен
+		 */
+		for(const awh::event::id_t id : {sid, cid})
+			// Выставляем узлу неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(id, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться, но на слушание НЕ встаёт
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		/**
+		 * Даём циклу обороты
+		 */
+		for(uint8_t i = 0; i < 3; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Запоминаем миг начала подключения
+		const auto start = std::chrono::steady_clock::now();
+		// Клиент к неслушающему серверу подключаться НЕ ВПРАВЕ
+		ASSERT_FALSE(this->_io->commit(cid))
+		 << "клиент подключился к серверу, не вставшему на слушание: экземпляр канала забран, и сервер о подключении не узнает";
+		// Срок, за какой пришёл отказ
+		const auto spent = std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count();
+		/**
+		 * Отказ обязан прийти СРАЗУ, а не выждав заходы
+		 *
+		 * @details У сокета отказ подключения к неслушающему узлу приходит немедленно.
+		 *          Изображение же не различало «сервер не слушает» и «сервер слушает, но
+		 *          свободный экземпляр на миг занят» - оба выглядят отсутствием свободного
+		 *          экземпляра, - и на первое тратило весь запас заходов
+		 *
+		 * @note Различает их отдельный опорный конец, заводимый ОБЪЯВЛЕНИЕМ СЛУШАНИЯ: есть
+		 *       он - сервер слушает, и стоит подождать; нет его - ждать нечего
+		 */
+		ASSERT_LT(spent, 200) << "отказ пришёл за " << spent << " мс: заходы выгорали впустую, тогда как сервер заведомо не слушает";
+		// Сносим оба узла
+		this->_io->destroy(cid);
+		this->_io->destroy(sid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	/**
+	 * @brief Проверка извещения о подключении у ИЗОБРАЖЁННОГО клиента
+	 *
+	 * @details Клиент домена UNIX, изображённый концом канала, подключается самим
+	 *          открытием по имени: встречная сторона принимает его сама, и движку остаётся
+	 *          лишь известить потребителя. Договор от изображения меняться не вправе -
+	 *          отклик состояния обязан прийти со значением `CONNECTED` ровно так же, как
+	 *          у настоящего сокета
+	 *
+	 * @note Утверждается ОТКЛИК, а не поле состояния: потребитель узла изнутри не видит и
+	 *       строит работу на откликах. Узел, помеченный подключённым молча, для него
+	 *       неотличим от неподключённого
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsEmulatedConnectNoticeTest){
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("notice.sock");
+		// Признак того, что извещение о подключении пришло
+		bool connected = false;
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		// Устанавливаем клиенту функцию обратного вызова состояния
+		this->_io->on(cid, static_cast <awh::engine::callback::status_t> ([&connected]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Если извещение сообщает о состоявшемся подключении
+			if(status == awh::event::status_t::CONNECTED)
+				// Запоминаем приход извещения
+				connected = true;
+		}));
+		/**
+		 * Выставляем обоим неблокирующий обмен
+		 */
+		for(const awh::event::id_t id : {sid, cid})
+			// Выставляем узлу неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(id, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться и встать на слушание
+		ASSERT_TRUE(this->_io->commit(sid));
+		ASSERT_TRUE(this->_io->listen(sid, 10));
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Клиент обязан зафиксироваться и подключиться
+		ASSERT_TRUE(this->_io->commit(cid));
+		ASSERT_TRUE(this->_io->connect(cid)) << "изображённый клиент не подключился";
+		/**
+		 * Даём циклу обороты
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Извещение о подключении обязано прийти потребителю
+		ASSERT_TRUE(connected) << "изображённый клиент подключился молча: потребителю извещения не пришло";
+		// Сносим оба узла
+		this->_io->destroy(cid);
+		this->_io->destroy(sid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+	/**
+	 * @brief Проверка того, что круги подъёма движка не оставляют описателей
+	 *
+	 * @details Опыт этот у Гриши поставлен под POSIX перебором номеров описателей через
+	 *          `fcntl`, каких у MS Windows нет вовсе. Здесь он поставлен своими средствами
+	 *          и по двум признакам разом.
+	 *
+	 *          Признак ПЕРВЫЙ, состава: все круги идут по ОДНОМУ И ТОМУ ЖЕ пути. Оставь
+	 *          круг слушающий описатель - и следующий упрётся в занятое имя немедленно.
+	 *          Это строже счётчика: утечка ловится на первом же круге, а не по итогу
+	 *          двухсот, и различает подмену - закрытое гнездо при оставшемся канале
+	 *          счётчик пропустил бы, а занятое имя нет
+	 *
+	 *          Признак ВТОРОЙ, счёта: `GetProcessHandleCount` считает ОБА рода описателей.
+	 *          Замерено щупом на стенде: 16 гнёзд дали +18, 8 каналов ровно +8, и оба рода
+	 *          вернулись к исходному числу по закрытии
+	 *
+	 * @note Прирост утверждается СВОЙСТВОМ, а не порогом: снимается он после малого числа
+	 *       кругов и после большого, и расти пропорционально числу кругов не вправе.
+	 *       Утечка по одному описателю на круг дала бы разницу в сто восемьдесят
+	 *
+	 * @note Прогрев обязателен: первое обращение к средствам сокетов заводит описатели
+	 *       разовые, и без прогрева они легли бы в счёт утечкой
+	 *
+	 * @warning Опыт этот стоит на находке «`close` не закрывает гнезда, а канал закрывает
+	 *          лишь `CloseHandle`»: описатели переживали движок до конца процесса, и
+	 *          снимать счёт надлежит ВНУТРИ процесса, а не по выходе из него
+	 *
+	 */
+	TEST_F(IoFixture, IoEngineRecreateHandlesTest){
+		/**
+		 * @brief Функция снятия числа открытых описателей процесса
+		 *
+		 * @return число открытых описателей процесса
+		 *
+		 */
+		auto handles = []() noexcept -> uint32_t {
+			// Число открытых описателей процесса
+			DWORD result = 0;
+			// Выполняем снятие числа открытых описателей процесса
+			::GetProcessHandleCount(::GetCurrentProcess(), &result);
+			// Выводим число открытых описателей процесса
+			return static_cast <uint32_t> (result);
+		};
+		// Путь, единый на все круги
+		const std::string path = ::uds("handles.sock");
+		/**
+		 * @brief Функция одного круга подъёма и сноса движка
+		 *
+		 * @param round номер круга
+		 *
+		 */
+		auto round = [this, &path](const uint32_t round) noexcept -> void {
+			// Выполняем инициализацию сетевого движка
+			ASSERT_TRUE(this->_io->initialize()) << "круг " << round << ": движок не поднялся";
+			// Заводим сервер домена UNIX
+			const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+			// Проверяем, что событие заведено
+			ASSERT_GT(sid, 0u) << "круг " << round << ": событие не заведено";
+			// Устанавливаем серверу путь привязки
+			ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path)) << "круг " << round << ": путь не задан";
+			// Выставляем неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			/**
+			 * Фиксация обязана удаться НА КАЖДОМ круге
+			 *
+			 * @note Это и есть признак состава: путь один на все круги, и отказ занятости
+			 *       означает, что предыдущий круг описателя не закрыл
+			 */
+			ASSERT_TRUE(this->_io->commit(sid)) << "круг " << round << ": путь занят - описатель предыдущего круга не закрыт";
+			// Сервер обязан встать на слушание
+			ASSERT_TRUE(this->_io->listen(sid, 16)) << "круг " << round << ": слушание не объявлено";
+			// Запускаем сервер
+			ASSERT_TRUE(this->_io->launch(sid)) << "круг " << round << ": сервер не запущен";
+			// Выполняем оборот цикла, чтобы подписка дошла до ядра
+			this->_io->poll(1);
+			// Сносим узел
+			this->_io->destroy(sid);
+			/**
+			 * Даём циклу обороты: окончательное уничтожение узла отложено
+			 */
+			for(uint8_t i = 0; i < 3; i++)
+				// Выполняем оборот цикла событий
+				this->_io->poll(1);
+			// Сворачиваем движок
+			ASSERT_TRUE(this->_io->deinitialize()) << "круг " << round << ": движок не свёрнут";
+		};
+		// Выполняем прогрев: разовые описатели средств сокетов не должны лечь в счёт
+		round(0);
+		// Снимаем число описателей до кругов
+		const uint32_t before = handles();
+		/**
+		 * Выполняем малое число кругов
+		 */
+		for(uint32_t i = 1; i <= 20; i++)
+			// Выполняем круг подъёма и сноса движка
+			round(i);
+		// Снимаем прирост после малого числа кругов
+		const int64_t twenty = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
+		/**
+		 * Выполняем остальные круги
+		 */
+		for(uint32_t i = 21; i <= 200; i++)
+			// Выполняем круг подъёма и сноса движка
+			round(i);
+		// Снимаем прирост после всех кругов
+		const int64_t hundreds = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
+		/**
+		 * Прирост не вправе расти пропорционально числу кругов
+		 *
+		 * @note Утечка по одному описателю на круг дала бы разницу в сто восемьдесят между
+		 *       двумя снятиями. Половина от неё взята оберегом, а не порогом опыта: мера
+		 *       здесь - СВОЙСТВО (прирост от числа кругов не зависит), и всякий исход
+		 *       вблизи девяноста означал бы утечку, а не свойство машины
+		 */
+		ASSERT_LT(hundreds - twenty, 90)
+		 << "описатели растут с числом кругов: после 20 кругов прирост " << twenty << ", после 200 - " << hundreds;
+	}
+
+	/**
+	 * @brief Проверка удержания описателей ПОДКЛЮЧЕНИЕМ у изображённого домена UNIX
+	 *
+	 * @details Опыт с описателями у сервера меряет круги ПОДЪЁМА узла: заведение, слушание,
+	 *          снос. Путь подключения он не проходит вовсе - ни открытия канала клиентом,
+	 *          ни приёма подключения сервером, ни сноса принятой стороны. Между тем описателей
+	 *          на этом пути заводится БОЛЬШЕ, чем на подъёме: конец клиента, экземпляр,
+	 *          отданный принятому подключению, и заведённый ему на смену свободный.
+	 *
+	 * @note Мера та же и по той же причине: прирост снимается после 20 кругов и после 200 и
+	 *       расти пропорционально числу кругов не вправе. Признак состава держится тем же
+	 *       единым путём: занятость его на следующем круге означала бы незакрытый описатель
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsClientRecreateHandlesTest){
+		/**
+		 * @brief Функция снятия числа открытых описателей процесса
+		 *
+		 * @return число открытых описателей процесса
+		 *
+		 */
+		auto handles = []() noexcept -> uint32_t {
+			// Число открытых описателей процесса
+			DWORD result = 0;
+			// Выполняем снятие числа открытых описателей процесса
+			::GetProcessHandleCount(::GetCurrentProcess(), &result);
+			// Выводим число открытых описателей процесса
+			return static_cast <uint32_t> (result);
+		};
+		// Путь, единый на все круги
+		const std::string path = ::uds("clihandles.sock");
+		/**
+		 * @brief Функция одного круга подключения и сноса
+		 *
+		 * @param round номер круга
+		 *
+		 */
+		auto round = [this, &path](const uint32_t round) noexcept -> void {
+			// Выполняем инициализацию сетевого движка
+			ASSERT_TRUE(this->_io->initialize()) << "круг " << round << ": движок не поднялся";
+			// Заводим сервер домена UNIX
+			const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+			// Проверяем, что событие заведено
+			ASSERT_GT(sid, 0u) << "круг " << round << ": событие сервера не заведено";
+			// Устанавливаем серверу путь привязки
+			ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path)) << "круг " << round << ": путь не задан";
+			// Выставляем неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			// Признак состава: путь один на все круги, отказ занятости означает незакрытый описатель
+			ASSERT_TRUE(this->_io->commit(sid)) << "круг " << round << ": путь занят - описатель предыдущего круга не закрыт";
+			// Сервер обязан встать на слушание
+			ASSERT_TRUE(this->_io->listen(sid, 16)) << "круг " << round << ": слушание не объявлено";
+			// Запускаем сервер
+			ASSERT_TRUE(this->_io->launch(sid)) << "круг " << round << ": сервер не запущен";
+			// Заводим клиента домена UNIX
+			const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+			// Проверяем, что событие заведено
+			ASSERT_GT(cid, 0u) << "круг " << round << ": событие клиента не заведено";
+			// Устанавливаем клиенту путь подключения
+			ASSERT_TRUE(this->_io->setTarget(cid, path)) << "круг " << round << ": цель клиента не задана";
+			// Выставляем неблокирующий обмен
+			ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+			// Подключение обязано состояться НА КАЖДОМ круге
+			ASSERT_TRUE(this->_io->commit(cid)) << "круг " << round << ": клиент не подключился";
+			/**
+			 * Даём циклу обороты на приём подключения сервером
+			 */
+			for(uint8_t i = 0; i < 5; i++)
+				// Выполняем оборот цикла событий
+				this->_io->poll(1);
+			// Сносим клиента
+			this->_io->destroy(cid);
+			// Сносим сервер
+			this->_io->destroy(sid);
+			/**
+			 * Даём циклу обороты: окончательное уничтожение узла отложено
+			 */
+			for(uint8_t i = 0; i < 3; i++)
+				// Выполняем оборот цикла событий
+				this->_io->poll(1);
+			// Сворачиваем движок
+			ASSERT_TRUE(this->_io->deinitialize()) << "круг " << round << ": движок не свёрнут";
+		};
+		// Выполняем прогрев: разовые описатели средств сокетов не должны лечь в счёт
+		round(0);
+		// Снимаем число описателей до кругов
+		const uint32_t before = handles();
+		/**
+		 * Выполняем малое число кругов
+		 */
+		for(uint32_t i = 1; i <= 20; i++)
+			// Выполняем круг подключения и сноса
+			round(i);
+		// Снимаем прирост после малого числа кругов
+		const int64_t twenty = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
+		/**
+		 * Выполняем остальные круги
+		 */
+		for(uint32_t i = 21; i <= 200; i++)
+			// Выполняем круг подключения и сноса
+			round(i);
+		// Снимаем прирост после всех кругов
+		const int64_t hundreds = static_cast <int64_t> (handles()) - static_cast <int64_t> (before);
+		/**
+		 * Прирост не вправе расти пропорционально числу кругов
+		 *
+		 * @note Довод порога тот же, что и у опыта с сервером: утечка по одному описателю на
+		 *       круг дала бы разницу в сто восемьдесят, и половина от неё взята обережом
+		 */
+		ASSERT_LT(hundreds - twenty, 90)
+		 << "описатели растут с числом кругов подключения: после 20 кругов прирост " << twenty << ", после 200 - " << hundreds;
+	}
+
+	/**
+	 * @brief Проверка молчания журнала при обычном ПОДКЛЮЧЕНИИ к изображённому серверу
+	 *
+	 * @details Молчание журнала проверялось у жизни сервера, и путь подключения в ту проверку
+	 *          не входил. Меж тем именно на нём движок читает из экземпляра канала, встречный
+	 *          конец какого ещё не открыт: система отвечает на это своим кодом, и код тот -
+	 *          не из пространства WSA. Не разбери его слой - он уходит в отказ обмена, а под
+	 *          отказом обмена стоит СНОС УЗЛА.
+	 *
+	 * @note Утверждается отсутствие записей уровней `CRITICAL` и `WARNING` за полный круг
+	 *       подключения. Предупреждение здесь равносильно отказу: печатает его та же ветвь,
+	 *       какая узел и сносит
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsClientLifecycleIsQuietTest){
+		// Собранные записи журнала уровня отказа
+		std::vector <std::string> failures;
+		// Выполняем подписку на записи журнала
+		this->_log->subscribe([&failures](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+			// Если запись журнала является отказом либо предупреждением
+			if((flag == awh::log_t::flag_t::CRITICAL) || (flag == awh::log_t::flag_t::WARNING))
+				// Запоминаем запись журнала
+				failures.emplace_back(text);
+		});
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("cliquiet.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Признак того, что принятая сторона узнала о разрыве связи
+		bool closed = false;
+		// Признак того, что подключение было принято сервером
+		bool taken = false;
+		/**
+		 * Подписываемся на приём подключения, а через него - на извещения принятой стороны
+		 *
+		 * @warning Без этого проверка утверждала бы одно МОЛЧАНИЕ, а молчаливо потерянная
+		 *          связь хуже лишней записи в журнале: потребитель не узнаёт о разрыве вовсе
+		 *          и ждёт данных от собеседника, какого уже нет. Утверждать надлежит и то,
+		 *          что движок промолчал, и то, что он ИЗВЕСТИЛ
+		 */
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&closed, &taken, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Отмечаем подключение принятым
+			taken = true;
+			// Выставляем опции принятому узлу: они не наследуются
+			(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+			// Подписываемся на извещения принятого узла
+			io->on(cid, static_cast <awh::engine::callback::event_t> ([&closed]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+				// Если извещение сообщает о закрытии связи
+				if(action == awh::event::action_t::CLOSE)
+					// Отмечаем разрыв замеченным принятой стороной
+					closed = true;
+			}));
+		}));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Сервер обязан встать на слушание
+		ASSERT_TRUE(this->_io->listen(sid, 16));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Клиент обязан подключиться
+		ASSERT_TRUE(this->_io->commit(cid));
+		/**
+		 * Даём циклу обороты на приём подключения сервером
+		 */
+		for(uint8_t i = 0; i < 10; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Снимаем подписку на записи журнала
+		this->_log->subscribe(nullptr);
+		/**
+		 * Журнал обязан молчать за пору ПОДКЛЮЧЕНИЯ и жизни связи
+		 *
+		 * @note Снятие подписки стоит ДО сноса намеренно: разрыв связи - свойство своё, и
+		 *       мерить его вместе с подключением значило бы не узнать, какое из двух нарушено
+		 */
+		ASSERT_TRUE(failures.empty()) << "обычное подключение к изображённому серверу дало " << failures.size() << " запись(ей), первая: " << (failures.empty() ? std::string() : failures.front());
+		/**
+		 * Возобновляем подписку под пору РАЗРЫВА
+		 *
+		 * @details Разрыв связи у сокета есть событие обычное: встречный конец закрылся, и
+		 *          чтение отдаёт нуль - конец файла. Ни отказа, ни записи в журнале при том
+		 *          не бывает. Изображение обязано отвечать тем же: о закрытии встречного конца
+		 *          канал сообщает СВОИМ кодом, и обратись тот отказом обмена - потребитель
+		 *          получил бы отклик ОШИБКИ там, где случилось лишь окончание связи
+		 */
+		this->_log->subscribe([&failures](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+			// Если запись журнала является отказом либо предупреждением
+			if((flag == awh::log_t::flag_t::CRITICAL) || (flag == awh::log_t::flag_t::WARNING))
+				// Запоминаем запись журнала
+				failures.emplace_back(text);
+		});
+		/**
+		 * До разрыва принятая сторона о закрытии знать не вправе
+		 *
+		 * @note Утверждение это - оберег от пустоты: без него признак закрытия мог бы
+		 *       оказаться поднятым чем угодно прежде, и проверка прошла бы, ничего не
+		 *       проверив. Здесь он обязан быть опущен, а поднять его обязан РАЗРЫВ
+		 */
+		ASSERT_FALSE(closed) << "принятая сторона объявила связь закрытой ДО разрыва";
+		// Сносим клиента, обрывая связь
+		this->_io->destroy(cid);
+		/**
+		 * Даём циклу обороты, чтобы разрыв дошёл до принятой стороны
+		 */
+		for(uint8_t i = 0; i < 10; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Снимаем подписку на записи журнала
+		this->_log->subscribe(nullptr);
+		// Разрыв связи обязан пройти молча: у сокета он отдаётся концом файла, а не отказом
+		ASSERT_TRUE(failures.empty()) << "разрыв связи у изображённого узла дал " << failures.size() << " запись(ей), первая: " << (failures.empty() ? std::string() : failures.front());
+		// Опыт обязан быть поставлен: без принятого подключения утверждать о разрыве нечего
+		ASSERT_TRUE(taken) << "сервер подключения не принял: опыт о разрыве не поставлен";
+		/**
+		 * Принятая сторона обязана УЗНАТЬ о разрыве
+		 *
+		 * @note Утверждение это - пара к молчанию, а не довесок к нему. Молчание без него
+		 *       выполнялось бы и молчаливой потерей связи, а это хуже лишней записи
+		 */
+		ASSERT_TRUE(closed) << "принятая сторона о разрыве связи не узнала: движок промолчал вовсе";
+		// Сносим сервер
+		this->_io->destroy(sid);
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
 	TEST_F(IoFixture, IoUdsEmulatedAddressTest){
 		// Путь, каким задаётся узел домена UNIX
 		const std::string path = ::uds("address.sock");
@@ -30301,6 +31041,8 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 			ASSERT_TRUE(this->_io->setOptions(id, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
 		// Сервер обязан подняться
 		ASSERT_TRUE(this->_io->commit(sid));
+		// Сервер обязан встать на слушание
+		ASSERT_TRUE(this->_io->listen(sid, 10));
 		// Запускаем сервер
 		ASSERT_TRUE(this->_io->launch(sid));
 		// Адрес сервера обязан отдаваться тем же путём, каким задан
@@ -30450,4 +31192,282 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		// Сворачиваем движок
 		ASSERT_TRUE(this->_io->deinitialize());
 	}
+#endif
+
+/**
+ * Если операционной системой является не MS Windows
+ *
+ * @note Перечень открытых описателей снимается перебором номеров POSIX через
+ *       `::fcntl(fd, F_GETFD)`. У MS Windows ни `fcntl`, ни `F_GETFD` нет вовсе, а
+ *       описатели там своего рода и перечисляются иначе (`GetProcessHandleCount`
+ *       либо перебор HANDLE) - способ не переносится ни строчкой, и опыт этот для
+ *       той системы ставится отдельной проверкой в её блоке
+ */
+#if !(defined(_WIN32) || defined(_WIN64))
+/**
+ * @brief Тест перезаведения движка в одном процессе
+ *
+ * @details Бой отличается от набора длительностью: движок обязан подниматься и
+ *          опускаться многократно в одном процессе, не накапливая ни описателей, ни
+ *          узлов. Набор за минуты этого не ловит - он заводит движок однажды
+ *
+ * @warning Проверка эта закрепляет то, чего набор не проверял НИЧЕМ. Прежде находки
+ *          такого рода приходили дорогой ценой: откат при отказе заведения, `close`
+ *          против `closesocket` у MS Windows, пул принятого кольца, переживавший
+ *          закрытие описателя. Все три - про состояние, пережившее движок
+ *
+ * @note Число кругов выбрано не по вкусу, а по замеру: круг стоит единицы миллисекунд,
+ *       и двести кругов держат проверку в пределах, приемлемых набору. Утечка в один
+ *       описатель за круг вышла бы за предел описателей процесса задолго до конца
+ *
+ */
+TEST_F(IoFixture, IoEngineRecreateCyclesTest){
+	/**
+	 * @brief Функция снятия перечня открытых описателей процесса
+	 *
+	 * @return перечень открытых описателей процесса
+	 *
+	 */
+	auto descriptors = []() noexcept -> std::set <int32_t> {
+		// Результат работы функции
+		std::set <int32_t> result;
+		/**
+		 * Перебираем описатели процесса
+		 */
+		for(int32_t fd = 0; fd < 1024; fd++){
+			// Если описатель открыт, запоминаем его
+			if(::fcntl(fd, F_GETFD) != -1)
+				// Запоминаем открытый описатель
+				result.emplace(fd);
+		}
+		// Выводим перечень открытых описателей
+		return result;
+	};
+	// Число кругов перезаведения движка
+	const size_t rounds = 200;
+	// Снимаем перечень описателей до первого круга
+	const std::set <int32_t> before = descriptors();
+	/**
+	 * Перебираем круги перезаведения движка
+	 */
+	for(size_t i = 0; i < rounds; i++){
+		/**
+		 * @note Движок круга живёт в СВОЕЙ области видимости, а состав описателей
+		 *       снимается ЗА нею. Собственный описатель движка (очередь ядра) отдаётся
+		 *       деструктором, а не `clear()`: `clear()` чистит события. Замер при живом
+		 *       движке показывал бы этот описатель лишним на каждом круге - что и вышло
+		 *       при первой редакции проверки
+		 */
+		{
+			// Заводим движок круга
+			awh::engine::io_t io(this->_fmk.get(), this->_log.get());
+			// Движок обязан заводиться на каждом круге, а не только на первом
+			ASSERT_TRUE(io.initialize()) << "Движок не завёлся на круге " << i;
+			// Создаём событие сервера
+			const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			// Проверяем, что идентификатор события сервера создан
+			ASSERT_GT(server, 0) << "Событие сервера не создано на круге " << i;
+			// Устанавливаем опции события сервера
+			ASSERT_TRUE(io.setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK));
+			// Устанавливаем адрес привязки события сервера
+			ASSERT_TRUE(io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+			// Устанавливаем порт привязки события сервера
+			ASSERT_TRUE(io.setSourcePort(server, port()));
+			// Выполняем фиксацию настроек события сервера
+			ASSERT_TRUE(io.commit(server)) << "Настройки события не приняты на круге " << i;
+			// Переводим событие сервера в прослушивание
+			ASSERT_TRUE(io.listen(server, 16)) << "Прослушивание не включено на круге " << i;
+			// Включаем приём подключений
+			ASSERT_TRUE(io.launch(server)) << "Приём подключений не включён на круге " << i;
+			// Выполняем оборот опроса, чтобы подписка дошла до ядра
+			io.poll(1);
+			// Опускаем движок круга
+			io.clear();
+		}
+		/**
+		 * @note Состав снимается на КАЖДОМ круге, а не по итогу: иначе отказ назовёт
+		 *       лишь ЧИСЛО лишних описателей, но не круг, на котором они завелись.
+		 *       Порт на каждом круге свой (иначе двухсотый упёрся бы в TIME_WAIT),
+		 *       поэтому занятость имени ранней ловушкой тут не служит - место называет
+		 *       только состав
+		 *
+		 * @note Цена снятия замерена, а не прикинута: перебор 1024 описателей на круг
+		 *       добавляет к проверке единицы миллисекунд при двухстах кругах
+		 */
+		{
+			// Снимаем состав описателей на промежуточном круге
+			const std::set <int32_t> current = descriptors();
+			// Число описателей, появившихся к этому кругу
+			size_t extra = 0;
+			/**
+			 * Перебираем описатели, открытые к промежуточному кругу
+			 */
+			for(auto & fd : current){
+				// Если описатель прежде открыт не был, считаем его лишним
+				if(before.count(fd) == 0)
+					// Увеличиваем счётчик лишних описателей
+					extra++;
+			}
+			// К этому кругу лишних описателей быть не должно
+			ASSERT_EQ(extra, 0u) << "На круге " << (i + 1) << " лишних описателей: " << extra;
+		}
+	}
+	// Снимаем перечень описателей после всех кругов
+	const std::set <int32_t> after = descriptors();
+	// Описатели, пережившие круги перезаведения
+	std::set <int32_t> leaked;
+	/**
+	 * Перебираем описатели, оставшиеся после кругов
+	 */
+	for(auto & fd : after){
+		// Если описатель прежде открыт не был, запоминаем его утёкшим
+		if(before.count(fd) == 0)
+			// Запоминаем утёкший описатель
+			leaked.emplace(fd);
+	}
+	// Ни один описатель не должен пережить круги перезаведения
+	ASSERT_TRUE(leaked.empty())
+	 << "После " << rounds << " кругов перезаведения движка осталось описателей: " << leaked.size();
+}
+/**
+ * @brief Тест поведения движка при исчерпании описателей
+ *
+ * @details Бой отличается от набора не только длительностью, но и пределами. Движок
+ *          обязан ОТВЕЧАТЬ ОТКАЗОМ при исчерпании описателей, а не падать и не зависать.
+ *          Набор такого состояния не достигает никогда
+ *
+ * @note Предел доводится до исчерпания, а не выбирается величиной: заводятся события,
+ *       пока движок не откажет. Утверждается, что отказ НАСТУПИЛ - иначе проверка
+ *       прошла бы и на движке, который предела не заметил вовсе
+ *
+ * @warning Опыт целиком идёт в дочернем процессе с урезанным `RLIMIT_NOFILE`: предел
+ *          самого набора не трогается. Дочерний процесс обязан завершиться САМ, а не
+ *          по сигналу - падение движка при исчерпании и есть тот отказ, что ищется
+ *
+ */
+TEST_F(IoFixture, IoDescriptorExhaustionTest){
+	// Выполняем порождение дочернего процесса
+	const pid_t pid = ::fork();
+	// Если породить процесс не удалось
+	ASSERT_NE(pid, -1) << "Породить процесс опыта не удалось";
+	// Если мы находимся в дочернем процессе
+	if(pid == 0){
+		// Предел числа описателей процесса
+		struct rlimit limit{};
+		// Если предел снять не удалось
+		if(::getrlimit(RLIMIT_NOFILE, &limit) != 0)
+			// Выходим с признаком пропуска
+			::_exit(2);
+		/**
+		 * @warning Урезается и ЖЁСТКИЙ предел, а не только мягкий. Фреймворк при
+		 *          заведении поднимает мягкий предел до жёсткого (в журнале это видно
+		 *          строкою «Current FD limits»), и урезание одного лишь мягкого он
+		 *          отменяет. Установлено замером: при мягком пределе 64 и жёстком
+		 *          неограниченном движок заводил события тысячами, не встретив предела
+		 *          вовсе, - опыт не доходил до искомого состояния и молчал об этом
+		 */
+		// Считаем описатели, УЖЕ открытые процессом набора и унаследованные опытом
+		rlim_t opened = 0;
+		/**
+		 * Перебираем описатели процесса
+		 */
+		for(int32_t fd = 0; fd < 4096; fd++){
+			// Если описатель открыт, считаем его
+			if(::fcntl(fd, F_GETFD) != -1)
+				// Увеличиваем счётчик открытых описателей
+				opened++;
+		}
+		/**
+		 * @warning Предел берётся ОТ ЗАМЕРА, а не величиной. Опыт наследует описатели
+		 *          процесса набора, и число их зависит от того, что шло прежде: в
+		 *          одиночном прогоне их единицы, в полном наборе - десятки. Предел,
+		 *          выбранный числом, оказывался НИЖЕ уже открытого, движок не мог
+		 *          завести кольца вовсе и уходил из жизни (`::_exit(EXIT_FAILURE)`,
+		 *          gnu/io_uring.cpp:9545) - намеренно, но до опыта дело не доходило.
+		 *          Проверка при этом отказывала с доводом «предела не заметил», то
+		 *          есть обвиняла движок в том, чего он не делал. Установлено замером
+		 *          09.09.2026: в полном наборе унаследовано 76 описателей при пределе 64
+		 *
+		 * @note Запас в 24 описателя даёт движку подняться и оставляет десятки заведений
+		 *       до исчерпания - довольно, чтобы отказ наступил заведомо
+		 */
+		limit.rlim_cur = (opened + 24);
+		// Урезаем жёсткий предел, чтобы поднять мягкий было нечем
+		limit.rlim_max = (opened + 24);
+		// Если урезать предел не удалось
+		if(::setrlimit(RLIMIT_NOFILE, &limit) != 0)
+			// Выходим с признаком пропуска
+			::_exit(2);
+		// Создаём объект фреймворка
+		awh::fmk_t fmk;
+		// Создаём объект логгера
+		awh::log_t log(&fmk);
+		// Создаём объект сетевого движка
+		awh::engine::io_t io(&fmk, &log);
+		// Если движок завести не удалось
+		if(!io.initialize())
+			// Выходим с признаком пропуска
+			::_exit(2);
+		// Признак того, что движок ответил отказом
+		bool refused = false;
+		/**
+		 * Заводим события, покуда движок не откажет
+		 */
+		for(size_t i = 0; (i < 4096) && !refused; i++){
+			// Создаём событие сервера
+			const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
+			// Если событие завести не удалось, отказ наступил
+			if(server == 0){
+				// Запоминаем, что движок ответил отказом
+				refused = true;
+				// Прекращаем заведение событий
+				break;
+			}
+			// Устанавливаем опции события сервера
+			if(!io.setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::NO_IO_BLOCK)){
+				// Запоминаем, что движок ответил отказом
+				refused = true;
+				// Прекращаем заведение событий
+				break;
+			}
+			// Устанавливаем адрес привязки события сервера
+			static_cast <void> (io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+			// Устанавливаем порт привязки события сервера
+			static_cast <void> (io.setSourcePort(server, port()));
+			// Если настройки события приняты не были, отказ наступил
+			if(!io.commit(server))
+				// Запоминаем, что движок ответил отказом
+				refused = true;
+		}
+		/**
+		 * @warning Опыт выходит СРАЗУ после цикла, не убирая за собой. Уборка при
+		 *          исчерпании - отдельный предмет, и движки в нём расходятся: у
+		 *          `io_uring` перезаведение колец внутри `reinitialize()` при `EMFILE`
+		 *          уводит процесс из жизни (`::_exit(EXIT_FAILURE)`, gnu/io_uring.cpp:9545),
+		 *          тогда как `epoll` тем же путём проходит. Смешение двух предметов в
+		 *          одной проверке давало отказ, читавшийся как «движок предела не
+		 *          заметил», - а предел он замечает, и замечает одинаково у обоих.
+		 *          Замер на стенде Debian 12 (09.09.2026): `commit` отвечает ложью на
+		 *          60-м круге при пределе 64 у обоих движков
+		 *
+		 * @note Описатели отдаёт сама система при выходе процесса, поэтому уборка тут
+		 *       не нужна вовсе
+		 */
+		::_exit(refused ? 0 : 1);
+	}
+	// Состояние дочернего процесса
+	int32_t status = 0;
+	// Ожидаем завершения дочернего процесса
+	ASSERT_NE(::waitpid(pid, &status, 0), -1) << "Дождаться процесса опыта не удалось";
+	// Процесс опыта обязан завершиться САМ, а не по сигналу
+	ASSERT_TRUE(WIFEXITED(status))
+	 << "Движок при исчерпании описателей завершился по сигналу, а не отказом";
+	// Если опыт поставить не удалось
+	if(WEXITSTATUS(status) == 2)
+		// Пропускаем проверку
+		GTEST_SKIP() << "урезать предел описателей либо завести движок не удалось";
+	// Движок обязан ответить отказом, а не завести события сверх предела
+	ASSERT_EQ(WEXITSTATUS(status), 0)
+	 << "Движок предела описателей не заметил: отказа не последовало";
+}
 #endif

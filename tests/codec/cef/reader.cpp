@@ -547,3 +547,119 @@ TEST(CodecCefReader, FeedContract) {
 	// Выполняем проверку того, что чтение отказом не завершилось
 	EXPECT_NE(compact.state(), cef::state_t::FAILED);
 }
+
+/**
+ * @brief Проверка отклонения записей превышением пределов
+ *
+ * @details Пределы разбора стояли в чтении все до одного непроверенными: карта покрытия
+ *          держала пустыми ветви FIELD_TOO_LONG, NAME_TOO_LONG, RECORD_TOO_LONG,
+ *          OVERFLOW_LIMIT, EMPTY_KEY и INVALID_SEVERITY. Предел, поверкой не тронутый,
+ *          от предела снятого неотличим
+ *
+ */
+TEST(CodecCefReader, LimitFailures) {
+	// Настройки разбора записей
+	cef::reader_t::settings_t settings;
+	// Выполняем проверку отклонения записи пустым номером редакции
+	EXPECT_EQ(
+		::dumpCef("CEF:|A|B|C|D|E|1|src=1.2.3.4", settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::INVALID_VERSION)) + "}"
+	);
+	// Выполняем проверку отклонения записи неподдерживаемым номером редакции
+	EXPECT_EQ(
+		::dumpCef("CEF:2|A|B|C|D|E|1|src=1.2.3.4", settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::UNSUPPORTED_VERSION)) + "}"
+	);
+	/**
+	 * @note Важность события за пределом отвечается отказом лишь при строгом сличении:
+	 *       при вольном она сбрасывается нулём, а запись выдаётся, ибо описание ArcSight
+	 *       поле это словом тоже допускает
+	 */
+	// Выполняем проверку выдачи записи с важностью события за пределом при вольном сличении
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|11|src=1.2.3.4", settings),
+		"H{0}H{A}H{B}H{C}H{D}H{E}H{11}E{src=1.2.3.4}R;"
+	);
+	// Устанавливаем строгое сличение ключей расширения со словарём
+	settings.mode = cef::mode_t::STRONG;
+	// Выполняем проверку приёма записи с важностью события ровно в предел
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|10|src=1.2.3.4", settings),
+		"H{0}H{A}H{B}H{C}H{D}H{E}H{10}E{src=1.2.3.4}R;"
+	);
+	// Выполняем проверку отклонения записи превышением важности события
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|11|src=1.2.3.4", settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::INVALID_SEVERITY)) + "}"
+	);
+	// Возвращаем вольное сличение ключей расширения со словарём
+	settings.mode = cef::reader_t::settings_t().mode;
+	// Выполняем проверку отклонения записи пустым именем ключа расширения
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|1|=1.2.3.4", settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::EMPTY_KEY)) + "}"
+	);
+	/**
+	 * @note Всякий предел проверяется ОБОИМИ краями: запись ровно на пределе годна, и
+	 *       лишь запись сверх него отвергается. Одного наблюдения мало - проверка «сверх
+	 *       предела отказ» проходит и при заслоне, срабатывающем на единицу раньше. Так
+	 *       09.09.2026 и вскрылась ошибка на единицу у предела числа пар расширения
+	 */
+	// Выполняем проверку приёма записи с полем заголовка длиною ровно в предел
+	EXPECT_EQ(
+		::dumpCef("CEF:0|" + string(cef::MAX_HEADER_FIELD, 'A') + "|B|C|D|E|1|src=1.2.3.4", settings).substr(0, 5),
+		"H{0}H"
+	);
+	// Выполняем проверку отклонения записи превышением длины поля заголовка
+	EXPECT_EQ(
+		::dumpCef("CEF:0|" + string(cef::MAX_HEADER_FIELD + 1, 'A') + "|B|C|D|E|1|src=1.2.3.4", settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::FIELD_TOO_LONG)) + "}"
+	);
+	// Выполняем проверку приёма записи с именем ключа длиною ровно в предел
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|1|" + string(cef::MAX_NAME, 'k') + "=1.2.3.4", settings),
+		"H{0}H{A}H{B}H{C}H{D}H{E}H{1}E{" + string(cef::MAX_NAME, 'k') + "=1.2.3.4}R;"
+	);
+	// Выполняем проверку отклонения записи превышением длины имени ключа расширения
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|1|" + string(cef::MAX_NAME + 1, 'k') + "=1.2.3.4", settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::NAME_TOO_LONG)) + "}"
+	);
+	// Запись событий безопасности, длиною предел поверяющая
+	const string record = "CEF:0|A|B|C|D|E|1|src=1.2.3.4";
+	// Устанавливаем наибольшую длину записи ровно по длине её самой
+	settings.maxRecord = static_cast <uint32_t> (record.size());
+	// Выполняем проверку приёма записи длиною ровно в предел
+	EXPECT_EQ(
+		::dumpCef(record, settings),
+		"H{0}H{A}H{B}H{C}H{D}H{E}H{1}E{src=1.2.3.4}R;"
+	);
+	// Устанавливаем наибольшую длину записи на один байт меньше её самой
+	settings.maxRecord = static_cast <uint32_t> (record.size() - 1);
+	// Выполняем проверку отклонения записи превышением её длины
+	EXPECT_EQ(
+		::dumpCef(record, settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::RECORD_TOO_LONG)) + "}"
+	);
+}
+
+/**
+ * @brief Проверка предела количества пар расширения
+ *
+ */
+TEST(CodecCefReader, ExtensionsLimit) {
+	// Настройки разбора записей
+	cef::reader_t::settings_t settings;
+	// Устанавливаем наибольшее допустимое количество пар расширения
+	settings.maxExtensions = 2;
+	// Выполняем проверку выдачи записи с количеством пар, пределу равным
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|1|src=1.2.3.4 dst=5.6.7.8", settings),
+		"H{0}H{A}H{B}H{C}H{D}H{E}H{1}E{src=1.2.3.4}E{dst=5.6.7.8}R;"
+	);
+	// Выполняем проверку отклонения записи превышением количества пар расширения
+	EXPECT_EQ(
+		::dumpCef("CEF:0|A|B|C|D|E|1|src=1.2.3.4 dst=5.6.7.8 spt=1024", settings),
+		"F{" + ::std::to_string(static_cast <uint32_t> (cef::error_t::OVERFLOW_LIMIT)) + "}"
+	);
+}

@@ -105,6 +105,19 @@ TEST(CodecYamlCommon, EncodingNames) {
 		// Выполняем проверку обратного разбора названия кодировки
 		ASSERT_EQ(yaml::encoding(name), static_cast <yaml::encoding_t> (i)) << name;
 	}
+	// Выполняем проверку того, что кодировка неопределённая имя своё имеет
+	ASSERT_STREQ(yaml::name(yaml::encoding_t::NONE), "none");
+	// Выполняем проверку названия кодировки, перечню не принадлежащей
+	ASSERT_STREQ(yaml::name(static_cast <yaml::encoding_t> (200)), "unknown");
+	/**
+	 * Выполняем проверку того, что имя неопределённой кодировки от имени мусора отлично
+	 *
+	 * @note Договор един у INI, TOML, YAML, XML и JSON: член перечня имя имеет своё, а
+	 *       «unknown» достаётся значению, членом перечня не являющемуся
+	 */
+	ASSERT_STRNE(yaml::name(yaml::encoding_t::NONE), yaml::name(static_cast <yaml::encoding_t> (200)));
+	// Выполняем проверку обратного разбора названия неопределённой кодировки
+	ASSERT_EQ(yaml::encoding(yaml::name(yaml::encoding_t::NONE)), yaml::encoding_t::NONE);
 	// Выполняем проверку разбора названия кодировки без учёта регистра
 	ASSERT_EQ(yaml::encoding("utf-8"), yaml::encoding_t::UTF8);
 	// Выполняем проверку разбора названия кодировки без указания порядка байтов

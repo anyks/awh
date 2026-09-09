@@ -130,8 +130,21 @@ fi
 # сетевые коды отказов, каких `strerror` от MinGW не знает. Живёт этот вызов в
 # «ws2_32», и без неё связывание стенда отказывает
 ##
+#
+# @warning У систем Sun сетевые имена лежат ОТДЕЛЬНО от libc: разбор адресов сети
+#          «src/net/addr.cpp» зовёт `if_indextoname` и `if_nametoindex`, а те живут в
+#          «libsocket» с «libnsl». Без них связывание валится «ld: fatal: symbol
+#          referencing errors», причём ИМЯ символа Solaris печатает отдельной строкою
+#          под шапкою «Undefined first referenced» - без слова «error», отчего отбор
+#          строк отказа его и срезает
+#
+# @note Замерено 09.09.2026 раскладкой: стенд CEF не собрался на OpenIndiana, тогда как
+#       на Solaris прошёл. Обе системы Sun, а расходятся - оттого перечень библиотек
+#       задаётся по семейству, а не по машине, где отказ виден
+#
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 

@@ -4788,3 +4788,26 @@ TEST(CodecIniDocument, DirectoryIsRefusedNotLoaded){
 	// Выполняем проверку того, что код отказа выдан
 	ASSERT_NE(document.error(), ini::error_t::NONE);
 }
+
+/**
+ * @brief Проверка заведения недостающего вместилища по пути
+ *
+ * @note Договор един у INI, TOML и YAML: вместилища по пути заводятся. Прежде запись
+ *       здесь гласила обратное и ссылалась на YAML дословно, а у YAML запись и сама
+ *       расходилась с телом
+ *
+ */
+TEST(CodecIniDocument, MissingLinksOfThePathAreCreated) {
+	// Дерево настроек, куда ставится значение
+	ini::document_t document(::logger());
+	// Выполняем разбор текста настроек с одним лишь узлом
+	ASSERT_TRUE(document.parse("есть=1\n"));
+	// Выполняем проверку постановки значения в раздел, коего в дереве нет вовсе
+	ASSERT_TRUE(document.set("ключ", "2", "нетути")) << ini::message(document.error());
+	// Выполняем проверку того, что недостающий раздел заведён
+	ASSERT_NE(document.text().find("[нетути]"), string::npos) << document.text();
+	// Выполняем проверку того, что значение поставлено внутрь заведённого раздела
+	ASSERT_NE(document.text().find("ключ = 2"), string::npos) << document.text();
+	// Выполняем проверку того, что прежний узел дерева не пострадал
+	ASSERT_NE(document.text().find("есть = 1"), string::npos) << document.text();
+}

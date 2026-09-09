@@ -564,3 +564,44 @@ TEST(CodecCsvCommon, DefaultLimitsAreWrittenTwice) {
 		ASSERT_FALSE(settings.strict);
 	}
 }
+
+/**
+ * @brief Проверка опознания меток порядка байтов, включая обе метки UTF-32
+ *
+ * @details Метка UTF-32 с обратным порядком байтов НАЧИНАЕТСЯ меткою UTF-16 того же порядка:
+ * «FF FE 00 00» против «FF FE». Оттого опознание UTF-32 обязано идти ПЕРВЫМ, а текст,
+ * помеченный им, отвергаться: разбор кодировки этой не знает. Опознай его чтение меткою
+ * UTF-16, и текст разобрался бы мусором - молча и без отказа
+ *
+ * @note Заведено 09.09.2026 по карте ВЕТВЕЙ: обе метки UTF-32 подавались не полностью, и
+ *       части условий не брались НИ РАЗУ. Проверяются обе метки, обе метки UTF-16 и метка
+ *       UTF-8 - вместе они и стерегут порядок опознания
+ *
+ * @note Подаются и тексты короче метки: длина стережётся отдельным условием у каждой
+ *
+ */
+TEST(CodecCsvCommon, EveryByteOrderMarkIsTold) {
+	// Выполняем проверку того, что метка UTF-32 с обратным порядком байтов отвергается
+	ASSERT_EQ(csv::encoding(string("\xFF\xFE\x00\x00", 4)), csv::encoding_t::NONE);
+	// Выполняем проверку того, что метка UTF-32 с прямым порядком байтов отвергается
+	ASSERT_EQ(csv::encoding(string("\x00\x00\xFE\xFF", 4)), csv::encoding_t::NONE);
+	// Выполняем проверку опознания метки UTF-16 с обратным порядком байтов
+	ASSERT_EQ(csv::encoding(string("\xFF\xFE" "a\x00", 4)), csv::encoding_t::UTF16LE);
+	// Выполняем проверку опознания метки UTF-16 с прямым порядком байтов
+	ASSERT_EQ(csv::encoding(string("\xFE\xFF\x00" "a", 4)), csv::encoding_t::UTF16BE);
+	// Выполняем проверку опознания метки UTF-8
+	ASSERT_EQ(csv::encoding(string("\xEF\xBB\xBF" "a", 4)), csv::encoding_t::UTF8);
+	// Выполняем проверку текста без метки вовсе
+	ASSERT_EQ(csv::encoding(string("а,б\r\n")), csv::encoding_t::UTF8);
+	/**
+	 * Тексты короче метки
+	 */
+	{
+		// Выполняем проверку текста длиною в один октет метки
+		ASSERT_EQ(csv::encoding(string("\xFF", 1)), csv::encoding_t::UTF8);
+		// Выполняем проверку текста длиною в два октета метки UTF-32
+		ASSERT_EQ(csv::encoding(string("\x00\x00", 2)), csv::encoding_t::UTF8);
+		// Выполняем проверку текста длиною в три октета метки UTF-32
+		ASSERT_EQ(csv::encoding(string("\xFF\xFE\x00", 3)), csv::encoding_t::UTF16LE);
+	}
+}
