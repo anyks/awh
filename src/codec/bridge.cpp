@@ -424,7 +424,7 @@ bool awh::codec::Bridge::decodeJSON(const string_view text, abc::value_t & resul
 	 */
 	result.clear();
 	// Создаём документ записи JSON
-	json::document_t document(this->_log);
+	json::document_t document(this->_fmk, this->_log);
 	// Выполняем разбор поданной записи JSON
 	if(!document.parse(text)){
 		// Запоминаем код отказа перевода
@@ -969,7 +969,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
  */
 bool awh::codec::Bridge::decodeXML(const string_view text, abc::value_t & result) noexcept {
 	// Создаём документ записи XML
-	xml::document_t document(this->_log);
+	xml::document_t document(this->_fmk, this->_log);
 	// Выполняем разбор поданной записи XML
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -2429,7 +2429,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
  */
 bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи XML
-	xml::document_t document(this->_log);
+	xml::document_t document(this->_fmk, this->_log);
 	// Имя корневого узла собираемой записи
 	string name = this->_settings.root;
 	// Значение, содержимым корневого узла становящееся
