@@ -37,6 +37,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <memory>
 #include <string>
 #include <functional>
 
@@ -85,24 +86,115 @@ namespace awh {
 
 	/**
 	 * \~russian
+	 * @brief Сноситель объекта каталога
+	 *
+	 * @note Заводится свой затем, что `HandleDir` вне модуля неполон, а сноситель по
+	 *       умолчанию требует полного вида в том месте, где объект гибнет, - то есть у
+	 *       потребителя. Здесь стоит лишь объявление, тело же живёт в `src/sys/fs.cpp`,
+	 *       где вид полон. Так системное API платформы наружу не выходит вовсе
+	 *
+	 * \~english
+	 * @brief Deleter of a directory object
+	 *
+	 * @note Its own is made because `HandleDir` is incomplete outside the module, while the default
+	 *       deleter demands a complete type at the place where the object dies - that is, at the consumer.
+	 *       Only the declaration stands here, while the body lives in `src/sys/fs.cpp`, where the type
+	 *       is complete. Thus the system API of the platform does not go outside at all
+	 *
+	 * \~
+	 */
+	struct __AWH_SHARED_EXPORT__ HandleDirDeleter {
+		/**
+		 * \~russian
+		 * @brief Оператор сноса объекта каталога
+		 *
+		 * @param handle объект каталога для сноса
+		 *
+		 * \~english
+		 * @brief Operator of the demolition of a directory object
+		 *
+		 * @param handle directory object to demolish
+		 *
+		 * \~
+		 */
+		void operator () (HandleDir * handle) const noexcept;
+	};
+	/**
+	 * \~russian
+	 * @brief Сноситель объекта файла
+	 *
+	 * @note Заводится свой затем, что `HandleFile` вне модуля неполон, а сноситель по
+	 *       умолчанию требует полного вида в том месте, где объект гибнет, - то есть у
+	 *       потребителя. Здесь стоит лишь объявление, тело же живёт в `src/sys/fs.cpp`,
+	 *       где вид полон. Так системное API платформы наружу не выходит вовсе
+	 *
+	 * \~english
+	 * @brief Deleter of a file object
+	 *
+	 * @note Its own is made because `HandleFile` is incomplete outside the module, while the default
+	 *       deleter demands a complete type at the place where the object dies - that is, at the consumer.
+	 *       Only the declaration stands here, while the body lives in `src/sys/fs.cpp`, where the type
+	 *       is complete. Thus the system API of the platform does not go outside at all
+	 *
+	 * \~
+	 */
+	struct __AWH_SHARED_EXPORT__ HandleFileDeleter {
+		/**
+		 * \~russian
+		 * @brief Оператор сноса объекта файла
+		 *
+		 * @param handle объект файла для сноса
+		 *
+		 * \~english
+		 * @brief Operator of the demolition of a file object
+		 *
+		 * @param handle file object to demolish
+		 *
+		 * \~
+		 */
+		void operator () (HandleFile * handle) const noexcept;
+	};
+
+	/**
+	 * \~russian
 	 * @brief Создаём тип данных объекта каталога
+	 *
+	 * @note Вид этот есть умный указатель, а не оболочка над описателем: сам `HandleDir`
+	 *       вне модуля неполон намеренно, завести его потребитель не может, и держать для
+	 *       него отдельное имя незачем. Заводит объект модуль работой `Filesystem::handleDir`,
+	 *       сносит - свой сноситель, а потребитель лишь держит его у себя, сколько нужно
 	 *
 	 * \~english
 	 * @brief Create a directory object data type
 	 *
+	 * @note This type is a smart pointer, and not a wrapper over a descriptor: `HandleDir` itself
+	 *       is deliberately incomplete outside the module, the consumer cannot create it, and there is
+	 *       no point in keeping a separate name for it. The object is created by the module with the work
+	 *       `Filesystem::handleDir`, is demolished by its own deleter, and the consumer only keeps it for as long as needed
+	 *
 	 * \~
 	 */
-	using handle_dir_t = HandleDir;
+	using handle_dir_t = unique_ptr <HandleDir, HandleDirDeleter>;
 	/**
 	 * \~russian
 	 * @brief Создаём тип данных объекта файла
 	 *
+	 * @note Вид этот есть умный указатель, а не оболочка над описателем: сам `HandleFile`
+	 *       вне модуля неполон намеренно, завести его потребитель не может, и держать для
+	 *       него отдельное имя незачем. Заводит объект модуль работой `Filesystem::handleFile`,
+	 *       сносит - свой сноситель, а потребитель лишь держит его у себя, сколько нужно
+	 *
 	 * \~english
 	 * @brief Create a file object data type
 	 *
+	 * @note This type is a smart pointer, and not a wrapper over a descriptor: `HandleFile` itself
+	 *       is deliberately incomplete outside the module, the consumer cannot create it, and there is
+	 *       no point in keeping a separate name for it. The object is created by the module with the work
+	 *       `Filesystem::handleFile`, is demolished by its own deleter, and the consumer only keeps it for as long as needed
+	 *
 	 * \~
 	 */
-	using handle_file_t = HandleFile;
+	using handle_file_t = unique_ptr <HandleFile, HandleFileDeleter>;
 
 	/**
 	 * \~russian
@@ -490,6 +582,69 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
+			 * @brief Метод создания объекта каталога
+			 *
+			 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleDir`
+			 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
+			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике
+			 *
+			 * @note Объект служит каталогу, названному в `path`, и хранит состояние обхода. Повторный
+			 *       обзор того же каталога идёт мимо повторного открытия, а обход, прерванный откликом
+			 *       у `walkdir`, продолжается с места остановки
+			 *
+			 * @return умный указатель на объект каталога
+			 *
+			 * \~english
+			 * @brief Method of the creation of a directory object
+			 *
+			 * @details The object is created by the module itself and is given away by a smart pointer:
+			 *          the type `HandleDir` is deliberately incomplete outside the module - the system API
+			 *          of the platform does not go into the header of the framework. The demolition is performed
+			 *          by its own deleter, whose body lives in the source
+			 *
+			 * @note The object serves the directory named in `path` and keeps the state of the walk.
+			 *       A repeated survey of the same directory goes past a repeated opening, and a walk interrupted
+			 *       by the callback at `walkdir` continues from the place of the stop
+			 *
+			 * @return smart pointer to a directory object
+			 *
+			 * \~
+			 */
+			handle_dir_t handleDir() const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод создания объекта файла
+			 *
+			 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleFile`
+			 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
+			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике
+			 *
+			 * @note Объект годен для пакетной обработки: один описатель обслуживает много обращений
+			 *       к одному адресу. Открытие файла выполняет та работа, которой объект передан
+			 *       первой, - сам по себе объект описателя не держит
+			 *
+			 * @return умный указатель на объект файла
+			 *
+			 * \~english
+			 * @brief Method of the creation of a file object
+			 *
+			 * @details The object is created by the module itself and is given away by a smart pointer:
+			 *          the type `HandleFile` is deliberately incomplete outside the module - the system API
+			 *          of the platform does not go into the header of the framework. The demolition is performed
+			 *          by its own deleter, whose body lives in the source
+			 *
+			 * @note The object is fit for the batch processing: one descriptor serves many calls
+			 *       to one address. The opening of the file is performed by the work the object is passed
+			 *       to first - by itself the object holds no descriptor
+			 *
+			 * @return smart pointer to a file object
+			 *
+			 * \~
+			 */
+			handle_file_t handleFile() const noexcept;
+		public:
+			/**
+			 * \~russian
 			 * @brief Шаблон метода добавления в файл бинарных данных
 			 *
 			 * @tparam T тип буфера данных
@@ -519,7 +674,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const T & buffer, handle_file_t * handle = nullptr) const noexcept;
+			void append(string_view filename, const T & buffer, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод добавления в файл бинарных данных
@@ -537,7 +692,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const char * buffer, handle_file_t * handle = nullptr) const noexcept;
+			void append(string_view filename, const char * buffer, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод добавления в файл бинарных данных
@@ -555,7 +710,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const wchar_t * buffer, handle_file_t * handle = nullptr) const noexcept;
+			void append(string_view filename, const wchar_t * buffer, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод добавления в файл бинарных данных
@@ -575,7 +730,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const void * buffer, const size_t size, handle_file_t * handle = nullptr) const noexcept;
+			void append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -612,7 +767,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			auto read(string_view filename, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept -> T;
+			auto read(string_view filename, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept -> T;
 			/**
 			 * \~russian
 			 * @brief Шаблон метода чтения данных из файла
@@ -648,7 +803,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void read(string_view filename, T & result, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void read(string_view filename, T & result, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -671,7 +826,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -708,7 +863,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const T & buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void write(string_view filename, const T & buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод записи в файл бинарных данных
@@ -730,7 +885,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const char * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void write(string_view filename, const char * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод записи в файл бинарных данных
@@ -752,7 +907,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const wchar_t * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void write(string_view filename, const wchar_t * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод записи в файл бинарных данных
@@ -776,7 +931,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const void * buffer, const size_t size, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void write(string_view filename, const void * buffer, const size_t size, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -799,7 +954,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод рекурсивного получения буфера данных из больших файлов
@@ -823,11 +978,161 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, handle_file_t * handle = nullptr) const noexcept;
+			void readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
+		public:
+			/**
+			 * \~russian
+			 * @brief Метод обхода файлов во всех подкаталогах с остановкой и продолжением
+			 *
+			 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
+			 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
+			 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
+			 *          обход с того же места, а не с начала.
+			 *
+			 * @warning Продолжение идёт ПО ВОЗМОЖНОСТИ: между долями обхода дерево вправе измениться,
+			 *          и записи, добавленные либо снесённые ниже уже пройденного места, видны не будут.
+			 *          Снимка состава объект не держит - он держит открытые каталоги и место в каждом
+			 *
+			 * @note Без внешнего объекта каталога работа эта равна `readdir` с досрочным выходом:
+			 *       продолжать будет нечем, состояние обхода гибнет вместе с вызовом
+			 *
+			 * @param path     путь до каталога
+			 * @param ext      расширение файла по которому идет фильтрация
+			 * @param recurse  флаг рекурсивного перебора каталогов
+			 * @param callback функция обратного вызова, ложь останавливает обход
+			 * @param resolve  флаг резолвинга символьных ссылок
+			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+			 * @return         признак того, что обход довершён до конца
+			 *
+			 * \~english
+			 * @brief Method of the walk of the files in all the subdirectories with a stop and a continuation
+			 *
+			 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
+			 *          by returning false. If an external directory object is passed at that, the object keeps
+			 *          the place of the stop, and the next call with the same object and the same address
+			 *          continues the walk from the same place, and not from the beginning.
+			 *
+			 * @warning The continuation goes AS FAR AS POSSIBLE: between the parts of the walk the tree
+			 *          is entitled to change, and the entries added or demolished below an already passed place
+			 *          will not be seen. The object keeps no snapshot of the content - it keeps the opened
+			 *          directories and the place in each of them
+			 *
+			 * @note Without an external directory object this work equals `readdir` with an early exit:
+			 *       there will be nothing to continue with, the state of the walk dies together with the call
+			 *
+			 * @param path     path to the directory
+			 * @param ext      extension of the file the filtering is driven by
+			 * @param recurse  flag of the recursive walk of the directories
+			 * @param callback callback function, false stops the walk
+			 * @param resolve  flag of resolving the symbolic links
+			 * @param handle   external directory object if batch processing support is required
+			 * @return         sign that the walk is completed to the end
+			 *
+			 * \~
+			 */
+			bool walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод обхода файлов во всех подкаталогах построчно с остановкой и продолжением
+			 *
+			 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
+			 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
+			 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
+			 *          обход с того же места, а не с начала.
+			 *
+			 * @warning Остановка выполняется на границе СТРОКИ, а не файла: отказ отклика прерывает
+			 *          и чтение самого файла. Место остановки внутри файла объект каталога не хранит,
+			 *          и продолжение начнёт прерванный файл с начала
+			 *
+			 * @param path     путь до каталога
+			 * @param ext      расширение файла по которому идет фильтрация
+			 * @param recurse  флаг рекурсивного перебора каталогов
+			 * @param callback функция обратного вызова, ложь останавливает обход
+			 * @param resolve  флаг резолвинга символьных ссылок
+			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+			 * @return         признак того, что обход довершён до конца
+			 *
+			 * \~english
+			 * @brief Method of the walk of the files in all the subdirectories line by line with a stop and a continuation
+			 *
+			 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
+			 *          by returning false. If an external directory object is passed at that, the object keeps
+			 *          the place of the stop, and the next call with the same object and the same address
+			 *          continues the walk from the same place, and not from the beginning.
+			 *
+			 * @warning The stop is performed at the boundary of a LINE, and not of a file: a refusal of the callback
+			 *          interrupts the reading of the file itself as well. The object of the directory does not keep
+			 *          the place of the stop inside a file, and the continuation will begin the interrupted file from its start
+			 *
+			 * @param path     path to the directory
+			 * @param ext      extension of the file the filtering is driven by
+			 * @param recurse  flag of the recursive walk of the directories
+			 * @param callback callback function, false stops the walk
+			 * @param resolve  flag of resolving the symbolic links
+			 * @param handle   external directory object if batch processing support is required
+			 * @return         sign that the walk is completed to the end
+			 *
+			 * \~
+			 */
+			bool walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод обхода файлов во всех подкаталогах бинарными блоками с остановкой и продолжением
+			 *
+			 * @details Отличается от `readdir` лишь тем, что отклик вправе обход остановить, вернув
+			 *          ложь. Если при этом передан внешний объект каталога, объект хранит место
+			 *          остановки, и следующий вызов с тем же объектом и тем же адресом продолжает
+			 *          обход с того же места, а не с начала.
+			 *
+			 * @warning Остановка выполняется на границе БЛОКА, а не файла: отказ отклика прерывает
+			 *          и чтение самого файла. Место остановки внутри файла объект каталога не хранит,
+			 *          и продолжение начнёт прерванный файл с начала
+			 *
+			 * @param path     путь до каталога
+			 * @param ext      расширение файла по которому идет фильтрация
+			 * @param size     размер буфера для чтения файла
+			 * @param recurse  флаг рекурсивного перебора каталогов
+			 * @param callback функция обратного вызова, ложь останавливает обход
+			 * @param resolve  флаг резолвинга символьных ссылок
+			 * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+			 * @return         признак того, что обход довершён до конца
+			 *
+			 * \~english
+			 * @brief Method of the walk of the files in all the subdirectories in binary blocks with a stop and a continuation
+			 *
+			 * @details It differs from `readdir` only in that the callback is entitled to stop the walk
+			 *          by returning false. If an external directory object is passed at that, the object keeps
+			 *          the place of the stop, and the next call with the same object and the same address
+			 *          continues the walk from the same place, and not from the beginning.
+			 *
+			 * @warning The stop is performed at the boundary of a BLOCK, and not of a file: a refusal of the callback
+			 *          interrupts the reading of the file itself as well. The object of the directory does not keep
+			 *          the place of the stop inside a file, and the continuation will begin the interrupted file from its start
+			 *
+			 * @param path     path to the directory
+			 * @param ext      extension of the file the filtering is driven by
+			 * @param size     size of the buffer to read the file with
+			 * @param recurse  flag of the recursive walk of the directories
+			 * @param callback callback function, false stops the walk
+			 * @param resolve  flag of resolving the symbolic links
+			 * @param handle   external directory object if batch processing support is required
+			 * @return         sign that the walk is completed to the end
+			 *
+			 * \~
+			 */
+			bool walkdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <bool (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian
 			 * @brief Метод рекурсивного получения файлов во всех подкаталогах
+			 *
+			 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
+			 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
+			 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
+			 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
+			 *
+			 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
+			 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
 			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
@@ -839,6 +1144,16 @@ namespace awh {
 			 * \~english
 			 * @brief Method of the recursive getting of the files in all the subdirectories
 			 *
+			 * @note The external directory object serves the directory named in `path`,
+			 *       just as the file object serves the file named in `filename`.
+			 *       Repeatedly browsing the same directory with the same object bypasses reopening.
+			 *       During recursive traversal, the object serves the ROOT:
+			 *       the module opens subdirectories with their own descriptors,
+			 *       without releasing them to the outside world
+			 *
+			 * @note An object submitted with a different address stops servicing the previous one:
+			 *       the previous handle is closed, and the bypass state, if there was one, is lost
+			 *
 			 * @param path     path to the directory
 			 * @param ext      extension of the file the filtering is driven by
 			 * @param recurse  flag of the recursive walk of the directories
@@ -848,10 +1163,18 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve = true, handle_dir_t * handle = nullptr) const noexcept;
+			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах построчно
+			 *
+			 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
+			 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
+			 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
+			 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
+			 *
+			 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
+			 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
 			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
@@ -863,6 +1186,16 @@ namespace awh {
 			 * \~english
 			 * @brief Method of the recursive reading of the files in all the subdirectories line by line
 			 *
+			 * @note The external directory object serves the directory named in `path`,
+			 *       just as the file object serves the file named in `filename`.
+			 *       Repeatedly browsing the same directory with the same object bypasses reopening.
+			 *       During recursive traversal, the object serves the ROOT:
+			 *       the module opens subdirectories with their own descriptors,
+			 *       without releasing them to the outside world
+			 *
+			 * @note An object submitted with a different address stops servicing the previous one:
+			 *       the previous handle is closed, and the bypass state, if there was one, is lost
+			 *
 			 * @param path     path to the directory
 			 * @param ext      extension of the file the filtering is driven by
 			 * @param recurse  flag of the recursive walk of the directories
@@ -872,10 +1205,18 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve = true, handle_dir_t * handle = nullptr) const noexcept;
+			void readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод рекурсивного чтения файлов во всех подкаталогах бинарными блоками
+			 *
+			 * @note Внешний объект каталога служит каталогу, названному в `path`, - ровно как объект
+			 *       файла служит файлу, названному в `filename`. Повторный обзор того же каталога тем же
+			 *       объектом идёт мимо повторного открытия. При рекурсивном обходе объект служит КОРНЮ:
+			 *       подкаталоги модуль открывает своими описателями, наружу их не отдавая
+			 *
+			 * @note Объект, поданный с иным адресом, обслуживать прежний перестаёт:
+			 *       прежний описатель закрывается, а состояние обхода, если оно было, теряется
 			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
@@ -888,6 +1229,15 @@ namespace awh {
 			 * \~english
 			 * @brief Method of the recursive reading of the files in all the subdirectories in binary blocks
 			 *
+			 * @note The external directory object serves the directory named in `path`,
+			 *       just as the file object serves the file named in `filename`.
+			 *       Repeatedly browsing the same directory with the same object bypasses reopening.
+			 *       During recursive traversal, the object serves the ROOT:
+			 *       the module opens subdirectories with their own descriptors, without releasing them to the outside world
+			 *
+			 * @note An object submitted with a different address stops servicing the previous one:
+			 *       the previous handle is closed, and the bypass state, if there was one, is lost
+			 *
 			 * @param path     path to the directory
 			 * @param ext      extension of the file the filtering is driven by
 			 * @param size     size of the buffer to read the file with
@@ -898,7 +1248,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true, handle_dir_t * handle = nullptr) const noexcept;
+			void readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve = true, const handle_dir_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian

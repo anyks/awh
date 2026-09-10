@@ -45,6 +45,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <vector>
 #include <climits>
 #include <cstring>
 #include <fstream>
@@ -136,10 +137,44 @@ namespace awh {
 		 * @brief Класс для автоматического управления каталогом Windows (RAII)
 		 *
 		 */
-		typedef class HandleDir {
+		class HandleDir {
 			private:
 				// Объект дескриптора
 				_WDIR * _handle;
+			private:
+				/**
+				 * @brief Место обхода каталога
+				 *
+				 */
+				typedef struct Place {
+					// Объект дескриптора вложенного каталога
+					_WDIR * handle;
+					// Адрес вложенного каталога
+					string address;
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param handle  объект дескриптора вложенного каталога
+					 * @param address адрес вложенного каталога
+					 *
+					 */
+					Place(_WDIR * handle, string_view address) noexcept : handle(handle), address(address) {}
+				} place_t;
+			private:
+				// Адрес каталога, которому объект служит
+				string _address;
+			private:
+				// Признак незавершённого обхода
+				bool _active;
+			private:
+				/**
+				 * @brief Места обхода вложенных каталогов
+				 *
+				 * @note Корень обхода здесь НЕ лежит: он живёт в `_handle` и по исчерпании не
+				 *       закрывается, а перематывается. Тем и окупается внешний объект каталога -
+				 *       повторный обзор того же каталога идёт мимо повторного открытия
+				 */
+				vector <place_t> _places;
 			public:
 				/**
 				 * @brief Метод проверки валидности
@@ -181,8 +216,88 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
+			public:
+				/**
+				 * @brief Метод извлечения адреса каталога, которому объект служит
+				 *
+				 * @return адрес каталога
+				 *
+				 */
+				const string & address() const noexcept;
+				/**
+				 * @brief Метод установки адреса каталога, которому объект служит
+				 *
+				 * @param address адрес каталога
+				 *
+				 */
+				void address(string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод проверки незавершённости обхода
+				 *
+				 * @return признак того, что обход начат и до конца не доведён
+				 *
+				 */
+				bool active() const noexcept;
+				/**
+				 * @brief Метод установки признака незавершённости обхода
+				 *
+				 * @param active признак незавершённости обхода
+				 *
+				 */
+				void active(const bool active) noexcept;
+			public:
+				/**
+				 * @brief Метод перемотки каталога к началу
+				 *
+				 */
+				void rewind() noexcept;
+				/**
+				 * @brief Метод сброса состояния обхода
+				 *
+				 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
+				 *       чист и готов служить иному адресу
+				 *
+				 */
+				void reset() noexcept;
+			public:
+				/**
+				 * @brief Метод проверки пустоты стопки мест обхода
+				 *
+				 * @return признак того, что обход идёт по самому корню
+				 *
+				 */
+				bool empty() const noexcept;
+				/**
+				 * @brief Метод снятия верхнего места обхода
+				 *
+				 */
+				void pop() noexcept;
+				/**
+				 * @brief Метод добавления места обхода
+				 *
+				 * @param handle  объект дескриптора вложенного каталога
+				 * @param address адрес вложенного каталога
+				 *
+				 */
+				void push(_WDIR * handle, string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения дескриптора верхнего места обхода
+				 *
+				 * @return объект дескриптора вложенного каталога
+				 *
+				 */
+				_WDIR * top() const noexcept;
+				/**
+				 * @brief Метод извлечения адреса верхнего места обхода
+				 *
+				 * @return адрес вложенного каталога
+				 *
+				 */
+				const string & topAddress() const noexcept;
 				~HandleDir() noexcept;
-		} handle_dir_t;
+		};
 		/**
 		 * @brief Метод проверки валидности
 		 *
@@ -219,30 +334,167 @@ namespace awh {
 		 * @brief Конструктор
 		 *
 		 */
-		HandleDir::HandleDir() noexcept : _handle(nullptr) {}
+		HandleDir::HandleDir() noexcept : _handle(nullptr), _active(false) {}
 		/**
 		 * @brief Конструктор
 		 *
 		 * @param handle объект дескриптора
 		 *
 		 */
-		HandleDir::HandleDir(_WDIR * handle) noexcept : _handle(handle) {}
+		HandleDir::HandleDir(_WDIR * handle) noexcept : _handle(handle), _active(false) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
 		HandleDir::~HandleDir() noexcept {
+			// Выполняем сброс состояния обхода вместе с закрытием каталогов
+			this->reset();
+		}
+		/**
+		 * @brief Метод извлечения адреса каталога, которому объект служит
+		 *
+		 * @return адрес каталога
+		 *
+		 */
+		const string & HandleDir::address() const noexcept {
+			// Возвращаем адрес каталога
+			return this->_address;
+		}
+		/**
+		 * @brief Метод установки адреса каталога, которому объект служит
+		 *
+		 * @param address адрес каталога
+		 *
+		 */
+		void HandleDir::address(string_view address) noexcept {
+			// Выполняем установку адреса каталога
+			this->_address = address;
+		}
+		/**
+		 * @brief Метод проверки незавершённости обхода
+		 *
+		 * @return признак того, что обход начат и до конца не доведён
+		 *
+		 */
+		bool HandleDir::active() const noexcept {
+			// Возвращаем признак незавершённости обхода
+			return this->_active;
+		}
+		/**
+		 * @brief Метод установки признака незавершённости обхода
+		 *
+		 * @param active признак незавершённости обхода
+		 *
+		 */
+		void HandleDir::active(const bool active) noexcept {
+			// Выполняем установку признака незавершённости обхода
+			this->_active = active;
+		}
+		/**
+		 * @brief Метод перемотки каталога к началу
+		 *
+		 */
+		void HandleDir::rewind() noexcept {
 			// Если каталог валиден
 			if(this->valid())
+				// Выполняем перемотку каталога к началу
+				::_wrewinddir(this->_handle);
+		}
+		/**
+		 * @brief Метод сброса состояния обхода
+		 *
+		 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
+		 *       чист и готов служить иному адресу
+		 *
+		 */
+		void HandleDir::reset() noexcept {
+			/**
+			 * Выполняем закрытие всех вложенных каталогов
+			 */
+			for(auto & place : this->_places){
+				// Если вложенный каталог валиден
+				if(place.handle != nullptr)
+					// Закрываем вложенный каталог
+					::_wclosedir(place.handle);
+			}
+			// Выполняем очистку стопки мест обхода
+			this->_places.clear();
+			// Если каталог валиден
+			if(this->valid()){
 				// Закрываем каталог
 				::_wclosedir(this->_handle);
+				// Сбрасываем объект дескриптора
+				this->_handle = nullptr;
+			}
+			// Выполняем очистку адреса каталога
+			this->_address.clear();
+			// Сбрасываем признак незавершённости обхода
+			this->_active = false;
+		}
+		/**
+		 * @brief Метод проверки пустоты стопки мест обхода
+		 *
+		 * @return признак того, что обход идёт по самому корню
+		 *
+		 */
+		bool HandleDir::empty() const noexcept {
+			// Возвращаем признак пустоты стопки мест обхода
+			return this->_places.empty();
+		}
+		/**
+		 * @brief Метод снятия верхнего места обхода
+		 *
+		 */
+		void HandleDir::pop() noexcept {
+			// Если стопка мест обхода не пуста
+			if(!this->_places.empty()){
+				// Если вложенный каталог валиден
+				if(this->_places.back().handle != nullptr)
+					// Закрываем вложенный каталог
+					::_wclosedir(this->_places.back().handle);
+				// Выполняем снятие верхнего места обхода
+				this->_places.pop_back();
+			}
+		}
+		/**
+		 * @brief Метод добавления места обхода
+		 *
+		 * @param handle  объект дескриптора вложенного каталога
+		 * @param address адрес вложенного каталога
+		 *
+		 */
+		void HandleDir::push(_WDIR * handle, string_view address) noexcept {
+			// Если вложенный каталог валиден
+			if(handle != nullptr)
+				// Выполняем добавление места обхода
+				this->_places.emplace_back(handle, address);
+		}
+		/**
+		 * @brief Метод извлечения дескриптора верхнего места обхода
+		 *
+		 * @return объект дескриптора вложенного каталога
+		 *
+		 */
+		_WDIR * HandleDir::top() const noexcept {
+			// Возвращаем дескриптор верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
+		}
+		/**
+		 * @brief Метод извлечения адреса верхнего места обхода
+		 *
+		 * @return адрес вложенного каталога
+		 *
+		 */
+		const string & HandleDir::topAddress() const noexcept {
+			// Возвращаем адрес верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().address : this->_address);
 		}
 
 		/**
 		 * @brief Класс для автоматического управления файлом Windows (RAII)
 		 *
 		 */
-		typedef class HandleFile {
+		class HandleFile {
 			private:
 				// Объект дескриптора
 				HANDLE _handle;
@@ -288,7 +540,7 @@ namespace awh {
 				 *
 				 */
 				~HandleFile() noexcept;
-		} handle_file_t;
+		};
 		/**
 		 * @brief Метод проверки валидности
 		 *
@@ -354,10 +606,44 @@ namespace awh {
 		 * @brief Класс для автоматического управления каталогом POSIX (RAII)
 		 *
 		 */
-		typedef class HandleDir {
+		class HandleDir {
 			private:
 				// Объект дескриптора
 				DIR * _handle;
+			private:
+				/**
+				 * @brief Место обхода каталога
+				 *
+				 */
+				typedef struct Place {
+					// Объект дескриптора вложенного каталога
+					DIR * handle;
+					// Адрес вложенного каталога
+					string address;
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param handle  объект дескриптора вложенного каталога
+					 * @param address адрес вложенного каталога
+					 *
+					 */
+					Place(DIR * handle, string_view address) noexcept : handle(handle), address(address) {}
+				} place_t;
+			private:
+				// Адрес каталога, которому объект служит
+				string _address;
+			private:
+				// Признак незавершённого обхода
+				bool _active;
+			private:
+				/**
+				 * @brief Места обхода вложенных каталогов
+				 *
+				 * @note Корень обхода здесь НЕ лежит: он живёт в `_handle` и по исчерпании не
+				 *       закрывается, а перематывается. Тем и окупается внешний объект каталога -
+				 *       повторный обзор того же каталога идёт мимо повторного открытия
+				 */
+				vector <place_t> _places;
 			public:
 				/**
 				 * @brief Метод проверки валидности
@@ -399,8 +685,88 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
+			public:
+				/**
+				 * @brief Метод извлечения адреса каталога, которому объект служит
+				 *
+				 * @return адрес каталога
+				 *
+				 */
+				const string & address() const noexcept;
+				/**
+				 * @brief Метод установки адреса каталога, которому объект служит
+				 *
+				 * @param address адрес каталога
+				 *
+				 */
+				void address(string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод проверки незавершённости обхода
+				 *
+				 * @return признак того, что обход начат и до конца не доведён
+				 *
+				 */
+				bool active() const noexcept;
+				/**
+				 * @brief Метод установки признака незавершённости обхода
+				 *
+				 * @param active признак незавершённости обхода
+				 *
+				 */
+				void active(const bool active) noexcept;
+			public:
+				/**
+				 * @brief Метод перемотки каталога к началу
+				 *
+				 */
+				void rewind() noexcept;
+				/**
+				 * @brief Метод сброса состояния обхода
+				 *
+				 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
+				 *       чист и готов служить иному адресу
+				 *
+				 */
+				void reset() noexcept;
+			public:
+				/**
+				 * @brief Метод проверки пустоты стопки мест обхода
+				 *
+				 * @return признак того, что обход идёт по самому корню
+				 *
+				 */
+				bool empty() const noexcept;
+				/**
+				 * @brief Метод снятия верхнего места обхода
+				 *
+				 */
+				void pop() noexcept;
+				/**
+				 * @brief Метод добавления места обхода
+				 *
+				 * @param handle  объект дескриптора вложенного каталога
+				 * @param address адрес вложенного каталога
+				 *
+				 */
+				void push(DIR * handle, string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения дескриптора верхнего места обхода
+				 *
+				 * @return объект дескриптора вложенного каталога
+				 *
+				 */
+				DIR * top() const noexcept;
+				/**
+				 * @brief Метод извлечения адреса верхнего места обхода
+				 *
+				 * @return адрес вложенного каталога
+				 *
+				 */
+				const string & topAddress() const noexcept;
 				~HandleDir() noexcept;
-		} handle_dir_t;
+		};
 		/**
 		 * @brief Метод проверки валидности
 		 *
@@ -437,30 +803,167 @@ namespace awh {
 		 * @brief Конструктор
 		 *
 		 */
-		HandleDir::HandleDir() noexcept : _handle(nullptr) {}
+		HandleDir::HandleDir() noexcept : _handle(nullptr), _active(false) {}
 		/**
 		 * @brief Конструктор
 		 *
 		 * @param handle объект дескриптора
 		 *
 		 */
-		HandleDir::HandleDir(DIR * handle) noexcept : _handle(handle) {}
+		HandleDir::HandleDir(DIR * handle) noexcept : _handle(handle), _active(false) {}
 		/**
 		 * @brief Деструктор
 		 *
 		 */
 		HandleDir::~HandleDir() noexcept {
+			// Выполняем сброс состояния обхода вместе с закрытием каталогов
+			this->reset();
+		}
+		/**
+		 * @brief Метод извлечения адреса каталога, которому объект служит
+		 *
+		 * @return адрес каталога
+		 *
+		 */
+		const string & HandleDir::address() const noexcept {
+			// Возвращаем адрес каталога
+			return this->_address;
+		}
+		/**
+		 * @brief Метод установки адреса каталога, которому объект служит
+		 *
+		 * @param address адрес каталога
+		 *
+		 */
+		void HandleDir::address(string_view address) noexcept {
+			// Выполняем установку адреса каталога
+			this->_address = address;
+		}
+		/**
+		 * @brief Метод проверки незавершённости обхода
+		 *
+		 * @return признак того, что обход начат и до конца не доведён
+		 *
+		 */
+		bool HandleDir::active() const noexcept {
+			// Возвращаем признак незавершённости обхода
+			return this->_active;
+		}
+		/**
+		 * @brief Метод установки признака незавершённости обхода
+		 *
+		 * @param active признак незавершённости обхода
+		 *
+		 */
+		void HandleDir::active(const bool active) noexcept {
+			// Выполняем установку признака незавершённости обхода
+			this->_active = active;
+		}
+		/**
+		 * @brief Метод перемотки каталога к началу
+		 *
+		 */
+		void HandleDir::rewind() noexcept {
 			// Если каталог валиден
 			if(this->valid())
+				// Выполняем перемотку каталога к началу
+				::rewinddir(this->_handle);
+		}
+		/**
+		 * @brief Метод сброса состояния обхода
+		 *
+		 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
+		 *       чист и готов служить иному адресу
+		 *
+		 */
+		void HandleDir::reset() noexcept {
+			/**
+			 * Выполняем закрытие всех вложенных каталогов
+			 */
+			for(auto & place : this->_places){
+				// Если вложенный каталог валиден
+				if(place.handle != nullptr)
+					// Закрываем вложенный каталог
+					::closedir(place.handle);
+			}
+			// Выполняем очистку стопки мест обхода
+			this->_places.clear();
+			// Если каталог валиден
+			if(this->valid()){
 				// Закрываем каталог
 				::closedir(this->_handle);
+				// Сбрасываем объект дескриптора
+				this->_handle = nullptr;
+			}
+			// Выполняем очистку адреса каталога
+			this->_address.clear();
+			// Сбрасываем признак незавершённости обхода
+			this->_active = false;
+		}
+		/**
+		 * @brief Метод проверки пустоты стопки мест обхода
+		 *
+		 * @return признак того, что обход идёт по самому корню
+		 *
+		 */
+		bool HandleDir::empty() const noexcept {
+			// Возвращаем признак пустоты стопки мест обхода
+			return this->_places.empty();
+		}
+		/**
+		 * @brief Метод снятия верхнего места обхода
+		 *
+		 */
+		void HandleDir::pop() noexcept {
+			// Если стопка мест обхода не пуста
+			if(!this->_places.empty()){
+				// Если вложенный каталог валиден
+				if(this->_places.back().handle != nullptr)
+					// Закрываем вложенный каталог
+					::closedir(this->_places.back().handle);
+				// Выполняем снятие верхнего места обхода
+				this->_places.pop_back();
+			}
+		}
+		/**
+		 * @brief Метод добавления места обхода
+		 *
+		 * @param handle  объект дескриптора вложенного каталога
+		 * @param address адрес вложенного каталога
+		 *
+		 */
+		void HandleDir::push(DIR * handle, string_view address) noexcept {
+			// Если вложенный каталог валиден
+			if(handle != nullptr)
+				// Выполняем добавление места обхода
+				this->_places.emplace_back(handle, address);
+		}
+		/**
+		 * @brief Метод извлечения дескриптора верхнего места обхода
+		 *
+		 * @return объект дескриптора вложенного каталога
+		 *
+		 */
+		DIR * HandleDir::top() const noexcept {
+			// Возвращаем дескриптор верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
+		}
+		/**
+		 * @brief Метод извлечения адреса верхнего места обхода
+		 *
+		 * @return адрес вложенного каталога
+		 *
+		 */
+		const string & HandleDir::topAddress() const noexcept {
+			// Возвращаем адрес верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().address : this->_address);
 		}
 
 		/**
 		 * @brief Класс для автоматического управления файлом POSIX (RAII)
 		 *
 		 */
-		typedef class HandleFile {
+		class HandleFile {
 			private:
 				// Файловый дескриптор
 				int32_t _fd;
@@ -506,7 +1009,7 @@ namespace awh {
 				 *
 				 */
 				~HandleFile() noexcept;
-		} handle_file_t;
+		};
 		/**
 		 * @brief Метод проверки валидности
 		 *
@@ -562,6 +1065,35 @@ namespace awh {
 				::close(this->_fd);
 		}
 	#endif
+
+	/**
+	 * @brief Оператор сноса объекта каталога
+	 *
+	 * @note Тело живёт здесь, а не в заголовке, намеренно: сноситель по умолчанию требует
+	 *       полного вида в том месте, где объект гибнет, - то есть у потребителя. Здесь вид
+	 *       полон, а наружу выходит лишь объявление, и системное API платформы остаётся скрыто
+	 *
+	 * @param handle объект каталога для сноса
+	 *
+	 */
+	void HandleDirDeleter::operator () (HandleDir * handle) const noexcept {
+		// Выполняем снос объекта каталога
+		delete handle;
+	}
+	/**
+	 * @brief Оператор сноса объекта файла
+	 *
+	 * @note Тело живёт здесь, а не в заголовке, намеренно: сноситель по умолчанию требует
+	 *       полного вида в том месте, где объект гибнет, - то есть у потребителя. Здесь вид
+	 *       полон, а наружу выходит лишь объявление, и системное API платформы остаётся скрыто
+	 *
+	 * @param handle объект файла для сноса
+	 *
+	 */
+	void HandleFileDeleter::operator () (HandleFile * handle) const noexcept {
+		// Выполняем снос объекта файла
+		delete handle;
+	}
 };
 
 /**
@@ -699,7 +1231,7 @@ namespace {
 				 * @param ptr указатель на COM-интерфейс
 				 *
 				 */
-				ComGuard(T * ptr = nullptr) noexcept : _ptr(ptr) {}
+				ComGuard(T * ptr) noexcept : _ptr(ptr) {}
 				/**
 				 * @brief Деструктор
 				 *
@@ -1165,13 +1697,13 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							handle_dir_t dir(::_wopendir(this->_fmk->convert(address).c_str()));
+							HandleDir dir(::_wopendir(this->_fmk->convert(address).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							handle_dir_t dir(::opendir(address.c_str()));
+							HandleDir dir(::opendir(address.c_str()));
 						#endif
 						// Если каталог открыт
 						if((result = dir.valid())){
@@ -2466,13 +2998,13 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							handle_dir_t dir(::_wopendir(this->_fmk->convert(path.data()).c_str()));
+							HandleDir dir(::_wopendir(this->_fmk->convert(path.data()).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							handle_dir_t dir(::opendir(path.data()));
+							HandleDir dir(::opendir(path.data()));
 						#endif
 						// Если каталог открыт
 						if(dir.valid()){
@@ -2659,13 +3191,13 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 				 */
 				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
-					handle_dir_t dir(::_wopendir(this->_fmk->convert(path.data()).c_str()));
+					HandleDir dir(::_wopendir(this->_fmk->convert(path.data()).c_str()));
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем указанный каталог
-					handle_dir_t dir(::opendir(path.data()));
+					HandleDir dir(::opendir(path.data()));
 				#endif
 					// Если каталог открыт
 					if(dir.valid()){
@@ -2797,6 +3329,26 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 	return result;
 }
 /**
+ * @brief Метод создания объекта каталога
+ *
+ * @return умный указатель на объект каталога
+ *
+ */
+awh::handle_dir_t awh::Filesystem::handleDir() const noexcept {
+	// Выводим созданный объект каталога
+	return handle_dir_t(new HandleDir());
+}
+/**
+ * @brief Метод создания объекта файла
+ *
+ * @return умный указатель на объект файла
+ *
+ */
+awh::handle_file_t awh::Filesystem::handleFile() const noexcept {
+	// Выводим созданный объект файла
+	return handle_file_t(new HandleFile());
+}
+/**
  * @brief Шаблон метода добавления в файл бинарных данных
  *
  * @tparam T тип буфера данных
@@ -2811,7 +3363,7 @@ template <typename T>
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::append(string_view filename, const T & buffer, handle_file_t * handle) const noexcept {
+void awh::Filesystem::append(string_view filename, const T & buffer, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty()){
 		// Если тип буфера является строкой
@@ -2838,22 +3390,22 @@ void awh::Filesystem::append(string_view filename, const T & buffer, handle_file
  * @brief Явный специализированный шаблон метода добавления строки в текстовый файл
  *
  */
-template void awh::Filesystem::append(string_view, const string &, handle_file_t *) const noexcept;
+template void awh::Filesystem::append(string_view, const string &, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода добавления строки wide символов в текстовый файл
  *
  */
-template void awh::Filesystem::append(string_view, const wstring &, handle_file_t *) const noexcept;
+template void awh::Filesystem::append(string_view, const wstring &, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода добавления буфера символов в текстовый файл
  *
  */
-template void awh::Filesystem::append(string_view, const vector <char> &, handle_file_t *) const noexcept;
+template void awh::Filesystem::append(string_view, const vector <char> &, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода добавления буфера байтов в файл бинарных данных
  *
  */
-template void awh::Filesystem::append(string_view, const vector <uint8_t> &, handle_file_t *) const noexcept;
+template void awh::Filesystem::append(string_view, const vector <uint8_t> &, const handle_file_t &) const noexcept;
 /**
  * @brief Метод добавления в файл бинарных данных
  *
@@ -2862,7 +3414,7 @@ template void awh::Filesystem::append(string_view, const vector <uint8_t> &, han
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::append(string_view filename, const char * buffer, handle_file_t * handle) const noexcept {
+void awh::Filesystem::append(string_view filename, const char * buffer, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != '\0'))
 		// Выполняем добавление в файл бинарных данных
@@ -2876,7 +3428,7 @@ void awh::Filesystem::append(string_view filename, const char * buffer, handle_f
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::append(string_view filename, const wchar_t * buffer, handle_file_t * handle) const noexcept {
+void awh::Filesystem::append(string_view filename, const wchar_t * buffer, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
@@ -2894,7 +3446,7 @@ void awh::Filesystem::append(string_view filename, const wchar_t * buffer, handl
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::append(string_view filename, const void * buffer, const size_t size, handle_file_t * handle) const noexcept {
+void awh::Filesystem::append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle) const noexcept {
 	// Если параметры для записи переданы
 	if(!filename.empty() && (buffer != nullptr) && (size > 0)){
 		/**
@@ -2905,14 +3457,23 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 			const string & address = this->fullpath(filename, true);
 			// Если адрес получен правильный
 			if(!address.empty()){
-				// Флаг внешнего использования файла
-				bool external = false;
+				/**
+				 * @brief Свой объект файла
+				 *
+				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+				 *       вместе с умным указателем у того, кто его завёл
+				 */
+				HandleFile local;
+				// Объект файла, которым идёт работа
+				HandleFile & file = (handle != nullptr ? (* handle) : local);
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * @brief Инициализируем новый объект файла
 						 *
@@ -2922,23 +3483,11 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						handle = new handle_file_t(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * @brief Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
-						 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
-						 *       держит его именно так, - и обращение с одним лишь дозволением чтения
-						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
-						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
-						 */
-						handle->set(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
-					if(handle->valid())
+					if(file.valid())
 						// Выполняем добавление данных в файл
-						::WriteFile(* handle, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+						::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
 					/**
 					 * Если открыть файл не удалось
 					 *
@@ -2969,8 +3518,8 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * Выполняем открытие файла на дозапись
 						 *
@@ -2980,19 +3529,7 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 *       оттого при пакетной обработке внешним объектом файла дозапись остаётся дозаписью
 						 *       и после любого стороннего смещения позиции
 						 */
-						handle = new handle_file_t(::open(address.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Ход этот равен `FILE_APPEND_DATA` с `OPEN_ALWAYS` у ветви Windows: отсутствующий
-						 *       файл заводится, существующий открывается как есть, а всякая запись ложится в конец
-						 *       файла ядром, минуя текущую позицию. Свойство это принадлежит самому описателю,
-						 *       оттого при пакетной обработке внешним объектом файла дозапись остаётся дозаписью
-						 *       и после любого стороннего смещения позиции
-						 */
-						handle->set(::open(address.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644));
+						file.set(::open(address.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644));
 					/**
 					 * Если файл открыть не удалось
 					 *
@@ -3000,7 +3537,7 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 					 *       ничем себя иначе не выдаёт - вызывающий об отказе не узнаёт
 					 *       вовсе, а файл остаётся прежним
 					 */
-					if(!handle->valid()){
+					if(!file.valid()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3023,7 +3560,7 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 *       вправе лечь частью, и частичная запись это тот же отказ - хвост
 						 *       буфера до файла не дошёл
 						 */
-						if(::write(* handle, buffer, size) < static_cast <ssize_t> (size)){
+						if(::write(file, buffer, size) < static_cast <ssize_t> (size)){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3040,10 +3577,6 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 						}
 					}
 				#endif
-				// Если объект файла является локальным
-				if(!external)
-					// Удаляем выделенную память под объект файла
-					delete handle;
 			}
 		/**
 		 * Если возникает ошибка
@@ -3099,7 +3632,7 @@ template <typename T>
  * @return         бинарный буфер с прочитанными данными
  *
  */
-auto awh::Filesystem::read(string_view filename, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept -> T {
+auto awh::Filesystem::read(string_view filename, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept -> T {
 	// Переменная результата
 	T result;
 	// Если буфер данных передан
@@ -3113,17 +3646,17 @@ auto awh::Filesystem::read(string_view filename, const seek_t seek, const size_t
  * @brief Явный специализированный шаблон метода чтения данных из файла в строку
  *
  */
-template string awh::Filesystem::read(string_view, const seek_t, const size_t, handle_file_t *) const noexcept;
+template string awh::Filesystem::read(string_view, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода чтения данных из файла в буфер символов
  *
  */
-template vector <char> awh::Filesystem::read(string_view, const seek_t, const size_t, handle_file_t *) const noexcept;
+template vector <char> awh::Filesystem::read(string_view, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода чтения данных из файла в буфер бинарных данных
  *
  */
-template vector <uint8_t> awh::Filesystem::read(string_view, const seek_t, const size_t, handle_file_t *) const noexcept;
+template vector <uint8_t> awh::Filesystem::read(string_view, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Шаблон метода чтения данных из файла
  *
@@ -3141,7 +3674,7 @@ template <typename T>
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если путь к файлу указан и он существует
 	if(!filename.empty()){
 		/**
@@ -3152,16 +3685,23 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 			const string & address = this->fullpath(filename, true);
 			// Если адрес получен правильный
 			if(!address.empty() && (this->type(address) == type_t::FILE)){
-				// Флаг внешнего использования файла
-				bool external = false;
+				/**
+				 * @brief Свой объект файла
+				 *
+				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+				 *       вместе с умным указателем у того, кто его завёл
+				 */
+				HandleFile local;
+				// Объект файла, которым идёт работа
+				HandleFile & file = (handle != nullptr ? (* handle) : local);
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
-					// Флаг внешнего использования файла
-					bool external = false;
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * @brief Инициализируем новый объект файла
 						 *
@@ -3171,21 +3711,9 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						handle = new handle_file_t(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * @brief Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
-						 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
-						 *       держит его именно так, - и обращение с одним лишь дозволением чтения
-						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
-						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
-						 */
-						handle->set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
-					if(handle->valid()){
+					if(file.valid()){
 						// Создаём объект большого числа
 						LARGE_INTEGER li;
 						// Устанавливаем начальное значение позиции
@@ -3197,17 +3725,17 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							// Если смещение от начала файла
 							case static_cast <uint8_t> (seek_t::BEGIN):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_BEGIN);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_BEGIN);
 							break;
 							// Если смещение от текущей позиции в файле
 							case static_cast <uint8_t> (seek_t::CURRENT):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_CURRENT);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_CURRENT);
 							break;
 							// Если смещение от конца файла
 							case static_cast <uint8_t> (seek_t::END):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_END);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_END);
 							break;
 							// Если тип смещения не определён
 							default: li.LowPart = 0;
@@ -3221,7 +3749,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							// Объект для хранения полного размера файла
 							LARGE_INTEGER fileSize;
 							// Если размер файла получить не удалось либо смещение находится за пределами файла
-							if(!::GetFileSizeEx(* handle, &fileSize) || (offset >= static_cast <size_t> (fileSize.QuadPart)))
+							if(!::GetFileSizeEx(file, &fileSize) || (offset >= static_cast <size_t> (fileSize.QuadPart)))
 								// Выходим из метода (дескриптор будет закрыт автоматически)
 								return;
 							// Определяем размер читаемых данных
@@ -3233,7 +3761,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							// Если объект результата уже задан — читаем min(размер буфера, size)
 							else size = ::min(size, result.size());
 							// Выполняем чтение из файла в буфер данные
-							if(!::ReadFile(* handle, static_cast <LPVOID> (&result[0]), static_cast <DWORD> (size), 0, nullptr)){
+							if(!::ReadFile(file, static_cast <LPVOID> (&result[0]), static_cast <DWORD> (size), 0, nullptr)){
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
@@ -3260,16 +3788,12 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 				#else
 					// Структура статистики файла
 					struct stat info{};
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						// Создаём объект файлового дескриптора
-						handle = new handle_file_t(::open(address.c_str(), O_RDONLY));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						// Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						handle->set(::open(address.c_str(), O_RDONLY));
+						file.set(::open(address.c_str(), O_RDONLY));
 					// Если файл не открыт
-					if(!handle->valid()){
+					if(!file.valid()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3284,7 +3808,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт удачно
-					} else if(::fstat(* handle, &info) < 0) {
+					} else if(::fstat(file, &info) < 0) {
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3334,7 +3858,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						// Если объект результата уже задан — читаем min(размер буфера, size)
 						else size = ::min(size, result.size());
 						// Читаем данные из файла в буфер
-						if(::pread(* handle, &result[0], size, position) != static_cast <ssize_t> (size)){
+						if(::pread(file, &result[0], size, position) != static_cast <ssize_t> (size)){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3351,10 +3875,6 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						}
 					}
 				#endif
-				// Если объект файла является локальным
-				if(!external)
-					// Удаляем выделенную память под объект файла
-					delete handle;
 			}
 		/**
 		 * Если возникает ошибка
@@ -3397,17 +3917,17 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
  * @brief Явный специализированный шаблон метода чтения данных из файла в строку
  *
  */
-template void awh::Filesystem::read(string_view, string &, const seek_t, const size_t, handle_file_t *) const noexcept;
+template void awh::Filesystem::read(string_view, string &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода чтения данных из файла в буфер символов
  *
  */
-template void awh::Filesystem::read(string_view, vector <char> &, const seek_t, const size_t, handle_file_t *) const noexcept;
+template void awh::Filesystem::read(string_view, vector <char> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода чтения данных из файла в буфер бинарных данных
  *
  */
-template void awh::Filesystem::read(string_view, vector <uint8_t> &, const seek_t, const size_t, handle_file_t *) const noexcept;
+template void awh::Filesystem::read(string_view, vector <uint8_t> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Метод рекурсивного чтения больших файлов блоками с обратным вызовом
  *
@@ -3418,7 +3938,7 @@ template void awh::Filesystem::read(string_view, vector <uint8_t> &, const seek_
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (size > 0) && (callback != nullptr)){
 		/**
@@ -3429,14 +3949,23 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 			const string & address = this->fullpath(filename, true);
 			// Если адрес получен правильный и указывает на файл
 			if(!address.empty() && (this->type(address) == type_t::FILE)){
-				// Флаг внешнего использования файла
-				bool external = false;
+				/**
+				 * @brief Свой объект файла
+				 *
+				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+				 *       вместе с умным указателем у того, кто его завёл
+				 */
+				HandleFile local;
+				// Объект файла, которым идёт работа
+				HandleFile & file = (handle != nullptr ? (* handle) : local);
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * @brief Инициализируем новый объект файла
 						 *
@@ -3446,25 +3975,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						handle = new handle_file_t(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * @brief Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
-						 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
-						 *       держит его именно так, - и обращение с одним лишь дозволением чтения
-						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
-						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
-						 */
-						handle->set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
-					if(handle->valid()){
+					if(file.valid()){
 						// Объект для хранения полного размера файла
 						LARGE_INTEGER fileSize;
 						// Если размер файла получить не удалось
-						if(!::GetFileSizeEx(* handle, &fileSize)){
+						if(!::GetFileSizeEx(file, &fileSize)){
 							// Создаём буфер сообщения ошибки
 							wchar_t message[0xFF] = {0};
 							// Выполняем формирование текста ошибки
@@ -3488,7 +4005,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						// Если файл не пустой (для пустого файла проекция создать невозможно)
 						if(fileSize.QuadPart > 0){
 							// Создаём объект проекции файла в память в режиме только для чтения
-							handle_file_t mapping(::CreateFileMappingW(* handle, nullptr, PAGE_READONLY, 0, 0, nullptr));
+							HandleFile mapping(::CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr));
 							// Если создать проекцию файла не удалось
 							if(!mapping.valid()){
 								// Создаём буфер сообщения ошибки
@@ -3560,16 +4077,12 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 				#else
 					// Структура статистики файла
 					struct stat info{};
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						// Создаём объект файлового дескриптора
-						handle = new handle_file_t(::open(address.c_str(), O_RDONLY));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						// Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						handle->set(::open(address.c_str(), O_RDONLY));
+						file.set(::open(address.c_str(), O_RDONLY));
 					// Если файл не открыт
-					if(!handle->valid()){
+					if(!file.valid()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3584,7 +4097,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если получить статистику файла не удалось
-					} else if(::fstat(* handle, &info) < 0) {
+					} else if(::fstat(file, &info) < 0) {
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3603,7 +4116,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						// Общий размер файла
 						const size_t total = static_cast <size_t> (info.st_size);
 						// Отображаем весь файл в адресное пространство процесса (zero-copy)
-						void * addr = ::mmap(nullptr, total, PROT_READ, MAP_PRIVATE, * handle, 0);
+						void * addr = ::mmap(nullptr, total, PROT_READ, MAP_PRIVATE, file, 0);
 						// Если отобразить проекцию файла не удалось
 						if(addr == MAP_FAILED){
 							/**
@@ -3646,10 +4159,6 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						}
 					}
 				#endif
-				// Если объект файла является локальным
-				if(!external)
-					// Удаляем выделенную память под объект файла
-					delete handle;
 			}
 		/**
 		 * Если возникает ошибка
@@ -3705,7 +4214,7 @@ template <typename T>
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::write(string_view filename, const T & buffer, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::write(string_view filename, const T & buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty()){
 		// Если тип буфера является строкой
@@ -3732,22 +4241,22 @@ void awh::Filesystem::write(string_view filename, const T & buffer, const seek_t
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из строки
  *
  */
-template void awh::Filesystem::write(string_view, const string &, const seek_t, const size_t, handle_file_t *) const noexcept;
+template void awh::Filesystem::write(string_view, const string &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из строки wide символов
  *
  */
-template void awh::Filesystem::write(string_view, const wstring &, const seek_t, const size_t, handle_file_t *) const noexcept;
+template void awh::Filesystem::write(string_view, const wstring &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из буфера символов
  *
  */
-template void awh::Filesystem::write(string_view, const vector <char> &, const seek_t, const size_t, handle_file_t *) const noexcept;
+template void awh::Filesystem::write(string_view, const vector <char> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из буфера бинарных данных
  *
  */
-template void awh::Filesystem::write(string_view, const vector <uint8_t> &, const seek_t, const size_t, handle_file_t *) const noexcept;
+template void awh::Filesystem::write(string_view, const vector <uint8_t> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Метод записи в файл бинарных данных
  *
@@ -3758,7 +4267,7 @@ template void awh::Filesystem::write(string_view, const vector <uint8_t> &, cons
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::write(string_view filename, const char * buffer, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::write(string_view filename, const char * buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != '\0'))
 		// Выполняем запись в файл бинарных данных
@@ -3774,7 +4283,7 @@ void awh::Filesystem::write(string_view filename, const char * buffer, const see
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
@@ -3794,7 +4303,7 @@ void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const 
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::write(string_view filename, const void * buffer, const size_t size, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::write(string_view filename, const void * buffer, const size_t size, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если параметры для записи переданы
 	if(!filename.empty() && (buffer != nullptr) && (size > 0)){
 		/**
@@ -3805,14 +4314,23 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			const string & address = this->fullpath(filename, true);
 			// Если адрес получен правильный
 			if(!address.empty()){
-				// Флаг внешнего использования файла
-				bool external = false;
+				/**
+				 * @brief Свой объект файла
+				 *
+				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+				 *       вместе с умным указателем у того, кто его завёл
+				 */
+				HandleFile local;
+				// Объект файла, которым идёт работа
+				HandleFile & file = (handle != nullptr ? (* handle) : local);
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * @brief Инициализируем новый объект файла
 						 *
@@ -3822,21 +4340,9 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						handle = new handle_file_t(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * @brief Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
-						 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
-						 *       держит его именно так, - и обращение с одним лишь дозволением чтения
-						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
-						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
-						 */
-						handle->set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
-					if(handle->valid()){
+					if(file.valid()){
 						// Создаём объект большого числа
 						LARGE_INTEGER li;
 						// Устанавливаем начальное значение позиции
@@ -3848,17 +4354,17 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 							// Если смещение от начала файла
 							case static_cast <uint8_t> (seek_t::BEGIN):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_BEGIN);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_BEGIN);
 							break;
 							// Если смещение от текущей позиции в файле
 							case static_cast <uint8_t> (seek_t::CURRENT):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_CURRENT);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_CURRENT);
 							break;
 							// Если смещение от конца файла
 							case static_cast <uint8_t> (seek_t::END):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_END);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_END);
 							break;
 							// Если тип смещения не определён
 							default: li.LowPart = 0;
@@ -3870,7 +4376,7 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						// Если позиция установлена успешно
 						if(li.QuadPart > -1)
 							// Выполняем запись данных в файл
-							::WriteFile(* handle, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+							::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
 					/**
 					 * Если открыть файл не удалось
 					 *
@@ -3901,8 +4407,8 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * Выполняем открытие файла на запись, существующий НЕ усекая
 						 *
@@ -3910,19 +4416,9 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 *       существующий открывается как есть. Поток `ofstream` здесь не годится - вид
 						 *       `out` усекает файл, а вид `in | out` отсутствующего не заводит вовсе
 						 */
-						handle = new handle_file_t(::open(address.c_str(), O_RDWR | O_CREAT, 0644));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Ход этот равен `OPEN_ALWAYS` у ветви Windows: отсутствующий файл заводится,
-						 *       существующий открывается как есть. Поток `ofstream` здесь не годится - вид
-						 *       `out` усекает файл, а вид `in | out` отсутствующего не заводит вовсе
-						 */
-						handle->set(::open(address.c_str(), O_RDWR | O_CREAT, 0644));
+						file.set(::open(address.c_str(), O_RDWR | O_CREAT, 0644));
 					// Если файл не открыт
-					if(!handle->valid()){
+					if(!file.valid()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -3945,21 +4441,21 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 							// Если смещение от начала файла
 							case static_cast <uint8_t> (seek_t::BEGIN):
 								// Выполняем установку позиции записи
-								::lseek(* handle, static_cast <off_t> (offset), SEEK_SET);
+								::lseek(file, static_cast <off_t> (offset), SEEK_SET);
 							break;
 							// Если смещение от текущей позиции в файле
 							case static_cast <uint8_t> (seek_t::CURRENT):
 								// Выполняем установку позиции записи
-								::lseek(* handle, static_cast <off_t> (offset), SEEK_CUR);
+								::lseek(file, static_cast <off_t> (offset), SEEK_CUR);
 							break;
 							// Если смещение от конца файла
 							case static_cast <uint8_t> (seek_t::END):
 								// Выполняем установку позиции записи
-								::lseek(* handle, static_cast <off_t> (offset), SEEK_END);
+								::lseek(file, static_cast <off_t> (offset), SEEK_END);
 							break;
 						}
 						// Если запись данных в файл отвечена отказом
-						if(::write(* handle, buffer, size) < static_cast <ssize_t> (size)){
+						if(::write(file, buffer, size) < static_cast <ssize_t> (size)){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3976,10 +4472,6 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						}
 					}
 				#endif
-				// Если объект файла является локальным
-				if(!external)
-					// Удаляем выделенную память под объект файла
-					delete handle;
 			}
 		/**
 		 * Если возникает ошибка
@@ -4028,7 +4520,7 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::readfile(string_view filename, const function <void (string_view)> & callback, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если параметры для записи переданы
 	if(!filename.empty() && (callback != nullptr)){
 		/**
@@ -4082,14 +4574,23 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						// Удаляем обработанную часть буфера
 						remainder.erase(0, start);
 				};
-				// Флаг внешнего использования файла
-				bool external = false;
+				/**
+				 * @brief Свой объект файла
+				 *
+				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+				 *       вместе с умным указателем у того, кто его завёл
+				 */
+				HandleFile local;
+				// Объект файла, которым идёт работа
+				HandleFile & file = (handle != nullptr ? (* handle) : local);
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * @brief Инициализируем новый объект файла
 						 *
@@ -4099,21 +4600,9 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						handle = new handle_file_t(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * @brief Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
-						 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
-						 *       держит его именно так, - и обращение с одним лишь дозволением чтения
-						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
-						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
-						 */
-						handle->set(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
-					if(handle->valid()){
+					if(file.valid()){
 						// Создаём объект большого числа
 						LARGE_INTEGER li;
 						// Устанавливаем начальное значение позиции
@@ -4125,17 +4614,17 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 							// Если смещение от начала файла
 							case static_cast <uint8_t> (seek_t::BEGIN):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_BEGIN);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_BEGIN);
 							break;
 							// Если смещение от текущей позиции в файле
 							case static_cast <uint8_t> (seek_t::CURRENT):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_CURRENT);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_CURRENT);
 							break;
 							// Если смещение от конца файла
 							case static_cast <uint8_t> (seek_t::END):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_END);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_END);
 							break;
 							// Если тип смещения не определён
 							default: li.LowPart = 0;
@@ -4149,7 +4638,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 							// Размер файла
 							LARGE_INTEGER length;
 							// Получаем размер файла
-							if(!::GetFileSizeEx(* handle, &length)){
+							if(!::GetFileSizeEx(file, &length)){
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
@@ -4167,10 +4656,6 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 									// Записываем ошибку в лог
 									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 								#endif
-								// Если объект файла является локальным
-								if(!external)
-									// Удаляем выделенную память под объект файла
-									delete handle;
 								// Выходим из метода
 								return;
 							}
@@ -4189,7 +4674,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								// Устанавливаем старшее смещение для чтения
 								overlapped.OffsetHigh = li.HighPart;
 								// Выполняем чтение части файла в буфер
-								if(!::ReadFile(* handle, &buffer[0], static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
+								if(!::ReadFile(file, &buffer[0], static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
 									// Создаём буфер сообщения ошибки
 									wchar_t message[0xFF] = {0};
 									// Выполняем формирование текста ошибки
@@ -4207,10 +4692,6 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 										// Записываем ошибку в лог
 										this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 									#endif
-									// Если объект файла является локальным
-									if(!external)
-										// Удаляем выделенную память под объект файла
-										delete handle;
 									// Выходим из метода
 									return;
 								}
@@ -4231,16 +4712,12 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 				#else
 					// Структура статистики файла
 					struct stat info{};
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						// Выполняем открытие файла на чтение
-						handle = new handle_file_t(::open(address.c_str(), O_RDONLY));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						// Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						handle->set(::open(address.c_str(), O_RDONLY));
+						file.set(::open(address.c_str(), O_RDONLY));
 					// Если файл не открыт
-					if(!handle->valid()){
+					if(!file.valid()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -4255,7 +4732,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт удачно
-					} else if(::fstat(* handle, &info) < 0) {
+					} else if(::fstat(file, &info) < 0) {
 						/**
 						 * Если включён режим отладки
 						 */
@@ -4293,14 +4770,9 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 							// Устанавливаем позицию в начало файла
 							position = 0;
 						// Если позиция выше размера файла
-						if(position >= static_cast <off_t> (info.st_size)){
-							// Если объект файла является локальным
-							if(!external)
-								// Удаляем выделенную память под объект файла
-								delete handle;
+						if(position >= static_cast <off_t> (info.st_size))
 							// Выходим из метода
 							return;
-						}
 						// Определяем размер читаемых данных
 						const off_t length = (static_cast <off_t> (info.st_size) - static_cast <off_t> (position));
 						// Выполняем создание буфера для чтения файла
@@ -4312,7 +4784,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 */
 						while(position < length){
 							// Читаем часть файла в буфер
-							bytes = ::pread(* handle, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
+							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
 							// Если прочитать часть файла не удалось
 							if(bytes <= 0)
 								// Выходим из цикла чтения файла
@@ -4335,10 +4807,6 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 					// Вызываем функцию обратного вызова с найденной строкой
 					callback(str);
 				}
-				// Если объект файла является локальным
-				if(!external)
-					// Удаляем выделенную память под объект файла
-					delete handle;
 			}
 		/**
 		 * Если возникает ошибка
@@ -4388,7 +4856,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek, const size_t offset, handle_file_t * handle) const noexcept {
+void awh::Filesystem::readfile(string_view filename, const size_t size, const function <void (const void *, const size_t)> & callback, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если параметры для записи переданы
 	if(!filename.empty() && (callback != nullptr)){
 		/**
@@ -4399,16 +4867,25 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			const string & address = this->fullpath(filename, true);
 			// Если адрес получен правильный
 			if(!address.empty()){
-				// Флаг внешнего использования файла
-				bool external = false;
+				/**
+				 * @brief Свой объект файла
+				 *
+				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+				 *       вместе с умным указателем у того, кто его завёл
+				 */
+				HandleFile local;
+				// Объект файла, которым идёт работа
+				HandleFile & file = (handle != nullptr ? (* handle) : local);
 				// Определяем размер блока чтения (без модификации const-параметра)
 				const size_t chunk = ((size == 0) ? ::__awh_pagesize__() : size);
 				/**
 				 * Для операционной системы MS Windows
 				 */
 				#if _WIN32 || _WIN64
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						/**
 						 * @brief Инициализируем новый объект файла
 						 *
@@ -4418,21 +4895,9 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						handle = new handle_file_t(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						/**
-						 * @brief Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						 *
-						 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
-						 *       держать открытым кто-то ещё - движок наблюдения за файловой системой
-						 *       держит его именно так, - и обращение с одним лишь дозволением чтения
-						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
-						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
-						 */
-						handle->set(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
-					if(handle->valid()){
+					if(file.valid()){
 						// Создаём объект большого числа
 						LARGE_INTEGER li;
 						// Устанавливаем начальное значение позиции
@@ -4444,17 +4909,17 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 							// Если смещение от начала файла
 							case static_cast <uint8_t> (seek_t::BEGIN):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_BEGIN);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_BEGIN);
 							break;
 							// Если смещение от текущей позиции в файле
 							case static_cast <uint8_t> (seek_t::CURRENT):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_CURRENT);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_CURRENT);
 							break;
 							// Если смещение от конца файла
 							case static_cast <uint8_t> (seek_t::END):
 								// Выполняем установку позиции в файле
-								li.LowPart = ::SetFilePointer(* handle, li.LowPart, &li.HighPart, FILE_END);
+								li.LowPart = ::SetFilePointer(file, li.LowPart, &li.HighPart, FILE_END);
 							break;
 							// Если тип смещения не определён
 							default: li.LowPart = 0;
@@ -4468,7 +4933,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 							// Размер файла
 							LARGE_INTEGER length;
 							// Получаем размер файла
-							if(!::GetFileSizeEx(* handle, &length)){
+							if(!::GetFileSizeEx(file, &length)){
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
@@ -4486,10 +4951,6 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 									// Записываем ошибку в лог
 									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 								#endif
-								// Если объект файла является локальным
-								if(!external)
-									// Удаляем выделенную память под объект файла
-									delete handle;
 								// Выходим из метода
 								return;
 							}
@@ -4508,7 +4969,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								// Устанавливаем старшее смещение для чтения
 								overlapped.OffsetHigh = li.HighPart;
 								// Выполняем чтение части файла в буфер
-								if(!::ReadFile(* handle, &buffer[0], static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
+								if(!::ReadFile(file, &buffer[0], static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
 									// Создаём буфер сообщения ошибки
 									wchar_t message[0xFF] = {0};
 									// Выполняем формирование текста ошибки
@@ -4526,10 +4987,6 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 										// Записываем ошибку в лог
 										this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 									#endif
-									// Если объект файла является локальным
-									if(!external)
-										// Удаляем выделенную память под объект файла
-										delete handle;
 									// Выходим из метода
 									return;
 								}
@@ -4550,16 +5007,12 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 				#else
 					// Структура статистики файла
 					struct stat info{};
-					// Если внешний объект файла не передан
-					if(!(external = (handle != nullptr)))
+					// Если объект файла ещё не заведён
+					if(!file.valid())
 						// Выполняем открытие файла на чтение
-						handle = new handle_file_t(::open(address.c_str(), O_RDONLY));
-					// Если внешний объект файла передан, но ещё не инициализирован
-					else if(!handle->valid())
-						// Переиспользуем внешний объект файла, если он не инициализирован, инициализируем сами
-						handle->set(::open(address.c_str(), O_RDONLY));
+						file.set(::open(address.c_str(), O_RDONLY));
 					// Если файл не открыт
-					if(!handle->valid()){
+					if(!file.valid()){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -4574,7 +5027,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт удачно
-					} else if(::fstat(* handle, &info) < 0) {
+					} else if(::fstat(file, &info) < 0) {
 						/**
 						 * Если включён режим отладки
 						 */
@@ -4612,14 +5065,9 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 							// Устанавливаем позицию в начало файла
 							position = 0;
 						// Если позиция выше размера файла
-						if(position >= static_cast <off_t> (info.st_size)){
-							// Если объект файла является локальным
-							if(!external)
-								// Удаляем выделенную память под объект файла
-								delete handle;
+						if(position >= static_cast <off_t> (info.st_size))
 							// Выходим из метода
 							return;
-						}
 						// Определяем размер читаемых данных
 						const off_t length = (static_cast <off_t> (info.st_size) - static_cast <off_t> (position));
 						// Выполняем создание буфера для чтения файла
@@ -4631,7 +5079,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 */
 						while(position < length){
 							// Читаем часть файла в буфер
-							bytes = ::pread(* handle, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
+							bytes = ::pread(file, &buffer[0], static_cast <size_t> (::min <off_t> (static_cast <off_t> (buffer.size()), length - position)), position);
 							// Если прочитать часть файла не удалось
 							if(bytes <= 0)
 								// Выходим из цикла чтения файла
@@ -4643,10 +5091,6 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						}
 					}
 				#endif
-				// Если объект файла является локальным
-				if(!external)
-					// Удаляем выделенную память под объект файла
-					delete handle;
 			}
 		/**
 		 * Если возникает ошибка
@@ -4686,140 +5130,226 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 	}
 }
 /**
- * @brief Метод рекурсивного получения файлов во всех подкаталогах
+ * @brief Метод обхода файлов во всех подкаталогах с остановкой и продолжением
  *
  * @param path     путь до каталога
  * @param ext      расширение файла по которому идет фильтрация
  * @param recurse  флаг рекурсивного перебора каталогов
- * @param callback функция обратного вызова
+ * @param callback функция обратного вызова, ложь останавливает обход
  * @param resolve  флаг резолвинга символьных ссылок
  * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+ * @return         признак того, что обход довершён до конца
  *
  */
-void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve, handle_dir_t * handle) const noexcept {
-	// Если адрес каталога и расширение файлов переданы
+bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view)> & callback, const bool resolve, const handle_dir_t & handle) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес каталога и функция обратного вызова переданы
 	if(!path.empty() && (callback != nullptr)){
-		/**
-		 * @brief Прототип функции запроса файлов в каталоге
-		 *
-		 * @param путь до каталога
-		 * @param расширение файла по которому идет фильтрация
-		 * @param флаг рекурсивного перебора каталогов
-		 *
-		 */
-		function <void (string_view, string_view, const bool)> readFn;
-		/**
-		 * @brief Функция запроса файлов в каталоге
-		 *
-		 * @param path    путь до каталога
-		 * @param ext     расширение файла по которому идет фильтрация
-		 * @param recurse флаг рекурсивного перебора каталогов
-		 *
-		 */
-		readFn = [&](string_view path, string_view ext, const bool recurse) noexcept -> void {
+		// Выполняем извлечение актуального значения адреса
+		const string & root = this->fullpath(path, resolve);
+		// Если адрес получен правильный
+		if(!root.empty() && (this->type(root) == type_t::DIR)){
+			/**
+			 * @brief Свой объект каталога
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь обхода выходит один на оба случая: разница между пакетной работой
+			 *       и разовой сводится к тому, кто переживёт вызов, а не к тому, как идёт обход
+			 */
+			HandleDir local;
+			// Объект каталога, которым идёт обход
+			HandleDir & dir = (handle != nullptr ? (* handle) : local);
 			/**
 			 * Выполняем перехват ошибок
 			 */
 			try {
 				/**
-				 * Для операционной системы MS Windows
+				 * Если объект каталога нашему адресу ещё не служит
+				 *
+				 * @note Сюда же попадает и объект, служивший ИНОМУ адресу: прежний обход
+				 *       ему уже не продолжить, и состояние его сбрасывается вместе с
+				 *       закрытием всех открытых им каталогов
 				 */
-				#if _WIN32 || _WIN64
-					// Открываем указанный каталог
-					handle_dir_t dir(::_wopendir(this->_fmk->convert(path.data()).c_str()));
+				if(!dir.valid() || (dir.address() != root)){
+					// Выполняем сброс состояния прежнего обхода
+					dir.reset();
+					/**
+					 * Для операционной системы MS Windows
+					 */
+					#if _WIN32 || _WIN64
+						// Открываем корень обхода
+						dir.set(::_wopendir(this->_fmk->convert(root).c_str()));
+					/**
+					 * Для операционной системы не являющейся MS Windows
+					 */
+					#else
+						// Открываем корень обхода
+						dir.set(::opendir(root.c_str()));
+					#endif
+					// Запоминаем адрес, которому объект служит
+					dir.address(root);
+					// Отмечаем обход начатым
+					dir.active(true);
 				/**
-				 * Для операционной системы не являющейся MS Windows
+				 * Если прежний обход был доведён до конца
+				 *
+				 * @note Вот ради чего внешний объект каталога и заводится: повторный обзор
+				 *       того же каталога идёт перемоткой, мимо повторного открытия. Открытие
+				 *       каталога стоит столько же, сколько открытие файла, - под MS Windows
+				 *       это около 0.37 мс на вызов
 				 */
-				#else
-					// Открываем указанный каталог
-					handle_dir_t dir(::opendir(path.data()));
-				#endif
-					// Если каталог открыт
-					if(dir.valid()){
+				} else if(!dir.active()) {
+					// Выполняем перемотку каталога к началу
+					dir.rewind();
+					// Отмечаем обход начатым
+					dir.active(true);
+				}
+				// Если корень обхода открыть не удалось
+				if(!dir.valid()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("Directory name: \"%s\" cannot be opened", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, root.c_str());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("Directory name: \"%s\" cannot be opened", log_t::flag_t::WARNING, root.c_str());
+					#endif
+					// Выполняем сброс состояния обхода
+					dir.reset();
+					// Выходим из функции
+					return result;
+				}
+				// Отмечаем обход доведённым до конца
+				result = true;
+				/**
+				 * Выполняем обход до исчерпания содержимого либо до остановки откликом
+				 */
+				while(result){
+					// Получаем адрес каталога, по которому идёт обход
+					const string base = (dir.empty() ? dir.address() : dir.topAddress());
+					/**
+					 * Для операционной системы MS Windows
+					 */
+					#if _WIN32 || _WIN64
+						// Выполняем чтение содержимого каталога
+						struct _wdirent * ptr = ::_wreaddir(dir.empty() ? static_cast <_WDIR *> (dir) : dir.top());
+					/**
+					 * Для операционной системы не являющейся MS Windows
+					 */
+					#else
+						// Выполняем чтение содержимого каталога
+						struct dirent * ptr = ::readdir(dir.empty() ? static_cast <DIR *> (dir) : dir.top());
+					#endif
+					// Если содержимое каталога исчерпано
+					if(ptr == nullptr){
+						// Если исчерпан сам корень обхода
+						if(dir.empty()){
+							// Отмечаем обход доведённым до конца
+							dir.active(false);
+							// Выходим из обхода
+							break;
+						}
+						// Получаем адрес исчерпанного каталога
+						const string address = dir.topAddress();
 						/**
-						 * Для операционной системы MS Windows
+						 * Снимаем исчерпанный каталог со стопки мест обхода
+						 *
+						 * @note Снятие идёт ПРЕЖДЕ отклика намеренно: откажись отклик продолжать,
+						 *       обход возобновится с родителя, а не с уже отданного каталога
 						 */
-						#if _WIN32 || _WIN64
-							// Создаем указатель на содержимое каталога
-							struct _wdirent * ptr = nullptr;
-							/**
-							 * Выполняем чтение содержимого каталога
-							 */
-							while((ptr = ::_wreaddir(dir))){
-						/**
-						 * Для операционной системы не являющейся MS Windows
-						 */
-						#else
-							// Создаем указатель на содержимое каталога
-							struct dirent * ptr = nullptr;
-							/**
-							 * Выполняем чтение содержимого каталога
-							 */
-							while((ptr = ::readdir(dir))){
-						#endif
+						dir.pop();
+						// Отдаём сам каталог ПОСЛЕ его содержимого
+						result = callback(type_t::DIR, address);
+						// Продолжаем обход
+						continue;
+					}
+					/**
+					 * Для операционной системы MS Windows
+					 */
+					#if _WIN32 || _WIN64
+						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+						if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
+							// Выполняем пропуск каталога
+							continue;
+						// Получаем адрес в виде строки
+						const string & address = this->_fmk->format("%s%s%s", base.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+					/**
+					 * Для операционной системы не являющейся MS Windows
+					 */
+					#else
+						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
+						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
+							// Выполняем пропуск каталога
+							continue;
+						// Получаем адрес в виде строки
+						const string & address = this->_fmk->format("%s%s%s", base.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
+					#endif
+					// Получаем тип переданного пути
+					const type_t type = this->type(address);
+					/**
+					 * Определяем тип переданного пути
+					 */
+					switch(static_cast <uint8_t> (type)){
+						// Если полный путь является каталогом
+						case static_cast <uint8_t> (type_t::DIR): {
+							// Если требуется рекурсивный перебор каталогов
+							if(recurse){
 								/**
 								 * Для операционной системы MS Windows
 								 */
 								#if _WIN32 || _WIN64
-									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-									if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
-										// Выполняем пропуск каталога
-										continue;
-									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+									// Открываем вложенный каталог
+									_WDIR * nested = ::_wopendir(this->_fmk->convert(address).c_str());
 								/**
 								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
-									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
-									if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
-										// Выполняем пропуск каталога
-										continue;
-									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
+									// Открываем вложенный каталог
+									DIR * nested = ::opendir(address.c_str());
 								#endif
-								// Получаем тип переданного пути
-								const type_t type = this->type(address);
-								/**
-								 * Определяем тип переданного пути
-								 */
-								switch(static_cast <uint8_t> (type)){
-									// Если полный путь является каталогом
-									case static_cast <uint8_t> (type_t::DIR): {
-										// Продолжаем обработку следующих каталогов
-										if(recurse)
-											// Выполняем функцию обратного вызова
-											readFn(address, ext, recurse);
-										// Возвращаем данные каталога как он есть
-										callback(type, address);
-									} break;
-									// Если полный путь является ссылкой
-									case static_cast <uint8_t> (type_t::LINK):
-									// Если полный путь является файлом
-									case static_cast <uint8_t> (type_t::FILE): {
-										// Если расширение файла передано
-										if(!ext.empty()){
-											// Получаем путь до файла в нижнем регистре
-											string_view path = address;
-											// Получаем расширение файла
-											const string & extension = this->_fmk->format(".%s", ext.data());
-											// Если расширение не выше полного адреса
-											if(path.size() > extension.length()){
-												// Если расширение файла найдено
-												if(this->_fmk->compare(path.substr(path.size() - extension.length(), extension.length()).data(), extension))
-													// Возвращаем полный путь файла
-													callback(type, path);
-											}
-										// Если расширение файла не передано, то просто выводим полный путь файла
-										} else callback(type, address);
-									} break;
-									// Если путь принадлежит к другому типу
-									default:
-										// Возвращаем полный путь файла
-										callback(type, address);
+								// Если вложенный каталог открыт
+								if(nested != nullptr){
+									// Выполняем спуск во вложенный каталог
+									dir.push(nested, address);
+									// Продолжаем обход
+									continue;
 								}
 							}
+							// Возвращаем данные каталога как он есть
+							result = callback(type, address);
+						} break;
+						// Если полный путь является ссылкой
+						case static_cast <uint8_t> (type_t::LINK):
+						// Если полный путь является файлом
+						case static_cast <uint8_t> (type_t::FILE): {
+							// Если расширение файла передано
+							if(!ext.empty()){
+								// Получаем расширение файла
+								const string & extension = this->_fmk->format(".%s", ext.data());
+								// Если расширение не выше полного адреса
+								if(address.size() > extension.length()){
+									// Получаем хвост адреса длиною в расширение
+									const string & part = address.substr(address.size() - extension.length(), extension.length());
+									// Если расширение файла найдено
+									if(this->_fmk->compare(part, extension))
+										// Возвращаем полный путь файла
+										result = callback(type, address);
+								}
+							// Если расширение файла не передано, то просто выводим полный путь файла
+							} else result = callback(type, address);
+						} break;
+						// Если путь принадлежит к другому типу
+						default:
+							// Возвращаем полный путь файла
+							result = callback(type, address);
 					}
+				}
 			/**
 			 * Если возникает ошибка
 			 */
@@ -4855,13 +5385,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
-		};
-		// Выполняем извлечение актуального значения адреса
-		const string & address = this->fullpath(path, resolve);
-		// Если адрес получен правильный
-		if(!address.empty() && (this->type(address) == type_t::DIR))
-			// Запрашиваем данные первого каталога
-			readFn(address, ext, recurse);
+		}
 	// Если переданный адрес не является каталогом
 	} else {
 		/**
@@ -4878,6 +5402,249 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 			this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
 		#endif
 	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод обхода файлов во всех подкаталогах построчно с остановкой и продолжением
+ *
+ * @param path     путь до каталога
+ * @param ext      расширение файла по которому идет фильтрация
+ * @param recurse  флаг рекурсивного перебора каталогов
+ * @param callback функция обратного вызова, ложь останавливает обход
+ * @param resolve  флаг резолвинга символьных ссылок
+ * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+ * @return         признак того, что обход довершён до конца
+ *
+ */
+bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recurse, const function <bool (const type_t, string_view, string_view)> & callback, const bool resolve, const handle_dir_t & handle) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес каталога и функция обратного вызова переданы
+	if(!path.empty() && (callback != nullptr)){
+		// Выполняем извлечение актуального значения адреса
+		const string & address = this->fullpath(path, resolve);
+		// Если адрес получен правильный
+		if(!address.empty() && (this->type(address) == type_t::DIR)){
+			// Переходим по всему списку файлов в каталоге
+			result = this->walkdir(address, ext, recurse, [&](const type_t type, string_view filename) noexcept -> bool {
+				/**
+				 * @brief Признак того, что обход велено продолжать
+				 *
+				 * @note Отклик чтения строк остановить чтение не может - вид его возврата пуст.
+				 *       Оттого признак этот выдачу строк прекращает НЕМЕДЛЕННО, а чтение самого
+				 *       файла довершается вхолостую. Место остановки внутри файла не хранится:
+				 *       продолжение начнёт прерванный файл с начала
+				 */
+				bool proceed = true;
+				/**
+				 * Определяем тип переданного пути
+				 */
+				switch(static_cast <uint8_t> (type)){
+					// Если полный путь является ссылкой
+					case static_cast <uint8_t> (type_t::LINK): {
+						// Получаем полный путь файла
+						const string & address = this->fullpath(filename, true);
+						// Если полный путь является файлом
+						if(this->type(address) == type_t::FILE){
+							// Если расширение файла передано
+							if(!ext.empty()){
+								// Получаем расширение файла
+								const string & extension = this->_fmk->format(".%s", ext.data());
+								// Если расширение не выше полного адреса
+								if(address.size() > extension.length()){
+									// Получаем хвост адреса длиною в расширение
+									const string_view part = filename.substr(filename.size() - extension.length(), extension.length());
+									// Если расширение файла найдено
+									if(this->_fmk->compare(part, extension)){
+										// Выполняем считывание всех строк текста
+										this->readfile(address, [&](string_view text) noexcept -> void {
+											// Если текст получен и обход велено продолжать
+											if(proceed && !text.empty())
+												// Возвращаем функцию обратного вызова
+												proceed = callback(type, filename, text);
+										}, seek_t::BEGIN);
+									}
+								}
+							// Если расширение файла не передано
+							} else {
+								// Выполняем считывание всех строк текста
+								this->readfile(address, [&](string_view text) noexcept -> void {
+									// Если текст получен и обход велено продолжать
+									if(proceed && !text.empty())
+										// Возвращаем функцию обратного вызова
+										proceed = callback(type, filename, text);
+								}, seek_t::BEGIN);
+							}
+						}
+					} break;
+					// Если полный путь является файлом
+					case static_cast <uint8_t> (type_t::FILE): {
+						// Выполняем считывание всех строк текста
+						this->readfile(filename, [&](string_view text) noexcept -> void {
+							// Если текст получен и обход велено продолжать
+							if(proceed && !text.empty())
+								// Возвращаем функцию обратного вызова
+								proceed = callback(type, filename, text);
+						}, seek_t::BEGIN);
+					} break;
+				}
+				// Выводим признак того, что обход велено продолжать
+				return proceed;
+			}, resolve, handle);
+		}
+	// Если переданный адрес не является каталогом
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, path.data());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод обхода файлов во всех подкаталогах бинарными блоками с остановкой и продолжением
+ *
+ * @param path     путь до каталога
+ * @param ext      расширение файла по которому идет фильтрация
+ * @param size     размер буфера для чтения файла
+ * @param recurse  флаг рекурсивного перебора каталогов
+ * @param callback функция обратного вызова, ложь останавливает обход
+ * @param resolve  флаг резолвинга символьных ссылок
+ * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+ * @return         признак того, что обход довершён до конца
+ *
+ */
+bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <bool (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve, const handle_dir_t & handle) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес каталога и функция обратного вызова переданы
+	if(!path.empty() && (callback != nullptr)){
+		// Выполняем извлечение актуального значения адреса
+		const string & address = this->fullpath(path, resolve);
+		// Если адрес получен правильный
+		if(!address.empty() && (this->type(address) == type_t::DIR)){
+			// Переходим по всему списку файлов в каталоге (нулевой размер блока скорректирует readfile)
+			result = this->walkdir(address, ext, recurse, [&](const type_t type, string_view filename) noexcept -> bool {
+				/**
+				 * @brief Признак того, что обход велено продолжать
+				 *
+				 * @note Отклик чтения блоков остановить чтение не может - вид его возврата пуст.
+				 *       Оттого признак этот выдачу блоков прекращает НЕМЕДЛЕННО, а чтение самого
+				 *       файла довершается вхолостую. Место остановки внутри файла не хранится:
+				 *       продолжение начнёт прерванный файл с начала
+				 */
+				bool proceed = true;
+				/**
+				 * Определяем тип переданного пути
+				 */
+				switch(static_cast <uint8_t> (type)){
+					// Если полный путь является ссылкой
+					case static_cast <uint8_t> (type_t::LINK): {
+						// Получаем полный путь файла
+						const string & address = this->fullpath(filename, true);
+						// Если полный путь является файлом
+						if(this->type(address) == type_t::FILE){
+							// Если расширение файла передано
+							if(!ext.empty()){
+								// Получаем расширение файла
+								const string & extension = this->_fmk->format(".%s", ext.data());
+								// Если расширение не выше полного адреса
+								if(address.size() > extension.length()){
+									// Получаем хвост адреса длиною в расширение
+									const string_view part = filename.substr(filename.size() - extension.length(), extension.length());
+									// Если расширение файла найдено
+									if(this->_fmk->compare(part, extension)){
+										// Выполняем считывание всех блоков данных
+										this->readfile(address, size, [&](const void * buffer, const size_t size) noexcept -> void {
+											// Если буфер данных получен и обход велено продолжать
+											if(proceed && (buffer != nullptr) && (size > 0))
+												// Возвращаем функцию обратного вызова
+												proceed = callback(type, filename, buffer, size);
+										}, seek_t::BEGIN);
+									}
+								}
+							// Если расширение файла не передано
+							} else {
+								// Выполняем считывание всех блоков данных
+								this->readfile(address, size, [&](const void * buffer, const size_t size) noexcept -> void {
+									// Если буфер данных получен и обход велено продолжать
+									if(proceed && (buffer != nullptr) && (size > 0))
+										// Возвращаем функцию обратного вызова
+										proceed = callback(type, filename, buffer, size);
+								}, seek_t::BEGIN);
+							}
+						}
+					} break;
+					// Если полный путь является файлом
+					case static_cast <uint8_t> (type_t::FILE): {
+						// Выполняем считывание всех блоков данных
+						this->readfile(filename, size, [&](const void * buffer, const size_t size) noexcept -> void {
+							// Если буфер данных получен и обход велено продолжать
+							if(proceed && (buffer != nullptr) && (size > 0))
+								// Возвращаем функцию обратного вызова
+								proceed = callback(type, filename, buffer, size);
+						}, seek_t::BEGIN);
+					} break;
+				}
+				// Выводим признак того, что обход велено продолжать
+				return proceed;
+			}, resolve, handle);
+		}
+	// Если переданный адрес не является каталогом
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, size, recurse, resolve), log_t::flag_t::WARNING, path.data());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод рекурсивного получения файлов во всех подкаталогах
+ *
+ * @param path     путь до каталога
+ * @param ext      расширение файла по которому идет фильтрация
+ * @param recurse  флаг рекурсивного перебора каталогов
+ * @param callback функция обратного вызова
+ * @param resolve  флаг резолвинга символьных ссылок
+ * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
+ *
+ */
+void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view)> & callback, const bool resolve, const handle_dir_t & handle) const noexcept {
+	/**
+	 * Выполняем обход, который остановить нельзя
+	 *
+	 * @note Работа эта есть тот же обход, у которого отклик всегда велит продолжать.
+	 *       Держать для неё своё устройство незачем - разошлись бы они не видом, а
+	 *       поведением, и всякая находка чинилась бы дважды
+	 */
+	this->walkdir(path, ext, recurse, [&callback](const type_t type, string_view address) noexcept -> bool {
+		// Выполняем функцию обратного вызова
+		callback(type, address);
+		// Велим продолжать обход
+		return true;
+	}, resolve, handle);
 }
 /**
  * @brief Метод рекурсивного чтения файлов во всех подкаталогах построчно
@@ -4890,13 +5657,13 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
  * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve, handle_dir_t * handle) const noexcept {
+void awh::Filesystem::readdir(string_view path, string_view ext, const bool recurse, const function <void (const type_t, string_view, string_view)> & callback, const bool resolve, const handle_dir_t & handle) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && (callback != nullptr)){
 		// Выполняем извлечение актуального значения адреса
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
-		if(!address.empty() && (this->type(address) == type_t::DIR))
+		if(!address.empty() && (this->type(address) == type_t::DIR)){
 			// Переходим по всему списку файлов в каталоге
 			this->readdir(address, ext, recurse, [&](const type_t type, string_view filename) noexcept -> void {
 				/**
@@ -4952,6 +5719,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 					} break;
 				}
 			}, resolve, handle);
+		}
 	// Если переданный адрес не является каталогом
 	} else {
 		/**
@@ -4981,7 +5749,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
  * @param handle   внешний объект каталога, если необходима поддержка пакетной обработки
  *
  */
-void awh::Filesystem::readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve, handle_dir_t * handle) const noexcept {
+void awh::Filesystem::readdir(string_view path, string_view ext, const size_t size, const bool recurse, const function <void (const type_t, string_view, const void *, const size_t)> & callback, const bool resolve, const handle_dir_t & handle) const noexcept {
 	// Если адрес каталога и расширение файлов переданы
 	if(!path.empty() && (callback != nullptr)){
 		// Выполняем извлечение актуального значения адреса
