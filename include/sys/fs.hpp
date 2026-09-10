@@ -184,6 +184,11 @@ namespace awh {
 	 *       него отдельное имя незачем. Заводит объект модуль работой `Filesystem::handleFile`,
 	 *       сносит - свой сноситель, а потребитель лишь держит его у себя, сколько нужно
 	 *
+	 * @warning При УЖЕ ЗАВЕДЁННОМ объекте адрес, поданный работе, не разбирается вовсе: он идёт
+	 *          только в открытие, а описатель уже открыт. Работа ляжет в тот файл, каким объект
+	 *          был заведён, - даже если названо иное имя. Один объект обслуживает ОДИН файл,
+	 *          и для другого нужен другой объект
+	 *
 	 * \~english
 	 * @brief Create a file object data type
 	 *
@@ -191,6 +196,11 @@ namespace awh {
 	 *       is deliberately incomplete outside the module, the consumer cannot create it, and there is
 	 *       no point in keeping a separate name for it. The object is created by the module with the work
 	 *       `Filesystem::handleFile`, is demolished by its own deleter, and the consumer only keeps it for as long as needed
+	 *
+	 * @warning At an ALREADY CREATED object the address given to the work is not parsed at all: it goes
+	 *          only into the opening, while the descriptor is already open. The work will lay into the file
+	 *          the object was created with - even if another name is given. One object serves ONE file,
+	 *          and another one is needed for another file
 	 *
 	 * \~
 	 */
@@ -645,6 +655,57 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
+			 * @brief Метод сброса записанного из ядра на носитель
+			 *
+			 * @details Запись, отвеченная успехом, лежит ещё не на носителе, а во вместилище ядра,
+			 *          и обрыв питания её теряет. Работа эта доводит записанное до носителя и
+			 *          отвечает лишь тогда, когда носитель сброс подтвердил
+			 *
+			 * @warning Под системою Apple `fsync` обещания этого НЕ выполняет: он выносит записанное
+			 *          из ядра в накопитель, но опустошить вместилище самого накопителя не велит.
+			 *          Доводит до пластины лишь `F_FULLFSYNC`, и он здесь и зовётся при `durable`
+			 *
+			 * @note Отказ `EINVAL` означает, что носитель сброса не держит (канал, устройство
+			 *       посимвольное), - это не отказ записи, и отказом он не объявляется
+			 *
+			 * @note Внешний объект файла тут не роскошь, а способ: без него работа откроет файл
+			 *       заново, а описатель, каким шла запись, останется несброшенным. Пакетная запись
+			 *       обязана сбрасываться ТЕМ ЖЕ объектом, каким она и велась
+			 *
+			 * @param filename путь к файлу который необходимо сбросить на носитель
+			 * @param durable  признак доведения записанного до носителя, а не до накопителя
+			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, что сброс выполнен
+			 *
+			 * \~english
+			 * @brief Method of the flushing of the written data from the kernel onto the medium
+			 *
+			 * @details A writing answered with a success lies not yet on the medium, but in the storage
+			 *          of the kernel, and a power failure loses it. This work brings the written data
+			 *          onto the medium and answers only when the medium has confirmed the flush
+			 *
+			 * @warning At the Apple system `fsync` does NOT fulfil this promise: it brings the written data
+			 *          out of the kernel into the drive, but does not order the drive's own storage to be emptied.
+			 *          Only `F_FULLFSYNC` brings it down to the platter, and it is the one called here at `durable`
+			 *
+			 * @note The refusal `EINVAL` means that the medium does not support the flushing (a pipe, a character
+			 *       device) - this is not a refusal of the writing, and it is not declared a refusal
+			 *
+			 * @note The external file object is not a luxury here but the means: without it the work will open
+			 *       the file anew, while the descriptor the writing went through will remain unflushed. A batch
+			 *       writing must be flushed by THE SAME object it was performed with
+			 *
+			 * @param filename path to the file that needs to be flushed onto the medium
+			 * @param durable  sign of bringing the written data onto the medium, and not onto the drive
+			 * @param handle   external file object if batch processing support is required
+			 * @return         sign that the flush has been performed
+			 *
+			 * \~
+			 */
+			bool flush(string_view filename, const bool durable = true, const handle_file_t & handle = {}) const noexcept;
+		public:
+			/**
+			 * \~russian
 			 * @brief Шаблон метода добавления в файл бинарных данных
 			 *
 			 * @tparam T тип буфера данных
@@ -664,6 +725,7 @@ namespace awh {
 			 * @param filename путь к файлу в который необходимо выполнить запись
 			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of appending binary data to a file
@@ -671,10 +733,11 @@ namespace awh {
 			 * @param filename path to the file the writing should be performed into
 			 * @param buffer   binary buffer that needs to be written into the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const T & buffer, const handle_file_t & handle = {}) const noexcept;
+			bool append(string_view filename, const T & buffer, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод добавления в файл бинарных данных
@@ -682,6 +745,7 @@ namespace awh {
 			 * @param filename путь к файлу в который необходимо выполнить запись
 			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of appending binary data to a file
@@ -689,10 +753,11 @@ namespace awh {
 			 * @param filename path to the file the writing should be performed into
 			 * @param buffer   binary buffer that needs to be written into the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const char * buffer, const handle_file_t & handle = {}) const noexcept;
+			bool append(string_view filename, const char * buffer, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод добавления в файл бинарных данных
@@ -700,6 +765,7 @@ namespace awh {
 			 * @param filename путь к файлу в который необходимо выполнить запись
 			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of appending binary data to a file
@@ -707,10 +773,11 @@ namespace awh {
 			 * @param filename path to the file the writing should be performed into
 			 * @param buffer   binary buffer that needs to be written into the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const wchar_t * buffer, const handle_file_t & handle = {}) const noexcept;
+			bool append(string_view filename, const wchar_t * buffer, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод добавления в файл бинарных данных
@@ -719,6 +786,7 @@ namespace awh {
 			 * @param buffer   бинарный буфер который необходимо записать в файл
 			 * @param size     размер бинарного буфера для записи в файл
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of appending binary data to a file
@@ -727,10 +795,11 @@ namespace awh {
 			 * @param buffer   binary buffer that needs to be written into the file
 			 * @param size     size of the binary buffer to write into the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle = {}) const noexcept;
+			bool append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -851,6 +920,7 @@ namespace awh {
 			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of writing binary data into a file
@@ -860,10 +930,11 @@ namespace awh {
 			 * @param seek     type of the offset in the file
 			 * @param offset   offset in the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const T & buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
+			bool write(string_view filename, const T & buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод записи в файл бинарных данных
@@ -873,6 +944,7 @@ namespace awh {
 			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of writing binary data into a file
@@ -882,10 +954,11 @@ namespace awh {
 			 * @param seek     type of the offset in the file
 			 * @param offset   offset in the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const char * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
+			bool write(string_view filename, const char * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод записи в файл бинарных данных
@@ -895,6 +968,7 @@ namespace awh {
 			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of writing binary data into a file
@@ -904,10 +978,11 @@ namespace awh {
 			 * @param seek     type of the offset in the file
 			 * @param offset   offset in the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const wchar_t * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
+			bool write(string_view filename, const wchar_t * buffer, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 			/**
 			 * \~russian
 			 * @brief Метод записи в файл бинарных данных
@@ -918,6 +993,7 @@ namespace awh {
 			 * @param seek     тип смещения в файле
 			 * @param offset   смещение в файле
 			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 * @return         признак того, легли ли данные в файл
 			 *
 			 * \~english
 			 * @brief Method of writing binary data into a file
@@ -928,10 +1004,11 @@ namespace awh {
 			 * @param seek     type of the offset in the file
 			 * @param offset   offset in the file
 			 * @param handle   external file object if batch processing support is required
+			 * @return         sign of whether the data has been laid into the file
 			 *
 			 * \~
 			 */
-			void write(string_view filename, const void * buffer, const size_t size, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
+			bool write(string_view filename, const void * buffer, const size_t size, const seek_t seek = seek_t::BEGIN, const size_t offset = 0, const handle_file_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian

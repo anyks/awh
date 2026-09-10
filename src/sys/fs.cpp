@@ -3349,6 +3349,236 @@ awh::handle_file_t awh::Filesystem::handleFile() const noexcept {
 	return handle_file_t(new HandleFile());
 }
 /**
+ * @brief Метод сброса записанного из ядра на носитель
+ *
+ * @param filename путь к файлу который необходимо сбросить на носитель
+ * @param durable  признак доведения записанного до носителя, а не до накопителя
+ * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, что сброс выполнен
+ *
+ */
+bool awh::Filesystem::flush(string_view filename, const bool durable, const handle_file_t & handle) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес файла передан
+	if(!filename.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Сброс своего объекта смысла почти не имеет - записанное чужим описателем
+			 *       он не доведёт, - но отказом это не считается: файл открывается заново и
+			 *       сбрасывается как есть
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : "");
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || !address.empty()){
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Если объект файла ещё не заведён
+					if(!file.valid())
+						/**
+						 * @brief Открываем файл на запись
+						 *
+						 * @note Сброс требует права записи: описатель, открытый на одно лишь
+						 *       чтение, `FlushFileBuffers` отвергает отказом ERROR_ACCESS_DENIED
+						 */
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+					// Если файл открыт нормально
+					if(file.valid()){
+						/**
+						 * Выполняем сброс записанного из ядра на носитель
+						 *
+						 * @note Разделения на данные и сведения о файле у MS Windows нет:
+						 *       `FlushFileBuffers` сбрасывает и то, и другое, оттого признак
+						 *       `durable` здесь ничего не меняет
+						 */
+						if(!(result = (::FlushFileBuffers(file) != FALSE))){
+							/**
+							 * Если носитель сброса не держит, отказом это не считается
+							 *
+							 * @note Так отвечают канал и устройство посимвольное: сбрасывать
+							 *       у них нечего, и запись от того мимо файла не ушла
+							 */
+							if(::GetLastError() == ERROR_INVALID_FUNCTION)
+								// Отмечаем сброс выполненным
+								result = true;
+							// Если отказ настоящий
+							else {
+								// Создаём буфер сообщения ошибки
+								wchar_t message[0xFF] = {0};
+								// Выполняем формирование текста ошибки
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, message);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								#endif
+							}
+						}
+					/**
+					 * Если открыть файл не удалось
+					 */
+					} else {
+						// Создаём буфер сообщения ошибки
+						wchar_t message[0xFF] = {0};
+						// Выполняем формирование текста ошибки
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, message);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+						#endif
+					}
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#else
+					// Если объект файла ещё не заведён
+					if(!file.valid())
+						/**
+						 * @brief Открываем файл на запись
+						 *
+						 * @note Сброс требует права записи: описатель, открытый на одно лишь
+						 *       чтение, отвечает отказом `EBADF` у ряда систем
+						 */
+						file.set(::open(address.c_str(), O_WRONLY));
+					// Если файл открыт нормально
+					if(file.valid()){
+						/**
+						 * Если целевая платформа является macOS
+						 *
+						 * @details `fsync` там выносит записанное из ядра в НАКОПИТЕЛЬ, но опустошить
+						 *          вместилище самого накопителя не велит, и обрыв питания записанное
+						 *          теряет. Доводит до пластины лишь `F_FULLFSYNC`, и заведён он ровно
+						 *          для этого
+						 *
+						 * @note Отказ `F_FULLFSYNC` откатывается к `fsync`, а не объявляется отказом:
+						 *       управление им держит не всякая файловая система
+						 */
+						#ifdef __APPLE__
+							// Выполняем сброс записанного из ядра на носитель
+							const int32_t flushed = (durable ?
+								((::fcntl(file, F_FULLFSYNC, 0) == -1) ? ::fsync(file) : 0) :
+								::fsync(file)
+							);
+						/**
+						 * Если целевая платформа держит сброс одних лишь данных
+						 *
+						 * @note `fdatasync` не сбрасывает сведений о файле, если размер его не менялся,
+						 *       и тем обходится дешевле. Долговечности он не обещает, оттого стоит
+						 *       ЛИШЬ под снятым признаком `durable`
+						 */
+						#elif _POSIX_SYNCHRONIZED_IO && (_POSIX_SYNCHRONIZED_IO > 0)
+							// Выполняем сброс записанного из ядра на носитель
+							const int32_t flushed = (durable ? ::fsync(file) : ::fdatasync(file));
+						/**
+						 * Для прочих операционных систем
+						 */
+						#else
+							// Выполняем сброс записанного из ядра на носитель
+							const int32_t flushed = ::fsync(file);
+						#endif
+						/**
+						 * Если сброс отвечен отказом
+						 *
+						 * @note Отказ `EINVAL` означает, что носитель сброса не держит (канал,
+						 *       устройство посимвольное) - это не отказ записи, и отказом он
+						 *       не объявляется
+						 */
+						if(!(result = (flushed == 0)) && (errno == EINVAL))
+							// Отмечаем сброс выполненным
+							result = true;
+						// Если отказ настоящий
+						else if(!result) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					/**
+					 * Если открыть файл не удалось
+					 */
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Шаблон метода добавления в файл бинарных данных
  *
  * @tparam T тип буфера данных
@@ -3361,64 +3591,80 @@ template <typename T>
  * @param filename путь к файлу в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::append(string_view filename, const T & buffer, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::append(string_view filename, const T & buffer, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty()){
 		// Если тип буфера является строкой
 		if constexpr (is_same_v <T, string>)
-			// Выполняем добавление в файл бинарных данных
-			this->append(filename, buffer.data(), buffer.size(), handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->append(filename, buffer.data(), buffer.size(), handle);
 		// Если тип буфера является строкой символов
 		else if constexpr (is_same_v <T, wstring>) {
 			// Выполняем конвертацию строки
 			const string & data = this->_fmk->convert(buffer);
-			// Выполняем добавление в файл бинарных данных
-			this->append(filename, data.c_str(), data.size(), handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->append(filename, data.c_str(), data.size(), handle);
 		// Если тип буфера является вектором символов
 		} else if constexpr (is_same_v <T, vector <char>>)
-			// Выполняем добавление в файл бинарных данных
-			this->append(filename, buffer.data(), buffer.size(), handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->append(filename, buffer.data(), buffer.size(), handle);
 		// Если тип буфера является вектором байтов
 		else if constexpr (is_same_v <T, vector <uint8_t>>)
-			// Выполняем добавление в файл бинарных данных
-			this->append(filename, buffer.data(), buffer.size(), handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->append(filename, buffer.data(), buffer.size(), handle);
 	}
+	/**
+	 * Выводим отказ
+	 *
+	 * @note Сюда управление доходит ЛИШЬ когда доводы работу не прошли: адрес пуст
+	 *       либо буфер пуст. Записи не было вовсе, и отвечать успехом здесь нельзя
+	 */
+	return false;
 }
 /**
  * @brief Явный специализированный шаблон метода добавления строки в текстовый файл
  *
  */
-template void awh::Filesystem::append(string_view, const string &, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::append(string_view, const string &, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода добавления строки wide символов в текстовый файл
  *
  */
-template void awh::Filesystem::append(string_view, const wstring &, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::append(string_view, const wstring &, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода добавления буфера символов в текстовый файл
  *
  */
-template void awh::Filesystem::append(string_view, const vector <char> &, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::append(string_view, const vector <char> &, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода добавления буфера байтов в файл бинарных данных
  *
  */
-template void awh::Filesystem::append(string_view, const vector <uint8_t> &, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::append(string_view, const vector <uint8_t> &, const handle_file_t &) const noexcept;
 /**
  * @brief Метод добавления в файл бинарных данных
  *
  * @param filename путь к файлу в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::append(string_view filename, const char * buffer, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::append(string_view filename, const char * buffer, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != '\0'))
-		// Выполняем добавление в файл бинарных данных
-		this->append(filename, buffer, ::strlen(buffer), handle);
+		// Выводим признак того, легли ли данные в файл
+		return this->append(filename, buffer, ::strlen(buffer), handle);
+	/**
+	 * Выводим отказ
+	 *
+	 * @note Сюда управление доходит ЛИШЬ когда доводы работу не прошли: адрес пуст
+	 *       либо буфер пуст. Записи не было вовсе, и отвечать успехом здесь нельзя
+	 */
+	return false;
 }
 /**
  * @brief Метод добавления в файл бинарных данных
@@ -3426,16 +3672,24 @@ void awh::Filesystem::append(string_view filename, const char * buffer, const ha
  * @param filename путь к файлу в который необходимо выполнить запись
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::append(string_view filename, const wchar_t * buffer, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::append(string_view filename, const wchar_t * buffer, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
 		const string & data = this->_fmk->convert(buffer);
-		// Выполняем добавление в файл бинарных данных
-		this->append(filename, data.c_str(), data.size(), handle);
+		// Выводим признак того, легли ли данные в файл
+		return this->append(filename, data.c_str(), data.size(), handle);
 	}
+	/**
+	 * Выводим отказ
+	 *
+	 * @note Сюда управление доходит ЛИШЬ когда доводы работу не прошли: адрес пуст
+	 *       либо буфер пуст. Записи не было вовсе, и отвечать успехом здесь нельзя
+	 */
+	return false;
 }
 /**
  * @brief Метод добавления в файл бинарных данных
@@ -3444,30 +3698,40 @@ void awh::Filesystem::append(string_view filename, const wchar_t * buffer, const
  * @param buffer   бинарный буфер который необходимо записать в файл
  * @param size     размер бинарного буфера для записи в файл
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::append(string_view filename, const void * buffer, const size_t size, const handle_file_t & handle) const noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если параметры для записи переданы
 	if(!filename.empty() && (buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(filename, true);
-			// Если адрес получен правильный
-			if(!address.empty()){
-				/**
-				 * @brief Свой объект файла
-				 *
-				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
-				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
-				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
-				 *       вместе с умным указателем у того, кто его завёл
-				 */
-				HandleFile local;
-				// Объект файла, которым идёт работа
-				HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+			 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+			 *       вместе с умным указателем у того, кто его завёл
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе. Разбор пути стоит
+			 *       перехода в ядро (`realpath` под POSIX, `GetFullPathName` под MS Windows),
+			 *       и при потоковой работе мелкими долями плата эта ложилась бы на всякую долю
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : "");
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || (!address.empty())){
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -3485,9 +3749,18 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 */
 						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
-					if(file.valid())
-						// Выполняем добавление данных в файл
-						::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+					if(file.valid()){
+						// Число октетов, легших в файл
+						DWORD written = 0;
+						/**
+						 * Выполняем добавление данных в файл
+						 *
+						 * @note Успехом считается ЛИШЬ запись всего буфера: `WriteFile` вправе
+						 *       лечь частью, и частичная запись это тот же отказ - хвост буфера
+						 *       до файла не дошёл
+						 */
+						result = ((::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), &written, nullptr) != FALSE) && (static_cast <size_t> (written) == size));
+					}
 					/**
 					 * Если открыть файл не удалось
 					 *
@@ -3560,7 +3833,7 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 *       вправе лечь частью, и частичная запись это тот же отказ - хвост
 						 *       буфера до файла не дошёл
 						 */
-						if(::write(file, buffer, size) < static_cast <ssize_t> (size)){
+						if(!(result = (::write(file, buffer, size) == static_cast <ssize_t> (size)))){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -3614,6 +3887,8 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 			#endif
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Шаблон метода чтения данных из файла
@@ -3681,21 +3956,28 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(filename, true);
-			// Если адрес получен правильный
-			if(!address.empty() && (this->type(address) == type_t::FILE)){
-				/**
-				 * @brief Свой объект файла
-				 *
-				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
-				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
-				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
-				 *       вместе с умным указателем у того, кто его завёл
-				 */
-				HandleFile local;
-				// Объект файла, которым идёт работа
-				HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+			 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+			 *       вместе с умным указателем у того, кто его завёл
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе. Разбор пути стоит
+			 *       перехода в ядро (`realpath` под POSIX, `GetFullPathName` под MS Windows),
+			 *       и при потоковой работе мелкими долями плата эта ложилась бы на всякую долю
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : "");
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || (!address.empty() && (this->type(address) == type_t::FILE))){
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -3945,21 +4227,28 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(filename, true);
-			// Если адрес получен правильный и указывает на файл
-			if(!address.empty() && (this->type(address) == type_t::FILE)){
-				/**
-				 * @brief Свой объект файла
-				 *
-				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
-				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
-				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
-				 *       вместе с умным указателем у того, кто его завёл
-				 */
-				HandleFile local;
-				// Объект файла, которым идёт работа
-				HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+			 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+			 *       вместе с умным указателем у того, кто его завёл
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе. Разбор пути стоит
+			 *       перехода в ядро (`realpath` под POSIX, `GetFullPathName` под MS Windows),
+			 *       и при потоковой работе мелкими долями плата эта ложилась бы на всякую долю
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : "");
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || (!address.empty() && (this->type(address) == type_t::FILE))){
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -4212,51 +4501,59 @@ template <typename T>
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::write(string_view filename, const T & buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::write(string_view filename, const T & buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty()){
 		// Если тип буфера является строкой
 		if constexpr (is_same_v <T, string>)
-			// Выполняем запись в файл бинарных данных
-			this->write(filename, buffer.data(), buffer.size(), seek, offset, handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->write(filename, buffer.data(), buffer.size(), seek, offset, handle);
 		// Если тип буфера является строкой символов
 		else if constexpr (is_same_v <T, wstring>) {
 			// Выполняем конвертацию строки
 			const string & data = this->_fmk->convert(buffer);
-			// Выполняем запись в файл бинарных данных
-			this->write(filename, data.c_str(), data.size(), seek, offset, handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->write(filename, data.c_str(), data.size(), seek, offset, handle);
 		// Если тип буфера является вектором символов
 		} else if constexpr (is_same_v <T, vector <char>>)
-			// Выполняем запись в файл бинарных данных
-			this->write(filename, buffer.data(), buffer.size(), seek, offset, handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->write(filename, buffer.data(), buffer.size(), seek, offset, handle);
 		// Если тип буфера является вектором байтов
 		else if constexpr (is_same_v <T, vector <uint8_t>>)
-			// Выполняем запись в файл бинарных данных
-			this->write(filename, buffer.data(), buffer.size(), seek, offset, handle);
+			// Выводим признак того, легли ли данные в файл
+			return this->write(filename, buffer.data(), buffer.size(), seek, offset, handle);
 	}
+	/**
+	 * Выводим отказ
+	 *
+	 * @note Сюда управление доходит ЛИШЬ когда доводы работу не прошли: адрес пуст
+	 *       либо буфер пуст. Записи не было вовсе, и отвечать успехом здесь нельзя
+	 */
+	return false;
 }
 /**
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из строки
  *
  */
-template void awh::Filesystem::write(string_view, const string &, const seek_t, const size_t, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::write(string_view, const string &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из строки wide символов
  *
  */
-template void awh::Filesystem::write(string_view, const wstring &, const seek_t, const size_t, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::write(string_view, const wstring &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из буфера символов
  *
  */
-template void awh::Filesystem::write(string_view, const vector <char> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::write(string_view, const vector <char> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Явный специализированный шаблон метода записи в файл бинарных данных из буфера бинарных данных
  *
  */
-template void awh::Filesystem::write(string_view, const vector <uint8_t> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
+template bool awh::Filesystem::write(string_view, const vector <uint8_t> &, const seek_t, const size_t, const handle_file_t &) const noexcept;
 /**
  * @brief Метод записи в файл бинарных данных
  *
@@ -4265,13 +4562,21 @@ template void awh::Filesystem::write(string_view, const vector <uint8_t> &, cons
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::write(string_view filename, const char * buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::write(string_view filename, const char * buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != '\0'))
-		// Выполняем запись в файл бинарных данных
-		this->write(filename, buffer, ::strlen(buffer), seek, offset, handle);
+		// Выводим признак того, легли ли данные в файл
+		return this->write(filename, buffer, ::strlen(buffer), seek, offset, handle);
+	/**
+	 * Выводим отказ
+	 *
+	 * @note Сюда управление доходит ЛИШЬ когда доводы работу не прошли: адрес пуст
+	 *       либо буфер пуст. Записи не было вовсе, и отвечать успехом здесь нельзя
+	 */
+	return false;
 }
 /**
  * @brief Метод записи в файл бинарных данных
@@ -4281,16 +4586,24 @@ void awh::Filesystem::write(string_view filename, const char * buffer, const see
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::write(string_view filename, const wchar_t * buffer, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
 		const string & data = this->_fmk->convert(buffer);
-		// Выполняем запись в файл бинарных данных
-		this->write(filename, data.c_str(), data.size(), seek, offset, handle);
+		// Выводим признак того, легли ли данные в файл
+		return this->write(filename, data.c_str(), data.size(), seek, offset, handle);
 	}
+	/**
+	 * Выводим отказ
+	 *
+	 * @note Сюда управление доходит ЛИШЬ когда доводы работу не прошли: адрес пуст
+	 *       либо буфер пуст. Записи не было вовсе, и отвечать успехом здесь нельзя
+	 */
+	return false;
 }
 /**
  * @brief Метод записи в файл бинарных данных
@@ -4301,30 +4614,40 @@ void awh::Filesystem::write(string_view filename, const wchar_t * buffer, const 
  * @param seek     тип смещения в файле
  * @param offset   смещение в файле
  * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ * @return         признак того, легли ли данные в файл
  *
  */
-void awh::Filesystem::write(string_view filename, const void * buffer, const size_t size, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
+bool awh::Filesystem::write(string_view filename, const void * buffer, const size_t size, const seek_t seek, const size_t offset, const handle_file_t & handle) const noexcept {
+	// Результат работы функции
+	bool result = false;
 	// Если параметры для записи переданы
 	if(!filename.empty() && (buffer != nullptr) && (size > 0)){
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(filename, true);
-			// Если адрес получен правильный
-			if(!address.empty()){
-				/**
-				 * @brief Свой объект файла
-				 *
-				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
-				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
-				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
-				 *       вместе с умным указателем у того, кто его завёл
-				 */
-				HandleFile local;
-				// Объект файла, которым идёт работа
-				HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+			 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+			 *       вместе с умным указателем у того, кто его завёл
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе. Разбор пути стоит
+			 *       перехода в ядро (`realpath` под POSIX, `GetFullPathName` под MS Windows),
+			 *       и при потоковой работе мелкими долями плата эта ложилась бы на всякую долю
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : "");
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || (!address.empty())){
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -4374,9 +4697,18 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 							// Сбрасываем значение установленной позиции
 							li.QuadPart = -1;
 						// Если позиция установлена успешно
-						if(li.QuadPart > -1)
-							// Выполняем запись данных в файл
-							::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), 0, nullptr);
+						if(li.QuadPart > -1){
+							// Число октетов, легших в файл
+							DWORD written = 0;
+							/**
+							 * Выполняем запись данных в файл
+							 *
+							 * @note Успехом считается ЛИШЬ запись всего буфера: `WriteFile` вправе
+							 *       лечь частью, и частичная запись это тот же отказ - хвост буфера
+							 *       до файла не дошёл
+							 */
+							result = ((::WriteFile(file, static_cast <LPCVOID> (buffer), static_cast <DWORD> (size), &written, nullptr) != FALSE) && (static_cast <size_t> (written) == size));
+						}
 					/**
 					 * Если открыть файл не удалось
 					 *
@@ -4454,8 +4786,14 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 								::lseek(file, static_cast <off_t> (offset), SEEK_END);
 							break;
 						}
-						// Если запись данных в файл отвечена отказом
-						if(::write(file, buffer, size) < static_cast <ssize_t> (size)){
+						/**
+						 * Если запись данных в файл отвечена отказом
+						 *
+						 * @note Сличение идёт с полным размером буфера, а не с нулём: запись
+						 *       вправе лечь частью, и частичная запись это тот же отказ - хвост
+						 *       буфера до файла не дошёл
+						 */
+						if(!(result = (::write(file, buffer, size) == static_cast <ssize_t> (size)))){
 							/**
 							 * Если включён режим отладки
 							 */
@@ -4509,6 +4847,8 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			#endif
 		}
 	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод рекурсивного получения всех строк файла
@@ -4527,10 +4867,28 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(filename, true);
-			// Если адрес получен правильный
-			if(!address.empty()){
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+			 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+			 *       вместе с умным указателем у того, кто его завёл
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе. Разбор пути стоит
+			 *       перехода в ядро (`realpath` под POSIX, `GetFullPathName` под MS Windows),
+			 *       и при потоковой работе мелкими долями плата эта ложилась бы на всякую долю
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : "");
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || (!address.empty())){
 				// Локальный буфер для хранения незавершённой строки
 				string remainder = "";
 				/**
@@ -4574,17 +4932,6 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						// Удаляем обработанную часть буфера
 						remainder.erase(0, start);
 				};
-				/**
-				 * @brief Свой объект файла
-				 *
-				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
-				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
-				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
-				 *       вместе с умным указателем у того, кто его завёл
-				 */
-				HandleFile local;
-				// Объект файла, которым идёт работа
-				HandleFile & file = (handle != nullptr ? (* handle) : local);
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -4863,21 +5210,28 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем извлечение актуального значения адреса
-			const string & address = this->fullpath(filename, true);
-			// Если адрес получен правильный
-			if(!address.empty()){
-				/**
-				 * @brief Свой объект файла
-				 *
-				 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
-				 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
-				 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
-				 *       вместе с умным указателем у того, кто его завёл
-				 */
-				HandleFile local;
-				// Объект файла, которым идёт работа
-				HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+			 *       делом самого объекта: свой гибнет с концом области видимости, внешний -
+			 *       вместе с умным указателем у того, кто его завёл
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе. Разбор пути стоит
+			 *       перехода в ядро (`realpath` под POSIX, `GetFullPathName` под MS Windows),
+			 *       и при потоковой работе мелкими долями плата эта ложилась бы на всякую долю
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : "");
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || (!address.empty())){
 				// Определяем размер блока чтения (без модификации const-параметра)
 				const size_t chunk = ((size == 0) ? ::__awh_pagesize__() : size);
 				/**
