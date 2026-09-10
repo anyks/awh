@@ -102,13 +102,28 @@ SSL=""
 for D in /usr/local/lib /usr/lib /usr/lib64 /opt/csw/lib; do
 	if [ -f "$D/libcrypto.so" ] || [ -f "$D/libcrypto.a" ]; then SSL="-L$D -lssl -lcrypto"; break; fi
 done
-# Наречие языка: у одних систем собиратель знает «c++2b», у других (NetBSD) нет вовсе;
-# отбираем его пробою, а не по имени системы
+# Наречие языка берётся ТО ЖЕ, что объявлено проектом: CMakeLists.txt держит
+# CMAKE_CXX_STANDARD 17 при CXX_STANDARD_REQUIRED ON, и все девять стендов кодеков
+# строят по c++17.
+#
+# ПРЕЖДЕ здесь стоял отбор пробою по цепочке «c++2b → c++23 → c++20 → gnu++17», и это
+# была ошибка устройства, а не мелочь: цепочка искала наречие НОВЕЕ объявленного, и
+# стенд выходил зелёным там, где сборка проекта красна. Ровно так и вышло с
+# «src/codec/replace.cpp», где употреблён unique_ptr без «#include <memory>»: при c++2b
+# заголовок приходит косвенно и стенд зелен, при c++17 сборка отказывает. Стенд обязан
+# мерить ТО, что собирает проект, иначе он мерит нечто иное и молчит о настоящем.
+#
+# Отступление вниз оставлено на случай собирателя, c++17 не знающего вовсе: там стенд
+# лучше провести старым наречием, чем не провести вовсе, - но отступление это ГРОМКОЕ.
 STD=""
-for N in c++2b c++23 c++20 gnu++17; do
+for N in c++17 gnu++17 c++14; do
 	if echo 'int main(){return 0;}' | $CXX -x c++ -std=$N -fsyntax-only - 2>/dev/null; then STD="-std=$N"; break; fi
 done
 [ -n "$STD" ] || { echo "собиратель не знает ни одного годного наречия" >&2; exit 6; }
+case "$STD" in
+	-std=c++17|-std=gnu++17) ;;
+	*) echo "ВНИМАНИЕ: собиратель не знает c++17, стенд идёт наречием $STD - итог с проектом НЕ сличается" >&2 ;;
+esac
 echo "Собираем набор проверок args: $CXX ($SYS/$PLATFORM, $STD)"
 $CXX $GT $STD -O1 -g -Iinclude -Itests $FLAGS $THIRD $FRAMEWORK $CODEC $ARGS $EXTRA $NET $TESTS $DEPEND $SSL $LIBS -lz -o "$OUT/args-tests"
 echo "Набор собран: $OUT/args-tests"
