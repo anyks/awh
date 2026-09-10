@@ -638,7 +638,7 @@ bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & resul
 	 *          обходом по звеньям
 	 */
 	// Создаём документ записи YAML
-	yaml::document_t document(this->_log);
+	yaml::document_t document(this->_fmk, this->_log);
 	// Выполняем разбор поданной записи YAML
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -1102,7 +1102,7 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
  */
 bool awh::codec::Bridge::decodeTOML(const string_view text, abc::value_t & result) noexcept {
 	// Создаём документ записи TOML
-	toml::document_t document(this->_log);
+	toml::document_t document(this->_fmk, this->_log);
 	// Выполняем разбор поданной записи TOML
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -1402,7 +1402,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
  */
 bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи YAML
-	yaml::document_t document(this->_log);
+	yaml::document_t document(this->_fmk, this->_log);
 	/**
 	 * Выполняем заведение первого документа записи YAML
 	 *
@@ -1708,7 +1708,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
  */
 bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи TOML
-	toml::document_t document(this->_log);
+	toml::document_t document(this->_fmk, this->_log);
 	// Собираемое владеющее значение записи TOML
 	toml::Value root;
 	// Выполняем подачу дерева значений владеющему значению
@@ -2593,7 +2593,7 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
 
 bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result) noexcept {
 	// Создаём документ записи INI
-	ini::document_t document(this->_log);
+	ini::document_t document(this->_fmk, this->_log);
 	// Выполняем разбор поданной записи INI
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -2727,7 +2727,7 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
  */
 bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи INI
-	ini::document_t document(this->_log);
+	ini::document_t document(this->_fmk, this->_log);
 	// Если дерево значений отображением не является
 	if(!value.is(abc::type_t::MAP)){
 		// Запоминаем код отказа перевода
