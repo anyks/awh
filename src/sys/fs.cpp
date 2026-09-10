@@ -139,9 +139,6 @@ namespace awh {
 		 */
 		class HandleDir {
 			private:
-				// Объект дескриптора
-				_WDIR * _handle;
-			private:
 				/**
 				 * @brief Место обхода каталога
 				 *
@@ -158,14 +155,36 @@ namespace awh {
 					 * @param address адрес вложенного каталога
 					 *
 					 */
-					Place(_WDIR * handle, string_view address) noexcept : handle(handle), address(address) {}
+					explicit Place(_WDIR * handle, string_view address) noexcept :
+					 handle(handle), address{address} {}
 				} place_t;
 			private:
+				// Признак того, что незавершённую запись надлежит отдать повторно
+				bool _repeat;
+				// Признак незавершённого обхода
+				bool _active;
+			private:
+				// Число долей незавершённой записи, отданных прежде
+				size_t _delivered;
+			private:
+				// Вид незавершённой записи обхода
+				uint8_t _pendingType;
+			private:
+				/**
+				 * @brief Незавершённая запись обхода
+				 *
+				 * @note Отклик у видов `walkdir`, отдающих СОДЕРЖИМОЕ файла, вправе остановить
+				 *       обход посреди файла. Запись эта тогда прочитана не до конца, а место её
+				 *       в каталоге уже пройдено, - и без памяти о ней остаток файла был бы утерян
+				 *       молча. Здесь и хранится адрес такой записи, вид её и число уже отданных
+				 *       долей: продолжение отдаёт её повторно, а доли, отданные прежде, пропускает
+				 */
+				string _pending;
 				// Адрес каталога, которому объект служит
 				string _address;
 			private:
-				// Признак незавершённого обхода
-				bool _active;
+				// Объект дескриптора
+				_WDIR * _handle;
 			private:
 				/**
 				 * @brief Места обхода вложенных каталогов
@@ -177,12 +196,60 @@ namespace awh {
 				vector <place_t> _places;
 			public:
 				/**
+				 * @brief Метод забвения незавершённой записи обхода
+				 *
+				 */
+				void done() noexcept;
+				/**
+				 * @brief Метод перемотки каталога к началу
+				 *
+				 */
+				void rewind() noexcept;
+				/**
+				 * @brief Метод сброса состояния обхода
+				 *
+				 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
+				 *       чист и готов служить иному адресу
+				 *
+				 */
+				void reset() noexcept;
+			public:
+				/**
+				 * @brief Метод проверки пустоты стопки мест обхода
+				 *
+				 * @return признак того, что обход идёт по самому корню
+				 *
+				 */
+				bool empty() const noexcept;
+				/**
 				 * @brief Метод проверки валидности
 				 *
 				 * @return валидность каталога
 				 *
 				 */
 				bool valid() const noexcept;
+				/**
+				 * @brief Метод проверки необходимости повторной выдачи записи
+				 *
+				 * @return признак того, что незавершённую запись надлежит отдать повторно
+				 *
+				 */
+				bool repeat() const noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения числа отданных прежде долей
+				 *
+				 * @return число долей незавершённой записи, отданных прежде
+				 *
+				 */
+				size_t delivered() const noexcept;
+				/**
+				 * @brief Метод извлечения вида незавершённой записи обхода
+				 *
+				 * @return вид незавершённой записи
+				 *
+				 */
+				uint8_t pendingType() const noexcept;
 			public:
 				/**
 				 * @brief Метод установки объекта дескриптора
@@ -191,6 +258,82 @@ namespace awh {
 				 *
 				 */
 				void set(_WDIR * handle) noexcept;
+			public:
+				/**
+				 * @brief Метод проверки незавершённости обхода
+				 *
+				 * @return признак того, что обход начат и до конца не доведён
+				 *
+				 */
+				bool active() const noexcept;
+				/**
+				 * @brief Метод установки признака незавершённости обхода
+				 *
+				 * @param active признак незавершённости обхода
+				 *
+				 */
+				void active(const bool active) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения адреса каталога, которому объект служит
+				 *
+				 * @return адрес каталога
+				 *
+				 */
+				const string & address() const noexcept;
+				/**
+				 * @brief Метод установки адреса каталога, которому объект служит
+				 *
+				 * @param address адрес каталога
+				 *
+				 */
+				void address(string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения дескриптора верхнего места обхода
+				 *
+				 * @return объект дескриптора вложенного каталога
+				 *
+				 */
+				_WDIR * top() const noexcept;
+				/**
+				 * @brief Метод извлечения адреса верхнего места обхода
+				 *
+				 * @return адрес вложенного каталога
+				 *
+				 */
+				const string & topAddress() const noexcept;
+			public:
+				/**
+				 * @brief Метод снятия верхнего места обхода
+				 *
+				 */
+				void pop() noexcept;
+				/**
+				 * @brief Метод добавления места обхода
+				 *
+				 * @param handle  объект дескриптора вложенного каталога
+				 * @param address адрес вложенного каталога
+				 *
+				 */
+				void push(_WDIR * handle, string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения адреса незавершённой записи обхода
+				 *
+				 * @return адрес незавершённой записи
+				 *
+				 */
+				const string & pending() const noexcept;
+				/**
+				 * @brief Метод запоминания незавершённой записи обхода
+				 *
+				 * @param address   адрес незавершённой записи
+				 * @param type      вид незавершённой записи
+				 * @param delivered число долей записи, отданных прежде
+				 *
+				 */
+				void pending(string_view address, const uint8_t type, const size_t delivered) noexcept;
 			public:
 				/**
 				 * @brief Оператор приведения к типу
@@ -216,88 +359,75 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-			public:
-				/**
-				 * @brief Метод извлечения адреса каталога, которому объект служит
-				 *
-				 * @return адрес каталога
-				 *
-				 */
-				const string & address() const noexcept;
-				/**
-				 * @brief Метод установки адреса каталога, которому объект служит
-				 *
-				 * @param address адрес каталога
-				 *
-				 */
-				void address(string_view address) noexcept;
-			public:
-				/**
-				 * @brief Метод проверки незавершённости обхода
-				 *
-				 * @return признак того, что обход начат и до конца не доведён
-				 *
-				 */
-				bool active() const noexcept;
-				/**
-				 * @brief Метод установки признака незавершённости обхода
-				 *
-				 * @param active признак незавершённости обхода
-				 *
-				 */
-				void active(const bool active) noexcept;
-			public:
-				/**
-				 * @brief Метод перемотки каталога к началу
-				 *
-				 */
-				void rewind() noexcept;
-				/**
-				 * @brief Метод сброса состояния обхода
-				 *
-				 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
-				 *       чист и готов служить иному адресу
-				 *
-				 */
-				void reset() noexcept;
-			public:
-				/**
-				 * @brief Метод проверки пустоты стопки мест обхода
-				 *
-				 * @return признак того, что обход идёт по самому корню
-				 *
-				 */
-				bool empty() const noexcept;
-				/**
-				 * @brief Метод снятия верхнего места обхода
-				 *
-				 */
-				void pop() noexcept;
-				/**
-				 * @brief Метод добавления места обхода
-				 *
-				 * @param handle  объект дескриптора вложенного каталога
-				 * @param address адрес вложенного каталога
-				 *
-				 */
-				void push(_WDIR * handle, string_view address) noexcept;
-			public:
-				/**
-				 * @brief Метод извлечения дескриптора верхнего места обхода
-				 *
-				 * @return объект дескриптора вложенного каталога
-				 *
-				 */
-				_WDIR * top() const noexcept;
-				/**
-				 * @brief Метод извлечения адреса верхнего места обхода
-				 *
-				 * @return адрес вложенного каталога
-				 *
-				 */
-				const string & topAddress() const noexcept;
 				~HandleDir() noexcept;
 		};
+		/**
+		 * @brief Метод забвения незавершённой записи обхода
+		 *
+		 */
+		void HandleDir::done() noexcept {
+			// Сбрасываем число отданных прежде долей
+			this->_delivered = 0;
+			// Сбрасываем вид незавершённой записи
+			this->_pendingType = 0;
+			// Снимаем признак повторной выдачи записи
+			this->_repeat = false;
+			// Выполняем очистку адреса незавершённой записи
+			this->_pending.clear();
+		}
+		/**
+		 * @brief Метод перемотки каталога к началу
+		 *
+		 */
+		void HandleDir::rewind() noexcept {
+			// Если каталог валиден
+			if(this->valid())
+				// Выполняем перемотку каталога к началу
+				::_wrewinddir(this->_handle);
+		}
+		/**
+		 * @brief Метод сброса состояния обхода
+		 *
+		 * @note Закрываются и вложенные каталоги, и сам корень:
+		 *       объект после сброса чист и готов служить иному адресу
+		 *
+		 */
+		void HandleDir::reset() noexcept {
+			/**
+			 * Выполняем закрытие всех вложенных каталогов
+			 */
+			for(auto & place : this->_places){
+				// Если вложенный каталог валиден
+				if(place.handle != nullptr)
+					// Закрываем вложенный каталог
+					::_wclosedir(place.handle);
+			}
+			// Выполняем очистку стопки мест обхода
+			this->_places.clear();
+			// Если каталог валиден
+			if(this->valid()){
+				// Закрываем каталог
+				::_wclosedir(this->_handle);
+				// Сбрасываем объект дескриптора
+				this->_handle = nullptr;
+			}
+			// Сбрасываем признак незавершённости обхода
+			this->_active = false;
+			// Выполняем очистку адреса каталога
+			this->_address.clear();
+			// Выполняем забвение незавершённой записи обхода
+			this->done();
+		}
+		/**
+		 * @brief Метод проверки пустоты стопки мест обхода
+		 *
+		 * @return признак того, что обход идёт по самому корню
+		 *
+		 */
+		bool HandleDir::empty() const noexcept {
+			// Возвращаем признак пустоты стопки мест обхода
+			return this->_places.empty();
+		}
 		/**
 		 * @brief Метод проверки валидности
 		 *
@@ -307,6 +437,36 @@ namespace awh {
 		bool HandleDir::valid() const noexcept {
 			// Возвращаем результат проверки валидности каталога
 			return (this->_handle != nullptr);
+		}
+		/**
+		 * @brief Метод проверки необходимости повторной выдачи записи
+		 *
+		 * @return признак того, что незавершённую запись надлежит отдать повторно
+		 *
+		 */
+		bool HandleDir::repeat() const noexcept {
+			// Возвращаем признак повторной выдачи записи
+			return this->_repeat;
+		}
+		/**
+		 * @brief Метод извлечения числа отданных прежде долей
+		 *
+		 * @return число долей незавершённой записи, отданных прежде
+		 *
+		 */
+		size_t HandleDir::delivered() const noexcept {
+			// Возвращаем число отданных прежде долей
+			return this->_delivered;
+		}
+		/**
+		 * @brief Метод извлечения вида незавершённой записи обхода
+		 *
+		 * @return вид незавершённой записи
+		 *
+		 */
+		uint8_t HandleDir::pendingType() const noexcept {
+			// Возвращаем вид незавершённой записи
+			return this->_pendingType;
 		}
 		/**
 		 * @brief Метод установки объекта дескриптора
@@ -319,56 +479,6 @@ namespace awh {
 			if(!this->valid())
 				// Выполняем установку
 				this->_handle = handle;
-		}
-		/**
-		 * @brief Оператор приведения к типу
-		 *
-		 * @return объект дескриптора
-		 *
-		 */
-		HandleDir::operator _WDIR * () const noexcept {
-			// Возвращаем объект дескриптора
-			return this->_handle;
-		}
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		HandleDir::HandleDir() noexcept : _handle(nullptr), _active(false) {}
-		/**
-		 * @brief Конструктор
-		 *
-		 * @param handle объект дескриптора
-		 *
-		 */
-		HandleDir::HandleDir(_WDIR * handle) noexcept : _handle(handle), _active(false) {}
-		/**
-		 * @brief Деструктор
-		 *
-		 */
-		HandleDir::~HandleDir() noexcept {
-			// Выполняем сброс состояния обхода вместе с закрытием каталогов
-			this->reset();
-		}
-		/**
-		 * @brief Метод извлечения адреса каталога, которому объект служит
-		 *
-		 * @return адрес каталога
-		 *
-		 */
-		const string & HandleDir::address() const noexcept {
-			// Возвращаем адрес каталога
-			return this->_address;
-		}
-		/**
-		 * @brief Метод установки адреса каталога, которому объект служит
-		 *
-		 * @param address адрес каталога
-		 *
-		 */
-		void HandleDir::address(string_view address) noexcept {
-			// Выполняем установку адреса каталога
-			this->_address = address;
 		}
 		/**
 		 * @brief Метод проверки незавершённости обхода
@@ -391,55 +501,44 @@ namespace awh {
 			this->_active = active;
 		}
 		/**
-		 * @brief Метод перемотки каталога к началу
+		 * @brief Метод извлечения адреса каталога, которому объект служит
+		 *
+		 * @return адрес каталога
 		 *
 		 */
-		void HandleDir::rewind() noexcept {
-			// Если каталог валиден
-			if(this->valid())
-				// Выполняем перемотку каталога к началу
-				::_wrewinddir(this->_handle);
+		const string & HandleDir::address() const noexcept {
+			// Возвращаем адрес каталога
+			return this->_address;
 		}
 		/**
-		 * @brief Метод сброса состояния обхода
+		 * @brief Метод установки адреса каталога, которому объект служит
 		 *
-		 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
-		 *       чист и готов служить иному адресу
+		 * @param address адрес каталога
 		 *
 		 */
-		void HandleDir::reset() noexcept {
-			/**
-			 * Выполняем закрытие всех вложенных каталогов
-			 */
-			for(auto & place : this->_places){
-				// Если вложенный каталог валиден
-				if(place.handle != nullptr)
-					// Закрываем вложенный каталог
-					::_wclosedir(place.handle);
-			}
-			// Выполняем очистку стопки мест обхода
-			this->_places.clear();
-			// Если каталог валиден
-			if(this->valid()){
-				// Закрываем каталог
-				::_wclosedir(this->_handle);
-				// Сбрасываем объект дескриптора
-				this->_handle = nullptr;
-			}
-			// Выполняем очистку адреса каталога
-			this->_address.clear();
-			// Сбрасываем признак незавершённости обхода
-			this->_active = false;
+		void HandleDir::address(string_view address) noexcept {
+			// Выполняем установку адреса каталога
+			this->_address = address;
 		}
 		/**
-		 * @brief Метод проверки пустоты стопки мест обхода
+		 * @brief Метод извлечения дескриптора верхнего места обхода
 		 *
-		 * @return признак того, что обход идёт по самому корню
+		 * @return объект дескриптора вложенного каталога
 		 *
 		 */
-		bool HandleDir::empty() const noexcept {
-			// Возвращаем признак пустоты стопки мест обхода
-			return this->_places.empty();
+		_WDIR * HandleDir::top() const noexcept {
+			// Возвращаем дескриптор верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
+		}
+		/**
+		 * @brief Метод извлечения адреса верхнего места обхода
+		 *
+		 * @return адрес вложенного каталога
+		 *
+		 */
+		const string & HandleDir::topAddress() const noexcept {
+			// Возвращаем адрес верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().address : this->_address);
 		}
 		/**
 		 * @brief Метод снятия верхнего места обхода
@@ -470,24 +569,70 @@ namespace awh {
 				this->_places.emplace_back(handle, address);
 		}
 		/**
-		 * @brief Метод извлечения дескриптора верхнего места обхода
+		 * @brief Метод извлечения адреса незавершённой записи обхода
 		 *
-		 * @return объект дескриптора вложенного каталога
+		 * @return адрес незавершённой записи
 		 *
 		 */
-		_WDIR * HandleDir::top() const noexcept {
-			// Возвращаем дескриптор верхнего места обхода
-			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
+		const string & HandleDir::pending() const noexcept {
+			// Возвращаем адрес незавершённой записи
+			return this->_pending;
 		}
 		/**
-		 * @brief Метод извлечения адреса верхнего места обхода
+		 * @brief Метод запоминания незавершённой записи обхода
 		 *
-		 * @return адрес вложенного каталога
+		 * @param address   адрес незавершённой записи
+		 * @param type      вид незавершённой записи
+		 * @param delivered число долей записи, отданных прежде
 		 *
 		 */
-		const string & HandleDir::topAddress() const noexcept {
-			// Возвращаем адрес верхнего места обхода
-			return (!this->_places.empty() ? this->_places.back().address : this->_address);
+		void HandleDir::pending(string_view address, const uint8_t type, const size_t delivered) noexcept {
+			// Отмечаем запись подлежащей повторной выдаче
+			this->_repeat = true;
+			// Запоминаем адрес незавершённой записи
+			this->_pending = address;
+			// Запоминаем вид незавершённой записи
+			this->_pendingType = type;
+			// Запоминаем число отданных прежде долей
+			this->_delivered = delivered;
+		}
+		/**
+		 * @brief Оператор приведения к типу
+		 *
+		 * @return объект дескриптора
+		 *
+		 */
+		HandleDir::operator _WDIR * () const noexcept {
+			// Возвращаем объект дескриптора
+			return this->_handle;
+		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		HandleDir::HandleDir() noexcept :
+		 _repeat(false), _active(false),
+		 _delivered(0), _pendingType(0),
+		 _pending{""}, _address{""},
+		 _handle(nullptr) {}
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param handle объект дескриптора
+		 *
+		 */
+		HandleDir::HandleDir(_WDIR * handle) noexcept :
+		 _repeat(false), _active(false),
+		 _delivered(0), _pendingType(0),
+		 _pending{""}, _address{""},
+		 _handle(handle) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		HandleDir::~HandleDir() noexcept {
+			// Выполняем сброс состояния обхода вместе с закрытием каталогов
+			this->reset();
 		}
 
 		/**
@@ -608,9 +753,6 @@ namespace awh {
 		 */
 		class HandleDir {
 			private:
-				// Объект дескриптора
-				DIR * _handle;
-			private:
 				/**
 				 * @brief Место обхода каталога
 				 *
@@ -627,14 +769,36 @@ namespace awh {
 					 * @param address адрес вложенного каталога
 					 *
 					 */
-					Place(DIR * handle, string_view address) noexcept : handle(handle), address(address) {}
+					explicit Place(DIR * handle, string_view address) noexcept :
+					 handle(handle), address{address} {}
 				} place_t;
 			private:
+				// Признак того, что незавершённую запись надлежит отдать повторно
+				bool _repeat;
+				// Признак незавершённого обхода
+				bool _active;
+			private:
+				// Число долей незавершённой записи, отданных прежде
+				size_t _delivered;
+			private:
+				// Вид незавершённой записи обхода
+				uint8_t _pendingType;
+			private:
+				/**
+				 * @brief Незавершённая запись обхода
+				 *
+				 * @note Отклик у видов `walkdir`, отдающих СОДЕРЖИМОЕ файла, вправе остановить
+				 *       обход посреди файла. Запись эта тогда прочитана не до конца, а место её
+				 *       в каталоге уже пройдено, - и без памяти о ней остаток файла был бы утерян
+				 *       молча. Здесь и хранится адрес такой записи, вид её и число уже отданных
+				 *       долей: продолжение отдаёт её повторно, а доли, отданные прежде, пропускает
+				 */
+				string _pending;
 				// Адрес каталога, которому объект служит
 				string _address;
 			private:
-				// Признак незавершённого обхода
-				bool _active;
+				// Объект дескриптора
+				DIR * _handle;
 			private:
 				/**
 				 * @brief Места обхода вложенных каталогов
@@ -646,12 +810,60 @@ namespace awh {
 				vector <place_t> _places;
 			public:
 				/**
+				 * @brief Метод забвения незавершённой записи обхода
+				 *
+				 */
+				void done() noexcept;
+				/**
+				 * @brief Метод перемотки каталога к началу
+				 *
+				 */
+				void rewind() noexcept;
+				/**
+				 * @brief Метод сброса состояния обхода
+				 *
+				 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
+				 *       чист и готов служить иному адресу
+				 *
+				 */
+				void reset() noexcept;
+			public:
+				/**
+				 * @brief Метод проверки пустоты стопки мест обхода
+				 *
+				 * @return признак того, что обход идёт по самому корню
+				 *
+				 */
+				bool empty() const noexcept;
+				/**
 				 * @brief Метод проверки валидности
 				 *
 				 * @return валидность каталога
 				 *
 				 */
 				bool valid() const noexcept;
+				/**
+				 * @brief Метод проверки необходимости повторной выдачи записи
+				 *
+				 * @return признак того, что незавершённую запись надлежит отдать повторно
+				 *
+				 */
+				bool repeat() const noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения числа отданных прежде долей
+				 *
+				 * @return число долей незавершённой записи, отданных прежде
+				 *
+				 */
+				size_t delivered() const noexcept;
+				/**
+				 * @brief Метод извлечения вида незавершённой записи обхода
+				 *
+				 * @return вид незавершённой записи
+				 *
+				 */
+				uint8_t pendingType() const noexcept;
 			public:
 				/**
 				 * @brief Метод установки объекта дескриптора
@@ -660,6 +872,82 @@ namespace awh {
 				 *
 				 */
 				void set(DIR * handle) noexcept;
+			public:
+				/**
+				 * @brief Метод проверки незавершённости обхода
+				 *
+				 * @return признак того, что обход начат и до конца не доведён
+				 *
+				 */
+				bool active() const noexcept;
+				/**
+				 * @brief Метод установки признака незавершённости обхода
+				 *
+				 * @param active признак незавершённости обхода
+				 *
+				 */
+				void active(const bool active) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения адреса каталога, которому объект служит
+				 *
+				 * @return адрес каталога
+				 *
+				 */
+				const string & address() const noexcept;
+				/**
+				 * @brief Метод установки адреса каталога, которому объект служит
+				 *
+				 * @param address адрес каталога
+				 *
+				 */
+				void address(string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения дескриптора верхнего места обхода
+				 *
+				 * @return объект дескриптора вложенного каталога
+				 *
+				 */
+				DIR * top() const noexcept;
+				/**
+				 * @brief Метод извлечения адреса верхнего места обхода
+				 *
+				 * @return адрес вложенного каталога
+				 *
+				 */
+				const string & topAddress() const noexcept;
+			public:
+				/**
+				 * @brief Метод снятия верхнего места обхода
+				 *
+				 */
+				void pop() noexcept;
+				/**
+				 * @brief Метод добавления места обхода
+				 *
+				 * @param handle  объект дескриптора вложенного каталога
+				 * @param address адрес вложенного каталога
+				 *
+				 */
+				void push(DIR * handle, string_view address) noexcept;
+			public:
+				/**
+				 * @brief Метод извлечения адреса незавершённой записи обхода
+				 *
+				 * @return адрес незавершённой записи
+				 *
+				 */
+				const string & pending() const noexcept;
+				/**
+				 * @brief Метод запоминания незавершённой записи обхода
+				 *
+				 * @param address   адрес незавершённой записи
+				 * @param type      вид незавершённой записи
+				 * @param delivered число долей записи, отданных прежде
+				 *
+				 */
+				void pending(string_view address, const uint8_t type, const size_t delivered) noexcept;
 			public:
 				/**
 				 * @brief Оператор приведения к типу
@@ -685,88 +973,75 @@ namespace awh {
 				 * @brief Деструктор
 				 *
 				 */
-			public:
-				/**
-				 * @brief Метод извлечения адреса каталога, которому объект служит
-				 *
-				 * @return адрес каталога
-				 *
-				 */
-				const string & address() const noexcept;
-				/**
-				 * @brief Метод установки адреса каталога, которому объект служит
-				 *
-				 * @param address адрес каталога
-				 *
-				 */
-				void address(string_view address) noexcept;
-			public:
-				/**
-				 * @brief Метод проверки незавершённости обхода
-				 *
-				 * @return признак того, что обход начат и до конца не доведён
-				 *
-				 */
-				bool active() const noexcept;
-				/**
-				 * @brief Метод установки признака незавершённости обхода
-				 *
-				 * @param active признак незавершённости обхода
-				 *
-				 */
-				void active(const bool active) noexcept;
-			public:
-				/**
-				 * @brief Метод перемотки каталога к началу
-				 *
-				 */
-				void rewind() noexcept;
-				/**
-				 * @brief Метод сброса состояния обхода
-				 *
-				 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
-				 *       чист и готов служить иному адресу
-				 *
-				 */
-				void reset() noexcept;
-			public:
-				/**
-				 * @brief Метод проверки пустоты стопки мест обхода
-				 *
-				 * @return признак того, что обход идёт по самому корню
-				 *
-				 */
-				bool empty() const noexcept;
-				/**
-				 * @brief Метод снятия верхнего места обхода
-				 *
-				 */
-				void pop() noexcept;
-				/**
-				 * @brief Метод добавления места обхода
-				 *
-				 * @param handle  объект дескриптора вложенного каталога
-				 * @param address адрес вложенного каталога
-				 *
-				 */
-				void push(DIR * handle, string_view address) noexcept;
-			public:
-				/**
-				 * @brief Метод извлечения дескриптора верхнего места обхода
-				 *
-				 * @return объект дескриптора вложенного каталога
-				 *
-				 */
-				DIR * top() const noexcept;
-				/**
-				 * @brief Метод извлечения адреса верхнего места обхода
-				 *
-				 * @return адрес вложенного каталога
-				 *
-				 */
-				const string & topAddress() const noexcept;
 				~HandleDir() noexcept;
 		};
+		/**
+		 * @brief Метод забвения незавершённой записи обхода
+		 *
+		 */
+		void HandleDir::done() noexcept {
+			// Сбрасываем число отданных прежде долей
+			this->_delivered = 0;
+			// Сбрасываем вид незавершённой записи
+			this->_pendingType = 0;
+			// Снимаем признак повторной выдачи записи
+			this->_repeat = false;
+			// Выполняем очистку адреса незавершённой записи
+			this->_pending.clear();
+		}
+		/**
+		 * @brief Метод перемотки каталога к началу
+		 *
+		 */
+		void HandleDir::rewind() noexcept {
+			// Если каталог валиден
+			if(this->valid())
+				// Выполняем перемотку каталога к началу
+				::rewinddir(this->_handle);
+		}
+		/**
+		 * @brief Метод сброса состояния обхода
+		 *
+		 * @note Закрываются и вложенные каталоги, и сам корень:
+		 *       объект после сброса чист и готов служить иному адресу
+		 *
+		 */
+		void HandleDir::reset() noexcept {
+			/**
+			 * Выполняем закрытие всех вложенных каталогов
+			 */
+			for(auto & place : this->_places){
+				// Если вложенный каталог валиден
+				if(place.handle != nullptr)
+					// Закрываем вложенный каталог
+					::closedir(place.handle);
+			}
+			// Выполняем очистку стопки мест обхода
+			this->_places.clear();
+			// Если каталог валиден
+			if(this->valid()){
+				// Закрываем каталог
+				::closedir(this->_handle);
+				// Сбрасываем объект дескриптора
+				this->_handle = nullptr;
+			}
+			// Сбрасываем признак незавершённости обхода
+			this->_active = false;
+			// Выполняем очистку адреса каталога
+			this->_address.clear();
+			// Выполняем забвение незавершённой записи обхода
+			this->done();
+		}
+		/**
+		 * @brief Метод проверки пустоты стопки мест обхода
+		 *
+		 * @return признак того, что обход идёт по самому корню
+		 *
+		 */
+		bool HandleDir::empty() const noexcept {
+			// Возвращаем признак пустоты стопки мест обхода
+			return this->_places.empty();
+		}
 		/**
 		 * @brief Метод проверки валидности
 		 *
@@ -776,6 +1051,36 @@ namespace awh {
 		bool HandleDir::valid() const noexcept {
 			// Возвращаем результат проверки валидности каталога
 			return (this->_handle != nullptr);
+		}
+		/**
+		 * @brief Метод проверки необходимости повторной выдачи записи
+		 *
+		 * @return признак того, что незавершённую запись надлежит отдать повторно
+		 *
+		 */
+		bool HandleDir::repeat() const noexcept {
+			// Возвращаем признак повторной выдачи записи
+			return this->_repeat;
+		}
+		/**
+		 * @brief Метод извлечения числа отданных прежде долей
+		 *
+		 * @return число долей незавершённой записи, отданных прежде
+		 *
+		 */
+		size_t HandleDir::delivered() const noexcept {
+			// Возвращаем число отданных прежде долей
+			return this->_delivered;
+		}
+		/**
+		 * @brief Метод извлечения вида незавершённой записи обхода
+		 *
+		 * @return вид незавершённой записи
+		 *
+		 */
+		uint8_t HandleDir::pendingType() const noexcept {
+			// Возвращаем вид незавершённой записи
+			return this->_pendingType;
 		}
 		/**
 		 * @brief Метод установки объекта дескриптора
@@ -788,56 +1093,6 @@ namespace awh {
 			if(!this->valid())
 				// Выполняем установку
 				this->_handle = handle;
-		}
-		/**
-		 * @brief Оператор приведения к типу
-		 *
-		 * @return объект дескриптора
-		 *
-		 */
-		HandleDir::operator DIR * () const noexcept {
-			// Возвращаем объект дескриптора
-			return this->_handle;
-		}
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		HandleDir::HandleDir() noexcept : _handle(nullptr), _active(false) {}
-		/**
-		 * @brief Конструктор
-		 *
-		 * @param handle объект дескриптора
-		 *
-		 */
-		HandleDir::HandleDir(DIR * handle) noexcept : _handle(handle), _active(false) {}
-		/**
-		 * @brief Деструктор
-		 *
-		 */
-		HandleDir::~HandleDir() noexcept {
-			// Выполняем сброс состояния обхода вместе с закрытием каталогов
-			this->reset();
-		}
-		/**
-		 * @brief Метод извлечения адреса каталога, которому объект служит
-		 *
-		 * @return адрес каталога
-		 *
-		 */
-		const string & HandleDir::address() const noexcept {
-			// Возвращаем адрес каталога
-			return this->_address;
-		}
-		/**
-		 * @brief Метод установки адреса каталога, которому объект служит
-		 *
-		 * @param address адрес каталога
-		 *
-		 */
-		void HandleDir::address(string_view address) noexcept {
-			// Выполняем установку адреса каталога
-			this->_address = address;
 		}
 		/**
 		 * @brief Метод проверки незавершённости обхода
@@ -860,55 +1115,44 @@ namespace awh {
 			this->_active = active;
 		}
 		/**
-		 * @brief Метод перемотки каталога к началу
+		 * @brief Метод извлечения адреса каталога, которому объект служит
+		 *
+		 * @return адрес каталога
 		 *
 		 */
-		void HandleDir::rewind() noexcept {
-			// Если каталог валиден
-			if(this->valid())
-				// Выполняем перемотку каталога к началу
-				::rewinddir(this->_handle);
+		const string & HandleDir::address() const noexcept {
+			// Возвращаем адрес каталога
+			return this->_address;
 		}
 		/**
-		 * @brief Метод сброса состояния обхода
+		 * @brief Метод установки адреса каталога, которому объект служит
 		 *
-		 * @note Закрываются и вложенные каталоги, и сам корень: объект после сброса
-		 *       чист и готов служить иному адресу
+		 * @param address адрес каталога
 		 *
 		 */
-		void HandleDir::reset() noexcept {
-			/**
-			 * Выполняем закрытие всех вложенных каталогов
-			 */
-			for(auto & place : this->_places){
-				// Если вложенный каталог валиден
-				if(place.handle != nullptr)
-					// Закрываем вложенный каталог
-					::closedir(place.handle);
-			}
-			// Выполняем очистку стопки мест обхода
-			this->_places.clear();
-			// Если каталог валиден
-			if(this->valid()){
-				// Закрываем каталог
-				::closedir(this->_handle);
-				// Сбрасываем объект дескриптора
-				this->_handle = nullptr;
-			}
-			// Выполняем очистку адреса каталога
-			this->_address.clear();
-			// Сбрасываем признак незавершённости обхода
-			this->_active = false;
+		void HandleDir::address(string_view address) noexcept {
+			// Выполняем установку адреса каталога
+			this->_address = address;
 		}
 		/**
-		 * @brief Метод проверки пустоты стопки мест обхода
+		 * @brief Метод извлечения дескриптора верхнего места обхода
 		 *
-		 * @return признак того, что обход идёт по самому корню
+		 * @return объект дескриптора вложенного каталога
 		 *
 		 */
-		bool HandleDir::empty() const noexcept {
-			// Возвращаем признак пустоты стопки мест обхода
-			return this->_places.empty();
+		DIR * HandleDir::top() const noexcept {
+			// Возвращаем дескриптор верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
+		}
+		/**
+		 * @brief Метод извлечения адреса верхнего места обхода
+		 *
+		 * @return адрес вложенного каталога
+		 *
+		 */
+		const string & HandleDir::topAddress() const noexcept {
+			// Возвращаем адрес верхнего места обхода
+			return (!this->_places.empty() ? this->_places.back().address : this->_address);
 		}
 		/**
 		 * @brief Метод снятия верхнего места обхода
@@ -939,24 +1183,70 @@ namespace awh {
 				this->_places.emplace_back(handle, address);
 		}
 		/**
-		 * @brief Метод извлечения дескриптора верхнего места обхода
+		 * @brief Метод извлечения адреса незавершённой записи обхода
 		 *
-		 * @return объект дескриптора вложенного каталога
+		 * @return адрес незавершённой записи
 		 *
 		 */
-		DIR * HandleDir::top() const noexcept {
-			// Возвращаем дескриптор верхнего места обхода
-			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
+		const string & HandleDir::pending() const noexcept {
+			// Возвращаем адрес незавершённой записи
+			return this->_pending;
 		}
 		/**
-		 * @brief Метод извлечения адреса верхнего места обхода
+		 * @brief Метод запоминания незавершённой записи обхода
 		 *
-		 * @return адрес вложенного каталога
+		 * @param address   адрес незавершённой записи
+		 * @param type      вид незавершённой записи
+		 * @param delivered число долей записи, отданных прежде
 		 *
 		 */
-		const string & HandleDir::topAddress() const noexcept {
-			// Возвращаем адрес верхнего места обхода
-			return (!this->_places.empty() ? this->_places.back().address : this->_address);
+		void HandleDir::pending(string_view address, const uint8_t type, const size_t delivered) noexcept {
+			// Отмечаем запись подлежащей повторной выдаче
+			this->_repeat = true;
+			// Запоминаем адрес незавершённой записи
+			this->_pending = address;
+			// Запоминаем вид незавершённой записи
+			this->_pendingType = type;
+			// Запоминаем число отданных прежде долей
+			this->_delivered = delivered;
+		}
+		/**
+		 * @brief Оператор приведения к типу
+		 *
+		 * @return объект дескриптора
+		 *
+		 */
+		HandleDir::operator DIR * () const noexcept {
+			// Возвращаем объект дескриптора
+			return this->_handle;
+		}
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		HandleDir::HandleDir() noexcept :
+		 _repeat(false), _active(false),
+		 _delivered(0), _pendingType(0),
+		 _pending{""}, _address{""},
+		 _handle(nullptr) {}
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param handle объект дескриптора
+		 *
+		 */
+		HandleDir::HandleDir(DIR * handle) noexcept :
+		 _repeat(false), _active(false),
+		 _delivered(0), _pendingType(0),
+		 _pending{""}, _address{""},
+		 _handle(handle) {}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		HandleDir::~HandleDir() noexcept {
+			// Выполняем сброс состояния обхода вместе с закрытием каталогов
+			this->reset();
 		}
 
 		/**
@@ -1112,7 +1402,7 @@ namespace {
 	 * @details Заводится своя затем, что getpagesize принадлежит POSIX и у MS Windows
 	 *          отсутствует. Там же величина эта берётся из сведений о системе полем
 	 *          dwPageSize, а сами сведения запрашиваются единожды - меняться при работе
-	 *          они не могут
+	 *          они не могут.
 	 *
 	 * @return размер страницы памяти в байтах
 	 *
@@ -1248,7 +1538,7 @@ namespace {
 		 *          через typedef язык не позволяет вовсе, и прежняя запись
 		 *          "template <typename T> typedef class ComGuard { ... } com_guard_t;"
 		 *          сборкой не разбиралась. Обнаружилось это первой сборкой под MinGW64 —
-		 *          прежде блок этот компилятором не читался ни разу
+		 *          прежде блок этот компилятором не читался ни разу.
 		 *
 		 * @tparam T тип интерфейса
 		 *
@@ -1337,8 +1627,8 @@ namespace {
 								}
 							}
 						/**
-						* Для операционной системы не являющейся MS Windows
-						*/
+						 * Для операционной системы не являющейся MS Windows
+						 */
 						#else
 							// Получаем информацию о пользователе из системы
 							struct passwd * pw = ::getpwuid(::getuid());
@@ -1607,7 +1897,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			 * @details Жёсткая ссылка у MS Windows своя и настоящая: CreateHardLinkW
 			 *          заводит на файловой системе NTFS вторую запись каталога, ведущую
 			 *          к тем же данным, - ровно то же, что делает link у POSIX. Особых
-			 *          полномочий она не требует, в отличие от ссылки символьной
+			 *          полномочий она не требует, в отличие от ссылки символьной.
 			 *
 			 * @note Ярлык оболочки остаётся здесь запасным ходом, и лишь им: жёсткая
 			 *       ссылка невозможна поверх FAT и exFAT, а равно между разными томами -
@@ -3408,18 +3698,16 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 *       `FlushFileBuffers` сбрасывает и то, и другое, оттого признак
 						 *       `durable` здесь ничего не меняет
 						 */
-						if(!(result = (::FlushFileBuffers(file) != FALSE))){
+						result = (::FlushFileBuffers(file) != FALSE);
+						// Если сброс отвечен отказом
+						if(!result){
 							/**
-							 * Если носитель сброса не держит, отказом это не считается
+							 * Если отказ настоящий
 							 *
 							 * @note Так отвечают канал и устройство посимвольное: сбрасывать
 							 *       у них нечего, и запись от того мимо файла не ушла
 							 */
-							if(::GetLastError() == ERROR_INVALID_FUNCTION)
-								// Отмечаем сброс выполненным
-								result = true;
-							// Если отказ настоящий
-							else {
+							if(!(result = (::GetLastError() == ERROR_INVALID_FUNCTION))){
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
@@ -3481,8 +3769,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 *
 						 * @details `fsync` там выносит записанное из ядра в НАКОПИТЕЛЬ, но опустошить
 						 *          вместилище самого накопителя не велит, и обрыв питания записанное
-						 *          теряет. Доводит до пластины лишь `F_FULLFSYNC`, и заведён он ровно
-						 *          для этого
+						 *          теряет. Доводит до пластины лишь `F_FULLFSYNC`, и заведён он ровно для этого.
 						 *
 						 * @note Отказ `F_FULLFSYNC` откатывается к `fsync`, а не объявляется отказом:
 						 *       управление им держит не всякая файловая система
@@ -3510,31 +3797,31 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 							// Выполняем сброс записанного из ядра на носитель
 							const int32_t flushed = ::fsync(file);
 						#endif
-						/**
-						 * Если сброс отвечен отказом
-						 *
-						 * @note Отказ `EINVAL` означает, что носитель сброса не держит (канал,
-						 *       устройство посимвольное) - это не отказ записи, и отказом он
-						 *       не объявляется
-						 */
-						if(!(result = (flushed == 0)) && (errno == EINVAL))
-							// Отмечаем сброс выполненным
-							result = true;
-						// Если отказ настоящий
-						else if(!result) {
+						// Выполняем проверку исхода сброса
+						result = (flushed == 0);
+						// Если сброс отвечен отказом
+						if(!result){
 							/**
-							 * Если включён режим отладки
+							 * Если отказ настоящий
+							 *
+							 * @note Так отвечают канал и устройство посимвольное: сбрасывать
+							 *       у них нечего, и запись от того мимо файла не ушла
 							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-							#endif
+							if(!(result = (errno == EINVAL))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								#endif
+							}
 						}
 					/**
 					 * Если открыть файл не удалось
@@ -4044,6 +4331,14 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							else size = ::min(size, result.size());
 							// Выполняем чтение из файла в буфер данные
 							if(!::ReadFile(file, static_cast <LPVOID> (&result[0]), static_cast <DWORD> (size), 0, nullptr)){
+								/**
+								 * Выполняем очистку буфера результата
+								 *
+								 * @note Отказ чтения обязан оставлять ПУСТО, а не размеченный нулями
+								 *       буфер: вид возврата у работы пуст, и отличить прочитанное от
+								 *       неудавшегося вызывающий может лишь по пустоте результата
+								 */
+								result.clear();
 								// Создаём буфер сообщения ошибки
 								wchar_t message[0xFF] = {0};
 								// Выполняем формирование текста ошибки
@@ -4141,6 +4436,14 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						else size = ::min(size, result.size());
 						// Читаем данные из файла в буфер
 						if(::pread(file, &result[0], size, position) != static_cast <ssize_t> (size)){
+							/**
+							 * Выполняем очистку буфера результата
+							 *
+							 * @note Отказ чтения обязан оставлять ПУСТО, а не размеченный нулями
+							 *       буфер: вид возврата у работы пуст, и отличить прочитанное от
+							 *       неудавшегося вызывающий может лишь по пустоте результата
+							 */
+							result.clear();
 							/**
 							 * Если включён режим отладки
 							 */
@@ -4663,7 +4966,17 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						/**
+						 * @brief Открываем файл на чтение и запись
+						 *
+						 * @note Право чтения испрашивается ВМЕСТЕ с правом записи, хотя запись
+						 *       сама по себе им не пользуется. Ход этот равен `O_RDWR` у ветви
+						 *       POSIX и заведён ради одинаковости поведения: объект файла, заведённый
+						 *       записью, обязан годиться и чтению на всякой системе. Испроси мы одно
+						 *       лишь `GENERIC_WRITE`, чтение тем же объектом отвечало бы отказом
+						 *       ERROR_ACCESS_DENIED под MS Windows и проходило бы под POSIX
+						 */
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -5585,6 +5898,43 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 				 * Выполняем обход до исчерпания содержимого либо до остановки откликом
 				 */
 				while(result){
+					/**
+					 * Если прежний обход остановился, не довершив записи, отдаём её повторно
+					 *
+					 * @note Место записи в каталоге уже пройдено, и без повторной выдачи остаток
+					 *       её был бы утерян молча. Ставится признак этот теми видами `walkdir`,
+					 *       что отдают СОДЕРЖИМОЕ файла: они же и пропустят доли, отданные прежде.
+					 *       Обход по одним именам его не ставит никогда - там запись отдана целиком
+					 */
+					if(dir.repeat()){
+						// Получаем адрес незавершённой записи
+						const string address = dir.pending();
+						// Получаем вид незавершённой записи
+						const type_t type = static_cast <type_t> (dir.pendingType());
+						// Запоминаем число долей, отданных прежде
+						const size_t delivered = dir.delivered();
+						/**
+						 * Отдаём незавершённую запись повторно
+						 *
+						 * @note Признак повторной выдачи здесь НЕ снимается: отклик тех видов
+						 *       `walkdir`, что отдают содержимое, читает его сам, чтобы узнать,
+						 *       сколько долей пропустить. Снимет его либо он же по довершении
+						 *       файла, либо мы следом, если он того не сделал
+						 */
+						result = callback(type, address);
+						/**
+						 * Если отклик места остановки не подвинул, забываем запись сами
+						 *
+						 * @note Без этого обход по одним именам, коему подан объект каталога с
+						 *       незавершённой записью от иного вида `walkdir`, отдавал бы её
+						 *       вечно: снимать признак ему нечем, он содержимого не читает
+						 */
+						if(dir.repeat() && (dir.delivered() == delivered) && (dir.pending() == address))
+							// Выполняем забвение незавершённой записи обхода
+							dir.done();
+						// Продолжаем обход
+						continue;
+					}
 					// Получаем адрес каталога, по которому идёт обход
 					const string base = (dir.empty() ? dir.address() : dir.topAddress());
 					/**
@@ -5786,11 +6136,27 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 				 * @brief Признак того, что обход велено продолжать
 				 *
 				 * @note Отклик чтения строк остановить чтение не может - вид его возврата пуст.
-				 *       Оттого признак этот выдачу строк прекращает НЕМЕДЛЕННО, а чтение самого
-				 *       файла довершается вхолостую. Место остановки внутри файла не хранится:
-				 *       продолжение начнёт прерванный файл с начала
+				 *       Оттого признак этот выдачу строк прекращает немедленно, а чтение самого
+				 *       файла довершается вхолостую
 				 */
 				bool proceed = true;
+				/**
+				 * @brief Число долей этого файла, отданных прежде
+				 *
+				 * @details Обход, остановленный посреди файла, запоминает место остановки во внешнем
+				 *          объекте каталога. Продолжение получает файл ПОВТОРНО и пропускает доли,
+				 *          отданные прежде, - так остаток файла не теряется и не отдаётся дважды.
+				 *
+				 * @warning Без внешнего объекта каталога хранить место остановки негде: продолжения
+				 *          не будет вовсе, и остановка посреди файла отбросит его остаток
+				 *
+				 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между
+				 *       долями обхода, и счёт указал бы уже на иное место. Продолжение здесь, как
+				 *       и продолжение по дереву, идёт по возможности
+				 */
+				const size_t skip = (((handle != nullptr) && handle->repeat() && (handle->pending() == filename)) ? handle->delivered() : 0);
+				// Число долей этого файла, отданных к этому мигу
+				size_t index = 0;
 				/**
 				 * Определяем тип переданного пути
 				 */
@@ -5814,7 +6180,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 										// Выполняем считывание всех строк текста
 										this->readfile(address, [&](string_view text) noexcept -> void {
 											// Если текст получен и обход велено продолжать
-											if(proceed && !text.empty())
+											if(proceed && !text.empty() && (index++ >= skip))
 												// Возвращаем функцию обратного вызова
 												proceed = callback(type, filename, text);
 										}, seek_t::BEGIN);
@@ -5825,7 +6191,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 								// Выполняем считывание всех строк текста
 								this->readfile(address, [&](string_view text) noexcept -> void {
 									// Если текст получен и обход велено продолжать
-									if(proceed && !text.empty())
+									if(proceed && !text.empty() && (index++ >= skip))
 										// Возвращаем функцию обратного вызова
 										proceed = callback(type, filename, text);
 								}, seek_t::BEGIN);
@@ -5837,11 +6203,25 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 						// Выполняем считывание всех строк текста
 						this->readfile(filename, [&](string_view text) noexcept -> void {
 							// Если текст получен и обход велено продолжать
-							if(proceed && !text.empty())
+							if(proceed && !text.empty() && (index++ >= skip))
 								// Возвращаем функцию обратного вызова
 								proceed = callback(type, filename, text);
 						}, seek_t::BEGIN);
 					} break;
+				}
+				/**
+				 * Запоминаем место остановки внутри файла либо забываем прежнее
+				 *
+				 * @note Забвение обязательно и при успехе: файл, довершённый до конца, повторной
+				 *       выдачи не требует, а признак, оставленный стоять, отдал бы его снова
+				 */
+				if(handle != nullptr){
+					// Если обход остановлен посреди файла
+					if(!proceed)
+						// Запоминаем место остановки внутри файла
+						handle->pending(filename, static_cast <uint8_t> (type), index);
+					// Если файл довершён до конца
+					else handle->done();
 				}
 				// Выводим признак того, что обход велено продолжать
 				return proceed;
@@ -5894,11 +6274,27 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 				 * @brief Признак того, что обход велено продолжать
 				 *
 				 * @note Отклик чтения блоков остановить чтение не может - вид его возврата пуст.
-				 *       Оттого признак этот выдачу блоков прекращает НЕМЕДЛЕННО, а чтение самого
-				 *       файла довершается вхолостую. Место остановки внутри файла не хранится:
-				 *       продолжение начнёт прерванный файл с начала
+				 *       Оттого признак этот выдачу блоков прекращает немедленно, а чтение самого
+				 *       файла довершается вхолостую
 				 */
 				bool proceed = true;
+				/**
+				 * @brief Число долей этого файла, отданных прежде
+				 *
+				 * @details Обход, остановленный посреди файла, запоминает место остановки во внешнем
+				 *          объекте каталога. Продолжение получает файл ПОВТОРНО и пропускает доли,
+				 *          отданные прежде, - так остаток файла не теряется и не отдаётся дважды.
+				 *
+				 * @warning Без внешнего объекта каталога хранить место остановки негде: продолжения
+				 *          не будет вовсе, и остановка посреди файла отбросит его остаток
+				 *
+				 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между
+				 *       долями обхода, и счёт указал бы уже на иное место. Продолжение здесь, как
+				 *       и продолжение по дереву, идёт по возможности
+				 */
+				const size_t skip = (((handle != nullptr) && handle->repeat() && (handle->pending() == filename)) ? handle->delivered() : 0);
+				// Число долей этого файла, отданных к этому мигу
+				size_t index = 0;
 				/**
 				 * Определяем тип переданного пути
 				 */
@@ -5922,7 +6318,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 										// Выполняем считывание всех блоков данных
 										this->readfile(address, size, [&](const void * buffer, const size_t size) noexcept -> void {
 											// Если буфер данных получен и обход велено продолжать
-											if(proceed && (buffer != nullptr) && (size > 0))
+											if(proceed && (buffer != nullptr) && (size > 0) && (index++ >= skip))
 												// Возвращаем функцию обратного вызова
 												proceed = callback(type, filename, buffer, size);
 										}, seek_t::BEGIN);
@@ -5933,7 +6329,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 								// Выполняем считывание всех блоков данных
 								this->readfile(address, size, [&](const void * buffer, const size_t size) noexcept -> void {
 									// Если буфер данных получен и обход велено продолжать
-									if(proceed && (buffer != nullptr) && (size > 0))
+									if(proceed && (buffer != nullptr) && (size > 0) && (index++ >= skip))
 										// Возвращаем функцию обратного вызова
 										proceed = callback(type, filename, buffer, size);
 								}, seek_t::BEGIN);
@@ -5945,11 +6341,25 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 						// Выполняем считывание всех блоков данных
 						this->readfile(filename, size, [&](const void * buffer, const size_t size) noexcept -> void {
 							// Если буфер данных получен и обход велено продолжать
-							if(proceed && (buffer != nullptr) && (size > 0))
+							if(proceed && (buffer != nullptr) && (size > 0) && (index++ >= skip))
 								// Возвращаем функцию обратного вызова
 								proceed = callback(type, filename, buffer, size);
 						}, seek_t::BEGIN);
 					} break;
+				}
+				/**
+				 * Запоминаем место остановки внутри файла либо забываем прежнее
+				 *
+				 * @note Забвение обязательно и при успехе: файл, довершённый до конца, повторной
+				 *       выдачи не требует, а признак, оставленный стоять, отдал бы его снова
+				 */
+				if(handle != nullptr){
+					// Если обход остановлен посреди файла
+					if(!proceed)
+						// Запоминаем место остановки внутри файла
+						handle->pending(filename, static_cast <uint8_t> (type), index);
+					// Если файл довершён до конца
+					else handle->done();
 				}
 				// Выводим признак того, что обход велено продолжать
 				return proceed;

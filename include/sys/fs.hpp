@@ -189,6 +189,12 @@ namespace awh {
 	 *          был заведён, - даже если названо иное имя. Один объект обслуживает ОДИН файл,
 	 *          и для другого нужен другой объект
 	 *
+	 * @warning Объект несёт права доступа той работы, какая его ЗАВЕЛА, а не той, какой он
+	 *          передан следом. Заведённый `write` годен и записи, и чтению; заведённый
+	 *          `append` - одной дозаписи; заведённый `read` либо `readfile` - одному чтению.
+	 *          Работа, прав не имеющая, отвечает отказом: `write` - ложью, а `read` - пустым
+	 *          результатом. Права эти одинаковы на всех системах и расхождений не имеют
+	 *
 	 * \~english
 	 * @brief Create a file object data type
 	 *
@@ -201,6 +207,12 @@ namespace awh {
 	 *          only into the opening, while the descriptor is already open. The work will lay into the file
 	 *          the object was created with - even if another name is given. One object serves ONE file,
 	 *          and another one is needed for another file
+	 *
+	 * @warning The object carries the access rights of the work that CREATED it, and not of the one
+	 *          it is passed to afterwards. One created by `write` is fit for both writing and reading;
+	 *          one created by `append` - for appending only; one created by `read` or `readfile` - for
+	 *          reading only. A work having no rights answers with a refusal: `write` with a falsehood,
+	 *          and `read` with an empty result. These rights are the same at all the systems and have no divergences
 	 *
 	 * \~
 	 */
@@ -596,7 +608,7 @@ namespace awh {
 			 *
 			 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleDir`
 			 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
-			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике
+			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике.
 			 *
 			 * @note Объект служит каталогу, названному в `path`, и хранит состояние обхода. Повторный
 			 *       обзор того же каталога идёт мимо повторного открытия, а обход, прерванный откликом
@@ -610,7 +622,7 @@ namespace awh {
 			 * @details The object is created by the module itself and is given away by a smart pointer:
 			 *          the type `HandleDir` is deliberately incomplete outside the module - the system API
 			 *          of the platform does not go into the header of the framework. The demolition is performed
-			 *          by its own deleter, whose body lives in the source
+			 *          by its own deleter, whose body lives in the source.
 			 *
 			 * @note The object serves the directory named in `path` and keeps the state of the walk.
 			 *       A repeated survey of the same directory goes past a repeated opening, and a walk interrupted
@@ -627,7 +639,7 @@ namespace awh {
 			 *
 			 * @details Объект заводится самим модулем и отдаётся умным указателем: вид `HandleFile`
 			 *          вне модуля неполон намеренно - системное API платформы в заголовок фреймворка
-			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике
+			 *          не выходит. Снос выполняется своим сносителем, тело которого живёт в исходнике.
 			 *
 			 * @note Объект годен для пакетной обработки: один описатель обслуживает много обращений
 			 *       к одному адресу. Открытие файла выполняет та работа, которой объект передан
@@ -641,7 +653,7 @@ namespace awh {
 			 * @details The object is created by the module itself and is given away by a smart pointer:
 			 *          the type `HandleFile` is deliberately incomplete outside the module - the system API
 			 *          of the platform does not go into the header of the framework. The demolition is performed
-			 *          by its own deleter, whose body lives in the source
+			 *          by its own deleter, whose body lives in the source.
 			 *
 			 * @note The object is fit for the batch processing: one descriptor serves many calls
 			 *       to one address. The opening of the file is performed by the work the object is passed
@@ -659,7 +671,7 @@ namespace awh {
 			 *
 			 * @details Запись, отвеченная успехом, лежит ещё не на носителе, а во вместилище ядра,
 			 *          и обрыв питания её теряет. Работа эта доводит записанное до носителя и
-			 *          отвечает лишь тогда, когда носитель сброс подтвердил
+			 *          отвечает лишь тогда, когда носитель сброс подтвердил.
 			 *
 			 * @warning Под системою Apple `fsync` обещания этого НЕ выполняет: он выносит записанное
 			 *          из ядра в накопитель, но опустошить вместилище самого накопителя не велит.
@@ -682,7 +694,7 @@ namespace awh {
 			 *
 			 * @details A writing answered with a success lies not yet on the medium, but in the storage
 			 *          of the kernel, and a power failure loses it. This work brings the written data
-			 *          onto the medium and answers only when the medium has confirmed the flush
+			 *          onto the medium and answers only when the medium has confirmed the flush.
 			 *
 			 * @warning At the Apple system `fsync` does NOT fulfil this promise: it brings the written data
 			 *          out of the kernel into the drive, but does not order the drive's own storage to be emptied.
@@ -1118,8 +1130,14 @@ namespace awh {
 			 *          обход с того же места, а не с начала.
 			 *
 			 * @warning Остановка выполняется на границе СТРОКИ, а не файла: отказ отклика прерывает
-			 *          и чтение самого файла. Место остановки внутри файла объект каталога не хранит,
-			 *          и продолжение начнёт прерванный файл с начала
+			 *          и чтение самого файла. Место остановки внутри файла хранит ВНЕШНИЙ объект
+			 *          каталога, и продолжение отдаёт прерванный файл повторно, пропуская доли,
+			 *          отданные прежде. Без внешнего объекта хранить это негде: остановка посреди
+			 *          файла отбросит его остаток безвозвратно
+			 *
+			 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между долями
+			 *       обхода, и счёт указал бы уже на иное место. Продолжение здесь, как и продолжение
+			 *       по дереву, идёт по возможности
 			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
@@ -1138,8 +1156,14 @@ namespace awh {
 			 *          continues the walk from the same place, and not from the beginning.
 			 *
 			 * @warning The stop is performed at the boundary of a LINE, and not of a file: a refusal of the callback
-			 *          interrupts the reading of the file itself as well. The object of the directory does not keep
-			 *          the place of the stop inside a file, and the continuation will begin the interrupted file from its start
+			 *          interrupts the reading of the file itself as well. The place of the stop inside a file is kept
+			 *          by the EXTERNAL directory object, and the continuation gives the interrupted file anew, skipping
+			 *          the parts given before. Without an external object there is nowhere to keep this: a stop in the
+			 *          middle of a file will discard its remainder irretrievably
+			 *
+			 * @note The skipping goes by the COUNT of the parts, and not by the offset in the file: change the file
+			 *       between the parts of the walk, and the count would point at another place already. The continuation
+			 *       here, as the continuation over the tree, goes as far as possible
 			 *
 			 * @param path     path to the directory
 			 * @param ext      extension of the file the filtering is driven by
@@ -1162,8 +1186,14 @@ namespace awh {
 			 *          обход с того же места, а не с начала.
 			 *
 			 * @warning Остановка выполняется на границе БЛОКА, а не файла: отказ отклика прерывает
-			 *          и чтение самого файла. Место остановки внутри файла объект каталога не хранит,
-			 *          и продолжение начнёт прерванный файл с начала
+			 *          и чтение самого файла. Место остановки внутри файла хранит ВНЕШНИЙ объект
+			 *          каталога, и продолжение отдаёт прерванный файл повторно, пропуская доли,
+			 *          отданные прежде. Без внешнего объекта хранить это негде: остановка посреди
+			 *          файла отбросит его остаток безвозвратно
+			 *
+			 * @note Пропуск идёт по СЧЁТУ долей, а не по смещению в файле: измени файл между долями
+			 *       обхода, и счёт указал бы уже на иное место. Продолжение здесь, как и продолжение
+			 *       по дереву, идёт по возможности
 			 *
 			 * @param path     путь до каталога
 			 * @param ext      расширение файла по которому идет фильтрация
@@ -1183,8 +1213,14 @@ namespace awh {
 			 *          continues the walk from the same place, and not from the beginning.
 			 *
 			 * @warning The stop is performed at the boundary of a BLOCK, and not of a file: a refusal of the callback
-			 *          interrupts the reading of the file itself as well. The object of the directory does not keep
-			 *          the place of the stop inside a file, and the continuation will begin the interrupted file from its start
+			 *          interrupts the reading of the file itself as well. The place of the stop inside a file is kept
+			 *          by the EXTERNAL directory object, and the continuation gives the interrupted file anew, skipping
+			 *          the parts given before. Without an external object there is nowhere to keep this: a stop in the
+			 *          middle of a file will discard its remainder irretrievably
+			 *
+			 * @note The skipping goes by the COUNT of the parts, and not by the offset in the file: change the file
+			 *       between the parts of the walk, and the count would point at another place already. The continuation
+			 *       here, as the continuation over the tree, goes as far as possible
 			 *
 			 * @param path     path to the directory
 			 * @param ext      extension of the file the filtering is driven by
