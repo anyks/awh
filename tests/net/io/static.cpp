@@ -28288,46 +28288,6 @@ TEST_F(IoFixture, IoDataSourcePullDatagramTest){
  *       проверка эта - ответ на него, закреплённый в наборе
  *
  */
-TEST_F(IoFixture, IoProbeRepeatLaunchTest){
-	// Собранные записи журнала
-	std::vector <std::string> records;
-	// Выполняем подписку на записи журнала
-	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
-		// Запоминаем всякую запись уровня отказа либо предупреждения
-		if((flag == awh::log_t::flag_t::CRITICAL) || (flag == awh::log_t::flag_t::WARNING))
-			records.emplace_back(text);
-	});
-	ASSERT_TRUE(this->_io->initialize());
-	const auto ids = this->_io->events(awh::event::family_t::PIPE, awh::event::type_t::STREAM);
-	ASSERT_GT(ids[0], 0u);
-	// Число откликов ошибки и смены состояния, полученных потребителем
-	uint32_t errors = 0, states = 0;
-	// Текст последнего отклика ошибки
-	std::string last;
-	// Подписываемся на отклик ошибки узла
-	this->_io->on(ids[0], static_cast <awh::engine::callback::error_t> ([&errors, &last]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, const std::string & text) noexcept -> void {
-		errors++; last = text;
-	}));
-	// Подписываемся на отклик смены состояния узла
-	this->_io->on(ids[0], static_cast <awh::engine::callback::status_t> ([&states]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::status_t status) noexcept -> void {
-		states++;
-	}));
-	ASSERT_TRUE(this->_io->commit(ids[0]));
-	const bool first = this->_io->launch(ids[0]);
-	const size_t after = records.size();
-	const bool second = this->_io->launch(ids[0]);
-	std::cout << "[          ] ЗАМЕР: первый запуск=" << first << " второй=" << second
-	 << " | журнал " << after << "/" << records.size()
-	 << " | откликов ошибки=" << errors << " состояния=" << states
-	 << " | текст отклика: " << (last.empty() ? std::string("(пусто)") : last) << std::endl;
-	if(records.size() > after) std::cout << "[          ] текст: " << records.back() << std::endl;
-	this->_io->destroy(ids[0]);
-	this->_io->destroy(ids[1]);
-	for(uint8_t i = 0; i < 5; i++) this->_io->poll(10);
-	this->_io->deinitialize();
-	this->_log->subscribe(nullptr);
-}
-
 TEST_F(IoFixture, IoEmptyIpcNodeTest){
 	// Выполняем инициализацию сетевого движка
 	ASSERT_TRUE(this->_io->initialize());
@@ -31382,23 +31342,282 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	 *
 	 */
 	/**
-	 * @brief Проверка повторного объявления слушания на уже слушающем узле
+	 * @brief Проверка молчания журнала за полный круг жизни сервера
 	 *
-	 * @details У систем POSIX `listen` на уже слушающем сокете законен и служит сменой
-	 *          предела очереди: сокет остаётся тем же, слушание не прерывается. Движок
-	 *          обязан отвечать тем же у всех пяти наречий, а изображённый именованным
-	 *          каналом узел - наравне с настоящим сокетом.
+	 * @details Вид утверждения взят у владельца наречия Windows: он поставил молчание
+	 *          журнала на обычные ходы движка, и все четыре таких утверждения нашли по
+	 *          дефекту. Причина не в удаче: записи в журнал пишет САМ владелец наречия,
+	 *          привык их видеть и читает как признак жизни движка, - утверждать их
+	 *          ОТСУТСТВИЕ ему не приходит в голову. У наречий POSIX молчания при жизни
+	 *          СЕРВЕРА не утверждала ни одна проверка, хотя проверок этих сотни.
 	 *
-	 * @note Утверждается не одно лишь согласие обращения, но и то, что узел ПОСЛЕ него
-	 *       по-прежнему принимает: согласие без приёма означало бы, что слушание сбито,
-	 *       а отказа о том не было. Порядок утверждений тот же, что и у сторожа возврата
-	 *       счёта: сперва предпосылка, потом предмет
+	 *          Довод замером: то же утверждение, перенесённое в общую часть для КЛИЕНТА,
+	 *          нашло у Event Ports сразу два дефекта - разбор POLLERR как отказа (у обеих
+	 *          систем Sun обычный конец связи приходит именно им) и метку объёма,
+	 *          подставленную вместо кода отказа.
 	 *
-	 * @warning Место это не проходила НИ ОДНА из 164 проверок набора: повторный `listen`
-	 *          на ТОМ ЖЕ узле не звался нигде. Указано Гришей 11.09.2026 как место, где
-	 *          порядок вызовов у наречий POSIX существен, а у меня «и так работает»
+	 * @note Молчание НИКОГДА не полно в одиночку: его выполняет и бездействие, и молчаливо
+	 *       потерянная связь. Оттого рядом с ним здесь стоят ДЕЙСТВИЯ - сервер обязан
+	 *       принять подключение до сноса и обязан перестать принимать после, - а также
+	 *       оберег: до сноса подключение обязано удаваться. Без этой пары зелёный исход
+	 *       выполнялся бы и наглухо мёртвым движком
 	 *
 	 */
+	TEST_F(IoFixture, IoUdsServerTeardownIsQuietTest){
+		// Собранные записи журнала уровня отказа
+		std::vector <std::string> failures;
+		// Выполняем подписку на записи журнала
+		this->_log->subscribe([&failures](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+			// Если запись журнала является отказом либо предупреждением
+			if((flag == awh::log_t::flag_t::CRITICAL) || (flag == awh::log_t::flag_t::WARNING))
+				// Запоминаем запись журнала
+				failures.emplace_back(text);
+		});
+		/**
+		 * Вид сокета домена UNIX развилкой по системам - той же, что у проверки жизни
+		 * клиента: у Windows изображение именованным каналом и есть предмет, у POSIX
+		 * слушание вида SEQPACKET движок допускает только по протоколу SCTP
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Вид сокета, изображаемый именованным каналом
+			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		#else
+			// Вид сокета, каким домен UNIX слушается у систем POSIX
+			const awh::event::type_t kind = awh::event::type_t::STREAM;
+		#endif
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("srvquiet.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Число принятых сервером подключений
+		uint32_t accepted = 0;
+		// Подписываемся на приём подключений
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&accepted]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
+			// Считаем принятое подключение
+			accepted++;
+		}));
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Объявляем слушание
+		ASSERT_TRUE(this->_io->listen(sid, 16));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, kind);
+		// Проверяем, что событие заведено
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Клиент обязан подключиться
+		ASSERT_TRUE(this->_io->commit(cid));
+		// Выполняем подключение клиента
+		ASSERT_TRUE(this->_io->connect(cid));
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(cid));
+		/**
+		 * Даём циклу обороты на приём подключения сервером
+		 */
+		for(uint8_t i = 0; i < 10; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		/**
+		 * ОБЕРЕГ: до сноса сервер обязан принимать
+		 *
+		 * @note Без него молчание журнала выполнялось бы и сервером, не поднявшимся вовсе
+		 */
+		ASSERT_GT(accepted, 0u) << "сервер подключения не принял: опыт о его жизни не поставлен";
+		// Сносим клиента
+		this->_io->destroy(cid);
+		// Сносим сервер
+		this->_io->destroy(sid);
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 */
+		for(uint8_t i = 0; i < 10; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Снимаем подписку на записи журнала
+		this->_log->subscribe(nullptr);
+		/**
+		 * ПРЕДМЕТ: полный круг жизни сервера обязан пройти молча
+		 */
+		ASSERT_TRUE(failures.empty()) << "жизнь сервера дала " << failures.size() << " запись(ей), первая: " << (failures.empty() ? std::string() : failures.front());
+		/**
+		 * ДЕЙСТВИЕ: снесённый сервер обязан ПЕРЕСТАТЬ принимать
+		 *
+		 * @note Это пара к молчанию, а не довесок. Молча снести подписки и оставить
+		 *       сокет слушающим - беда куда худшая лишней записи: узла нет, а порт занят
+		 */
+		{
+			// Число принятых подключений до опыта
+			const uint32_t before = accepted;
+			// Заводим второго клиента домена UNIX
+			const awh::event::id_t late = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, kind);
+			// Проверяем, что событие заведено
+			ASSERT_GT(late, 0u);
+			// Устанавливаем клиенту путь подключения
+			this->_io->setTarget(late, path);
+			// Выставляем неблокирующий обмен
+			this->_io->setOptions(late, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+			/**
+			 * Подключение это вправе отказать на любом шаге, и отказ здесь - ожидаемый
+			 * исход, а не беда: утверждается лишь то, что сервер его НЕ ПРИНЯЛ
+			 */
+			if(this->_io->commit(late) && this->_io->connect(late))
+				// Запускаем событие клиента
+				this->_io->launch(late);
+			/**
+			 * Даём циклу обороты: приём, случись он, успел бы пройти
+			 */
+			for(uint8_t i = 0; i < 10; i++)
+				// Выполняем оборот цикла событий
+				this->_io->poll(10);
+			// Сносим второго клиента
+			this->_io->destroy(late);
+			// Снесённый сервер принимать не вправе
+			ASSERT_EQ(accepted, before) << "снесённый сервер принял подключение: снос прошёл молча, но не произошёл";
+		}
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+	/**
+	 * @brief Проверка слушания сервера домена UNIX вида SEQPACKET
+	 *
+	 * @details Вид SEQPACKET в домене UNIX несёт и границы сообщений, и надёжность, и
+	 *          подключение, - система его слушает, а движок прежде отвергал: условие
+	 *          слушания спрашивало про ПРОТОКОЛ (годен лишь SCTP) там, где годность
+	 *          решает пара «семейство + вид». Код, поднимающий такой сервер, работал
+	 *          у наречия Windows и отвергался у всех четырёх наречий POSIX.
+	 *
+	 *          Замер щупом на чистом C (`socket(AF_UNIX, SOCK_SEQPACKET)`, `bind`,
+	 *          `listen`) от 11.09.2026:
+	 *
+	 *              Debian 12     согласие
+	 *              Solaris 11.4  согласие
+	 *              OpenIndiana   согласие
+	 *              macOS ARM64   socket() отвергает: «Protocol not supported»
+	 *
+	 * @note Утверждается ПРИЁМ подключения, а не согласие `listen`: согласие без приёма
+	 *       означало бы, что слушание сбито, а отказа о том не было
+	 *
+	 * @warning У macOS, NetBSD и OpenBSD вид этот система не несёт вовсе, и `io::coherence`
+	 *          подменяет его дейтаграммным. Там утверждается ОБРАТНОЕ - что слушание
+	 *          отвергается, - и отказ обязан приходить ОТ ЯДРА. Граница развилки обязана
+	 *          совпадать с границей у `io::coherence`: разойдутся - проверка начнёт
+	 *          мерить не то, что несёт движок
+	 *
+	 */
+		TEST_F(IoFixture, IoUdsSeqpacketServerAcceptsTest){
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("seqsrv.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX вида SEQPACKET
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Число принятых сервером подключений
+		uint32_t accepted = 0;
+		// Подписываемся на приём подключений
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&accepted]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::id_t cid) noexcept -> void {
+			// Считаем принятое подключение
+			accepted++;
+		}));
+		/**
+		 * Подписываемся на состояния сервера
+		 *
+		 * @note Принятие приходит ДВУМЯ путями, и считать надо оба: у связного узла -
+		 *       откликом приёма с опознавателем принятого узла, у изображённого
+		 *       дейтаграммного - состоянием ACCEPTED, ибо принимать там нечего
+		 */
+		this->_io->on(sid, [&accepted]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Если сервер сообщил о принятии
+			if(status == awh::event::status_t::ACCEPTED)
+				// Считаем принятое подключение
+				accepted++;
+		});
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Слушание обязано быть объявлено
+		ASSERT_TRUE(this->_io->listen(sid, 16))
+		 << "движок отверг слушание домена UNIX вида SEQPACKET";
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Заводим клиента домена UNIX вида SEQPACKET
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что событие заведено
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Клиент обязан подключиться
+		ASSERT_TRUE(this->_io->commit(cid));
+		// Выполняем подключение клиента
+		ASSERT_TRUE(this->_io->connect(cid))
+		 << "клиент домена UNIX вида SEQPACKET не подключился";
+		/**
+		 * Шлём сообщение серверу из отклика состояния
+		 *
+		 * @note Посылка обязательна ради изображённых систем: там узел дейтаграммный, и
+		 *       принятие изображается движком при ПЕРВОМ пришедшем сообщении, а не при
+		 *       самом подключении. Слать надо из отклика подключения, а не сразу после
+		 *       запуска: до подключения слать некуда. У систем со связным видом посылка
+		 *       безвредна
+		 */
+		this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Если клиент подключился
+			if(status == awh::event::status_t::CONNECTED){
+				// Сообщение, посылаемое серверу
+				const std::string message = "первое сообщение";
+				// Отправляем сообщение серверу
+				this->_io->send(eid, message.c_str(), message.size());
+			}
+		});
+		// Запускаем событие клиента
+		ASSERT_TRUE(this->_io->launch(cid));
+		/**
+		 * Даём циклу обороты на приём подключения сервером
+		 */
+		for(uint8_t i = 0; (accepted == 0) && (i < 40); i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		/**
+		 * ПРЕДМЕТ: сервер обязан ПРИНЯТЬ подключение
+		 *
+		 * @note Утверждается приём, а не согласие listen: согласие без приёма означало бы,
+		 *       что слушание объявлено, но сбито, - и у изображённых систем именно это и
+		 *       случилось бы, ответь изображение согласием, ничего не изобразив
+		 */
+		ASSERT_GT(accepted, 0u) << "сервер домена UNIX вида SEQPACKET подключения не принял";
+		// Сносим клиента
+		this->_io->destroy(cid);
+		// Сносим сервер
+		this->_io->destroy(sid);
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
 	TEST_F(IoFixture, IoServerRelistenTest){
 		// Путь, каким задаётся сервер домена UNIX
 		const std::string path = ::uds("relisten.sock");
@@ -31448,16 +31667,46 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 		 *          это дословно одно и то же во всех пяти наречиях - `kqueue`, `epoll`,
 		 *          `io_uring`, Event Ports, IOCP, - то есть расхождения между движками НЕТ
 		 *
-		 * @warning Стандарту это НЕ ОТВЕЧАЕТ: у систем POSIX `listen` на уже слушающем сокете
-		 *          законен и служит сменой предела очереди. Отход общий для всех пяти, и
-		 *          решать его не наречию - вопрос вынесен владельцу. Проверка потому утверждает
-		 *          не «отказ верен», а то, что отказ БЕЗВРЕДЕН
+		 * @warning Отказ этот ПОЛНЫЙ, а не молчаливый: обращение отдаёт неудачу, зовёт отклик
+		 *          состояния с `FAILURE`, зовёт отклик ошибки с доводом «Event cannot be used
+		 *          for listening» и пишет в журнал, если отклик не установлен. Проверено
+		 *          замером, текст отклика печатается строкой прогона
+		 *
+		 * @warning ЗАПИСЬ ИСПРАВЛЕНА. Прежде здесь стояло, что отказ молчалив: вывод этот был
+		 *          сделан по возвращаемому значению и по первым строкам обращения, где стоит
+		 *          сторож состояния, - канал доклада не спрашивался вовсе. Ошибка ровно того
+		 *          вида, какой разбирался весь день: проверен не тот вопрос. Доклад стоит в
+		 *          `iocp.cpp` при `} else {` разбора состояния, по каждому виду узла отдельно
+		 *
+		 * @note Стандарту отход всё же есть: у систем POSIX `listen` на уже слушающем сокете
+		 *       законен и служит ЕДИНСТВЕННЫМ способом сменить предел очереди. Отход общий для
+		 *       всех пяти наречий, решать его не наречию, и вопрос вынесен владельцу. Но
+		 *       отход этот ГРОМКИЙ, и потребитель о нём узнаёт
 		 *
 		 * @note Утверждается ровно измеренное: обращение отвечает отказом. Изменится решение -
 		 *       изменится и это утверждение, но менять его надлежит ВМЕСТЕ с движками, а не
 		 *       подгонкой одного наречия под другое
 		 */
+		// Число откликов ошибки, полученных потребителем
+		uint32_t errors = 0;
+		// Текст последнего отклика ошибки
+		std::string reason;
+		// Подписываемся на отклик ошибки узла
+		this->_io->on(sid, static_cast <awh::engine::callback::error_t> ([&errors, &reason]([[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::error_t code, const std::string & text) noexcept -> void {
+			// Считаем отклик и запоминаем его текст
+			errors++; reason = text;
+		}));
 		ASSERT_FALSE(this->_io->listen(sid, 16)) << "повторное объявление слушания принято: поведение разошлось с прочими наречиями";
+		/**
+		 * Отказ обязан ДОЙТИ ДО ПОТРЕБИТЕЛЯ откликом
+		 *
+		 * @note Отказ сам по себе - половина договора. Вторая половина в том, что потребитель
+		 *       о нём узнаёт: возвращаемое значение есть удача либо неудача, а ПРИЧИНУ несёт
+		 *       отклик, установленный потребителем
+		 */
+		ASSERT_GT(errors, 0u) << "повторное объявление отвергнуто, но отклик ошибки потребителю не пришёл";
+		// Печатаем текст отклика: он и есть довод отказа
+		std::cout << "[          ] отклик отказа: " << reason << std::endl;
 		/**
 		 * Узел обязан принимать ПОСЛЕ повторного объявления
 		 */

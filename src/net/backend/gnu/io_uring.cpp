@@ -67471,7 +67471,17 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM):
 												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												/**
+												 * Если событие принадлежит к типу SEQPACKET
+												 *
+												 * @details Вид этот подключается ровно как потоковый, и разбор его
+												 *          прежде отсутствовал: он проваливался в default, где довод
+												 *          сам же перечисляет SEQPACKET среди допустимых. Домен UNIX
+												 *          вида SEQPACKET оттого не подключался вовсе, хотя система
+												 *          его несёт (замерено щупом у Linux и обеих систем Sun)
+												 */
+												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Если событие является UNIX-сокетом
 													if(client->state.family == event::family_t::UDS){
 														// Получаем размер объекта сокета
@@ -68454,8 +68464,23 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 								} break;
 								// Если событие принадлежит к типу SEQPACKET
 								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-									// Если протокол интернета установлен как SCTP
-									if(server->state.protocol == event::protocol_t::SCTP){
+									/**
+									 * Годность слушания решают СЕМЕЙСТВО и ВИД, а не один лишь протокол
+									 *
+									 * @details Вид SEQPACKET слушается в двух случаях: по протоколу SCTP и в
+									 *          домене UNIX. Второй случай прежде отвергался, хотя система его
+									 *          несёт: щуп на чистом C (socket(AF_UNIX, SOCK_SEQPACKET), bind,
+									 *          listen) отвечает согласием у Debian 12, Solaris 11.4 и
+									 *          OpenIndiana. У macOS socket() отвергает вид вовсе - там
+									 *          io::coherence подменяет его дейтаграммным, и отказ приходит
+									 *          от ЯДРА с настоящим errno, а не от нашего разбора
+									 *
+									 * @warning Условие спрашивало про ПРОТОКОЛ там, где годность решает пара
+									 *          «семейство + вид»: код, поднимающий сервер домена UNIX вида
+									 *          SEQPACKET, работал у наречия Windows и отвергался у всех
+									 *          четырёх наречий POSIX
+									 */
+									if((server->state.protocol == event::protocol_t::SCTP) || (server->state.family == event::family_t::UDS)){
 										// Выполняем слушать порт сервера
 										if(!(result = (::listen(server->fd, server->backlog.depth) == 0))){
 											// Если установлена функция обратного вызова
@@ -68492,7 +68517,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 											// Вызываем функцию обратного вызова об ошибке отказа
 											server->callbacks.status(server->id, event::status_t::FAILURE);
 										// Устанавливаем текст ошибки
-										const string error = "Listening is only supported for SCTP protocol with SEQPACKET event type";
+										const string error = "Listening with SEQPACKET event type is only supported for SCTP protocol or UNIX domain";
 										// Если установлена функция обратного вызова
 										if(server->callbacks.error != nullptr)
 											// Вызываем функцию обратного вызова ошибки события

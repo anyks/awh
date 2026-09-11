@@ -33868,13 +33868,18 @@ namespace io {
 								 */
 								#if __FreeBSD__
 									// Устанавливаем текст ошибки
-									const string error = "Only STREAM and SEQPACKET socket types are supported for server nodes";
+									const string error = "Only STREAM and SEQPACKET socket types are supported for listening server nodes";
 								/**
 								 * Для остальных операционных систем
 								 */
 								#else
-									// Устанавливаем текст ошибки
-									const string error = "Only STREAM socket types are supported for server nodes";
+									/**
+									 * Текст обязан называть ДЕЙСТВИТЕЛЬНОЕ положение: вид SEQPACKET в домене
+									 * UNIX сервером у этих систем поддерживается - он изображается ДЕЙТАГРАММНЫМ
+									 * и слушания не объявляет вовсе, идя путём чтения. Прежний текст «Only STREAM»
+									 * утверждал обратное и сбивал бы разбор
+									 */
+									const string error = "Only STREAM socket type can listen on this system, SEQPACKET in the UNIX domain is served as DATAGRAM";
 								#endif
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
@@ -61793,15 +61798,18 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												case static_cast <uint8_t> (event::type_t::RAW):
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM):
-												/**
-												 * Для операционной системы macOS, NetBSD, OpenBSD
-												 */
-												#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-													// Если событие принадлежит к типу SEQPACKET
-													case static_cast <uint8_t> (event::type_t::SEQPACKET):
-												#endif
 												// Если событие принадлежит к типу DATAGRAM
-												case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+												case static_cast <uint8_t> (event::type_t::DATAGRAM):
+												/**
+												 * Если событие принадлежит к типу SEQPACKET
+												 *
+												 * @details Вид этот подключается ровно как потоковый, и разбор его
+												 *          прежде отсутствовал: он проваливался в default, где довод
+												 *          сам же перечисляет SEQPACKET среди допустимых. Домен UNIX
+												 *          вида SEQPACKET оттого не подключался вовсе, хотя система
+												 *          его несёт (замерено щупом у Linux и обеих систем Sun)
+												 */
+												case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 													// Если событие является UNIX-сокетом
 													if(client->state.family == event::family_t::UDS){
 														// Получаем размер объекта сокета
@@ -62787,55 +62795,73 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 										server->state.status = event::status_t::INITIAL;
 									}
 								} break;
-								/**
-								 * Для операционной системы FreeBSD
-								 */
-								#if __FreeBSD__
-									// Если событие принадлежит к типу SEQPACKET
-									case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-										// Если протокол интернета установлен как SCTP
-										if(server->state.protocol == event::protocol_t::SCTP){
-											// Выполняем слушать порт сервера
-											if(!(result = (::listen(server->fd, server->backlog.depth) == 0))){
-												// Если установлена функция обратного вызова
-												if(server->callbacks.status != nullptr)
-													// Вызываем функцию обратного вызова об ошибке отказа
-													server->callbacks.status(server->id, event::status_t::FAILURE);
-												// Если установлена функция обратного вызова
-												if(server->callbacks.error != nullptr)
-													// Вызываем функцию обратного вызова ошибки события
-													server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-												// Если функция обратного вызова для вывода события не установлена
-												else {
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Записываем ошибку в лог
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Записываем ошибку в лог
-														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-													#endif
-												}
-												// Снимаем флаг ожидания подключения
-												server->state.status = event::status_t::INITIAL;
-											}
-										// Если протокол интернета не установлен как SCTP
-										} else {
+								// Если событие принадлежит к типу SEQPACKET
+								case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+									/**
+									 * Изображение вида SEQPACKET дейтаграммным в домене UNIX
+									 *
+									 * @details У macOS, NetBSD и OpenBSD домен UNIX вида SEQPACKET система
+									 *          не несёт вовсе (socket() отвечает «Protocol not supported»),
+									 *          и io::coherence изображает его ДЕЙТАГРАММНЫМ сокетом - так же,
+									 *          как изображается он и во всём остальном коде. В домене UNIX
+									 *          разницы между ними нет: границы сообщений держат оба.
+									 *
+									 *          Дейтаграммный сервер слушания не объявляет вовсе - принятие
+									 *          там изображается движком, - и потому обращение принимается
+									 *          согласием, а к ядру не идёт: ::listen к дейтаграммам неприменим
+									 *          и отверг бы его с EOPNOTSUPP.
+									 *
+									 * @warning Граница обязана совпадать с границей у io::coherence и у
+									 *          Socket::ipc: разойдутся - движок объявит слушание там, где
+									 *          сокет его не несёт, либо отвергнет там, где несёт
+									 *
+									 */
+									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+										// Если событие является сокетом домена UNIX
+										if((result = (server->state.family == event::family_t::UDS))){
+											/**
+											 * Возвращаем состояние узла к исходному
+											 *
+											 * @details Состояние успешного слушания выставляется выше по ходу
+											 *          метода, и оставь мы его - запуск перевёл бы узел в режим
+											 *          СЛУШАНИЯ, а разбор готовности повёл бы его путём ПРИЁМА
+											 *          нового подключения. Принимать дейтаграммному узлу нечего:
+											 *          путь его - чтение, и состояние обязано остаться исходным,
+											 *          ровно как у всякого дейтаграммного сервера, слушания не
+											 *          объявляющего вовсе
+											 */
+											server->state.status = event::status_t::INITIAL;
+											// Прекращаем разбор вида сокета
+											break;
+										}
+									#endif
+									/**
+									 * Годность слушания решают СЕМЕЙСТВО и ВИД, а не один лишь протокол
+									 *
+									 * @details Вид SEQPACKET слушается в двух случаях: по протоколу SCTP и в
+									 *          домене UNIX. Второй случай прежде отвергался, хотя система его
+									 *          несёт: щуп на чистом C (socket(AF_UNIX, SOCK_SEQPACKET), bind,
+									 *          listen) отвечает согласием у Debian 12, Solaris 11.4 и
+									 *          OpenIndiana. У macOS socket() отвергает вид вовсе - там
+									 *          io::coherence подменяет его дейтаграммным, и отказ приходит
+									 *          от ЯДРА с настоящим errno, а не от нашего разбора
+									 *
+									 * @warning Условие спрашивало про ПРОТОКОЛ там, где годность решает пара
+									 *          «семейство + вид»: код, поднимающий сервер домена UNIX вида
+									 *          SEQPACKET, работал у наречия Windows и отвергался у всех
+									 *          четырёх наречий POSIX
+									 */
+									if((server->state.protocol == event::protocol_t::SCTP) || (server->state.family == event::family_t::UDS)){
+										// Выполняем слушать порт сервера
+										if(!(result = (::listen(server->fd, server->backlog.depth) == 0))){
 											// Если установлена функция обратного вызова
 											if(server->callbacks.status != nullptr)
 												// Вызываем функцию обратного вызова об ошибке отказа
 												server->callbacks.status(server->id, event::status_t::FAILURE);
-											// Устанавливаем текст ошибки
-											const string error = "Listening is only supported for SCTP protocol with SEQPACKET event type";
 											// Если установлена функция обратного вызова
 											if(server->callbacks.error != nullptr)
 												// Вызываем функцию обратного вызова ошибки события
-												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+												server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
 											// Если функция обратного вызова для вывода события не установлена
 											else {
 												/**
@@ -62843,20 +62869,50 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+													this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
 											// Снимаем флаг ожидания подключения
 											server->state.status = event::status_t::INITIAL;
 										}
-									} break;
-								#endif
+									// Если протокол интернета не установлен как SCTP
+									} else {
+										// Если установлена функция обратного вызова
+										if(server->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова об ошибке отказа
+											server->callbacks.status(server->id, event::status_t::FAILURE);
+										// Устанавливаем текст ошибки
+										const string error = "Listening with SEQPACKET event type is only supported for SCTP protocol or UNIX domain";
+										// Если установлена функция обратного вызова
+										if(server->callbacks.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки события
+											server->callbacks.error(server->id, event::error_t::EVENT_FAIL, error);
+										// Если функция обратного вызова для вывода события не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Записываем ошибку в лог
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Записываем ошибку в лог
+												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+											#endif
+										}
+										// Снимаем флаг ожидания подключения
+										server->state.status = event::status_t::INITIAL;
+									}
+								} break;
 								// Для других типов сокетов
 								default: {
 									// Если установлена функция обратного вызова
