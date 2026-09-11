@@ -103,7 +103,12 @@ fi
 # «ws2_32», и без неё связывание стенда отказывает
 ##
 case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# @note Разбор ярлыков в «src/sys/fs.cpp» поднимает COM - «CoCreateInstance»
+	#       живёт в «ole32», а опознаватели «IID_IShellLinkW» и «IID_IPersistFile»
+	#       в «uuid». Без обеих связывание отказывает десятью нераскрытыми именами
+	#
+	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -lole32 -luuid" ;;
 	#
 	# @note Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation, и без неё
 	#       связывание отказывает на средствах Objective-C
