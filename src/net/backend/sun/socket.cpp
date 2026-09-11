@@ -560,7 +560,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
  * @note Про буфер ПРИЁМА то же самое неверно: `ioctl(FIONREAD)` этими системами
  *       поддержан, замер его снят на обоих стендах - Solaris 11.4.90 и OpenIndiana
  *       Hipster 2026.04, 11.08.2026, см. `tools/benchmark/readpath`, - и направление
- *       чтения здесь отвечает настоящим числом. Заведено 08.09.2026 решением владельца
+ *       чтения здесь отвечает настоящим числом
  *
  * @param sock  сетевой сокет
  * @param event событие сокета (чтение либо запись)
