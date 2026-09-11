@@ -25,21 +25,26 @@
  */
 #if _WIN32 || _WIN64
 	/**
+	 * Подключаем единую точку подключения системных заголовков MS Windows
+	 *
+	 * @note Подключается она прежде прочих заголовков MS Windows: те самостоятельными
+	 *       не являются и требуют, чтобы базовые типы были объявлены до них
+	 *
+	 * @warning Порядок этот обязателен, а не опрятен: `shlobj.h` тянет за собой ветхий
+	 *          `winsock.h`, и подключённый следом `winsock2.h` объявляет `sockaddr`
+	 *          вторично. Оснастка MinGW такое сносила молча, MSVC отвечает отказом
+	 *          «переопределение типа struct» - и указывает при этом на заголовок
+	 *          системы, а не на место, где порядок нарушен
+	 */
+	#include <sys/win32.hpp>
+
+	/**
 	 * Системные заголовочные файлы
 	 */
 	#include <tchar.h>
 	#include <shlobj.h>
 	#include <objbase.h>
 	#include <strsafe.h>
-
-	/**
-	 * Подключаем единую точку подключения системных заголовков MS Windows
-	 *
-	 * @note Подключается она прежде прочих заголовков MS Windows: те самостоятельными
-	 *       не являются и требуют, чтобы базовые типы были объявлены до них
-	 *
-	 */
-	#include <sys/win32.hpp>
 #endif
 
 /**
@@ -52,8 +57,19 @@
 #include <sstream>
 #include <cstdlib>
 #include <fcntl.h>
-#include <dirent.h>
-#include <sys/file.h>
+#if defined(_MSC_VER)
+	#include <sys/dirent.hpp>
+#else
+	#include <dirent.h>
+#endif
+/**
+ * Заголовок замков файлов принадлежит наречиям POSIX: у оснастки MSVC его нет вовсе,
+ * а приёмов его библиотека здесь не зовёт - подключение остаётся лишь для тех систем,
+ * где он есть
+ */
+#if !defined(_MSC_VER)
+	#include <sys/file.h>
+#endif
 #include <sys/stat.h>
 #include <sys/types.h>
 

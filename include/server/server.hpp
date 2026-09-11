@@ -132,6 +132,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			__AWH_PACK_BEGIN__
 			typedef struct __AWH_SHARED_EXPORT__ Identifier {
 				// Идентификатор клиента
 				event::id_t eid;
@@ -147,7 +148,8 @@ namespace awh {
 				 * \~
 				 */
 				explicit Identifier() noexcept;
-			} __attribute__((packed)) id_t;
+			} __AWH_PACKED__ id_t;
+			__AWH_PACK_END__
 			/**
 			 * \~russian
 			 * @brief Структура для хранения параметров транспортного уровня безопасности

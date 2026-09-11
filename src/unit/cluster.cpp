@@ -124,12 +124,14 @@ namespace {
 	 *          копированием
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct Envelope {
 		// Вид служебного сообщения (значение cluster_t::control_t)
 		uint8_t type;
 		// Узел, которого сообщение касается (0 - никого)
 		int32_t pid;
-	} __attribute__((packed)) envelope_t;
+	} __AWH_PACKED__ envelope_t;
+	__AWH_PACK_END__
 	/**
 	 * @brief Предельный размер служебного сообщения кластера
 	 *

@@ -51,6 +51,51 @@
 #endif
 
 /**
+ * Заголовок разбора вида записи нужен приметам ниже: у оснастки MSVC поле вида
+ * объявлено именно в нём, и без него приметы ссылались бы на неизвестные значения
+ */
+#include <sys/stat.h>
+
+/**
+ * Приметы вида записи для оснастки MSVC
+ *
+ * @details Разбор поля вида у неё есть, а привычных примет POSIX нет: там они зовутся
+ *          `_S_IFDIR` и `_S_IFREG`, а самих проверок не заведено вовсе
+ *
+ * @note Ссылку приметой вида под MS Windows не опознать ни одной оснасткой: `stat`
+ *       следует по ссылке и отдаёт вид цели, а не самой ссылки. Оттого проверка эта
+ *       отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
+ */
+#if defined(_MSC_VER)
+	#ifndef S_ISDIR
+		#define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
+	#endif
+	#ifndef S_ISREG
+		#define S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
+	#endif
+	#ifndef S_ISLNK
+		#define S_ISLNK(mode) (((void) (mode)), false)
+	#endif
+	#ifndef S_ISCHR
+		#define S_ISCHR(mode) (((mode) & _S_IFMT) == _S_IFCHR)
+	#endif
+	#ifndef S_ISFIFO
+		#define S_ISFIFO(mode) (((mode) & _S_IFMT) == _S_IFIFO)
+	#endif
+	/**
+	 * @note Устройств поблочного доступа и гнёзд домена UNIX поле вида у MS Windows не
+	 *       различает вовсе: примет для них нет ни у одной оснастки, и проверки эти
+	 *       отвечают ложью - ровно так же, как они ведут себя и под MinGW
+	 */
+	#ifndef S_ISBLK
+		#define S_ISBLK(mode) (((void) (mode)), false)
+	#endif
+	#ifndef S_ISSOCK
+		#define S_ISSOCK(mode) (((void) (mode)), false)
+	#endif
+#endif
+
+/**
  * Активируем поддержку юникода
  */
 #ifndef UNICODE
@@ -156,7 +201,35 @@
 	 *
 	 * \~
 	 */
-	#include <_bsd_types.h>
+	#if defined(_MSC_VER)
+		/**
+		 * \~russian
+		 * Объявляем типы происхождения BSD своими силами
+		 *
+		 * @details Заголовка `_bsd_types.h` у MSVC нет вовсе - он принадлежит MinGW.
+		 *          Сама же система объявляет эти типы лишь в `winsock2.h`, какой здесь
+		 *          не подключается намеренно, оттого объявление и заводится тут
+		 *
+		 * @note Повтора это не создаёт: одинаковые объявления типа язык допускает, и
+		 *       последующее подключение `winsock2.h` объявит их теми же самыми
+		 *
+		 * \~english
+		 * Declare the types of BSD origin on our own
+		 * @details MSVC has no `_bsd_types.h` header at all - it belongs to MinGW. The system
+		 *          itself declares those types in `winsock2.h` alone, which is deliberately not
+		 *          included here, which is why the declaration is introduced in this place
+		 * @note That creates no duplicate: identical type declarations are allowed by the language,
+		 *       and a later include of `winsock2.h` will declare them as the very same ones
+		 *
+		 * \~
+		 */
+		typedef unsigned char u_char;
+		typedef unsigned short u_short;
+		typedef unsigned int u_int;
+		typedef unsigned long u_long;
+	#else
+		#include <_bsd_types.h>
+	#endif
 
 	/**
 	 * Устанавливаем функцию getpid

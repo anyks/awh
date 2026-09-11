@@ -48,6 +48,18 @@
 using namespace std;
 
 /**
+ * Принудительная подстановка: запись числа заданной ширины зовётся на каждое поле
+ * записи, и посредник обязан разворачиваться на месте обращения целиком
+ */
+#if defined(_MSC_VER)
+	// Принудительная подстановка средствами Visual Studio
+	#define AWH_ABC_FIXED_INLINE __forceinline
+#else
+	// Принудительная подстановка средствами GCC и Clang
+	#define AWH_ABC_FIXED_INLINE inline __attribute__((always_inline))
+#endif
+
+/**
  * @brief Функция укладки записи постоянной ширины в отведённое место
  *
  * @details Посредник этот держит укладку по ГОТОВОМУ месту в одном месте, а встраивание
@@ -63,7 +75,7 @@ using namespace std;
  * @param width  ширина укладываемой записи в октетах
  *
  */
-static inline __attribute__((always_inline)) void __awh_abc_fixed__(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
+static AWH_ABC_FIXED_INLINE void __awh_abc_fixed__(uint8_t * buffer, const uint64_t value, const uint8_t width) noexcept {
 	/**
 	 * Перебираем октеты укладываемой записи
 	 */

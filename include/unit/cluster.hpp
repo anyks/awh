@@ -209,6 +209,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Worker {
 					// Идентификатор процесса
 					pid_t pid;
@@ -229,7 +230,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit Worker() noexcept;
-				} __attribute__((packed)) worker_t;
+				} __AWH_PACKED__ worker_t;
+				__AWH_PACK_END__
 				/**
 				 * \~russian
 				 * @brief Структура хранения параметров возрождения процессов
@@ -246,6 +248,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Rebirth {
 					// Флаг автоматического возрождения процессов (по умолчанию false)
 					bool mode;
@@ -266,7 +269,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit Rebirth() noexcept;
-				} __attribute__((packed)) rebirth_t;
+				} __AWH_PACKED__ rebirth_t;
+				__AWH_PACK_END__
 			private:
 				// Название кластера
 				string _name;

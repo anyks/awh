@@ -8372,6 +8372,19 @@ TEST_F(IoFixture, IoNodeKeepsAddressZoneByObjectTest){
 TEST_F(IoFixture, IoBroadcastTest){
 	// Флаг остановки теста
 	bool stop = false;
+	/**
+	 * Признаки ИСХОДА, отделённые от признака остановки
+	 *
+	 * @warning Признак остановки означает лишь «ждать больше нечего» и взводится ДВУМЯ
+	 *          разными путями - доставкой и пропуском по VPN-интерфейсу. Утверждение по
+	 *          нему одному было бы зелено и при нулевой доставке: довольно, чтобы
+	 *          выбранный интерфейс оказался VPN, и проверка не проверяла бы НИЧЕГО,
+	 *          оставаясь зелёной на всякой такой машине
+	 */
+	// Признак того, что широковещательная дейтаграмма ДОШЛА
+	bool delivered = false;
+	// Признак того, что проверка пропущена по свойству окружения
+	bool skipped = false;
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
@@ -8942,11 +8955,13 @@ TEST_F(IoFixture, IoBroadcastTest){
 				this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 			}));
 			// Устанавливаем функцию обратного вызова на чтение из события
-			this->_io->on(events[0], [&stop, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			this->_io->on(events[0], [&stop, &delivered, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 				// Текст входящего сообщения
 				const std::string message(reinterpret_cast <const char *> (data), size);
 				// Записываем в лог сообщение о переподключении события
 				this->_log->print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, size, message.c_str());
+				// Отмечаем, что дейтаграмма дошла
+				delivered = true;
 				// Останавливаем тест
 				stop = true;
 			});
@@ -9092,6 +9107,8 @@ TEST_F(IoFixture, IoBroadcastTest){
 		} else {
 			// Записываем в лог сообщение о пропуске теста для VPN-интерфейса
 			this->_log->print("Пропуск теста для VPN-интерфейса: %s", awh::log_t::flag_t::WARNING, source.iface.c_str());
+			// Отмечаем пропуск по свойству окружения
+			skipped = true;
 			// Устанавливаем флаг остановки теста
 			stop = true;
 		}
@@ -9124,8 +9141,23 @@ TEST_F(IoFixture, IoBroadcastTest){
 			EXPECT_LT(std::chrono::steady_clock::now(), deadline) << "опрос не завершился за отведённый срок";
 		}
 	}
-	// Выполняем проверку того, что данные из файла получены
+	// Выполняем проверку того, что опрос завершён, а не оборван сроком
 	ASSERT_TRUE(stop);
+	/**
+	 * Если проверка пропущена по свойству окружения
+	 *
+	 * @note Пропуск объявляется ПРОПУСКОМ, а не успехом: широковещание сквозь VPN-интерфейс
+	 *       не проходит по устройству сети, и вины движка в том нет. Прежде такой исход
+	 *       выглядел зелёной проверкой и был неотличим от настоящей доставки
+	 */
+	if(skipped){
+		// Уничтожаем все события
+		ASSERT_TRUE(this->_io->deinitialize());
+		// Объявляем проверку пропущенной по свойству окружения
+		GTEST_SKIP() << "широковещание пропущено: выбран VPN-интерфейс";
+	}
+	// Выполняем проверку того, что широковещательная дейтаграмма ДОШЛА
+	ASSERT_TRUE(delivered) << "широковещательная дейтаграмма не доставлена";
 	// Уничтожаем все события после получения ответа
 	ASSERT_TRUE(this->_io->deinitialize());
 }

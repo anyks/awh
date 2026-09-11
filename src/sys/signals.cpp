@@ -97,6 +97,7 @@ namespace signals {
 		 *          в самопайп атомарна и безопасна внутри обработчика сигнала.
 		 *
 		 */
+		__AWH_PACK_BEGIN__
 		typedef struct Payload {
 			// Адрес обращения, вызвавшего сбой
 			void * addr;
@@ -112,7 +113,8 @@ namespace signals {
 			 */
 			explicit Payload() noexcept :
 			 addr(nullptr), pid(0), uid(0), sig(0) {}
-		} __attribute__((packed)) payload_t;
+		} __AWH_PACKED__ payload_t;
+		__AWH_PACK_END__
 
 		/**
 		 * Дескриптор записи самопайпа, доступный обработчику сигнала.

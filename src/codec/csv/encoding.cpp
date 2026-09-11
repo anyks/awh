@@ -122,7 +122,7 @@ namespace {
 		 * @return      разметка байтов, равных нулю
 		 *
 		 */
-		const auto zeros = [](const uint64_t value) noexcept -> uint64_t {
+		const auto zeros = [&LOW, &HIGH](const uint64_t value) noexcept -> uint64_t {
 			// Выводим разметку байтов, равных нулю
 			return (~(((value & LOW) + LOW) | value) & HIGH);
 		};

@@ -95,6 +95,7 @@ namespace {
 	 * @brief Структура заголовка пакета для UDP протокола
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct UDP {
 		// Зарезервировано, всегда 0x0000
 		uint16_t rsv;
@@ -108,12 +109,14 @@ namespace {
 		 */
 		explicit UDP() noexcept :
 		 rsv(0x0000), frag(0x00), atyp(0x00) {}
-	} __attribute__((packed)) udp_t;
+	} __AWH_PACKED__ udp_t;
+	__AWH_PACK_END__
 
 	/**
 	 * @brief Структура заголовка авторизации
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct Auth {
 		// Версия прокси-протокола
 		uint8_t ver;
@@ -125,12 +128,14 @@ namespace {
 		 */
 		Auth() noexcept :
 		 ver(0x00), status(0x00) {}
-	} __attribute__((packed)) auth_t;
+	} __AWH_PACKED__ auth_t;
+	__AWH_PACK_END__
 
 	/**
 	 * @brief Структура заголовка пакета
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct Header {
 		// Версия прокси-протокола
 		uint8_t ver;
@@ -142,12 +147,14 @@ namespace {
 		 */
 		Header() noexcept :
 		 ver(0x00), method(0x00) {}
-	} __attribute__((packed)) header_t;
+	} __AWH_PACKED__ header_t;
+	__AWH_PACK_END__
 
 	/**
 	 * @brief Структура ip адреса сервера
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct IPv4 {
 		// Хост сервера
 		uint32_t host;
@@ -158,12 +165,14 @@ namespace {
 		 *
 		 */
 		IPv4() noexcept : host(0), port(0) {}
-	} __attribute__((packed)) ip4_t;
+	} __AWH_PACKED__ ip4_t;
+	__AWH_PACK_END__
 
 	/**
 	 * @brief Структура ip адреса сервера
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct IPv6 {
 		// Хост сервера
 		array <uint8_t, 16> host;
@@ -174,12 +183,14 @@ namespace {
 		 *
 		 */
 		IPv6() noexcept : host{0}, port(0) {}
-	} __attribute__((packed)) ip6_t;
+	} __AWH_PACKED__ ip6_t;
+	__AWH_PACK_END__
 
 	/**
 	 * @brief Структура запроса
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct Request {
 		uint8_t ver;  // Версия прокси-протокола
 		uint8_t cmd;  // Код запроса у прокси-сервера
@@ -192,7 +203,8 @@ namespace {
 		Request() noexcept :
 		 ver(0x00), cmd(0x00),
 		 rsv(0x00), type(0x00) {}
-	} __attribute__((packed)) request_t;
+	} __AWH_PACKED__ request_t;
+	__AWH_PACK_END__
 };
 
 /**

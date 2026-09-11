@@ -688,6 +688,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 	 *       и едет он опознавателем, а не настройкой
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct Handover {
 		// Семейство адресов слушающего события
 		uint8_t family;
@@ -701,7 +702,8 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		uint8_t length;
 		// Размер снимка передаваемого события
 		uint32_t size;
-	} __attribute__((packed)) handover_t;
+	} __AWH_PACKED__ handover_t;
+	__AWH_PACK_END__
 	/**
 	 * @brief Метод заведения объекта кластера
 	 *

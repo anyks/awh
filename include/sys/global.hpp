@@ -134,14 +134,26 @@
 
 /**
  * Если активирован экспорт динамической библиотеки
+ *
+ * @details Признак ставится сборкой САМОЙ библиотеки, а признак импорта - сборкой
+ *          приложения, которое к ней присоединяется. Порознь они нужны оттого, что
+ *          у MS Windows это разные указания компоновщику: библиотека символ ОТДАЁТ,
+ *          приложение его БЕРЁТ, и `__declspec` у них несовпадающий
+ *
+ * @warning Проверка ведётся через defined, а не значением. Значением она молча
+ *          обращается в ложь при всяком несовпадении ИМЕНИ признака: макрос, о
+ *          котором препроцессор не слышал, считается нулём без единого слова. Так
+ *          и вышло - сборка задавала `AWH_SHARED_LIBRARY_EXPORT`, а спрашивалось
+ *          здесь `__AWH_SHARED_LIBRARY_EXPORT__`, отчего `__AWH_SHARED_EXPORT__`
+ *          разворачивался в пустоту у всех объявлений открытого договора разом
  */
-#if __AWH_SHARED_LIBRARY_EXPORT__
+#if defined(__AWH_SHARED_LIBRARY_EXPORT__)
 	// Экспортируем символы динамической библиотеки
 	#define __AWH_SHARED_EXPORT__ __AWH_DECL_EXPORT__
 /**
  * Если активирован импорт динамической библиотеки
  */
-#elif __AWH_SHARED_LIBRARY_IMPORT__
+#elif defined(__AWH_SHARED_LIBRARY_IMPORT__)
 	// Импортируем символы динамической библиотеки
 	#define __AWH_SHARED_EXPORT__ __AWH_DECL_IMPORT__
 /**
@@ -151,6 +163,117 @@
 	// Статическая сборка, экспортировать символы не требуется
 	#define __AWH_SHARED_EXPORT__
 #endif
+
+/**
+ * \~russian
+ * Плотная укладка полей структуры
+ *
+ * @details Оснастки расходятся не написанием, а УСТРОЙСТВОМ указания: у GCC и clang
+ *          плотность задаётся признаком, стоящим ПОСЛЕ объявления, а у MSVC - парой
+ *          указаний препроцессору, обнимающих объявление целиком. Одним именем это не
+ *          покрыть, оттого имён три, и ставятся они все:
+ *
+ *          `__AWH_PACK_BEGIN__ typedef struct { ... } __AWH_PACKED__ record_t; __AWH_PACK_END__`
+ *
+ *          Там, где указания не нужны, они разворачиваются в пустоту, и обратно
+ *
+ * @warning Плотная укладка - не украшение: ею описываются заголовки протоколов и записи
+ *          обмена, чьё расположение задано не нами. Потеря её оснасткой не даёт ни отказа,
+ *          ни предупреждения - выравнивание молча раздвигает поля, и разъезжается разбор
+ *          уже в сети, а не при сборке
+ *
+ * \~english
+ * Tight packing of structure fields
+ * @details The toolchains differ not in spelling but in the STRUCTURE of the directive: GCC and clang
+ *          express packing by an attribute placed AFTER the declaration, while MSVC uses a pair of
+ *          preprocessor directives embracing the whole declaration. One name cannot cover that,
+ *          hence three names, and all of them are placed
+ * @warning Tight packing is not an ornament: it describes protocol headers and exchange records whose
+ *          layout is not set by us. Losing it produces neither failure nor warning - alignment silently
+ *          spreads the fields apart, and the parsing falls apart in the network, not at build time
+ *
+ * \~
+ */
+/**
+ * \~russian
+ * Полное имя текущей функции
+ *
+ * @details Имя это уходит в журнал отладки при всяком сообщении об отказе и служит
+ *          опознавателем места. Оснастки зовут его по-разному, но смысл один -
+ *          подпись функции со всеми доводами и пространствами имён
+ *
+ * @note У MSVC имя своё, `__FUNCSIG__`, и объявляется оно здесь именем GCC: мест
+ *       обращения свыше шести тысяч, и подстановка в каждом означала бы правку,
+ *       какую нечем проверить, ради написания одного и того же
+ *
+ * \~english
+ * The full name of the current function
+ * @details That name goes into the debug log with every failure report and serves as the
+ *          identifier of the place. The toolchains call it differently, but the meaning is one -
+ *          the signature of the function with all its arguments and namespaces
+ * @note MSVC has its own name, `__FUNCSIG__`, and it is declared here under the GCC name: there
+ *       are over six thousand places of use, and substituting in each would mean an edit with
+ *       nothing to verify it by, for the sake of spelling one and the same thing
+ *
+ * \~
+ */
+#if defined(_MSC_VER) && !defined(__PRETTY_FUNCTION__)
+	#define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
+
+/**
+ * \~russian
+ * Подсчёт взведённых разрядов машинного слова
+ *
+ * @details Оснастки GCC и clang несут для этого встроенный приём, переводимый в одну
+ *          команду вычислителя. У MSVC приёма с тем же именем нет, а имеющиеся зависят
+ *          от набора команд: у x86-64 это `__popcnt64`, требующий поддержки POPCNT, у
+ *          ARM64 - свои. Оттого здесь берётся счёт без обращения к набору команд:
+ *          место это не горячее, а верность важнее одной команды
+ *
+ * \~english
+ * Counting the set bits of a machine word
+ * @details GCC and clang carry a built-in for this, translated into a single instruction of the
+ *          processor. MSVC has no built-in of the same name, and the ones it has depend on the
+ *          instruction set. Hence a count that does not address the instruction set is used here:
+ *          this place is not hot, and correctness matters more than a single instruction
+ *
+ * \~
+ */
+#if defined(_MSC_VER)
+	static inline int __awh_popcount64__(const unsigned long long value) noexcept {
+		// Счётчик взведённых разрядов
+		unsigned long long count = value;
+		// Складываем разряды попарно, затем четвёрками и так далее
+		count = (count - ((count >> 1) & 0x5555555555555555ull));
+		count = ((count & 0x3333333333333333ull) + ((count >> 2) & 0x3333333333333333ull));
+		count = ((count + (count >> 4)) & 0x0F0F0F0F0F0F0F0Full);
+		// Собираем итог старшим байтом произведения
+		return static_cast <int> ((count * 0x0101010101010101ull) >> 56);
+	}
+#else
+	static inline int __awh_popcount64__(const unsigned long long value) noexcept {
+		// Счёт ведёт встроенный приём оснастки
+		return __builtin_popcountll(value);
+	}
+#endif
+
+#if defined(_MSC_VER)
+	// Начало области плотной укладки
+	#define __AWH_PACK_BEGIN__ __pragma(pack(push, 1))
+	// Конец области плотной укладки
+	#define __AWH_PACK_END__ __pragma(pack(pop))
+	// Признак плотной укладки у объявления
+	#define __AWH_PACKED__
+#else
+	// Начало области плотной укладки
+	#define __AWH_PACK_BEGIN__
+	// Конец области плотной укладки
+	#define __AWH_PACK_END__
+	// Признак плотной укладки у объявления
+	#define __AWH_PACKED__ __attribute__((packed))
+#endif
+
 
 /**
  * \~russian

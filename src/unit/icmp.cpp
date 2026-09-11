@@ -122,6 +122,7 @@ namespace {
 	 *      начальных значениях полей нужды нет
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct IcmpHeader {
 		uint8_t type;      // Тип запроса
 		uint8_t code;      // Код запроса
@@ -139,7 +140,7 @@ namespace {
 				uint16_t identifier; // Идентификатор запроса
 				uint16_t sequence;   // Номер последовательности
 				uint64_t payload;    // Тело полезной нагрузки
-			} __attribute__((packed)) echo;
+			} __AWH_PACKED__ echo;
 			/**
 			 * @brief Структура указателя запроса
 			 *
@@ -147,7 +148,7 @@ namespace {
 			struct ICMP_PACKET_POINTER_HEADER {
 				// Указатель пакета
 				uint8_t pointer;
-			} __attribute__((packed)) pointer;
+			} __AWH_PACKED__ pointer;
 			/**
 			 * @brief Структура адреса ответа
 			 *
@@ -155,7 +156,7 @@ namespace {
 			struct ICMP_PACKET_REDIRECT_HEADER {
 				// Адрес ответа IPv4
 				uint32_t gatewayAddress;
-			} __attribute__((packed)) redirect;
+			} __AWH_PACKED__ redirect;
 			/**
 			 * @brief Структура адреса ответа
 			 *
@@ -163,9 +164,10 @@ namespace {
 			struct ICMP6_PACKET_REDIRECT_HEADER {
 				// Адрес ответа IPv6
 				uint32_t gatewayAddress[4];
-			} __attribute__((packed)) redirect6;
-		} __attribute__((packed)) meta;
-	} __attribute__((packed)) header_t;
+			} __AWH_PACKED__ redirect6;
+		} __AWH_PACKED__ meta;
+	} __AWH_PACKED__ header_t;
+	__AWH_PACK_END__
 
 	/**
 	 * Закрепляем разметку заголовка: она предписана RFC 792 и проверяется здесь, а не

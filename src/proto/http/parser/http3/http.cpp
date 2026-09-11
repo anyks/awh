@@ -27,6 +27,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <array>
 #include <algorithm>
 
 /**

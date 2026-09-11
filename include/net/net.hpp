@@ -1795,6 +1795,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Initialization_Message {
 					// Максимальное время инициализации SCTP
 					uint16_t timeout;
@@ -1815,7 +1816,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit Initialization_Message() noexcept;
-				} __attribute__((packed)) initmsg_t;
+				} __AWH_PACKED__ initmsg_t;
+				__AWH_PACK_END__
 
 				/**
 				 * \~russian
@@ -1829,6 +1831,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Status {
 					uint32_t id;          // ID ассоциации
 					uint32_t ratewind;    // Размер окна скорости передачи
@@ -1849,7 +1852,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit Status() noexcept;
-				} __attribute__((packed)) status_t;
+				} __AWH_PACKED__ status_t;
+				__AWH_PACK_END__
 
 				/**
 				 * \~russian

@@ -316,6 +316,7 @@ namespace ntp {
 	 * @brief Структура пакетов NTP-запроса
 	 *
 	 */
+	__AWH_PACK_BEGIN__
 	typedef struct Packet {
 		/**
 		 * Восемь бит (li, vn и mode):
@@ -363,7 +364,8 @@ namespace ntp {
 		 origTimeStampSec(htonl(0)), origTimeStampSecFrac(htonl(0)),
 		 receivedTimeStampSec(htonl(0)), receivedTimeStampSecFrac(htonl(0)),
 		 transmitedTimeStampSec(htonl(0)), transmitedTimeStampSecFrac(htonl(0)) {}
-	} __attribute__((packed)) packet_t;
+	} __AWH_PACKED__ packet_t;
+	__AWH_PACK_END__
 
 	/**
 	 * @brief Функция формирования NTP-запроса клиента

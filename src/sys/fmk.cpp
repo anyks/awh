@@ -45,6 +45,7 @@
 #include <chrono>
 #include <memory>
 #include <random>
+#include <thread>
 #include <limits>
 #include <cstring>
 #include <cstdlib>
@@ -1318,7 +1319,7 @@ namespace {
 		 * @return    результат проверки
 		 *
 		 */
-		auto shielded = [&text](const size_t pos) noexcept -> bool {
+		auto shielded = [&text, &BACKSLASH](const size_t pos) noexcept -> bool {
 			// Количество обратных слэшей перед проверяемым символом
 			size_t count = 0;
 			/**
@@ -8148,8 +8149,18 @@ string awh::Framework::icon(const bool end) const noexcept {
 		"🍫","🎂","💯","📰","❤️‍🔥","🎣",
 		"🏁","🧾","💶","💷","💴","💵"
 	};
-	// Потокобезопасный генератор случайных чисел (инициализируется один раз на поток)
-	static thread_local std::mt19937_64 engine(static_cast <uint64_t> (this->timestamp <uint64_t> (chrono_t::NANOSECONDS)) ^ static_cast <uint64_t> (reinterpret_cast <uintptr_t> (&engine)));
+	/**
+	 * Потокобезопасный генератор случайных чисел (заводится один раз на поток)
+	 *
+	 * @note Зерно мешается с опознавателем потока, а не с адресом самого генератора:
+	 *       потоки, заведённые в один и тот же миг, получают тогда разные зёрна.
+	 *       Обращение к собственному адресу в своём же заведении оснастка MSVC не
+	 *       принимает вовсе - имени в этой точке она ещё не знает
+	 */
+	static thread_local std::mt19937_64 engine(
+		static_cast <uint64_t> (this->timestamp <uint64_t> (chrono_t::NANOSECONDS)) ^
+		static_cast <uint64_t> (std::hash <std::thread::id> {}(std::this_thread::get_id()))
+	);
 	// Получаем список иконок в зависимости от флага завершения работы
 	const vector <string> & icons = (!end ? iconBegin : iconEnd);
 	// Создаём равномерное распределение по индексам списка

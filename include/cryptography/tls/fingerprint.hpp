@@ -2140,6 +2140,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Record {
 					// Эпоха записи DTLS
 					uint16_t epoch;
@@ -2160,7 +2161,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit Record() noexcept;
-				} __attribute__((packed)) record_t;
+				} __AWH_PACKED__ record_t;
+				__AWH_PACK_END__
 
 				/**
 				 * \~russian
@@ -2176,6 +2178,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Fragment {
 					// Смещение фрагмента в рамках записи TLS
 					uint32_t offset;
@@ -2192,7 +2195,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit Fragment() noexcept;
-				} __attribute__((packed)) fragment_t;
+				} __AWH_PACKED__ fragment_t;
+				__AWH_PACK_END__
 
 				/**
 				 * \~russian
@@ -2210,6 +2214,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Handshake {
 					// Длина рукопожатия блока рукопожатия TLS
 					uint32_t length;
@@ -2228,7 +2233,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit Handshake() noexcept;
-				} __attribute__((packed)) handshake_t;
+				} __AWH_PACKED__ handshake_t;
+				__AWH_PACK_END__
 
 				/**
 				 * \~russian
@@ -2414,6 +2420,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ H2Setting {
 					/**
 					 * \~russian
@@ -2444,7 +2451,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit H2Setting(const uint16_t i = 0, const uint32_t v = 0) noexcept;
-				} __attribute__((packed)) h2_setting_t;
+				} __AWH_PACKED__ h2_setting_t;
+				__AWH_PACK_END__
 
 				/**
 				 * \~russian
@@ -2462,6 +2470,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ H2Priority {
 					// Флаг эксклюзивной зависимости (E-бит)
 					bool exclusive;
@@ -2482,7 +2491,8 @@ namespace awh {
 					 * \~
 					 */
 					explicit H2Priority() noexcept;
-				} __attribute__((packed)) h2_priority_t;
+				} __AWH_PACKED__ h2_priority_t;
+				__AWH_PACK_END__
 
 				/**
 				 * \~russian

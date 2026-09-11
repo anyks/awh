@@ -260,6 +260,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				__AWH_PACK_BEGIN__
 				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Флаг ожидания ответа от NTP-сервера
 					bool waiting;
@@ -295,7 +296,8 @@ namespace awh {
 					 * \~
 					 */
 					~Transfer() noexcept = default;
-				} __attribute__((packed)) transfer_t;
+				} __AWH_PACKED__ transfer_t;
+				__AWH_PACK_END__
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;

@@ -381,6 +381,21 @@ if (SYSTEM_NAME MATCHES "ARM64")
     SET(ARCHITECTURE "aarch64")
 endif()
 
+##
+ # Запасной путь опознания набора команд: оснастка MSVC исполняется вне оболочки MSYS2,
+ # и `uname` там нет вовсе - обращение выше молча отдаёт пустоту. Пустая строка валит
+ # условие выбора флагов ниже отказом «Unknown arguments specified», причём указывает он
+ # на строку условия, а не на место, где значение потерялось
+ ##
+if (ARCHITECTURE STREQUAL "")
+    # Набор команд берётся у самого CMake, раз внешнего средства нет
+    SET(ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
+    # Приводим написание ARM64 к общему для всего файла виду
+    if (ARCHITECTURE MATCHES "^[Aa][Rr][Mm]64$")
+        SET(ARCHITECTURE "aarch64")
+    endif()
+endif()
+
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Если сборка производится под операционную систему Linux
@@ -562,7 +577,10 @@ string(TIMESTAMP CURRENT_YEAR "%Y")
 string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 
 # Опции компилятора
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+if (NOT MSVC)
+    # Код библиотеки обязан быть перемещаемым: он ложится и в динамическую библиотеку
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+endif()
 
 # Устанавливаем параметры игнорирования ошибок для macOS
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
@@ -591,18 +609,38 @@ else()
     SET(AWH_PARAMS "-Wno-unknown-attributes")
 endif()
 
+##
+ # Флаги оснастки MSVC заводятся порознь: написание у неё своё («/O2» вместо «-O3»), и
+ # флаг, ей неведомый, она не отвергает, а принимает за ИМЯ ФАЙЛА - сборка отвечает
+ # тогда отказом о ненайденном файле, уводя разбор далеко от настоящей причины
+ ##
+if (MSVC)
+    # Уровень оптимизации выпускной сборки
+    SET(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG")
+    # Уровень отладочной сборки
+    SET(CMAKE_CXX_FLAGS_DEBUG "/Od /DDEBUG_MODE /Zi")
+    ##
+     # Общие флаги
+     #
+     # /EHsc - обычная для C++ работа исключений; /utf-8 - исходники и строки в UTF-8,
+     # без него MSVC читает их кодовой страницей системы и рвёт кириллицу в сообщениях;
+     # /W3 - уровень предупреждений; /bigobj - в объектном файле AWH разделов больше,
+     # чем допускает обычный предел формата
+     ##
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /utf-8 /W3 /bigobj")
 # Если процессор архитектуры ARM
-if (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
+elseif (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall -Wextra ${AWH_PARAMS}")
+    # Устанавливаем параметр отладки
+    SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
 # Если процессор архитектуры x86_64
 else()
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -mrdrnd -march=core2 -DNDEBUG")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall -Wextra ${AWH_PARAMS}")
+    # Устанавливаем параметр отладки
+    SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
 endif()
-
-# Устанавливаем параметр отладки
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -DDEBUG_MODE ${DEBUGGER}")
 
 # Если активирован режим отладки
 if (CMAKE_BUILD_TYPE MATCHES Debug)
@@ -1372,12 +1410,21 @@ endif (CMAKE_BUILD_TESTS)
 if (CMAKE_SHARED_BUILD_LIB)
     # Добавляем динамическую библиотеку
     add_library(${AWH_LIB_NAME} SHARED ${SOURCE_FILES})
-    # Выполняем экспорт методов доступных извне в динамических библиотеках
-    target_compile_definitions(${AWH_LIB_NAME} PRIVATE AWH_SHARED_LIBRARY_EXPORT)
+    ##
+     # Выполняем экспорт методов доступных извне в динамических библиотеках
+     #
+     # Имя признака обязано совпадать с тем, какое спрашивает include/sys/global.hpp:
+     # препроцессор считает неизвестный ему макрос нулём БЕЗ ЕДИНОГО СЛОВА, и опечатка
+     # в имени отключает пометку экспорта у всего открытого договора молча
+     ##
+    target_compile_definitions(${AWH_LIB_NAME} PRIVATE __AWH_SHARED_LIBRARY_EXPORT__)
 # Если нужно собрать и статическую библиотеку
 else (CMAKE_SHARED_BUILD_LIB)
-    # Активируем сборку статической библиотеки
-    add_compile_definitions(AWH_STATICLIB)
+    ##
+     # Статическая сборка признака не требует: пометка экспорта ставится лишь при
+     # заданном признаке динамической сборки, а при незаданном разворачивается в
+     # пустоту сама собой (include/sys/global.hpp, ветвь else)
+     ##
     # Добавляем статическу библиотеку
     add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
 endif (CMAKE_SHARED_BUILD_LIB)
@@ -6801,10 +6848,23 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/contrib/include/" DESTINATION "${
 if (NOT CMAKE_SHARED_BUILD_LIB)
     # Если режим отладки не активирован
     if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
-        # Выполняем запуск скрипта объединения библиотек
-        add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
-            COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
-        VERBATIM)
+        ##
+         # Выполняем запуск средства объединения библиотек
+         #
+         # У оснастки MSVC зовётся свой двойник на .bat: оболочки POSIX на машине с
+         # Visual Studio может не быть вовсе, а требовать её установки ради одного
+         # шага сборки неверно. Делают оба одно и то же - присоединяют зависимости
+         # к собранной библиотеке, чтобы потребитель связывал ОДНУ
+         ##
+        if (MSVC)
+            add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+                COMMAND "${CMAKE_SOURCE_DIR}/bat/build_static_lib.bat" "$<TARGET_FILE:${AWH_LIB_NAME}>"
+            VERBATIM)
+        else()
+            add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+                COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_static_lib.sh" "$<TARGET_FILE:${AWH_LIB_NAME}>"
+            VERBATIM)
+        endif()
     # Если режим отладки активирован
     else(NOT CMAKE_BUILD_TYPE MATCHES Debug)
         # Выполняем установку библиотеки зависимостей
@@ -7368,13 +7428,24 @@ if (${CMAKE_BUILD_SAMPLES})
     endif()
 endif (${CMAKE_BUILD_SAMPLES})
 
-# Выполняем запуск скрипта генерации CMAKE-файла
-add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
-    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_cmake.sh" "${CMAKE_INSTALL_PREFIX}"
-VERBATIM)
+##
+ # Выполняем запуск средства создания CMAKE-файла
+ #
+ # У оснастки MSVC зовётся свой двойник на .bat по тому же доводу, что и у
+ # объединения библиотек: оболочки POSIX на машине с Visual Studio может не быть
+ ##
+if (MSVC)
+    add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+        COMMAND "${CMAKE_SOURCE_DIR}/bat/build_cmake.bat" "${CMAKE_INSTALL_PREFIX}"
+    VERBATIM)
+else()
+    add_custom_command(TARGET "${AWH_LIB_NAME}" POST_BUILD
+        COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_cmake.sh" "${CMAKE_INSTALL_PREFIX}"
+    VERBATIM)
+endif()
 
 # Устанавливаем сгенерированный CMAKE-файл
-install(FILES "${CMAKE_SOURCE_DIR}/third_party/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+install(FILES "${AWH_THIRD_PARTY}/cmake/FindAWH.cmake" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 
 # =============================================================================
 # === MACOS X FRAMEWORK TARGET ==================================================

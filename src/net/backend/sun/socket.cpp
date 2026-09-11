@@ -21,16 +21,6 @@
  */
 
 /**
- * Для операционной системы macOS
- */
-#if __APPLE__ && !__APPLE_USE_RFC_3542
-	/**
-	 * Подключаем экспериментальные функции для получения кода ошибки на сокете
-	 */
-    #define __APPLE_USE_RFC_3542
-#endif
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <array>
@@ -64,19 +54,13 @@
 #include <netinet/udp.h>
 
 /**
- * Для операционных систем FreeBSD, Sun Solaris и illumos
+ * Заголовочный файл для работы с протоколом SCTP
  *
- * @note Из BSD протокол SCTP несёт одна FreeBSD, оттого условие и было написано её
- *       именем. Sun Solaris с illumos несут его тоже, и настройка отложенной отправки
- *       у них зовётся так же - SCTP_NODELAY
+ * @note Протокол этот системы Sun несут обе, и настройка отложенной отправки
+ *       зовётся у них SCTP_NODELAY
  *
  */
-#if __FreeBSD__ || defined(__sun)
-	/**
-	 * Заголовочный файл для работы с протоколом SCTP
-	 */
-	#include <netinet/sctp.h>
-#endif
+#include <netinet/sctp.h>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -2060,188 +2044,147 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					break;
 				}
 				/**
-				 * Если операционной системой является FreeBSD, Sun Solaris либо illumos
+				 * Определяем протокол сокета
 				 *
-				 * @note Из BSD протокол SCTP несёт одна FreeBSD, оттого условие и было
-				 *       написано её именем. Sun Solaris с illumos несут его тоже, и
-				 *       разбор по протоколу нужен им ровно так же: проверено опытом
-				 *       12.08.2026 - TCP_NODELAY на сокете SCTP отвергается у обеих с
-				 *       «Option not supported by protocol», а SCTP_NODELAY принимается
+				 * @details Названный вызывающим протокол принимается как есть: он завёл
+				 *          этот сокет сам и знает о нём больше, чем ядро сообщит
+				 *          настройкой. Обращение к ядру ради уже известного стоило
+				 *          одного системного вызова на каждую установку опции
+				 *
+				 * @note Неназванный протокол разыскивается у сокета по-прежнему:
+				 *       обращений к методу много, и не всякому из них протокол известен
 				 *
 				 */
-				#if __FreeBSD__ || defined(__sun)
+				int32_t protocol = 0;
+				// Признак того, что протокол сокета определён
+				bool resolved = true;
+				/**
+				 * Определяем названный вызывающим протокол
+				 */
+				switch(static_cast <uint8_t> (proto)){
+					// Если протокол интернета установлен как TCP
+					case static_cast <uint8_t> (event::protocol_t::TCP):
+						// Запоминаем протокол сокета
+						protocol = IPPROTO_TCP;
+					break;
+					// Если протокол интернета установлен как UDP
+					case static_cast <uint8_t> (event::protocol_t::UDP):
+						// Запоминаем протокол сокета
+						protocol = IPPROTO_UDP;
+					break;
+					// Если протокол интернета установлен как SCTP
+					case static_cast <uint8_t> (event::protocol_t::SCTP):
+						// Запоминаем протокол сокета
+						protocol = IPPROTO_SCTP;
+					break;
+					// Если протокол вызывающим не назван
+					default: {
+						// Длина протокола сокета
+						socklen_t length = sizeof(protocol);
+						/**
+						 * Получаем протокол сокета у ядра
+						 *
+						 * @note Имя настройки у систем разное. Sun Solaris зовёт её
+						 *       SO_PROTOTYPE и имени SO_PROTOCOL не знает вовсе,
+						 *       illumos несёт оба имени, прочие - только SO_PROTOCOL.
+						 *       Проверено опытом на обоих стендах: SO_PROTOTYPE
+						 *       отвечает там же 132, то есть IPPROTO_SCTP
+						 */
+						#if defined(SO_PROTOCOL)
+							resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0);
+						#else
+							resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOTYPE, &protocol, &length) == 0);
+						#endif
+					}
+				}
+				// Если протокол сокета определён
+				if(resolved){
 					/**
 					 * Определяем протокол сокета
-					 *
-					 * @details Названный вызывающим протокол принимается как есть: он завёл
-					 *          этот сокет сам и знает о нём больше, чем ядро сообщит
-					 *          настройкой. Обращение к ядру ради уже известного стоило
-					 *          одного системного вызова на каждую установку опции
-					 *
-					 * @note Неназванный протокол разыскивается у сокета по-прежнему:
-					 *       обращений к методу много, и не всякому из них протокол известен
-					 *
 					 */
-					int32_t protocol = 0;
-					// Признак того, что протокол сокета определён
-					bool resolved = true;
+					switch(protocol){
+						// Если протокол TCP
+						case IPPROTO_TCP: {
+							// Активируем/деактивируем алгоритм Нейгла
+							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags))))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						} break;
+						// Если протокол SCTP
+						case IPPROTO_SCTP: {
+							// Активируем/деактивируем алгоритм Нейгла
+							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_NODELAY, &flags, sizeof(flags))))){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug(
+										"%s", __PRETTY_FUNCTION__,
+										make_tuple(
+											sock,
+											static_cast <uint16_t> (family),
+											static_cast <uint16_t> (mode),
+											option
+										), log_t::flag_t::WARNING,
+										::strerror(errno)
+									);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
+						} break;
+					}
+				// Если возникает ошибка получения протокола сокета
+				} else {
 					/**
-					 * Определяем названный вызывающим протокол
+					 * Если включён режим отладки
 					 */
-					switch(static_cast <uint8_t> (proto)){
-						// Если протокол интернета установлен как TCP
-						case static_cast <uint8_t> (event::protocol_t::TCP):
-							// Запоминаем протокол сокета
-							protocol = IPPROTO_TCP;
-						break;
-						// Если протокол интернета установлен как UDP
-						case static_cast <uint8_t> (event::protocol_t::UDP):
-							// Запоминаем протокол сокета
-							protocol = IPPROTO_UDP;
-						break;
-						// Если протокол интернета установлен как SCTP
-						case static_cast <uint8_t> (event::protocol_t::SCTP):
-							// Запоминаем протокол сокета
-							protocol = IPPROTO_SCTP;
-						break;
-						// Если протокол вызывающим не назван
-						default: {
-							// Длина протокола сокета
-							socklen_t length = sizeof(protocol);
-							/**
-							 * Получаем протокол сокета у ядра
-							 *
-							 * @note Имя настройки у систем разное. Sun Solaris зовёт её
-							 *       SO_PROTOTYPE и имени SO_PROTOCOL не знает вовсе,
-							 *       illumos несёт оба имени, прочие - только SO_PROTOCOL.
-							 *       Проверено опытом на обоих стендах: SO_PROTOTYPE
-							 *       отвечает там же 132, то есть IPPROTO_SCTP
-							 */
-							#if defined(SO_PROTOCOL)
-								resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0);
-							#else
-								resolved = (::getsockopt(sock, SOL_SOCKET, SO_PROTOTYPE, &protocol, &length) == 0);
-							#endif
-						}
-					}
-					// Если протокол сокета определён
-					if(resolved){
-						/**
-						 * Определяем протокол сокета
-						 */
-						switch(protocol){
-							// Если протокол TCP
-							case IPPROTO_TCP: {
-								// Активируем/деактивируем алгоритм Нейгла
-								if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags))))){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug(
-											"%s", __PRETTY_FUNCTION__,
-											make_tuple(
-												sock,
-												static_cast <uint16_t> (family),
-												static_cast <uint16_t> (mode),
-												option
-											), log_t::flag_t::WARNING,
-											::strerror(errno)
-										);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-									#endif
-								}
-							} break;
-							// Если протокол SCTP
-							case IPPROTO_SCTP: {
-								// Активируем/деактивируем алгоритм Нейгла
-								if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_NODELAY, &flags, sizeof(flags))))){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug(
-											"%s", __PRETTY_FUNCTION__,
-											make_tuple(
-												sock,
-												static_cast <uint16_t> (family),
-												static_cast <uint16_t> (mode),
-												option
-											), log_t::flag_t::WARNING,
-											::strerror(errno)
-										);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-									#endif
-								}
-							} break;
-						}
-					// Если возникает ошибка получения протокола сокета
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
-					}
-				/**
-				 * Для остальных операционных систем
-				 */
-				#else
-					// Активируем/деактивируем алгоритм Нейгла
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &flags, sizeof(flags))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
-									sock,
-									static_cast <uint16_t> (family),
-									static_cast <uint16_t> (mode),
-									option
-								), log_t::flag_t::WARNING,
-								::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
-					}
-				#endif
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode),
+								option
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
 			} break;
 			// Если необходимо установить опцию IPV6 ONLY
 			case event::options::IPV6_ONLY: {
@@ -2729,75 +2672,9 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					break;
 				}
 				/**
-				 * Если операционной системой является FreeBSD
-				 */
-				#if __FreeBSD__
-					/**
-					 * Если версия FreeBSD 12.0 или выше
-					 */
-					#if __FreeBSD_version >= 1200000
-						// Разрешаем/запрещаем использовать один и тот же порт (с возможностью балансировки нагрузки) для нескольких сокетов
-						if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT_LB, &flags, sizeof(flags))))){
-							// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
-							if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									this->_log->debug(
-										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
-											sock,
-											static_cast <uint16_t> (family),
-											static_cast <uint16_t> (mode),
-											option
-										), log_t::flag_t::WARNING,
-										::strerror(errno)
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-								#endif
-							}
-						}
-					/**
-					 * Если версия FreeBSD ниже 12.0
-					 */
-					#else
-						// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
-						if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug(
-									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
-										sock,
-										static_cast <uint16_t> (family),
-										static_cast <uint16_t> (mode),
-										option
-									), log_t::flag_t::WARNING,
-									::strerror(errno)
-								);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
-						}
-					#endif
-				/**
 				 * Если операционная система поддерживает SO_REUSEPORT
 				 */
-				#elif SO_REUSEPORT
+				#if SO_REUSEPORT
 					// Разрешаем/запрещаем использовать один и тот же порт для нескольких сокетов
 					if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &flags, sizeof(flags))))){
 						/**
@@ -4409,36 +4286,18 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
 										/**
-										 * Для операционной системы macOS, NetBSD, OpenBSD
-										 */
-										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Печатаем дескриптор созданного сокета
-											return ::socket(AF_INET, SOCK_DGRAM | mode, 0);
-										/**
-										 * Для операционных систем FreeBSD, Sun Solaris и illumos
+										 * Упорядоченные сообщения поверх SCTP системы Sun несут обе
 										 *
-										 * @note Из BSD упорядоченные сообщения поверх SCTP несёт одна
-										 *       FreeBSD, оттого условие и было написано её именем. Sun
-										 *       Solaris с illumos их несут тоже - проверено пробой
-										 *       12.08.2026 на обеих системах, сокет заводится и для
-										 *       IPv4, и для IPv6
+										 * @note Проверено пробой 12.08.2026 на обеих системах: сокет
+										 *       заводится и для IPv4, и для IPv6
 										 *
-										 * @warning Ветви для этих систем здесь НЕ БЫЛО ВОВСЕ, и условие
-										 *          не имело завершающего пути: заведение сокета молча
-										 *          не возвращало ничего. Наружу это выходило тем, что
-										 *          событие SEQPACKET не заводилось, а причина в отказе
-										 *          не называлась
+										 * @warning Ветви этой здесь НЕ БЫЛО ВОВСЕ, и условие не имело
+										 *          завершающего пути: заведение сокета молча не возвращало
+										 *          ничего. Наружу это выходило тем, что событие SEQPACKET
+										 *          не заводилось, а причина в отказе не называлась
 										 */
-										#elif __FreeBSD__ || defined(__sun)
-											// Печатаем дескриптор созданного сокета
-											return ::socket(AF_INET, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
-										/**
-										 * Если система упорядоченных сообщений поверх SCTP не несёт
-										 */
-										#else
-											// Отмечаем, что сокет завести не удалось
-											ok = false;
-										#endif
+										// Печатаем дескриптор созданного сокета
+										return ::socket(AF_INET, SOCK_SEQPACKET | mode, IPPROTO_SCTP);
 									} break;
 									// Если установлен другой протокол
 									default: ok = false;
@@ -4712,63 +4571,30 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 					} break;
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-						/**
-						 * Для операционной системы macOS, NetBSD, OpenBSD
-						 */
-						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-							// Выполняем инициализацию файловых дескрипторов
-							if(::socketpair(AF_UNIX, SOCK_DGRAM, 0, &result[0]) != 0){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									this->_log->debug(
-										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
-											static_cast <uint16_t> (family),
-											static_cast <uint16_t> (type),
-											static_cast <uint16_t> (proto)
-										),
-										log_t::flag_t::CRITICAL, ::strerror(errno)
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-								#endif
-							}
-						/**
-						 * Для остальных операционных систем
-						 */
-						#else
-							// Выполняем инициализацию файловых дескрипторов
-							if(::socketpair(AF_UNIX, SOCK_SEQPACKET, 0, &result[0]) != 0){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									this->_log->debug(
-										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
-											static_cast <uint16_t> (family),
-											static_cast <uint16_t> (type),
-											static_cast <uint16_t> (proto)
-										),
-										log_t::flag_t::CRITICAL, ::strerror(errno)
-									);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-								#endif
-							}
-						#endif
+						// Выполняем инициализацию файловых дескрипторов
+						if(::socketpair(AF_UNIX, SOCK_SEQPACKET, 0, &result[0]) != 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug(
+									"%s", __PRETTY_FUNCTION__,
+									make_tuple(
+										static_cast <uint16_t> (family),
+										static_cast <uint16_t> (type),
+										static_cast <uint16_t> (proto)
+									),
+									log_t::flag_t::CRITICAL, ::strerror(errno)
+								);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
 					} break;
 					// Для неизвестного типа сокета
 					default: {

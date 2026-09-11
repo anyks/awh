@@ -91,6 +91,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			__AWH_PACK_BEGIN__
 			typedef struct __AWH_SHARED_EXPORT__ Range {
 				// Конец записи
 				size_t end;
@@ -110,7 +111,8 @@ namespace awh {
 				 * \~
 				 */
 				explicit Range() noexcept;
-			} __attribute__((packed)) range_t;
+			} __AWH_PACKED__ range_t;
+			__AWH_PACK_END__
 		public:
 			/**
 			 * \~russian

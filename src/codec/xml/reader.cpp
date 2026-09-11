@@ -219,7 +219,7 @@ namespace {
 			// Выполняем отбор байтов со снятым вторым разрядом
 			const uint64_t low = (~word & 0x4040404040404040ull);
 			// Выполняем подсчёт продолжающих байтов машинного слова
-			count += static_cast <size_t> (__builtin_popcountll((high >> 7) & (low >> 6)));
+			count += static_cast <size_t> (__awh_popcount64__((high >> 7) & (low >> 6)));
 		}
 		/**
 		 * Выполняем перебор оставшихся байтов последовательности

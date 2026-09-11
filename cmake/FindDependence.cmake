@@ -1,3 +1,17 @@
+# Каталог собранных зависимостей
+#
+# У каждой оснастки он свой: двоичный код MinGW и MSVC несовместим, а заголовки
+# часть зависимостей собирает ПОД ОСНАСТКУ (zlib решает наличие unistd.h именно
+# при сборке). Общий каталог означал бы, что последняя собранная зависимость
+# молча ломает сборку соседней оснасткой - и чинится это не тем, что правится.
+if (NOT DEFINED AWH_THIRD_PARTY)
+    if (MSVC)
+        SET(AWH_THIRD_PARTY "${CMAKE_SOURCE_DIR}/third_party-msvc")
+    else()
+        SET(AWH_THIRD_PARTY "${CMAKE_SOURCE_DIR}/third_party")
+    endif()
+endif()
+
 # Запоминаем правила поиска, действовавшие до нас
 #
 # Правила эти общие на весь разбор сборки, а сужаются они здесь под СВОИ
@@ -23,20 +37,20 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 endif()
 
 # Поиск пути к заголовочным файлам
-find_path(LZ4_INCLUDE_DIR NAMES lz4.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/lz4 NO_DEFAULT_PATH)
-find_path(BZ2_INCLUDE_DIR NAMES bzlib.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/bz2 NO_DEFAULT_PATH)
-find_path(ZSTD_INCLUDE_DIR NAMES zstd.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/zstd NO_DEFAULT_PATH)
-find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/lzma NO_DEFAULT_PATH)
-find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/zlib NO_DEFAULT_PATH)
-find_path(SNAPPY_INCLUDE_DIR NAMES snappy.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/snappy NO_DEFAULT_PATH)
-find_path(DENSITY_INCLUDE_DIR NAMES density_api.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/density NO_DEFAULT_PATH)
-find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
-find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/brotli NO_DEFAULT_PATH)
-find_path(LIZARD_INCLUDE_DIR NAMES lizard_compress.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/lizard NO_DEFAULT_PATH)
-find_path(BORINGSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
+find_path(LZ4_INCLUDE_DIR NAMES lz4.h PATHS ${AWH_THIRD_PARTY}/include/lz4 NO_DEFAULT_PATH)
+find_path(BZ2_INCLUDE_DIR NAMES bzlib.h PATHS ${AWH_THIRD_PARTY}/include/bz2 NO_DEFAULT_PATH)
+find_path(ZSTD_INCLUDE_DIR NAMES zstd.h PATHS ${AWH_THIRD_PARTY}/include/zstd NO_DEFAULT_PATH)
+find_path(LZMA_INCLUDE_DIR NAMES lzma.h PATHS ${AWH_THIRD_PARTY}/include/lzma NO_DEFAULT_PATH)
+find_path(ZLIB_INCLUDE_DIR NAMES zlib.h PATHS ${AWH_THIRD_PARTY}/include/zlib NO_DEFAULT_PATH)
+find_path(SNAPPY_INCLUDE_DIR NAMES snappy.h PATHS ${AWH_THIRD_PARTY}/include/snappy NO_DEFAULT_PATH)
+find_path(DENSITY_INCLUDE_DIR NAMES density_api.h PATHS ${AWH_THIRD_PARTY}/include/density NO_DEFAULT_PATH)
+find_path(BROTLI_INCLUDE_ENCODE_DIR NAMES encode.h PATHS ${AWH_THIRD_PARTY}/include/brotli NO_DEFAULT_PATH)
+find_path(BROTLI_INCLUDE_DECODE_DIR NAMES decode.h PATHS ${AWH_THIRD_PARTY}/include/brotli NO_DEFAULT_PATH)
+find_path(LIZARD_INCLUDE_DIR NAMES lizard_compress.h PATHS ${AWH_THIRD_PARTY}/include/lizard NO_DEFAULT_PATH)
+find_path(BORINGSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${AWH_THIRD_PARTY}/include NO_DEFAULT_PATH)
 
 # Поиск библиотеки Dependence
-find_library(DEPEND_LIBRARY NAMES dependence PATHS ${CMAKE_SOURCE_DIR}/third_party/lib NO_DEFAULT_PATH)
+find_library(DEPEND_LIBRARY NAMES dependence PATHS ${AWH_THIRD_PARTY}/lib NO_DEFAULT_PATH)
 
 # Подключаем 'FindPackageHandle' для использования модуля поиска (find_package(<PackageName>))
 include(FindPackageHandleStandardArgs)

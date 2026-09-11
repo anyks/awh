@@ -197,7 +197,17 @@ typedef WSACMSGHDR cmsghdr;
  *
  * \~
  */
-#define AWH_WIN_MESSAGE_INLINE inline __attribute__((always_inline))
+#if defined(_MSC_VER)
+	/**
+	 * Принудительная подстановка средствами Visual Studio
+	 */
+	#define AWH_WIN_MESSAGE_INLINE __forceinline
+#else
+	/**
+	 * Принудительная подстановка средствами GCC и Clang
+	 */
+	#define AWH_WIN_MESSAGE_INLINE inline __attribute__((always_inline))
+#endif
 
 /**
  * \~russian

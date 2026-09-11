@@ -1261,7 +1261,7 @@ void awh::http::Headers::Iterator::_error(const char * func, const char * messag
  * @return iterator итератор для преобразования
  *
  */
-awh::http::Headers::Iterator::operator iterator() noexcept {
+awh::http::Headers::Iterator::operator awh::http::Headers::Iterator::iterator() noexcept {
 	// Выводим текущее значение итератора
 	return this->_it;
 }
@@ -3816,7 +3816,7 @@ awh::http::Headers::operator string() const noexcept {
  * @return протокол HTTP-запроса/ответа
  *
  */
-awh::http::Headers::operator proto_t() const noexcept {
+awh::http::Headers::operator awh::http::proto_t() const noexcept {
 	// Возвращаем текущий протокол HTTP-запроса/ответа
 	return this->_proto;
 }
@@ -3826,7 +3826,7 @@ awh::http::Headers::operator proto_t() const noexcept {
  * @return объект провайдера HTTP-запроса/ответа
  *
  */
-awh::http::Headers::operator const provider_t * () const noexcept {
+awh::http::Headers::operator const awh::http::provider_t * () const noexcept {
 	// Возвращаем указатель на текущий объект провайдера HTTP-запроса/ответа
 	return this->_provider.get();
 }
@@ -3836,7 +3836,7 @@ awh::http::Headers::operator const provider_t * () const noexcept {
  * @return объект провайдера HTTP-запроса/ответа
  *
  */
-awh::http::Headers::operator unique_ptr <provider_t> () const noexcept {
+awh::http::Headers::operator unique_ptr <awh::http::provider_t> () const noexcept {
 	// Результат работы функции - копия объекта провайдера HTTP-запроса/ответа
 	unique_ptr <provider_t> result = nullptr;
 	/**

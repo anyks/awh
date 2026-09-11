@@ -108,6 +108,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			__AWH_PACK_BEGIN__
 			typedef struct __AWH_SHARED_EXPORT__ Range {
 				size_t end;    // Конец записи
 				size_t begin;  // Начало записи
@@ -123,7 +124,8 @@ namespace awh {
 				 * \~
 				 */
 				explicit Range() noexcept;
-			} __attribute__((packed)) range_t;
+			} __AWH_PACKED__ range_t;
+			__AWH_PACK_END__
 			/**
 			 * \~russian
 			 * @brief Структура параметров максимальных значений
@@ -137,6 +139,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
+			__AWH_PACK_BEGIN__
 			typedef struct __AWH_SHARED_EXPORT__ Max {
 				// Максимальный размер выделения памяти (по умолчанию 1 МБ)
 				size_t memory;
@@ -152,7 +155,8 @@ namespace awh {
 				 * \~
 				 */
 				explicit Max() noexcept;
-			} __attribute__((packed)) max_t;
+			} __AWH_PACKED__ max_t;
+			__AWH_PACK_END__
 		public:
 			/**
 			 * Создаём тип данных добавляемой записи
