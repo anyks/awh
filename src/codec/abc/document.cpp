@@ -1458,6 +1458,16 @@ void awh::codec::abc::Document::setLogger(const log_t * log) noexcept {
 	this->_log = log;
 }
 /**
+ * @brief Метод установки объекта фреймворка
+ *
+ * @param fmk объект фреймворка
+ *
+ */
+void awh::codec::abc::Document::setFramework(const fmk_t * fmk) noexcept {
+	// Выполняем установку объекта фреймворка
+	this->_fmk = fmk;
+}
+/**
  * @brief Метод проверки действительности ссылки
  *
  * @return признак действительности ссылки

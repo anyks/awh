@@ -61,7 +61,6 @@
  *          включением, `restore.hpp` после. Без того `duplicate_t::ERROR` обратился бы
  *          числом, и сборка развалилась бы вдали от места
  */
-#include <codec/replace.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1828,7 +1827,7 @@ bool awh::codec::yaml::Value::parse(const string & text, const Document::setting
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document(this->_log, settings);
+	document_t document(this->_fmk, this->_log, settings);
 	/**
 	 * Если разобрать текст документа не удалось
 	 */
@@ -1876,7 +1875,7 @@ bool awh::codec::yaml::Value::load(const string & filename, const Document::sett
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document(this->_log, settings);
+	document_t document(this->_fmk, this->_log, settings);
 	/**
 	 * Если разобрать текст документа из файла не удалось
 	 */
@@ -2366,86 +2365,88 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 	 *       у него он был закрыт месяцем раньше
 	 */
 	const string temporary(filename + ".awh-tmp");
-	// Выполняем открытие временного файла
-	ofstream file(temporary, ios::binary | ios::trunc);
 	/**
-	 * Если открыть записываемый файл не удалось
+	 * Если объект фреймворка не назначен вовсе
 	 */
-	if(!file.is_open()){
+	if((this->_fmk == nullptr) || (this->_log == nullptr)){
+		// Запоминаем код отказа записи файла настроек
+		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
-		 * Если объект для работы с логами установлен
-		 *
-		 * @warning Вывод обязателен: чтение значения из файла ведётся деревом документа,
-		 *          и об отказе открытия оно сообщает. Молчание записи оставляло бы
-		 *          потребителя с признаком отказа без причины его - при том, что
-		 *          зеркальный вызов причину называет
+		 * Если объект ведения журнала работы установлен
 		 */
 		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе открытия записываемого файла
-			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::yaml::message(error_t::FILE_NOT_OPENED));
+			// Выполняем вывод сообщения об отказе записи
+			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
+			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Выполняем запись текста YAML в файл
-	file.write(text.data(), static_cast <streamsize> (text.size()));
+	// Объект работы с файловой системой
+	fs_t fs(this->_fmk, this->_log);
 	/**
-	 * Выполняем закрытие временного файла ЯВНО
-	 *
-	 * @warning Закрытие обязано идти до сличения состояния: отказ приходит нередко на
-	 *          сбросе буфера, а разрушение потока его проглатывает молча - запись
-	 *          отвечала бы успехом при непопавших на устройство знаках
+	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
-	file.close();
+	static_cast <void> (fs.unlink(temporary));
 	/**
-	 * Если запись во временный файл не удалась
+	 * Если запись собранного текста настроек во временный файл не удалась
 	 */
-	if(!file.good()){
+	if(!fs.write(temporary, text.data(), text.size())){
+		/**
+		 * Запоминаем код отказа записи файла настроек
+		 *
+		 * @warning Причина различается по НАЛИЧИЮ временного файла: не заведись он вовсе -
+		 *          отказало ОТКРЫТИЕ, а заведись и не наполнись - отказала запись
+		 */
+		this->_error = ((fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
-		::remove(temporary.c_str());
+		static_cast <void> (fs.unlink(temporary));
 		/**
 		 * Если объект ведения журнала работы установлен
-		 *
-		 * @warning Отказ обязан быть ОГЛАШЁН, а не проглочен молча: потребитель, ложь без
-		 *          слова получивший, не узнает ни места отказа, ни рода его. Прежде оглашали
-		 *          себя отказы пути да открытия, а отказы записи и подмены цели молчали оба
-		 *
-		 * @note Код отказа при том НЕ запоминается: запись объявлена постоянной, и правка
-		 *       кода означала бы правку значения при записи его
-		 *
-		 * @note Нашло пробел объединённое покрытие набора с ворошителем
 		 */
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
 			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
-			 awh::codec::yaml::message(error_t::FILE_NOT_WRITTEN));
+			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
 	/**
-	 * Если подменить целевой файл временным не удалось
+	 * Выполняем сброс записанного из вместилища ядра на носитель
 	 *
-	 * @note Прежнее содержимое цели при том цело: подмена либо прошла целиком, либо не
-	 *       начиналась вовсе
+	 * @warning Сброс ставится ДО подмены цели: запись, успехом отвеченная, лежит ещё во
+	 *          вместилище ядра, и подмена прежде сброса оставила бы цель указывающей на
+	 *          содержимое, до носителя не дошедшее
 	 */
-	if(!::awh::codec::replace(temporary, filename)){
-		// Выполняем снятие временного файла, целью не ставшего
-		::remove(temporary.c_str());
+	if(!fs.flush(temporary)){
+		// Запоминаем код отказа записи файла настроек
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выполняем снятие временного файла, на носитель не легшего
+		static_cast <void> (fs.unlink(temporary));
 		/**
 		 * Если объект ведения журнала работы установлен
-		 *
-		 * @warning Отказ обязан быть ОГЛАШЁН, а не проглочен молча: потребитель, ложь без
-		 *          слова получивший, не узнает ни места отказа, ни рода его. Прежде оглашали
-		 *          себя отказы пути да открытия, а отказы записи и подмены цели молчали оба
-		 *
-		 * @note Код отказа при том НЕ запоминается: запись объявлена постоянной, и правка
-		 *       кода означала бы правку значения при записи его
-		 *
-		 * @note Нашло пробел объединённое покрытие набора с ворошителем
 		 */
 		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
 			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
-			 awh::codec::yaml::message(error_t::FILE_NOT_WRITTEN));
+			 ::awh::codec::yaml::message(this->_error));
+		// Выводим признак неудачной записи
+		return false;
+	}
+	/**
+	 * Если подмена целевого файла временным не удалась
+	 */
+	if(!fs.replaceAddress(temporary, filename)){
+		// Запоминаем код отказа записи файла настроек
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выполняем снятие временного файла, целью не ставшего
+		static_cast <void> (fs.unlink(temporary));
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе записи
+			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
+			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2673,6 +2674,9 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
 	 *       содержимое, а не место, куда сообщения этого значения уходят
 	 */
+	if((value._fmk != nullptr) && (this->_fmk == nullptr))
+		// Выполняем перенятие объекта фреймворка
+		this->_fmk = value._fmk;
 	if((value._log != nullptr) && (this->_log == nullptr))
 		// Выполняем копирование объекта для работы с логами
 		this->_log = value._log;
@@ -2733,6 +2737,9 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
 	 *       содержимое, а не место, куда сообщения этого значения уходят
 	 */
+	if((value._fmk != nullptr) && (this->_fmk == nullptr))
+		// Выполняем перенятие объекта фреймворка
+		this->_fmk = value._fmk;
 	if((value._log != nullptr) && (this->_log == nullptr))
 		// Выполняем перенос объекта для работы с логами
 		this->_log = value._log;
@@ -2784,6 +2791,16 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 void awh::codec::yaml::Value::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта для работы с логами
 	this->_log = log;
+}
+/**
+ * @brief Метод установки объекта фреймворка
+ *
+ * @param fmk объект фреймворка
+ *
+ */
+void awh::codec::yaml::Value::setFramework(const fmk_t * fmk) noexcept {
+	// Выполняем установку объекта фреймворка
+	this->_fmk = fmk;
 }
 /**
  * @brief Конструктор

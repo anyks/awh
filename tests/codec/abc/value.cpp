@@ -46,6 +46,22 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самих
+	 * проверок: фреймворк и журнал передаются указателями от пользователя, как то
+	 * заведено во всём AWH, и заводить их порознь на каждое дерево незачем
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const fmk_t * framework() noexcept {
+		// Объект фреймворка проверок
+		static fmk_t fmk;
+		// Выводим объект фреймворка проверок
+		return & fmk;
+	}
+	/**
 	 * @brief Функция извлечения объекта журнала проверок
 	 *
 	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
@@ -57,10 +73,8 @@ namespace {
 	 *
 	 */
 	const log_t * logger() noexcept {
-		// Объект фреймворка проверок
-		static fmk_t fmk;
 		// Объект журнала проверок
-		static log_t log(& fmk);
+		static log_t log(::framework());
 		// Признак выполненной настройки журнала
 		static const bool ready = [](){
 			// Выполняем гашение вывода журнала проверок
@@ -367,7 +381,7 @@ TEST(CodecAbcValue, AbsorbFromDocument) {
 	// Выполняем укладку конца отображения
 	ASSERT_TRUE(writer.mapEnd());
 	// Дерево документа
-	abc::document_t document(::logger());
+	abc::document_t document(::framework(), ::logger());
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()));
 	// Владеющее значение, перенесённое из дерева документа
@@ -986,7 +1000,7 @@ TEST(CodecAbcValue, GraftRoundTrip) {
 	// Выполняем установку поля с именем любого вида
 	ASSERT_TRUE(value.insert(abc::value_t(static_cast <uint64_t> (7)), abc::value_t(string{"семь"})));
 	// Дерево документа, куда переносится значение
-	abc::document_t document(::logger());
+	abc::document_t document(::framework(), ::logger());
 	// Выполняем перенос владеющего значения в дерево документа
 	ASSERT_TRUE(value.graft(document)) << "код отказа: " << abc::message(document.error());
 	// Выполняем подъём дерева документа обратно во владеющее значение
@@ -1018,7 +1032,7 @@ TEST(CodecAbcValue, GraftRoundTrip) {
 	 */
 	abc::value_t empty;
 	// Дерево документа, куда переносится пустое значение
-	abc::document_t plain(::logger());
+	abc::document_t plain(::framework(), ::logger());
 	// Выполняем перенос пустого значения в дерево документа
 	ASSERT_TRUE(empty.graft(plain)) << "код отказа: " << abc::message(plain.error());
 	// Выполняем подъём дерева документа обратно во владеющее значение
@@ -1305,7 +1319,7 @@ TEST(CodecAbcValue, KindConstructedValueIsDumpable){
 		// Запись обязана выйти непустой
 		ASSERT_FALSE(record.empty()) << "вид: " << static_cast <uint16_t> (kind);
 		// Дерево документа
-		abc::document_t document(::logger());
+		abc::document_t document(::framework(), ::logger());
 		// Уложенная запись обязана разобраться обратно
 		ASSERT_TRUE(document.parse(record.data(), record.size()))
 			<< "вид: " << static_cast <uint16_t> (kind)
@@ -1326,7 +1340,7 @@ TEST(CodecAbcValue, KindConstructedValueIsDumpable){
 			// Запись отображения обязана выйти непустой
 			ASSERT_FALSE(nested.empty()) << "вид: " << static_cast <uint16_t> (kind);
 			// Дерево документа
-			abc::document_t digest(::logger());
+			abc::document_t digest(::framework(), ::logger());
 			// Уложенная запись отображения обязана разобраться обратно
 			ASSERT_TRUE(digest.parse(nested.data(), nested.size()))
 				<< "вид: " << static_cast <uint16_t> (kind)
@@ -1702,7 +1716,7 @@ TEST(CodecAbcValue, ExtendedDigits){
 	// Выполняем укладку конца отображения
 	ASSERT_TRUE(writer.mapEnd());
 	// Дерево документа
-	abc::document_t document(::logger());
+	abc::document_t document(::framework(), ::logger());
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()));
 	// Владеющее значение, перенесённое из дерева документа
@@ -1814,7 +1828,7 @@ TEST(CodecAbcValue, GraftUsesDefaultSettings) {
 	// Выполняем внесение поля с негодною строкою
 	value["поле"] = string("a\xF0\x9F" "b");
 	// Дерево документа, куда переносится значение
-	abc::document_t document(::logger());
+	abc::document_t document(::framework(), ::logger());
 	/**
 	 * Перенос обязан отвечаться отказом: поверка кодировки объявлена умолчанием
 	 * сборки, а строка ей не отвечает
@@ -1835,7 +1849,7 @@ TEST(CodecAbcValue, GraftUsesDefaultSettings) {
 	// Выполняем объявление пропуска негодных последовательностей
 	parsing.malformed = abc::malformed_t::PASS;
 	// Дерево документа, куда разбирается собранная запись
-	abc::document_t other(::logger());
+	abc::document_t other(::framework(), ::logger());
 	// Дорогою из двух половин запись обязана разбираться
 	ASSERT_TRUE(other.parse(record.data(), record.size(), parsing))
 		<< "код отказа: " << abc::message(other.error());
@@ -2296,7 +2310,7 @@ TEST(CodecAbcValue, UndefinedIsLaidAsNull) {
 	// Выполняем проверку самой метки уложенного значения
 	ASSERT_EQ(record.front(), 0xC0);
 	// Объект документа
-	abc::document_t document(::logger());
+	abc::document_t document(::framework(), ::logger());
 	// Выполняем разбор уложенной записи
 	ASSERT_TRUE(document.parse(record.data(), record.size())) << abc::message(document.error());
 	// Выполняем проверку пригодности корня разобранного дерева
@@ -2415,4 +2429,67 @@ TEST(CodecAbcValue, PlacingByAnInvalidPathSpoilsNothing) {
 	ASSERT_TRUE(value["другое"].value(number));
 	// Выполняем проверку извлечённого числа
 	ASSERT_EQ(number, 5u);
+}
+/**
+ * @brief Проверка того, что присваивание значения самому себе его не опустошает
+ *
+ * @details Присваивание идёт очисткой с последующим копированием, и присваивание самому
+ * себе прошло бы по УЖЕ ОЧИЩЕННОМУ источнику: значение опустело бы молча, отвечая при
+ * том успехом. Заслон против того стоит у обоих присваиваний - копированием и переносом
+ *
+ * @note Щуп нужности 09.09.2026 нашёл оба заслона МОЛЧАЩИМИ: набор присваивал значения
+ * друг другу, а самому себе не присваивал ни разу
+ *
+ * @note Присваивание переносом самому себе законно и обязано сохранять значение: договор
+ * этот идёт от самого языка - перенесённое обязано остаться годным к употреблению, а
+ * здесь источник и приёмник суть одно
+ *
+ */
+TEST(CodecAbcValue, TheSelfAssignmentKeepsTheValueWhole) {
+	/**
+	 * Присваивание копированием самому себе
+	 */
+	{
+		// Собираемое владеющее значение
+		abc::value_t value;
+		// Выполняем заведение поля строки
+		value["имя"] = abc::value_t("Юрий");
+		// Выполняем заведение поля числа
+		value["лет"] = abc::value_t(static_cast <uint64_t> (42));
+		// Выполняем получение ссылки на то же самое значение
+		const abc::value_t & same = value;
+		// Выполняем присваивание значения самому себе
+		value = same;
+		// Значение обязано остаться отображением о двух полях
+		ASSERT_EQ(value.type(), abc::type_t::MAP) << "присваивание себе сменило вид значения";
+		ASSERT_EQ(value.size(), 2u) << "присваивание себе опустошило значение";
+		// Содержимое полей обязано уцелеть
+		ASSERT_EQ(value["имя"].text(), "Юрий");
+		// Извлекаемое целое без знака
+		uint64_t number = 0;
+		// Выполняем извлечение поля числа
+		ASSERT_TRUE(value["лет"].value(number));
+		// Выполняем проверку извлечённого числа
+		ASSERT_EQ(number, 42u);
+	}
+	/**
+	 * Присваивание переносом самому себе
+	 */
+	{
+		// Собираемое владеющее значение
+		abc::value_t value;
+		// Выполняем заведение поля строки
+		value["имя"] = abc::value_t("Юрий");
+		// Выполняем заведение поля числа
+		value["лет"] = abc::value_t(static_cast <uint64_t> (42));
+		// Выполняем получение ссылки на то же самое значение
+		abc::value_t & same = value;
+		// Выполняем присваивание значения самому себе переносом
+		value = ::std::move(same);
+		// Значение обязано остаться отображением о двух полях
+		ASSERT_EQ(value.type(), abc::type_t::MAP) << "перенос в себя сменил вид значения";
+		ASSERT_EQ(value.size(), 2u) << "перенос в себя опустошил значение";
+		// Содержимое полей обязано уцелеть
+		ASSERT_EQ(value["имя"].text(), "Юрий");
+	}
 }

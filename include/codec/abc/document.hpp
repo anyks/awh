@@ -43,6 +43,8 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include "../../sys/fmk.hpp"
+
 #include "common.hpp"
 #include "encoding.hpp"
 #include "reader.hpp"
@@ -1152,6 +1154,29 @@ namespace awh {
 					 */
 					void settings(const reader_t::settings_t & settings) noexcept;
 				protected:
+					/**
+					 * \~russian
+					 * @brief Объект фреймворка
+					 *
+					 * @note Дерево само по себе им не пользуется: оно держит его затем, чтобы
+					 *       отдать тем, кому он нужен, - и затем, что пара указателей `fmk` и
+					 *       `log` есть общий договор заведения у всех кодеков дерева. Расхождение
+					 *       в одном лишь ABC уже дважды приводило к правкам его потребителей
+					 *       вместо правки его самого
+					 *
+					 * \~english
+					 * @brief Object of the framework
+					 *
+					 * @note The tree itself does not use it: it holds it in order to give it away
+					 *       to those who need it - and because the pair of the pointers `fmk` and
+					 *       `log` is the common contract of the creation at all the codecs of the tree.
+					 *       A divergence at ABC alone has already twice led to the fixes of its consumers
+					 *       instead of the fix of itself
+					 *
+					 * \~
+					 */
+					const fmk_t * _fmk;
+				protected:
 					// Объект работы с логами
 					const log_t * _log;
 				private:
@@ -1418,22 +1443,42 @@ namespace awh {
 					 * \~
 					 */
 					void setLogger(const log_t * log) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта фреймворка
+					 *
+					 * @details Работа эта заведена ради согласия договоров кодеков, как и работа
+					 * установки журнала. У ABC объект фреймворка принимается и конструктором,
+					 * и работа эта его не заменяет, а дополняет - дерево бывает заведено прежде,
+					 * чем объект фреймворка у потребителя готов
+					 *
+					 * @param fmk объект фреймворка
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the framework
+					 * @param fmk object of the framework
+					 *
+					 * \~
+					 */
+					void setFramework(const fmk_t * fmk) noexcept;
 				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
+					 * @param fmk object of the framework
 					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					explicit Document(const log_t * log) noexcept :
-					 _error(error_t::NONE), _log(log) {}
+					Document(const fmk_t * fmk, const log_t * log) noexcept :
+					 _error(error_t::NONE), _fmk(fmk), _log(log) {}
 					/**
 					 * \~russian
 					 * @brief Деструктор

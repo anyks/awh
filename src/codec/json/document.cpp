@@ -43,7 +43,6 @@
  */
 #include <num/lexical/lexical.hpp>
 #include <codec/numeric.hpp>
-#include <codec/replace.hpp>
 #include <codec/json/document.hpp>
 
 /**
@@ -98,7 +97,33 @@ void awh::codec::json::Document::setLogger(const log_t * log) noexcept {
  * @param log объект ведения журнала работы
  *
  */
-awh::codec::json::Document::Document(const log_t * log) noexcept : _reader(log), _error(error_t::NONE), _log(log), _stamp(0), _named(0), _keyed(false), _completed(false), _halted(false), _pointer(0), _base(0), _callback(nullptr) {
+/**
+ * @brief Функция проверки годности каталога, куда ложится файл
+ *
+ * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+ * недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+ * записи отвергают нулевой размер и файла не заводят
+ *
+ * @note Путь без разделителя означает каталог текущий, и он годен всегда
+ *
+ * @param fs   объект работы с файловой системой
+ * @param path путь к заводимому файлу
+ * @return     признак того, что каталог для записи годен
+ *
+ */
+static bool writable(const awh::fs_t & fs, const string & path) noexcept {
+	// Положение последнего разделителя пути
+	const size_t slash = path.find_last_of("/\\");
+	/**
+	 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+	 */
+	if(slash == string::npos)
+		// Выводим признак годности каталога текущего
+		return true;
+	// Выводим признак того, что каталог назначения каталогом и является
+	return (fs.type(path.substr(0, slash)) == awh::fs_t::type_t::DIR);
+}
+awh::codec::json::Document::Document(const fmk_t * fmk, const log_t * log) noexcept : _reader(log), _error(error_t::NONE), _log(log), _fmk(fmk), _fs(fmk, log), _stamp(0), _named(0), _keyed(false), _completed(false), _halted(false), _pointer(0), _base(0), _callback(nullptr) {
 	/**
 	 * Выполняем заведение запаса памяти под сборку дерева документа
 	 *
@@ -133,23 +158,6 @@ awh::codec::json::Document::Document(const log_t * log) noexcept : _reader(log),
  *       стережёт постоянной `STORAGE_LIMIT` того же смысла
  */
 static constexpr uint64_t STORAGE_LIMIT = static_cast <uint64_t> (0xFFFFFFFFu);
-/**
- * @brief Функция проверки того, что адрес указывает на каталог
- *
- * @details Каталог, поданный вместо файла, ОТКРЫВАЕТСЯ потоком успешно, а чтение его
- * ставит признаки конца и отказа - те же самые, какими отзывается файл ПУСТОЙ. Отличить
- * их по одному лишь потоку нельзя, и распознаётся каталог по самому адресу
- *
- * @param filename проверяемый адрес
- * @return         признак того, что адрес указывает на каталог
- *
- */
-static bool directory(const string & filename) noexcept {
-	// Сведения об объекте файловой системы
-	struct stat info;
-	// Выводим результат проверки того, что адрес указывает на каталог
-	return ((::stat(filename.c_str(), & info) == 0) && S_ISDIR(info.st_mode));
-}
 bool awh::codec::json::Document::Value::contains(const string & name) const noexcept {
 	// Выводим признак наличия поля объекта
 	return (* this)[name].valid();
@@ -1860,7 +1868,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *       там мёртво - каталог отвечал бы кодом отказа ОТКРЫТИЯ вместо кода отказа
 	 *       чтения. Замерено на стенде Windows 11 ARM64
 	 */
-	if(::directory(filename)){
+	if(this->_fs.type(filename) == fs_t::type_t::DIR){
 		// Запоминаем код отказа чтения файла документа
 		this->_error = error_t::FILE_NOT_READ;
 		/**
@@ -1872,12 +1880,13 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		// Выводим признак неудачного разбора
 		return false;
 	}
-	// Открываем файл документа для чтения
-	ifstream file(filename, ios::binary);
 	/**
-	 * Если файл документа открыть не удалось
+	 * Если файл документа физическим файлом не является
+	 *
+	 * @note Проверка эта стоит вместо прежнего открытия потоком: ходы файловой системы
+	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
 	 */
-	if(!file.is_open()){
+	if(this->_fs.type(filename) != fs_t::type_t::FILE){
 		//
 		// Запоминаем код отказа разбора
 		//
@@ -1944,27 +1953,34 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 *       документу по окончании целиком, без копии
 	 */
 	reader.keep(true);
-	// Буфер очередного куска файла документа
-	string buffer(::CHUNK, '\0');
 	// Признак успешности разбора текста документа
 	bool result = true;
 	/**
-	 * Выполняем чтение файла документа кусками
+	 * Величина файла документа, чтением ожидаемая
+	 *
+	 * @note Спрашивается ДО чтения: заслон ниже сличает поданное разбору с нею, и без
+	 *       величины оборванное чтение было бы неотличимо от файла, вправду короткого
 	 */
-	while(file){
-		// Выполняем чтение очередного куска файла документа
-		file.read(buffer.data(), static_cast <streamsize> (buffer.size()));
-		// Получаем размер прочитанного куска файла документа
-		const size_t size = static_cast <size_t> (file.gcount());
+	const uintmax_t expected = this->_fs.size(filename);
+	// Количество байтов, поданных разбору
+	uintmax_t consumed = 0;
+	/**
+	 * Выполняем чтение файла документа кусками
+	 *
+	 * @note Чтение ведётся ходом файловой системы, а не потоком: приведение пути к
+	 *       широкому виду живёт там, и узкий путь под MS Windows ложился бы на диск
+	 *       искажённым - кириллический адрес при этом не находился бы ничем
+	 */
+	this->_fs.read(filename, ::CHUNK, [&](const void * buffer, const size_t size, const size_t offset, const size_t left) noexcept -> bool {
+		// Пропускаем смещение куска, чтению оно не нужно
+		static_cast <void> (offset);
+		// Наращиваем количество байтов, поданных разбору
+		consumed += static_cast <uintmax_t> (size);
 		// Выполняем подачу куска файла документа чтению
-		result = reader.feed(buffer.data(), size, !static_cast <bool> (file));
-		/**
-		 * Если подача куска чтению не удалась
-		 */
-		if(!result)
-			// Прекращаем чтение файла документа
-			break;
-	}
+		result = reader.feed(buffer, size, (left == 0));
+		// Выводим признак продолжения чтения файла документа
+		return result;
+	});
 	/**
 	 * Если чтение файла оборвалось отказом
 	 *
@@ -2006,7 +2022,7 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	 * @warning Снимать заслон нельзя: без него оборванное чтение уходило бы разбору
 	 *          усечённым текстом, и потребитель принял бы часть за целое
 	 */
-	if(file.bad()){
+	if(result && (consumed < expected)){
 		// Выполняем снятие обработчика прямой выдачи событий разбора
 		reader.handler(nullptr, nullptr);
 		// Выполняем перенос знаков разбора в хранилище документа
@@ -2414,12 +2430,26 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 * Тем же порядком пользуется таблица CSV
 	 */
 	const string temporary = (filename + ".awh-tmp");
-	// Открываем временный файл для записи
-	ofstream file(temporary, ios::binary | ios::trunc);
 	/**
-	 * Если файл документа открыть не удалось
+	 * Выполняем снос остатка прежней работы под тем же именем
+	 *
+	 * @note Ход записи файловой системы файла НЕ усекает - он дописывает по смещению, -
+	 *       и остаток прежнего сохранения, длиною своей превзошедший нынешнее, торчал бы
+	 *       хвостом за концом записанного. Прежде усечение делал сам поток признаком
+	 *       `trunc`
 	 */
-	if(!file.is_open()){
+	static_cast <void> (this->_fs.unlink(temporary));
+	/**
+	 * Выполняем запись текста документа во временный файл
+	 *
+	 * @note Ходы записи файловой системы объявлены `void` и отказ оглашают одним лишь
+	 *       журналом: исход спрашивается сличением ниже, а не возвратом
+	 */
+	const bool written = this->_fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	/**
+	 * Если записанного файла на месте не оказалось
+	 */
+	if(!::writable(this->_fs, temporary)){
 		/**
 		 * Если объект для работы с логами установлен
 		 */
@@ -2439,21 +2469,24 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 		// Выводим признак неудачной записи
 		return false;
 	}
-	// Выполняем запись текста документа в файл
-	file.write(text.data(), static_cast <streamsize> (text.size()));
-	// Выполняем закрытие файла документа
-	file.close();
 	/**
 	 * Если запись файла документа не удалась
+	 *
+	 * @details Исход спрашивается у САМОЙ записи: ход её отдаёт признак успеха, и успехом
+	 * считается запись всего буфера - частичная есть тот же отказ
+	 *
+	 * @note Прежде здесь сличалась ВЕЛИЧИНА записанного: ходы записи были объявлены `void`
+	 *       и отказ оглашали одним лишь журналом. Мера та была слаба - длина сходилась и на
+	 *       файле испорченном, - и держалась лишь потому, что иной не было
 	 */
-	if(!file){
+	if(!written){
 		/**
 		 * Если объект для работы с логами установлен
 		 */
 		// Запоминаем код отказа записи файла документа
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла
-		::remove(temporary.c_str());
+		static_cast <void> (this->_fs.unlink(temporary));
 		/**
 		 * Если объект для работы с логами установлен
 		 *
@@ -2469,19 +2502,32 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 		return false;
 	}
 	/**
+	 * Выполняем сброс записанного из вместилища ядра на носитель
+	 *
+	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная успехом,
+	 * лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
+	 * указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
+	 * у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
+	 * и заведён
+	 *
+	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
+	 *       разницу берёт на себя
+	 */
+	static_cast <void> (this->_fs.flush(temporary, true));
+	/**
 	 * Если перенос собранного текста на место цели не удался
 	 *
 	 * @note Перенос этот и делает сохранение неделимым: цель либо остаётся прежней,
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 */
-	if(!awh::codec::replace(temporary, filename)){
+	if(!this->_fs.replaceAddress(temporary, filename)){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла
-		::remove(temporary.c_str());
+		static_cast <void> (this->_fs.unlink(temporary));
 		/**
 		 * Если объект для работы с логами установлен
 		 *

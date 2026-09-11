@@ -155,6 +155,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -195,7 +205,7 @@ static constexpr const char * SOAP =
  */
 TEST(CodecXmlDocument, Soap) {
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор ответа по договору SOAP
 	ASSERT_TRUE(document.parse(SOAP)) << xml::message(document.error());
 	// Получаем корневой узел разметки
@@ -240,7 +250,7 @@ TEST(CodecXmlDocument, Bindings) {
 	 */
 	const auto walk = [](const string & text) noexcept -> string {
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Настройки разбора текста разметки
 		xml::reader_t::settings_t settings;
 		// Выполняем отключение выдачи примечаний отдельным событием
@@ -280,7 +290,7 @@ TEST(CodecXmlDocument, Bindings) {
 		// Выполняем проверку того, что текст пережил обратную запись знак в знак
 		ASSERT_EQ(walk(string(text)), string(text));
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки с объявлениями на разных уровнях
 	ASSERT_TRUE(document.parse("<a xmlns=\"u1\" xmlns:p=\"u2\"><p:b><c xmlns:q=\"u3\"/></p:b></a>"));
 	// Получаем корневой узел разметки
@@ -327,7 +337,7 @@ TEST(CodecXmlDocument, Interned) {
 	// Выполняем добавление закрывающей метки корневого узла
 	text.append("</r>");
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(document.parse(text));
 	// Количество узлов первого пространства имён
@@ -368,7 +378,7 @@ TEST(CodecXmlDocument, Interned) {
  */
 TEST(CodecXmlDocument, Text) {
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор смешанного содержимого
 	ASSERT_TRUE(document.parse("<a>раз<b>два</b>три<![CDATA[четыре]]></a>")) << xml::message(document.error());
 	// Выполняем проверку сборки содержимого со всей глубины
@@ -380,7 +390,7 @@ TEST(CodecXmlDocument, Text) {
  */
 TEST(CodecXmlDocument, Children) {
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<r><i>1</i><i>2</i><x/><i>3</i></r>")) << xml::message(document.error());
 	// Получаем перечень одноимённых вложенных узлов
@@ -404,7 +414,7 @@ TEST(CodecXmlDocument, Children) {
  */
 TEST(CodecXmlDocument, Malformed) {
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор неправильно построенного текста
 	ASSERT_FALSE(document.parse("<a><b></a>"));
 	// Выполняем проверку пустоты дерева разметки
@@ -452,7 +462,7 @@ TEST(CodecXmlDocument, Huge) {
 	// Выполняем завершение текста разметки
 	text.append("</r>");
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(document.parse(text)) << xml::message(document.error());
 	/**
@@ -479,7 +489,7 @@ TEST(CodecXmlDocument, Huge) {
  */
 TEST(CodecXmlDocument, Numeric) {
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки с числовым содержимым
 	ASSERT_TRUE(document.parse(
 		"<r>"
@@ -645,7 +655,7 @@ TEST(CodecXmlDocument, SpaceNodes) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(document.parse(text));
 		// Количество обнаруженных узлов пробельного содержимого
@@ -667,7 +677,7 @@ TEST(CodecXmlDocument, SpaceNodes) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Настройки разбора текста разметки
 		xml::reader_t::settings_t settings;
 		// Выполняем включение отделения незначимого пробельного содержимого
@@ -724,7 +734,7 @@ TEST(CodecXmlDocument, SpaceNodes) {
  */
 TEST(CodecXmlDocument, AttributeLookup) {
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки с атрибутом в пространстве имён
 	ASSERT_TRUE(document.parse("<a xmlns:p=\"urn:p\" p:k=\"1\" m=\"2\"/>")) << xml::message(document.error());
 	// Получаем корневой узел разметки
@@ -760,7 +770,7 @@ TEST(CodecXmlDocument, VerbatimNames) {
 	 */
 	const auto walk = [](const string & text, const bool ns) noexcept -> string {
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Настройки разбора текста разметки
 		xml::reader_t::settings_t settings;
 		// Устанавливаем признак разбора с учётом пространств имён
@@ -840,7 +850,7 @@ TEST(CodecXmlDocument, RewriteStability) {
 		// Выполняем склеивание подряд идущих кусков содержимого
 		settings.mergeText = true;
 		// Дерево разметки, собираемое разбором текста
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Если разбор текста разметки выполнить не удалось, выводим признак отказа
 		if(!document.parse(text, settings)) return "ОТКАЗ РАЗБОРА";
 		// Настройки записи текста разметки
@@ -889,7 +899,7 @@ TEST(CodecXmlDocument, RewriteStability) {
  */
 TEST(CodecXmlDocument, Navigation) {
 	// Дерево разметки, собираемое разбором текста
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки, записанного тремя строками
 	ASSERT_TRUE(document.parse("<r>\n\t<a/>\n\t<b/>\n\t<c/>\n</r>"));
 	// Выполняем проверку непустоты собранного дерева разметки
@@ -926,7 +936,7 @@ TEST(CodecXmlDocument, Navigation) {
 	// Выполняем проверку непригодности соседа за последним вложенным узлом
 	ASSERT_FALSE(root.last().next().valid());
 	// Дерево разметки, собираемое разбором ошибочного текста
-	xml::document_t broken(::logger());
+	xml::document_t broken(::framework(), ::logger());
 	// Выполняем разбор текста разметки с незакрытым узлом
 	ASSERT_FALSE(broken.parse("<r>\n\t<a>\n</r>"));
 	// Выполняем проверку кода ошибки разбора текста разметки
@@ -1001,7 +1011,7 @@ TEST(CodecXmlDocument, Navigation) {
  */
 TEST(CodecXmlDocument, EncodingRefusalOnFeed) {
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста с объявлением двухбайтовой кодировки при однобайтовой записи
 	ASSERT_FALSE(document.parse("<?xml version='1.0' encoding='UTF-16'?><a/>"));
 	// Выполняем проверку кода отказа разбора
@@ -1034,7 +1044,7 @@ TEST(CodecXmlDocument, ParseFailure) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отклонения текста с несовпадающими метками
 		ASSERT_FALSE(document.parse("<a><b></a>"));
 		// Выполняем проверку кода ошибки разбора
@@ -1049,7 +1059,7 @@ TEST(CodecXmlDocument, ParseFailure) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отклонения пустого текста
 		ASSERT_FALSE(document.parse(""));
 		// Выполняем проверку кода ошибки разбора
@@ -1067,7 +1077,7 @@ TEST(CodecXmlDocument, ParseFailure) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста дерева разметки
 		ASSERT_TRUE(document.parse("<!-- c --><?pi z?><r><a><b/></a><c/></r>"));
 		// Выполняем проверку выдачи первого узла разметки
@@ -1094,7 +1104,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		/**
 		 * Выполняем проверку отклонения текста с неизвестной кодировкой
 		 *
@@ -1113,7 +1123,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отклонения текста с негодной записью знака
 		ASSERT_FALSE(document.parse(string("<a>\x82</a>")));
 		// Выполняем проверку кода ошибки разбора
@@ -1141,7 +1151,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отклонения текста с меткой порядка байтов UTF-32
 		ASSERT_FALSE(document.parse(string("\xFF\xFE\x00\x00<a/>", 9)));
 		// Выполняем проверку кода ошибки разбора
@@ -1156,7 +1166,7 @@ TEST(CodecXmlDocument, EncodingFailures) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста с неизвестной кодировкой
 		ASSERT_FALSE(document.parse("<?xml version=\"1.0\" encoding=\"выдуманная\"?><a/>"));
 		// Выполняем проверку того, что место ошибки записано
@@ -1187,7 +1197,7 @@ TEST(CodecXmlDocument, WideParentLookup) {
 	// Завершаем сборку текста разметки
 	text.append("</root>");
 	// Дерево разметки, разбирающее собранный текст
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(doc.parse(text));
 	// Получаем корневой узел разметки
@@ -1238,7 +1248,7 @@ TEST(CodecXmlDocument, WideParentRepeatedNames) {
 	// Завершаем сборку текста разметки
 	text.append("</root>");
 	// Дерево разметки, разбирающее собранный текст
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(doc.parse(text));
 	// Получаем корневой узел разметки
@@ -1280,7 +1290,7 @@ TEST(CodecXmlDocument, WideParentGraft) {
 	// Завершаем сборку текста разметки
 	text.append("</root>");
 	// Дерево разметки, разбирающее собранный текст
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(doc.parse(text));
 	{
@@ -1330,7 +1340,7 @@ TEST(CodecXmlDocument, WideParentReparse) {
 	// Количество вложенных узлов, заведомо превышающее порог заведения отображения
 	const size_t count = 64;
 	// Дерево разметки, разбирающее подаваемый текст
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	/**
 	 * Выполняем два разбора подряд с РАЗНЫМИ ИМЕНАМИ узлов
 	 *
@@ -1405,7 +1415,7 @@ TEST(CodecXmlDocument, WideParentNamespaceFallback) {
 	// Завершаем сборку текста разметки
 	text.append("\n</root>");
 	// Дерево разметки, разбирающее собранный текст
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(doc.parse(text));
 	// Получаем корневой узел разметки
@@ -1473,7 +1483,7 @@ TEST(CodecXmlDocument, WideParentChildren) {
 	// Завершаем сборку текста разметки
 	text.append("</root>");
 	// Дерево разметки, разбирающее собранный текст
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(doc.parse(text));
 	// Получаем корневой узел разметки
@@ -1548,7 +1558,7 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
 		}}
 	}) {
 		// Дерево разметки, принимающее прививку
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор исходного текста разметки
 		ASSERT_TRUE(doc.parse("<root><first>1</first><target>старое</target><last>3</last></root>")) << item.first;
 		// Прививаемое значение разметки
@@ -1564,7 +1574,7 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
 		// Записанный текст разметки
 		const string text = writer.text();
 		// Дерево разметки, разбирающее записанный текст
-		xml::document_t back(::logger());
+		xml::document_t back(::framework(), ::logger());
 		/**
 		 * Выполняем сличение прочтённого из дерева с прочтённым из перезаписи
 		 */
@@ -1622,7 +1632,7 @@ TEST(CodecXmlDocument, GraftSurvivesRewrite){
  */
 TEST(CodecXmlDocument, NodeDoesNotSurviveRebuild){
 	// Дерево разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<r><a>один</a><b>два</b></r>"));
 	/**
@@ -1653,7 +1663,7 @@ TEST(CodecXmlDocument, NodeDoesNotSurviveRebuild){
 		// Выполняем проверку пригодности снятого узла
 		ASSERT_TRUE(node.valid());
 		// Прививаемое владеющее значение
-		xml::value_t value;
+		xml::value_t value(::framework(), ::logger());
 		// Выполняем установку объекта для работы с логами
 		value.setLogger(::logger());
 		// Выполняем установку имени прививаемого узла
@@ -1807,11 +1817,11 @@ TEST(CodecXmlDocument, BothDoorsAgreeOnEveryShapeOfANumber) {
 		// Выполняем формирование текста разметки с проверяемой записью
 		const string text = (string("<a>") + expectation.text + "</a>");
 		// Объект документа разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем проверку разбора текста разметки
 		ASSERT_TRUE(doc.parse(text)) << "запись: " << expectation.text;
 		// Объект самостоятельного значения разметки
-		xml::value_t value;
+		xml::value_t value(::framework(), ::logger());
 		// Выполняем установку проверяемой записи содержимым значения
 		ASSERT_TRUE(value.text(expectation.text)) << "запись: " << expectation.text;
 		// Приёмник дробного вида двери дерева документа
@@ -1862,7 +1872,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	// Исходный текст разметки
 	const string text = "<?xml version=\"1.0\"?><root a=\"1\"><item>значение</item><item/></root>";
 	// Объект дерева разметки
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор исходного текста разметки
 	ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 	// Получаем записанный деревом текст разметки
@@ -1878,7 +1888,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	 */
 	{
 		// Объект дерева разметки второго прохода
-		xml::document_t second(::logger());
+		xml::document_t second(::framework(), ::logger());
 		// Выполняем разбор записанного деревом текста разметки
 		ASSERT_TRUE(second.parse(first)) << xml::message(second.error());
 		// Выполняем проверку совпадения записи второго прохода с записью первого
@@ -1897,7 +1907,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 		// Выполняем проверку того, что нарядная запись отличается от сжатой
 		ASSERT_NE(pretty, first);
 		// Объект дерева разметки нарядной записи
-		xml::document_t adorned(::logger());
+		xml::document_t adorned(::framework(), ::logger());
 		// Выполняем проверку разбора нарядной записи обратно
 		ASSERT_TRUE(adorned.parse(pretty)) << xml::message(adorned.error());
 	}
@@ -1910,7 +1920,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 		// Выполняем проверку записи дерева разметки в файл
 		ASSERT_TRUE(doc.save(filename)) << xml::message(doc.error());
 		// Объект дерева разметки, читаемого из файла
-		xml::document_t loaded(::logger());
+		xml::document_t loaded(::framework(), ::logger());
 		// Выполняем проверку чтения дерева разметки из файла
 		ASSERT_TRUE(loaded.load(filename)) << xml::message(loaded.error());
 		// Выполняем проверку совпадения прочитанного дерева с записанным
@@ -1937,7 +1947,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t loaded(::logger());
+		xml::document_t loaded(::framework(), ::logger());
 		// Выполняем проверку отказа чтения каталога
 		ASSERT_FALSE(loaded.load("."));
 		// Выполняем проверку кода отказа чтения файла
@@ -1948,7 +1958,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
 	 */
 	{
 		// Объект пустого дерева разметки
-		xml::document_t empty(::logger());
+		xml::document_t empty(::framework(), ::logger());
 		// Выполняем проверку пустоты записи пустого дерева
 		ASSERT_TRUE(empty.dump().empty());
 		// Получаем путь к временному файлу разметки
@@ -1977,7 +1987,7 @@ TEST(CodecXmlDocument, DumpLoadAndSaveRoundTrip) {
  */
 TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
 	// Объект дерева разметки
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор исходного текста разметки
 	ASSERT_TRUE(doc.parse("<root><a><b>первое</b><b>второе</b></a><c/></root>")) << xml::message(doc.error());
 	/**
@@ -2082,7 +2092,7 @@ TEST(CodecXmlDocument, PathSearchIsSharedBetweenGraftAndLookup) {
  */
 TEST(CodecXmlDocument, StoredSettingsRuleTheArgumentlessCalls) {
 	// Объект дерева разметки
-	xml::document_t doc(::logger());
+	xml::document_t doc(::framework(), ::logger());
 	// Настройки дерева разметки
 	xml::document_t::settings_t settings;
 	// Устанавливаем нарядный вид записи текста разметки
@@ -2119,7 +2129,7 @@ TEST(CodecXmlDocument, StoredSettingsRuleTheArgumentlessCalls) {
 		// Устанавливаем предел вложенности разбора текста разметки
 		limited.reader.maxDepth = 2;
 		// Объект дерева разметки с пределом вложенности
-		xml::document_t shallow(::logger());
+		xml::document_t shallow(::framework(), ::logger());
 		// Выполняем установку настроек дерева разметки
 		shallow.settings(limited);
 		// Выполняем проверку отказа разбора разметки глубже предела
@@ -2165,7 +2175,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 */
 	for(const auto & sample : removals){
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		// Выполняем снос узла по пути
@@ -2182,7 +2192,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 */
 	for(const auto & path : {"/root/c", "/root/a"}){
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		// Выполняем проверку наличия узла по пути до сноса
@@ -2206,7 +2216,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 */
 	for(const auto & sample : resets){
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		// Выполняем сброс содержимого узла по пути
@@ -2226,7 +2236,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<root><a/><b/><c/></root>")) << xml::message(doc.error());
 		// Выполняем снос последнего узла разметки
@@ -2266,7 +2276,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 		 */
 		for(const auto & path : absent){
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 			// Владеющее значение, устанавливаемое правкой
@@ -2292,7 +2302,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<root><a/></root>")) << xml::message(doc.error());
 		// Выполняем снос единственного узла разметки
@@ -2309,7 +2319,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 	 */
 	{
 		// Объект дерева, правимого устаревшим именем
-		xml::document_t deprecated(::logger());
+		xml::document_t deprecated(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(deprecated.parse(text)) << xml::message(deprecated.error());
 		// Владеющее значение, устанавливаемое правкой
@@ -2317,7 +2327,7 @@ TEST(CodecXmlDocument, RemovalAndResetFollowThePathRules) {
 		// Выполняем правку дерева устаревшим именем
 		ASSERT_TRUE(deprecated.graft("/root/c", value));
 		// Объект дерева, правимого общим именем
-		xml::document_t renamed(::logger());
+		xml::document_t renamed(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(renamed.parse(text)) << xml::message(renamed.error());
 		// Выполняем правку дерева общим именем
@@ -2357,7 +2367,7 @@ TEST(CodecXmlDocument, NameIndexDoesNotSurviveTreeEditing) {
 	 */
 	for(const string & name : {string("k0"), string("k5"), string("k19")}){
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		/**
@@ -2381,7 +2391,7 @@ TEST(CodecXmlDocument, NameIndexDoesNotSurviveTreeEditing) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		// Выполняем прогрев отображения имён вложенных узлов
@@ -2425,7 +2435,7 @@ TEST(CodecXmlDocument, EditingInvalidatesTheNodesTakenBefore) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		// Снимаем узел соседа правимого места
@@ -2444,7 +2454,7 @@ TEST(CodecXmlDocument, EditingInvalidatesTheNodesTakenBefore) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		// Снимаем узел соседа сносимого места
@@ -2461,7 +2471,7 @@ TEST(CodecXmlDocument, EditingInvalidatesTheNodesTakenBefore) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse(text)) << xml::message(doc.error());
 		// Снимаем узел соседа сбрасываемого места
@@ -2499,7 +2509,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 	 */
 	{
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа чтения каталога
 		ASSERT_FALSE(document.load("."));
 		// Выполняем проверку кода отказа чтения
@@ -2510,7 +2520,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 	 */
 	{
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста разметки
 		ASSERT_TRUE(document.parse("<r>значение</r>"));
 		// Выполняем проверку отказа записи по пути в несуществующий каталог
@@ -2574,7 +2584,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		// Завершаем текст разметки
 		text.append("</корень>");
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора собранного текста разметки
 		ASSERT_TRUE(document.parse(text));
 		// Адрес файла, в который ведётся запись разметки
@@ -2627,7 +2637,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		::removeDirectory(directory);
 		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста разметки
 		ASSERT_TRUE(document.parse("<r>значение</r>"));
 		// Выполняем проверку отказа сохранения дерева поверх каталога
@@ -2651,7 +2661,7 @@ TEST(CodecXmlDocument, FileRefusalsNameTheirCauseByEveryPath) {
 		 */
 		{
 			// Владеющее значение разметки
-			xml::value_t value;
+			xml::value_t value(::framework(), ::logger());
 			// Выполняем назначение журнала значению разметки
 			value.setLogger(::logger());
 			// Выполняем проверку разбора текста разметки
@@ -2689,7 +2699,7 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 	 */
 	{
 		// Выполняем создание объекта документа разметки
-		xml::document_t doc(&log);
+		xml::document_t doc(&Silent::framework(), &log);
 		// Получаем настройки документа разметки
 		xml::document_t::settings_t settings = doc.settings();
 		// Устанавливаем навязываемую кодировку исходного текста
@@ -2711,7 +2721,7 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 	 */
 	{
 		// Выполняем создание объекта документа разметки
-		xml::document_t doc(&log);
+		xml::document_t doc(&Silent::framework(), &log);
 		// Получаем настройки документа разметки
 		xml::document_t::settings_t settings = doc.settings();
 		// Устанавливаем навязываемую кодировку исходного текста
@@ -2731,7 +2741,7 @@ TEST(CodecXmlDocument, TreeSettingsCarryTheEncodingToTheParser) {
 	 */
 	{
 		// Выполняем создание объекта документа разметки
-		xml::document_t doc(&log);
+		xml::document_t doc(&Silent::framework(), &log);
 		// Получаем настройки документа разметки
 		xml::document_t::settings_t settings = doc.settings();
 		// Устанавливаем навязываемую кодировку исходного текста
@@ -2858,7 +2868,7 @@ TEST(CodecXmlDocument, DirectoryIsRefusedNotLoaded) {
 	 */
 	{
 		// Дерево значений документа
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа загрузки каталога
 		ASSERT_FALSE(document.load("."));
 		// Выполняем проверку кода отказа загрузки
@@ -2869,7 +2879,7 @@ TEST(CodecXmlDocument, DirectoryIsRefusedNotLoaded) {
 	 */
 	{
 		// Значение документа
-		xml::value_t value;
+		xml::value_t value(::framework(), ::logger());
 		// Выполняем проверку отказа загрузки каталога
 		ASSERT_FALSE(value.load("."));
 		// Выполняем проверку кода отказа загрузки
@@ -2896,7 +2906,7 @@ TEST(CodecXmlDocument, GraftingRefusesTheNodeWithAnInvalidName) {
 	 */
 	for(const string & name : {string("1bad"), string("a b"), string("<x>"), string("")}){
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(document.parse("<root><k/></root>")) << xml::message(document.error());
 		// Значение с ошибочно построенным именем
@@ -2913,7 +2923,7 @@ TEST(CodecXmlDocument, GraftingRefusesTheNodeWithAnInvalidName) {
 	 */
 	{
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(document.parse("<root><k/></root>")) << xml::message(document.error());
 		// Значение с правильно построенным именем
@@ -2958,7 +2968,7 @@ TEST(CodecXmlDocument, GraftingRefusesTheContentThatCannotBeWritten) {
 		 */
 		{
 			// Дерево разметки
-			xml::document_t document(::logger());
+			xml::document_t document(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(document.parse("<root><k/></root>")) << xml::message(document.error());
 			// Значение с негодным текстом
@@ -2977,7 +2987,7 @@ TEST(CodecXmlDocument, GraftingRefusesTheContentThatCannotBeWritten) {
 		 */
 		{
 			// Дерево разметки
-			xml::document_t document(::logger());
+			xml::document_t document(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(document.parse("<root><k/></root>")) << xml::message(document.error());
 			// Значение с негодным значением свойства
@@ -2997,7 +3007,7 @@ TEST(CodecXmlDocument, GraftingRefusesTheContentThatCannotBeWritten) {
 	 */
 	{
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(document.parse("<root><k/></root>")) << xml::message(document.error());
 		// Значение с содержимым, знаков особых не несущим
@@ -3050,13 +3060,13 @@ TEST(CodecXmlDocument, GraftingAcceptsDocumentValueWithProlog) {
 		string("<!-- первое --><?pi d?><!-- второе --><корень/>")
 	}){
 		// Значение, разбором текста порождённое
-		xml::value_t value;
+		xml::value_t value(::framework(), ::logger());
 		// Выполняем разбор текста разметки во владеющее значение
 		ASSERT_TRUE(value.parse(text)) << text;
 		// Выполняем проверку того, что детей у значения больше одного
 		ASSERT_GT(value.size(), static_cast <size_t> (1)) << text;
 		// Дерево разметки, ничем не заполненное
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем прививку разобранного значения в корень дерева
 		ASSERT_TRUE(document.set("", value)) << text << ": " << xml::message(document.error());
 		// Выполняем проверку того, что привитым оказался именно узел разметки
@@ -3072,7 +3082,7 @@ TEST(CodecXmlDocument, GraftingAcceptsDocumentValueWithProlog) {
 		// Значение вида документ, узла разметки не несущее
 		xml::value_t value(xml::kind_t::DOCUMENT);
 		// Дерево разметки, ничем не заполненное
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку того, что прививка пустого документа отвергается
 		ASSERT_FALSE(document.set("", value));
 		// Выполняем проверку того, что отказ оглашён недостачею корневого узла
@@ -3085,7 +3095,7 @@ TEST(CodecXmlDocument, GraftingIntoTheRootKeepsTheTreeWalkable) {
 	 */
 	{
 		// Дерево разметки, ничем не заполненное
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Прививаемое значение узла разметки
 		xml::value_t value(xml::kind_t::ELEMENT);
 		// Устанавливаем имя прививаемого узла
@@ -3106,7 +3116,7 @@ TEST(CodecXmlDocument, GraftingIntoTheRootKeepsTheTreeWalkable) {
 	 */
 	{
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста разметки с корнем
 		ASSERT_TRUE(document.parse("<прежний/>")) << xml::message(document.error());
 		// Выполняем проверку того, что прежний корень на месте
@@ -3146,7 +3156,7 @@ TEST(CodecXmlDocument, GraftingIntoTheRootKeepsTheTreeWalkable) {
  */
 TEST(CodecXmlDocument, ReplacingTheRootKeepsTheTopLevelNeighbours) {
 	// Дерево разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	/**
 	 * Выполняем разбор текста с примечаниями по обе стороны корня
 	 *
@@ -3198,7 +3208,7 @@ TEST(CodecXmlDocument, LookupInATreeWithoutARootFindsNothing) {
 	 */
 	{
 		// Дерево разметки, ничем не заполненное
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку того, что путь у пустого дерева не разыскивается
 		ASSERT_FALSE(document.has("/корень"));
 		// Выполняем проверку того, что и путь корня у пустого дерева не разыскивается
@@ -3209,7 +3219,7 @@ TEST(CodecXmlDocument, LookupInATreeWithoutARootFindsNothing) {
 	 */
 	{
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Прививаемое значение узла разметки
 		xml::value_t value(xml::kind_t::ELEMENT);
 		// Устанавливаем имя прививаемого узла
@@ -3243,7 +3253,7 @@ TEST(CodecXmlDocument, LookupInATreeWithoutARootFindsNothing) {
  */
 TEST(CodecXmlDocument, SizeOfAnUnfitNodeIsZeroAndTheLoggerCanBeReplaced) {
 	// Дерево разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки с двумя вложенными узлами
 	ASSERT_TRUE(document.parse("<корень><а/><б/></корень>")) << xml::message(document.error());
 	// Выполняем проверку размаха узла пригодного
@@ -3282,7 +3292,7 @@ TEST(CodecXmlDocument, SizeOfAnUnfitNodeIsZeroAndTheLoggerCanBeReplaced) {
  */
 TEST(CodecXmlReader, DeclaredTokenTypesAreNormalisedAndCdataIsNot) {
 	// Дерево разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	/**
 	 * Выполняем разбор текста с описанием типа документа
 	 *
@@ -3334,7 +3344,7 @@ TEST(CodecXmlReader, DeclaredTokenTypesAreNormalisedAndCdataIsNot) {
 	 */
 	{
 		// Дерево разметки с объявлением пространства имён
-		xml::document_t spaced(::logger());
+		xml::document_t spaced(::framework(), ::logger());
 		// Выполняем разбор текста с описанием типа документа и пространством имён
 		ASSERT_TRUE(spaced.parse(
 			"<!DOCTYPE b [<!ATTLIST b xmlns:n NMTOKEN #IMPLIED>]>"
@@ -3397,7 +3407,7 @@ TEST(CodecXmlDocument, TextMarkedWithTheUtf32ByteOrderMarkIsRefused) {
 	 */
 	{
 		// Объект документа разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста в кодировке UTF-32
 		ASSERT_FALSE(document.parse(build(string("\xFF\xFE\x00\x00", 4), true)));
 		// Выполняем проверку кода отказа неподдерживаемой кодировки
@@ -3408,7 +3418,7 @@ TEST(CodecXmlDocument, TextMarkedWithTheUtf32ByteOrderMarkIsRefused) {
 	 */
 	{
 		// Объект документа разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста в кодировке UTF-32
 		ASSERT_FALSE(document.parse(build(string("\x00\x00\xFE\xFF", 4), false)));
 		// Выполняем проверку кода отказа неподдерживаемой кодировки
@@ -3432,11 +3442,11 @@ TEST(CodecXmlDocument, TextMarkedWithTheUtf32ByteOrderMarkIsRefused) {
 			big.push_back('\0'); big.push_back(letter);
 		}
 		// Объект документа разметки для кодировки с обратным порядком байтов
-		xml::document_t reversed(::logger());
+		xml::document_t reversed(::framework(), ::logger());
 		// Выполняем проверку разбора текста в кодировке UTF-16 с обратным порядком
 		ASSERT_TRUE(reversed.parse(little)) << xml::message(reversed.error());
 		// Объект документа разметки для кодировки с прямым порядком байтов
-		xml::document_t straight(::logger());
+		xml::document_t straight(::framework(), ::logger());
 		// Выполняем проверку разбора текста в кодировке UTF-16 с прямым порядком
 		ASSERT_TRUE(straight.parse(big)) << xml::message(straight.error());
 	}

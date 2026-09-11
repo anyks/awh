@@ -80,7 +80,7 @@ mkdir -p "$OUTPUT"
 rm -f "$OUTPUT/toml-tests" "$OUTPUT/toml-tests.exe"
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/sys-fs.o $OUTPUT/sys-os.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
 
 ##
 # Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
@@ -104,6 +104,12 @@ fi
 ##
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# @note Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation, и без неё
+	#       связывание отказывает на средствах Objective-C
+	#
+	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -123,6 +129,25 @@ $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-tabl
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/sys-log.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
+##
+# Ход «fs_t» зовёт «os_t» при смене владельца файла, и без «src/sys/os.cpp» связывание
+# отказывает на средствах опознания пользователя и группы
+##
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"
+##
+# Работа с файловой системой ведётся ходом «fs_t», и стенд обязан его собирать: с 11.09.2026
+# кодеки INI, TOML и YAML зовут «sys/fs» вместо прямых ходов к файловой системе
+#
+# @warning Под macOS файл этот собирается как Objective-C++, а не как C++: разбор
+#          alias-файлов зовёт Foundation, и сборка обычным ходом валится сотнями
+#          отказов в системных заголовках. Отбор этот повторяет CMakeLists.txt, где
+#          тому же файлу и только ему назначены «-x objective-c++ -fobjc-arc»
+##
+if [ "$(uname -s)" = "Darwin" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -x objective-c++ -fobjc-arc -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+else
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+fi
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize.cpp" -o "$OUTPUT/uni-normalize.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"
@@ -179,15 +204,14 @@ done
 ##
 # Собираем общие части кодеков, к самому кодеку не принадлежащие
 #
-# Части эти лежат в «src/codec» и делятся между кодеками: «replace.cpp» несёт
-# переносимую подмену целевого файла временным, ибо у MS Windows «rename» существующий
-# файл не заменяет вовсе. Прежде тело её стояло в заголовке, и стенд о ней не знал -
-# перенос тела в исходник связывание стенда оборвал
+# Части эти лежат в «src/codec» и делятся между кодеками
 #
-# @note Перечень держится вручную по тому же доводу, что и перечень частей кодека:
-#       маска подхватила бы всякий посторонний файл, в каталог положенный
+# @note Часть «replace» изъята 11.09.2026: модуль «codec/replace» удалён владельцем, а
+#       подмена целевого файла временным ведётся ныне ходом «fs_t::replaceAddress».
+#       Перечень этот держится ВРУЧНУЮ, и оттого снос модуля валит стенд связыванием -
+#       маска подхватила бы всякий посторонний файл, потому перечень и ручной
 ##
-SHARED="replace numeric"
+SHARED="numeric"
 
 # Выполняем перебор всех общих частей кодеков
 for PART in $SHARED; do

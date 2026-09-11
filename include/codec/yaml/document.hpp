@@ -43,6 +43,8 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/fs.hpp>
+
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
@@ -1161,7 +1163,33 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					/**
+					 * \~russian
+					 * Объект фреймворка
+					 *
+					 * @note Рамка нужна работам с файловой системой: `fs_t` обращает пути в
+					 *       широкую запись ходом `convert()`, и без неё кириллический путь у
+					 *       MS Windows лёг бы на диск мусором
+					 *
+					 * \~english
+					 * Object of the framework
+					 *
+					 * \~
+					 */
+					const fmk_t * _fmk;
 					const log_t * _log;
+					/**
+					 * \~russian
+					 * Объект работы с файловой системой
+					 *
+					 * @note Держится изменяемым: запись ведётся из связки постоянной
+					 *
+					 * \~english
+					 * Object of the work with the filesystem
+					 *
+					 * \~
+					 */
+					mutable fs_t _fs;
 				private:
 					// Настройки разбора документа
 					settings_t _settings;
@@ -2509,11 +2537,12 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const log_t * log) noexcept;
+					Document(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param fmk      объект фреймворка
 					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора документа
 					 *
@@ -2524,7 +2553,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const log_t * log, const settings_t & settings) noexcept;
+					Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept;
 			} document_t;
 		};
 	};

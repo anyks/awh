@@ -47,6 +47,8 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/fs.hpp>
+
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
@@ -291,7 +293,15 @@ namespace awh {
 					 * ложным - «раздел не объявлен в строке 1, столбце 5», указующее в текст,
 					 * которого более нет
 					 *
-					 * @note Разбор через это тело НЕ идёт: он ставит положение сам, следом за кодом
+					 * @note Разбор ПОТОЧНЫЙ через это тело не идёт: он ставит положение сам, следом
+					 * за кодом
+					 *
+					 * @warning Прежде здесь стояло «разбор через это тело НЕ идёт» без оговорки, и
+					 * это ложно по слову: замерено 09.09.2026 счётом зовущих по объемлющим связкам -
+					 * у INI зов из `parse()` один и у TOML один. Существо тем не рушится, ибо оба
+					 * приходятся на случаи, где положения НЕ СУЩЕСТВУЕТ вовсе: у INI это срыв
+					 * подстановки обращений уже после очистки дерева, у TOML - отказ по длине текста
+					 * прежде начала разбора
 					 *
 					 * @param error запоминаемый код отказа
 					 * @return      признак отказа для выхода из работы
@@ -318,7 +328,33 @@ namespace awh {
 					 */
 					// Кодировка, какою текст настроек прочитан
 					encoding_t _encoding;
+					/**
+					 * \~russian
+					 * Объект фреймворка
+					 *
+					 * @note Рамка нужна работам с файловой системой: `fs_t` обращает пути в
+					 *       широкую запись ходом `convert()`, и без неё кириллический путь у
+					 *       MS Windows лёг бы на диск мусором
+					 *
+					 * \~english
+					 * Object of the framework
+					 *
+					 * \~
+					 */
+					const fmk_t * _fmk;
 					const log_t * _log;
+					/**
+					 * \~russian
+					 * Объект работы с файловой системой
+					 *
+					 * @note Держится изменяемым: запись ведётся из связки постоянной
+					 *
+					 * \~english
+					 * Object of the work with the filesystem
+					 *
+					 * \~
+					 */
+					mutable fs_t _fs;
 				public:
 					/**
 					 * \~russian
@@ -2028,7 +2064,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const log_t * log) noexcept;
+					Document(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2043,7 +2079,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const log_t * log, const settings_t & settings) noexcept;
+					Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

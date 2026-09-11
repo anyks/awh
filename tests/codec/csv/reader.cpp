@@ -78,6 +78,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -2338,7 +2348,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем кодировку, метке противоречащую
 		settings.reader.encoding = csv::encoding_t::UTF16LE;
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger(), settings);
+		csv::document_t doc(::framework(), ::logger(), settings);
 		// Выполняем проверку отказа разбора при противоречии
 		ASSERT_FALSE(doc.parse(BOM8 + "аб,вг\r\n"));
 		// Выполняем проверку кода отказа разбора
@@ -2355,7 +2365,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем кодировку, метке противоречащую
 		settings.reader.encoding = csv::encoding_t::UTF8;
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger(), settings);
+		csv::document_t doc(::framework(), ::logger(), settings);
 		// Выполняем проверку отказа разбора при противоречии
 		ASSERT_FALSE(doc.parse(BOM16LE + wide));
 		// Выполняем проверку кода отказа разбора
@@ -2370,7 +2380,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем кодировку, метке отвечающую
 		settings.reader.encoding = csv::encoding_t::UTF8;
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger(), settings);
+		csv::document_t doc(::framework(), ::logger(), settings);
 		// Выполняем проверку успеха разбора текста таблицы
 		ASSERT_TRUE(doc.parse(BOM8 + "аб,вг\r\n"));
 		// Выполняем проверку того, что метка в содержимое поля не легла
@@ -2387,7 +2397,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем однобайтовую кодировку, метки не имеющую вовсе
 		settings.reader.encoding = csv::encoding_t::CP1252;
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger(), settings);
+		csv::document_t doc(::framework(), ::logger(), settings);
 		// Выполняем проверку успеха разбора текста таблицы
 		ASSERT_TRUE(doc.parse("\xE9\x74\xE9,b\r\n"));
 		// Выполняем проверку приведения содержимого поля к UTF-8
@@ -4475,7 +4485,7 @@ TEST(CodecCsvReader, BothEscapingWaysAreUnderstoodAtOnce) {
 	// Устанавливаем уклад, признающий оба способа отмены
 	settings.reader.escape = csv::escape_t::BOTH;
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем установку настроек разбора
 	document.settings(settings);
 	// Разбираемый текст с обоими способами отмены разом

@@ -51,6 +51,7 @@
  */
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
+#include "../../sys/fs.hpp"
 #include "../../sys/chrono.hpp"
 #include "../abc/value.hpp"
 
@@ -194,6 +195,21 @@ namespace awh {
 				private:
 					// Объект работы с датой и временем
 					mutable chrono_t _chrono;
+				private:
+					/**
+					 * \~russian
+					 * @brief Объект работы с файловой системой
+					 *
+					 * @details Держится ПОЛЕМ, а не заводится в теле хода: так устроены и
+					 * прочие опоры документа - чтение, запись, дата, - и так же поступают
+					 * прочие модули рамки, «awh::args» в их числе
+					 *
+					 * \~english
+					 * @brief Filesystem object
+					 *
+					 * \~
+					 */
+					fs_t _fs;
 				private:
 					/**
 					 * Объект для работы с логами

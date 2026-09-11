@@ -27,7 +27,6 @@
 /**
  * Подключаем заголовочный файл модуля
  */
-#include <codec/replace.hpp>
 #include <codec/csv/value.hpp>
 
 /**
@@ -95,6 +94,32 @@ void awh::codec::csv::Value::setLogger(const log_t * log) noexcept {
  * @return код отказа последней работы
  *
  */
+/**
+ * @brief Функция проверки годности каталога, куда ложится файл
+ *
+ * @details Ходы записи файловой системы признака успеха не дают вовсе, и узнать о
+ * недоступности каталога иначе нечем. Пробная запись пустоты для того негодна: ходы
+ * записи отвергают нулевой размер и файла не заводят
+ *
+ * @note Путь без разделителя означает каталог текущий, и он годен всегда
+ *
+ * @param fs   объект работы с файловой системой
+ * @param path путь к заводимому файлу
+ * @return     признак того, что каталог для записи годен
+ *
+ */
+static bool writable(const awh::fs_t & fs, const string & path) noexcept {
+	// Положение последнего разделителя пути
+	const size_t slash = path.find_last_of("/\\");
+	/**
+	 * Если разделителя в пути нет вовсе, файл ложится в каталог текущий
+	 */
+	if(slash == string::npos)
+		// Выводим признак годности каталога текущего
+		return true;
+	// Выводим признак того, что каталог назначения каталогом и является
+	return (fs.type(path.substr(0, slash)) == awh::fs_t::type_t::DIR);
+}
 awh::codec::csv::error_t awh::codec::csv::Value::error() const noexcept {
 	// Выводим код отказа последней работы над значением
 	return this->_error;
@@ -1007,7 +1032,7 @@ bool awh::codec::csv::Value::graft(Document & document) const noexcept {
  */
 bool awh::codec::csv::Value::parse(const string & text) noexcept {
 	// Объект таблицы для разбора текста
-	Document document(this->_log);
+	Document document(this->_fmk, this->_log);
 	/**
 	 * Если разбор текста таблицы завершился отказом
 	 */
@@ -1034,7 +1059,7 @@ bool awh::codec::csv::Value::parse(const string & text) noexcept {
  */
 bool awh::codec::csv::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
 	// Объект таблицы для разбора текста
-	Document document(this->_log);
+	Document document(this->_fmk, this->_log);
 	/**
 	 * Если разбор текста таблицы завершился отказом
 	 */
@@ -1060,7 +1085,7 @@ bool awh::codec::csv::Value::parse(const string & text, const Document::settings
  */
 bool awh::codec::csv::Value::load(const string & filename) noexcept {
 	// Объект таблицы для чтения файла
-	Document document(this->_log);
+	Document document(this->_fmk, this->_log);
 	/**
 	 * Если чтение файла таблицы завершилось отказом
 	 */
@@ -1087,7 +1112,7 @@ bool awh::codec::csv::Value::load(const string & filename) noexcept {
  */
 bool awh::codec::csv::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
 	// Объект таблицы для чтения файла
-	Document document(this->_log);
+	Document document(this->_fmk, this->_log);
 	// Выполняем установку настроек разбора текста таблицы
 	document.settings(settings);
 	/**
@@ -1178,12 +1203,51 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 	 *       системы, а каталог временных файлов может лежать на иной
 	 */
 	const string temporary = (filename + ".awh-tmp");
-	// Объект файла для записи текста таблицы
-	ofstream file(temporary, ios::binary | ios::trunc);
 	/**
-	 * Если файл для записи открыть не удалось
+	 * Если объект фреймворка значению не задан
+	 *
+	 * @details Работа с файловой системой ведётся через него: приведение пути к широкому
+	 * виду живёт в нём, и без него путь под MS Windows уходил бы узким - кириллический
+	 * адрес ложился бы на диск искажённым, а розыск находил бы его обратно тем же неверным
+	 * приведением, отчего отказа не было бы НИКОГДА
+	 *
+	 * @warning Отказ здесь честнее записи узким ходом: значение, заведённое полем либо
+	 *          записью, фреймворка не несёт, и сохранять ему нечем. Молчаливое падение
+	 *          обратно на узкий ход было бы бедою разряда «принято молча»
 	 */
-	if(!file.is_open()){
+	if(this->_fmk == nullptr){
+		// Запоминаем код отказа записи файла таблицы
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		/**
+		 * Если объект ведения журнала работы установлен
+		 */
+		if(this->_log != nullptr)
+			// Выполняем вывод сообщения об отказе
+			this->_log->print("CSV value failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
+		// Выводим признак неудачного сохранения
+		return false;
+	}
+	// Объект для работы с файловой системой
+	fs_t fs(this->_fmk, this->_log);
+	/**
+	 * Выполняем снос остатка прежней работы под тем же именем
+	 *
+	 * @note Ход записи файловой системы файла НЕ усекает - он дописывает по смещению, -
+	 *       и остаток прежнего сохранения, длиною превзошедший нынешнее, торчал бы хвостом
+	 *       за концом записанного. Прежде усечение делал сам поток признаком `trunc`
+	 */
+	static_cast <void> (fs.unlink(temporary));
+	/**
+	 * Выполняем запись собранного текста таблицы
+	 *
+	 * @note Ходы записи файловой системы объявлены `void` и отказ оглашают одним лишь
+	 *       журналом: исход спрашивается сличением ниже, а не возвратом
+	 */
+	const bool written = fs.write(temporary, text.data(), text.size(), fs_t::seek_t::BEGIN, 0);
+	/**
+	 * Если записанного файла на месте не оказалось
+	 */
+	if(!::writable(fs, temporary)){
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
@@ -1195,27 +1259,26 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 		// Выводим признак неудачного сохранения
 		return false;
 	}
-	// Выполняем запись собранного текста таблицы
-	file.write(text.data(), static_cast <streamsize> (text.size()));
-	// Выполняем закрытие файла записи
-	file.close();
 	/**
 	 * Если запись текста таблицы завершилась отказом
 	 */
 	/**
-	 * @note Ветвь эта НЕДОСТИЖИМА проверкой и оттого не покрыта: признак негодности потока
-	 *       ставится отказом САМОГО УСТРОЙСТВА при записи - исчерпанием места, обрывом
-	 *       носителя, - а переносимого способа устроить такой отказ у набора нет. Довод
-	 *       ССЫЛОЧНЫЙ: тот же разряд с тем же доводом стоит у чтения файла таблицы в
-	 *       `src/codec/csv/document.cpp`, и там записано, чем непереносимы способы, что есть
+	 * @note Сличается ВЕЛИЧИНА записанного, а не признак потока: ходы записи файловой
+	 *       системы объявлены `void` и отказ оглашают одним лишь журналом. Запись,
+	 *       оборванная посреди, оставляет файл налицо и КОРОЧЕ поданного, и по одному
+	 *       наличию его беды этой не поймать вовсе
+	 *
+	 * @note Ветвь эта НЕДОСТИЖИМА проверкой и оттого не покрыта: оборвать запись посреди
+	 *       может лишь отказ САМОГО УСТРОЙСТВА - исчерпание места, обрыв носителя, - а
+	 *       переносимого способа устроить такой отказ у набора нет
 	 *
 	 * @warning Снимать ветвь нельзя: без неё усечённая запись выдаётся за таблицу ЦЕЛУЮ -
 	 *          вызов отвечает успехом, а в файле недостаёт записей. Хуже того, временный файл
 	 *          был бы переименован в цель, и прежнее её содержимое пропало бы безвозвратно
 	 */
-	if(!file.good()){
+	if(!written){
 		// Выполняем снос временного файла записи
-		::remove(temporary.c_str());
+		static_cast <void> (fs.unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
@@ -1228,11 +1291,24 @@ bool awh::codec::csv::Value::save(const string & filename) const noexcept {
 		return false;
 	}
 	/**
+	 * Выполняем сброс записанного из вместилища ядра на носитель
+	 *
+	 * @details Сброс стоит ДО подмены, и в этом весь его смысл: запись, отвеченная успехом,
+	 * лежит ещё во вместилище ядра, и подмена, свершённая прежде сброса, оставила бы цель
+	 * указывающей на содержимое, до носителя не дошедшее. Отказ питания в этот миг отнял бы
+	 * у потребителя и прежнее содержимое, и новое - ровно та беда, ради какой временный файл
+	 * и заведён
+	 *
+	 * @note У macOS долговечность обещает лишь `F_FULLFSYNC`, а не `fsync`, и ход этот
+	 *       разницу берёт на себя
+	 */
+	static_cast <void> (fs.flush(temporary, true));
+	/**
 	 * Если подмена целевого файла временным завершилась отказом
 	 */
-	if(!awh::codec::replace(temporary, filename)){
+	if(!fs.replaceAddress(temporary, filename)){
 		// Выполняем снос временного файла записи
-		::remove(temporary.c_str());
+		static_cast <void> (fs.unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
@@ -1259,7 +1335,7 @@ string awh::codec::csv::Value::dump() const noexcept {
 	// Выполняем сброс места отказа прежней работы
 	this->_errorLocation = location_t();
 	// Объект таблицы для сборки текста
-	Document document(this->_log);
+	Document document(this->_fmk, this->_log);
 	/**
 	 * Если прививка значения к таблице завершилась отказом
 	 *
@@ -1356,35 +1432,44 @@ bool awh::codec::csv::Value::operator != (const Value & value) const noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::csv::Value::Value() noexcept : _type(type_t::NONE), _log(nullptr), _error(error_t::NONE) {}
+awh::codec::csv::Value::Value() noexcept : _type(type_t::NONE), _log(nullptr), _fmk(nullptr), _error(error_t::NONE) {}
 /**
  * @brief Конструктор вида значения
  *
  * @param type вид заводимого значения
  *
  */
-awh::codec::csv::Value::Value(const type_t type) noexcept : _type(type), _log(nullptr), _error(error_t::NONE) {}
+awh::codec::csv::Value::Value(const type_t type) noexcept : _type(type), _log(nullptr), _fmk(nullptr), _error(error_t::NONE) {}
 /**
  * @brief Конструктор поля
  *
  * @param text содержимое заводимого поля
  *
  */
-awh::codec::csv::Value::Value(const string & text) noexcept : _type(type_t::FIELD), _text(text), _log(nullptr), _error(error_t::NONE) {}
+awh::codec::csv::Value::Value(const string & text) noexcept : _type(type_t::FIELD), _text(text), _log(nullptr), _fmk(nullptr), _error(error_t::NONE) {}
 /**
  * @brief Конструктор снятия значения с таблицы
  *
  * @param document таблица, с которой снимается значение
  *
  */
-awh::codec::csv::Value::Value(const log_t * log) noexcept : _type(type_t::NONE), _log(log), _error(error_t::NONE) {}
+awh::codec::csv::Value::Value(const log_t * log) noexcept : _type(type_t::NONE), _log(log), _fmk(nullptr), _error(error_t::NONE) {}
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ *
+ */
+awh::codec::csv::Value::Value(const fmk_t * fmk, const log_t * log) noexcept :
+ _type(type_t::NONE), _log(log), _fmk(fmk), _error(error_t::NONE) {}
 /**
  * @brief Конструктор снятия значения с таблицы
  *
  * @param document таблица, с которой снимается значение
  *
  */
-awh::codec::csv::Value::Value(const Document & document) noexcept : _type(type_t::NONE), _log(nullptr), _error(error_t::NONE) {
+awh::codec::csv::Value::Value(const Document & document) noexcept : _type(type_t::NONE), _log(nullptr), _fmk(nullptr), _error(error_t::NONE) {
 	// Выполняем снятие значения с таблицы
 	this->absorb(document);
 }

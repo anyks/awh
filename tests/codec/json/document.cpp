@@ -205,6 +205,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -240,7 +250,7 @@ static const char * SAMPLE =
  */
 TEST(CodecJsonDocument, Parse) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем проверку пустоты документа до разбора
 	ASSERT_TRUE(doc.empty());
 	// Выполняем разбор текста документа
@@ -266,7 +276,7 @@ TEST(CodecJsonDocument, Parse) {
  */
 TEST(CodecJsonDocument, Access) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Выполняем проверку вида поля со строковым значением
@@ -305,7 +315,7 @@ TEST(CodecJsonDocument, Access) {
  */
 TEST(CodecJsonDocument, Missing) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Выполняем проверку недействительности ссылки на отсутствующее поле
@@ -331,7 +341,7 @@ TEST(CodecJsonDocument, Missing) {
  */
 TEST(CodecJsonDocument, Values) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Извлекаемое строковое значение
@@ -379,7 +389,7 @@ TEST(CodecJsonDocument, Values) {
  */
 TEST(CodecJsonDocument, Unsigned) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа с числами
 	ASSERT_TRUE(doc.parse("[18446744073709551615,-1,1.5]")) << json::message(doc.error());
 	// Извлекаемое беззнаковое целое число
@@ -430,7 +440,7 @@ TEST(CodecJsonDocument, Unsigned) {
  */
 TEST(CodecJsonDocument, Walk) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Собранные виды значений массива
@@ -476,7 +486,7 @@ TEST(CodecJsonDocument, Walk) {
  */
 TEST(CodecJsonDocument, Pointer) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Выполняем проверку обращения к полю корневого объекта
@@ -498,7 +508,7 @@ TEST(CodecJsonDocument, Pointer) {
 	// Выполняем проверку отклонения имени вместо номера у массива
 	ASSERT_FALSE(doc.at("/перечень/имя").valid());
 	// Объект документа с именами полей, требующими отмены в указателе
-	json::document_t escaped(::logger());
+	json::document_t escaped(::framework(), ::logger());
 	// Выполняем разбор текста документа с именами полей, требующими отмены
 	ASSERT_TRUE(escaped.parse("{\"a/b\":1,\"c~d\":2,\"~1\":3,\"\":4}")) << json::message(escaped.error());
 	// Выполняем проверку снятия отменяющей записи косой черты
@@ -544,7 +554,7 @@ TEST(CodecJsonDocument, Index) {
 	// Записываем знак закрытия объекта
 	text.append(1, '}');
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранного текста документа
 	ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 	// Выполняем проверку количества полей объекта
@@ -578,7 +588,7 @@ TEST(CodecJsonDocument, Index) {
  */
 TEST(CodecJsonDocument, EmptyKey) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа с пустым именем поля
 	ASSERT_TRUE(doc.parse("{\"\":{\"\":[1,{\"\":2}]}}")) << json::message(doc.error());
 	// Выполняем проверку сохранности строения документа при перезаписи
@@ -602,7 +612,7 @@ TEST(CodecJsonDocument, EmptyKey) {
  */
 TEST(CodecJsonDocument, Duplicates) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем проверку отклонения повторного имени поля объекта по умолчанию
 	ASSERT_FALSE(doc.parse("{\"a\":1,\"a\":2}"));
 	// Выполняем проверку кода отказа разбора
@@ -642,7 +652,7 @@ TEST(CodecJsonDocument, Duplicates) {
  */
 TEST(CodecJsonDocument, Numbers) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Получаем настройки документа
 	json::document_t::settings_t settings = doc.settings();
 	// Выполняем проверку разбора числа, не представимого видом с плавающей запятой
@@ -699,7 +709,7 @@ TEST(CodecJsonDocument, Numbers) {
  */
 TEST(CodecJsonDocument, Specials) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Получаем настройки документа
 	json::document_t::settings_t settings = doc.settings();
 	// Разрешаем разбору записи NaN и бесконечности
@@ -721,13 +731,13 @@ TEST(CodecJsonDocument, Specials) {
  */
 TEST(CodecJsonDocument, Dump) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Получаем перезаписанный текст документа
 	const string compact = doc.dump();
 	// Объект документа для разбора перезаписанного текста
-	json::document_t back(::logger());
+	json::document_t back(::framework(), ::logger());
 	// Выполняем разбор перезаписанного текста документа
 	ASSERT_TRUE(back.parse(compact)) << json::message(back.error());
 	// Выполняем проверку совпадения перезаписанного текста при повторном обороте
@@ -739,13 +749,13 @@ TEST(CodecJsonDocument, Dump) {
 	// Выполняем проверку наличия переводов строк в оформленном тексте
 	ASSERT_NE(pretty.find('\n'), string::npos);
 	// Объект документа для разбора оформленного текста
-	json::document_t formatted(::logger());
+	json::document_t formatted(::framework(), ::logger());
 	// Выполняем разбор оформленного текста документа
 	ASSERT_TRUE(formatted.parse(pretty)) << json::message(formatted.error());
 	// Выполняем проверку того, что оформление текста документа не изменило
 	ASSERT_EQ(formatted.dump(), compact);
 	// Выполняем проверку перезаписи пустого документа
-	ASSERT_TRUE(json::document_t(::logger()).dump().empty());
+	ASSERT_TRUE(json::document_t(::framework(), ::logger()).dump().empty());
 }
 /**
  * @brief Проверка отказа разбора и положения его в исходном тексте
@@ -753,7 +763,7 @@ TEST(CodecJsonDocument, Dump) {
  */
 TEST(CodecJsonDocument, Failure) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор негодного текста документа
 	ASSERT_FALSE(doc.parse("{\n  \"a\": 1,\n  \"b\": [1,]\n}"));
 	// Выполняем проверку кода отказа разбора
@@ -776,7 +786,7 @@ TEST(CodecJsonDocument, Failure) {
  */
 TEST(CodecJsonDocument, Streaming) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Получаем настройки документа
 	json::document_t::settings_t settings = doc.settings();
 	// Разрешаем разбор потока документов
@@ -828,7 +838,7 @@ TEST(CodecJsonDocument, Streaming) {
  */
 TEST(CodecJsonDocument, File) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(::SAMPLE)) << json::message(doc.error());
 	// Адрес файла документа
@@ -839,7 +849,7 @@ TEST(CodecJsonDocument, File) {
 	// Выполняем запись документа в файл
 	ASSERT_TRUE(doc.save(filename, json::format_t::PRETTY));
 	// Объект документа для чтения записанного файла
-	json::document_t loaded(::logger());
+	json::document_t loaded(::framework(), ::logger());
 	// Выполняем чтение документа из файла
 	ASSERT_TRUE(loaded.load(filename)) << json::message(loaded.error());
 	// Выполняем проверку совпадения прочитанного документа с записанным
@@ -875,7 +885,7 @@ TEST(CodecJsonDocument, Chunks) {
 	// Записываем знак закрытия массива
 	text.append(1, ']');
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа целиком
 	ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 	// Адрес файла документа
@@ -892,7 +902,7 @@ TEST(CodecJsonDocument, Chunks) {
 	// Выполняем закрытие файла документа
 	file.close();
 	// Объект документа для чтения записанного файла
-	json::document_t loaded(::logger());
+	json::document_t loaded(::framework(), ::logger());
 	// Выполняем чтение документа из файла
 	ASSERT_TRUE(loaded.load(filename)) << json::message(loaded.error());
 	// Выполняем проверку совпадения количества узлов документа
@@ -918,7 +928,7 @@ TEST(CodecJsonDocument, NumberKinds) {
 	 */
 	for(const json::number_t rule : {json::number_t::NATIVE, json::number_t::CHECK}){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки документа
 		json::document_t::settings_t settings = doc.settings();
 		// Устанавливаем правило преобразования чисел
@@ -1026,7 +1036,7 @@ TEST(CodecJsonDocument, ValueTypes) {
 	 */
 	for(const auto & sample : samples){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(sample.first)) << sample.first << ": " << json::message(doc.error());
 		// Выполняем проверку точного вида разобранного числа
@@ -1055,7 +1065,7 @@ TEST(CodecJsonDocument, ValueTypes) {
 			// Выполняем переход к следующей сличаемой записи
 			continue;
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа с записью числа
 		ASSERT_TRUE(doc.parse("[" + sample.first + "]")) << sample.first;
 		// Выполняем проверку того, что запись числа выдачею не искажена
@@ -1090,7 +1100,7 @@ TEST(CodecJsonDocument, ExtendedIsDecidedByMagnitudeNotByLength) {
 	 */
 	for(const auto & sample : extended){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(sample)) << sample << ": " << json::message(doc.error());
 		// Выполняем проверку получения видом невместимого числа
@@ -1112,7 +1122,7 @@ TEST(CodecJsonDocument, ExtendedIsDecidedByMagnitudeNotByLength) {
 	 */
 	for(const auto & sample : shortened){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(sample.first)) << sample.first << ": " << json::message(doc.error());
 		// Выполняем проверку укладывания длинного дробного в двойную точность
@@ -1130,7 +1140,7 @@ TEST(CodecJsonDocument, ExtendedIsDecidedByMagnitudeNotByLength) {
  */
 TEST(CodecJsonDocument, ValueGroups) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа со значениями всех видов
 	ASSERT_TRUE(doc.parse("{\"s\":-7,\"u\":7,\"r\":0.5,\"d\":0.1,\"t\":\"текст\",\"n\":null,\"b\":true,\"a\":[],\"o\":{}}"))
 		<< json::message(doc.error());
@@ -1190,7 +1200,7 @@ TEST(CodecJsonDocument, ValueGroups) {
  */
 TEST(CodecJsonDocument, ValueConversions) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse("[7,-7,3502.3453,1e300,\"текст\"]")) << json::message(doc.error());
 	// Извлекаемое число видом в один байт со знаком
@@ -1260,7 +1270,7 @@ TEST(CodecJsonDocument, NumberRoundTrip) {
 	 */
 	for(const auto & sample : samples){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(sample.first)) << sample.first << ": " << json::message(doc.error());
 		// Выполняем проверку совпадения перезаписи документа с ожидаемой
@@ -1292,7 +1302,7 @@ TEST(CodecJsonDocument, NumberCheckRule) {
 	 */
 	for(const auto & sample : samples){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки документа
 		json::document_t::settings_t settings = doc.settings();
 		// Устанавливаем правило отклонения чисел, родным видом не представимых
@@ -1323,7 +1333,7 @@ TEST(CodecJsonDocument, NumberCheckRule) {
 	 */
 	for(const auto & sample : allowed){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки документа
 		json::document_t::settings_t settings = doc.settings();
 		// Устанавливаем правило отклонения чисел, родным видом не представимых
@@ -1343,7 +1353,7 @@ TEST(CodecJsonDocument, NumberCheckRule) {
  */
 TEST(CodecJsonDocument, ExtendedExtraction) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse("[1e400,-1e400,1e-400]")) << json::message(doc.error());
 	// Извлекаемое дробное число
@@ -1397,7 +1407,7 @@ TEST(CodecJsonDocument, TreeDepthLimit) {
 	 */
 	auto nested = [](const size_t depth, json::error_t & error) noexcept -> bool {
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки документа
 		json::document_t::settings_t settings = doc.settings();
 		// Снимаем предел глубины у чтения, оставляя предел дерева
@@ -1441,7 +1451,7 @@ TEST(CodecJsonDocument, TreeDepthLimit) {
 	// Выполняем проверку кода отказа разбора
 	ASSERT_EQ(error, json::error_t::DEPTH_EXCEEDED);
 	// Выполняем проверку того, что предел чтения при своём умолчании срабатывает раньше
-	json::document_t plain(::logger());
+	json::document_t plain(::framework(), ::logger());
 	// Собираемый текст документа глубже предела
 	string text(CEILING + 1, '[');
 	// Дописываем закрывающие скобки собираемого текста
@@ -1465,7 +1475,7 @@ TEST(CodecJsonDocument, TreeDepthLimit) {
  */
 TEST(CodecJsonDocument, NarrowUnsigned) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse("[7,300,70000,3502.3453]")) << json::message(doc.error());
 	// Извлекаемое число видом в один байт без знака
@@ -1531,7 +1541,7 @@ TEST(CodecJsonDocument, NarrowUnsigned) {
  */
 TEST(CodecJsonDocument, StreamWithoutHandler) {
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Получаем настройки документа
 	json::document_t::settings_t settings = doc.settings();
 	// Разрешаем разбор потока документов
@@ -1583,7 +1593,7 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":{\"b\":1}}"));
 		// Выполняем проверку отклонения негодной записи пути
@@ -1611,7 +1621,7 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку отклонения текста с недостающим значением
 		ASSERT_FALSE(document.parse("{\"a\":}"));
 		// Выполняем проверку кода ошибки разбора
@@ -1629,7 +1639,7 @@ TEST(CodecJsonDocument, InvalidAccessAndFailure) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Настройки дерева документа
 		json::document_t::settings_t settings;
 		// Выполняем разрешение примечаний в тексте документа
@@ -1674,7 +1684,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":1}"));
 		// Выполняем проверку действительности звена, в документе присутствующего
@@ -1693,7 +1703,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{}"));
 		// Выполняем проверку отказа записи документа в недоступное место
@@ -1718,7 +1728,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 			file << "{\"a\":1,,}";
 		}
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа чтения документа с негодным текстом
 		ASSERT_FALSE(document.load(filename));
 		// Выполняем проверку установки кода отказа разбора
@@ -1726,7 +1736,7 @@ TEST(CodecJsonDocument, UncoveredRefusals) {
 		// Выполняем снос файла с негодным текстом документа
 		::remove(filename.c_str());
 		// Объект второго дерева документа
-		json::document_t other(::logger());
+		json::document_t other(::framework(), ::logger());
 		// Выполняем проверку отказа чтения отсутствующего файла
 		ASSERT_FALSE(other.load(scratch1.path()));
 	}
@@ -1769,7 +1779,7 @@ TEST(CodecJsonDocument, DuplicateKeyBeyondIndexThreshold) {
 		// Выполняем добавление поля, имя какого уже занято
 		text.append(",\"k3\":99}");
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Настройки дерева документа
 		json::document_t::settings_t settings;
 		// Устанавливаем правило обхождения с повтором ключа
@@ -1788,7 +1798,7 @@ TEST(CodecJsonDocument, DuplicateKeyBeyondIndexThreshold) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста с повтором ключа
 		ASSERT_FALSE(document.parse("{\"a\":1,\"a\":2}"));
 	}
@@ -1804,7 +1814,7 @@ TEST(CodecJsonDocument, DuplicateKeyBeyondIndexThreshold) {
  */
 TEST(CodecJsonDocument, NotANumberToInteger) {
 	// Объект дерева документа
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Настройки дерева документа
 	json::document_t::settings_t settings;
 	// Дозволяем разбор бесконечности и нечисла
@@ -1871,11 +1881,11 @@ TEST(CodecJsonDocument, GraftSurvivesRewrite){
 		}}
 	}) {
 		// Дерево JSON, принимающее прививку
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор исходного текста JSON
 		ASSERT_TRUE(doc.parse(R"({"first":1,"target":"старое","last":3})")) << item.first << ": " << json::message(doc.error());
 		// Прививаемое значение JSON
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Выполняем правку прививаемого значения JSON
 		item.second(value);
 		// Выполняем прививку значения в дерево JSON
@@ -1883,7 +1893,7 @@ TEST(CodecJsonDocument, GraftSurvivesRewrite){
 		// Записанный текст JSON
 		const string text = doc.dump();
 		// Дерево JSON, разбирающее записанный текст
-		json::document_t back(::logger());
+		json::document_t back(::framework(), ::logger());
 		/**
 		 * Выполняем сличение прочтённого из дерева с прочтённым из перезаписи
 		 */
@@ -1929,7 +1939,7 @@ TEST(CodecJsonDocument, GraftSurvivesRewrite){
  */
 TEST(CodecJsonDocument, MissingFileIsNotInternal) {
 	// Дерево значений документа
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем проверку отказа разбора несуществующего файла
 	ASSERT_FALSE(document.load("/несуществующий/каталог/документ.json"));
 	// Выполняем проверку кода ошибки разбора
@@ -1976,7 +1986,7 @@ TEST(CodecJsonDocument, WriteFailureIsNotSuccess) {
 	// Завершаем сборку текста документа
 	text.append("]");
 	// Дерево значений документа
-	json::document_t document(&log);
+	json::document_t document(&Silent::framework(), &log);
 	// Выполняем проверку разбора собранного текста документа
 	ASSERT_TRUE(document.parse(text));
 /**
@@ -2100,7 +2110,7 @@ TEST(CodecJsonDocument, KeptDuplicatesNeedMatchingRule) {
 	// Разбираемый текст документа с повторяющимся именем поля
 	const string text = "{\"a\":1,\"a\":2}";
 	// Дерево значений документа, удерживающее повторы
-	json::document_t keeping(::logger());
+	json::document_t keeping(::framework(), ::logger());
 	// Настройки разбора с удержанием повторов
 	json::document_t::settings_t settings = keeping.settings();
 	// Устанавливаем правило удержания повторяющихся имён
@@ -2118,7 +2128,7 @@ TEST(CodecJsonDocument, KeptDuplicatesNeedMatchingRule) {
 	 */
 	{
 		// Дерево значений документа с умолчательными настройками
-		json::document_t plain(::logger());
+		json::document_t plain(::framework(), ::logger());
 		// Выполняем проверку отказа разбора записанного текста
 		ASSERT_FALSE(plain.parse(written));
 		// Выполняем проверку кода отказа разбора
@@ -2129,7 +2139,7 @@ TEST(CodecJsonDocument, KeptDuplicatesNeedMatchingRule) {
 	 */
 	{
 		// Дерево значений документа, удерживающее повторы
-		json::document_t again(::logger());
+		json::document_t again(::framework(), ::logger());
 		// Выполняем установку настроек разбора с удержанием повторов
 		again.settings(settings);
 		// Выполняем проверку разбора записанного текста
@@ -2176,7 +2186,7 @@ TEST(CodecJsonDocument, NumberCheckJudgesMagnitudeNotPrecision) {
 	 */
 	for(const Probe & probe : probes){
 		// Дерево значений документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Настройки разбора с отказом числам, в родной вид не вместимым
 		json::document_t::settings_t settings = document.settings();
 		// Устанавливаем правило отказа числам, в родной вид не вместимым
@@ -2200,7 +2210,7 @@ TEST(CodecJsonDocument, NumberCheckJudgesMagnitudeNotPrecision) {
 	 */
 	{
 		// Дерево значений документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора записи, более точной, чем double
 		ASSERT_TRUE(document.parse("[0.1234567890123456789012345]"));
 		// Выполняем проверку округления записи по правилам самого языка
@@ -2235,7 +2245,7 @@ TEST(CodecJsonDocument, LoggerSetAfterCreation) {
 	});
 	{
 		// Документ значений без объекта ведения журнала работы
-		json::document_t document(nullptr);
+		json::document_t document(nullptr, nullptr);
 		// Выполняем проверку отказа чтения несуществующего файла документа
 		ASSERT_FALSE(document.load(scratch0.path()));
 		// Выполняем проверку молчания журнала, покуда он не установлен
@@ -2320,7 +2330,7 @@ TEST(CodecJsonDocument, LoggerSetAfterCreation) {
  */
 TEST(CodecJsonDocument, ParseAcceptsStringView){
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Получаем текст, содержащий разбираемый документ долею своей
 	const string text = "мусор{\"ключ\":42}мусор";
 	// Получаем долю текста, содержащую документ
@@ -2369,7 +2379,7 @@ TEST(CodecJsonDocument, NestingLimitBoundedBeforeParsing){
 	 */
 	for(const uint32_t limit : {uint32_t(0), uint32_t(json::MAX_DEPTH * 4)}){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Настройки контейнера
 		json::document_t::settings_t settings;
 		// Устанавливаем проверяемый предел вложенности
@@ -2399,7 +2409,7 @@ TEST(CodecJsonDocument, NestingLimitBoundedBeforeParsing){
  */
 TEST(CodecJsonDocument, FormatTakenFromSettings){
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(doc.parse(string("{\"а\":1}"))) << json::message(doc.error());
 	// Выполняем проверку того, что умолчанием оформление сжатое
@@ -2422,7 +2432,7 @@ TEST(CodecJsonDocument, FormatTakenFromSettings){
 	// Выполняем проверку сохранения документа в файл
 	ASSERT_TRUE(doc.save(output));
 	// Объект документа, прочитанного обратно
-	json::document_t back(::logger());
+	json::document_t back(::framework(), ::logger());
 	// Выполняем чтение записанного документа
 	ASSERT_TRUE(back.load(output)) << json::message(back.error());
 	// Выполняем проверку того, что сохранение настройку соблюдает
@@ -2439,7 +2449,7 @@ TEST(CodecJsonDocument, FormatTakenFromSettings){
  */
 TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
 	// Объект контейнера документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем проверку отказа чтения каталога
 	ASSERT_FALSE(doc.load("."));
 	/**
@@ -2487,7 +2497,7 @@ TEST(CodecJsonDocument, DirectoryIsNotAnEmptyFile){
  */
 TEST(CodecJsonDocument, StreamOfKeylessContainers){
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Получаем настройки документа
 	json::document_t::settings_t settings = doc.settings();
 	// Разрешаем разбор потока документов
@@ -2540,7 +2550,7 @@ TEST(CodecJsonDocument, ClearFromStreamHandler){
 		// Выполняем добавление очередного документа потока
 		text.append("{\"ключ\":\"значение\",\"ещё\":[1,2,3]}\n\n  \n");
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Получаем настройки документа
 	json::document_t::settings_t settings = doc.settings();
 	// Разрешаем разбор потока документов
@@ -2588,7 +2598,7 @@ TEST(CodecJsonDocument, ClearFromStreamHandler){
  */
 TEST(CodecJsonDocument, WritingRefusalNamesFirstCause){
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем проверку отказа разбора негодного текста документа
 	ASSERT_FALSE(doc.parse("{\"а\":нечто}"));
 	// Выполняем проверку того, что положение отказа разбора названо
@@ -2626,7 +2636,7 @@ TEST(CodecJsonDocument, WritingRefusalNamesFirstCause){
  */
 TEST(CodecJsonDocument, GraftAnswersForItself){
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем проверку отказа разбора негодного текста документа
 	ASSERT_FALSE(doc.parse("{\"а\":нечто}"));
 	// Выполняем проверку того, что код отказа разбора поставлен
@@ -2670,7 +2680,7 @@ TEST(CodecJsonDocument, GraftAnswersForItself){
  */
 TEST(CodecJsonDocument, HaltedStreamIsNotRefusal){
 	// Объект документа
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Настройки документа
 	json::document_t::settings_t settings = doc.settings();
 	// Включаем разбор потока документов
@@ -2738,7 +2748,7 @@ TEST(CodecJsonDocument, HaltedStreamIsNotRefusal){
  */
 TEST(CodecJsonDocument, ReferenceDoesNotSurviveRebuild){
 	// Документ разбора
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"a\":\"один\",\"b\":{\"c\":1}}"));
 	/**
@@ -2769,7 +2779,7 @@ TEST(CodecJsonDocument, ReferenceDoesNotSurviveRebuild){
 		// Выполняем проверку действительности снятой ссылки
 		ASSERT_TRUE(node.valid());
 		// Прививаемое владеющее значение
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Выполняем установку объекта для работы с логами
 		value.setLogger(::logger());
 		// Выполняем разбор текста прививаемого значения
@@ -2831,7 +2841,7 @@ TEST(CodecJsonDocument, VerbatimNumbersAreAsymmetric){
 		 */
 		{
 			// Дерево разбора
-			json::document_t document(::logger());
+			json::document_t document(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(document.parse("{\"v\":" + probe.first + "}")) << probe.first;
 			// Выполняем проверку перезаписанного текста
@@ -2842,7 +2852,7 @@ TEST(CodecJsonDocument, VerbatimNumbersAreAsymmetric){
 		 */
 		{
 			// Владеющее значение
-			json::value_t value;
+			json::value_t value(::framework(), ::logger());
 			// Выполняем установку объекта для работы с логами
 			value.setLogger(::logger());
 			// Выполняем разбор текста значения
@@ -2864,7 +2874,7 @@ TEST(CodecJsonDocument, VerbatimNumbersAreAsymmetric){
  */
 TEST(CodecJsonDocument, ReceiverIsUntouchedOnEveryRefusal) {
 	// Документ для проверки извлечения чисел
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста со значениями, числами не являющимися
 	document.parse("[\"строка\", true, null, {}, []]");
 	// Выполняем перебор всех значений разобранного массива
@@ -2953,7 +2963,7 @@ TEST(CodecJsonDocument, TwoNumberKindsDivergeOnUnfittableNumbers) {
 	 */
 	const auto parse = [](const char * text, const json::number_t rule, string & result) noexcept -> json::error_t {
 		// Документ для разбора текста
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Настройки разбора текста документа
 		json::document_t::settings_t settings;
 		// Устанавливаем затребованный уклад обращения с невместимым числом
@@ -3056,7 +3066,7 @@ TEST(CodecJsonDocument, FileInputObeysTheSettings) {
 	 */
 	{
 		// Документ, разбираемый из текста
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем проверку отказа разбора текста
@@ -3069,7 +3079,7 @@ TEST(CodecJsonDocument, FileInputObeysTheSettings) {
 	 */
 	{
 		// Документ, разбираемый из файла
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем проверку отказа разбора файла
@@ -3115,7 +3125,7 @@ TEST(CodecJsonDocument, RawRecordIsDeafToTheSettings) {
 	 */
 	for(size_t variant = 0; variant < 4; variant++){
 		// Документ для разбора текста
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Настройки разбора и записи текста документа
 		json::document_t::settings_t settings;
 		// Устанавливаем проверяемый уклад записи текста
@@ -3203,7 +3213,7 @@ TEST(CodecJsonDocument, NumberRoundTripIsDeafToTheRoundingMode) {
 			// Запоминаем признак того, что режим исход меняет
 			sighted = true;
 		// Документ дерева для разбора текста
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse(text));
 		// Получаем текст записи разобранного документа
@@ -3249,7 +3259,7 @@ TEST(CodecJsonDocument, SubtreeExtentSurvivesDuplicateRemovalAtEveryDepth) {
 	 */
 	const auto rewrite = [](const string & text, const json::duplicate_t rule) noexcept -> string {
 		// Документ дерева для разбора текста
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Получаем настройки документа
 		auto settings = document.settings();
 		// Устанавливаем правило обращения с повторяющимся именем поля
@@ -3385,7 +3395,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 */
 	for(const auto & sample : removals){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 		// Получаем счёт детей корня документа до сноса значения
@@ -3412,7 +3422,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 		// Выполняем проверку счёта значений массива до сноса
@@ -3441,7 +3451,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 */
 	for(const auto & sample : resets){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 		// Выполняем сброс значения по указателю
@@ -3457,7 +3467,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 		// Выполняем проверку отказа сноса корня дерева документа
@@ -3481,7 +3491,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 		 */
 		for(const auto & pointer : absent){
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 			// Владеющее значение, устанавливаемое правкой
@@ -3504,7 +3514,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 		 */
 		for(const auto & pointer : present){
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 			// Выполняем проверку пригодности значения, разысканного обращением
@@ -3512,7 +3522,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 			// Выполняем проверку успешности сброса по указателю
 			ASSERT_TRUE(doc.reset(pointer)) << pointer;
 			// Объект документа для сноса значения
-			json::document_t removed(::logger());
+			json::document_t removed(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(removed.parse(text)) << json::message(removed.error());
 			// Выполняем проверку успешности сноса по указателю
@@ -3527,7 +3537,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 	 */
 	{
 		// Объект документа, правимого устаревшим именем
-		json::document_t deprecated(::logger());
+		json::document_t deprecated(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(deprecated.parse(text)) << json::message(deprecated.error());
 		// Владеющее значение, устанавливаемое правкой
@@ -3535,7 +3545,7 @@ TEST(CodecJsonDocument, PointerEditingSharesTheSearchWithLookup) {
 		// Выполняем правку дерева устаревшим именем
 		ASSERT_TRUE(deprecated.graft("/c", value));
 		// Объект документа, правимого общим именем
-		json::document_t renamed(::logger());
+		json::document_t renamed(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(renamed.parse(text)) << json::message(renamed.error());
 		// Выполняем правку дерева общим именем
@@ -3585,7 +3595,7 @@ TEST(CodecJsonDocument, NameIndexDoesNotSurviveTreeEditing) {
 	 */
 	for(const string & name : {string("k0"), string("k5"), string("k19")}){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 		/**
@@ -3611,7 +3621,7 @@ TEST(CodecJsonDocument, NameIndexDoesNotSurviveTreeEditing) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 		// Выполняем прогрев отображения имён полей объекта
@@ -3624,7 +3634,7 @@ TEST(CodecJsonDocument, NameIndexDoesNotSurviveTreeEditing) {
 		 *       отображение имён переживает такую правку без вреда. Замер щупом:
 		 *       подмена сброса отображения при правке числом на число НЕ ловилась
 		 */
-		json::value_t value(::logger());
+		json::value_t value(::framework(), ::logger());
 		// Выполняем разбор текста устанавливаемого значения
 		ASSERT_TRUE(value.parse("[1,2,3,4,5]")) << json::message(value.error());
 		// Выполняем правку значения поля объекта по указателю
@@ -3672,7 +3682,7 @@ TEST(CodecJsonDocument, EditingInvalidatesTheValuesTakenBefore) {
 	 */
 	for(uint8_t operation = 0; operation < 3; operation++){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse(text)) << json::message(doc.error());
 		// Снимаем значение соседа правимого места
@@ -3723,7 +3733,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 	 */
 	{
 		// Дерево значений документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста документа
 		ASSERT_TRUE(document.parse("{\"имя\":1}"));
 		// Выполняем проверку отказа записи по пути в несуществующий каталог
@@ -3757,7 +3767,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 		::removeDirectory(directory);
 		ASSERT_TRUE(::makeDirectory(directory));
 		// Дерево значений документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста документа
 		ASSERT_TRUE(document.parse("{\"имя\":1}"));
 		// Выполняем проверку отказа сохранения документа поверх каталога
@@ -3781,7 +3791,7 @@ TEST(CodecJsonDocument, SaveRefusalsNameTheirCauseByEveryPath) {
 		 */
 		{
 			// Владеющее значение документа
-			json::value_t value(::logger());
+			json::value_t value(::framework(), ::logger());
 			// Выполняем проверку разбора текста документа
 			ASSERT_TRUE(value.parse("{\"имя\":1}"));
 			// Выполняем проверку отказа сохранения значения поверх каталога
@@ -3817,7 +3827,7 @@ TEST(CodecJsonDocument, SavingDocumentWithoutValueIsRefused) {
 	// Выполняем снос прежнего файла документа
 	::remove(filename.c_str());
 	// Дерево значений документа без значения
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем проверку отсутствия отказа у свежего документа
 	ASSERT_EQ(document.error(), json::error_t::NONE);
 	// Выполняем проверку отказа сохранения документа без значения
@@ -3858,7 +3868,7 @@ TEST(CodecJsonDocument, DirectoryIsRefusedNotLoaded) {
 	 */
 	{
 		// Дерево значений документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа загрузки каталога
 		ASSERT_FALSE(document.load("."));
 		// Выполняем проверку кода отказа загрузки
@@ -3869,7 +3879,7 @@ TEST(CodecJsonDocument, DirectoryIsRefusedNotLoaded) {
 	 */
 	{
 		// Значение документа
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Выполняем проверку отказа загрузки каталога
 		ASSERT_FALSE(value.load("."));
 		// Выполняем проверку кода отказа загрузки
@@ -3895,7 +3905,7 @@ TEST(CodecJsonDocument, GraftingRefusesTheValueDeeperThanAllowed) {
 	 */
 	{
 		// Собираемое значение глубже предела вложенности
-		json::value_t deep;
+		json::value_t deep(::framework(), ::logger());
 		// Указатель на текущий уровень собираемого значения
 		json::value_t * cursor = &deep;
 		/**
@@ -3907,7 +3917,7 @@ TEST(CodecJsonDocument, GraftingRefusesTheValueDeeperThanAllowed) {
 		// Выполняем запись значения самому глубокому уровню
 		(* cursor) = json::value_t(1);
 		// Дерево значений документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{}")) << json::message(document.error());
 		// Выполняем проверку отказа прививки значения глубже предела
@@ -3922,7 +3932,7 @@ TEST(CodecJsonDocument, GraftingRefusesTheValueDeeperThanAllowed) {
 	 */
 	{
 		// Собираемое значение малой глубины
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Указатель на текущий уровень собираемого значения
 		json::value_t * cursor = &value;
 		/**
@@ -3934,7 +3944,7 @@ TEST(CodecJsonDocument, GraftingRefusesTheValueDeeperThanAllowed) {
 		// Выполняем запись значения самому глубокому уровню
 		(* cursor) = json::value_t(1);
 		// Дерево значений документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{}")) << json::message(document.error());
 		// Выполняем проверку прививки значения
@@ -3965,7 +3975,7 @@ TEST(CodecJsonDocument, DuplicateKeepHoldsEveryValueAndYieldsTheFirst) {
 	// Назначаем удержание всех повторов имени поля
 	settings.duplicates = json::duplicate_t::KEEP;
 	// Дерево документа
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем установку настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста с повтором имени поля
@@ -3994,7 +4004,7 @@ TEST(CodecJsonDocument, DuplicateKeepHoldsEveryValueAndYieldsTheFirst) {
  */
 TEST(CodecJsonDocument, SizeOfAnEmptyTreeIsZero) {
 	// Дерево документа, ничем не заполненное
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем проверку нулевого размаха пустого дерева
 	ASSERT_EQ(document.size(), 0u);
 }
@@ -4019,7 +4029,7 @@ TEST(CodecJsonDocument, SizeOfAnEmptyTreeIsZero) {
  */
 TEST(CodecJsonDocument, LookupByASingleCharacterNameMatchesTheStringLookup) {
 	// Дерево документа
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста документа с полем в один знак
 	ASSERT_TRUE(document.parse("{\"a\":42,\"bb\":7}")) << json::message(document.error());
 	// Число, извлекаемое обращением по знаку
@@ -4045,7 +4055,7 @@ TEST(CodecJsonDocument, LookupByASingleCharacterNameMatchesTheStringLookup) {
 	 */
 	{
 		// Дерево документа с вложенным объектом
-		json::document_t nested(::logger());
+		json::document_t nested(::framework(), ::logger());
 		// Выполняем разбор текста документа с вложенным объектом
 		ASSERT_TRUE(nested.parse("{\"о\":{\"a\":42}}")) << json::message(nested.error());
 		// Число, извлекаемое обращением по знаку у значения дерева
@@ -4085,7 +4095,7 @@ TEST(CodecJsonDocument, DepthLimitIsAlwaysBoundedAndRemovalFromAnEmptyTreeIsRefu
 		// Снимаем предел вложенности настройками
 		settings.reader.maxDepth = 0;
 		// Дерево документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем разбор текста документа обычной глубины
@@ -4102,7 +4112,7 @@ TEST(CodecJsonDocument, DepthLimitIsAlwaysBoundedAndRemovalFromAnEmptyTreeIsRefu
 		// Поднимаем предел вложенности выше допустимого
 		settings.reader.maxDepth = 0xFFFFFFFF;
 		// Дерево документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем разбор текста документа обычной глубины
@@ -4133,7 +4143,7 @@ TEST(CodecJsonDocument, DepthLimitIsAlwaysBoundedAndRemovalFromAnEmptyTreeIsRefu
 		// Снимаем предел вложенности настройками
 		settings.reader.maxDepth = 0;
 		// Дерево документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем проверку загрузки документа из файла
@@ -4148,11 +4158,11 @@ TEST(CodecJsonDocument, DepthLimitIsAlwaysBoundedAndRemovalFromAnEmptyTreeIsRefu
 	 */
 	{
 		// Дерево документа, ничем не заполненное
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа сноса узла у пустого дерева
 		ASSERT_FALSE(document.erase("/а"));
 		// Дерево документа с содержимым
-		json::document_t filled(::logger());
+		json::document_t filled(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(filled.parse("{\"а\":1}")) << json::message(filled.error());
 		// Выполняем проверку сноса узла у дерева с содержимым
@@ -4192,7 +4202,7 @@ TEST(CodecJsonDocument, RefusalOfTheWritingIsNotPassedAsAnEmptyDocument) {
 		// Назначаем отказ на запись, кодировке не отвечающую
 		settings.writer.malformed = json::malformed_t::REFUSE;
 		// Дерево документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек документа
 		document.settings(settings);
 		// Значение с содержимым, годной кодировкой UTF-8 не являющимся
@@ -4243,7 +4253,7 @@ TEST(CodecJsonDocument, RefusalOfTheWritingIsNotPassedAsAnEmptyDocument) {
 	 */
 	{
 		// Дерево документа, ничем не заполненное
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Текст, выданный пустым деревом
 		const string text = document.dump();
 		// Выполняем проверку того, что выданный текст пуст

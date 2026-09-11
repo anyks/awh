@@ -82,6 +82,19 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Способ выдачи объекта фреймворка проверок
+	 *
+	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -1969,7 +1982,7 @@ TEST(CodecTomlReader, NegativeZeroOffset) {
 		// Собираемый текст настроек с проверяемой отметкой времени
 		const string text = ("a = " + source + "\n");
 		// Объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста настроек
 		ASSERT_TRUE(document.parse(text)) << "«" << source << "»";
 		// Выполняем проверку того, что перезапись повторяет исходную запись
@@ -2301,7 +2314,7 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста настроек
 		ASSERT_TRUE(document.parse("k = \"\"\"\r\nтекст\"\"\"\n"));
 		// Выполняем проверку того, что первый перевод строки содержимому не достался
@@ -2312,7 +2325,7 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста настроек
 		ASSERT_TRUE(document.parse("k = \"a\\bb\\fc\"\n"));
 		// Выполняем проверку того, что обходы обращены в знаки
@@ -2338,7 +2351,7 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку разбора текста с пятью кавычками подряд
 		ASSERT_TRUE(document.parse("k = \"\"\"a\"\"\"\"\"\n"));
 		// Выполняем проверку того, что две кавычки достались содержимому
@@ -2432,7 +2445,7 @@ TEST(CodecTomlReader, RefusalCodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста
 		ASSERT_FALSE(document.parse("[table]\n[table]\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2446,7 +2459,7 @@ TEST(CodecTomlReader, RefusalCodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста
 		ASSERT_FALSE(document.parse("a = {b = 1}\na.c = 2\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2457,7 +2470,7 @@ TEST(CodecTomlReader, RefusalCodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста
 		ASSERT_FALSE(document.parse("[table]\n[[table]]\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2597,11 +2610,11 @@ TEST(CodecTomlReader, FinishEvent) {
  */
 TEST(CodecTomlReader, StampRefusesTailAfterZone) {
 	// Дерево настроек
-	toml::document_t document(::logger());
+	toml::document_t document(::framework(), ::logger());
 	// Выполняем проверку разбора отметки времени, записанной верно
 	ASSERT_TRUE(document.parse("stamp = 2026-08-30T10:00:00Z\n"));
 	// Второе дерево настроек
-	toml::document_t broken(::logger());
+	toml::document_t broken(::framework(), ::logger());
 	// Выполняем проверку отказа разбора отметки с хвостом за обозначением пояса
 	ASSERT_FALSE(broken.parse("stamp = 2026-08-30T10:00:00Zx\n"));
 }

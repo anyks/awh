@@ -83,6 +83,19 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Способ выдачи объекта фреймворка проверок
+	 *
+	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -1904,13 +1917,13 @@ TEST(CodecTomlWriter, MultilineOpeningNewline) {
 	 */
 	{
 		// Собираемое дерево настроек
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора перечня с многострочным значением
 		ASSERT_TRUE(document.parse("k = [ \"один\", \"\"\"два\"\"\" ]\n"));
 		// Первая перезапись дерева настроек
 		const string first = document.text();
 		// Собираемое дерево настроек перезаписи
-		toml::document_t back(::logger());
+		toml::document_t back(::framework(), ::logger());
 		// Выполняем проверку успешности разбора перезаписи
 		ASSERT_TRUE(back.parse(first));
 		// Выполняем проверку устойчивости перезаписи

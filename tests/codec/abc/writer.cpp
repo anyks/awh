@@ -40,6 +40,22 @@ using namespace awh::codec;
  */
 namespace {
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самих
+	 * проверок: фреймворк и журнал передаются указателями от пользователя, как то
+	 * заведено во всём AWH, и заводить их порознь на каждое дерево незачем
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const fmk_t * framework() noexcept {
+		// Объект фреймворка проверок
+		static fmk_t fmk;
+		// Выводим объект фреймворка проверок
+		return & fmk;
+	}
+	/**
 	 * @brief Функция извлечения объекта журнала проверок
 	 *
 	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
@@ -51,10 +67,8 @@ namespace {
 	 *
 	 */
 	const log_t * logger() noexcept {
-		// Объект фреймворка проверок
-		static fmk_t fmk;
 		// Объект журнала проверок
-		static log_t log(& fmk);
+		static log_t log(::framework());
 		// Признак выполненной настройки журнала
 		static const bool ready = [](){
 			// Выполняем гашение вывода журнала проверок
@@ -285,7 +299,7 @@ TEST(CodecAbcWriter, SmallNumbersFitLeadingOctet){
 		// Выполняем сборку записи очередного числа
 		const vector <uint8_t> record = ((value < 0) ? compose(value) : compose(static_cast <uint64_t> (value)));
 		// Дерево документа
-		abc::document_t document(::logger());
+		abc::document_t document(::framework(), ::logger());
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(document.parse(record.data(), record.size())) << "число: " << value;
 		// Снимаемое число со знаком
@@ -1127,11 +1141,11 @@ TEST(CodecAbcWriter, SpannedContainer) {
 	 */
 	ASSERT_EQ(wide.size(), bare.size() + 1 + abc::SPAN_LENGTH);
 	// Дерево документа записи без размаха
-	abc::document_t first(::logger());
+	abc::document_t first(::framework(), ::logger());
 	// Выполняем разбор записи без размаха
 	ASSERT_TRUE(first.parse(bare.data(), bare.size()));
 	// Дерево документа записи с размахом
-	abc::document_t second(::logger());
+	abc::document_t second(::framework(), ::logger());
 	/**
 	 * Выполняем разбор записи с размахом: метка размаха разбору ПРОЗРАЧНА, и дерево
 	 * обязано выйти тем же самым
@@ -1789,7 +1803,7 @@ TEST(CodecAbcWriter, SpannedAtRecordStart) {
 	 */
 	ASSERT_EQ(spanned, record.size() - 9ul);
 	// Дерево разбираемого документа
-	abc::document_t document(::logger());
+	abc::document_t document(::framework(), ::logger());
 	// Собранная запись обязана разбираться
 	ASSERT_TRUE(document.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -1933,7 +1947,7 @@ TEST(CodecAbcWriter, NumberKindIsRecordedNotDeduced) {
 		// Метка записи обязана отвечать виду числа
 		EXPECT_EQ(record.at(0), probe.second.tag) << probe.second.name;
 		// Дерево разбираемого документа
-		abc::document_t document(::logger());
+		abc::document_t document(::framework(), ::logger());
 		// Запись обязана разбираться
 		ASSERT_TRUE(document.parse(record.data(), record.size())) << probe.second.name;
 		// Вид разобранного узла обязан отвечать уложенному, а не выводиться из величины
@@ -2006,7 +2020,7 @@ TEST(CodecAbcWriter, DuplicateKeyIsCaughtAtEveryScale){
 		// Выполняем укладку конца отображения
 		ASSERT_TRUE(writer.mapEnd());
 		// Собранная запись обязана разбираться обратно
-		abc::document_t document(::logger());
+		abc::document_t document(::framework(), ::logger());
 		// Разбор собранной записи обязан быть успешен
 		ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 			<< "код отказа: " << abc::message(document.error());
@@ -2116,7 +2130,7 @@ TEST(CodecAbcWriter, TheDepthCeilingAgreesWithTheReader){
 			// Выполняем проверку непустоты собранной записи
 			ASSERT_FALSE(record.empty()) << depth;
 			// Объект документа
-			abc::document_t document(nullptr);
+			abc::document_t document(nullptr, nullptr);
 			/**
 			 * Выполняем проверку того, что собранное ЧИТАЕТСЯ обратно
 			 *
@@ -2185,7 +2199,7 @@ TEST(CodecAbcWriter, TheDepthCeilingAgreesWithTheReader){
 		 */
 		ASSERT_TRUE(value.dump(record, error)) << abc::message(error);
 		// Объект документа
-		abc::document_t document(nullptr);
+		abc::document_t document(nullptr, nullptr);
 		// Выполняем получение настроек документа
 		abc::reader_t::settings_t settings = document.settings();
 		// Выполняем снятие предела глубины у разбора

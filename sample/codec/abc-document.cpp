@@ -37,6 +37,22 @@
  */
 namespace {
 	/**
+	 * @brief Функция получения объекта фреймворка
+	 *
+	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самого
+	 * дерева документа: фреймворк и журнал передаются указателями от пользователя,
+	 * как то заведено во всём AWH
+	 *
+	 * @return объект фреймворка
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Объект фреймворка
+		static awh::fmk_t fmk;
+		// Выводим объект фреймворка
+		return & fmk;
+	}
+	/**
 	 * @brief Функция получения объекта для работы с логами
 	 *
 	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
@@ -47,10 +63,8 @@ namespace {
 	 *
 	 */
 	const awh::log_t * logger() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
 		// Объект для работы с логами
-		static awh::log_t log(&fmk);
+		static awh::log_t log(::framework());
 		// Выводим объект для работы с логами
 		return &log;
 	}
@@ -140,7 +154,7 @@ int main(int argc, char * argv[]) noexcept {
 		return EXIT_FAILURE;
 	}
 	// Объект дерева документа
-	abc::document_t document(::logger());
+	abc::document_t document(::framework(), ::logger());
 	// Выполняем разбор записи в дерево документа
 	if(!document.parse(writer.record().data(), writer.record().size())){
 		// Выводим сообщение об отказе разбора

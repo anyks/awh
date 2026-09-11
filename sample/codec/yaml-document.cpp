@@ -37,6 +37,22 @@
  */
 namespace {
 	/**
+	 * @brief Функция получения объекта фреймворка
+	 *
+	 * @details Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *          `fs_t`, а тот обращает пути в широкую запись ходом `convert()`, и без
+	 *          неё кириллический путь у MS Windows ложился бы на диск искажённым
+	 *
+	 * @return объект фреймворка
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Объект фреймворка
+		static awh::fmk_t fmk;
+		// Выводим объект фреймворка
+		return &fmk;
+	}
+	/**
 	 * @brief Функция получения объекта для работы с логами
 	 *
 	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
@@ -47,10 +63,8 @@ namespace {
 	 *
 	 */
 	const awh::log_t * logger() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
 		// Объект для работы с логами
-		static awh::log_t log(&fmk);
+		static awh::log_t log(::framework());
 		// Выводим объект для работы с логами
 		return &log;
 	}
@@ -113,7 +127,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	settings.retain = true;
 	// Создаём объект дерева документа
-	codec::yaml::document_t document(::logger(), settings);
+	codec::yaml::document_t document(::framework(), ::logger(), settings);
 	/**
 	 * Если разбор текста документа не удался
 	 */

@@ -272,7 +272,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			using components_t = std::pair <string, string>;
+			using components_t = pair <string, string>;
 		private:
 			// Объект работы с операционной системой
 			os_t _os;

@@ -22,11 +22,25 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <fstream>
-#include <iterator>
-#include <sys/stat.h>
 #include <vector>
 #include <codec/cef/document.hpp>
+
+/**
+ * Подключаем заголовочный файл работы с файловой системой
+ *
+ * @details Работа с файлами ведётся средством рамки, а НЕ потоками языка напрямую:
+ *          `ofstream` с путём в UTF-8 кладёт у MS Windows файл под именем, поданному не
+ *          равным - «настройки.json» ложится «РЅР°СЃС‚СЂРѕР№РєРё.json», - а узкий ход
+ *          находит его обратно тем же неверным преобразованием, отчего отказа не будет
+ *          НИКОГДА. Порок этот тише отказа: имя на диске не то, а всё сходится
+ *
+ * @note `fs_t` наружу берёт узкий UTF-8, а внутри у Windows зовёт `CreateFileW` с
+ *       обращением имени через `fmk_t` - оттого рамка и обязана быть под рукою
+ *
+ * @note Переведено 09.09.2026 по решению владельца: работа кодеков с файловой системой
+ *       ведётся через `sys/fs`, прямые ходы к потокам и `stat` отсюда сняты
+ */
+#include <sys/fs.hpp>
 
 /**
  * Подключаем заголовочный файл модуля разбора чисел
@@ -692,15 +706,14 @@ bool awh::codec::cef::Document::parse(const string_view text) noexcept {
  *          открывается вовсе, и проверка, поставленная после открытия, была бы там
  *          мертва - договор разошёлся бы по системам
  *
+ * @param fs       объект работы с файловой системой
  * @param filename проверяемый адрес
  * @return         признак того, что адрес указывает на каталог
  *
  */
-static bool directory(const string & filename) noexcept {
-	// Сведения об объекте файловой системы
-	struct stat info;
+static bool directory(const fs_t & fs, const string & filename) noexcept {
 	// Выводим результат проверки того, что адрес указывает на каталог
-	return ((::stat(filename.c_str(), & info) == 0) && S_ISDIR(info.st_mode));
+	return (fs.type(filename) == fs_t::type_t::DIR);
 }
 
 /**
@@ -717,7 +730,8 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 	 *       пусто, отчего подача его отвечала бы ИСТИНОЙ с пустым деревом - ложный успех
 	 *       вместо отказа, отличить какой потребителю нечем
 	 */
-	if(::directory(filename)){
+	// Если вместо файла подан каталог
+	if(::directory(this->_fs, filename)){
 		/**
 		 * Запоминаем код ошибки чтения файла
 		 *
@@ -737,10 +751,13 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
-	// Выполняем открытие файла записи CEF
-	::std::ifstream file(filename, ::std::ios::binary);
-	// Если файл записи CEF открыть не удалось
-	if(!file.is_open()){
+	/**
+	 * Если адрес физическим файлом не является
+	 *
+	 * @note Сюда приходит и отсутствующий файл, и всякий иной вид объекта файловой
+	 *       системы: открыть его нечем, и код здесь именно `FILE_NOT_OPENED`
+	 */
+	if(this->_fs.type(filename) != fs_t::type_t::FILE){
 		// Запоминаем код ошибки открытия файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим в лог сообщение об ошибке открытия файла
@@ -748,10 +765,33 @@ bool awh::codec::cef::Document::load(const string & filename) noexcept {
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
+	/**
+	 * Величина файла, снятая ДО чтения
+	 *
+	 * @details Отказ чтения опознаётся расхождением прочитанного с нею, а НЕ пустотою
+	 * содержимого: пустой файл законно отвечается пустым содержимым - ноль сходится с
+	 * нулём, - тогда как сличение одной пустоты и на пустой файл отвечало бы отказом, и
+	 * обрыв чтения на середине большого файла пропускало бы вовсе
+	 *
+	 * @note Устройство это взято у Василия 09.09.2026: моё прежнее сличение ловило лишь
+	 *       чтение, не давшее НИЧЕГО, а частичное принимало за успех
+	 */
+	const uintmax_t expected = this->_fs.size(filename);
+	// Содержимое файла записи CEF
+	string content = "";
 	// Выполняем чтение содержимого файла записи CEF
-	const string content((::std::istreambuf_iterator <char> (file)), ::std::istreambuf_iterator <char> ());
-	// Выполняем закрытие файла записи CEF
-	file.close();
+	this->_fs.read(filename, content);
+	/**
+	 * Если прочитанное с величиною файла не сошлось
+	 */
+	if(static_cast <uintmax_t> (content.size()) != expected){
+		// Запоминаем код ошибки чтения файла
+		this->_error = error_t::FILE_NOT_READ;
+		// Выводим в лог сообщение об ошибке чтения файла
+		this->_log->print("CEF file \"%s\" could not be read", log_t::flag_t::CRITICAL, filename.c_str());
+		// Выводим отрицательный результат выполнения операции
+		return false;
+	}
 	// Выводим результат разбора содержимого файла записи CEF
 	return this->parse(content);
 }
@@ -769,19 +809,49 @@ bool awh::codec::cef::Document::save(const string & filename) const noexcept {
 	if(content.empty())
 		// Выводим отрицательный результат выполнения операции
 		return false;
-	// Выполняем открытие файла записи CEF
-	::std::ofstream file(filename, ::std::ios::binary);
-	// Если файл записи CEF открыть не удалось
-	if(!file.is_open()){
-		// Выводим в лог сообщение об ошибке открытия файла
+	/**
+	 * Выполняем снос прежнего файла записи CEF
+	 *
+	 * @warning Снос обязателен: ход записи `fs_t` файл НЕ УСЕКАЕТ, а пишет по смещению,
+	 *          тогда как прежний `ofstream` усечение делал сам признаком `trunc`. Без
+	 *          сноса хвост прежнего сохранения торчал бы за концом нового - файл при
+	 *          этом читается, и порок опознаётся лишь разбором лишнего хвоста
+	 *
+	 * @note Найдено Василием при переводе кодека CSV и проверено здесь
+	 */
+	if(this->_fs.type(filename) == fs_t::type_t::FILE)
+		// Выполняем снос прежнего файла записи CEF
+		this->_fs.unlink(filename);
+	/**
+	 * Если запись собранной записи в файл отказом завершилась
+	 *
+	 * @note Итог берётся у самого хода записи: с переделкой `sys/fs` от 11.09.2026 все
+	 *       восемь работ `write` и `append` отвечают признаком, а не одним лишь журналом.
+	 *       Прежде признак приходилось добывать поверкою величины записанного - обход
+	 *       этот снят, ибо настоящий ответ теперь есть
+	 */
+	if(!this->_fs.write(filename, content.data(), content.size())){
+		// Выводим в лог сообщение об ошибке записи файла
 		this->_log->print("CEF file \"%s\" could not be written", log_t::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
-	// Выполняем запись собранной записи CEF в файл
-	file.write(content.data(), static_cast <::std::streamsize> (content.size()));
-	// Выполняем закрытие файла записи CEF
-	file.close();
+	/**
+	 * Выполняем сброс записанного из вместилища ядра на носитель
+	 *
+	 * @details Запись, отвеченная успехом, лежит ещё во вместилище ядра, и обрыв питания
+	 * её теряет: файл на месте, а содержимого в нём нет. Сохранение события журнала тем
+	 * и ценно, что переживает падение машины, - без сброса обещание это пусто
+	 *
+	 * @warning Своего `fsync` тут не писать: под macOS он долговечности НЕ обещает вовсе,
+	 *          доводит до пластины только `F_FULLFSYNC`, и ход рамки это знает
+	 *
+	 * @note Отказ сброса записи не отменяет - записанное на месте и читается, - оттого
+	 *       итог его уходит в журнал, а не в отказ сохранения
+	 */
+	if(!this->_fs.flush(filename))
+		// Выводим в лог сообщение о том, что записанное на носитель не сброшено
+		this->_log->print("CEF file \"%s\" was written but not flushed onto the medium", log_t::flag_t::WARNING, filename.c_str());
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -1304,7 +1374,7 @@ void awh::codec::cef::Document::settings(const writer_t::settings_t & settings) 
  */
 awh::codec::cef::Document::Document(const fmk_t * fmk, const log_t * log) noexcept :
  _reader(fmk, log), _writer(fmk, log), _net(fmk, log), _chrono(fmk, log),
- _error(error_t::NONE), _fmk(fmk), _log(log) {}
+ _fs(fmk, log), _error(error_t::NONE), _fmk(fmk), _log(log) {}
 
 /**
  * Возвращаем имена, системными макросами занятые

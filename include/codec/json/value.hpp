@@ -316,6 +316,23 @@ namespace awh {
 					 */
 					mutable error_t _error = error_t::NONE;
 					const log_t * _log = nullptr;
+					/**
+					 * \~russian
+					 * Объект фреймворка
+					 *
+					 * @note Держится ради работы с файловой системой: приведение пути к широкому
+					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
+					 *       узким, а кириллический адрес ложился бы на диск искажённым
+					 *
+					 * @warning Пустым он остаётся у значений, какому его не задавали, и сохранение
+					 *          у такого значения отвечает отказом, а не пишет узким ходом молча
+					 *
+					 * \~english
+					 * Framework object
+					 *
+					 * \~
+					 */
+					const fmk_t * _fmk = nullptr;
 				private:
 					/**
 					 * \~russian
@@ -1707,6 +1724,47 @@ namespace awh {
 					 * \~
 					 */
 					void setLogger(const log_t * log) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта фреймворка
+					 *
+					 * @details Объект уходит вглубь наравне с журналом: значение владеет вложенными
+					 * целиком, и работа с файловой системой у них общая
+					 *
+					 * @param fmk объект фреймворка
+					 *
+					 * \~english
+					 * @brief Method of the setting of the framework object
+					 *
+					 * @details The object goes deep alongside the log: a value owns the nested ones
+					 * entirely, and their work with the file system is common
+					 *
+					 * @param fmk framework object
+					 *
+					 * \~
+					 */
+					void setFramework(const fmk_t * fmk) noexcept;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @details Вид этот и есть общий у всех кодеков рамки: работа с файловой
+					 * системой требует обоих объектов, и значение, заведённое без них, сохранять
+					 * себя в файл не умеет
+					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param fmk framework object
+					 * @param log object for working with logs
+					 *
+					 * \~
+					 */
+					Value(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор копии

@@ -78,6 +78,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -604,7 +614,7 @@ TEST(CodecCsvWriter, SignatureField) {
 		// Выполняем завершение второй записи
 		writer.record();
 		// Контейнер прочитанной обратно таблицы
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Настройки контейнера
 		csv::document_t::settings_t reading;
 		// Устанавливаем способ записи кавычки знаком отмены
@@ -734,7 +744,7 @@ TEST(CodecCsvWriter, EmptySingleFieldSurvivesRoundTrip) {
 		// Собранный текст таблицы
 		const string text = writer.take();
 		// Объект документа таблицы
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем разбор собранного текста таблицы
 		ASSERT_TRUE(document.parse(text));
 		// Проверяем, что круговой проход сохранил все три записи
@@ -1036,7 +1046,7 @@ TEST(CodecCsvWriter, BackslashEscapeSurvivesRoundTrip){
 	// Выполняем запись записи, разделитель содержащей
 	ASSERT_TRUE(writer.record(vector <string> {"а,б", "в"}));
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Настройки контейнера
 	csv::document_t::settings_t reading;
 	// Устанавливаем способ записи кавычки знаком отмены
@@ -1107,7 +1117,7 @@ TEST(CodecCsvWriter, CommentCharacterEscapedWithoutQuoting){
 	// Выполняем запись записи, знаком примечания начатой
 	ASSERT_TRUE(writer.record(vector <string> {"#первое", "второе"}));
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Настройки контейнера
 	csv::document_t::settings_t reading;
 	// Устанавливаем способ записи кавычки знаком отмены
@@ -1165,7 +1175,7 @@ TEST(CodecCsvWriter, LeadingQuoteEscapedWithoutQuoting){
 	// Выполняем запись записи, кавычкой начатой
 	ASSERT_TRUE(writer.record(vector <string> {"\"первое", "второе"}));
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Настройки контейнера
 	csv::document_t::settings_t reading;
 	// Устанавливаем способ записи кавычки знаком отмены
@@ -1408,7 +1418,7 @@ TEST(CodecCsvWriter, GrammarSettingsHeldMidText){
 	// Получаем собранный текст таблицы
 	const string text = writer.text();
 	// Объект таблицы, разбирающий собранный текст
-	csv::document_t doc(::logger());
+	csv::document_t doc(::framework(), ::logger());
 	// Выполняем проверку успеха обратного разбора собранного текста
 	ASSERT_TRUE(doc.parse(text));
 	// Выполняем проверку того, что обе записи восстановлены целиком
@@ -1520,7 +1530,7 @@ TEST(CodecCsvWriter, EmptyLeadingFieldSurvivesCommentSeparator){
 	// Устанавливаем знак начала строки примечания
 	reading.reader.comment = '#';
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger(), reading);
+	csv::document_t doc(::framework(), ::logger(), reading);
 	// Выполняем проверку успеха разбора записанного текста
 	ASSERT_TRUE(doc.parse(writer.text()));
 	// Выполняем проверку того, что запись круговой ход пережила
@@ -1733,7 +1743,7 @@ TEST(CodecCsvWriter, UnreadableContentRefused){
 			// Выполняем проверку успешной записи годного содержимого
 			ASSERT_TRUE(записать(содержимое, текст)) << содержимое;
 			// Объект таблицы для обратного разбора
-			csv::document_t document(::logger());
+			csv::document_t document(::framework(), ::logger());
 			// Получаем настройки таблицы
 			csv::document_t::settings_t settings = document.settings();
 			// Отменяем ожидание заголовка: записано одно поле
@@ -2364,7 +2374,7 @@ TEST(CodecCsvWriter, BothSpellingsOfTheBooleanAreWritten){
 	// Выполняем завершение записи
 	writer.record();
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор собранного текста
 	ASSERT_TRUE(document.parse(writer.take())) << csv::message(document.error());
 	// Выполняем проверку количества полей записи

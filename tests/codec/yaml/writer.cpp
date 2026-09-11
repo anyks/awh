@@ -72,6 +72,19 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Способ выдачи объекта фреймворка проверок
+	 *
+	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -1075,7 +1088,7 @@ TEST(CodecYamlWriter, Malformed) {
 			// Выполняем завершение записи документа
 			ASSERT_TRUE(writer.finish());
 			// Дерево документа, записанный текст читающее
-			yaml::document_t doc(::logger());
+			yaml::document_t doc(::framework(), ::logger());
 			// Выполняем проверку того, что записанное читается обратно
 			ASSERT_TRUE(doc.parse(writer.take()))
 			 << "оформление " << static_cast <uint16_t> (style)
@@ -1129,7 +1142,7 @@ TEST(CodecYamlWriter, Malformed) {
 	// Выполняем проверку того, что байты пропущены как есть
 	ASSERT_NE(text.find(string("\xFF\xFE", 2)), string::npos);
 	// Дерево документа, записанный текст читающее
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем проверку того, что пропущенные байты чтением отвергаются
 	ASSERT_FALSE(doc.parse(text));
 }
@@ -1171,7 +1184,7 @@ TEST(CodecYamlWriter, MalformedNames) {
 	// Выполняем проверку того, что негодных байтов текст не несёт
 	ASSERT_EQ(text.find('\xED'), string::npos);
 	// Дерево документа, записанный текст читающее
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем проверку того, что записанное читается обратно
 	ASSERT_TRUE(doc.parse(text)) << yaml::message(doc.error());
 }
@@ -1337,7 +1350,7 @@ TEST(CodecYamlWriter, CommentedPair) {
 	// Выполняем проверку того, что значение стоит глубже имени своего
 	ASSERT_EQ(text, "second:\n# замечание\n  иное\n");
 	// Дерево документа, записанный текст читающее
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем проверку того, что записанное читается обратно
 	ASSERT_TRUE(doc.parse(text)) << yaml::message(doc.error());
 	// Выполняем проверку собранного значения пары
@@ -1505,7 +1518,7 @@ TEST(CodecYamlWriter, BlockRetreatLeavesNoReason) {
  */
 TEST(CodecYamlWriter, FlowKeepsEmptyValue) {
 	// Объект дерева документа
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем разбор перечня с пустым значением
 	ASSERT_TRUE(document.parse("- yes\n-\n"));
 	// Настройки записи поточным построением
@@ -1517,7 +1530,7 @@ TEST(CodecYamlWriter, FlowKeepsEmptyValue) {
 	// Выполняем проверку записи пустоты словом описания
 	ASSERT_NE(written.find("null"), string::npos);
 	// Объект дерева перезаписанного документа
-	yaml::document_t back(::logger());
+	yaml::document_t back(::framework(), ::logger());
 	// Выполняем разбор перезаписи
 	ASSERT_TRUE(back.parse(written));
 	// Выполняем проверку сохранности обоих значений перечня
@@ -1533,7 +1546,7 @@ TEST(CodecYamlWriter, FlowKeepsEmptyValue) {
  */
 TEST(CodecYamlWriter, QuotingRisesWhereContentDemands) {
 	// Объект дерева документа
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем разбор пары со значением о двух строках
 	ASSERT_TRUE(document.parse("key: \"первая\\nвторая\"\n"));
 	// Настройки записи оградою одинарной
@@ -1543,7 +1556,7 @@ TEST(CodecYamlWriter, QuotingRisesWhereContentDemands) {
 	// Выполняем перезапись дерева оградою одинарной
 	const string written = document.dump(writing);
 	// Объект дерева перезаписанного документа
-	yaml::document_t back(::logger());
+	yaml::document_t back(::framework(), ::logger());
 	// Выполняем разбор перезаписи
 	ASSERT_TRUE(back.parse(written));
 	// Выполняем проверку сохранности перевода строки в значении
@@ -1677,7 +1690,7 @@ TEST(CodecYamlWriter, QuotingRisesForLineBreak) {
 		// Выполняем проверку того, что перевод строки записан отменяющей последовательностью
 		ASSERT_NE(text.find("\\n"), string::npos) << static_cast <uint32_t> (style);
 		// Дерево документа, записанный текст читающее
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора записанного текста
 		ASSERT_TRUE(document.parse(text)) << static_cast <uint32_t> (style);
 		// Извлекаемая запись прочитанного значения
@@ -2495,7 +2508,7 @@ TEST(CodecYamlWriter, ReservedIndicatorsAreAlwaysQuoted) {
 		ASSERT_TRUE((written.find("'" + content + "'") != string::npos) ||
 		            (written.find("\"" + content + "\"") != string::npos)) << written;
 		// Объект дерева документа, запись обратно читающего
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем проверку обратного чтения собранного текста
 		ASSERT_TRUE(document.parse(written)) << written;
 		// Выполняем проверку сохранности содержимого надписи
@@ -2738,7 +2751,7 @@ TEST(CodecYamlWriter, ExplicitEndIsWrittenForTheEmptyText){
 		 */
 		ASSERT_NE(text.find("..."), string::npos) << text;
 		// Объект дерева документа
-		yaml::document_t doc(::logger());
+		yaml::document_t doc(::framework(), ::logger());
 		// Выполняем проверку того, что собранный текст читается
 		ASSERT_TRUE(doc.parse(text)) << text;
 	}
@@ -2955,7 +2968,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 		 *       обращалось в СТРОКУ, и круг рвался молча
 		 */
 		// Дерево документа, куда ведётся правка
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста документа с числовым значением
 		ASSERT_TRUE(document.parse("k: 1\n")) << name;
 		// Выполняем правку значения числом с плавающей точкой

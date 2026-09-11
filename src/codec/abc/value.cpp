@@ -1884,7 +1884,7 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size,
 	// Выполняем очистку разбираемого значения
 	this->clear();
 	// Дерево разбираемого документа
-	document_t document(this->_log);
+	document_t document(this->_fmk, this->_log);
 	// Если разбор записи в дерево документа отвечен отказом
 	if(!document.parse(buffer, size, settings))
 		// Сообщаем, что разбор отвечен отказом
@@ -1903,6 +1903,16 @@ bool awh::codec::abc::Value::parse(const void * buffer, const size_t size,
 void awh::codec::abc::Value::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
 	this->_log = log;
+}
+/**
+ * @brief Метод установки объекта фреймворка
+ *
+ * @param fmk объект фреймворка
+ *
+ */
+void awh::codec::abc::Value::setFramework(const fmk_t * fmk) noexcept {
+	// Выполняем установку объекта фреймворка
+	this->_fmk = fmk;
 }
 /**
  * @brief Метод сборки записи из владеющего значения затребованными настройками сборки

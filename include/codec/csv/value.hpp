@@ -159,6 +159,18 @@ namespace awh {
 					vector <Value> _items;
 					// Объект ведения журнала работы
 					const log_t * _log;
+					/**
+					 * Объект фреймворка
+					 *
+					 * @note Держится ради работы с файловой системой: приведение пути к широкому
+					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
+					 *       узким, а кириллический адрес ложился бы на диск искажённым
+					 *
+					 * @warning Пустым он остаётся у значений, заведённых БЕЗ него - полем, записью
+					 *          либо видом, - и сохранение у такого значения отвечает отказом, а не
+					 *          пишет узким ходом молча
+					 */
+					const fmk_t * _fmk;
 					// Код отказа последней работы над значением
 					mutable error_t _error;
 					// Место отказа последней работы над значением
@@ -989,6 +1001,22 @@ namespace awh {
 					 * \~
 					 */
 					explicit Value(const log_t * log) noexcept;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @param fmk объект фреймворка
+					 * @param log объект для работы с логами
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * @param fmk framework object
+					 * @param log object for working with logs
+					 *
+					 * \~
+					 */
+					Value(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

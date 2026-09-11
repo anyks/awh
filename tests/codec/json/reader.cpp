@@ -71,6 +71,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -1790,7 +1800,7 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 	// Разбирает текст заданными настройками
 	const auto разбор = [](const string & text, const bool strict) noexcept -> bool {
 		// Объект контейнера документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки контейнера документа
 		json::document_t::settings_t settings = doc.settings();
 		// Выполняем подъём всех послаблений разбора
@@ -1839,7 +1849,7 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 	 */
 	{
 		// Объект контейнера документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки контейнера документа
 		json::document_t::settings_t settings = doc.settings();
 		// Выполняем подъём послабления примечаний

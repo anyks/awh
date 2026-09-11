@@ -43,6 +43,8 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include <sys/fs.hpp>
+
 #include "document.hpp"
 
 /**
@@ -159,6 +161,21 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error = error_t::NONE;
+					/**
+					 * \~russian
+					 * Объект фреймворка
+					 *
+					 * @note Рамка нужна работам с файловой системой: `fs_t` обращает пути в
+					 *       широкую запись ходом `convert()`. Назначается извне вызовом
+					 *       `setFramework()` наравне с журналом, и покуда не назначена -
+					 *       запись и чтение файла отвечают отказом с названной причиной
+					 *
+					 * \~english
+					 * Object of the framework
+					 *
+					 * \~
+					 */
+					const fmk_t * _fmk = nullptr;
 					const log_t * _log = nullptr;
 				private:
 					// Вид хранимого значения
@@ -1533,6 +1550,22 @@ namespace awh {
 					 * \~
 					 */
 					void setLogger(const log_t * log) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта фреймворка
+					 *
+					 * @details Рамка перенимается всяким разбором и всякой записью, значением
+					 * заведёнными, и копией значения тоже: назначить её довольно однажды
+					 *
+					 * @param fmk объект фреймворка
+					 *
+					 * \~english
+					 * @brief Method of the setting of the object of the framework
+					 * @param fmk object of the framework
+					 *
+					 * \~
+					 */
+					void setFramework(const fmk_t * fmk) noexcept;
 				public:
 					/**
 					 * \~russian

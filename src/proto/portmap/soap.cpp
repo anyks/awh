@@ -336,7 +336,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		return false;
 	}
 	// Объект дерева разметки ответа службы
-	codec::xml::document_t document(this->_log);
+	codec::xml::document_t document(this->_fmk, this->_log);
 	/**
 	 * Если разбор ответа службы выполнить не удалось
 	 */

@@ -235,6 +235,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -297,7 +307,7 @@ static string temporary(const string & name, const string & text) noexcept {
  */
 TEST(CodecCsvDocument, Parse) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(document.parse("a,b\nc,d\n"));
 	// Выполняем проверку отсутствия ошибки разбора
@@ -320,7 +330,7 @@ TEST(CodecCsvDocument, Parse) {
  */
 TEST(CodecCsvDocument, Header) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы с объявленным заголовком
 	ASSERT_TRUE(document.parse("name,value\na,1\nb,2\n", heading()));
 	// Выполняем проверку того, что заголовок записью не считается
@@ -347,7 +357,7 @@ TEST(CodecCsvDocument, Header) {
  */
 TEST(CodecCsvDocument, Quoted) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы с многострочным полем
 	ASSERT_TRUE(document.parse("\"a\nb\",\"c\"\"d\"\n\"e,f\",g\n"));
 	// Выполняем проверку сохранения перевода строки внутри поля
@@ -364,7 +374,7 @@ TEST(CodecCsvDocument, Quoted) {
  */
 TEST(CodecCsvDocument, RowColumn) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы с объявленным заголовком
 	ASSERT_TRUE(document.parse("name,value\na,1\nb,2\n", heading()));
 	// Выполняем проверку получения записи таблицы целиком
@@ -385,7 +395,7 @@ TEST(CodecCsvDocument, RowColumn) {
  */
 TEST(CodecCsvDocument, Ragged) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы с записями разной длины
 	ASSERT_TRUE(document.parse("a,b,c\nd\ne,f\n"));
 	// Выполняем проверку того, что столбцов взято по наибольшей записи
@@ -410,7 +420,7 @@ TEST(CodecCsvDocument, RaggedError) {
 	// Устанавливаем прекращение разбора при расхождении числа полей
 	settings.reader.ragged = csv::ragged_t::ERROR;
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы с записями разной длины
 	ASSERT_FALSE(document.parse("a,b\nc\n", settings));
 	// Выполняем проверку кода ошибки разбора
@@ -425,7 +435,7 @@ TEST(CodecCsvDocument, RaggedError) {
  */
 TEST(CodecCsvDocument, Numeric) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(document.parse("-42,3.5,true,text\n"));
 	// Полученное знаковое целое значение
@@ -475,7 +485,7 @@ TEST(CodecCsvDocument, Detect) {
 	// Включаем определение разделителя по содержимому
 	settings.reader.separator = '\0';
 	// Объект контейнера таблицы
-	csv::document_t document(::logger(), settings);
+	csv::document_t document(::framework(), ::logger(), settings);
 	// Выполняем разбор текста таблицы с точкой с запятой разделителем
 	ASSERT_TRUE(document.parse("a;b;c\nd;e;f\n"));
 	// Выполняем проверку количества столбцов таблицы
@@ -496,7 +506,7 @@ TEST(CodecCsvDocument, Detect) {
  */
 TEST(CodecCsvDocument, Append) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем установку заголовка таблицы
 	ASSERT_TRUE(document.header(vector <string> {"name", "value"}));
 	// Выполняем добавление первой записи в конец таблицы
@@ -524,7 +534,7 @@ TEST(CodecCsvDocument, Append) {
  */
 TEST(CodecCsvDocument, AppendSelfViews) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	/**
 	 * Выполняем набивку таблицы, заведомо перераспределяющей хранилище знаков
 	 */
@@ -566,7 +576,7 @@ TEST(CodecCsvDocument, AppendSelfViews) {
  */
 TEST(CodecCsvDocument, Clear) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы с объявленным заголовком
 	ASSERT_TRUE(document.parse("name,value\na,1\n", heading()));
 	// Выполняем очистку таблицы
@@ -590,7 +600,7 @@ TEST(CodecCsvDocument, Clear) {
  */
 TEST(CodecCsvDocument, Reparse) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор первого текста таблицы
 	ASSERT_TRUE(document.parse("a,b\nc,d\n"));
 	// Выполняем разбор второго текста таблицы
@@ -607,11 +617,11 @@ TEST(CodecCsvDocument, Reparse) {
  */
 TEST(CodecCsvDocument, RoundTrip) {
 	// Объект контейнера исходной таблицы
-	csv::document_t source(::logger());
+	csv::document_t source(::framework(), ::logger());
 	// Выполняем разбор текста исходной таблицы с объявленным заголовком
 	ASSERT_TRUE(source.parse("name,value\n\"a\nb\",\"c,d\"\n\"e\"\"f\",g\n", heading()));
 	// Объект контейнера полученной обратно таблицы
-	csv::document_t result(::logger());
+	csv::document_t result(::framework(), ::logger());
 	// Выполняем разбор текста, собранного исходной таблицей
 	ASSERT_TRUE(result.parse(source.text(), heading()));
 	// Выполняем проверку имён столбцов полученной обратно таблицы
@@ -634,7 +644,7 @@ TEST(CodecCsvDocument, File) {
 	// Выполняем запись временного файла таблицы
 	const string & filename = temporary(unique("awh_csv_file.csv"), "name,value\r\na,1\r\nb,2\r\n");
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем чтение таблицы из файла
 	ASSERT_TRUE(document.load(filename));
 	// Выполняем проверку количества прочитанных записей таблицы
@@ -649,7 +659,7 @@ TEST(CodecCsvDocument, File) {
 	// Выполняем запись таблицы в файл
 	ASSERT_TRUE(document.save(output));
 	// Объект контейнера полученной обратно таблицы
-	csv::document_t result(::logger());
+	csv::document_t result(::framework(), ::logger());
 	// Выполняем чтение записанной таблицы из файла
 	ASSERT_TRUE(result.load(output));
 	// Выполняем проверку количества записей полученной обратно таблицы
@@ -670,7 +680,7 @@ TEST(CodecCsvDocument, FileMissing) {
 	// Сторож временного файла проверки
 	const Scratch scratch0("awh_csv_missing.csv");
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем проверку отказа чтения отсутствующего файла таблицы
 	ASSERT_FALSE(document.load(scratch0.path()));
 }
@@ -686,7 +696,7 @@ TEST(CodecCsvDocument, Callback) {
 	// Количество записей, выданных обработчику
 	size_t count = 0;
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы записями
 	ASSERT_TRUE(document.parse("name,value\na,1\nb,2\n", [&count](const vector <string_view> & fields) noexcept -> bool {
 		// Выполняем подсчёт записей, выданных обработчику
@@ -714,7 +724,7 @@ TEST(CodecCsvDocument, CallbackStop) {
 	// Количество записей, выданных обработчику
 	size_t count = 0;
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы записями
 	document.parse("a\nb\nc\nd\n", [&count](const vector <string_view> &) noexcept -> bool {
 		// Выполняем подсчёт записей, выданных обработчику
@@ -749,7 +759,7 @@ TEST(CodecCsvDocument, CallbackFile) {
 	// Количество записей, выданных обработчику
 	size_t count = 0;
 	// Объект контейнера таблицы
-	csv::document_t document(::logger(), heading());
+	csv::document_t document(::framework(), ::logger(), heading());
 	// Выполняем чтение таблицы из файла записями
 	ASSERT_TRUE(document.read(filename, [&count](const vector <string_view> & fields) noexcept -> bool {
 		// Выполняем проверку количества полей выданной записи
@@ -779,7 +789,7 @@ TEST(CodecCsvDocument, CallbackFile) {
  */
 TEST(CodecCsvDocument, Operator) {
 	// Объект контейнера таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(document.parse("a,b\n"));
 	// Выполняем проверку вывода таблицы последовательностью знаков
@@ -799,7 +809,7 @@ TEST(CodecCsvDocument, Operator) {
  */
 TEST(CodecCsvDocument, HeaderRefill) {
 	// Собираемая таблица
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем объявление заголовка первого круга
 	ASSERT_TRUE(document.header({"первое", "второе", "третье"}));
 	// Выполняем проверку того, что имена первого круга разыскиваются
@@ -848,7 +858,7 @@ TEST(CodecCsvDocument, HeaderRefill) {
  */
 TEST(CodecCsvDocument, MissingFileIsNotInternal) {
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем проверку отказа чтения несуществующего файла
 	ASSERT_FALSE(document.load("/несуществующий/каталог/таблица.csv"));
 	// Выполняем проверку кода ошибки чтения
@@ -870,7 +880,7 @@ TEST(CodecCsvDocument, MissingFileIsNotInternal) {
  */
 TEST(CodecCsvDocument, NarrowingWrapsAroundByTheLanguage) {
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(document.parse("300,-1,70000,127\r\n"));
 	// Извлекаемое число видом в один байт без знака
@@ -954,7 +964,7 @@ TEST(CodecCsvDocument, WriteFailureIsNotSuccess) {
 		// Добавляем очередную запись таблицы
 		text.append("значение" + std::to_string(i) + ",второе\n");
 	// Дерево значений таблицы
-	csv::document_t document(&log);
+	csv::document_t document(&Silent::framework(), &log);
 	// Выполняем проверку разбора собранного текста таблицы
 	ASSERT_TRUE(document.parse(text));
 	/**
@@ -1068,7 +1078,7 @@ TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 	::removeDirectory(directory);
 	ASSERT_TRUE(::makeDirectory(directory));
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(document.parse("имя\r\nзначение\r\n"));
 	// Выполняем проверку отказа сохранения таблицы поверх каталога
@@ -1092,7 +1102,7 @@ TEST(CodecCsvDocument, RenameFailureIsReportedAndLeavesNoLeftovers) {
 	 */
 	{
 		// Владеющее значение таблицы
-		csv::value_t value(::logger());
+		csv::value_t value(::framework(), ::logger());
 		// Выполняем разбор текста таблицы
 		ASSERT_TRUE(value.parse("имя\r\nзначение\r\n"));
 		// Выполняем проверку отказа сохранения значения поверх каталога
@@ -1115,7 +1125,7 @@ TEST(CodecCsvDocument, WriteToMissingDirectoryIsReported) {
 		messages.push_back(string(text));
 	});
 	// Дерево значений таблицы
-	csv::document_t document(&log);
+	csv::document_t document(&Silent::framework(), &log);
 	// Выполняем проверку разбора текста таблицы
 	ASSERT_TRUE(document.parse("имя\nзначение\n"));
 	// Выполняем проверку отказа записи в несуществующий каталог
@@ -1146,7 +1156,7 @@ TEST(CodecCsvDocument, WriteToMissingDirectoryIsReported) {
  */
 TEST(CodecCsvDocument, RealNarrowingGivesInfinityNotARefusal) {
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(document.parse("1e308,3.5,-1e300,1e400,inf,-inf,nan\r\n"));
 	// Извлекаемое число дробным видом одинарной точности
@@ -1203,7 +1213,7 @@ TEST(CodecCsvDocument, LargeTableSurvivesRoundTrip) {
 	// Выполняем указание на присутствие заголовка таблицы
 	settings.reader.header = csv::header_t::PRESENT;
 	// Исходная таблица значений
-	csv::document_t document(::logger(), settings);
+	csv::document_t document(::framework(), ::logger(), settings);
 	// Собираемый текст таблицы
 	string text = "alpha,beta,gamma\r\n";
 	/**
@@ -1224,7 +1234,7 @@ TEST(CodecCsvDocument, LargeTableSurvivesRoundTrip) {
 	// Выполняем проверку записи таблицы в файл
 	ASSERT_TRUE(document.save(filename));
 	// Полученная обратным чтением таблица значений
-	csv::document_t back(::logger(), settings);
+	csv::document_t back(::framework(), ::logger(), settings);
 	// Выполняем проверку чтения записанного файла таблицы
 	ASSERT_TRUE(back.load(filename));
 	// Выполняем проверку совпадения заголовков таблиц
@@ -1256,7 +1266,7 @@ TEST(CodecCsvDocument, LargeTableSurvivesRoundTrip) {
  */
 TEST(CodecCsvDocument, EmptyColumnNameRefused) {
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем проверку разбора текста таблицы
 	ASSERT_TRUE(document.parse("1,2,3\r\n"));
 	// Выполняем проверку установки годного заголовка таблицы
@@ -1289,7 +1299,7 @@ TEST(CodecCsvDocument, EmptyColumnNameRefused) {
  */
 TEST(CodecCsvDocument, EmptyTextParsedWholly) {
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем проверку разбора пустого текста таблицы
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем проверку отсутствия отказа разбора
@@ -1322,7 +1332,7 @@ TEST(CodecCsvDocument, MissingCallbackRefused) {
 	// Сторож временного файла проверки
 	const Scratch scratch0("csv-нет-такого-файла.csv");
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Пустой обработчик записей таблицы
 	const function <bool (const vector <string_view> &)> empty;
 	// Выполняем проверку отказа разбора текста таблицы без обработчика
@@ -1355,7 +1365,7 @@ TEST(CodecCsvDocument, HeaderCollectedByCallbackParsing) {
 	// Выполняем указание на присутствие заголовка таблицы
 	settings.reader.header = csv::header_t::PRESENT;
 	// Таблица значений
-	csv::document_t document(::logger(), settings);
+	csv::document_t document(::framework(), ::logger(), settings);
 	// Количество выданных записей таблицы
 	size_t count = 0;
 	// Выполняем проверку разбора текста таблицы выдачей записями
@@ -1389,7 +1399,7 @@ TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
 	// Выполняем указание предела длины поля таблицы
 	settings.reader.maxField = 4;
 	// Таблица значений
-	csv::document_t document(::logger(), settings);
+	csv::document_t document(::framework(), ::logger(), settings);
 	// Количество выданных записей таблицы
 	size_t count = 0;
 	// Обработчик очередной записи таблицы
@@ -1452,7 +1462,7 @@ TEST(CodecCsvDocument, MalformedTextStopsCallbackParsing) {
  */
 TEST(CodecCsvDocument, SettingsReadBack) {
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Настройки таблицы
 	csv::document_t::settings_t settings;
 	// Выполняем указание на присутствие заголовка таблицы
@@ -1476,7 +1486,7 @@ TEST(CodecCsvDocument, SettingsReadBack) {
  */
 TEST(CodecCsvDocument, CallbackStopsFileReading) {
 	// Таблица значений
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Адрес файла таблицы
 	// Сторож временного файла проверки
 	const Scratch scratch_filename("csv-callback-stop-file.csv");
@@ -1530,7 +1540,7 @@ TEST(CodecCsvDocument, LoggerSetAfterCreation) {
 	});
 	{
 		// Таблица значений без объекта ведения журнала работы
-		csv::document_t document(nullptr);
+		csv::document_t document(nullptr, nullptr);
 		// Выполняем проверку разбора текста таблицы
 		ASSERT_TRUE(document.parse("имя\nзначение\n"));
 		// Выполняем проверку отказа записи в несуществующий каталог
@@ -1620,7 +1630,7 @@ TEST(CodecCsvDocument, UnwritableFieldStopsEveryOutput){
 	 */
 	for(uint8_t heading = 0; heading < 2; heading++){
 		// Объект контейнера таблицы
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Настройки контейнера
 		csv::document_t::settings_t settings;
 		/**
@@ -1671,7 +1681,7 @@ TEST(CodecCsvDocument, RefusedParsingLeavesNothing){
 	// Ограничиваем количество полей записи
 	settings.reader.maxFields = 2;
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger(), settings);
+	csv::document_t doc(::framework(), ::logger(), settings);
 	// Выполняем проверку отказа разбора таблицы с лишним полем во второй записи
 	ASSERT_FALSE(doc.parse("a,b\r\nc,d,e\r\n"));
 	// Выполняем проверку кода отказа разбора
@@ -1743,7 +1753,7 @@ TEST(CodecCsvDocument, RefusedSavingKeepsTargetIntact){
 	// Устанавливаем способ записи кавычки удвоением
 	settings.writer.escape = csv::escape_t::DOUBLE;
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger(), settings);
+	csv::document_t doc(::framework(), ::logger(), settings);
 	// Добавляем запись, поле какой установленными настройками непредставимо
 	doc.append(vector <string> {"а;б", "в"});
 	// Выполняем проверку отказа записи таблицы в файл
@@ -1774,7 +1784,7 @@ TEST(CodecCsvDocument, RefusedSavingKeepsTargetIntact){
  */
 TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger());
+	csv::document_t doc(::framework(), ::logger());
 	// Выполняем проверку отказа чтения каталога
 	ASSERT_FALSE(doc.load("."));
 	/**
@@ -1813,13 +1823,13 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
 		// Обработчик очередной записи таблицы
 		const auto handler = [](const vector <string_view> &) noexcept -> bool { return true; };
 		// Контейнер таблицы для чтения каталога с обработчиком
-		csv::document_t reading(::logger());
+		csv::document_t reading(::framework(), ::logger());
 		// Выполняем проверку отказа чтения каталога с обработчиком
 		ASSERT_FALSE(reading.read(".", handler));
 		// Выполняем проверку кода отказа чтения каталога
 		ASSERT_EQ(reading.error(), csv::error_t::FILE_NOT_READ);
 		// Контейнер таблицы для чтения несуществующего файла с обработчиком
-		csv::document_t missing(::logger());
+		csv::document_t missing(::framework(), ::logger());
 		/**
 		 * Выполняем проверку отказа чтения несуществующего файла
 		 *
@@ -1845,7 +1855,7 @@ TEST(CodecCsvDocument, DirectoryIsNotAnEmptyTable){
  */
 TEST(CodecCsvDocument, MissingColumnYieldsNothing){
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger());
+	csv::document_t doc(::framework(), ::logger());
 	// Выполняем разбор таблицы о двух столбцах
 	ASSERT_TRUE(doc.parse("а,б\r\nв,г\r\n"));
 	// Выполняем проверку количества столбцов таблицы
@@ -1861,7 +1871,7 @@ TEST(CodecCsvDocument, MissingColumnYieldsNothing){
 	 */
 	{
 		// Объект контейнера таблицы
-		csv::document_t ragged(::logger());
+		csv::document_t ragged(::framework(), ::logger());
 		// Настройки контейнера таблицы
 		csv::document_t::settings_t settings = ragged.settings();
 		// Снимаем требование одинаковой ширины записей
@@ -1892,7 +1902,7 @@ TEST(CodecCsvDocument, MissingColumnYieldsNothing){
  */
 TEST(CodecCsvDocument, RefusedEmptyRecordStopsText){
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger());
+	csv::document_t doc(::framework(), ::logger());
 	// Выполняем разбор таблицы, содержащей запись из единственного пустого поля
 	ASSERT_TRUE(doc.parse("значение\r\n\"\"\r\nдругое\r\n"));
 	// Выполняем проверку количества собранных записей
@@ -1947,7 +1957,7 @@ TEST(CodecCsvDocument, StorageOverflowHasItsOwnRefusal){
 	 */
 	{
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку успеха разбора обыкновенной таблицы
 		ASSERT_TRUE(doc.parse("а,б\r\nв,г\r\n"));
 		// Выполняем проверку того, что отказа переполнения на ней нет
@@ -1961,7 +1971,7 @@ TEST(CodecCsvDocument, StorageOverflowHasItsOwnRefusal){
 	 */
 	{
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем установку заголовка таблицы
 		ASSERT_TRUE(doc.header(vector <string> {"первый", "второй"}));
 		// Выполняем добавление записи перечнем строк
@@ -1994,7 +2004,7 @@ TEST(CodecCsvDocument, RefusalChannelSpeaksOnWriting){
 	// Устанавливаем способ записи кавычки удвоением
 	settings.writer.escape = csv::escape_t::DOUBLE;
 	// Объект таблицы
-	csv::document_t doc(::logger());
+	csv::document_t doc(::framework(), ::logger());
 	// Выполняем установку настроек таблицы
 	doc.settings(settings);
 	// Выполняем занесение записи, поле которой укрыть нечем
@@ -2033,7 +2043,7 @@ TEST(CodecCsvDocument, ErrorAnswersForLastOperation){
 	// Ограничиваем количество полей записи
 	settings.reader.maxFields = 2;
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger(), settings);
+	csv::document_t doc(::framework(), ::logger(), settings);
 	// Выполняем проверку отказа разбора таблицы с лишним полем
 	ASSERT_FALSE(doc.parse("a,b\r\nc,d,e\r\n"));
 	// Выполняем проверку кода отказа разбора
@@ -2053,7 +2063,7 @@ TEST(CodecCsvDocument, ErrorAnswersForLastOperation){
 	 */
 	{
 		// Объект контейнера таблицы
-		csv::document_t other(::logger(), settings);
+		csv::document_t other(::framework(), ::logger(), settings);
 		// Выполняем проверку отказа разбора таблицы с лишним полем
 		ASSERT_FALSE(other.parse("a,b\r\nc,d,e\r\n"));
 		// Выполняем проверку успеха установки заголовка таблицы
@@ -2077,7 +2087,7 @@ TEST(CodecCsvDocument, HeaderRefusalNamesItsCause){
 	 */
 	{
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку отказа установки заголовка с пустым именем
 		ASSERT_FALSE(doc.header(vector <string> {"а", ""}));
 		// Выполняем проверку кода отказа установки заголовка
@@ -2090,7 +2100,7 @@ TEST(CodecCsvDocument, HeaderRefusalNamesItsCause){
 	 */
 	{
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку отказа установки заголовка с повторным именем
 		ASSERT_FALSE(doc.header(vector <string> {"имя", "имя"}));
 		// Выполняем проверку кода отказа установки заголовка
@@ -2110,7 +2120,7 @@ TEST(CodecCsvDocument, HeaderRefusalNamesItsCause){
 		// Требуем разбора заголовка таблицы
 		settings.reader.header = csv::header_t::PRESENT;
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger(), settings);
+		csv::document_t doc(::framework(), ::logger(), settings);
 		// Выполняем проверку отказа разбора заголовка с повторным именем
 		ASSERT_FALSE(doc.parse("имя,имя\r\nа,б\r\n"));
 		// Выполняем проверку кода отказа разбора заголовка
@@ -2121,7 +2131,7 @@ TEST(CodecCsvDocument, HeaderRefusalNamesItsCause){
 	 */
 	{
 		// Объект контейнера таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку успеха установки заголовка
 		ASSERT_TRUE(doc.header(vector <string> {"а", "б", "в"}));
 		// Выполняем проверку кода отказа установки заголовка
@@ -2154,7 +2164,7 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
 	 */
 	{
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем установку настроек с объявленным заголовком
 		doc.settings(heading());
 		// Количество выданных записей
@@ -2196,7 +2206,7 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
 			file.write(text.data(), static_cast <streamsize> (text.size()));
 		}
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем установку настроек с объявленным заголовком
 		doc.settings(heading());
 		// Количество выданных записей
@@ -2223,7 +2233,7 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
 	 */
 	{
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем установку настроек с объявленным заголовком
 		doc.settings(heading());
 		// Выполняем потоковый разбор текста таблицы из одного заголовка
@@ -2249,7 +2259,7 @@ TEST(CodecCsvDocument, HeaderReachableFromHandler){
  */
 TEST(CodecCsvDocument, ViewsLiveUntilTheNearestChange){
 	// Контейнер таблицы
-	csv::document_t doc(::logger());
+	csv::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(doc.parse("один,два\n"));
 	// Снимаем содержимое поля видом
@@ -2314,7 +2324,7 @@ TEST(CodecCsvDocument, DuplicateHeaderPathsDivergeDeliberately) {
 		// Отключаем проверку повторного объявления имён
 		settings.reader.duplicates = false;
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Устанавливаем настройки контейнера
 		doc.settings(settings);
 		// Выполняем проверку принятия текста разбором
@@ -2342,7 +2352,7 @@ TEST(CodecCsvDocument, DuplicateHeaderPathsDivergeDeliberately) {
 		// Отключаем проверку повторного объявления имён
 		settings.reader.duplicates = false;
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Устанавливаем настройки контейнера
 		doc.settings(settings);
 		// Выполняем проверку отказа установке заголовка с повтором
@@ -2361,7 +2371,7 @@ TEST(CodecCsvDocument, DuplicateHeaderPathsDivergeDeliberately) {
 		// Включаем проверку повторного объявления имён
 		settings.reader.duplicates = true;
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Устанавливаем настройки контейнера
 		doc.settings(settings);
 		// Выполняем проверку отказа разбора текста с повтором
@@ -2400,7 +2410,7 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 	 */
 	const auto extract = [&settings](const string & spelling, auto & result) noexcept -> bool {
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Устанавливаем настройки контейнера
 		doc.settings(settings);
 		// Выполняем разбор текста таблицы из одного поля
@@ -2596,7 +2606,7 @@ TEST(CodecCsvDocument, BothEndsOfNumberLossAreAcceptedAlike) {
 	 */
 	const auto extract = [&settings](const string & spelling, auto & result) noexcept -> bool {
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Устанавливаем настройки контейнера
 		doc.settings(settings);
 		// Выполняем разбор текста таблицы из одного поля
@@ -2707,7 +2717,7 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 		// Запоминаем наличие заголовка у текста
 		settings.reader.header = sample.second;
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Устанавливаем настройки контейнера
 		doc.settings(settings);
 		// Выполняем проверку принятия текста разбором
@@ -2732,7 +2742,7 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 		// Отключаем ожидание заголовка
 		settings.reader.header = csv::header_t::NONE;
 		// Контейнер таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Устанавливаем настройки контейнера
 		doc.settings(settings);
 		// Выполняем разбор текста с обрамлённым пустым полем среди прочих
@@ -2744,7 +2754,7 @@ TEST(CodecCsvDocument, AssemblyMatchesTheSourceText) {
 		 */
 		{
 			// Контейнер таблицы для повторного разбора
-			csv::document_t back(::logger());
+			csv::document_t back(::framework(), ::logger());
 			// Устанавливаем настройки контейнера
 			back.settings(settings);
 			// Выполняем разбор собранного текста
@@ -2802,7 +2812,7 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 		 */
 		for(size_t path = 0; path < 4; path++){
 			// Контейнер таблицы
-			csv::document_t doc(::logger());
+			csv::document_t doc(::framework(), ::logger());
 			// Устанавливаем настройки контейнера
 			doc.settings(settings);
 			// Выполняем подачу текста очередным путём
@@ -2871,7 +2881,7 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 		 */
 		{
 			// Контейнер таблицы для одинокого перевода строки
-			csv::document_t feed(::logger());
+			csv::document_t feed(::framework(), ::logger());
 			// Устанавливаем настройки строгого разбора
 			feed.settings(settings);
 			// Выполняем проверку отказа разбора
@@ -2879,7 +2889,7 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 			// Выполняем проверку кода отказа
 			ASSERT_EQ(feed.error(), csv::error_t::BARE_LINE_BREAK);
 			// Контейнер таблицы для одинокого возврата каретки
-			csv::document_t carriage(::logger());
+			csv::document_t carriage(::framework(), ::logger());
 			// Устанавливаем настройки строгого разбора
 			carriage.settings(settings);
 			// Выполняем проверку отказа разбора
@@ -2887,7 +2897,7 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
 			// Выполняем проверку кода отказа
 			ASSERT_EQ(carriage.error(), csv::error_t::BARE_LINE_BREAK);
 			// Контейнер таблицы для кавычки в голом поле
-			csv::document_t quote(::logger());
+			csv::document_t quote(::framework(), ::logger());
 			// Устанавливаем настройки строгого разбора
 			quote.settings(settings);
 			// Выполняем проверку отказа разбора
@@ -2953,7 +2963,7 @@ TEST(CodecCsvDocument, FeedingPathsAgreeOnTheVerdict) {
  */
 TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 	// Документ таблицы для проверки извлечения чисел
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	/**
 	 * Разбираемый текст таблицы со всеми написаниями, отказ вызывающими
 	 *
@@ -3053,7 +3063,7 @@ TEST(CodecCsvDocument, FileInputObeysTheSettings) {
 	 */
 	{
 		// Документ таблицы, разбираемый из текста
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем проверку отказа разбора текста
@@ -3066,7 +3076,7 @@ TEST(CodecCsvDocument, FileInputObeysTheSettings) {
 	 */
 	{
 		// Документ таблицы, разбираемый из файла
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем проверку отказа разбора файла
@@ -3198,7 +3208,7 @@ TEST(CodecCsvDocument, LossOnMachineWithoutSubnormalsGivesZeroNotARefusal) {
 	 */
 	{
 		// Документ таблицы для проверки извлечения чисел
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста таблицы с записью, обнулению подлежащей
 		ASSERT_TRUE(document.parse("1e-320\r\n"));
 		// Приёмник целого вида без знака с опознавательным значением
@@ -3285,7 +3295,7 @@ TEST(CodecCsvDocument, NumberExtractionIsDeafToTheRoundingMode) {
 			// Запоминаем признак того, что режим исход меняет
 			sighted = true;
 		// Документ таблицы для разбора текста
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста таблицы
 		ASSERT_TRUE(document.parse(text));
 		// Разряды извлечённых чисел текущего режима округления
@@ -3337,7 +3347,7 @@ TEST(CodecCsvDocument, NumberExtractionIsDeafToTheRoundingMode) {
  */
 TEST(CodecCsvDocument, EmptyFieldIsNotAnAbsentField) {
 	// Объект контейнера таблицы
-	csv::document_t doc(::logger());
+	csv::document_t doc(::framework(), ::logger());
 	/**
 	 * Выполняем разбор текста таблицы с пустым полем в начале записи
 	 */
@@ -3367,7 +3377,7 @@ TEST(CodecCsvDocument, EmptyFieldIsNotAnAbsentField) {
 	 */
 	ASSERT_EQ(doc.dump(), "a,b\r\n,2\r\n");
 	// Объект контейнера таблицы, разбирающей записанное
-	csv::document_t again(::logger());
+	csv::document_t again(::framework(), ::logger());
 	// Выполняем разбор записанного текста таблицы
 	ASSERT_TRUE(again.parse(doc.dump())) << csv::message(again.error());
 	// Выполняем проверку сохранности числа полей записи после кругового хода
@@ -3391,7 +3401,7 @@ TEST(CodecCsvDocument, QueriesAnswerBeforeAndAfterParsing) {
 	// Выполняем отключение вывода журнала работы
 	log.mode({});
 	// Выполняем создание объекта документа таблицы
-	csv::document_t doc(&log);
+	csv::document_t doc(&Silent::framework(), &log);
 	// Выполняем проверку пустоты документа до разбора текста
 	ASSERT_TRUE(doc.empty());
 	// Выполняем проверку отсутствия записей до разбора текста
@@ -3443,7 +3453,7 @@ TEST(CodecCsvDocument, QueriesAnswerBeforeAndAfterParsing) {
  */
 TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	// Объект таблицы для разбора текста
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор таблицы об одной записи
 	ASSERT_TRUE(document.parse("4096,-9223372036854775807,18446744073709551615,-128\r\n"));
 	// Приёмники видов языка, расходящихся между системами
@@ -3490,7 +3500,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	 */
 	{
 		// Объект таблицы с числом, вид `char` заведомо вмещающим
-		csv::document_t narrowed(::logger());
+		csv::document_t narrowed(::framework(), ::logger());
 		/**
 		 * Выполняем разбор таблицы об одном поле
 		 *
@@ -3539,7 +3549,7 @@ TEST(CodecCsvDocument, DirectoryIsRefusedNotLoaded) {
 	 */
 	{
 		// Дерево значений документа
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа загрузки каталога
 		ASSERT_FALSE(document.load("."));
 		// Выполняем проверку кода отказа загрузки
@@ -3550,7 +3560,7 @@ TEST(CodecCsvDocument, DirectoryIsRefusedNotLoaded) {
 	 */
 	{
 		// Значение документа
-		csv::value_t value;
+		csv::value_t value(::framework(), ::logger());
 		// Выполняем проверку отказа загрузки каталога
 		ASSERT_FALSE(value.load("."));
 		// Выполняем проверку кода отказа загрузки
@@ -3579,7 +3589,7 @@ TEST(CodecCsvDocument, AppendRefusesTheContentThatCannotBeWritten) {
 	 */
 	for(const string & content : {string("\xC3\x28", 2), string("a\x01" "b", 3), string("a\x7F" "b", 3)}){
 		// Объект таблицы
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем добавление годной записи
 		ASSERT_TRUE(document.append(vector <string> {string("первое"), string("второе")}));
 		// Выполняем проверку отказа добавления записи с негодным содержимым
@@ -3595,7 +3605,7 @@ TEST(CodecCsvDocument, AppendRefusesTheContentThatCannotBeWritten) {
 		 */
 		{
 			// Объект таблицы для подачи видами
-			csv::document_t viewed(::logger());
+			csv::document_t viewed(::framework(), ::logger());
 			// Выполняем добавление годной записи видами
 			ASSERT_TRUE(viewed.append(vector <string_view> {string_view("первое"), string_view("второе")}));
 			// Выполняем проверку отказа добавления записи с негодным содержимым видами
@@ -3611,7 +3621,7 @@ TEST(CodecCsvDocument, AppendRefusesTheContentThatCannotBeWritten) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем добавление записи с разделителем, кавычкою и переводом строки в полях
 		ASSERT_TRUE(document.append(vector <string> {string("а,б"), string("в\"г"), string("д\nе")}));
 		// Выполняем проверку отсутствия отказа
@@ -3650,7 +3660,7 @@ TEST(CodecCsvDocument, RefusalOfTheWritingIsNotPassedAsASuccessfulSave) {
 	// Снимаем знак кавычек, ограду задающий
 	settings.writer.quote = '\0';
 	// Таблица документа
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем установку настроек таблицы
 	document.settings(settings);
 	// Выполняем добавление записи из одного пустого поля
@@ -3707,7 +3717,7 @@ TEST(CodecCsvDocument, TableLongerThanTheFeedChunkIsParsedWhole){
 	// Выполняем проверку того, что текст таблицы длиннее одного куска подачи
 	ASSERT_GT(text.size(), 0x10000u);
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Выполняем разбор собранного текста таблицы
 	ASSERT_TRUE(document.parse(text)) << csv::message(document.error());
 	// Выполняем проверку количества разобранных записей
@@ -3761,7 +3771,7 @@ TEST(CodecCsvDocument, StreamedTableLongerThanTheFeedChunkIsParsedWhole){
 	// Выполняем проверку того, что текст таблицы длиннее одного куска подачи
 	ASSERT_GT(text.size(), 0x10000u);
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Количество записей, отклику выданных
 	size_t count = 0;
 	// Признак сохранности содержимого всех выданных записей
@@ -3812,7 +3822,7 @@ TEST(CodecCsvDocument, CommentsAndBlankLinesDoNotBecomeRecords){
 	// Разбираемый текст таблицы
 	const string text = "# примечание в начале\r\nа,б\r\n\r\n# примечание в середине\r\nв,г\r\n\r\n";
 	// Объект таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Настройки контейнера
 	csv::document_t::settings_t settings;
 	// Устанавливаем знак примечания, разбором признаваемый
@@ -3834,7 +3844,7 @@ TEST(CodecCsvDocument, CommentsAndBlankLinesDoNotBecomeRecords){
 	 */
 	{
 		// Объект таблицы
-		csv::document_t streamed(::logger());
+		csv::document_t streamed(::framework(), ::logger());
 		// Выполняем установку настроек контейнера
 		streamed.settings(settings);
 		// Записи, отклику выданные
@@ -3908,7 +3918,7 @@ TEST(CodecCsvDocument, RefusalOfTheFeedStopsTheFileReading){
 	 */
 	{
 		// Документ таблицы, разбираемый из файла
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Выполняем проверку отказа разбора файла
@@ -3921,7 +3931,7 @@ TEST(CodecCsvDocument, RefusalOfTheFeedStopsTheFileReading){
 	 */
 	{
 		// Документ таблицы, разбираемый из файла
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек разбора
 		document.settings(settings);
 		// Количество записей, отклику выданных

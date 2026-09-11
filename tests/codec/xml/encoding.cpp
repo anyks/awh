@@ -84,6 +84,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -1217,7 +1227,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 		{"cp866",        "\x8F\xE0\xA8\xA2\xA5\xE2"}
 	}) {
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Собираем текст разметки с объявлением очередной кодировки
 		const string text = ("<?xml version=\"1.0\" encoding=\"" + item.first + "\"?><a>" + item.second + "</a>");
 		// Выполняем разбор текста разметки
@@ -1257,7 +1267,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 		"UTF-32"
 	}) {
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Собираем текст разметки с объявлением неподдерживаемой кодировки
 		const string text = ("<?xml version=\"1.0\" encoding=\"" + item + "\"?><a>x</a>");
 		// Выполняем проверку отказа разбора

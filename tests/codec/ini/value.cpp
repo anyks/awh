@@ -23,6 +23,7 @@
 	#define getpid _getpid
 #endif
 #include <string>
+#include <encoding/unicode/utf8.hpp>
 #include <vector>
 #include <fstream>
 
@@ -47,6 +48,99 @@
  *
  */
 namespace {
+	/**
+	 * @brief Способ обращения пути файловой системы в вид, системе годный
+	 *
+	 * @details Проверки обязаны обращаться к файловой системе ТЕМ ЖЕ ходом, каким
+	 *          обращается кодек. Иначе проверка заводит файл под одним именем, а кодек
+	 *          ищет под другим, и красный стенд означает не порок кодека, а расхождение
+	 *          проверки с ним
+	 *
+	 * @warning Расхождение это и случилось 09.09.2026: кодеки переведены на широкий путь,
+	 *          а проверки остались узкими, и под MS Windows при ACP=1251 пали разом семь
+	 *          проверок трёх кодеков. Ни одна из них порока кодека не показывала
+	 *
+	 * @param path обращаемый путь файловой системы, записанный в UTF-8
+	 * @return     путь в виде, годном ходам системы
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		static ::std::wstring address(const ::std::string & path) noexcept {
+			// Собираемая широкая запись пути файловой системы
+			::std::wstring result;
+			// Выполняем резервирование памяти под собираемый путь
+			result.reserve(path.size());
+			// Кодовое значение очередного знака пути
+			uint32_t code = 0;
+			/**
+			 * Выполняем перебор всех знаков обращаемого пути
+			 */
+			for(::std::size_t i = 0; i < path.size();){
+				// Выполняем разбор записи очередного знака пути
+				const ::std::size_t length = awh::utf8::decode(path, i, code);
+				/**
+				 * Если запись знака разбору не поддалась
+				 */
+				if(length == 0)
+					// Выводим пустой путь, обращению не поддавшийся
+					return ::std::wstring();
+				// Выполняем перемещение за разобранную запись знака
+				i += length;
+				/**
+				 * Если знак широкий вмещает лишь два октета
+				 */
+				if constexpr(sizeof(wchar_t) < 4){
+					/**
+					 * Если код знака вне основной плоскости лежит
+					 */
+					if(code > 0xFFFF){
+						// Выполняем приведение кода к записи парою суррогатов
+						code -= 0x10000;
+						// Выполняем добавление старшего суррогата пары
+						result.push_back(static_cast <wchar_t> (0xD800 + (code >> 10)));
+						// Выполняем добавление младшего суррогата пары
+						result.push_back(static_cast <wchar_t> (0xDC00 + (code & 0x3FF)));
+						// Выполняем переход к следующему знаку пути
+						continue;
+					}
+				}
+				// Выполняем добавление знака к собираемому пути
+				result.push_back(static_cast <wchar_t> (code));
+			}
+			// Выводим собранный путь файловой системы
+			return result;
+		}
+	/**
+	 * Для операционной системы, MS Windows не являющейся
+	 */
+	#else
+		static ::std::string address(const ::std::string & path) noexcept {
+			// Выводим путь файловой системы без обращения
+			return path;
+		}
+	#endif
+	/**
+	 * @brief Способ снятия файла с файловой системы
+	 *
+	 * @param filename путь снимаемого файла
+	 * @return         признак успешности снятия файла
+	 *
+	 */
+	static bool dropFile(const ::std::string & filename) noexcept {
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выводим результат снятия файла широким ходом
+			return (::_wremove(address(filename).c_str()) == 0);
+		/**
+		 * Для операционной системы, MS Windows не являющейся
+		 */
+		#else
+			// Выводим результат снятия файла узким ходом
+			return (::remove(filename.c_str()) == 0);
+		#endif
+	}
 	/**
 	 * @brief Функция выдачи имени временного файла, по процессу уникального
 	 *
@@ -115,6 +209,19 @@ namespace {
 			this->log.mode({});
 		}
 	};
+	/**
+	 * @brief Способ выдачи объекта фреймворка проверок
+	 *
+	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
 	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
@@ -554,7 +661,7 @@ TEST(CodecIniValue, Outliving) {
 	 */
 	{
 		// Дерево настроек, живущее одной областью видимости
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[server]\nhost = localhost\nport = 8080\n"));
 		// Выполняем снятие значения с дерева настроек
@@ -653,7 +760,7 @@ TEST(CodecIniValue, GraftingRefusesTheMalformedEncoding) {
 	 *       уходит в текст молча - при умолчании оно заменяется знаком `U+FFFD`, при
 	 *       правиле `REFUSE` запись отвергается с кодом. Утверждаются оба исхода
 	 */
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	/**
@@ -680,7 +787,7 @@ TEST(CodecIniValue, GraftingRefusesTheMalformedEncoding) {
 		// Выполняем проверку того, что текст собрался
 		ASSERT_FALSE(text.empty()) << content;
 		// Дерево, записанный текст обратно читающее
-		ini::document_t circle(::logger());
+		ini::document_t circle(::framework(), ::logger());
 		// Выполняем разбор записанного текста
 		ASSERT_TRUE(circle.parse(text)) << content;
 		// Выполняем проверку того, что знак замены в прочитанном значении есть
@@ -708,7 +815,7 @@ TEST(CodecIniValue, Grafting) {
 	// Выполняем заведение свойства раздела
 	value.place("/server/host") = ini::value_t("localhost");
 	// Дерево настроек, куда переносится значение
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -744,7 +851,7 @@ TEST(CodecIniValue, GraftingList) {
 	// Выполняем добавление второго значения перечня раздела
 	value.place("/server/port/1") = ini::value_t("443");
 	// Дерево настроек, куда переносится значение
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -979,7 +1086,7 @@ TEST(CodecIniValue, GraftRoundTrip) {
 	 */
 	value.place("/server.tls/cert") = ini::value_t("/etc/cert.pem");
 	// Дерево настроек, куда переносится значение
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1129,7 +1236,7 @@ TEST(CodecIniValue, GraftingReferenceGuard) {
 	// Назначаем подстановку обращений вида оболочки
 	settings.references = ini::reference_t::SHELL;
 	// Дерево настроек с обращением и с ограждённым знаком обращения
-	ini::document_t document(::logger(), settings);
+	ini::document_t document(::framework(), ::logger(), settings);
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("цель = добыто\nдословно = $${цель}\nссылка = ${цель}\n"));
 	// Выполняем проверку того, что ограждённый знак данными остался
@@ -1139,7 +1246,7 @@ TEST(CodecIniValue, GraftingReferenceGuard) {
 	// Выполняем снятие владеющего значения с дерева настроек
 	const ini::value_t lifted(document);
 	// Дерево настроек, куда переносится значение
-	ini::document_t target(::logger(), settings);
+	ini::document_t target(::framework(), ::logger(), settings);
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1171,7 +1278,7 @@ TEST(CodecIniValue, LiftingEmptySection) {
 	// Назначаем отделение подраздела знаком-разделителем
 	settings.reader.subsections = ini::subsection_t::DELIMITED;
 	// Дерево настроек с пустым подразделом
-	ini::document_t document(::logger(), settings);
+	ini::document_t document(::framework(), ::logger(), settings);
 	// Выполняем разбор текста настроек с пустым подразделом
 	ASSERT_TRUE(document.parse("[b.sub]\n"));
 	// Выполняем снятие владеющего значения с дерева настроек
@@ -1181,7 +1288,7 @@ TEST(CodecIniValue, LiftingEmptySection) {
 	// Выполняем проверку того, что подраздел снят вместилищем пар
 	ASSERT_TRUE(lifted["b"]["sub"].is(ini::type_t::TABLE));
 	// Дерево настроек, куда переносится значение
-	ini::document_t target(::logger(), settings);
+	ini::document_t target(::framework(), ::logger(), settings);
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1218,7 +1325,7 @@ TEST(CodecIniValue, LiftingWithReferences) {
 		// Выполняем добавление очередного свойства с обращением
 		text.append("поле" + to_string(i) + " = ${цель}-" + string(64, 'a') + "\n");
 	// Дерево настроек с обращениями
-	ini::document_t document(::logger(), settings);
+	ini::document_t document(::framework(), ::logger(), settings);
 	// Выполняем разбор собранного текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем снятие владеющего значения с дерева настроек
@@ -1280,7 +1387,7 @@ TEST(CodecIniValue, GraftSurvivesRewrite) {
 	 */
 	for(const auto & probe : PROBES){
 		// Дерево настроек, куда переносится значение
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем разбор исходного текста дерева
 		ASSERT_TRUE(document.parse(probe.base)) << probe.title;
 		// Переносимое владеющее значение
@@ -1296,7 +1403,7 @@ TEST(CodecIniValue, GraftSurvivesRewrite) {
 		// Выполняем проверку сохранности прежнего содержимого дерева
 		ASSERT_EQ((text.find("старое") != string::npos), probe.kept) << probe.title;
 		// Дерево настроек, перезаписью полученное
-		ini::document_t again(::logger());
+		ini::document_t again(::framework(), ::logger());
 		// Выполняем обратный разбор перезаписи дерева
 		ASSERT_TRUE(again.parse(text)) << probe.title;
 		// Выполняем проверку перенесённого свойства корня
@@ -1323,7 +1430,7 @@ TEST(CodecIniValue, GraftSurvivesRewrite) {
  */
 TEST(CodecIniValue, GraftReplacesListDeclarations) {
 	// Дерево настроек, куда переносится значение
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста настроек с перечнем и соседним свойством
 	ASSERT_TRUE(document.parse("[раздел]\nсписок = старое\nсписок = второе\nсосед = цел\n"));
 	// Переносимое владеющее значение
@@ -1347,7 +1454,7 @@ TEST(CodecIniValue, GraftReplacesListDeclarations) {
 	// Выполняем проверку сохранности соседнего свойства раздела
 	ASSERT_NE(text.find("сосед = цел"), string::npos);
 	// Дерево настроек, перезаписью полученное
-	ini::document_t again(::logger());
+	ini::document_t again(::framework(), ::logger());
 	// Выполняем обратный разбор перезаписи дерева
 	ASSERT_TRUE(again.parse(text));
 	// Перечень значений перенесённого свойства
@@ -1523,6 +1630,10 @@ TEST(CodecIniValue, Storing) {
 		"port = 8080\n"
 	));
 	// Выполняем проверку успешности записи значения в файл
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_TRUE(value.save(::unique("./value.ini")));
 	/**
 	 * Выполняем проверку чтения значения из файла
@@ -1531,6 +1642,10 @@ TEST(CodecIniValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		ini::value_t loaded;
 		// Выполняем проверку успешности чтения значения из файла
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		loaded.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		loaded.setLogger(::logger());
 		ASSERT_TRUE(loaded.load(::unique("./value.ini")));
 		// Выполняем проверку совпадения записанного и прочитанного
 		ASSERT_TRUE(loaded == value);
@@ -1544,6 +1659,10 @@ TEST(CodecIniValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		ini::value_t loaded;
 		// Выполняем проверку успешности чтения значения из файла настройками разбора
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		loaded.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		loaded.setLogger(::logger());
 		ASSERT_TRUE(loaded.load(::unique("./value.ini"), settings));
 		// Выполняем проверку совпадения записанного и прочитанного
 		ASSERT_TRUE(loaded == value);
@@ -1561,6 +1680,10 @@ TEST(CodecIniValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		ini::value_t loaded;
 		// Выполняем проверку отказа чтения отсутствующего файла
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		loaded.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		loaded.setLogger(::logger());
 		ASSERT_FALSE(loaded.load("./несуществующий-каталог/value.ini"));
 	}
 }
@@ -1596,7 +1719,7 @@ TEST(CodecIniValue, QuotingMemory) {
 	 */
 	{
 		// Собираемое дерево настроек
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора того же текста настроек
 		ASSERT_TRUE(document.parse("bare = значение\nquoted = \"значение\"\n"));
 		// Получаем перечень признаков ограды значения без ограды
@@ -1650,7 +1773,7 @@ TEST(CodecIniValue, QuotingMemory) {
  */
 TEST(CodecIniValue, EmptyNameIsUnknownToDialect) {
 	// Собираемое дерево настроек
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем проверку отказа разбора строки без имени свойства
 	ASSERT_FALSE(document.parse(" = значение\n"));
 	// Выполняем проверку того, что причина отказа названа
@@ -1660,7 +1783,7 @@ TEST(CodecIniValue, EmptyNameIsUnknownToDialect) {
 	 */
 	{
 		// Собираемое дерево настроек
-		ini::document_t quoted(::logger());
+		ini::document_t quoted(::framework(), ::logger());
 		// Выполняем проверку успешности разбора имени из двух кавычек
 		ASSERT_TRUE(quoted.parse("\"\" = значение\nk = 1\n"));
 		// Значение, с дерева настроек снятое
@@ -1712,7 +1835,7 @@ TEST(CodecIniValue, RewriteInventsNoSections) {
 		// Устанавливаем признание подразделов оградою
 		settings.reader.subsections = ini::subsection_t::QUOTED;
 		// Собираемое дерево настроек
-		ini::document_t document(::logger(), settings);
+		ini::document_t document(::framework(), ::logger(), settings);
 		// Выполняем проверку успешности разбора текста с подразделом
 		ASSERT_TRUE(document.parse("[a \"b\"]\nk = 1\n"));
 		// Перезапись дерева настроек
@@ -1735,7 +1858,7 @@ TEST(CodecIniValue, RewriteInventsNoSections) {
 	 */
 	{
 		// Собираемое дерево настроек
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора текста с пустым разделом
 		ASSERT_TRUE(document.parse("[a]\n[b]\nk = 1\n"));
 		// Значение, с дерева настроек снятое
@@ -1753,7 +1876,7 @@ TEST(CodecIniValue, RewriteInventsNoSections) {
 		 */
 		{
 			// Собираемое дерево настроек перезаписи снятого значения
-			ini::document_t rebuilt(::logger());
+			ini::document_t rebuilt(::framework(), ::logger());
 			// Выполняем проверку успешности разбора перезаписи снятого значения
 			ASSERT_TRUE(rebuilt.parse(lifted.dump(document.writing())));
 			// Выполняем проверку совпадения прочтённого с исходным
@@ -1802,7 +1925,7 @@ TEST(CodecIniValue, GraftLeavesTreeIntact) {
 		// Выполняем установку свойства с именем непринимаемым
 		ASSERT_TRUE(value.insert(name, ini::value_t(string("два"))));
 		// Дерево настроек, куда переносится значение
-		ini::document_t target(::logger());
+		ini::document_t target(::framework(), ::logger());
 		// Выполняем проверку успешности разбора пустого текста настроек
 		ASSERT_TRUE(target.parse(""));
 		// Выполняем проверку отказа переноса владеющего значения
@@ -1824,7 +1947,7 @@ TEST(CodecIniValue, GraftLeavesTreeIntact) {
 		// Выполняем установку свойства с годным именем
 		ASSERT_TRUE(value.insert("годное", ini::value_t(string("раз"))));
 		// Дерево настроек, куда переносится значение
-		ini::document_t target(::logger());
+		ini::document_t target(::framework(), ::logger());
 		// Выполняем проверку успешности разбора пустого текста настроек
 		ASSERT_TRUE(target.parse(""));
 		// Выполняем проверку успешности переноса владеющего значения
@@ -1893,7 +2016,7 @@ TEST(CodecIniValue, GraftKeepsTreeOnSectionRefusal) {
 		// Если заход подраздела не несёт
 		else value[refusal.section][refusal.subsection][refusal.key] = ini::value_t(string("значение"));
 		// Дерево настроек, куда переносится значение
-		ini::document_t target(::logger(), settings);
+		ini::document_t target(::framework(), ::logger(), settings);
 		// Выполняем проверку успешности разбора текста настроек
 		ASSERT_TRUE(target.parse("[цел]\nсторож = на месте\n"));
 		// Получаем запись дерева до переноса
@@ -1917,7 +2040,7 @@ TEST(CodecIniValue, GraftKeepsTreeOnSectionRefusal) {
 		// Выполняем сборку значения из раздела, подраздела и свойства
 		value["раздел"]["подраздел"]["ключ"] = ini::value_t(string("значение"));
 		// Дерево настроек, куда переносится значение
-		ini::document_t target(::logger(), settings);
+		ini::document_t target(::framework(), ::logger(), settings);
 		// Выполняем проверку успешности разбора пустого текста настроек
 		ASSERT_TRUE(target.parse(""));
 		// Выполняем проверку успешности переноса владеющего значения
@@ -2169,6 +2292,10 @@ TEST(CodecIniValue, ParseLoadSaveRefusals) {
 		// Собираемое владеющее значение
 		ini::value_t value;
 		// Выполняем проверку отказа чтения файла несуществующего
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		value.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		value.setLogger(::logger());
 		ASSERT_FALSE(value.load("/несуществующий-каталог-awh/значение"));
 	}
 	/**
@@ -2181,7 +2308,7 @@ TEST(CodecIniValue, ParseLoadSaveRefusals) {
 		// Имя временного файла с содержимым негодным
 		const string filename = temporary(::unique("awh-ini-value-refusal.txt"));
 		// Поток записи временного файла
-		ofstream file(filename, ios::binary | ios::trunc);
+		ofstream file(address(filename).c_str(), ios::binary | ios::trunc);
 		// Выполняем проверку того, что временный файл открыт
 		ASSERT_TRUE(file.is_open());
 		// Выполняем запись содержимого негодного во временный файл
@@ -2191,9 +2318,13 @@ TEST(CodecIniValue, ParseLoadSaveRefusals) {
 		// Собираемое владеющее значение
 		ini::value_t value;
 		// Выполняем проверку отказа чтения файла с содержимым негодным
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		value.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		value.setLogger(::logger());
 		ASSERT_FALSE(value.load(filename));
 		// Выполняем снятие временного файла
-		::remove(filename.c_str());
+		dropFile(filename);
 	}
 	/**
 	 * Выполняем проверку отказа записи в файл, открыть какой нельзя
@@ -2204,6 +2335,10 @@ TEST(CodecIniValue, ParseLoadSaveRefusals) {
 		// Выполняем занесение пары, дабы записывалось не пустое значение
 		ASSERT_TRUE(value.append("a", ini::value_t("1")));
 		// Выполняем проверку отказа записи в файл, открыть какой нельзя
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		value.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		value.setLogger(::logger());
 		ASSERT_FALSE(value.save("/несуществующий-каталог-awh/значение"));
 	}
 }
@@ -2479,7 +2614,7 @@ TEST(CodecIniValue, UnnamedPairsSkipped) {
 		// Растим раздел по номеру, заводя тем безымянные пары
 		root["раздел"][3] = "хвост";
 		// Дерево настроек, в какое ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем перенос владеющего значения в дерево настроек
 		ASSERT_TRUE(root.graft(document));
 		// Выполняем проверку того, что безымянные пары в дерево не попали
@@ -2618,6 +2753,10 @@ TEST(CodecIniValue, ParseAndLoadWithSettingsRefused) {
 	// Выполняем проверку отказа разбора негодного текста настройками
 	ASSERT_FALSE(value.parse("[раздел\n", ini::document_t::settings_t()));
 	// Выполняем проверку отказа чтения несуществующего файла настройками
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_FALSE(value.load("/нет-такого-каталога-awh/файл.ini", ini::document_t::settings_t()));
 	/**
 	 * Выполняем проверку того, что разбор годного текста настройками принимается
@@ -2769,15 +2908,19 @@ TEST(CodecIniValue, UnwritableDepthRefused) {
 		// Имя записываемого файла, соседству прогонов неподвластное
 		const string filename = ::unique("./ini_неписуемое.ini");
 		// Выполняем снос записываемого файла, от прежнего прогона оставшегося
-		::remove(filename.c_str());
+		dropFile(filename);
 		// Выполняем проверку отказа записи неписуемого дерева в файл
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		value.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		value.setLogger(::logger());
 		ASSERT_FALSE(value.save(filename));
 		/**
 		 * Выполняем проверку того, что файл записью не заведён
 		 */
 		{
 			// Поток чтения записываемого файла
-			ifstream file(filename, ios::binary);
+			ifstream file(address(filename).c_str(), ios::binary);
 			// Выполняем проверку того, что файла нет
 			ASSERT_FALSE(file.is_open());
 		}
@@ -2844,7 +2987,7 @@ TEST(CodecIniValue, GraftRefusesUnwritableTrees) {
 		// Выполняем заведение перечня внутри перечня свойства раздела
 		value["раздел"]["ключ"][0][0] = ini::value_t("значение");
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора текста настроек
 		ASSERT_TRUE(document.parse("[страж]\nk = v\n"));
 		// Выполняем проверку отказа переноса дерева непосильного
@@ -2861,7 +3004,7 @@ TEST(CodecIniValue, GraftRefusesUnwritableTrees) {
 		// Выполняем заведение значения глубже подраздела
 		value["раздел"]["подраздел"]["ярус"] = ini::value_t("значение");
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа переноса дерева непосильного
 		ASSERT_FALSE(value.graft(document));
 	}
@@ -2874,7 +3017,7 @@ TEST(CodecIniValue, GraftRefusesUnwritableTrees) {
 		// Выполняем заведение свойства раздела
 		value["раздел"]["ключ"] = ini::value_t("значение");
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем проверку переноса дерева посильного
 		ASSERT_TRUE(value.graft(document));
 		// Выполняем проверку перенесённого значения
@@ -2910,7 +3053,7 @@ TEST(CodecIniValue, RefusalsOfImpossibleShapes) {
 		// Выполняем заведение пары, значения не несущей вовсе
 		value["раздел"]["дыра"] = ini::value_t();
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа переноса значения с дырою
 		ASSERT_FALSE(value.graft(document));
 	}
@@ -2928,7 +3071,7 @@ TEST(CodecIniValue, RefusalsOfImpossibleShapes) {
 		// Выполняем заведение вместилища четвёртого уровня, наречию непосильного
 		value["раздел"]["подраздел"]["глубже"] = ini::value_t(ini::type_t::TABLE);
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа переноса значения, наречию непосильного
 		ASSERT_FALSE(value.graft(document));
 		/**
@@ -2953,7 +3096,7 @@ TEST(CodecIniValue, RefusalsOfImpossibleShapes) {
 		// Выполняем проверку того, что корень нарос до затребованного номера
 		ASSERT_EQ(value.size(), static_cast <size_t> (3));
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		/**
 		 * Выполняем проверку того, что дыра в именах переносу не помешала
 		 *
@@ -3179,7 +3322,7 @@ TEST(CodecIniValue, LayersExtractNumberAlike) {
 		// Выполняем извлечение числа владеющим значением
 		ASSERT_TRUE(value["a"].value(first)) << probe.text;
 		// Объект дерева настроек
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста деревом настроек
 		ASSERT_TRUE(document.parse(string("a=") + probe.text + "\n")) << probe.text;
 		// Выполняем извлечение числа деревом настроек
@@ -3234,7 +3377,7 @@ TEST(CodecIniValue, GraftRefusalNamesItsCause){
 	 */
 	{
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем разбор пустого текста настроек
 		ASSERT_TRUE(document.parse(""));
 		// Выполняем проверку отказа переноса простого значения
@@ -3247,7 +3390,7 @@ TEST(CodecIniValue, GraftRefusalNamesItsCause){
 	 */
 	{
 		// Дерево настроек, куда ведётся перенос
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем разбор пустого текста настроек
 		ASSERT_TRUE(document.parse(""));
 		// Переносимое владеющее значение
@@ -3475,8 +3618,10 @@ TEST(CodecIniValue, RefusedSaveOfTheUnwritableValueIsAnnounced){
 	 *          снят намеренно, валил проверку у сборки исправной - и отказ тот принадлежал
 	 *          не коду, а соседству. Замерено 07.09.2026
 	 */
-	::remove(filename.c_str());
+	dropFile(filename);
 	// Выполняем проверку отказа записи значения в файл
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
 	ASSERT_FALSE(value.save(filename));
 	/**
 	 * Выполняем проверку того, что отказ записи оглашён
@@ -3497,7 +3642,7 @@ TEST(CodecIniValue, RefusedSaveOfTheUnwritableValueIsAnnounced){
 	 */
 	{
 		// Поток чтения записанного файла
-		ifstream file(filename, ios::binary);
+		ifstream file(address(filename).c_str(), ios::binary);
 		// Выполняем проверку того, что файла не заведено вовсе
 		ASSERT_FALSE(file.is_open());
 	}
@@ -3536,6 +3681,10 @@ TEST(CodecIniValue, RefusedSaveLeavesNoTemporaryFile){
 	ini::value_t value(ini::type_t::TABLE);
 	value["ключ"] = ini::value_t("значение");
 	// Выполняем проверку отказа записи значения в каталог
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_FALSE(value.save(folder));
 	/**
 	 * Выполняем проверку того, что временного файла рядом с целью не осталось

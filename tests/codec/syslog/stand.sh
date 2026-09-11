@@ -108,7 +108,7 @@ mkdir -p "$OUTPUT"
 rm -f "$OUTPUT/syslog-tests" "$OUTPUT/syslog-tests.exe"
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/net-nwt.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/charset.o $OUTPUT/charset-table.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-fs.o $OUTPUT/sys-os.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/net-nwt.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/charset.o $OUTPUT/charset-table.o"
 
 ##
 # Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
@@ -132,6 +132,11 @@ fi
 ##
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# @note Разбор alias-файлов в «src/sys/fs.cpp» зовёт Foundation, и без неё
+	#       связывание отказывает на средствах Objective-C
+	#
+	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -150,6 +155,30 @@ $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-tabl
 #          нельзя, сужение у себя обязано оставаться отказом сборки
 #
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/sys-log.o"
+#
+# @note Работа кодека с файлами ведётся средством рамки «sys/fs», а не потоками языка
+#       напрямую: у MS Windows узкий путь в UTF-8 кладёт файл под именем, поданному не
+#       равным, и узкий же ход находит его обратно - отказа не будет никогда. Третьей
+#       стороны модуль не тянет, опирается лишь на рамку и журнал
+#
+#
+# @note Модуль «sys/fs» опирается на сведения о системе - розыск пользователя и группы
+#       для смены владельца, - и без «src/sys/os.cpp» связывание отказывает на
+#       `awh::Operating_System::group`. Третьей стороны тот не тянет
+#
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"
+
+#
+# @warning Под macOS файл этот собирается как Objective-C++, а не как C++: разбор
+#          alias-файлов зовёт Foundation, и сборка обычным ходом валится сотнями
+#          отказов в системных заголовках. Отбор этот повторяет CMakeLists.txt, где
+#          тому же файлу и только ему назначены «-x objective-c++ -fobjc-arc»
+#
+if [ "$(uname -s)" = "Darwin" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -x objective-c++ -fobjc-arc -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+else
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+fi
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
@@ -189,8 +218,15 @@ OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
 #          У MS Windows «rename» существующий файл не заменяет, потому сохранение
 #          через временный файл ходит здесь, а не через вызов системы напрямую.
 #
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/replace.cpp" -o "$OUTPUT/codec-replace.o"
-OBJECTS="$OBJECTS $OUTPUT/codec-replace.o"
+# Подмена целевого файла временным кодеком НЕ ЗОВЁТСЯ
+#
+# @details «src/codec/replace.cpp» из сборки стенда снят 11.09.2026: кодеки syslog и CEF
+#          его не звали никогда - сохранение шло потоком, а ныне идёт через `sys/fs`, где
+#          подмена живёт ходом `fs_t::replaceAddress`. Держать чужую часть в сборке ради
+#          одного лишь соседства значило бы ловить её отказы своею раскладкой: 10.09.2026
+#          стенд не собрался на ШЕСТИ машинах из восьми - `unique_ptr` без `<memory>`, - и
+#          беда была не в кодеке вовсе
+#
 
 #
 # Собираем опорные части, какие тянет за собою заголовок опознания «abc»

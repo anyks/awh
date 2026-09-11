@@ -49,6 +49,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include "../../sys/fs.hpp"
+#include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
 
 /**
@@ -214,6 +216,9 @@ namespace awh {
 						PLAIN = 0x01  // Сброс из ядра накопителю, обрыва питания не переживающий
 					};
 				private:
+					// Объект работы с файловой системой
+					fs_t _fs;
+				private:
 					// Название файла контейнера
 					string _filename;
 				private:
@@ -241,6 +246,16 @@ namespace awh {
 				private:
 					// Код отказа работы с файлом контейнера
 					error_t _error;
+				protected:
+					/**
+					 * Объект работы с логами
+					 *
+					 * @note Объекта фреймворка хранилище НЕ держит: фреймворк принял своим
+					 *       конструктором объект файловой системы, а иных потребителей у
+					 *       него здесь нет. Держать ссылку без потребителя значило бы
+					 *       заводить поле, о каком собиратель справедливо предупреждает
+					 */
+					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -575,14 +590,21 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
+					 *
+					 * @note Объекты фреймворка и журнала берутся УКАЗАТЕЛЯМИ от пользователя,
+					 *       как то заведено во всём AWH: заводить их у себя нельзя
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
+					 * @param fmk framework object
+					 * @param log object for working with logs
+					 *
 					 * \~
 					 */
-					explicit Storage(const log_t * log) noexcept;
+					explicit Storage(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -594,9 +616,6 @@ namespace awh {
 					 * \~
 					 */
 					~Storage() noexcept;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian

@@ -72,6 +72,19 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Способ выдачи объекта фреймворка проверок
+	 *
+	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -1037,7 +1050,7 @@ TEST(CodecYamlEncoding, ForcedSignature) {
 		// Выполняем навязывание кодировки разбору
 		settings.encoding = yaml::encoding_t::UTF8;
 		// Объект дерева документа
-		yaml::document_t doc(::logger(), settings);
+		yaml::document_t doc(::framework(), ::logger(), settings);
 		// Выполняем разбор текста, меткою порядка байтов открытого
 		ASSERT_TRUE(doc.parse(string("\xEF\xBB\xBF") + "имя: значение\n"));
 		// Выполняем проверку собранного значения пары

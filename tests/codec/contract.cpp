@@ -311,6 +311,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -407,7 +417,7 @@ namespace {
 	 */
 	static bool viaJson(const string & record, outcome_t & outcome) noexcept {
 		// Дерево документа JSON
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -445,7 +455,7 @@ namespace {
 		// Отключаем ожидание заголовка
 		settings.reader.header = csv::header_t::NONE;
 		// Дерево таблицы CSV
-		csv::document_t document(::logger(), settings);
+		csv::document_t document(::framework(), ::logger(), settings);
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -474,7 +484,7 @@ namespace {
 		// Собираемый текст разметки
 		const string text = ("<a>" + record + "</a>");
 		// Дерево разметки XML
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -502,7 +512,7 @@ namespace {
 		// Собираемый текст документа
 		const string text = ("value: " + record + "\n");
 		// Дерево документа YAML
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -538,7 +548,7 @@ namespace {
 		// Собираемый текст документа
 		const string text = ("value = " + record + "\n");
 		// Дерево документа TOML
-		toml::document_t document(::logger());
+		toml::document_t document(::framework(), ::logger());
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -569,7 +579,7 @@ namespace {
 		// Собираемый текст настроек
 		const string text = ("value=" + record + "\n");
 		// Дерево настроек INI
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		/**
 		 * Если разбор записи завершился отказом
 		 */
@@ -861,7 +871,7 @@ TEST(CodecContract, LongNumberRecord) {
 	// Выполняем добавление недостающих разрядов записи числа
 	digits.append(1999, '0');
 	// Объект владеющего значения разметки
-	xml::value_t markup;
+	xml::value_t markup(::framework(), ::logger());
 	// Выполняем проверку разбора длинной записи числа кодеком XML
 	ASSERT_TRUE(markup.parse("<a>" + digits + "</a>"));
 	// Выполняем проверку дословного удержания записи числа
@@ -875,7 +885,7 @@ TEST(CodecContract, LongNumberRecord) {
 	// Выполняем проверку того, что собранный заново текст запись числа сохранил
 	ASSERT_NE(staged.dump().find(digits), string::npos) << staged.dump();
 	// Объект владеющего значения JSON
-	json::value_t plain;
+	json::value_t plain(::framework(), ::logger());
 	// Выполняем проверку отказа разбора длинной записи числа кодеком JSON
 	ASSERT_FALSE(plain.parse("[" + digits + "]"));
 	/**
@@ -889,7 +899,7 @@ TEST(CodecContract, LongNumberRecord) {
 	// Выполняем добавление недостающих разрядов допустимой записи числа
 	shorter.append(json::MAX_NUMBER - 2, '0');
 	// Объект владеющего значения JSON под допустимую запись
-	json::value_t accepted;
+	json::value_t accepted(::framework(), ::logger());
 	// Выполняем проверку разбора допустимой записи числа
 	ASSERT_TRUE(accepted.parse("[" + shorter + "]")) << shorter.size();
 	// Выполняем проверку дословного удержания допустимой записи числа
@@ -910,7 +920,7 @@ TEST(CodecContract, LongNumberRecord) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку разбора длинной записи числа кодеком CSV
 		ASSERT_TRUE(doc.parse(digits + "\r\n"));
 		// Владеющее значение, снятое с таблицы
@@ -945,7 +955,7 @@ TEST(CodecContract, Narrowing) {
 	// Извлекаемое целое значение
 	int32_t number = 0;
 	// Объект владеющего значения JSON
-	json::value_t plain;
+	json::value_t plain(::framework(), ::logger());
 	// Выполняем разбор записей, подлежащих сужению
 	ASSERT_TRUE(plain.parse("[8080,1e300,-1e300]"));
 	// Выполняем проверку заворота целого числа кодеком JSON
@@ -958,7 +968,7 @@ TEST(CodecContract, Narrowing) {
 	ASSERT_TRUE(plain[static_cast <size_t> (2)].value(number));
 	ASSERT_EQ(number, ::std::numeric_limits <int32_t>::lowest());
 	// Объект владеющего значения разметки
-	xml::value_t markup;
+	xml::value_t markup(::framework(), ::logger());
 	// Выполняем разбор записей, подлежащих сужению
 	ASSERT_TRUE(markup.parse("<a><b>8080</b><b>1e300</b><b>-1e300</b></a>"));
 	// Получаем корневой узел разобранной разметки
@@ -1040,7 +1050,7 @@ TEST(CodecContract, Narrowing) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем разбор записей, подлежащих сужению
 		ASSERT_TRUE(doc.parse("8080,1e300,-1e300\r\n"));
 		// Владеющее значение, снятое с таблицы
@@ -1080,11 +1090,11 @@ TEST(CodecContract, IndexedAccess) {
 	/**
 	 * Часть общая: чтение по номеру за пределом вместилища не заводит и не наращивает
 	 */
-	json::value_t plain;
+	json::value_t plain(::framework(), ::logger());
 	// Выполняем разбор перечня из двух значений
 	ASSERT_TRUE(plain.parse("[1,2]"));
 	// Объект владеющего значения разметки
-	xml::value_t markup;
+	xml::value_t markup(::framework(), ::logger());
 	// Выполняем разбор разметки из двух вложенных узлов
 	ASSERT_TRUE(markup.parse("<a><b/><c/></a>"));
 	// Объект владеющего значения YAML
@@ -1205,7 +1215,7 @@ TEST(CodecContract, IndexedAccess) {
 	 */
 	{
 		// Владеющее значение таблицы
-		csv::value_t table(::logger());
+		csv::value_t table(::framework(), ::logger());
 		// Выполняем разбор текста таблицы из двух записей
 		ASSERT_TRUE(table.parse("a,b\r\n1,2\r\n3,4\r\n"));
 		// Запоминаем размах таблицы до всякого обращения
@@ -1243,11 +1253,11 @@ TEST(CodecContract, IndexedAccess) {
  */
 TEST(CodecContract, NamedAccessSearchesWithoutCreating) {
 	// Объект владеющего значения JSON
-	json::value_t plain;
+	json::value_t plain(::framework(), ::logger());
 	// Выполняем разбор словаря из двух полей
 	ASSERT_TRUE(plain.parse("{\"a\":1,\"b\":2}"));
 	// Объект владеющего значения разметки
-	xml::value_t markup;
+	xml::value_t markup(::framework(), ::logger());
 	// Выполняем разбор разметки из двух вложенных узлов
 	ASSERT_TRUE(markup.parse("<root><a/><b/></root>"));
 	// Объект владеющего значения YAML
@@ -1298,7 +1308,7 @@ TEST(CodecContract, NamedAccessSearchesWithoutCreating) {
 	// Выполняем проверку того, что вместилище не наросло
 	ASSERT_EQ(yc.size(), static_cast <size_t> (2));
 	// Объект владеющего значения таблицы
-	csv::value_t table;
+	csv::value_t table(::framework(), ::logger());
 	// Выполняем разбор таблицы об одной записи
 	ASSERT_TRUE(table.parse("имя,возраст\r\nАня,30\r\n"));
 	// Получаем неизменяемое значение таблицы
@@ -1425,7 +1435,7 @@ TEST(CodecContract, EncodingIsAskedAlikeAcrossCodecs) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем проверку неопределённости кодировки до разбора
 		ASSERT_EQ(doc.encoding(), json::encoding_t::NONE);
 		// Выполняем разбор текста в кодировке UTF-8 с меткой порядка байтов
@@ -1442,7 +1452,7 @@ TEST(CodecContract, EncodingIsAskedAlikeAcrossCodecs) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем проверку неопределённости кодировки до разбора
 		ASSERT_EQ(doc.encoding(), xml::encoding_t::NONE);
 		// Выполняем разбор текста в кодировке UTF-8 с меткой порядка байтов
@@ -1459,7 +1469,7 @@ TEST(CodecContract, EncodingIsAskedAlikeAcrossCodecs) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку неопределённости кодировки до разбора
 		ASSERT_EQ(doc.encoding(), csv::encoding_t::NONE);
 		// Выполняем разбор текста в кодировке UTF-8 с меткой порядка байтов
@@ -1495,7 +1505,7 @@ TEST(CodecContract, EmptinessAndPresenceAreAskedAlikeAcrossCodecs) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты документа до разбора
 		ASSERT_TRUE(doc.empty());
 		// Выполняем разбор текста документа
@@ -1516,7 +1526,7 @@ TEST(CodecContract, EmptinessAndPresenceAreAskedAlikeAcrossCodecs) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты дерева до разбора
 		ASSERT_TRUE(doc.empty());
 		// Выполняем разбор текста разметки
@@ -1554,7 +1564,7 @@ TEST(CodecContract, EmptinessAndPresenceAreAskedAlikeAcrossCodecs) {
 		// Выполняем сборку двоичной записи
 		const vector <uint8_t> record = outer.dump();
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты документа до разбора
 		ASSERT_TRUE(doc.empty());
 		// Выполняем разбор двоичной записи документа
@@ -1575,7 +1585,7 @@ TEST(CodecContract, EmptinessAndPresenceAreAskedAlikeAcrossCodecs) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты таблицы до разбора
 		ASSERT_TRUE(doc.empty());
 		// Выполняем разбор текста таблицы
@@ -1632,7 +1642,7 @@ TEST(CodecContract, EmptyDocumentWritingDivergesByStandard) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты записи пустого документа
 		ASSERT_TRUE(doc.dump().empty());
 		// Выполняем проверку кода отказа записи документа без значения
@@ -1643,7 +1653,7 @@ TEST(CodecContract, EmptyDocumentWritingDivergesByStandard) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты записи пустого дерева
 		ASSERT_TRUE(doc.dump().empty());
 		// Выполняем проверку кода отказа записи дерева без корневого узла
@@ -1654,7 +1664,7 @@ TEST(CodecContract, EmptyDocumentWritingDivergesByStandard) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты записи пустой таблицы
 		ASSERT_TRUE(doc.dump().empty());
 		/**
@@ -1678,7 +1688,7 @@ TEST(CodecContract, EmptyDocumentWritingDivergesByStandard) {
 	 */
 	{
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем проверку пустоты записи пустого документа
 		ASSERT_TRUE(doc.dump().empty());
 		// Выполняем проверку кода отказа записи документа без значения
@@ -1712,7 +1722,7 @@ TEST(CodecContract, RefusalDropsThePreviousContentAlike) {
 		 */
 		for(uint8_t path = 0; path < 3; path++){
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор годного текста документа
 			ASSERT_TRUE(doc.parse("{\"a\":1}")) << json::message(doc.error());
 			// Выполняем проверку того, что документ собран
@@ -1741,7 +1751,7 @@ TEST(CodecContract, RefusalDropsThePreviousContentAlike) {
 		 */
 		for(uint8_t path = 0; path < 3; path++){
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор годного текста разметки
 			ASSERT_TRUE(doc.parse("<a>1</a>")) << xml::message(doc.error());
 			// Выполняем проверку того, что дерево собрано
@@ -1770,7 +1780,7 @@ TEST(CodecContract, RefusalDropsThePreviousContentAlike) {
 		 */
 		for(uint8_t path = 0; path < 3; path++){
 			// Объект таблицы
-			csv::document_t doc(::logger());
+			csv::document_t doc(::framework(), ::logger());
 			// Выполняем разбор годного текста таблицы
 			ASSERT_TRUE(doc.parse("a,b\r\n1,2\r\n")) << csv::message(doc.error());
 			// Выполняем проверку того, что таблица собрана
@@ -1820,7 +1830,7 @@ TEST(CodecContract, RefusalDropsThePreviousContentAlike) {
 		 */
 		for(size_t i = 0; i < corrupted.size(); i++){
 			// Объект документа
-			abc::document_t doc(::logger());
+			abc::document_t doc(::framework(), ::logger());
 			// Выполняем разбор годной записи документа
 			ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 			// Выполняем проверку того, что документ собран
@@ -1874,7 +1884,7 @@ TEST(CodecContract, EmptyTextParsingDivergesByStandard) {
 		 */
 		{
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем проверку отказа разбора пустого текста
 			ASSERT_FALSE(doc.parse(text)) << text;
 			// Выполняем проверку кода отказа разбора текста без значения
@@ -1885,7 +1895,7 @@ TEST(CodecContract, EmptyTextParsingDivergesByStandard) {
 		 */
 		{
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем проверку отказа разбора пустого текста
 			ASSERT_FALSE(doc.parse(text)) << text;
 			// Выполняем проверку кода отказа разбора текста без корневого узла
@@ -1896,7 +1906,7 @@ TEST(CodecContract, EmptyTextParsingDivergesByStandard) {
 		 */
 		{
 			// Объект таблицы
-			csv::document_t doc(::logger());
+			csv::document_t doc(::framework(), ::logger());
 			// Выполняем проверку успешности разбора пустого текста
 			ASSERT_TRUE(doc.parse(text)) << text;
 			// Выполняем проверку отсутствия отказа разбора пустого текста
@@ -1912,7 +1922,7 @@ TEST(CodecContract, EmptyTextParsingDivergesByStandard) {
 	 */
 	{
 		// Объект таблицы, разбирающей пустой текст
-		csv::document_t empty(::logger());
+		csv::document_t empty(::framework(), ::logger());
 		// Выполняем разбор пустого текста таблицы
 		ASSERT_TRUE(empty.parse(""));
 		// Выполняем проверку пустоты таблицы, собранной из пустого текста
@@ -1920,7 +1930,7 @@ TEST(CodecContract, EmptyTextParsingDivergesByStandard) {
 		// Выполняем проверку отсутствия записей у таблицы из пустого текста
 		ASSERT_EQ(empty.rows(), static_cast <size_t> (0));
 		// Объект таблицы, разбирающей текст из одних пробелов
-		csv::document_t spaced(::logger());
+		csv::document_t spaced(::framework(), ::logger());
 		// Выполняем разбор текста таблицы из одних пробелов
 		ASSERT_TRUE(spaced.parse("   \r\n "));
 		// Выполняем проверку того, что таблица из пробелов пустой не является
@@ -1943,7 +1953,7 @@ TEST(CodecContract, EmptyTextParsingDivergesByStandard) {
 	 */
 	{
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем проверку отказа разбора пустой записи
 		ASSERT_FALSE(doc.parse(nullptr, 0));
 		// Выполняем проверку кода отказа разбора записи без значения
@@ -1966,7 +1976,7 @@ TEST(CodecContract, EmptyTextParsingDivergesByStandard) {
 		// Запись значения неустановленного длиною в один октет
 		const uint8_t nothing = 0xC0;
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем проверку успешности разбора записи о ничём
 		ASSERT_TRUE(doc.parse(&nothing, sizeof(nothing))) << abc::message(doc.error());
 		// Выполняем проверку отсутствия отказа разбора записи о ничём
@@ -1998,7 +2008,7 @@ TEST(CodecContract, SettingsSurviveEveryOperation) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки документа
 		json::document_t::settings_t settings = doc.settings();
 		// Устанавливаем нарядный вид записи текста документа
@@ -2027,7 +2037,7 @@ TEST(CodecContract, SettingsSurviveEveryOperation) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Получаем настройки дерева разметки
 		xml::document_t::settings_t settings = doc.settings();
 		// Устанавливаем нарядный вид записи текста разметки
@@ -2056,7 +2066,7 @@ TEST(CodecContract, SettingsSurviveEveryOperation) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Получаем настройки таблицы
 		csv::document_t::settings_t settings = doc.settings();
 		// Устанавливаем разделителем полей точку с запятой
@@ -2095,7 +2105,7 @@ TEST(CodecContract, SettingsSurviveEveryOperation) {
 		// Выполняем сборку годной двоичной записи
 		const vector <uint8_t> record = root.dump();
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		/**
 		 * Получаем настройки документа
 		 *
@@ -2272,7 +2282,7 @@ TEST(CodecContract, SavingKeepsThePreviousFileOnWriteFailure) {
 			// Заменяем последнюю запятую закрывающей скобкой
 			text.back() = ']';
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse(text));
 			// Выполняем снижение предела размера файла
@@ -2297,7 +2307,7 @@ TEST(CodecContract, SavingKeepsThePreviousFileOnWriteFailure) {
 			// Завершаем текст разметки
 			text.append("</root>");
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse(text));
 			// Выполняем снижение предела размера файла
@@ -2332,7 +2342,7 @@ TEST(CodecContract, SavingKeepsThePreviousFileOnWriteFailure) {
 				text.append("\r\n");
 			}
 			// Объект таблицы
-			csv::document_t doc(::logger());
+			csv::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста таблицы
 			ASSERT_TRUE(doc.parse(text));
 			// Выполняем снижение предела размера файла
@@ -2371,7 +2381,7 @@ TEST(CodecContract, SavingKeepsThePreviousFileOnWriteFailure) {
 			// Завершаем собираемый текст документа
 			text.append(1, '}');
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse(text));
 			// Владеющее значение, снятое с документа
@@ -2395,7 +2405,7 @@ TEST(CodecContract, SavingKeepsThePreviousFileOnWriteFailure) {
 			// Завершаем собираемый текст разметки
 			text.append("</root>");
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse(text));
 			// Владеющее значение, снятое с дерева разметки
@@ -2457,7 +2467,7 @@ TEST(CodecContract, ContentIsBuiltFromScratchAlike) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Собираемое содержимое узла разметки
 		xml::value_t body("body");
 		// Выполняем добавление текстового содержимого узла разметки
@@ -2478,7 +2488,7 @@ TEST(CodecContract, ContentIsBuiltFromScratchAlike) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<a><b>1</b></a>"));
 		// Выполняем прививку нового корневого узла разметки
@@ -2493,7 +2503,7 @@ TEST(CodecContract, ContentIsBuiltFromScratchAlike) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем прививку текстового значения корнем дерева разметки
 		ASSERT_FALSE(doc.set("", xml::value_t(xml::kind_t::TEXT, "просто текст")));
 		// Выполняем проверку кода отказа прививки корня
@@ -2506,7 +2516,7 @@ TEST(CodecContract, ContentIsBuiltFromScratchAlike) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем прививку значения корнем документа
 		ASSERT_TRUE(doc.set("", json::value_t(static_cast <int64_t> (1))));
 		// Выполняем проверку собранного текста документа
@@ -2519,7 +2529,7 @@ TEST(CodecContract, ContentIsBuiltFromScratchAlike) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем установку заголовка таблицы
 		doc.header(vector <string> {"a"});
 		// Выполняем добавление записи таблицы
@@ -2537,11 +2547,11 @@ TEST(CodecContract, ContentIsBuiltFromScratchAlike) {
 	 */
 	{
 		// Объект собираемого дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем прививку собранного значения корнем дерева разметки
 		ASSERT_TRUE(doc.set("", xml::value_t("a")));
 		// Объект дерева разметки для обратного разбора
-		xml::document_t back(::logger());
+		xml::document_t back(::framework(), ::logger());
 		// Выполняем разбор собранного текста разметки
 		ASSERT_TRUE(back.parse(doc.dump()));
 		// Выполняем проверку совпадения текста разметки после круга
@@ -2577,7 +2587,7 @@ TEST(CodecContract, ContentIsBuiltFromScratchAlike) {
 		 *       укладываться в октеты, разбору не подлежащие, - скажем, с меткою длины,
 		 *       уложенным октетам не отвечающей, - и порок этот виден лишь кругом
 		 */
-		abc::document_t back(::logger());
+		abc::document_t back(::framework(), ::logger());
 		// Выполняем разбор собранной двоичной записи
 		ASSERT_TRUE(back.parse(record.data(), record.size())) << abc::message(back.error());
 		// Выполняем проверку совпадения записи после круга
@@ -2610,7 +2620,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Опрос наличия корневого узла разметки
 		{
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse("<a><b/></a>"));
 			// Выполняем проверку наличия узла по пустому пути
@@ -2619,7 +2629,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Извлечение корневого узла разметки
 		{
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse("<a><b/></a>"));
 			// Выполняем проверку пригодности узла, извлечённого по пустому пути
@@ -2630,7 +2640,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Снос корневого узла разметки
 		{
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse("<a><b/></a>"));
 			// Выполняем проверку отказа сноса по пустому пути
@@ -2641,7 +2651,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Сброс содержимого корневого узла разметки
 		{
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse("<a><b/></a>"));
 			// Выполняем проверку успешности сброса по пустому пути
@@ -2657,7 +2667,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Опрос наличия корня документа
 		{
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse("{\"a\":1}"));
 			// Выполняем проверку наличия значения по пустому указателю
@@ -2666,7 +2676,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Снос корня документа
 		{
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse("{\"a\":1}"));
 			// Выполняем проверку отказа сноса по пустому указателю
@@ -2677,7 +2687,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Сброс корня документа
 		{
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse("{\"a\":1}"));
 			// Выполняем проверку успешности сброса по пустому указателю
@@ -2708,7 +2718,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Опрос наличия корня документа
 		{
 			// Объект документа
-			abc::document_t doc(::logger());
+			abc::document_t doc(::framework(), ::logger());
 			// Выполняем разбор записи документа
 			ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 			// Выполняем проверку наличия значения по пустому пути
@@ -2717,7 +2727,7 @@ TEST(CodecContract, EmptyPathIsUnderstoodAlikeByEveryEditingCall) {
 		// Извлечение корня документа
 		{
 			// Объект документа
-			abc::document_t doc(::logger());
+			abc::document_t doc(::framework(), ::logger());
 			// Выполняем разбор записи документа
 			ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 			// Выполняем проверку пригодности значения, извлечённого по пустому пути
@@ -2768,7 +2778,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор негодного текста разметки
 		ASSERT_FALSE(doc.parse("<a>\n<b>\n<битый"));
 		// Выполняем проверку кода отказа разбора
@@ -2800,7 +2810,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор негодного текста разметки
 		ASSERT_FALSE(doc.parse("<a>\n<b>\n<битый"));
 		// Выполняем разбор годного текста разметки, донесение притом сбрасывая
@@ -2836,7 +2846,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<a><b/></a>"));
 		// Выполняем негодную правку ради постановки кода отказа
@@ -2853,7 +2863,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор негодного текста документа
 		ASSERT_FALSE(doc.parse("{\n\"a\":\n битый"));
 		// Выполняем проверку положения отказа разбора
@@ -2906,7 +2916,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор негодного текста разметки
 		ASSERT_FALSE(doc.parse("<a>\n<b>\n<битый"));
 		// Выполняем проверку постановки кода отказа разбора
@@ -2937,7 +2947,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Владеющее значение разметки
-		xml::value_t value;
+		xml::value_t value(::framework(), ::logger());
 		// Выполняем назначение журнала значению разметки
 		value.setLogger(::logger());
 		// Выполняем разбор негодного текста разметки
@@ -2963,7 +2973,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Владеющее значение документа
-		json::value_t value(::logger());
+		json::value_t value(::framework(), ::logger());
 		// Выполняем разбор негодного текста документа
 		ASSERT_FALSE(value.parse("{\n\"a\":\n битый"));
 		// Выполняем проверку постановки кода отказа разбора
@@ -2977,7 +2987,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 		 */
 		{
 			// Владеющее значение документа
-			json::value_t spoiled(::logger());
+			json::value_t spoiled(::framework(), ::logger());
 			// Выполняем разбор негодного текста документа
 			ASSERT_FALSE(spoiled.parse("{\n\"a\":\n битый"));
 			// Выполняем проверку постановки кода отказа разбора
@@ -2994,7 +3004,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 		 */
 		{
 			// Владеющее значение документа
-			json::value_t spoiled(::logger());
+			json::value_t spoiled(::framework(), ::logger());
 			// Выполняем разбор негодного текста документа
 			ASSERT_FALSE(spoiled.parse("{\n\"a\":\n битый"));
 			// Выполняем проверку постановки кода отказа разбора
@@ -3010,7 +3020,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем разбор негодного текста таблицы
 		ASSERT_FALSE(doc.parse("a,b\r\n1,\"б"));
 		// Выполняем проверку положения отказа разбора
@@ -3048,7 +3058,7 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 		// Запись, отказ на которой настигает разбор на середине
 		const uint8_t corrupted = 0xA1;
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем разбор негодной записи документа
 		ASSERT_FALSE(doc.parse(&corrupted, sizeof(corrupted)));
 		// Выполняем проверку кода отказа разбора
@@ -3080,11 +3090,11 @@ TEST(CodecContract, ErrorAndItsLocationAreSetAnewByEveryCall) {
 	 */
 	{
 		// Владеющее значение таблицы
-		csv::value_t value;
+		csv::value_t value(::framework(), ::logger());
 		// Выполняем проверку чистоты донесения у значения нового
 		ASSERT_EQ(value.error(), csv::error_t::NONE);
 		// Объект таблицы для получения настроек разбора
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Получаем настройки таблицы
 		auto settings = document.settings();
 		// Выполняем указание на присутствие заголовка в первой записи
@@ -3182,7 +3192,7 @@ TEST(CodecContract, ChildCountIsSeparatedFromStorageCount) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse("{\"a\":1,\"b\":{\"c\":2}}"));
 		// Выполняем проверку количества значений в корне документа
@@ -3205,7 +3215,7 @@ TEST(CodecContract, ChildCountIsSeparatedFromStorageCount) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<r><a/><b><c/></b></r>"));
 		// Выполняем проверку количества вложенных узлов корня разметки
@@ -3226,7 +3236,7 @@ TEST(CodecContract, ChildCountIsSeparatedFromStorageCount) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Получаем настройки таблицы
 		csv::document_t::settings_t settings = doc.settings();
 		// Устанавливаем наличие заголовка у разбираемой таблицы
@@ -3259,7 +3269,7 @@ TEST(CodecContract, ChildCountIsSeparatedFromStorageCount) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse("{\"a\":1,\"b\":2,\"c\":3}"));
 		// Запоминаем счёт узлов хранилища до сноса
@@ -3273,7 +3283,7 @@ TEST(CodecContract, ChildCountIsSeparatedFromStorageCount) {
 	}
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<r><a/><b/><c/></r>"));
 		// Запоминаем счёт узлов арены до сноса
@@ -3308,7 +3318,7 @@ TEST(CodecContract, ChildCountIsSeparatedFromStorageCount) {
 		// Выполняем выдачу собранной записи октетами
 		const vector <uint8_t> record = root.dump();
 		// Объект дерева разбора двоичного контейнера
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем разбор собранной записи
 		ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 		/**
@@ -3405,7 +3415,7 @@ TEST(CodecContract, PathSegmentIsJudgedByTheContainerAndNotByItsSpelling) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		/**
 		 * Выполняем разбор текста, где имена полей ОБРАТНЫ их местам
 		 */
@@ -3459,7 +3469,7 @@ TEST(CodecContract, PathSegmentIsJudgedByTheContainerAndNotByItsSpelling) {
 		// Выполняем выдачу собранной записи октетами
 		const vector <uint8_t> record = root.dump();
 		// Объект дерева разбора двоичного контейнера
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем разбор собранной записи
 		ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 		/**
@@ -3497,7 +3507,7 @@ TEST(CodecContract, PathSegmentIsJudgedByTheContainerAndNotByItsSpelling) {
 	 */
 	{
 		// Объект документа
-		toml::document_t doc(::logger());
+		toml::document_t doc(::framework(), ::logger());
 		/**
 		 * Выполняем разбор текста, где имена ключей ОБРАТНЫ их местам
 		 */
@@ -3528,7 +3538,7 @@ TEST(CodecContract, PathSegmentIsJudgedByTheContainerAndNotByItsSpelling) {
 	 */
 	{
 		// Объект документа
-		ini::document_t doc(::logger());
+		ini::document_t doc(::framework(), ::logger());
 		/**
 		 * Выполняем разбор текста, где имена ключей ОБРАТНЫ их местам
 		 */
@@ -3560,7 +3570,7 @@ TEST(CodecContract, PathSegmentIsJudgedByTheContainerAndNotByItsSpelling) {
 	 */
 	{
 		// Объект документа
-		yaml::document_t doc(::logger());
+		yaml::document_t doc(::framework(), ::logger());
 		/**
 		 * Выполняем разбор текста, где имена ключей обратны их местам, а перечень заведомо
 		 * длиннее всякого разбираемого здесь номера
@@ -3610,7 +3620,7 @@ TEST(CodecContract, PathSegmentIsJudgedByTheContainerAndNotByItsSpelling) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки с одноимёнными и разноимёнными узлами
 		ASSERT_TRUE(doc.parse("<r><m><a>1</a><a>2</a><b>3</b></m></r>")) << xml::message(doc.error());
 		// Имя обязано вести к узлу по имени его
@@ -3992,7 +4002,7 @@ TEST(CodecContract, PathTakesStringNamesAndRefusesTheRest) {
 	// Выполняем сборку двоичной записи
 	const vector <uint8_t> record = root.dump();
 	// Объект документа
-	abc::document_t doc(::logger());
+	abc::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранной записи
 	ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 	/**
@@ -4135,7 +4145,7 @@ TEST(CodecContract, ByteOrderMarkIsRecognisedAndKeptOutOfTheContent) {
 		// Разбираемый текст документа
 		const string text = "{\"поле\":1}";
 		// Объекты документа под каждую из кодировок
-		json::document_t plain(::logger()), marked(::logger()), little(::logger()), big(::logger());
+		json::document_t plain(::framework(), ::logger()), marked(::framework(), ::logger()), little(::framework(), ::logger()), big(::framework(), ::logger());
 		// Выполняем разбор текста документа без метки порядка байтов
 		ASSERT_TRUE(plain.parse(text));
 		// Выполняем разбор текста документа с меткою порядка байтов
@@ -4172,7 +4182,7 @@ TEST(CodecContract, ByteOrderMarkIsRecognisedAndKeptOutOfTheContent) {
 		// Разбираемый текст разметки
 		const string text = "<узел>значение</узел>";
 		// Объекты дерева разметки под каждую из кодировок
-		xml::document_t plain(::logger()), marked(::logger()), little(::logger()), big(::logger());
+		xml::document_t plain(::framework(), ::logger()), marked(::framework(), ::logger()), little(::framework(), ::logger()), big(::framework(), ::logger());
 		// Выполняем разбор текста разметки без метки порядка байтов
 		ASSERT_TRUE(plain.parse(text));
 		// Выполняем разбор текста разметки с меткою порядка байтов
@@ -4207,7 +4217,7 @@ TEST(CodecContract, ByteOrderMarkIsRecognisedAndKeptOutOfTheContent) {
 		// Разбираемый текст таблицы
 		const string text = "имя,значение\r\nАня,7\r\n";
 		// Объекты таблицы под каждую из кодировок
-		csv::document_t plain(::logger()), marked(::logger()), little(::logger()), big(::logger());
+		csv::document_t plain(::framework(), ::logger()), marked(::framework(), ::logger()), little(::framework(), ::logger()), big(::framework(), ::logger());
 		// Выполняем разбор текста таблицы без метки порядка байтов
 		ASSERT_TRUE(plain.parse(text));
 		// Выполняем разбор текста таблицы с меткою порядка байтов
@@ -4261,7 +4271,7 @@ TEST(CodecContract, ByteOrderMarkIsRecognisedAndKeptOutOfTheContent) {
 	 */
 	{
 		// Объект документа
-		json::document_t plain(::logger());
+		json::document_t plain(::framework(), ::logger());
 		// Выполняем разбор текста документа кодировкою UTF-16 с обратным порядком
 		ASSERT_TRUE(plain.parse(utf16("{\"a\":1}", true)));
 		// Выполняем проверку опознания кодировки входа
@@ -4271,7 +4281,7 @@ TEST(CodecContract, ByteOrderMarkIsRecognisedAndKeptOutOfTheContent) {
 		 */
 		ASSERT_EQ(plain.dump(), "{\"a\":1}");
 		// Объект дерева разметки
-		xml::document_t markup(::logger());
+		xml::document_t markup(::framework(), ::logger());
 		// Выполняем разбор текста разметки кодировкою UTF-16 с прямым порядком
 		ASSERT_TRUE(markup.parse(utf16("<a>1</a>", false)));
 		// Выполняем проверку опознания кодировки входа
@@ -4279,7 +4289,7 @@ TEST(CodecContract, ByteOrderMarkIsRecognisedAndKeptOutOfTheContent) {
 		// Выполняем проверку того, что выдача идёт в UTF-8 знак в знак
 		ASSERT_EQ(markup.dump(), "<a>1</a>");
 		// Объект таблицы
-		csv::document_t table(::logger());
+		csv::document_t table(::framework(), ::logger());
 		// Выполняем разбор текста таблицы кодировкою UTF-16 с обратным порядком
 		ASSERT_TRUE(table.parse(utf16("a,b\r\n1,2\r\n", true)));
 		// Выполняем проверку опознания кодировки входа
@@ -4314,7 +4324,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты документа под тесный и достаточный пределы
-			json::document_t tight(::logger()), loose(::logger());
+			json::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки документа
 			json::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел длины строкового значения
@@ -4346,7 +4356,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты документа под тесный и достаточный пределы
-			json::document_t tight(::logger()), loose(::logger());
+			json::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки документа
 			json::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел глубины вложенности
@@ -4367,7 +4377,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты документа под тесный и достаточный пределы
-			json::document_t tight(::logger()), loose(::logger());
+			json::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки документа
 			json::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел длины записи числа
@@ -4395,7 +4405,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты дерева разметки под тесный и достаточный пределы
-			xml::document_t tight(::logger()), loose(::logger());
+			xml::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки дерева разметки
 			xml::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел глубины вложенности
@@ -4418,7 +4428,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты дерева разметки под тесный и достаточный пределы
-			xml::document_t tight(::logger()), loose(::logger());
+			xml::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки дерева разметки
 			xml::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел длины имени
@@ -4439,7 +4449,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты дерева разметки под тесный и достаточный пределы
-			xml::document_t tight(::logger()), loose(::logger());
+			xml::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки дерева разметки
 			xml::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел количества атрибутов
@@ -4472,7 +4482,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты таблицы под тесный и достаточный пределы
-			csv::document_t tight(::logger()), loose(::logger());
+			csv::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки таблицы
 			csv::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел длины поля
@@ -4495,7 +4505,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты таблицы под тесный и достаточный пределы
-			csv::document_t tight(::logger()), loose(::logger());
+			csv::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки таблицы
 			csv::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел количества полей
@@ -4518,7 +4528,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 		 */
 		{
 			// Объекты таблицы под тесный и достаточный пределы
-			csv::document_t tight(::logger()), loose(::logger());
+			csv::document_t tight(::framework(), ::logger()), loose(::framework(), ::logger());
 			// Получаем настройки таблицы
 			csv::document_t::settings_t settings = tight.settings();
 			// Устанавливаем тесный предел длины записи
@@ -4579,7 +4589,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 			 */
 			for(const uint32_t limit : {static_cast <uint32_t> (0), static_cast <uint32_t> (2), static_cast <uint32_t> (5)}){
 				// Объект документа
-				abc::document_t document(::logger());
+				abc::document_t document(::framework(), ::logger());
 				// Получаем настройки документа
 				abc::reader_t::settings_t settings = document.settings();
 				// Выполняем установку предела глубины вложенности
@@ -4618,7 +4628,7 @@ TEST(CodecContract, ExceedingASettingsLimitRefusesInsteadOfTruncating) {
 			 */
 			for(const uint64_t limit : {static_cast <uint64_t> (0), static_cast <uint64_t> (10), static_cast <uint64_t> (100)}){
 				// Объект документа
-				abc::document_t document(::logger());
+				abc::document_t document(::framework(), ::logger());
 				// Получаем настройки документа
 				abc::reader_t::settings_t settings = document.settings();
 				// Выполняем установку предела длины строкового значения
@@ -4685,7 +4695,7 @@ TEST(CodecContract, RootRemovalDivergesByStandardInFourWays) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse("{\"a\":1}")) << json::message(doc.error());
 		// Выполняем проверку отказа сноса корня документа
@@ -4693,7 +4703,7 @@ TEST(CodecContract, RootRemovalDivergesByStandardInFourWays) {
 		// Выполняем проверку сохранности документа
 		ASSERT_EQ(doc.dump(), "{\"a\":1}");
 		// Объект дерева разметки
-		xml::document_t markup(::logger());
+		xml::document_t markup(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(markup.parse("<a><b/></a>")) << xml::message(markup.error());
 		// Выполняем проверку отказа сноса корневого узла разметки
@@ -4709,7 +4719,7 @@ TEST(CodecContract, RootRemovalDivergesByStandardInFourWays) {
 	 */
 	{
 		// Объект документа YAML
-		yaml::document_t staged(::logger());
+		yaml::document_t staged(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(staged.parse("a: 1\n")) << yaml::message(staged.error());
 		// Выполняем проверку успешности сноса корня документа
@@ -4717,7 +4727,7 @@ TEST(CodecContract, RootRemovalDivergesByStandardInFourWays) {
 		// Выполняем проверку опустошения документа
 		ASSERT_TRUE(staged.empty());
 		// Объект документа TOML
-		toml::document_t tabled(::logger());
+		toml::document_t tabled(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(tabled.parse("a = 1\n")) << toml::message(tabled.error());
 		// Выполняем проверку успешности сноса корня документа
@@ -4735,7 +4745,7 @@ TEST(CodecContract, RootRemovalDivergesByStandardInFourWays) {
 	 */
 	{
 		// Объект дерева настроек
-		ini::document_t doc(::logger());
+		ini::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(doc.parse("a = 1\n")) << ini::message(doc.error());
 		// Выполняем проверку отказа сноса свойства, названного пустой строкой
@@ -4838,7 +4848,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа со скаляром, пустым объектом и пустым массивом
 		ASSERT_TRUE(doc.parse("{\"скаляр\":1,\"пустой\":{},\"порожний\":[]}"));
 		// Выполняем проверку пустоты перечня у скалярного значения
@@ -4856,11 +4866,11 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 		// Выполняем проверку пустоты перечня глубже листа
 		ASSERT_TRUE(doc.keys("/скаляр/глубже").empty());
 		// Выполняем проверку пустоты перечня у документа, разбору не подвергавшегося
-		ASSERT_TRUE(json::document_t(::logger()).keys("").empty());
+		ASSERT_TRUE(json::document_t(::framework(), ::logger()).keys("").empty());
 	}
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки с пустым узлом и узлом с содержимым
 		ASSERT_TRUE(doc.parse("<r><пустой/><несущий>текст</несущий></r>"));
 		// Выполняем проверку пустоты перечня у узла без детей
@@ -4883,7 +4893,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 		// Выполняем проверку пустоты перечня глубже листа
 		ASSERT_TRUE(doc.keys("/r/пустой/глубже").empty());
 		// Выполняем проверку пустоты перечня у дерева, разбору не подвергавшегося
-		ASSERT_TRUE(xml::document_t(::logger()).keys("").empty());
+		ASSERT_TRUE(xml::document_t(::framework(), ::logger()).keys("").empty());
 	}
 	/**
 	 * О виде узла нельзя судить по ЧИСЛУ звеньев
@@ -4898,7 +4908,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		/**
 		 * Содержимое, разорванное примечанием
 		 *
@@ -4989,7 +4999,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse("{\"a\":1,\"b\":[1,2,{\"c\":3}],\"поле/с/чертой\":4,\"тильда~тут\":5}"));
 		// Количество разысканных обходом значений
@@ -5057,7 +5067,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<r><a/><a/><b>текст</b><!--примеч--><c x='1'/></r>"));
 		// Количество разысканных обходом узлов
@@ -5160,7 +5170,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 		// Выполняем сборку двоичной записи
 		const vector <uint8_t> record = root.dump();
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем разбор двоичной записи документа
 		ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 		// Выполняем проверку числа детей корня
@@ -5242,7 +5252,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 		 *       нуле детей, у этого ложь. Слить их значило бы обратить «документа нет»
 		 *       в «документ пуст», а это разные вещи
 		 */
-		ASSERT_FALSE(abc::document_t(::logger()).root().valid());
+		ASSERT_FALSE(abc::document_t(::framework(), ::logger()).root().valid());
 	}
 	/**
 	 * Выполняем закрепление замкнутости обхода у владеющего значения таблицы
@@ -5260,7 +5270,7 @@ TEST(CodecContract, EnumerationAndLookupFormAClosedTraversal) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Получаем настройки таблицы
 		auto settings = document.settings();
 		// Выполняем указание на присутствие заголовка в первой записи
@@ -5330,7 +5340,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор первого текста документа
 		ASSERT_TRUE(doc.parse("{\"первое\":1,\"общее\":1}"));
 		// Выполняем разбор второго текста документа
@@ -5344,7 +5354,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	}
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор первого текста разметки
 		ASSERT_TRUE(doc.parse("<r><первое/><общее/></r>"));
 		// Выполняем разбор второго текста разметки
@@ -5356,7 +5366,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	}
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем разбор первого текста таблицы
 		ASSERT_TRUE(doc.parse("a,b\r\n1,2\r\n3,4\r\n"));
 		// Выполняем разбор второго текста таблицы
@@ -5374,7 +5384,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем прививку значения корнем документа
 		ASSERT_TRUE(doc.set("", json::value_t(static_cast <int64_t> (7))));
 		// Выполняем разбор текста документа поверх построенного руками
@@ -5384,7 +5394,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	}
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем прививку собранного значения корнем дерева разметки
 		ASSERT_TRUE(doc.set("", xml::value_t("построено")));
 		// Выполняем разбор текста разметки поверх построенного руками
@@ -5397,7 +5407,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Счёт узлов хранилища после первого разбора
 		size_t first = 0;
 		/**
@@ -5422,7 +5432,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	}
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Счёт узлов арены после первого разбора
 		size_t first = 0;
 		/**
@@ -5447,7 +5457,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 	}
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		/**
 		 * Выполняем стократный разбор одного текста таблицы
 		 */
@@ -5486,7 +5496,7 @@ TEST(CodecContract, DocumentIsReusableWithoutStorageGrowth) {
 		// Запись, отказ на которой настигает разбор на середине
 		const uint8_t corrupted = 0xA1;
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем разбор первой записи документа
 		ASSERT_TRUE(doc.parse(older.data(), older.size())) << abc::message(doc.error());
 		// Выполняем разбор второй записи тем же документом
@@ -5558,7 +5568,7 @@ TEST(CodecContract, ExcessiveNestingIsRefusedAndNeverSmashesTheStack) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Получаем настройки документа
 		auto settings = doc.settings();
 		// Выполняем поднятие предела вложенности заведомо выше потолка
@@ -5592,7 +5602,7 @@ TEST(CodecContract, ExcessiveNestingIsRefusedAndNeverSmashesTheStack) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Получаем настройки дерева разметки
 		auto settings = doc.settings();
 		// Выполняем поднятие предела вложенности заведомо выше потолка
@@ -5633,7 +5643,7 @@ TEST(CodecContract, ExcessiveNestingIsRefusedAndNeverSmashesTheStack) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Собираемый текст разметки
 		string text;
 		/**
@@ -5682,7 +5692,7 @@ TEST(CodecContract, ExcessiveNestingIsRefusedAndNeverSmashesTheStack) {
 			return result;
 		};
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Получаем настройки документа
 		abc::reader_t::settings_t settings = doc.settings();
 		// Выполняем поднятие предела вложенности заведомо выше потолка модуля
@@ -5744,7 +5754,7 @@ TEST(CodecContract, TheNestingLimitAdmitsExactlyAsManyLevelsAsItNames) {
 		 */
 		for(const uint32_t limit : {static_cast <uint32_t> (1), static_cast <uint32_t> (3)}){
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Получаем настройки документа
 			auto settings = doc.settings();
 			// Выполняем установку сличаемого предела вложенности
@@ -5776,7 +5786,7 @@ TEST(CodecContract, TheNestingLimitAdmitsExactlyAsManyLevelsAsItNames) {
 		 */
 		for(const uint32_t limit : {static_cast <uint32_t> (1), static_cast <uint32_t> (3)}){
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Получаем настройки дерева разметки
 			auto settings = doc.settings();
 			// Выполняем установку сличаемого предела вложенности
@@ -5844,7 +5854,7 @@ TEST(CodecContract, TheNestingLimitAdmitsExactlyAsManyLevelsAsItNames) {
 		 */
 		for(const uint32_t limit : {static_cast <uint32_t> (1), static_cast <uint32_t> (3), static_cast <uint32_t> (8)}){
 			// Объект документа
-			abc::document_t doc(::logger());
+			abc::document_t doc(::framework(), ::logger());
 			// Получаем настройки документа
 			abc::reader_t::settings_t settings = doc.settings();
 			// Выполняем установку сличаемого предела вложенности
@@ -5909,7 +5919,7 @@ TEST(CodecContract, TheTreeCeilingHoldsWhenTheReaderLimitIsLifted) {
 		 */
 		const auto accepts = [](const size_t depth) noexcept -> bool {
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Получаем настройки документа
 			json::document_t::settings_t settings = doc.settings();
 			// Снимаем предел глубины у чтения, оставляя потолок дерева
@@ -5959,7 +5969,7 @@ TEST(CodecContract, TheTreeCeilingHoldsWhenTheReaderLimitIsLifted) {
 				// Дописываем очередной закрывающий тег разметки
 				text.append("</a>");
 			// Владеющее значение разметки
-			xml::value_t value;
+			xml::value_t value(::framework(), ::logger());
 			// Выводим признак принятия разметки разбором
 			return value.parse(text, settings);
 		};
@@ -5995,7 +6005,7 @@ TEST(CodecContract, TheTreeCeilingHoldsWhenTheReaderLimitIsLifted) {
 			// Дописываем лист цепи вложенности записи
 			record.push_back(0x01);
 			// Объект документа
-			abc::document_t document(::logger());
+			abc::document_t document(::framework(), ::logger());
 			// Получаем настройки документа
 			abc::reader_t::settings_t settings = document.settings();
 			// Снимаем предел глубины у чтения, оставляя потолок модуля
@@ -6041,7 +6051,7 @@ TEST(CodecContract, RepeatedNamesFollowTheStandardAndYieldTheFirstOne) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем проверку отказа разбора повторного атрибута узла
 		ASSERT_FALSE(doc.parse("<a x=\"1\" x=\"2\"/>"));
 		/**
@@ -6119,7 +6129,7 @@ TEST(CodecContract, RepeatedNamesFollowTheStandardAndYieldTheFirstOne) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем проверку отказа повторного имени правилом по умолчанию
 		ASSERT_FALSE(doc.parse("{\"a\":1,\"a\":2}"));
 		// Получаем настройки документа
@@ -6144,7 +6154,7 @@ TEST(CodecContract, RepeatedNamesFollowTheStandardAndYieldTheFirstOne) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Получаем настройки таблицы
 		auto settings = doc.settings();
 		// Выполняем указание на присутствие заголовка в первой записи
@@ -6213,7 +6223,7 @@ TEST(CodecContract, RepeatedNamesFollowTheStandardAndYieldTheFirstOne) {
 		 */
 		{
 			// Объект документа
-			abc::document_t doc(::logger());
+			abc::document_t doc(::framework(), ::logger());
 			// Получаем настройки документа
 			abc::reader_t::settings_t settings = doc.settings();
 			// Устанавливаем укладом отказ разбора при повторе
@@ -6242,7 +6252,7 @@ TEST(CodecContract, RepeatedNamesFollowTheStandardAndYieldTheFirstOne) {
 			 */
 			for(auto & rule : rules){
 				// Объект документа
-				abc::document_t doc(::logger());
+				abc::document_t doc(::framework(), ::logger());
 				// Получаем настройки документа
 				abc::reader_t::settings_t settings = doc.settings();
 				// Выполняем установку уклада повторных имён
@@ -6292,7 +6302,7 @@ TEST(CodecContract, ControlCharactersFollowEachStandardSeparately) {
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Собираемый текст документа с сырым управляющим знаком
 		string text("{\"a\":\"x");
 		// Выполняем добавление сырого управляющего знака
@@ -6326,7 +6336,7 @@ TEST(CodecContract, ControlCharactersFollowEachStandardSeparately) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Собираемый текст разметки с сырым управляющим знаком
 		string text("<a>x");
 		// Выполняем добавление сырого управляющего знака
@@ -6365,7 +6375,7 @@ TEST(CodecContract, ControlCharactersFollowEachStandardSeparately) {
 		 */
 		for(const int letter : {0x00, 0x01, 0x08, 0x0B, 0x0C, 0x1B, 0x1F, 0x7F}){
 			// Объект таблицы
-			csv::document_t doc(::logger());
+			csv::document_t doc(::framework(), ::logger());
 			// Собираемый текст таблицы с управляющим знаком
 			string text("a");
 			// Выполняем добавление управляющего знака
@@ -6379,7 +6389,7 @@ TEST(CodecContract, ControlCharactersFollowEachStandardSeparately) {
 		}
 		{
 			// Объект таблицы
-			csv::document_t doc(::logger());
+			csv::document_t doc(::framework(), ::logger());
 			/**
 			 * Выполняем проверку принятия горизонтальной табуляции
 			 *
@@ -6429,7 +6439,7 @@ TEST(CodecContract, ControlCharactersFollowEachStandardSeparately) {
 		// Выполняем сборку двоичной записи
 		const vector <uint8_t> record = root.dump();
 		// Объект документа
-		abc::document_t doc(::logger());
+		abc::document_t doc(::framework(), ::logger());
 		// Выполняем проверку успешности разбора записи с управляющими знаками
 		ASSERT_TRUE(doc.parse(record.data(), record.size())) << abc::message(doc.error());
 		// Получаем значение поля с управляющими знаками
@@ -6454,7 +6464,7 @@ TEST(CodecContract, ControlCharactersFollowEachStandardSeparately) {
 			// Запись отображения со строкой, несущей октет вне кодировки
 			const vector <uint8_t> malformed = {0xA1, 0x44, 0xD0, 0x9F, 0x62, 0xFF, 0x01};
 			// Объект документа
-			abc::document_t broken(::logger());
+			abc::document_t broken(::framework(), ::logger());
 			// Выполняем проверку отказа разбора негодной строки
 			ASSERT_FALSE(broken.parse(malformed.data(), malformed.size()));
 			// Выполняем проверку названной причины отказа
@@ -6492,7 +6502,7 @@ TEST(CodecContract, PresenceOfANestedValueIsAskedByOneWord) {
 	 */
 	{
 		// Объект владеющего значения документа
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(value.parse("{\"поле\":1}"));
 		// Выполняем проверку наличия объявленного поля
@@ -6505,7 +6515,7 @@ TEST(CodecContract, PresenceOfANestedValueIsAskedByOneWord) {
 	 */
 	{
 		// Объект владеющего значения разметки
-		xml::value_t value;
+		xml::value_t value(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(value.parse("<a><узел/></a>"));
 		/**
@@ -6551,7 +6561,7 @@ TEST(CodecContract, PresenceOfANestedValueIsAskedByOneWord) {
 		// Выполняем сборку двоичной записи владеющего значения
 		ASSERT_TRUE(value.dump(record, error)) << abc::message(error);
 		// Объект документа двоичного контейнера
-		abc::document_t document(::logger());
+		abc::document_t document(::framework(), ::logger());
 		// Выполняем разбор собранной двоичной записи
 		ASSERT_TRUE(document.parse(record.data(), record.size()))
 			<< abc::message(document.error());
@@ -6567,7 +6577,7 @@ TEST(CodecContract, PresenceOfANestedValueIsAskedByOneWord) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Получаем настройки таблицы
 		auto settings = document.settings();
 		// Выполняем указание на присутствие заголовка в первой записи
@@ -6592,13 +6602,13 @@ TEST(CodecContract, PresenceOfANestedValueIsAskedByOneWord) {
 	 */
 	{
 		// Объект документа
-		json::document_t plain(::logger());
+		json::document_t plain(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(plain.parse("{\"поле\":1}"));
 		// Выполняем проверку наличия значения по пути
 		ASSERT_TRUE(plain.has("/поле"));
 		// Объект дерева разметки
-		xml::document_t markup(::logger());
+		xml::document_t markup(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(markup.parse("<a><узел/></a>"));
 		// Выполняем проверку наличия узла по пути
@@ -6608,7 +6618,7 @@ TEST(CodecContract, PresenceOfANestedValueIsAskedByOneWord) {
 		 */
 		ASSERT_TRUE(markup.has("/a/узел"));
 		// Объект таблицы
-		csv::document_t table(::logger());
+		csv::document_t table(::framework(), ::logger());
 		// Получаем настройки таблицы
 		auto settings = table.settings();
 		// Выполняем указание на присутствие заголовка в первой записи
@@ -6656,7 +6666,7 @@ TEST(CodecContract, EditingInvalidatesWhatWasTakenBefore) {
 	 */
 	for(uint8_t operation = 0; operation < 3; operation++){
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse("{\"a\":\"первое\",\"b\":1}"));
 		// Снимаем значение соседа правимого места
@@ -6685,7 +6695,7 @@ TEST(CodecContract, EditingInvalidatesWhatWasTakenBefore) {
 	 */
 	for(uint8_t operation = 0; operation < 3; operation++){
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<root><a>первое</a><b>второе</b></root>"));
 		// Снимаем узел соседа правимого места
@@ -6721,7 +6731,7 @@ TEST(CodecContract, EditingInvalidatesWhatWasTakenBefore) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t doc(::logger());
+		xml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<root><a>первое</a></root>"));
 		// Снимаем узел, прививку переживающий
@@ -6756,7 +6766,7 @@ TEST(CodecContract, EditingInvalidatesWhatWasTakenBefore) {
 	 */
 	{
 		// Объект таблицы
-		csv::document_t doc(::logger());
+		csv::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста таблицы
 		ASSERT_TRUE(doc.parse("a,b\r\n1,2\r\n3,4\r\n"));
 		// Снимаем КОПИЮ записи до правки, как то предписано договором метода
@@ -6845,7 +6855,7 @@ TEST(CodecContract, LookupAgreesOnBothSidesOfTheIndexThreshold) {
 			// Завершаем собираемый текст разметки
 			text.append("</root>");
 			// Объект дерева разметки
-			xml::document_t doc(::logger());
+			xml::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста разметки
 			ASSERT_TRUE(doc.parse(text)) << count;
 			/**
@@ -6901,7 +6911,7 @@ TEST(CodecContract, LookupAgreesOnBothSidesOfTheIndexThreshold) {
 			// Завершаем собираемый текст документа
 			text.append(1, '}');
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем разбор текста документа
 			ASSERT_TRUE(doc.parse(text)) << count;
 			/**
@@ -6950,7 +6960,7 @@ TEST(CodecContract, ParsingLimitsGuardTheTextNotTheTreeEditing) {
 	 */
 	{
 		// Выполняем создание объекта документа разметки
-		xml::document_t doc(&log);
+		xml::document_t doc(&Silent::framework(), &log);
 		// Получаем настройки документа разметки
 		xml::document_t::settings_t settings = doc.settings();
 		// Устанавливаем предел длины имени узла
@@ -6960,7 +6970,7 @@ TEST(CodecContract, ParsingLimitsGuardTheTextNotTheTreeEditing) {
 		// Выполняем проверку отказа разбора текста с именем свыше предела
 		ASSERT_FALSE(doc.parse("<" + oversize + "/>"));
 		// Выполняем создание объекта документа для правки дерева
-		xml::document_t edited(&log);
+		xml::document_t edited(&Silent::framework(), &log);
 		// Выполняем установку тех же настроек документа разметки
 		edited.settings(settings);
 		// Выполняем разбор годного текста разметки
@@ -6968,7 +6978,7 @@ TEST(CodecContract, ParsingLimitsGuardTheTextNotTheTreeEditing) {
 		// Выполняем проверку ПРИЁМА правки с именем свыше предела разбора
 		ASSERT_TRUE(edited.graft("/r", xml::Value(oversize)));
 		// Выполняем создание объекта документа для перечитывания записи
-		xml::document_t back(&log);
+		xml::document_t back(&Silent::framework(), &log);
 		// Выполняем установку тех же настроек документа разметки
 		back.settings(settings);
 		/**
@@ -6985,7 +6995,7 @@ TEST(CodecContract, ParsingLimitsGuardTheTextNotTheTreeEditing) {
 	 */
 	{
 		// Выполняем создание объекта документа таблицы
-		csv::document_t doc(&log);
+		csv::document_t doc(&Silent::framework(), &log);
 		// Получаем настройки документа таблицы
 		csv::document_t::settings_t settings = doc.settings();
 		// Устанавливаем предел длины поля
@@ -6995,7 +7005,7 @@ TEST(CodecContract, ParsingLimitsGuardTheTextNotTheTreeEditing) {
 		// Выполняем проверку отказа разбора текста с полем свыше предела
 		ASSERT_FALSE(doc.parse(oversize + "\r\n"));
 		// Выполняем создание объекта документа для правки дерева
-		csv::document_t edited(&log);
+		csv::document_t edited(&Silent::framework(), &log);
 		// Выполняем установку тех же настроек документа таблицы
 		edited.settings(settings);
 		// Выполняем добавление записи с полем свыше предела разбора
@@ -7003,7 +7013,7 @@ TEST(CodecContract, ParsingLimitsGuardTheTextNotTheTreeEditing) {
 		// Выполняем проверку приёма правки
 		ASSERT_EQ(edited.size(), static_cast <size_t> (1));
 		// Выполняем создание объекта документа для перечитывания записи
-		csv::document_t back(&log);
+		csv::document_t back(&Silent::framework(), &log);
 		// Выполняем установку тех же настроек документа таблицы
 		back.settings(settings);
 		// Выполняем проверку отказа перечитывания собственной записи
@@ -7033,7 +7043,7 @@ TEST(CodecContract, KeyListingAndLiteralLookupAnswerAlike) {
 	 */
 	{
 		// Выполняем создание объекта документа JSON
-		json::document_t doc(&log);
+		json::document_t doc(&Silent::framework(), &log);
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(doc.parse("{\"альфа\":1,\"бета\":{\"гамма\":2}}"));
 		// Получаем перечень имён полей корневого объекта
@@ -7065,7 +7075,7 @@ TEST(CodecContract, KeyListingAndLiteralLookupAnswerAlike) {
 	 */
 	{
 		// Выполняем создание объекта документа разметки
-		xml::document_t doc(&log);
+		xml::document_t doc(&Silent::framework(), &log);
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(doc.parse("<r><альфа>1</альфа><бета>2</бета></r>"));
 		// Получаем перечень имён узлов корня разметки
@@ -7238,7 +7248,7 @@ TEST(CodecContract, OversizedPathIndexIsRefusedByEveryCodec) {
 	 */
 	{
 		// Владеющее значение документа
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(value.parse("[\"первое\",\"второе\"]"));
 		/**
@@ -7255,7 +7265,7 @@ TEST(CodecContract, OversizedPathIndexIsRefusedByEveryCodec) {
 	 */
 	{
 		// Дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста разметки
 		ASSERT_TRUE(document.parse("<root><a/><b/></root>")) << xml::message(document.error());
 		/**
@@ -7519,7 +7529,7 @@ TEST(CodecContract, DirectoryFedInsteadOfAFileIsRefused) {
 	 */
 	{
 		// Дерево документа
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(document.load(directory));
 		// Выполняем проверку того, что отказ назван кодом чтения файла
@@ -7530,7 +7540,7 @@ TEST(CodecContract, DirectoryFedInsteadOfAFileIsRefused) {
 	 */
 	{
 		// Дерево документа
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(document.load(directory));
 		// Выполняем проверку того, что отказ назван кодом чтения файла
@@ -7541,7 +7551,7 @@ TEST(CodecContract, DirectoryFedInsteadOfAFileIsRefused) {
 	 */
 	{
 		// Таблица документа
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(document.load(directory));
 		// Выполняем проверку того, что отказ назван кодом чтения файла
@@ -7555,19 +7565,19 @@ TEST(CodecContract, DirectoryFedInsteadOfAFileIsRefused) {
 	 */
 	{
 		// Дерево документа языка YAML
-		yaml::document_t yaml(::logger());
+		yaml::document_t yaml(::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(yaml.load(directory));
 		// Выполняем проверку того, что отказ назван
 		ASSERT_EQ(yaml.error(), yaml::error_t::FILE_NOT_READ);
 		// Дерево документа языка TOML
-		toml::document_t toml(::logger());
+		toml::document_t toml(::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(toml.load(directory));
 		// Выполняем проверку того, что отказ назван
 		ASSERT_EQ(toml.error(), toml::error_t::FILE_NOT_READ);
 		// Дерево документа языка INI
-		ini::document_t ini(::logger());
+		ini::document_t ini(::framework(), ::logger());
 		// Выполняем проверку отказа на подаче каталога
 		ASSERT_FALSE(ini.load(directory));
 		// Выполняем проверку того, что отказ назван
@@ -7952,7 +7962,7 @@ TEST(CodecContract, TheByteOrderMarkInsideAValueIsAnOrdinaryCharacter) {
 	 */
 	{
 		// Таблица значений CSV
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем проверку того, что метка внутри поля таблицу не отвергает
 		ASSERT_TRUE(document.parse("a\nзна" + bom + "к\n")) << csv::message(document.error());
 	}
@@ -7961,7 +7971,7 @@ TEST(CodecContract, TheByteOrderMarkInsideAValueIsAnOrdinaryCharacter) {
 	 */
 	{
 		// Документ JSON
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку того, что метка внутри строки документ не отвергает
 		ASSERT_TRUE(document.parse("{\"a\":\"зна" + bom + "к\"}")) << json::message(document.error());
 	}
@@ -7970,7 +7980,7 @@ TEST(CodecContract, TheByteOrderMarkInsideAValueIsAnOrdinaryCharacter) {
 	 */
 	{
 		// Дерево разметки XML
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку того, что метка внутри содержимого разметку не отвергает
 		ASSERT_TRUE(document.parse("<a>зна" + bom + "к</a>")) << xml::message(document.error());
 	}
@@ -7982,15 +7992,15 @@ TEST(CodecContract, TheByteOrderMarkInsideAValueIsAnOrdinaryCharacter) {
 	 */
 	{
 		// Таблица значений CSV
-		csv::document_t table(::logger());
+		csv::document_t table(::framework(), ::logger());
 		// Выполняем проверку принятия метки впереди текста таблицы
 		ASSERT_TRUE(table.parse(bom + "a\n1\n")) << csv::message(table.error());
 		// Документ JSON
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем проверку принятия метки впереди текста документа
 		ASSERT_TRUE(document.parse(bom + "{\"a\":1}")) << json::message(document.error());
 		// Дерево разметки XML
-		xml::document_t markup(::logger());
+		xml::document_t markup(::framework(), ::logger());
 		// Выполняем проверку принятия метки впереди текста разметки
 		ASSERT_TRUE(markup.parse(bom + "<a/>")) << xml::message(markup.error());
 	}

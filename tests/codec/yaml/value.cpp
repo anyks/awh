@@ -26,6 +26,7 @@
 #include <fstream>
 #include <limits>
 #include <string>
+#include <encoding/unicode/utf8.hpp>
 #include <vector>
 
 /**
@@ -49,6 +50,99 @@
  *
  */
 namespace {
+	/**
+	 * @brief Способ обращения пути файловой системы в вид, системе годный
+	 *
+	 * @details Проверки обязаны обращаться к файловой системе ТЕМ ЖЕ ходом, каким
+	 *          обращается кодек. Иначе проверка заводит файл под одним именем, а кодек
+	 *          ищет под другим, и красный стенд означает не порок кодека, а расхождение
+	 *          проверки с ним
+	 *
+	 * @warning Расхождение это и случилось 09.09.2026: кодеки переведены на широкий путь,
+	 *          а проверки остались узкими, и под MS Windows при ACP=1251 пали разом семь
+	 *          проверок трёх кодеков. Ни одна из них порока кодека не показывала
+	 *
+	 * @param path обращаемый путь файловой системы, записанный в UTF-8
+	 * @return     путь в виде, годном ходам системы
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		static ::std::wstring address(const ::std::string & path) noexcept {
+			// Собираемая широкая запись пути файловой системы
+			::std::wstring result;
+			// Выполняем резервирование памяти под собираемый путь
+			result.reserve(path.size());
+			// Кодовое значение очередного знака пути
+			uint32_t code = 0;
+			/**
+			 * Выполняем перебор всех знаков обращаемого пути
+			 */
+			for(::std::size_t i = 0; i < path.size();){
+				// Выполняем разбор записи очередного знака пути
+				const ::std::size_t length = awh::utf8::decode(path, i, code);
+				/**
+				 * Если запись знака разбору не поддалась
+				 */
+				if(length == 0)
+					// Выводим пустой путь, обращению не поддавшийся
+					return ::std::wstring();
+				// Выполняем перемещение за разобранную запись знака
+				i += length;
+				/**
+				 * Если знак широкий вмещает лишь два октета
+				 */
+				if constexpr(sizeof(wchar_t) < 4){
+					/**
+					 * Если код знака вне основной плоскости лежит
+					 */
+					if(code > 0xFFFF){
+						// Выполняем приведение кода к записи парою суррогатов
+						code -= 0x10000;
+						// Выполняем добавление старшего суррогата пары
+						result.push_back(static_cast <wchar_t> (0xD800 + (code >> 10)));
+						// Выполняем добавление младшего суррогата пары
+						result.push_back(static_cast <wchar_t> (0xDC00 + (code & 0x3FF)));
+						// Выполняем переход к следующему знаку пути
+						continue;
+					}
+				}
+				// Выполняем добавление знака к собираемому пути
+				result.push_back(static_cast <wchar_t> (code));
+			}
+			// Выводим собранный путь файловой системы
+			return result;
+		}
+	/**
+	 * Для операционной системы, MS Windows не являющейся
+	 */
+	#else
+		static ::std::string address(const ::std::string & path) noexcept {
+			// Выводим путь файловой системы без обращения
+			return path;
+		}
+	#endif
+	/**
+	 * @brief Способ снятия файла с файловой системы
+	 *
+	 * @param filename путь снимаемого файла
+	 * @return         признак успешности снятия файла
+	 *
+	 */
+	static bool dropFile(const ::std::string & filename) noexcept {
+		/**
+		 * Для операционной системы MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выводим результат снятия файла широким ходом
+			return (::_wremove(address(filename).c_str()) == 0);
+		/**
+		 * Для операционной системы, MS Windows не являющейся
+		 */
+		#else
+			// Выводим результат снятия файла узким ходом
+			return (::remove(filename.c_str()) == 0);
+		#endif
+	}
 	/**
 	 * @brief Функция выдачи имени временного файла, по процессу уникального
 	 *
@@ -117,6 +211,19 @@ namespace {
 			this->log.mode({});
 		}
 	};
+	/**
+	 * @brief Способ выдачи объекта фреймворка проверок
+	 *
+	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
 	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
@@ -192,7 +299,7 @@ TEST(CodecYamlValue, Outliving) {
 	 */
 	const auto produce = []() noexcept -> yaml::value_t {
 		// Дерево документа, живущее лишь внутри вызова
-		yaml::document_t doc(::logger());
+		yaml::document_t doc(::framework(), ::logger());
 		// Выполняем разбор текста в дерево документа
 		doc.parse("a: 1\nb:\n- x\n- y\n");
 		// Выводим значение, с дерева документа снятое
@@ -685,10 +792,18 @@ TEST(CodecYamlValue, Storing) {
 	// Выполняем занесение числового поля
 	value["port"] = yaml::value_t(static_cast <int64_t> (8080));
 	// Выполняем проверку успешности записи значения в файл
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_TRUE(value.save(::unique("./value.yaml")));
 	// Прочитанное обратно значение
 	yaml::value_t loaded;
 	// Выполняем проверку успешности чтения значения из файла
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	loaded.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	loaded.setLogger(::logger());
 	ASSERT_TRUE(loaded.load(::unique("./value.yaml")));
 	// Выполняем проверку совпадения записанного и прочитанного
 	ASSERT_TRUE(loaded == value);
@@ -827,7 +942,7 @@ TEST(CodecYamlValue, Consistency) {
 		text.append(records.at(i)).append("\n");
 	}
 	// Дерево документа, записи чисел несущее
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse(text));
 	// Значение, с дерева документа снятое
@@ -950,7 +1065,7 @@ TEST(CodecYamlValue, Refused) {
  */
 TEST(CodecYamlValue, Dialect) {
 	// Дерево документа, наречие директивой объявляющее
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse("%YAML 1.1\n---\n- on\n- 0777\n"));
 	// Выполняем проверку того, что запись прочтена логическим значением
@@ -960,7 +1075,7 @@ TEST(CodecYamlValue, Dialect) {
 	// Выполняем проверку сохранения директивы перезаписью дерева
 	ASSERT_NE(doc.dump().find("%YAML 1.1"), string::npos);
 	// Дерево перезаписанного документа
-	yaml::document_t back(::logger());
+	yaml::document_t back(::framework(), ::logger());
 	// Выполняем проверку читаемости перезаписи обратным разбором
 	ASSERT_TRUE(back.parse(doc.dump()));
 	// Выполняем проверку сохранения вида значения круговым ходом
@@ -984,7 +1099,7 @@ TEST(CodecYamlValue, Dialect) {
 	// Выполняем проверку того, что число прочтено восьмеричным
 	ASSERT_EQ(octal, 511);
 	// Дерево документа без директивы наречия
-	yaml::document_t plain(::logger());
+	yaml::document_t plain(::framework(), ::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(plain.parse("- on\n"));
 	// Выполняем проверку того, что директива тексту не навязывается
@@ -1005,7 +1120,7 @@ TEST(CodecYamlValue, LegacyBoolean) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Объект дерева документа
-	yaml::document_t doc(::logger(), settings);
+	yaml::document_t doc(::framework(), ::logger(), settings);
 	// Выполняем разбор текста наречия 1.1 в дерево документа
 	ASSERT_TRUE(doc.parse("%YAML 1.1\n---\nflag: yes\noff: no\n"));
 	// Выполняем проверку того, что значение прочитано логическим
@@ -1038,7 +1153,7 @@ TEST(CodecYamlValue, LegacyBoolean) {
  */
 TEST(CodecYamlValue, StreamDialects) {
 	// Объект дерева документа
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор потока из двух документов разных наречий
 	ASSERT_TRUE(doc.parse("%YAML 1.1\n---\nx: 0b1010\n...\n%YAML 1.2\n---\ny: 0b1010\n...\n"));
 	// Выполняем проверку количества документов потока
@@ -1191,7 +1306,7 @@ TEST(CodecYamlValue, AppendRoundtrip) {
 	// Устанавливаем удержание всех вхождений повторяющегося имени
 	settings.duplicates = yaml::duplicate_t::KEEP;
 	// Объект дерева документа
-	yaml::document_t doc(::logger(), settings);
+	yaml::document_t doc(::framework(), ::logger(), settings);
 	// Выполняем разбор текста с повторяющимися именами полей
 	ASSERT_TRUE(doc.parse("имя: 1\nимя: 2\nиное: 3\n"));
 	// Владеющее значение, с дерева документа снятое
@@ -1270,7 +1385,7 @@ TEST(CodecYamlValue, ExtendedNumbers) {
 	// Устанавливаем удержание исходного текста
 	settings.retain = true;
 	// Объект дерева документа
-	yaml::document_t doc(::logger(), settings);
+	yaml::document_t doc(::framework(), ::logger(), settings);
 	// Выполняем разбор записей чисел поднормальных
 	ASSERT_TRUE(doc.parse("a: 1e-320\nb: 5e-324\nc: 1e-400\n"));
 	/**
@@ -1340,7 +1455,7 @@ TEST(CodecYamlValue, StreamRefusal) {
 	 * @note Отказ этот есть свойство значения владеющего, а не разбора: дерево тот же
 	 *       поток держит целиком, и оба документа его достижимы
 	 */
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем проверку разбора потока о двух документах деревом
 	ASSERT_TRUE(doc.parse("--- 1\n--- 2\n"));
 	// Выполняем проверку количества документов потока
@@ -1673,7 +1788,7 @@ TEST(CodecYamlValue, Grafting) {
 	// Выполняем заведение отображения внутри перечня значений
 	value.place("/points/0/name") = yaml::value_t("угол");
 	// Дерево документа, куда переносится значение
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем разбор пустого отображения
 	ASSERT_TRUE(document.parse("{}"));
 	// Выполняем перенос владеющего значения в дерево документа
@@ -1728,7 +1843,7 @@ TEST(CodecYamlValue, Grafting) {
 	// Выполняем проверку записи логического значения без ограды
 	ASSERT_NE(text.find("secure: true"), string::npos);
 	// Собираемое дерево документа, разбираемое из записанного текста
-	yaml::document_t reparsed(::logger());
+	yaml::document_t reparsed(::framework(), ::logger());
 	// Выполняем разбор записанного текста
 	ASSERT_TRUE(reparsed.parse(text));
 	// Выполняем проверку того, что вид числа обратное чтение пережил
@@ -1755,7 +1870,7 @@ TEST(CodecYamlValue, GraftingRefusal) {
 		// Выполняем установку пары с пустым именем
 		ASSERT_TRUE(value.insert("", yaml::value_t("значение")));
 		// Дерево документа, куда переносится значение
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор пустого отображения
 		ASSERT_TRUE(document.parse("{}"));
 		// Выполняем проверку отказа переноса значения с пустым именем пары
@@ -1767,7 +1882,7 @@ TEST(CodecYamlValue, GraftingRefusal) {
 		// Выполняем установку пары с косою чертой в имени
 		ASSERT_TRUE(value.insert("a/b", yaml::value_t("значение")));
 		// Дерево документа, куда переносится значение
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор пустого отображения
 		ASSERT_TRUE(document.parse("{}"));
 		// Выполняем проверку успешности переноса значения с косою чертой в имени пары
@@ -1815,7 +1930,7 @@ TEST(CodecYamlValue, GraftRoundTrip) {
 	// Выполняем установку строкового значения отображения
 	value.place("/server/host") = yaml::value_t("localhost");
 	// Дерево документа, куда переносится значение
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем разбор пустого отображения
 	ASSERT_TRUE(document.parse("{}"));
 	// Выполняем перенос владеющего значения в дерево документа
@@ -1969,7 +2084,7 @@ TEST(CodecYamlValue, GraftingEmptyUnderFailsafe) {
 	// Назначаем схему, признающую одни лишь строки
 	settings.schema = yaml::schema_t::FAILSAFE;
 	// Дерево документа с парою без значения
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем назначение настроек разбора
 	document.settings(settings);
 	// Выполняем разбор текста с парою без значения
@@ -1979,7 +2094,7 @@ TEST(CodecYamlValue, GraftingEmptyUnderFailsafe) {
 	// Выполняем снятие владеющего значения с дерева документа
 	const yaml::value_t taken(document.root());
 	// Дерево документа, куда переносится значение
-	yaml::document_t target(::logger());
+	yaml::document_t target(::framework(), ::logger());
 	// Выполняем назначение тех же настроек разбора
 	target.settings(settings);
 	// Выполняем разбор пустого отображения
@@ -2012,7 +2127,7 @@ TEST(CodecYamlValue, GraftingRepeatedNames) {
 	// Выполняем проверку количества полей собранного отображения
 	ASSERT_EQ(value.size(), 2);
 	// Дерево документа, куда переносится значение
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем разбор пустого отображения
 	ASSERT_TRUE(document.parse("{}"));
 	// Выполняем проверку отказа переноса значения с повторными именами
@@ -2067,7 +2182,7 @@ TEST(CodecYamlValue, GraftSurvivesRewrite) {
 	 */
 	for(const auto & probe : PROBES){
 		// Дерево документа, куда переносится значение
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор исходного текста дерева
 		ASSERT_TRUE(document.parse(probe.base)) << probe.title;
 		// Переносимое владеющее значение
@@ -2088,7 +2203,7 @@ TEST(CodecYamlValue, GraftSurvivesRewrite) {
 		 */
 		ASSERT_EQ((text.find("старое") != string::npos), probe.kept) << probe.title;
 		// Дерево документа, перезаписью полученное
-		yaml::document_t again(::logger());
+		yaml::document_t again(::framework(), ::logger());
 		// Выполняем обратный разбор перезаписи дерева
 		ASSERT_TRUE(again.parse(text)) << probe.title;
 		// Путь к перенесённому строковому полю
@@ -2370,7 +2485,7 @@ TEST(CodecYamlValue, ChompingRuleIsOne) {
 		 */
 		{
 			// Собираемое дерево документа
-			yaml::document_t document(::logger());
+			yaml::document_t document(::framework(), ::logger());
 			// Выполняем проверку успешности разбора перезаписи построенного значения
 			ASSERT_TRUE(document.parse(built.dump())) << item.first;
 			// Значение, с дерева документа снятое
@@ -2406,7 +2521,7 @@ TEST(CodecYamlValue, RewriteMatchesDocument) {
 		"folded: >-\n  первая\n  вторая\n"
 		"listed:\n- один\n- два\n";
 	// Собираемое дерево документа
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем проверку успешности разбора текста
 	ASSERT_TRUE(document.parse(text));
 	// Значение, с дерева документа снятое
@@ -2444,7 +2559,7 @@ TEST(CodecYamlValue, RewriteMatchesDocument) {
  */
 TEST(CodecYamlValue, EmptyDocumentSurvives) {
 	// Собираемое дерево документа
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем проверку успешности разбора пустого документа
 	ASSERT_TRUE(document.parse("---\n"));
 	// Значение, с дерева документа снятое
@@ -2452,7 +2567,7 @@ TEST(CodecYamlValue, EmptyDocumentSurvives) {
 	// Выполняем проверку того, что перезапись пустой документ сохранила
 	ASSERT_EQ(lifted.dump(), "---\n");
 	// Собираемое дерево документа перезаписи снятого значения
-	yaml::document_t rebuilt(::logger());
+	yaml::document_t rebuilt(::framework(), ::logger());
 	// Выполняем проверку успешности разбора перезаписи снятого значения
 	ASSERT_TRUE(rebuilt.parse(lifted.dump()));
 	// Выполняем проверку кругового хода снятого значения через перезапись
@@ -2489,7 +2604,7 @@ TEST(CodecYamlValue, EmptyNameSurvives) {
 	 */
 	for(const auto & item : samples){
 		// Собираемое дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора записи
 		ASSERT_TRUE(document.parse(item)) << item;
 		// Значение, с дерева документа снятое
@@ -2497,7 +2612,7 @@ TEST(CodecYamlValue, EmptyNameSurvives) {
 		// Выполняем проверку совпадения перезаписи значения с перезаписью дерева
 		ASSERT_EQ(lifted.dump(), document.dump()) << item;
 		// Собираемое дерево документа перезаписи снятого значения
-		yaml::document_t rebuilt(::logger());
+		yaml::document_t rebuilt(::framework(), ::logger());
 		// Выполняем проверку успешности разбора перезаписи снятого значения
 		ASSERT_TRUE(rebuilt.parse(lifted.dump())) << item;
 		// Выполняем проверку кругового хода снятого значения через перезапись
@@ -2521,7 +2636,7 @@ TEST(CodecYamlValue, EmptyNameSurvives) {
  */
 TEST(CodecYamlValue, ScalarYieldsItsRecord) {
 	// Собираемое дерево документа
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем проверку успешности разбора текста со значениями всякого вида
 	ASSERT_TRUE(document.parse(
 		"число: 12\n"
@@ -2589,7 +2704,7 @@ TEST(CodecYamlValue, GraftLeavesTreeIntact) {
 	 */
 	value[""] = yaml::value_t(static_cast <int64_t> (2));
 	// Дерево документа, куда переносится значение
-	yaml::document_t target(::logger());
+	yaml::document_t target(::framework(), ::logger());
 	// Выполняем проверку успешности разбора пустого отображения
 	ASSERT_TRUE(target.parse("{}"));
 	// Перезапись дерева документа до переноса
@@ -2610,7 +2725,7 @@ TEST(CodecYamlValue, GraftLeavesTreeIntact) {
 		// Выполняем занесение пары с годным именем
 		sound["годное"] = yaml::value_t(static_cast <int64_t> (1));
 		// Дерево документа, куда переносится значение
-		yaml::document_t clean(::logger());
+		yaml::document_t clean(::framework(), ::logger());
 		// Выполняем проверку успешности разбора пустого отображения
 		ASSERT_TRUE(clean.parse("{}"));
 		// Выполняем проверку успешности переноса владеющего значения
@@ -2697,7 +2812,7 @@ TEST(CodecYamlValue, BuilderCarriesAnchorAndTag) {
 		// Получаем текст, собранным значением записанный
 		const string text = builder.finish().dump();
 		// Дерево документа, куда возвращается записанное
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора записанного текста
 		ASSERT_TRUE(document.parse(text));
 		// Получаем владеющее значение, с дерева документа снятое
@@ -2801,6 +2916,10 @@ TEST(CodecYamlValue, FileRoundTrip) {
 	// Выполняем назначение поля отображения числом
 	value["port"] = yaml::value_t(static_cast <int64_t> (8080));
 	// Выполняем проверку успешности записи владеющего значения в файл
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_TRUE(value.save(filename));
 	/**
 	 * Выполняем проверку того, что записанное совпадает с собранным текстом дословно
@@ -2811,7 +2930,7 @@ TEST(CodecYamlValue, FileRoundTrip) {
 	 */
 	{
 		// Поток чтения записанного файла значения
-		ifstream file(filename, ios::binary);
+		ifstream file(address(filename).c_str(), ios::binary);
 		// Выполняем проверку того, что записанный файл открывается
 		ASSERT_TRUE(file.is_open());
 		// Считываем содержимое записанного файла целиком
@@ -2822,13 +2941,17 @@ TEST(CodecYamlValue, FileRoundTrip) {
 	// Владеющее значение, из файла читаемое
 	yaml::value_t restored;
 	// Выполняем проверку успешности чтения владеющего значения из файла
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	restored.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	restored.setLogger(::logger());
 	ASSERT_TRUE(restored.load(filename));
 	// Выполняем проверку того, что значение круговой ход через файл пережило
 	ASSERT_TRUE(restored == value);
 	// Выполняем проверку содержимого значения, круг пережившего
 	ASSERT_EQ(restored["host"].text(), "alpha");
 	// Выполняем удаление записанного временного файла значения
-	::remove(filename.c_str());
+	dropFile(filename);
 	/**
 	 * Выполняем проверку отказа записи в неоткрываемый файл
 	 */
@@ -2851,11 +2974,16 @@ TEST(CodecYamlValue, FileRoundTrip) {
 		// Выполняем назначение поля отображения простым значением
 		refused["ключ"] = yaml::value_t("значение");
 		// Выполняем проверку отказа записи в путь, каталогом не существующий
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		refused.setFramework(::framework());
 		ASSERT_FALSE(refused.save("./awh_yaml_нет_такого_каталога/файл.yaml"));
 		// Выполняем проверку того, что отказ записи в журнал ушёл
-		ASSERT_EQ(messages.size(), 1u);
+		// Сличение «НЕ МЕНЬШЕ»: с переходом на `sys/fs` отчёт даёт и сам ход файловой системы
+		ASSERT_GE(messages.size(), 1u);
 		// Выполняем проверку того, что причина отказа названа
-		ASSERT_NE(messages.front().find(yaml::message(yaml::error_t::FILE_NOT_OPENED)), string::npos);
+		// Розыск ведётся по ВСЕМ отчётам: с переходом на `sys/fs` отказ оглашает и
+		// нижний слой, и наш отчёт уже не первый и не последний
+		ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : messages) if(line.find(yaml::message(yaml::error_t::FILE_NOT_OPENED)) != string::npos) return true; return false; }());
 	}
 }
 /**
@@ -3228,6 +3356,10 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 		// Собираемое владеющее значение
 		yaml::value_t value;
 		// Выполняем проверку отказа чтения файла несуществующего
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		value.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		value.setLogger(::logger());
 		ASSERT_FALSE(value.load("/несуществующий-каталог-awh/значение"));
 	}
 	/**
@@ -3240,7 +3372,7 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 		// Имя временного файла с содержимым негодным
 		const string filename = temporary(::unique("awh-yaml-value-refusal.txt"));
 		// Поток записи временного файла
-		ofstream file(filename, ios::binary | ios::trunc);
+		ofstream file(address(filename).c_str(), ios::binary | ios::trunc);
 		// Выполняем проверку того, что временный файл открыт
 		ASSERT_TRUE(file.is_open());
 		// Выполняем запись содержимого негодного во временный файл
@@ -3250,9 +3382,13 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 		// Собираемое владеющее значение
 		yaml::value_t value;
 		// Выполняем проверку отказа чтения файла с содержимым негодным
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		value.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		value.setLogger(::logger());
 		ASSERT_FALSE(value.load(filename));
 		// Выполняем снятие временного файла
-		::remove(filename.c_str());
+		dropFile(filename);
 	}
 	/**
 	 * Выполняем проверку отказа записи в файл, открыть какой нельзя
@@ -3263,6 +3399,10 @@ TEST(CodecYamlValue, ParseLoadSaveRefusals) {
 		// Выполняем занесение пары, дабы записывалось не пустое значение
 		ASSERT_TRUE(value.append("a", yaml::value_t(static_cast <int64_t> (1))));
 		// Выполняем проверку отказа записи в файл, открыть какой нельзя
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		value.setFramework(::framework());
+		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+		value.setLogger(::logger());
 		ASSERT_FALSE(value.save("/несуществующий-каталог-awh/значение"));
 	}
 }
@@ -3463,9 +3603,12 @@ TEST(CodecYamlValue, LoggerAdoptedOnAssignment) {
 		// Выполняем присваивание значения копированием
 		target = source;
 		// Выполняем проверку отказа записи в путь, каталогом не существующий
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		target.setFramework(::framework());
 		ASSERT_FALSE(target.save(filename));
 		// Выполняем проверку того, что отказ записи в перенятый журнал ушёл
-		ASSERT_EQ(messages.size(), 1u);
+		// Сличение «НЕ МЕНЬШЕ»: с переходом на `sys/fs` отчёт даёт и сам ход файловой системы
+		ASSERT_GE(messages.size(), 1u);
 	}
 	/**
 	 * Выполняем проверку перенятия журнала переносом
@@ -3482,9 +3625,12 @@ TEST(CodecYamlValue, LoggerAdoptedOnAssignment) {
 		// Выполняем присваивание значения переносом
 		target = std::move(source);
 		// Выполняем проверку отказа записи в путь, каталогом не существующий
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		target.setFramework(::framework());
 		ASSERT_FALSE(target.save(filename));
 		// Выполняем проверку того, что отказ записи в перенятый журнал ушёл
-		ASSERT_EQ(messages.size(), 2u);
+		// Сличение «НЕ МЕНЬШЕ»: с переходом на `sys/fs` отчёт даёт и сам ход файловой системы
+		ASSERT_GE(messages.size(), 2u);
 	}
 	/**
 	 * Выполняем проверку того, что назначенный журнал присваиванием не перезаписывается
@@ -3514,11 +3660,15 @@ TEST(CodecYamlValue, LoggerAdoptedOnAssignment) {
 		// Выполняем присваивание значения копированием
 		target = source;
 		// Выполняем проверку отказа записи в путь, каталогом не существующий
+		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+		target.setFramework(::framework());
 		ASSERT_FALSE(target.save(filename));
 		// Выполняем проверку того, что отказ ушёл в свой журнал, а не в перенятый
-		ASSERT_EQ(own.size(), 1u);
+		// Сличение «НЕ МЕНЬШЕ»: отказ оглашает и нижний слой `sys/fs`
+		ASSERT_GE(own.size(), 1u);
 		// Выполняем проверку того, что первый журнал отказа не получил
-		ASSERT_EQ(messages.size(), 2u);
+		// Сличение «НЕ МЕНЬШЕ»: с переходом на `sys/fs` отчёт даёт и сам ход файловой системы
+		ASSERT_GE(messages.size(), 2u);
 	}
 }
 /**
@@ -3611,7 +3761,7 @@ TEST(CodecYamlValue, RefusalDoesNotWipeTarget) {
 	 */
 	{
 		// Поток записи файла
-		ofstream file(filename, ios::binary | ios::trunc);
+		ofstream file(address(filename).c_str(), ios::binary | ios::trunc);
 		// Выполняем проверку того, что файл заведён
 		ASSERT_TRUE(file.is_open());
 		// Выполняем запись прежнего содержимого
@@ -3620,13 +3770,17 @@ TEST(CodecYamlValue, RefusalDoesNotWipeTarget) {
 	// Значение недействительное, текста не дающее
 	yaml::value_t value;
 	// Выполняем проверку отказа записи недействительного значения
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_FALSE(value.save(filename));
 	/**
 	 * Выполняем проверку того, что прежнее содержимое файла цело
 	 */
 	{
 		// Поток чтения файла
-		ifstream file(filename, ios::binary);
+		ifstream file(address(filename).c_str(), ios::binary);
 		// Выполняем проверку того, что файл открыт
 		ASSERT_TRUE(file.is_open());
 		// Читаем содержимое файла после отказа записи
@@ -3635,7 +3789,7 @@ TEST(CodecYamlValue, RefusalDoesNotWipeTarget) {
 		ASSERT_EQ(after, before);
 	}
 	// Выполняем снос записываемого файла
-	::remove(filename.c_str());
+	dropFile(filename);
 }
 /**
  * @brief Проверка отказа снятия значения из текста нескольких документов
@@ -3650,7 +3804,7 @@ TEST(CodecYamlValue, LoadRefusesMultipleDocuments) {
 	// Путь записи временного файла текста
 	const string filename = ::unique("./awh_yaml_несколько_документов.yaml");
 	// Объект записи временного файла текста
-	ofstream file(filename, ios::binary);
+	ofstream file(address(filename).c_str(), ios::binary);
 	// Выполняем проверку того, что временный файл заведён
 	ASSERT_TRUE(file.is_open());
 	// Выполняем запись текста из двух документов
@@ -3662,15 +3816,19 @@ TEST(CodecYamlValue, LoadRefusesMultipleDocuments) {
 	// Выполняем назначение поля отображения простым значением
 	value["прежнее"] = yaml::value_t("значение");
 	// Выполняем проверку отказа снятия текста из двух документов
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_FALSE(value.load(filename));
 	// Выполняем проверку того, что прежнее значение снятием очищено
 	ASSERT_FALSE(value.valid());
 	// Выполняем удаление записанного временного файла текста
-	::remove(filename.c_str());
+	dropFile(filename);
 	// Путь записи второго временного файла текста
 	const string single = ::unique("./awh_yaml_один_документ.yaml");
 	// Объект записи второго временного файла текста
-	ofstream one(single, ios::binary);
+	ofstream one(address(single).c_str(), ios::binary);
 	// Выполняем проверку того, что второй временный файл заведён
 	ASSERT_TRUE(one.is_open());
 	// Выполняем запись текста из одного документа
@@ -3678,11 +3836,15 @@ TEST(CodecYamlValue, LoadRefusesMultipleDocuments) {
 	// Выполняем закрытие второго временного файла текста
 	one.close();
 	// Выполняем проверку снятия текста из одного документа
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_TRUE(value.load(single));
 	// Выполняем проверку снятого значения
 	ASSERT_EQ(value["первый"].text(), "1");
 	// Выполняем удаление второго записанного временного файла текста
-	::remove(single.c_str());
+	dropFile(single);
 }
 /**
  * @brief Проверка заведения значения написаниями целых чисел языка
@@ -3896,7 +4058,7 @@ TEST(CodecYamlValue, CharNameIsText) {
  */
 TEST(CodecYamlValue, AbsorbFromStaleReference) {
 	// Объект дерева документа
-	yaml::document_t doc(::logger());
+	yaml::document_t doc(::framework(), ::logger());
 	// Выполняем разбор текста в дерево документа
 	ASSERT_TRUE(doc.parse("первый: значение\nвторой: иное\n"));
 	// Снимаем ссылку на узел дерева
@@ -3958,9 +4120,12 @@ TEST(CodecYamlValue, SaveRefusesUndefinedValue) {
 	 * @note Поверка эта стоит прежде открытия файла: поток записи усекает цель при
 	 *       открытии, и значение, текста не дающее, сносило бы прежнее содержимое
 	 */
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	undefined.setFramework(::framework());
 	ASSERT_FALSE(undefined.save(::unique("./awh_yaml_недействительное.yaml")));
 	// Выполняем проверку того, что отказ записи в журнал ушёл
-	ASSERT_EQ(messages.size(), 1u);
+	// Сличение «НЕ МЕНЬШЕ»: с переходом на `sys/fs` отчёт даёт и сам ход файловой системы
+		ASSERT_GE(messages.size(), 1u);
 	// Выполняем проверку того, что файл записи заведён не был
 	ASSERT_FALSE(::std::ifstream(::unique("./awh_yaml_недействительное.yaml")).good());
 }
@@ -4014,7 +4179,7 @@ TEST(CodecYamlValue, DepthBeyondLimitRefused) {
 	// Выполняем проверку отказа записи значения свыше предела вложенности
 	ASSERT_TRUE(node.dump().empty());
 	// Объект дерева настроек, куда ведётся перенос
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем проверку отказа переноса значения свыше предела вложенности
 	ASSERT_FALSE(node.graft(document, {}));
 	/**
@@ -4040,7 +4205,7 @@ TEST(CodecYamlValue, DepthBeyondLimitRefused) {
 		// Выполняем проверку отказа записи перечня свыше предела вложенности
 		ASSERT_TRUE(item.dump().empty());
 		// Объект дерева настроек, куда ведётся перенос
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем проверку отказа переноса перечня свыше предела вложенности
 		ASSERT_FALSE(item.graft(document, {}));
 	}
@@ -4201,7 +4366,7 @@ TEST(CodecYamlValue, NumberSpellingsAgreeUpToDoublePrecision) {
  */
 TEST(CodecYamlValue, PathIndexRejectsLeadingZero) {
 	// Объект дерева документа, текст разбирающий
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	/**
 	 * Выполняем разбор перечня, ЗАВЕДОМО длиннее разбираемого номера
 	 *
@@ -4239,7 +4404,7 @@ TEST(CodecYamlValue, PathIndexRejectsLeadingZero) {
 	 *       МОЛЧА. Первая половина такой перестаравшейся починки не ловит вовсе
 	 */
 	// Объект дерева документа, отображение разбирающий
-	yaml::document_t mapping(::logger());
+	yaml::document_t mapping(::framework(), ::logger());
 	// Выполняем разбор отображения с именами из цифр
 	ASSERT_TRUE(mapping.parse("'01': first\n'1': second\n")) << yaml::message(mapping.error());
 	// Получаем владеющее значение отображения
@@ -4279,7 +4444,7 @@ TEST(CodecYamlValue, LayersExtractNumberAlike) {
 		// Выполняем извлечение числа владеющим значением
 		ASSERT_TRUE(value["a"].value(first)) << probe.text;
 		// Объект дерева документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор текста деревом документа
 		ASSERT_TRUE(document.parse(string("a: ") + probe.text + "\n")) << probe.text;
 		// Выполняем извлечение числа деревом документа
@@ -4311,13 +4476,13 @@ TEST(CodecYamlValue, GraftRefusalNamesItsCause) {
 		// Удерживаем все пары с повторяющимся именем
 		settings.duplicates = yaml::duplicate_t::KEEP;
 		// Дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек дерева документа
 		document.settings(settings);
 		// Выполняем проверку успешности разбора текста документа
 		ASSERT_TRUE(document.parse("b: 1\nb: 2\n"));
 		// Дерево документа, куда переносится значение
-		yaml::document_t target(::logger());
+		yaml::document_t target(::framework(), ::logger());
 		// Выполняем установку настроек дерева переноса
 		target.settings(settings);
 		// Выполняем проверку успешности разбора пустого отображения
@@ -4328,11 +4493,11 @@ TEST(CodecYamlValue, GraftRefusalNamesItsCause) {
 		ASSERT_EQ(target.error(), yaml::error_t::DUPLICATE_KEY);
 	}{
 		// Дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора текста документа
 		ASSERT_TRUE(document.parse("\"\": 1\n"));
 		// Дерево документа, куда переносится значение
-		yaml::document_t target(::logger());
+		yaml::document_t target(::framework(), ::logger());
 		// Выполняем проверку успешности разбора пустого отображения
 		ASSERT_TRUE(target.parse("{}"));
 		/**
@@ -4346,11 +4511,11 @@ TEST(CodecYamlValue, GraftRefusalNamesItsCause) {
 		ASSERT_EQ(target.error(), yaml::error_t::INVALID_PATH);
 	}{
 		// Дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем проверку успешности разбора текста документа
 		ASSERT_TRUE(document.parse("a: 1\n"));
 		// Дерево документа, куда переносится значение
-		yaml::document_t target(::logger());
+		yaml::document_t target(::framework(), ::logger());
 		// Выполняем проверку успешности разбора пустого отображения
 		ASSERT_TRUE(target.parse("{}"));
 		// Выполняем проверку успешности переноса годного значения
@@ -4462,7 +4627,7 @@ TEST(CodecYamlValue, TagKindFollowsItsOrigin){
 	 */
 	for(auto & probe : probes){
 		// Дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор написания
 		ASSERT_TRUE(document.parse(probe.first)) << probe.first;
 		// Владеющее значение, с дерева снятое
@@ -4470,7 +4635,7 @@ TEST(CodecYamlValue, TagKindFollowsItsOrigin){
 		// Выполняем проверку перезаписи снятого значения
 		ASSERT_EQ(taken.dump(), probe.second) << probe.first;
 		// Дерево документа, перезапись снятого значения разбирающее
-		yaml::document_t back(::logger());
+		yaml::document_t back(::framework(), ::logger());
 		// Выполняем разбор перезаписи снятого значения
 		ASSERT_TRUE(back.parse(taken.dump())) << probe.first;
 		// Выполняем проверку того, что метка круга не изменила
@@ -4502,7 +4667,7 @@ TEST(CodecYamlValue, TagKindFollowsItsOrigin){
 	 */
 	{
 		// Дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор написания с меткою местною
 		ASSERT_TRUE(document.parse("a: !%21y v\n"));
 		// Владеющее значение, с дерева снятое
@@ -4535,7 +4700,7 @@ TEST(CodecYamlValue, KeyPropertiesSurviveTheTaking){
 	for(const string & source : {string("&m a: 1\n"), string("!!str a: 1\n"), string("&m !!str a: 1\n"),
 	                             string("!%21y a: 1\n"), string("a: 1\n")}){
 		// Дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор написания
 		ASSERT_TRUE(document.parse(source)) << source;
 		// Владеющее значение, с дерева снятое
@@ -4556,13 +4721,13 @@ TEST(CodecYamlValue, KeyPropertiesSurviveTheTaking){
 	 */
 	{
 		// Дерево документа
-		yaml::document_t document(::logger());
+		yaml::document_t document(::framework(), ::logger());
 		// Выполняем разбор написания с меткою местною у имени пары
 		ASSERT_TRUE(document.parse("!%21y a: 1\n"));
 		// Владеющее значение, с дерева снятое
 		const yaml::value_t taken(document.root());
 		// Дерево документа, перезапись снятого значения разбирающее
-		yaml::document_t back(::logger());
+		yaml::document_t back(::framework(), ::logger());
 		// Выполняем разбор перезаписи снятого значения
 		ASSERT_TRUE(back.parse(taken.dump())) << taken.dump();
 		// Выполняем проверку того, что метка имени пары круга не изменила
@@ -4615,13 +4780,13 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 		// Устанавливаем схему разрешения видов значений
 		settings.schema = schema;
 		// Дерево документа, откуда ведётся перенос
-		yaml::document_t source(::logger(), settings);
+		yaml::document_t source(::framework(), ::logger(), settings);
 		// Выполняем разбор написания
 		ASSERT_TRUE(source.parse(probe.first)) << probe.first;
 		// Владеющее значение, с дерева снятое
 		const yaml::value_t taken(source.root());
 		// Дерево документа, куда ведётся перенос
-		yaml::document_t target(::logger(), settings);
+		yaml::document_t target(::framework(), ::logger(), settings);
 		// Выполняем разбор дерева, переносу подлежащего
 		ASSERT_TRUE(target.parse("z: 0\n")) << probe.first;
 		// Выполняем перенос снятого значения в чужое дерево
@@ -4672,13 +4837,13 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 	 */
 	{
 		// Дерево документа, откуда ведётся перенос
-		yaml::document_t source(::logger());
+		yaml::document_t source(::framework(), ::logger());
 		// Выполняем разбор написания с меткою узла
 		ASSERT_TRUE(source.parse("value: &m v\n"));
 		// Владеющее значение, с дерева снятое
 		const yaml::value_t taken(source.root());
 		// Дерево документа, куда ведётся перенос
-		yaml::document_t target(::logger());
+		yaml::document_t target(::framework(), ::logger());
 		// Выполняем разбор дерева, переносу подлежащего
 		ASSERT_TRUE(target.parse("z: 0\n"));
 		// Выполняем перенос снятого значения в чужое дерево
@@ -4693,13 +4858,13 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 	 */
 	{
 		// Дерево документа, откуда ведётся перенос
-		yaml::document_t source(::logger());
+		yaml::document_t source(::framework(), ::logger());
 		// Выполняем разбор написания с двоичным содержимым
 		ASSERT_TRUE(source.parse("value: !!binary aGkh\n"));
 		// Владеющее значение, с дерева снятое
 		const yaml::value_t taken(source.root());
 		// Дерево документа, куда ведётся перенос
-		yaml::document_t target(::logger());
+		yaml::document_t target(::framework(), ::logger());
 		// Выполняем разбор дерева, переносу подлежащего
 		ASSERT_TRUE(target.parse("z: 0\n"));
 		// Выполняем перенос снятого значения в чужое дерево
@@ -4709,7 +4874,7 @@ TEST(CodecYamlValue, GraftCarriesTheProperties){
 		// Устанавливаем схему разрешения видов наречия 1.1
 		legacy.schema = yaml::schema_t::LEGACY;
 		// Дерево документа, перезапись переноса читающее наречием 1.1
-		yaml::document_t back(::logger(), legacy);
+		yaml::document_t back(::framework(), ::logger(), legacy);
 		// Выполняем разбор перезаписи переноса
 		ASSERT_TRUE(back.parse(target.dump())) << target.dump();
 		// Выполняем проверку того, что содержимое числом не прочлось
@@ -4768,7 +4933,7 @@ TEST(CodecYamlValue, UnblockableTextFallsBackToTheQuoted) {
 	// Выполняем проверку того, что запись ушла оградою двойною
 	ASSERT_NE(result.find('"'), string::npos) << result;
 	// Собираемое дерево документа
-	yaml::document_t document(::logger());
+	yaml::document_t document(::framework(), ::logger());
 	// Выполняем проверку успешности разбора перезаписи построенного значения
 	ASSERT_TRUE(document.parse(result)) << result;
 	// Выполняем проверку совпадения содержимого снятого значения с исходным
@@ -4799,7 +4964,7 @@ TEST(CodecYamlValue, GraftOfTheEmptyValueLaysTheVoid) {
 		// Устанавливаем схему разрешения видов значений
 		settings.schema = schema;
 		// Дерево документа, куда ведётся перенос
-		yaml::document_t document(::logger(), settings);
+		yaml::document_t document(::framework(), ::logger(), settings);
 		// Выполняем разбор дерева, переносу подлежащего
 		ASSERT_TRUE(document.parse("z: 0\n"));
 		// Значение построения пустого
@@ -4847,6 +5012,10 @@ TEST(CodecYamlValue, RefusedSaveLeavesNoTemporaryFile){
 	yaml::value_t value;
 	value["ключ"] = yaml::value_t("значение");
 	// Выполняем проверку отказа записи значения в каталог
+	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
+	value.setFramework(::framework());
+	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
+	value.setLogger(::logger());
 	ASSERT_FALSE(value.save(folder));
 	/**
 	 * Выполняем проверку того, что временного файла рядом с целью не осталось

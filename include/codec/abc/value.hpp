@@ -44,6 +44,8 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
+#include "../../sys/fmk.hpp"
+
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
@@ -168,6 +170,32 @@ namespace awh {
 					 * \~
 					 */
 					void setLogger(const log_t * log) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод установки объекта фреймворка
+					 *
+					 * @details Доставляется он вызовом, а не конструктором, по той же причине, что
+					 * и журнал: значение есть данные, а не работающий модуль, и приведи мы пару
+					 * указателей в конструктор, неявное приведение вида `value_t v = "текст"`
+					 * стало бы невозможным
+					 *
+					 * @note Значению самому объект фреймворка не нужен - он нужен дереву документа,
+					 * какое значение заводит при разборе записи. Не установи его потребитель,
+					 * дерево получит пустой указатель, и разбор пойдёт как прежде
+					 *
+					 * @param fmk объект фреймворка
+					 *
+					 * \~english
+					 * @brief Method setting the object of the framework
+					 *
+					 * @param fmk object of the framework
+					 *
+					 * \~
+					 */
+					void setFramework(const fmk_t * fmk) noexcept;
+				private:
+					// Объект фреймворка
+					const fmk_t * _fmk = nullptr;
 				private:
 					// Объект работы с логами
 					const log_t * _log = nullptr;

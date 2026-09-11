@@ -653,3 +653,612 @@ TEST_F(FSFixture, EnvironmentPathTest){
 		ASSERT_NE(result, path);
 	#endif
 }
+
+/**
+ * @brief Проверка пакетной дозаписи одним внешним объектом файла
+ *
+ * @details Внешний объект файла затем и заводится, чтобы ОДИН описатель обслуживал
+ *          МНОГО обращений к одному адресу. Проверка сличает состав файла после
+ *          нескольких дозаписей и убеждается, что дозапись ложится в конец даже
+ *          после стороннего смещения позиции записи
+ *
+ * @note Признак `O_APPEND` (а под MS Windows `FILE_APPEND_DATA`) принадлежит самому
+ *       описателю, а не вызову: ядро кладёт запись в конец, минуя текущую позицию.
+ *       Свойство это и проверяется чужой записью в середину между дозаписями
+ *
+ */
+TEST_F(FSFixture, BatchAppendByExternalFileHandleTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_batch_append_unit.bin";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	{
+		// Заводим объект файла средствами самого модуля
+		const auto handle = this->_fs->handleFile();
+		// Объект файла обязан завестись
+		ASSERT_TRUE(handle != nullptr);
+		/**
+		 * Выполняем дозапись одним и тем же описателем
+		 */
+		for(uint8_t i = 0; i < 4; i++)
+			// Выполняем дозапись очередной доли
+			this->_fs->append(file, "ab", 2, handle);
+	}
+	// Состав файла обязан сложиться из всех долей по порядку
+	ASSERT_EQ(this->_fs->read <std::string> (file), "abababab");
+	// Размер файла обязан равняться сумме долей
+	ASSERT_EQ(this->_fs->size(file), 8u);
+	{
+		// Заводим объект файла средствами самого модуля
+		const auto handle = this->_fs->handleFile();
+		// Выполняем дозапись первой доли
+		this->_fs->append(file, "1", 1, handle);
+		// Выполняем чужую запись в самое начало файла
+		this->_fs->write(file, "Z", 1, awh::fs_t::seek_t::BEGIN, 0);
+		// Выполняем дозапись второй доли
+		this->_fs->append(file, "2", 1, handle);
+	}
+	// Обе доли обязаны лечь в конец, а чужая запись - в начало
+	ASSERT_EQ(this->_fs->read <std::string> (file), "Zbababab12");
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Проверка повторного обзора каталога внешним объектом каталога
+ *
+ * @details Внешний объект каталога служит каталогу, названному в `path`, ровно как
+ *          объект файла служит файлу. Повторный обзор тем же объектом идёт перемоткой,
+ *          мимо повторного открытия, - и обязан дать тот же самый состав
+ *
+ * @note Проверка эта зряча: убери перемотку, и повторный обзор даст ПУСТО - описатель
+ *       остаётся стоять на исчерпанном конце каталога
+ *
+ */
+TEST_F(FSFixture, RepeatedSurveyByExternalDirHandleTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string root = "test_dir_handle_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Заводим дерево каталогов
+	ASSERT_TRUE(this->_fs->mkdir(root + "/a/b"));
+	// Заводим ещё один каталог
+	ASSERT_TRUE(this->_fs->mkdir(root + "/c"));
+	// Заводим файлы по всей глубине дерева
+	this->_fs->write(root + "/one.txt", "1", 1);
+	// Заводим файл первого уровня вложенности
+	this->_fs->write(root + "/a/two.txt", "2", 1);
+	// Заводим файл второго уровня вложенности
+	this->_fs->write(root + "/a/b/three.txt", "3", 1);
+	// Заводим файл соседнего каталога
+	this->_fs->write(root + "/c/four.log", "4", 1);
+	// Состав дерева, снятый без внешнего объекта каталога
+	std::vector <std::string> plain;
+	// Выполняем обход дерева без внешнего объекта каталога
+	this->_fs->readdir(root, "", true, [&plain]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+		// Запоминаем очередную запись
+		plain.emplace_back(address);
+	});
+	// Дерево обязано дать все семь записей
+	ASSERT_EQ(plain.size(), 7u);
+	// Заводим объект каталога средствами самого модуля
+	const auto handle = this->_fs->handleDir();
+	// Объект каталога обязан завестись
+	ASSERT_TRUE(handle != nullptr);
+	// Состав дерева, снятый внешним объектом каталога
+	std::vector <std::string> first;
+	// Выполняем обход дерева внешним объектом каталога
+	this->_fs->readdir(root, "", true, [&first]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+		// Запоминаем очередную запись
+		first.emplace_back(address);
+	}, true, handle);
+	// Состав обязан совпасть с составом без внешнего объекта
+	ASSERT_EQ(first, plain);
+	// Состав дерева, снятый тем же объектом повторно
+	std::vector <std::string> second;
+	// Выполняем повторный обход дерева тем же объектом каталога
+	this->_fs->readdir(root, "", true, [&second]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+		// Запоминаем очередную запись
+		second.emplace_back(address);
+	}, true, handle);
+	// Повторный обзор обязан дать тот же самый состав
+	ASSERT_EQ(second, plain);
+	// Удаляем корневой каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(root));
+}
+
+/**
+ * @brief Проверка обхода каталога долями с остановкой и продолжением
+ *
+ * @details Отклик у `walkdir` вправе обход остановить, вернув ложь. Если при этом
+ *          передан внешний объект каталога, объект хранит место остановки, и
+ *          следующий вызов продолжает обход с того же места, а не с начала
+ *
+ * @note Проверка сличает состав, собранный долями, с составом, собранным одним
+ *       обходом: продолжение обязано не терять записи и не выдавать их дважды.
+ *       Без внешнего объекта каталога продолжать нечем - обход всякий раз
+ *       начинается заново, и это проверяется отдельно
+ *
+ */
+TEST_F(FSFixture, WalkdirResumeByExternalDirHandleTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string root = "test_dir_walk_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Заводим дерево каталогов
+	ASSERT_TRUE(this->_fs->mkdir(root + "/a/b"));
+	// Заводим ещё один каталог
+	ASSERT_TRUE(this->_fs->mkdir(root + "/c"));
+	// Заводим файлы по всей глубине дерева
+	this->_fs->write(root + "/one.txt", "1", 1);
+	// Заводим файл первого уровня вложенности
+	this->_fs->write(root + "/a/two.txt", "2", 1);
+	// Заводим файл второго уровня вложенности
+	this->_fs->write(root + "/a/b/three.txt", "3", 1);
+	// Заводим файл соседнего каталога
+	this->_fs->write(root + "/c/four.log", "4", 1);
+	// Состав дерева, снятый одним обходом
+	std::vector <std::string> whole;
+	// Выполняем обход дерева целиком
+	this->_fs->readdir(root, "", true, [&whole]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> void {
+		// Запоминаем очередную запись
+		whole.emplace_back(address);
+	});
+	// Дерево обязано дать все семь записей
+	ASSERT_EQ(whole.size(), 7u);
+	// Заводим объект каталога средствами самого модуля
+	const auto handle = this->_fs->handleDir();
+	// Состав дерева, собранный долями
+	std::vector <std::string> parts;
+	// Число долей, за которое обход довершён
+	uint16_t rounds = 0;
+	// Признак того, что обход довершён до конца
+	bool done = false;
+	/**
+	 * Выполняем обход долями по две записи
+	 */
+	while(!done && (rounds < 100)){
+		// Число записей, выданных в этой доле
+		uint8_t count = 0;
+		// Выполняем очередную долю обхода
+		done = this->_fs->walkdir(root, "", true, [&parts, &count]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+			// Запоминаем очередную запись
+			parts.emplace_back(address);
+			// Останавливаем обход после второй записи
+			return (++count < 2);
+		}, true, handle);
+		// Считаем доли обхода
+		rounds++;
+	}
+	// Обход обязан быть довершён до конца
+	ASSERT_TRUE(done);
+	// Долей обязано выйти больше одной, иначе обход не дробился вовсе
+	ASSERT_GT(rounds, 1u);
+	// Состав, собранный долями, обязан совпасть с составом одного обхода
+	ASSERT_EQ(parts, whole);
+	// Состав, снятый без внешнего объекта каталога
+	std::vector <std::string> single;
+	// Число записей, выданных без внешнего объекта каталога
+	uint8_t count = 0;
+	// Выполняем обход без внешнего объекта каталога
+	const bool result = this->_fs->walkdir(root, "", true, [&single, &count]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+		// Запоминаем очередную запись
+		single.emplace_back(address);
+		// Останавливаем обход после второй записи
+		return (++count < 2);
+	});
+	// Остановленный обход довершённым до конца считаться не вправе
+	ASSERT_FALSE(result);
+	// Без внешнего объекта каталога обход отдаёт ровно то, что успел
+	ASSERT_EQ(single.size(), 2u);
+	// Удаляем корневой каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(root));
+}
+
+/**
+ * @brief Проверка ответа записи и дозаписи вызывающему
+ *
+ * @details Прежде `write` и `append` отвечали пустотой: отказ уходил в журнал, а
+ *          вызывающий о нём не узнавал вовсе. Контейнеру же, обязанному ответить своим
+ *          признаком ошибки, знать это необходимо
+ *
+ */
+TEST_F(FSFixture, WriteAndAppendReportTheOutcomeTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_write_outcome_unit.bin";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Запись обязана ответить успехом
+	ASSERT_TRUE(this->_fs->write(file, "abcd", 4));
+	// Дозапись обязана ответить успехом
+	ASSERT_TRUE(this->_fs->append(file, "ef", 2));
+	// Прочитанное обязано совпасть с записанным
+	ASSERT_EQ(this->_fs->read <std::string> (file), "abcdef");
+	// Запись по пустому адресу обязана ответить отказом
+	ASSERT_FALSE(this->_fs->write("", "x", 1));
+	// Дозапись по пустому адресу обязана ответить отказом
+	ASSERT_FALSE(this->_fs->append("", "x", 1));
+	// Запись пустого буфера обязана ответить отказом
+	ASSERT_FALSE(this->_fs->write(file, nullptr, 0));
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Проверка сброса записанного из ядра на носитель
+ *
+ * @details Запись, отвеченная успехом, лежит ещё во вместилище ядра, и обрыв питания её
+ *          теряет. Работа `flush` доводит записанное до носителя. Проверить сам обрыв
+ *          питания проверкой нельзя, оттого пиннится договор: сброс отвечает успехом на
+ *          существующем файле - и своим объектом файла, и без него, - и отказом на
+ *          отсутствующем
+ *
+ * @note Признак `durable` под MS Windows ничего не меняет: `FlushFileBuffers` сбрасывает
+ *       и данные, и сведения о файле. Оба его значения проверяются на всех системах
+ *
+ */
+TEST_F(FSFixture, FlushBringsTheWrittenOntoTheMediumTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_flush_unit.bin";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Заводим объект файла средствами самого модуля
+	const auto handle = this->_fs->handleFile();
+	// Выполняем пакетную дозапись одним описателем
+	ASSERT_TRUE(this->_fs->append(file, "abcd", 4, handle));
+	// Сброс тем же объектом файла обязан быть выполнен
+	ASSERT_TRUE(this->_fs->flush(file, true, handle));
+	// Сброс без доведения до носителя обязан быть выполнен
+	ASSERT_TRUE(this->_fs->flush(file, false, handle));
+	// Сброс без внешнего объекта файла обязан быть выполнен
+	ASSERT_TRUE(this->_fs->flush(file));
+	// Записанное обязано быть на месте
+	ASSERT_EQ(this->_fs->read <std::string> (file), "abcd");
+	// Сброс отсутствующего файла обязан ответить отказом
+	ASSERT_FALSE(this->_fs->flush("test_flush_unit_absent.bin"));
+	// Сброс по пустому адресу обязан ответить отказом
+	ASSERT_FALSE(this->_fs->flush(""));
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Проверка того, что при заведённом объекте файла адрес не разбирается
+ *
+ * @details Разбор пути стоит перехода в ядро (`realpath` под POSIX), а при уже открытом
+ *          описателе адрес не нужен вовсе - он идёт только в открытие. Проверка подаёт
+ *          заведомо негодный адрес: разбор его бы не прошёл, а работа обязана лечь в тот
+ *          файл, каким объект был заведён
+ *
+ * @warning Это же и договор об опасности: один объект файла обслуживает ОДИН файл, и
+ *          поданное иное имя при заведённом объекте будет попросту пропущено
+ *
+ */
+TEST_F(FSFixture, TheAddressIsNotParsedAtTheCreatedFileHandleTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_lazy_address_unit.bin";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Заводим объект файла средствами самого модуля
+	const auto handle = this->_fs->handleFile();
+	// Выполняем первую дозапись, ею объект файла и заводится
+	ASSERT_TRUE(this->_fs->append(file, "a", 1, handle));
+	// Заведомо негодный адрес, разбор пути его бы не прошёл
+	const std::string absent = "test_lazy_address_unit_no/such/path/at/all.bin";
+	// Такого адреса быть не должно
+	ASSERT_EQ(this->_fs->type(absent), awh::fs_t::type_t::NONE);
+	// Дозапись негодным адресом при открытом описателе обязана быть выполнена
+	ASSERT_TRUE(this->_fs->append(absent, "b", 1, handle));
+	// Обе доли обязаны лечь в тот файл, каким объект был заведён
+	ASSERT_EQ(this->_fs->read <std::string> (file), "ab");
+	// Негодный адрес заведён быть не должен
+	ASSERT_EQ(this->_fs->type(absent), awh::fs_t::type_t::NONE);
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Проверка прав доступа, какие несёт объект файла
+ *
+ * @details Объект несёт права той работы, какая его завела, а не той, какой он передан
+ *          следом. Проверка сличает все три случая: заведённый записью годен и чтению,
+ *          заведённый дозаписью чтению не годен, заведённый чтением не годен записи
+ *
+ * @warning Права эти обязаны быть ОДИНАКОВЫ на всех системах. Под MS Windows запись
+ *          испрашивает `GENERIC_READ` вместе с `GENERIC_WRITE` ровно ради этого:
+ *          испроси она одно лишь право записи, чтение тем же объектом проходило бы
+ *          под POSIX и отвечало отказом под MS Windows
+ *
+ * @note Отказ обязан быть слышен: `write` отвечает ложью, а `read` - ПУСТЫМ результатом.
+ *       Прежде отказавшее чтение оставляло буфер размеченным нулями, и отличить
+ *       прочитанное от неудавшегося было нельзя вовсе
+ *
+ */
+TEST_F(FSFixture, TheFileHandleCarriesTheRightsOfItsCreatorTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_handle_rights_unit.bin";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Заводим проверяемый файл
+	ASSERT_TRUE(this->_fs->write(file, "abcdefgh", 8));
+	{
+		// Заводим объект файла средствами самого модуля
+		const auto handle = this->_fs->handleFile();
+		// Запись обязана ответить успехом, ею объект файла и заводится
+		ASSERT_TRUE(this->_fs->write(file, "XY", 2, awh::fs_t::seek_t::BEGIN, 0, handle));
+		// Прочитанное значение
+		std::string result = "";
+		// Чтение тем же объектом обязано пройти
+		this->_fs->read(file, result, awh::fs_t::seek_t::BEGIN, 0, handle);
+		// Прочитанное обязано совпасть с записанным
+		ASSERT_EQ(result, "XYcdefgh");
+	}
+	{
+		// Заводим объект файла средствами самого модуля
+		const auto handle = this->_fs->handleFile();
+		// Дозапись обязана ответить успехом, ею объект файла и заводится
+		ASSERT_TRUE(this->_fs->append(file, "Z", 1, handle));
+		// Прочитанное значение
+		std::string result = "";
+		// Чтение тем же объектом права не имеет
+		this->_fs->read(file, result, awh::fs_t::seek_t::BEGIN, 0, handle);
+		// Отказавшее чтение обязано оставить ПУСТО, а не размеченный нулями буфер
+		ASSERT_TRUE(result.empty());
+	}
+	{
+		// Заводим объект файла средствами самого модуля
+		const auto handle = this->_fs->handleFile();
+		// Прочитанное значение
+		std::string result = "";
+		// Чтение обязано пройти, им объект файла и заводится
+		this->_fs->read(file, result, awh::fs_t::seek_t::BEGIN, 0, handle);
+		// Прочитанное обязано совпасть с содержимым файла
+		ASSERT_EQ(result, "XYcdefghZ");
+		// Запись тем же объектом права не имеет и обязана ответить отказом
+		ASSERT_FALSE(this->_fs->write(file, "Q", 1, awh::fs_t::seek_t::BEGIN, 0, handle));
+	}
+	// Отказавшая запись содержимого файла тронуть не смела
+	ASSERT_EQ(this->_fs->read <std::string> (file), "XYcdefghZ");
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Проверка пакетного чтения одним внешним объектом файла
+ *
+ * @details Внешний объект файла годен не одной записи: чтение долями по смещению и
+ *          построчное чтение обслуживаются тем же одним описателем. Проверка сличает
+ *          прочитанное объектом с прочитанным без него
+ *
+ */
+TEST_F(FSFixture, BatchReadingByExternalFileHandleTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_batch_read_unit.txt";
+	// Содержимое проверяемого файла
+	const std::string content = "Line1\nLine2\nLine3";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Заводим проверяемый файл
+	ASSERT_TRUE(this->_fs->write(file, content.c_str(), content.size()));
+	{
+		// Заводим объект файла средствами самого модуля
+		const auto handle = this->_fs->handleFile();
+		// Собранные доли содержимого
+		std::string collected = "";
+		/**
+		 * Выполняем чтение долями по два октета одним описателем
+		 */
+		for(size_t offset = 0; offset < content.size(); offset += 2){
+			// Выполняем чтение очередной доли
+			this->_fs->read(file, 2, [&collected](const void * buffer, const size_t size, [[maybe_unused]] const size_t offset, [[maybe_unused]] const size_t left) noexcept -> bool {
+				// Собираем прочитанную долю
+				collected.append(static_cast <const char *> (buffer), size);
+				// Велим остановиться на первой же доле
+				return false;
+			}, offset, handle);
+		}
+		// Собранное обязано совпасть с содержимым файла
+		ASSERT_EQ(collected, content);
+	}
+	{
+		// Заводим объект файла средствами самого модуля
+		const auto handle = this->_fs->handleFile();
+		// Прочитанные строки
+		std::vector <std::string> lines;
+		// Выполняем построчное чтение внешним объектом файла
+		this->_fs->readfile(file, [&lines](std::string_view line) noexcept -> void {
+			// Запоминаем очередную строку
+			lines.emplace_back(line);
+		}, awh::fs_t::seek_t::BEGIN, 0, handle);
+		// Строк обязано выйти ровно три
+		ASSERT_EQ(lines.size(), 3u);
+		// Первая строка обязана совпасть
+		ASSERT_EQ(lines[0], "Line1");
+		// Последняя строка обязана совпасть
+		ASSERT_EQ(lines[2], "Line3");
+	}
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}
+
+/**
+ * @brief Проверка обхода построчного и поблочного с остановкой и продолжением
+ *
+ * @details Два прочих вида `walkdir` отдают не одни имена, а ещё и содержимое файлов -
+ *          строками либо блоками. Остановка у них выполняется на границе строки либо
+ *          блока, и продолжение начинает прерванный файл С НАЧАЛА: места остановки
+ *          внутри файла объект каталога не хранит
+ *
+ * @note Оттого проверка сличает не порядок долей, а СОСТАВ собранного: доли вправе
+ *       повториться, но ни одна строка потеряться не смеет
+ *
+ */
+TEST_F(FSFixture, WalkdirOverContentStopsAndResumesTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string root = "test_walk_content_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Заводим дерево каталогов
+	ASSERT_TRUE(this->_fs->mkdir(root + "/nested"));
+	// Заводим файлы по всей глубине дерева
+	ASSERT_TRUE(this->_fs->write(root + "/one.txt", "a1\na2", 5));
+	// Заводим файл вложенного каталога
+	ASSERT_TRUE(this->_fs->write(root + "/nested/two.txt", "b1\nb2", 5));
+	// Строки, снятые одним обходом
+	std::set <std::string> whole;
+	// Выполняем обход дерева целиком
+	ASSERT_TRUE(this->_fs->walkdir(root, "txt", true, [&whole]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view filename, std::string_view text) noexcept -> bool {
+		// Запоминаем очередную строку
+		whole.emplace(text);
+		// Велим продолжать обход
+		return true;
+	}));
+	// Строк обязано выйти четыре
+	ASSERT_EQ(whole.size(), 4u);
+	// Заводим объект каталога средствами самого модуля
+	const auto handle = this->_fs->handleDir();
+	// Строки, собранные долями
+	std::set <std::string> parts;
+	// Число долей, за которое обход довершён
+	uint16_t rounds = 0;
+	// Признак того, что обход довершён до конца
+	bool done = false;
+	/**
+	 * Выполняем обход долями по одной строке
+	 */
+	while(!done && (rounds < 100)){
+		// Выполняем очередную долю обхода
+		done = this->_fs->walkdir(root, "txt", true, [&parts]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view filename, std::string_view text) noexcept -> bool {
+			// Запоминаем очередную строку
+			parts.emplace(text);
+			// Останавливаем обход на первой же строке
+			return false;
+		}, true, handle);
+		// Считаем доли обхода
+		rounds++;
+	}
+	// Обход обязан быть довершён до конца
+	ASSERT_TRUE(done);
+	// Долей обязано выйти больше одной, иначе обход не дробился вовсе
+	ASSERT_GT(rounds, 1u);
+	// Состав, собранный долями, обязан совпасть с составом одного обхода
+	ASSERT_EQ(parts, whole);
+	// Блоки, снятые одним обходом
+	std::set <std::string> blocks;
+	// Выполняем обход дерева блоками
+	ASSERT_TRUE(this->_fs->walkdir(root, "txt", 4096, true, [&blocks]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view filename, const void * buffer, const size_t size) noexcept -> bool {
+		// Запоминаем очередной блок
+		blocks.emplace(static_cast <const char *> (buffer), size);
+		// Велим продолжать обход
+		return true;
+	}));
+	// Блоков обязано выйти два, по одному на файл
+	ASSERT_EQ(blocks.size(), 2u);
+	// Удаляем корневой каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(root));
+}
+
+/**
+ * @brief Проверка смены каталога, которому служит внешний объект
+ *
+ * @details Объект служит каталогу, названному в `path`. Поданный с иным адресом, он
+ *          обслуживать прежний перестаёт: прежний описатель закрывается, а состояние
+ *          прерванного обхода теряется
+ *
+ * @note Проверка эта пиннит опасность, а не удобство: незавершённый обход, у какого
+ *       сменили адрес, продолжить уже нельзя, и молчаливой его утраты быть не должно
+ *
+ */
+TEST_F(FSFixture, TheDirHandleServesOneDirectoryAtATimeTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string root = "test_dir_switch_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Заводим два соседних каталога
+	ASSERT_TRUE(this->_fs->mkdir(root + "/first"));
+	// Заводим второй каталог
+	ASSERT_TRUE(this->_fs->mkdir(root + "/second"));
+	// Заводим файлы первого каталога
+	ASSERT_TRUE(this->_fs->write(root + "/first/a.txt", "a", 1));
+	// Заводим ещё один файл первого каталога
+	ASSERT_TRUE(this->_fs->write(root + "/first/b.txt", "b", 1));
+	// Заводим файл второго каталога
+	ASSERT_TRUE(this->_fs->write(root + "/second/c.txt", "c", 1));
+	// Заводим объект каталога средствами самого модуля
+	const auto handle = this->_fs->handleDir();
+	// Число записей, выданных первым обходом
+	uint8_t count = 0;
+	// Начинаем обход первого каталога и обрываем его на первой записи
+	ASSERT_FALSE(this->_fs->walkdir(root + "/first", "", false, [&count]([[maybe_unused]] const awh::fs_t::type_t type, [[maybe_unused]] std::string_view address) noexcept -> bool {
+		// Останавливаем обход на первой же записи
+		return (++count < 1);
+	}, true, handle));
+	// Записей обязано выйти ровно одна
+	ASSERT_EQ(count, 1u);
+	// Состав второго каталога
+	std::vector <std::string> second;
+	// Обходим ТЕМ ЖЕ объектом иной каталог
+	ASSERT_TRUE(this->_fs->walkdir(root + "/second", "", false, [&second]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+		// Запоминаем очередную запись
+		second.emplace_back(address);
+		// Велим продолжать обход
+		return true;
+	}, true, handle));
+	// Второй каталог обязан быть отдан целиком и с начала
+	ASSERT_EQ(second.size(), 1u);
+	// Отданная запись обязана принадлежать второму каталогу
+	ASSERT_NE(second[0].find("c.txt"), std::string::npos);
+	// Состав первого каталога, снятый тем же объектом следом
+	std::vector <std::string> first;
+	// Обход первого каталога обязан пойти С НАЧАЛА, прерванное состояние утеряно
+	ASSERT_TRUE(this->_fs->walkdir(root + "/first", "", false, [&first]([[maybe_unused]] const awh::fs_t::type_t type, std::string_view address) noexcept -> bool {
+		// Запоминаем очередную запись
+		first.emplace_back(address);
+		// Велим продолжать обход
+		return true;
+	}, true, handle));
+	// Первый каталог обязан быть отдан целиком, а не остатком прерванного обхода
+	ASSERT_EQ(first.size(), 2u);
+	// Удаляем корневой каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(root));
+}

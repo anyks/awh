@@ -86,11 +86,31 @@ namespace {
 	 * @return объект журнала проверок
 	 *
 	 */
-	const log_t * logger() noexcept {
+	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самих
+	 * проверок: фреймворк и журнал передаются указателями от пользователя, как то
+	 * заведено во всём AWH, и заводить их порознь на каждое хранилище незачем
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const fmk_t * framework() noexcept {
 		// Объект фреймворка проверок
 		static fmk_t fmk;
+		// Выводим объект фреймворка проверок
+		return & fmk;
+	}
+	const log_t * logger() noexcept {
 		// Объект журнала проверок
-		static log_t log(& fmk);
+		static log_t log(::framework());
 		// Признак выполненной настройки журнала
 		static const bool ready = [](){
 			// Выполняем гашение вывода журнала проверок
@@ -287,7 +307,7 @@ TEST(CodecAbcStorage, StoreAndLoad){
 	// Выполняем сборку контейнера с двумя записями
 	const vector <uint8_t> container = build({"первая", "вторая"});
 	// Хранилище контейнера в файле
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Выполняем запись собранного контейнера в файл
 	ASSERT_TRUE(storage.store(file.filename(), container.data(), container.size()))
 		<< "код отказа: " << abc::message(storage.error());
@@ -356,7 +376,7 @@ TEST(CodecAbcStorage, EditInPlace){
 	// Выполняем сборку контейнера с двумя записями
 	const vector <uint8_t> container = build({"первая", "вторая"});
 	// Хранилище контейнера в файле
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Выполняем запись собранного контейнера в файл
 	ASSERT_TRUE(storage.store(file.filename(), container.data(), container.size()))
 		<< "код отказа: " << abc::message(storage.error());
@@ -383,7 +403,7 @@ TEST(CodecAbcStorage, EditInPlace){
 	// Выполняем закрытие файла контейнера
 	storage.close();
 	// Хранилище правленого контейнера
-	abc::storage_t reopened(::logger());
+	abc::storage_t reopened(::framework(), ::logger());
 	// Выполняем открытие правленого файла контейнера
 	ASSERT_TRUE(reopened.open(file.filename())) << "код отказа: " << abc::message(reopened.error());
 	// Выборщик записей контейнера
@@ -442,7 +462,7 @@ TEST(CodecAbcStorage, Refusals){
 	 */
 	const Temporary absent("missing-file");
 	// Хранилище контейнера в файле
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Выполняем проверку отказа открытия несуществующего файла
 	ASSERT_FALSE(storage.open(absent.filename()));
 	// Выполняем проверку кода отказа чтения октетов контейнера
@@ -517,7 +537,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 		// Устанавливаем очередной октет образца
 		sample.at(i) = static_cast <uint8_t> (i & 0xFF);
 	// Хранилище контейнера в файле
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Выполняем заведение файла контейнера
 	ASSERT_TRUE(storage.create(file.filename())) << "код отказа: " << abc::message(storage.error());
 	// Выполняем проверку признака открытого хранилища
@@ -548,7 +568,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 	// Выполняем проверку признака закрытого хранилища
 	ASSERT_FALSE(storage.opened());
 	// Хранилище проверки записанного
-	abc::storage_t reopened(::logger());
+	abc::storage_t reopened(::framework(), ::logger());
 	// Выполняем открытие записанного файла контейнера
 	ASSERT_TRUE(reopened.open(file.filename())) << "код отказа: " << abc::message(reopened.error());
 	// Выполняем проверку полной длины открытого контейнера
@@ -571,7 +591,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 	 * Выполняем проверку того, что заведение усекает прежний файл: длина
 	 * заведённого наново хранилища обязана обнулиться
 	 */
-	abc::storage_t truncated(::logger());
+	abc::storage_t truncated(::framework(), ::logger());
 	// Выполняем заведение файла контейнера поверх записанного
 	ASSERT_TRUE(truncated.create(file.filename())) << "код отказа: " << abc::message(truncated.error());
 	// Выполняем проверку того, что прежнее содержимое файла усечено
@@ -581,7 +601,7 @@ TEST(CodecAbcStorage, CreateAndWrite){
 	// Выполняем закрытие файла контейнера
 	truncated.close();
 	// Хранилище проверки усечения
-	abc::storage_t empty(::logger());
+	abc::storage_t empty(::framework(), ::logger());
 	// Выполняем открытие усечённого файла контейнера
 	ASSERT_TRUE(empty.open(file.filename())) << "код отказа: " << abc::message(empty.error());
 	// Выполняем проверку того, что хвост прежнего содержимого не уцелел
@@ -601,7 +621,7 @@ TEST(CodecAbcStorage, ClosedWorks){
 	// Образец записываемых октетов
 	const vector <uint8_t> sample(64, 0x5A);
 	// Хранилище контейнера в файле
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Выполняем заведение файла контейнера
 	ASSERT_TRUE(storage.create(file.filename())) << "код отказа: " << abc::message(storage.error());
 	// Выполняем получение работы записи октетов контейнера
@@ -649,7 +669,7 @@ TEST(CodecAbcStorage, BoundedWorks){
 	// Образец записываемых октетов
 	const vector <uint8_t> sample(64, 0x5A);
 	// Хранилище контейнера в файле
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Выполняем заведение файла контейнера
 	ASSERT_TRUE(storage.create(file.filename())) << "код отказа: " << abc::message(storage.error());
 	// Выполняем получение работы записи октетов контейнера
@@ -725,7 +745,7 @@ TEST(CodecAbcStorage, CompactToFile){
 	// Выполняем сборку контейнера с четырьмя записями
 	const vector <uint8_t> container = build({"первая", "вторая", "третья", "четвёртая"});
 	// Хранилище правимого контейнера
-	abc::storage_t source(::logger());
+	abc::storage_t source(::framework(), ::logger());
 	// Выполняем запись собранного контейнера в файл
 	ASSERT_TRUE(source.store(origin.filename(), container.data(), container.size()))
 		<< "код отказа: " << abc::message(source.error());
@@ -742,7 +762,7 @@ TEST(CodecAbcStorage, CompactToFile){
 	// Выполняем проверку того, что мусор правкой накопился
 	ASSERT_GT(editor.garbage(), 0ull);
 	// Хранилище убранного контейнера
-	abc::storage_t cleaned(::logger());
+	abc::storage_t cleaned(::framework(), ::logger());
 	// Выполняем заведение файла убранного контейнера
 	ASSERT_TRUE(cleaned.create(target.filename())) << "код отказа: " << abc::message(cleaned.error());
 	// Полная длина убранного контейнера
@@ -761,7 +781,7 @@ TEST(CodecAbcStorage, CompactToFile){
 	// Выполняем закрытие файла убранного контейнера
 	cleaned.close();
 	// Хранилище проверки убранного контейнера
-	abc::storage_t reopened(::logger());
+	abc::storage_t reopened(::framework(), ::logger());
 	// Выполняем открытие убранного файла контейнера
 	ASSERT_TRUE(reopened.open(target.filename())) << "код отказа: " << abc::message(reopened.error());
 	// Выполняем проверку полной длины убранного контейнера
@@ -810,7 +830,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	 */
 	{
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(::logger());
+		abc::storage_t storage(::framework(), ::logger());
 		// Снимальщик контейнера с носителя
 		abc::loader_t loader(::logger());
 		// Файл хранилища заведён быть не должен
@@ -827,7 +847,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	 */
 	{
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(::logger());
+		abc::storage_t storage(::framework(), ::logger());
 		// Заведение файла по несуществующему пути обязано быть отвечено отказом
 		ASSERT_FALSE(storage.create("/несуществующий-каталог-проверки/контейнер.abc"));
 		// Отказ обязан быть объявлен невозможностью записи
@@ -840,7 +860,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	 */
 	{
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(::logger());
+		abc::storage_t storage(::framework(), ::logger());
 		// Открытие несуществующего файла обязано быть отвечено отказом
 		ASSERT_FALSE(storage.open("/несуществующий-каталог-проверки/контейнер.abc"));
 		// Отказ обязан быть объявлен невозможностью чтения
@@ -855,7 +875,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	 */
 	{
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(::logger());
+		abc::storage_t storage(::framework(), ::logger());
 		// Укладка без буфера обязана быть отвечена отказом
 		ASSERT_FALSE(storage.store(temporary(unique("abc-проверка-без-буфера.abc")), nullptr, 16));
 		// Отказ обязан быть объявлен внутренним
@@ -868,7 +888,7 @@ TEST(CodecAbcStorage, RefusalsWithoutMedium){
 	 */
 	{
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(::logger());
+		abc::storage_t storage(::framework(), ::logger());
 		// Буфер укладываемых октетов
 		const vector <uint8_t> record(16, 0xAB);
 		// Укладка по несуществующему пути обязана быть отвечена отказом
@@ -900,7 +920,7 @@ TEST(CodecAbcStorage, SyncModeContract){
 	// Временный файл проверки
 	const Temporary file("sync-mode");
 	// Хранилище контейнера в файле
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Умолчанием обязан быть полный сброс
 	ASSERT_EQ(storage.sync(), abc::storage_t::sync_t::FULL) << "умолчание не есть полный сброс";
 	// Выполняем сборку контейнера с одной записью
@@ -968,7 +988,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 	// Выполняем проверку того, что запись собрана
 	ASSERT_FALSE(record.empty());
 	// Объект носителя
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Выполняем запись собранных октетов в файл
 	ASSERT_TRUE(storage.store(temporary.filename(), record.data(), record.size()));
 	// Вычитываемые октеты файла
@@ -982,7 +1002,7 @@ TEST(CodecAbcStorage, StoreAndFetchAreTwins){
 	 */
 	{
 		// Объект документа
-		abc::document_t document(::logger());
+		abc::document_t document(::framework(), ::logger());
 		// Выполняем разбор вычитанных октетов
 		ASSERT_TRUE(document.parse(fetched.data(), fetched.size())) << abc::message(document.error());
 		// Выполняем проверку достижимости положенного по пути
@@ -1192,7 +1212,7 @@ TEST(CodecAbcStorage, RefusedStoringLeavesThePreviousContainerWhole) {
 		stream << previous;
 	}
 	// Объект хранилища контейнера
-	abc::storage_t storage(::logger());
+	abc::storage_t storage(::framework(), ::logger());
 	// Собираемые октеты нового контейнера
 	const string body = "НОВЫЙ КОНТЕЙНЕР";
 	/**
@@ -1392,7 +1412,7 @@ TEST(CodecAbcStorage, EveryWorkBeforeOpeningNamesItsRefusal){
 	// Выполняем отключение вывода журнала на приставку
 	log->mode({});
 	// Хранилище контейнера на носителе
-	abc::storage_t storage(log.get());
+	abc::storage_t storage(fmk.get(), log.get());
 	// Выполняем проверку того, что файл хранилища не заведён
 	ASSERT_FALSE(storage.opened());
 	// Правщик контейнера
@@ -1488,7 +1508,7 @@ TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
 	}
 	{
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем укладку собранного контейнера на носитель
 		ASSERT_TRUE(storage.store(filename, data.data(), data.size()))
 			<< "код отказа: " << abc::message(storage.error());
@@ -1511,7 +1531,7 @@ TEST(CodecAbcStorage, TruncationUnderfootIsRefused){
 		<< "усечь файл не удалось";
 	{
 		// Хранилище усечённого контейнера
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем открытие усечённого файла
 		ASSERT_TRUE(storage.open(filename)) << "код отказа: " << abc::message(storage.error());
 		// Выборщик записей усечённого контейнера
@@ -1565,7 +1585,7 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
 	const int writer = ::open(path.c_str(), O_WRONLY | O_NONBLOCK);
 	ASSERT_GE(writer, 0) << "открыть писателя канала не удалось";
 	{
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		ASSERT_FALSE(storage.open(path)) << "хранилище открыло неперематываемый поток";
 		ASSERT_EQ(storage.error(), abc::error_t::UNREADABLE_SOURCE) << abc::message(storage.error());
 		ASSERT_FALSE(storage.opened());
@@ -1584,7 +1604,7 @@ TEST(CodecAbcStorage, UnseekableStreamIsRefused){
 			ASSERT_TRUE(assembler.append(item.data(), item.size(), abc::payload_t::TEXT));
 			ASSERT_TRUE(assembler.complete(data));
 		}
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		ASSERT_TRUE(storage.store(filename, data.data(), data.size()))
 			<< "код отказа: " << abc::message(storage.error());
 		storage.close();
@@ -1631,7 +1651,7 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 	}
 	{
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем укладку собранного контейнера на носитель
 		ASSERT_TRUE(storage.store(filename, data.data(), data.size()))
 			<< "код отказа: " << abc::message(storage.error());
@@ -1653,7 +1673,7 @@ TEST(CodecAbcStorage, EditorBindFailureCarriesItsCause){
 		<< "усечь файл не удалось";
 	{
 		// Хранилище усечённого контейнера
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем открытие усечённого файла
 		ASSERT_TRUE(storage.open(filename)) << "код отказа: " << abc::message(storage.error());
 		// Правщик усечённого контейнера
@@ -1802,7 +1822,7 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 		// Хранилище контейнера при пределе размера файла в 64 октета
 		const FileSizeLimit limit(64);
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем проверку того, что укладка контейнера отвечена отказом
 		ASSERT_FALSE(storage.store(filename, data.data(), data.size()))
 			<< "контейнер уложен за предел размера файла";
@@ -1819,7 +1839,7 @@ TEST(CodecAbcStorage, WriteBeyondTheFileSizeLimitIsRefused){
 		 * Выполняем укладку того же контейнера БЕЗ предела: без этого проверка прошла бы
 		 * и при хранилище, отвергающем всякую укладку вовсе
 		 */
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем проверку того, что тот же контейнер без предела укладывается
 		ASSERT_TRUE(storage.store(filename, data.data(), data.size()))
 			<< "код отказа: " << abc::message(storage.error());
@@ -1894,7 +1914,7 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 		// Хранилище контейнера при пределе размера файла в 64 октета
 		const FileSizeLimit limit(64);
 		// Хранилище контейнера на носителе
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем проверку того, что укладка контейнера отвечена отказом
 		ASSERT_FALSE(storage.store(filename, data.data(), data.size()))
 			<< "контейнер уложен за предел размера файла";
@@ -1908,7 +1928,7 @@ TEST(CodecAbcStorage, FlushBeyondTheFileSizeLimitIsRefused){
 		 * Выполняем укладку того же контейнера БЕЗ предела: без этого проверка прошла бы
 		 * и при хранилище, отвергающем всякую укладку вовсе
 		 */
-		abc::storage_t storage(log.get());
+		abc::storage_t storage(fmk.get(), log.get());
 		// Выполняем проверку того, что тот же контейнер без предела укладывается
 		ASSERT_TRUE(storage.store(filename, data.data(), data.size()))
 			<< "код отказа: " << abc::message(storage.error());

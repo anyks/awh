@@ -76,6 +76,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -554,13 +564,13 @@ TEST(CodecJsonEncoding, TruncatedAndAscii) {
 	// Добавляем начало знака кириллицы без хвоста его
 	text.push_back('\xD0');
 	// Дерево документа JSON
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем проверку того, что текст с оборванным знаком отвергается
 	ASSERT_FALSE(document.parse(text));
 	// Выполняем проверку того, что отказ вынесен по кодировке
 	ASSERT_EQ(document.error(), json::error_t::INVALID_ENCODING);
 	// Дерево документа, разбираемого в US-ASCII
-	json::document_t ascii(::logger());
+	json::document_t ascii(::framework(), ::logger());
 	// Получаем настройки дерева документа
 	json::document_t::settings_t settings = ascii.settings();
 	// Устанавливаем кодировку исходного текста US-ASCII
@@ -570,7 +580,7 @@ TEST(CodecJsonEncoding, TruncatedAndAscii) {
 	// Выполняем проверку того, что текст латиницей разбирается
 	ASSERT_TRUE(ascii.parse("{\"a\":\"b\"}"));
 	// Дерево документа с текстом, за US-ASCII выходящим
-	json::document_t beyond(::logger());
+	json::document_t beyond(::framework(), ::logger());
 	// Выполняем установку настроек дерева документа
 	beyond.settings(settings);
 	// Выполняем проверку того, что текст с кириллицей отвергается
@@ -1203,11 +1213,11 @@ TEST(CodecJsonEncoding, DirectPathSelection){
 		// Код ошибки разбора
 		json::error_t error = json::error_t::NONE;
 		// Дерево документа, разбирающее текст в кодировке UTF-8
-		json::document_t narrow(::logger());
+		json::document_t narrow(::framework(), ::logger());
 		// Выполняем разбор документа в кодировке UTF-8
 		ASSERT_TRUE(narrow.parse(sample)) << json::message(narrow.error());
 		// Дерево документа, разбирающее текст в кодировке UTF-16
-		json::document_t broad(::logger());
+		json::document_t broad(::framework(), ::logger());
 		// Выполняем разбор документа в кодировке UTF-16
 		ASSERT_TRUE(broad.parse(wide)) << json::message(broad.error());
 		// Выполняем сличение выдачи обоих способов чтения

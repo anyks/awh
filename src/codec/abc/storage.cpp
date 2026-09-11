@@ -54,15 +54,6 @@
 #endif
 
 /**
- * Подключаем заголовочный файл переносимой подмены файла
- *
- * @note Средство это ОБЩЕЕ для кодеков: у MS Windows `rename` существующий файл не
- *       заменяет, а отвечает отказом, и всякий кодек, кладущий файл через временный,
- *       упирается в одну и ту же беду
- */
-#include <codec/replace.hpp>
-
-/**
  * Используем стандартное пространство имён
  */
 using namespace std;
@@ -152,8 +143,9 @@ namespace {
  * @param log объект для работы с логами
  *
  */
-awh::codec::abc::Storage::Storage(const log_t * log) noexcept :
- _sync(sync_t::FULL), _stream(nullptr), _length(0), _error(error_t::NONE), _log(log) {}
+awh::codec::abc::Storage::Storage(const fmk_t * fmk, const log_t * log) noexcept :
+ _fs(fmk, log), _sync(sync_t::FULL), _stream(nullptr),
+ _length(0), _error(error_t::NONE), _log(log) {}
 /**
  * @brief Деструктор
  *
@@ -653,7 +645,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 		// Выполняем закрытие временного файла контейнера
 		this->close();
 		// Выполняем снос временного файла контейнера
-		(void) ::remove(temporary.c_str());
+		(void) this->_fs.unlink(temporary);
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -666,7 +658,7 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 		// Выполняем закрытие временного файла контейнера
 		this->close();
 		// Выполняем снос временного файла контейнера
-		(void) ::remove(temporary.c_str());
+		(void) this->_fs.unlink(temporary);
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -681,9 +673,10 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	 *          MSYS2 MinGW64 порознь для цели закрытой и открытой: отказ в обоих случаях,
 	 *          то есть дело не в чужом описателе, а в самой замене. Оттого там зовётся
 	 *          `MoveFileEx` с доводом `MOVEFILE_REPLACE_EXISTING`, какой замену исполняет
-	 *          и неделимость сохраняет. Разводит эти способы ОБЩЕЕ средство кодеков
-	 *          `awh::codec::replace` - своего посредника здесь заводить нельзя, беда у
-	 *          всех кодеков одна
+	 *          и неделимость сохраняет. Разводит эти способы `fs_t::replaceAddress` -
+	 *          средство самого AWH, а не кодеков: беда эта не кодековая вовсе, и посредника
+	 *          здесь заводить нельзя. Прежде разводил их общий `awh::codec::replace`,
+	 *          и работа перенесена в `sys/fs` решением владельца 09.09.2026
 	 *
 	 * @note Первая укладка проходила и с `rename`: цели ещё нет, заменять нечего. Отказ
 	 *       приходил лишь на ВТОРУЮ укладку по тому же пути, и оттого выглядел он
@@ -692,11 +685,11 @@ bool awh::codec::abc::Storage::store(const string & filename, const void * buffe
 	/**
 	 * Если перенести готовое на место назначенного файла не удалось
 	 */
-	if(!codec::replace(temporary, filename)){
+	if(!this->_fs.replaceAddress(temporary, filename)){
 		// Выполняем установку кода отказа записи октетов контейнера
 		this->fail(error_t::UNWRITABLE_SINK);
 		// Выполняем снос временного файла контейнера
-		(void) ::remove(temporary.c_str());
+		(void) this->_fs.unlink(temporary);
 		// Выводим признак неудачной записи
 		return false;
 	}

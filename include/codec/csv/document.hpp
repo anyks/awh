@@ -48,6 +48,7 @@
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
+#include "../../sys/fs.hpp"
 
 /**
  * \~russian
@@ -162,6 +163,38 @@ namespace awh {
 					 * \~
 					 */
 					const log_t * _log;
+				private:
+					/**
+					 * \~russian
+					 * Объект фреймворка
+					 *
+					 * @note Держится ради работы с файловой системой: приведение пути к широкому
+					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
+					 *       узким. Кириллический путь при этом ложится на диск искажённым, а
+					 *       узкий же розыск находит его обратно тем же неверным приведением -
+					 *       оттого отказа не бывает никогда, и порок тише отказа
+					 *
+					 * \~english
+					 * Framework object
+					 *
+					 * \~
+					 */
+					const fmk_t * _fmk;
+					/**
+					 * \~russian
+					 * Объект для работы с файловой системой
+					 *
+					 * @note Изменяемость его намеренна: сохранение таблицы объявлено НЕИЗМЕНЯЮЩИМ
+					 *       - оно таблицы не трогает, - а подмена целевого файла временным
+					 *       константным ходом у файловой системы не является. Состоянием
+					 *       таблицы объект этот не служит, и неизменность её он не нарушает
+					 *
+					 * \~english
+					 * Object for working with the file system
+					 *
+					 * \~
+					 */
+					mutable fs_t _fs;
 				public:
 					/**
 					 * \~russian
@@ -1119,15 +1152,17 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param fmk объект фреймворка
 					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
+					 * @param fmk framework object
 					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Document(const log_t * log) noexcept;
+					Document(const fmk_t * fmk, const log_t * log) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1148,6 +1183,7 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
+					 * @param fmk      объект фреймворка
 					 * @param log      объект для работы с логами
 					 * @param settings настройки контейнера
 					 *
@@ -1158,7 +1194,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const log_t * log, const settings_t & settings) noexcept;
+					Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

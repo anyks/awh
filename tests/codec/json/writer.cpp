@@ -186,6 +186,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -473,7 +483,7 @@ TEST(CodecJsonWriter, Reals) {
 		// Выполняем проверку соответствия записи числа стандарту
 		ASSERT_TRUE(json::numeric(writer.text())) << "запись «" << writer.text() << "»";
 		// Объект документа для обратного чтения записанного числа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем разбор записанного числа
 		ASSERT_TRUE(doc.parse(writer.text()));
 		// Прочитанное обратно значение записанного числа
@@ -651,13 +661,13 @@ TEST(CodecJsonWriter, RoundTrip) {
 	// Получаем собранный текст документа
 	const string compact = writer.text();
 	// Объект документа для разбора собранного текста
-	json::document_t doc(::logger());
+	json::document_t doc(::framework(), ::logger());
 	// Выполняем разбор собранного текста
 	ASSERT_TRUE(doc.parse(compact)) << json::message(doc.error());
 	// Выполняем проверку совпадения перезаписанного текста с собранным
 	ASSERT_EQ(doc.dump(), compact);
 	// Объект документа для разбора текста с отступами
-	json::document_t pretty(::logger());
+	json::document_t pretty(::framework(), ::logger());
 	// Выполняем разбор текста, оформленного отступами
 	ASSERT_TRUE(pretty.parse(doc.dump(json::format_t::PRETTY))) << json::message(pretty.error());
 	// Выполняем проверку совпадения документов при разном оформлении текста
@@ -772,7 +782,7 @@ TEST(CodecJsonWriter, Malformed) {
 			// Выполняем закрытие объекта
 			ASSERT_TRUE(writer.close());
 			// Документ, разбирающий выданный текст
-			json::document_t document(::logger());
+			json::document_t document(::framework(), ::logger());
 			/**
 			 * Выполняем проверку того, что выданный текст разбирается нашим же разбором
 			 *
@@ -823,7 +833,7 @@ TEST(CodecJsonWriter, MalformedRefuse) {
 	// Выполняем закрытие объекта
 	ASSERT_TRUE(writer.close());
 	// Документ, разбирающий выданный текст
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем проверку того, что отказ текста не испортил
 	ASSERT_TRUE(document.parse(writer.text())) << json::message(document.error());
 	// Выполняем проверку собранного текста документа
@@ -862,7 +872,7 @@ TEST(CodecJsonWriter, MalformedSubpart) {
 	// Выполняем запись негодной последовательности, за какой стоит годный знак
 	ASSERT_TRUE(writer.value(string("\xC3\x28", 2)));
 	// Документ, разбирающий выданный текст
-	json::document_t document(::logger());
+	json::document_t document(::framework(), ::logger());
 	// Выполняем разбор выданного текста
 	ASSERT_TRUE(document.parse(writer.text())) << json::message(document.error());
 	// Извлекаемое строковое значение
@@ -1044,7 +1054,7 @@ TEST(CodecJsonWriter, LimitsAndRawRefusals) {
 			// Выполняем закрытие массива
 			ASSERT_TRUE(subnormal.close());
 			// Выполняем проверку того, что записанное разбору поддаётся
-			json::document_t document(::logger());
+			json::document_t document(::framework(), ::logger());
 			// Выполняем разбор записанного текста
 			ASSERT_TRUE(document.parse(subnormal.text()));
 		}
@@ -1152,7 +1162,7 @@ TEST(CodecJsonWriter, StreamAndMalformed) {
 		// Выполняем закрытие массива
 		ASSERT_TRUE(writer.close());
 		// Выполняем проверку того, что записанное разбору поддаётся
-		json::document_t document(::logger());
+		json::document_t document(::framework(), ::logger());
 		// Выполняем разбор записанного текста
 		ASSERT_TRUE(document.parse(writer.text()));
 	}
@@ -1474,7 +1484,7 @@ TEST(CodecJsonWriter, DuplicateKeyPassesWritingButNotParsing){
 	 */
 	{
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста с повторным именем
 		ASSERT_FALSE(doc.parse(text));
 		// Выполняем проверку кода отказа разбора
@@ -1499,7 +1509,7 @@ TEST(CodecJsonWriter, DuplicateKeyPassesWritingButNotParsing){
 			// Устанавливаем правило обращения с повтором имени поля
 			settings.duplicates = rule.first;
 			// Объект документа
-			json::document_t doc(::logger());
+			json::document_t doc(::framework(), ::logger());
 			// Выполняем установку настроек документа
 			doc.settings(settings);
 			// Выполняем проверку успеха разбора текста с повторным именем
@@ -1603,7 +1613,7 @@ TEST(CodecJsonWriter, DoubleSurvivesRoundTripBitForBit){
 			// Выводим признак неудачного оборота
 			return false;
 		// Объект владеющего значения
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Выполняем установку журнала значения
 		value.setLogger(::logger());
 		/**
@@ -1855,7 +1865,7 @@ TEST(CodecJsonWriter, ByteOrderMarkIsNeverEmitted) {
 	 */
 	{
 		// Значение документа для записи в файл
-		json::value_t value;
+		json::value_t value(::framework(), ::logger());
 		// Выполняем разбор текста значения
 		ASSERT_TRUE(value.parse("{\"а\":1}"));
 		// Адрес временного файла документа

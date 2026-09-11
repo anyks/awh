@@ -138,6 +138,18 @@ namespace {
 		return result;
 	}
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	static const awh::fmk_t * framework() noexcept {
+		// Объект фреймворка проверок
+		static awh::fmk_t fmk;
+		// Выводим объект фреймворка проверок
+		return &fmk;
+	}
+	/**
 	 * @brief Функция получения объекта работы с логами
 	 *
 	 * @return объект работы с логами
@@ -145,7 +157,7 @@ namespace {
 	 */
 	static const awh::log_t * logger() noexcept {
 		// Объект работы с логами
-		static awh::log_t result(nullptr);
+		static awh::log_t result(::framework());
 		// Выводим объект работы с логами
 		return &result;
 	}
@@ -158,7 +170,7 @@ namespace {
 	 */
 	static awh::codec::csv::document_t make(const std::string & text) noexcept {
 		// Объект таблицы
-		awh::codec::csv::document_t result(::logger());
+		awh::codec::csv::document_t result(::framework(), ::logger());
 		// Получаем настройки таблицы
 		auto settings = result.settings();
 		// Выполняем указание на присутствие заголовка в первой записи
@@ -264,9 +276,9 @@ TEST(CodecCsvValue, TakenValueSurvivesTheStorageMove) {
  */
 TEST(CodecCsvValue, EscapedPathSegmentsFollowThePointerStandard) {
 	// Владеющее значение таблицы
-	csv::value_t value(::logger());
+	csv::value_t value(::framework(), ::logger());
 	// Объект таблицы для получения настроек разбора
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Получаем настройки таблицы
 	csv::document_t::settings_t settings = document.settings();
 	// Выполняем указание на присутствие заголовка в первой записи
@@ -418,7 +430,7 @@ TEST(CodecCsvValue, GraftAndRoundTrip) {
 	// Владеющее значение, снятое с таблицы
 	const csv::value_t value(document);
 	// Объект таблицы для прививки значения
-	csv::document_t target(::logger());
+	csv::document_t target(::framework(), ::logger());
 	// Выполняем проверку успешности прививки значения к таблице
 	ASSERT_TRUE(value.graft(target));
 	// Выполняем проверку совпадения текста привитой таблицы с исходным
@@ -443,9 +455,9 @@ TEST(CodecCsvValue, GraftAndRoundTrip) {
  */
 TEST(CodecCsvValue, Parse) {
 	// Владеющее значение
-	csv::value_t value;
+	csv::value_t value(::framework(), ::logger());
 	// Настройки разбора текста таблицы
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Получаем настройки таблицы
 	auto settings = document.settings();
 	// Выполняем указание на присутствие заголовка в первой записи
@@ -570,9 +582,9 @@ TEST(CodecCsvValue, Load) {
 		file << "имя,возраст\r\nАня,30\r\n";
 	}
 	// Владеющее значение таблицы
-	csv::value_t value;
+	csv::value_t value(::framework(), ::logger());
 	// Объект таблицы для получения настроек разбора
-	csv::document_t document(::logger());
+	csv::document_t document(::framework(), ::logger());
 	// Получаем настройки таблицы
 	auto settings = document.settings();
 	// Выполняем указание на присутствие заголовка в первой записи
@@ -621,7 +633,7 @@ TEST(CodecCsvValue, SaveRefusalIsAnnouncedInTheLog) {
 		messages.push_back(string(text));
 	});
 	// Владеющее значение таблицы с назначенным журналом
-	csv::value_t value(&log);
+	csv::value_t value(::framework(), &log);
 	// Выполняем разбор таблицы об одной записи
 	ASSERT_TRUE(value.parse("имя\r\nАня\r\n"));
 	/**
@@ -710,7 +722,7 @@ TEST(CodecCsvValue, LoadWithoutSettingsTakesTheDocumentDefaults) {
 	 */
 	{
 		// Владеющее значение таблицы
-		csv::value_t value;
+		csv::value_t value(::framework(), ::logger());
 		// Выполняем проверку успешности чтения таблицы из файла
 		ASSERT_TRUE(value.load(filename));
 		// Выполняем проверку того, что первая запись досталась данными, а не заголовком
@@ -725,9 +737,9 @@ TEST(CodecCsvValue, LoadWithoutSettingsTakesTheDocumentDefaults) {
 	 */
 	{
 		// Владеющее значение таблицы
-		csv::value_t value;
+		csv::value_t value(::framework(), ::logger());
 		// Объект таблицы для получения настроек разбора
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Получаем настройки таблицы
 		auto settings = document.settings();
 		// Выполняем указание на присутствие заголовка в первой записи
@@ -744,7 +756,7 @@ TEST(CodecCsvValue, LoadWithoutSettingsTakesTheDocumentDefaults) {
 	 */
 	{
 		// Владеющее значение таблицы
-		csv::value_t value;
+		csv::value_t value(::framework(), ::logger());
 		// Выполняем проверку отказа чтения отсутствующего файла
 		ASSERT_FALSE(value.load("./нет-такого-файла-умолчаниями.csv"));
 		// Выполняем проверку того, что значение осталось непригодным
@@ -916,7 +928,7 @@ TEST(CodecCsvValue, SavingKeepsThePreviousFileOnWriteFailure) {
  */
 TEST(CodecCsvValue, SavingAndDumpingNameTheirCause) {
 	// Владеющее значение таблицы
-	csv::value_t value(::logger());
+	csv::value_t value(::framework(), ::logger());
 	// Выполняем разбор текста таблицы
 	ASSERT_TRUE(value.parse("имя,возраст\r\nАня,7\r\n"));
 	/**
@@ -1619,7 +1631,7 @@ TEST(CodecCsvValue, RefusalsOfExtractionAndComparison) {
 	 */
 	{
 		// Настройки строгого разбора текста таблицы
-		csv::value_t value(::logger());
+		csv::value_t value(::framework(), ::logger());
 		// Выполняем проверку отказа разбора текста с незакрытою кавычкой
 		ASSERT_FALSE(value.parse(string("а,\"б")));
 		// Выполняем проверку того, что отказ назван кодом
@@ -1660,7 +1672,7 @@ TEST(CodecCsvValue, FieldSizeNamedLookupAndRealNumberWriting) {
 	 */
 	{
 		// Таблица документа
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем добавление записи заголовка
 		ASSERT_TRUE(document.append(vector <string> {string("имя"), string("возраст")}));
 		// Выполняем добавление записи содержимого
@@ -1767,7 +1779,7 @@ TEST(CodecCsvValue, LookupOfAFieldByTheColumnName) {
 		// Назначаем чтение первой записи заголовком
 		settings.reader.header = csv::header_t::PRESENT;
 		// Таблица документа
-		csv::document_t document(::logger());
+		csv::document_t document(::framework(), ::logger());
 		// Выполняем установку настроек таблицы
 		document.settings(settings);
 		// Выполняем разбор текста таблицы с заголовком

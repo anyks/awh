@@ -80,6 +80,16 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Функция получения объекта фреймворка проверок
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -125,7 +135,7 @@ TEST(CodecXmlWriter, Soap) {
 	// Выполняем проверку завершённости собранного текста
 	ASSERT_TRUE(writer.complete()) << xml::message(writer.error());
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор собранного текста разметки
 	ASSERT_TRUE(document.parse(writer.text())) << xml::message(document.error());
 	// Выполняем проверку имени корневого узла
@@ -326,7 +336,7 @@ TEST(CodecXmlWriter, Roundtrip) {
 		"<item s:id=\"2\"><![CDATA[<дословно>]]></item>"
 		"</root>";
 	// Объект дерева разметки исходного текста
-	xml::document_t first(::logger());
+	xml::document_t first(::framework(), ::logger());
 	// Выполняем разбор исходного текста разметки
 	ASSERT_TRUE(first.parse(source)) << xml::message(first.error());
 	// Объект записи текста разметки
@@ -338,7 +348,7 @@ TEST(CodecXmlWriter, Roundtrip) {
 	// Выполняем проверку завершённости собранного текста
 	ASSERT_TRUE(writer.complete());
 	// Объект дерева разметки записанного текста
-	xml::document_t second(::logger());
+	xml::document_t second(::framework(), ::logger());
 	// Выполняем разбор записанного текста разметки
 	ASSERT_TRUE(second.parse(writer.text())) << xml::message(second.error());
 	// Получаем корневой узел исходного дерева
@@ -377,7 +387,7 @@ TEST(CodecXmlWriter, ProcessingTargetColon) {
 	// Выполняем выключение разрешения префиксов пространств имён
 	settings.namespaces = false;
 	// Объект дерева разметки исходного текста
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор исходного текста разметки
 	ASSERT_TRUE(document.parse(source, settings)) << xml::message(document.error());
 	// Объект записи текста разметки
@@ -415,7 +425,7 @@ TEST(CodecXmlWriter, NonAscii) {
 	// Выполняем проверку экранирования знаков вне US-ASCII
 	ASSERT_EQ(writer.text(), "<a>&#x434;&#x430;</a>");
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор записанного текста разметки
 	ASSERT_TRUE(document.parse(writer.text())) << xml::message(document.error());
 	// Выполняем проверку содержимого разобранного узла
@@ -453,7 +463,7 @@ TEST(CodecXmlWriter, NonAsciiAttribute) {
 	// Выполняем проверку экранирования знаков вне US-ASCII
 	ASSERT_EQ(writer.text(), "<a k=\"&#x434;&#x430;&#x20AC;\"/>");
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор записанного текста разметки
 	ASSERT_TRUE(document.parse(writer.text())) << xml::message(document.error());
 	// Выполняем проверку значения разобранного атрибута
@@ -477,7 +487,7 @@ TEST(CodecXmlWriter, NamespaceUndeclaration) {
 	 */
 	const auto trip = [](const string & text) noexcept -> string {
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Если разбор текста разметки выполнить не удалось, выводим пустой текст
 		if(!document.parse(text)) return string();
 		// Объект записи текста разметки
@@ -494,7 +504,7 @@ TEST(CodecXmlWriter, NamespaceUndeclaration) {
 	// Выполняем проверку записи отмены под сменённым пространством имён по умолчанию
 	ASSERT_EQ(trip("<a xmlns=\"urn:x\"><b xmlns=\"urn:y\"><c xmlns=\"\"/></b></a>"), "<a xmlns=\"urn:x\"><b xmlns=\"urn:y\"><c xmlns=\"\"/></b></a>");
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор записанного обратно текста разметки
 	ASSERT_TRUE(document.parse(trip("<a xmlns=\"urn:x\"><b xmlns=\"\"/></a>")));
 	// Выполняем проверку того, что вложенный узел пространства имён не получил
@@ -651,7 +661,7 @@ TEST(CodecXmlWriter, Prefixes) {
 		// Выполняем завершение записи текста разметки
 		ASSERT_TRUE(writer.complete());
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор записанного текста разметки
 		ASSERT_TRUE(document.parse(writer.text())) << writer.text() << " -> " << xml::message(document.error());
 		// Выполняем проверку пространства имён записанного атрибута
@@ -682,7 +692,7 @@ TEST(CodecXmlWriter, Prefixes) {
 		// Выполняем завершение записи текста разметки
 		ASSERT_TRUE(writer.complete());
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем разбор записанного текста разметки
 		ASSERT_TRUE(document.parse(writer.text())) << writer.text() << " -> " << xml::message(document.error());
 		// Выполняем поиск записанного узла
@@ -816,7 +826,7 @@ TEST(CodecXmlWriter, ReservedNamespaces) {
 	// Выполняем закрытие корневого узла разметки
 	ASSERT_TRUE(writer.close());
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем проверку того, что записанное собственное чтение принимает
 	ASSERT_TRUE(document.parse(writer.text())) << writer.text();
 }
@@ -991,7 +1001,7 @@ TEST(CodecXmlWriter, Refusals) {
 	 */
 	{
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку того, что разбор текста разметки удался
 		ASSERT_TRUE(document.parse("<r xml:space=\"preserve\"><a> <b/> </a></r>"));
 		// Получаем корневой узел дерева разметки
@@ -1035,7 +1045,7 @@ TEST(CodecXmlWriter, Refusals) {
 		// Выполняем поднятие предела глубины вложенности узлов
 		reading.maxDepth = (depth + 1);
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Выполняем проверку того, что разбор глубокого текста разметки удался
 		ASSERT_TRUE(document.parse(text, reading));
 		// Объект записи текста разметки
@@ -1073,7 +1083,7 @@ TEST(CodecXmlWriter, PrettyStability) {
 	 */
 	const auto trip = [](const string & text, const xml::separator_t separator, const bool namespaces = true) noexcept -> string {
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document(::framework(), ::logger());
 		// Настройки разбора текста разметки
 		xml::reader_t::settings_t reading;
 		// Выполняем установку разрешения префиксов по договору о пространствах имён
@@ -1208,7 +1218,7 @@ TEST(CodecXmlWriter, NamespaceUndeclarationSynthesized) {
 	// Выполняем проверку записанного текста разметки
 	ASSERT_EQ(string(writer.text()), "<a xmlns=\"urn:x\"><b xmlns=\"\">з</b></a>");
 	// Объект дерева разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор записанного обратно текста разметки
 	ASSERT_TRUE(document.parse(writer.text()));
 	// Выполняем проверку того, что вложенный узел пространства имён не получил
@@ -1869,7 +1879,7 @@ TEST(CodecXmlWriter, TakeClosedByRefusal){
  */
 TEST(CodecXmlWriter, StaleNodeIsNotAnInternalDefect){
 	// Дерево разметки
-	xml::document_t document(::logger());
+	xml::document_t document(::framework(), ::logger());
 	// Выполняем разбор текста разметки
 	ASSERT_TRUE(document.parse("<r><a>один</a></r>"));
 	// Снимаем корневой узел разметки

@@ -82,6 +82,19 @@ namespace {
 		}
 	};
 	/**
+	 * @brief Способ выдачи объекта фреймворка проверок
+	 *
+	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
+	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
+	 *
+	 * @return объект фреймворка проверок
+	 *
+	 */
+	const awh::fmk_t * framework() noexcept {
+		// Выводим объект фреймворка проверок
+		return &Silent::framework();
+	}
+	/**
 	 * @brief Функция получения объекта журнала проверок
 	 *
 	 * @return объект журнала проверок
@@ -438,7 +451,7 @@ TEST(CodecIniWriter, ShortestNumbers) {
 	// Выполняем проверку собранного текста настроек
 	ASSERT_EQ(writer.text(), "a = 0.1\nb = 0.1\nc = 2\n");
 	// Дерево настроек обратного чтения
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем разбор записанного текста настроек
 	ASSERT_TRUE(document.parse(writer.text()));
 	// Прочитанное обратно значение
@@ -679,7 +692,7 @@ TEST(CodecIniWriter, PlainNumbers) {
 	// Выполняем проверку записанного текста настроек
 	ASSERT_EQ(writer.text(), "[s]\na = 1250\nb = 1e+20\nc = 1e+300\nd = 1e-07\n");
 	// Объект дерева настроек для проверки обратного чтения
-	ini::document_t document(::logger());
+	ini::document_t document(::framework(), ::logger());
 	// Выполняем разбор записанного текста настроек
 	ASSERT_TRUE(document.parse(writer.text()));
 	// Прочитанное обратно значение числа
@@ -730,7 +743,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	// Выполняем установку настроек разбора текста настроек
 	options.reader = reading;
 	// Объект дерева настроек
-	ini::document_t document(::logger(), options);
+	ini::document_t document(::framework(), ::logger(), options);
 	// Выполняем проверку того, что разбор записанного текста удался
 	ASSERT_TRUE(document.parse(writer.text()));
 	// Выполняем проверку сохранности раздела, ограждением уберёжённого
@@ -744,7 +757,7 @@ TEST(CodecIniWriter, CommentContinuation) {
 	 */
 	{
 		// Объект дерева настроек для повторного разбора перезаписи
-		ini::document_t repeat(::logger(), options);
+		ini::document_t repeat(::framework(), ::logger(), options);
 		// Выполняем проверку того, что повторный разбор перезаписи удался
 		ASSERT_TRUE(repeat.parse(document.text()));
 		// Выполняем проверку совпадения повторной перезаписи с первой
@@ -822,7 +835,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем добавление хвоста значения, годного в шестнадцатеричные знаки
 		value.append("beef");
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем установку значения свойства с управляющим знаком
 		ASSERT_TRUE(document.set("ключ", value, "раздел")) << code;
 		// Выполняем перезапись дерева настроек
@@ -830,7 +843,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << code << " " << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(::logger(), options);
+		ini::document_t back(::framework(), ::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << code << " " << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения после кругового хода
@@ -852,7 +865,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем добавление хвоста значения
 		value.append("после");
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем установку значения свойства со знаком забоя
 		ASSERT_TRUE(document.set("ключ", value, "раздел"));
 		// Выполняем перезапись дерева настроек
@@ -860,7 +873,7 @@ TEST(CodecIniWriter, ControlCharacters) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(::logger(), options);
+		ini::document_t back(::framework(), ::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения после кругового хода
@@ -943,7 +956,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 	 */
 	for(auto & value : values){
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем установку значения свойства
 		ASSERT_TRUE(document.set("ключ", value, "раздел")) << value;
 		// Выполняем перезапись дерева настроек
@@ -951,7 +964,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << value << " " << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(::logger(), options);
+		ini::document_t back(::framework(), ::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << value << " " << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения после кругового хода
@@ -971,7 +984,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 		// Выполняем запрет управляющих последовательностей
 		plain.reader.escapes = false;
 		// Объект дерева настроек
-		ini::document_t document(::logger(), plain);
+		ini::document_t document(::framework(), ::logger(), plain);
 		// Выполняем установку значения свойства с пробельной обвязкой
 		ASSERT_TRUE(document.set("ключ", " с пробелами ", "раздел"));
 		// Выполняем проверку отказа перезаписи дерева настроек
@@ -988,7 +1001,7 @@ TEST(CodecIniWriter, UnquotableValues) {
 	 */
 	{
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем установку значения свойства с пробелами внутри
 		ASSERT_TRUE(document.set("ключ", "два слова ; и знак", "раздел"));
 		// Выполняем перезапись дерева настроек
@@ -1027,7 +1040,7 @@ TEST(CodecIniWriter, IndentVersusContinuation) {
 	// Выполняем установку настроек разбора наречия configparser
 	options.reader = ini::reader_t::settings_t::python();
 	// Объект дерева настроек для обратного чтения записанного текста
-	ini::document_t back(::logger(), options);
+	ini::document_t back(::framework(), ::logger(), options);
 	// Выполняем проверку того, что обратное чтение записанного текста удалось
 	ASSERT_TRUE(back.parse(text)) << static_cast <uint32_t> (back.error());
 	// Выполняем проверку сохранности значения первого свойства
@@ -1089,7 +1102,7 @@ TEST(CodecIniWriter, ConflictingQuotes) {
 		// Выполняем признание управляющих последовательностей читающим
 		options.reader.escapes = true;
 		// Объект дерева настроек для обратного чтения записанного текста
-		ini::document_t back(::logger(), options);
+		ini::document_t back(::framework(), ::logger(), options);
 		// Выполняем проверку того, что обратное чтение записанного текста удалось
 		ASSERT_TRUE(back.parse(text)) << text;
 		// Выполняем проверку сохранности кавычек значения
@@ -1145,7 +1158,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем признание примечания в конце строки
 		options.reader.inlineComments = true;
 		// Объект дерева настроек для обратного чтения записанного текста
-		ini::document_t back(::logger(), options);
+		ini::document_t back(::framework(), ::logger(), options);
 		// Выполняем проверку того, что обратное чтение записанного текста удалось
 		ASSERT_TRUE(back.parse(writer.text())) << writer.text();
 		// Выполняем проверку сохранности значения свойства
@@ -1165,7 +1178,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем отмену отбрасывания пробельной обвязки значения
 		options.reader.trim = false;
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем установку значения свойства с пробелами в конце
 		ASSERT_TRUE(document.set("ключ", "значение  ", "раздел"));
 		// Выполняем перезапись дерева настроек
@@ -1173,7 +1186,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем проверку того, что перезапись дерева настроек удалась
 		ASSERT_FALSE(text.empty()) << static_cast <uint32_t> (document.error());
 		// Объект дерева настроек для обратного чтения перезаписи
-		ini::document_t back(::logger(), options);
+		ini::document_t back(::framework(), ::logger(), options);
 		// Выполняем проверку того, что обратное чтение перезаписи удалось
 		ASSERT_TRUE(back.parse(text)) << text;
 		// Выполняем проверку сохранности значения после кругового хода
@@ -1222,7 +1235,7 @@ TEST(CodecIniWriter, UntrimmedValues) {
 		// Выполняем установку настроек разбора наречия configparser
 		options.reader = ini::reader_t::settings_t::python();
 		// Объект дерева настроек для обратного чтения записанного текста
-		ini::document_t back(::logger(), options);
+		ini::document_t back(::framework(), ::logger(), options);
 		// Выполняем проверку того, что обратное чтение записанного текста удалось
 		ASSERT_TRUE(back.parse(writer.text())) << writer.text();
 		// Выполняем проверку сохранности многострочного значения
@@ -1328,7 +1341,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Выполняем установку настроек разбора наречия Git
 		options.reader = ini::reader_t::settings_t::git();
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем проверку того, что разбор текста настроек удался
 		ASSERT_TRUE(document.parse("# примечание\n[раздел]\n\tключ = значение\n"));
 		// Выполняем перевод дерева настроек в наречие MS Windows
@@ -1340,7 +1353,7 @@ TEST(CodecIniWriter, ReaderInterpretation) {
 		// Выполняем установку настроек разбора наречия MS Windows
 		reading.reader = ini::reader_t::settings_t::windows();
 		// Объект дерева настроек для обратного чтения перевода
-		ini::document_t back(::logger(), reading);
+		ini::document_t back(::framework(), ::logger(), reading);
 		// Выполняем проверку того, что обратное чтение перевода удалось
 		ASSERT_TRUE(back.parse(text)) << text << " " << static_cast <uint32_t> (back.error());
 		// Выполняем проверку сохранности значения свойства после перевода
@@ -1367,25 +1380,25 @@ TEST(CodecIniWriter, CommentMarkerInName) {
 	options.reader.inlineComments = true;
 	{
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем проверку отказа правке именем со знаком примечания
 		ASSERT_FALSE(document.set("k ; заметка", "значение", "раздел"));
 	}
 	{
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем проверку отказа правке именем раздела со знаком примечания
 		ASSERT_FALSE(document.set("k", "значение", "раздел ; заметка"));
 	}
 	{
 		// Объект дерева настроек
-		ini::document_t document(::logger(), options);
+		ini::document_t document(::framework(), ::logger(), options);
 		// Выполняем установку свойства со знаком примечания, пробелом не отделённым
 		ASSERT_TRUE(document.set("k;заметка", "значение", "раздел"));
 		// Выполняем перезапись дерева настроек
 		const string text = document.text();
 		// Объект дерева настроек, собираемого обратным разбором
-		ini::document_t again(::logger(), options);
+		ini::document_t again(::framework(), ::logger(), options);
 		// Выполняем разбор перезаписанного текста настроек
 		ASSERT_TRUE(again.parse(text));
 		// Выполняем проверку того, что значение пережило круговой ход
@@ -1959,7 +1972,7 @@ TEST(CodecIniWriter, BracketedKeyWithoutArrays) {
 	// Настройки дерева настроек
 	ini::document_t::settings_t settings;
 	// Объект дерева настроек
-	ini::document_t document(::logger(), settings);
+	ini::document_t document(::framework(), ::logger(), settings);
 	// Выполняем проверку разбора текста настроек
 	ASSERT_TRUE(document.parse("[section]\nkey[] = first\n"));
 	// Получаем перезапись дерева настроек
@@ -1969,7 +1982,7 @@ TEST(CodecIniWriter, BracketedKeyWithoutArrays) {
 	// Выполняем проверку того, что имя свойства записано вместе со скобками
 	ASSERT_NE(written.find("key[]"), string::npos) << "записано: " << written;
 	// Объект дерева, перезапись читающий обратно
-	ini::document_t back(::logger(), settings);
+	ini::document_t back(::framework(), ::logger(), settings);
 	// Выполняем проверку разбора перезаписи
 	ASSERT_TRUE(back.parse(written));
 	// Выполняем проверку имени свойства, круг пережившего
@@ -1979,7 +1992,7 @@ TEST(CodecIniWriter, BracketedKeyWithoutArrays) {
 	// Устанавливаем признание перечней значений разбором
 	arrayed.reader.arrays = true;
 	// Объект дерева настроек с признанием перечней
-	ini::document_t collected(::logger(), arrayed);
+	ini::document_t collected(::framework(), ::logger(), arrayed);
 	// Выполняем проверку разбора текста настроек с признанием перечней
 	ASSERT_TRUE(collected.parse("[section]\nkey[] = first\n"));
 	/**
@@ -2006,7 +2019,7 @@ TEST(CodecIniWriter, PaddedSectionNameUnderPreservingDialect) {
 	// Устанавливаем настройки разбора наречия python
 	settings.reader = ini::reader_t::settings_t::python();
 	// Объект дерева настроек
-	ini::document_t document(::logger(), settings);
+	ini::document_t document(::framework(), ::logger(), settings);
 	// Выполняем проверку разбора текста настроек
 	ASSERT_TRUE(document.parse("[ section ]\nkey = value\n"));
 	// Получаем перезапись дерева настроек
@@ -2016,7 +2029,7 @@ TEST(CodecIniWriter, PaddedSectionNameUnderPreservingDialect) {
 	// Выполняем проверку того, что имя раздела записано вместе с обвязкой
 	ASSERT_NE(written.find("[ section ]"), string::npos) << "записано: " << written;
 	// Объект дерева, перезапись читающий обратно
-	ini::document_t back(::logger(), settings);
+	ini::document_t back(::framework(), ::logger(), settings);
 	// Выполняем проверку разбора перезаписи
 	ASSERT_TRUE(back.parse(written));
 	// Выполняем проверку того, что имя раздела круг пережило
@@ -2120,7 +2133,7 @@ TEST(CodecIniWriter, GreedySectionNamesRoundTrip){
 		// Устанавливаем настройки разбора наречия python
 		settings.reader = ini::reader_t::settings_t::python();
 		// Объект дерева настроек, имя собирающего
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Устанавливаем настройки дерева настроек
 		document.settings(settings);
 		// Выполняем разбор пустого текста настроек
@@ -2134,7 +2147,7 @@ TEST(CodecIniWriter, GreedySectionNamesRoundTrip){
 		// Выполняем проверку того, что запись имя приняла
 		ASSERT_FALSE(text.empty()) << name;
 		// Объект дерева настроек, записанное читающего обратно
-		ini::document_t back(::logger());
+		ini::document_t back(::framework(), ::logger());
 		// Устанавливаем настройки дерева настроек
 		back.settings(settings);
 		// Выполняем разбор записанного текста настроек
@@ -2162,7 +2175,7 @@ TEST(CodecIniWriter, ColonInNameRefusedForPythonDialect){
 	// Устанавливаем разделителем имени и значения один знак равенства
 	reading.reader.separators = ini::separator_t::EQUALS;
 	// Объект дерева настроек, текст разбирающего
-	ini::document_t document(::logger(), reading);
+	ini::document_t document(::framework(), ::logger(), reading);
 	// Выполняем разбор текста настроек с двоеточием в имени свойства
 	ASSERT_TRUE(document.parse("[b]\r\n:elais=pris\r\n")) << ini::message(document.error());
 	// Выполняем проверку того, что имя свойства прочитано целиком
@@ -2188,7 +2201,7 @@ TEST(CodecIniWriter, ColonInNameRefusedForPythonDialect){
 	// Устанавливаем настройки разбора наречия MS Windows
 	back_settings.reader = ini::reader_t::settings_t::windows();
 	// Объект дерева настроек, перевод читающего обратно
-	ini::document_t back(::logger(), back_settings);
+	ini::document_t back(::framework(), ::logger(), back_settings);
 	// Выполняем проверку того, что перевод обратно читается
 	ASSERT_TRUE(back.parse(translated)) << translated << ": " << ini::message(back.error());
 	// Выполняем проверку того, что имя свойства пережило круг знак в знак
@@ -2216,7 +2229,7 @@ TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
 	 */
 	{
 		// Объект дерева настроек, значение принимающего
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем заведение свойства с именем, меткою открытым
 		ASSERT_TRUE(document.set(name, "v")) << ini::message(document.error());
 		// Выполняем проверку отказа записи дерева настроек
@@ -2229,7 +2242,7 @@ TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
 	 */
 	{
 		// Объект дерева настроек, значение принимающего
-		ini::document_t document(::logger());
+		ini::document_t document(::framework(), ::logger());
 		// Выполняем заведение свойства обычного прежде
 		ASSERT_TRUE(document.set("x", "1")) << ini::message(document.error());
 		// Выполняем заведение свойства с именем, меткою открытым
@@ -2239,7 +2252,7 @@ TEST(CodecIniWriter, LeadingByteOrderMarkInNameRefusedFirstOnly){
 		// Выполняем проверку того, что запись состоялась
 		ASSERT_FALSE(written.empty()) << ini::message(document.error());
 		// Объект дерева настроек, перезапись читающего обратно
-		ini::document_t back(::logger());
+		ini::document_t back(::framework(), ::logger());
 		// Выполняем проверку того, что перезапись обратно читается
 		ASSERT_TRUE(back.parse(written)) << written << ": " << ini::message(back.error());
 		/**
@@ -2270,7 +2283,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 	// Устанавливаем настройки разбора наречия MS Windows
 	reading.reader = ini::reader_t::settings_t::windows();
 	// Объект дерева настроек, текст разбирающего
-	ini::document_t document(::logger(), reading);
+	ini::document_t document(::framework(), ::logger(), reading);
 	// Выполняем разбор текста с знаком примечания внутри имени раздела
 	ASSERT_TRUE(document.parse("[a#]\r\nk=v\r\n")) << ini::message(document.error());
 	// Выполняем проверку того, что имя раздела прочитано целиком
@@ -2290,7 +2303,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 	 */
 	{
 		// Объект дерева настроек, значение принимающего
-		ini::document_t keyed(::logger(), reading);
+		ini::document_t keyed(::framework(), ::logger(), reading);
 		// Выполняем разбор текста со знаком примечания внутри имени свойства
 		ASSERT_TRUE(keyed.parse("[s]\r\nk#v=1\r\n")) << ini::message(keyed.error());
 		// Выполняем проверку того, что имя свойства прочитано целиком
@@ -2306,7 +2319,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 	 */
 	{
 		// Объект дерева настроек, значение принимающего
-		ini::document_t keyed(::logger(), reading);
+		ini::document_t keyed(::framework(), ::logger(), reading);
 		// Выполняем разбор текста со знаком примечания внутри имени свойства
 		ASSERT_TRUE(keyed.parse("[s]\r\nk#v=1\r\n")) << ini::message(keyed.error());
 		// Получаем перевод дерева настроек в наречие systemd
@@ -2318,7 +2331,7 @@ TEST(CodecIniWriter, CommentMarkerInSectionNameRefusedAnywhere){
 		// Устанавливаем настройки разбора наречия systemd
 		back_settings.reader = ini::reader_t::settings_t::systemd();
 		// Объект дерева настроек, перевод читающего обратно
-		ini::document_t back(::logger(), back_settings);
+		ini::document_t back(::framework(), ::logger(), back_settings);
 		// Выполняем проверку того, что перевод обратно читается
 		ASSERT_TRUE(back.parse(translated)) << translated << ": " << ini::message(back.error());
 		// Выполняем проверку того, что имя свойства пережило круг знак в знак
@@ -2408,7 +2421,7 @@ TEST(CodecIniWriter, StrictNamesAreMirroredFromTheReader) {
 		// Устанавливаем поверку имён строгою грамматикой наречия у чтения
 		settings.reader.strictNames = true;
 		// Объект дерева настроек
-		ini::document_t doc(::logger(), settings);
+		ini::document_t doc(::framework(), ::logger(), settings);
 		// Выполняем установку пары с именами, грамматике противными
 		ASSERT_TRUE(doc.set("\xd0\xba\xd0\xbb\xd1\x8e\xd1\x87", "1", "\xd1\x80\xd0\xb0\xd0\xb7\xd0\xb4\xd0\xb5\xd0\xbb"));
 		/**
