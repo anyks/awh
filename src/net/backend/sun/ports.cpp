@@ -6030,6 +6030,39 @@ namespace events {
 			__drop__();
 	}
 	/**
+	 * @brief Функция проверки, предназначено ли состояние узла потребителю
+	 *
+	 * @details Оповещение о смене состояния привязано к правке подписок узла, а состояние
+	 *          к этому мгновению может оказаться ЛЮБЫМ - в том числе служебным. Отбора
+	 *          прежде не было вовсе: наружу уходило всё, кроме `DESTROYED`, и оттого
+	 *          потребитель у разных наречий видел разный состав извещений - `INITIAL`
+	 *          приходил у трёх из пяти, `RECONNECTED` у одного.
+	 *
+	 *          Решение владельца от 11.09.2026:
+	 *
+	 *          - `RECONNECTED` не выводится НИКОГДА. Это состояние чисто служебное, и
+	 *            потребителя оно вводит в заблуждение: он примет его за состоявшееся
+	 *            переподключение, тогда как итогом возврата является `CONNECTED`.
+	 *            О самом факте возврата потребитель узнаёт откликом возрождения.
+	 *          - `INITIAL` не выводится ЗДЕСЬ. Смыслом он обладает ровно в одном месте -
+	 *            при фиксации настроек, где узел и вправду входит в исходное состояние, -
+	 *            и оттуда шлётся явным вызовом. Все прочие присвоения `INITIAL` суть
+	 *            ОТКАТ к исходному состоянию после неудавшейся смены, а не смена, и
+	 *            извещать о них нельзя: об отказе потребителю говорит `FAILURE`.
+	 *
+	 * @param status состояние узла, о котором собираются известить
+	 * @return       следует ли извещать потребителя
+	 *
+	 */
+	static inline bool reportable(const event::status_t status) noexcept {
+		// Состояния служебные наружу не выдаются
+		return (
+			(status != event::status_t::INITIAL) &&
+		    (status != event::status_t::RECONNECTED) &&
+		    (status != event::status_t::DESTROYED)
+		);
+	}
+	/**
 	 * @brief Функция оповещения о смене статуса таймера
 	 *
 	 * @details Вынесена из функции добавления события в список изменений: узлы
@@ -6043,8 +6076,7 @@ namespace events {
 	 */
 	static void announce(::io::timer_t * timer) noexcept {
 		// Если статусы события изменились
-		if((timer->state.status != timer->state.stash) &&
-		   (timer->state.status != event::status_t::DESTROYED)){
+		if((timer->state.status != timer->state.stash) && reportable(timer->state.status)){
 			// Если установлена функция обратного вызова
 			if(timer->callbacks.status != nullptr)
 				// Вызываем функцию обратного вызова статуса события
@@ -6652,8 +6684,7 @@ namespace events {
 					// Получаем текущее значение объекта директории
 					::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
 					// Если статусы события изменились
-					if((dir->state.status != dir->state.stash) &&
-					   (dir->state.status != event::status_t::DESTROYED)){
+					if((dir->state.status != dir->state.stash) && reportable(dir->state.status)){
 						// Если установлена функция обратного вызова
 						if(dir->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6677,8 +6708,7 @@ namespace events {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * fs = awh_cast <::io::file_t *> (node);
 					// Если статусы события изменились
-					if((fs->state.status != fs->state.stash) &&
-					   (fs->state.status != event::status_t::DESTROYED)){
+					if((fs->state.status != fs->state.stash) && reportable(fs->state.status)){
 						// Если установлена функция обратного вызова
 						if(fs->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6702,8 +6732,7 @@ namespace events {
 					// Получаем текущее значение объекта межпроцессного взаимодействия
 					::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (node);
 					// Если статусы события изменились
-					if((ipc->state.status != ipc->state.stash) &&
-					   (ipc->state.status != event::status_t::DESTROYED)){
+					if((ipc->state.status != ipc->state.stash) && reportable(ipc->state.status)){
 						// Если установлена функция обратного вызова
 						if(ipc->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6727,8 +6756,7 @@ namespace events {
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
 					// Если статусы события изменились
-					if((peer->state.status != peer->state.stash) &&
-					   (peer->state.status != event::status_t::DESTROYED)){
+					if((peer->state.status != peer->state.stash) && reportable(peer->state.status)){
 						// Если установлена функция обратного вызова
 						if(peer->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6752,8 +6780,7 @@ namespace events {
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (node);
 					// Если статусы события изменились
-					if((origin->state.status != origin->state.stash) &&
-					   (origin->state.status != event::status_t::DESTROYED)){
+					if((origin->state.status != origin->state.stash) && reportable(origin->state.status)){
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6777,8 +6804,7 @@ namespace events {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
 					// Если статусы события изменились
-					if((tunnel->state.status != tunnel->state.stash) &&
-					   (tunnel->state.status != event::status_t::DESTROYED)){
+					if((tunnel->state.status != tunnel->state.stash) && reportable(tunnel->state.status)){
 						// Если установлена функция обратного вызова
 						if(tunnel->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6792,8 +6818,7 @@ namespace events {
 					// Получаем объект посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (node);
 					// Если статусы события изменились
-					if((mediator->state.status != mediator->state.stash) &&
-					   (mediator->state.status != event::status_t::DESTROYED)){
+					if((mediator->state.status != mediator->state.stash) && reportable(mediator->state.status)){
 						// Если установлена функция обратного вызова
 						if(mediator->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6807,8 +6832,7 @@ namespace events {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (node);
 					// Если статусы события изменились
-					if((client->state.status != client->state.stash) &&
-					   (client->state.status != event::status_t::DESTROYED)){
+					if((client->state.status != client->state.stash) && reportable(client->state.status)){
 						// Если установлена функция обратного вызова
 						if(client->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -6832,8 +6856,7 @@ namespace events {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (node);
 					// Если статусы события изменились
-					if((server->state.status != server->state.stash) &&
-					   (server->state.status != event::status_t::DESTROYED)){
+					if((server->state.status != server->state.stash) && reportable(server->state.status)){
 						// Если установлена функция обратного вызова
 						if(server->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова статуса события
@@ -41635,6 +41658,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
+	 * @brief Если очередь оповещений не инициализирована
+	 *
 	 * @note Фиксация события требует созданной очереди. Без неё подписки узла
 	 *       некуда отправлять, и они остаются в списке изменений до тех пор,
 	 *       пока очередь не появится. Дожить до этого момента запись может уже
@@ -41644,7 +41669,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 	 *       до инициализации движка считается ошибкой вызывающей стороны.
 	 *
 	 */
-	// Если очередь оповещений не инициализирована
 	if(::__awh_port__ == net::invalid_socket_t){
 		/**
 		 * Если включён режим отладки
@@ -41693,6 +41717,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						::events::state(i->first, false);
 						// Формируем положительный результат
 						result = true;
+						/**
+						 * Извещаем потребителя о входе узла в исходное состояние
+						 *
+						 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+						 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+						 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+						 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+						 *          а не общим сторожем смены состояния: сторож привязан к правке
+						 *          подписок, и состав извещений зависел бы от мгновения подписки,
+						 *          а не от того, что произошло с узлом
+						 */
+						if(user->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова статуса события
+							user->callbacks.status(user->id, user->state.status);
 					} break;
 					/**
 					 * Если узел является таймаутом либо интервалом
@@ -41715,6 +41753,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						::events::announce(timer);
 						// Формируем положительный результат
 						result = true;
+						/**
+						 * Извещаем потребителя о входе узла в исходное состояние
+						 *
+						 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+						 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+						 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+						 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+						 *          а не общим сторожем смены состояния: сторож привязан к правке
+						 *          подписок, и состав извещений зависел бы от мгновения подписки,
+						 *          а не от того, что произошло с узлом
+						 */
+						if(timer->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова статуса события
+							timer->callbacks.status(timer->id, timer->state.status);
 					} break;
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
@@ -41768,19 +41820,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									} else {
 										// Создаём объект изменения подписки очереди оповещений
 										::events::change_t event;
-										// Устанавливаем событие на отслеживание изменения каталога
-										/**
-										 * @note Набор отслеживаемых изменений передаётся при ЗАВЕДЕНИИ
-										 *       подписки, а не при её включении, и это не излишество:
-										 *       OpenBSD и NetBSD берут набор ТОЛЬКО при заведении, а
-										 *       при включении его не принимают вовсе. Заведи подписку
-										 *       пустой - она такой и останется, и наблюдение за
-										 *       файлами и каталогами на этих системах не работает
-										 *       НИКАК. Доказано пробой: тот же порядок вызовов с
-										 *       набором при включении даёт ноль событий, с набором
-										 *       при заведении - событие приходит. macOS и FreeBSD
-										 *       принимают оба порядка, оттого дефект и не всплывал
-										 */
 										/**
 										 * Запоминаем наблюдение, не заводя связи с ядром
 										 *
@@ -41794,6 +41833,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										dir->actions |= (::action::CHANGE | ::action::DELETE | ::action::RENAME | ::action::ATTRIB | ::action::REVOKE | ::action::HDLINK | ::action::CLOSE);
 										// Выполняем изменение содержимого в директории
 										::io::change(dir, this, this->_fmk, this->_log);
+										/**
+										 * Извещаем потребителя о входе узла в исходное состояние
+										 *
+										 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+										 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+										 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+										 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+										 *          а не общим сторожем смены состояния: сторож привязан к правке
+										 *          подписок, и состав извещений зависел бы от мгновения подписки,
+										 *          а не от того, что произошло с узлом
+										 */
+										if(dir->callbacks.status != nullptr)
+											// Вызываем функцию обратного вызова статуса события
+											dir->callbacks.status(dir->id, dir->state.status);
 									}
 								// Если файловый дескриптор каталога не существует
 								} else {
@@ -41907,19 +41960,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								if((result = (fs->fd != net::invalid_socket_t))){
 									// Создаём объект изменения подписки очереди оповещений
 									::events::change_t event;
-									// Устанавливаем событие на отслеживание изменения файла
-									/**
-									 * @note Набор отслеживаемых изменений передаётся при ЗАВЕДЕНИИ
-									 *       подписки, а не при её включении, и это не излишество:
-									 *       OpenBSD и NetBSD берут набор ТОЛЬКО при заведении, а
-									 *       при включении его не принимают вовсе. Заведи подписку
-									 *       пустой - она такой и останется, и наблюдение за
-									 *       файлами и каталогами на этих системах не работает
-									 *       НИКАК. Доказано пробой: тот же порядок вызовов с
-									 *       набором при включении даёт ноль событий, с набором
-									 *       при заведении - событие приходит. macOS и FreeBSD
-									 *       принимают оба порядка, оттого дефект и не всплывал
-									 */
 									/**
 									 * Запоминаем наблюдение, не заводя связи с ядром
 									 *
@@ -41938,6 +41978,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											// Выполняем чтение данных из файла
 											::io::read(fs, 0, this, &this->_eth, &this->_addr, this->_fmk, this->_log);
 									}
+									/**
+									 * Извещаем потребителя о входе узла в исходное состояние
+									 *
+									 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+									 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+									 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+									 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+									 *          а не общим сторожем смены состояния: сторож привязан к правке
+									 *          подписок, и состав извещений зависел бы от мгновения подписки,
+									 *          а не от того, что произошло с узлом
+									 */
+									if(fs->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова статуса события
+										fs->callbacks.status(fs->id, fs->state.status);
 								// Если файловый дескриптор файла не существует
 								} else {
 									// Если установлена функция обратного вызова
@@ -42071,6 +42125,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									ipc->transfer.actions |= ::action::WRITE;
 									// Устанавливаем флаг разрешающий закрытие сокета
 									ipc->transfer.actions |= ::action::CLOSE;
+									/**
+									 * Извещаем потребителя о входе узла в исходное состояние
+									 *
+									 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+									 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+									 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+									 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+									 *          а не общим сторожем смены состояния: сторож привязан к правке
+									 *          подписок, и состав извещений зависел бы от мгновения подписки,
+									 *          а не от того, что произошло с узлом
+									 */
+									if(ipc->callbacks.status != nullptr)
+										// Вызываем функцию обратного вызова статуса события
+										ipc->callbacks.status(ipc->id, ipc->state.status);
 								} break;
 								// Для других типов сокетов
 								default: {
@@ -42292,7 +42360,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 */
 									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->zone;
 									// Устанавливаем адрес IPv6 для клиента
-									{
 									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
 									/**
 									 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
@@ -42300,7 +42367,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 * и отвечает отказом в маршруте
 									 */
 									::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->zone;
-									}
 									// Если адрес для удаленного подключения установлен
 									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], ::__awh_zero_ipv6__, 16) != 0)
 										// Устанавливаем адрес IPv6 для клиента
@@ -42310,51 +42376,22 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								} break;
 							}
 							/**
-							 * Подписка на готовность к чтению здесь НЕ заводится
+							 * @brief Если адрес для удаленного подключения установлен удачно
 							 *
-							 * @details Дело фиксации настроек - подготовить узел, а завести подписку призван
-							 * запуск: он для того и служит. У kqueue подписка заводится здесь же, но
-							 * ОТКЛЮЧЁННОЙ признаком EV_DISABLE, и включает её запуск признаком EV_ENABLE
-							 *
-							 * @warning У Event Ports состояния «заведена, но отключена» нет вовсе: port_associate
-							 *          заводит связь боевой немедленно. Прежде здесь стояло заведение с
-							 *          пояснением «но отключаем его», перенесённым от kqueue, - пояснение
-							 *          описывало намерение, которого здесь не выполнить. Оттого подписка
-							 *          вставала боевой ещё до запуска узла
-							 */
-							/**
-							 * Устройство без адреса работать не может
-							 *
-							 * @details Итог назначения адреса прежде ОТБРАСЫВАЛСЯ, и устройство,
-							 *          оставшееся без адреса, движок отдавал потребителю как
-							 *          годное. Отправлять с него нечем: путь к встречной стороне
-							 *          проложен, сосед недостижим, и система отвечает отправителю
-							 *          «ресурс временно недоступен» бесконечно. Выдавала себя беда
-							 *          лишь пропуском проверки переноса пакета, где её причиной
-							 *          названы были правила пакетного фильтра
-							 *
-							 * @note Установлено на стенде Windows ARM64 20.08.2026 при первом
-							 *       прогоне пути Wintun: адрес числился за прежним устройством,
-							 *       система отвечала «уже существует», и оба слоя - назначение и
-							 *       разбор его итога - принимали это за успех. Движки POSIX
-							 *       приведены к тому же разбору
-							 */
-							/**
 							 * @warning Доклад об отказе обязан отказом и ЗАКАНЧИВАТЬСЯ
 							 *
-							 * Прежде отказ назначения адреса лишь докладывался, а признаки работы
-							 * ставились следом как ни в чём не бывало: движок сам объявлял
-							 * устройство негодным и тут же брал его в работу. Наружу беда
-							 * вылезала пятью строками ниже - сторож видел на устройстве адрес
-							 * встречной стороны и обвинял в подмене: «Attacker replaced the
-							 * network interface's IP address». Причина названа была не та,
-							 * и разбор уходил искать нападение вместо невставшего адреса
+							 * @details Прежде отказ назначения адреса лишь докладывался, а событие
+							 *          заводилось следом как ни в чём не бывало: движок сам объявлял
+							 *          устройство негодным и тут же брал его в работу. Наружу беда
+							 *          вылезала пятью строками ниже - сторож видел на устройстве адрес
+							 *          встречной стороны и обвинял в подмене: «Attacker replaced the
+							 *          network interface's IP address». Причина названа была не та,
+							 *          и разбор уходил искать нападение вместо невставшего адреса.
 							 *
-							 * @note Установлено 22.08.2026 на паре Solaris ↔ NetBSD: у устройства
+							 * @note Установлено 22.08.2026 на паре Solaris: у устройства
 							 *       awhtun0 была лишь привязка IPv6, привязки IPv4 не было вовсе,
-							 *       адрес не встал, и все пять посылок ушли в никуда. У illumos
-							 *       адрес ставится по IPv4 запросом SIOCSLIFADDR, и без привязки
-							 *       IPv4 система отвечает «нет такого устройства»
+							 *       адрес не встал, и все пять посылок ушли в никуда
+							 *
 							 */
 							if(!(result = assigned)){
 								// Если установлена функция обратного вызова
@@ -42379,6 +42416,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								tunnel->actions |= ::action::WRITE;
 								// Устанавливаем флаг разрешающий закрытие сокета
 								tunnel->actions |= ::action::CLOSE;
+								/**
+								 * Извещаем потребителя о входе узла в исходное состояние
+								 *
+								 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+								 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+								 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+								 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+								 *          а не общим сторожем смены состояния: сторож привязан к правке
+								 *          подписок, и состав извещений зависел бы от мгновения подписки,
+								 *          а не от того, что произошло с узлом
+								 */
+								if(tunnel->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									tunnel->callbacks.status(tunnel->id, tunnel->state.status);
 							}
 						// Если файловый дескриптор межпроцессного взаимодействия не существует
 						} else {
@@ -42497,6 +42548,22 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								}
 								// Снимаем флаг ожидания подключения
 								mediator->state.status = event::status_t::NONE;
+							// Если сессия источника зарегистрированна удачно
+							} else {
+								/**
+								 * Извещаем потребителя о входе узла в исходное состояние
+								 *
+								 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+								 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+								 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+								 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+								 *          а не общим сторожем смены состояния: сторож привязан к правке
+								 *          подписок, и состав извещений зависел бы от мгновения подписки,
+								 *          а не от того, что произошло с узлом
+								 */
+								if(mediator->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова статуса события
+									mediator->callbacks.status(mediator->id, mediator->state.status);
 							}
 						// Если объекта хоста не существует
 						} else {
@@ -42572,10 +42639,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * заново и зовёт фиксацию повторно - и членство восстанавливается само.
 							 * Гасили бы - узел молча выпадал бы из рассылки после пересоздания
 							 */
-							if(client->membership.active){
+							if(client->membership.active)
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, client->membership.mode, client->membership.group, client->membership.source, client->membership.port);
-							}
 							/**
 							 * Применяем настройки, отложенные до заведения сокета
 							 *
@@ -42586,10 +42652,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * @note Сроки ожидания нужны только сокету с блокировкой - неблокирующий
 							 * ведёт их своими таймерами, а у свежего сокета срок и так пуст
 							 */
-							if(!client->iface.empty()){
+							if(!client->iface.empty())
 								// Устанавливаем отложенное устройство групповой рассылки
 								this->_eth.socket.setMulticastIface(client->transfer.fd, client->state.family, client->iface);
-							}
 							// Если событие работает с блокировкой ввода/вывода
 							if(!((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK))){
 								// Если задан срок ожидания чтения
@@ -42669,6 +42734,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												client->transfer.actions |= ::action::WRITE;
 												// Устанавливаем флаг разрешающий закрытие сокета
 												client->transfer.actions |= ::action::CLOSE;
+												/**
+												 * Извещаем потребителя о входе узла в исходное состояние
+												 *
+												 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+												 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+												 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+												 *          а не общим сторожем смены состояния: сторож привязан к правке
+												 *          подписок, и состав извещений зависел бы от мгновения подписки,
+												 *          а не от того, что произошло с узлом
+												 */
+												if(client->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова статуса события
+													client->callbacks.status(client->id, client->state.status);
 											// Если адрес целевой машины не указан
 											} else {
 												// Если установлена функция обратного вызова
@@ -42732,9 +42811,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												// Получаем объект источника сетевого адреса
 												net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 												// Если источник сетевого адреса установлен
-												if(source != nullptr)
+												if(source != nullptr){
 													// Устанавливаем адрес IPv6 для клиента
-													{
 													::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 													/**
 													 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
@@ -42742,9 +42820,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * и отвечает отказом в маршруте
 													 */
 													::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
-													}
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-												else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+												} else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 												/**
 												 * Подписка на готовность к чтению здесь НЕ заводится
 												 *
@@ -42764,6 +42841,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												client->transfer.actions |= ::action::WRITE;
 												// Устанавливаем флаг разрешающий закрытие сокета
 												client->transfer.actions |= ::action::CLOSE;
+												/**
+												 * Извещаем потребителя о входе узла в исходное состояние
+												 *
+												 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+												 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+												 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+												 *          а не общим сторожем смены состояния: сторож привязан к правке
+												 *          подписок, и состав извещений зависел бы от мгновения подписки,
+												 *          а не от того, что произошло с узлом
+												 */
+												if(client->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова статуса события
+													client->callbacks.status(client->id, client->state.status);
 											// Если адрес целевой машины не указан
 											} else {
 												// Если установлена функция обратного вызова
@@ -42834,8 +42925,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 * Определяем тип сокета
 														 */
 														switch(static_cast <uint8_t> (client->state.type)){
-																// Если событие принадлежит к типу SEQPACKET
-																case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM): {
 																// Устанавливаем семейство IP-адресов
@@ -42931,19 +43022,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 *          Все прочие пути отказа этой ветви состояние снимают
 																		 */
 																		client->state.status = event::status_t::NONE;
-																		/**
-																		 * Итог фиксации обязан стать ЛОЖЬЮ
-																		 *
-																		 * @details Признак итога выставлен истиной ещё проверкой длины
-																		 *          самого адреса, тремя десятками строк выше, и возврат
-																		 *          отдавал его как есть. Выходило, что движок докладывал
-																		 *          об отказе всеми тремя способами и тут же отвечал
-																		 *          вызывающему согласием, а узел поднимался поверх
-																		 *          негодного имени
-																		 */
-																		result = false;
 																		// Выходим из функции с ошибкой
-																		return result;
+																		return false;
 																	}
 																	// O_CREAT | O_EXCL — гарантирует, что файл не существовал ранее
 																	fd = ::open(filename.c_str(), O_CREAT | O_EXCL | O_RDWR, 0600);
@@ -43113,6 +43193,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														client->transfer.actions |= ::action::RECONNECT;
 														// Устанавливаем флаг разрешающий выполнять отключение от сервера
 														client->transfer.actions |= ::action::DISCONNECT;
+														/**
+														 * Извещаем потребителя о входе узла в исходное состояние
+														 *
+														 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+														 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+														 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+														 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+														 *          а не общим сторожем смены состояния: сторож привязан к правке
+														 *          подписок, и состав извещений зависел бы от мгновения подписки,
+														 *          а не от того, что произошло с узлом
+														 */
+														if(client->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова статуса события
+															client->callbacks.status(client->id, client->state.status);
 													// Если установленный адрес клиента пустой
 													} else {
 														// Если установлена функция обратного вызова
@@ -43180,43 +43274,42 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if((result = (client->target != nullptr))){
-													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP){
-														/**
-														 * Определяем тип сокета
-														 */
-														switch(static_cast <uint8_t> (client->state.type)){
-															// Если событие принадлежит к типу STREAM
-															case static_cast <uint8_t> (event::type_t::STREAM):
-															// Если событие принадлежит к типу SEQPACKET
-															case static_cast <uint8_t> (event::type_t::SEQPACKET):
-																// Выполняем активацию событий SCTP
-																/**
-																 * Выполняем активацию событий SCTP
-																 *
-																 * @note Смена состояния связи добавляется к перечню потребителя всегда:
-																 *       опознаватель связи приходит только этим известием, а нужен он
-																 *       самому движку - отправкой по нему заменяется отправка по адресу
-																 *       получателя, годная лишь первой посылке
-																 */
-																net::sctp::event_types_t events = client->transfer.sctp.use().events;
-																// Добавляем известие о смене состояния связи
-																events.emplace(net::sctp::event_type_t::ASSOC_CHANGE);
-																// Выполняем подписку на известия SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, events);
-																/**
-																 * Если установлен любой из откликов, которым нужны метаданные
-																 *
-																 * @note Подписка нужна не только новому отклику: у современного набора
-																 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
-																 *       прежний отклик сведений получал бы вчерашнее содержимое
-																 */
-																if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
-																	// Выполняем подписку на метаданные принимаемых сообщений
-																	this->_eth.sctp.receiveInfo(client->transfer.fd, true);
-															break;
-														}
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP){
+													/**
+													 * Определяем тип сокета
+													 */
+													switch(static_cast <uint8_t> (client->state.type)){
+														// Если событие принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+														// Если событие принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															/**
+															 * Выполняем активацию событий SCTP
+															 *
+															 * @note Смена состояния связи добавляется к перечню потребителя всегда:
+															 *       опознаватель связи приходит только этим известием, а нужен он
+															 *       самому движку - отправкой по нему заменяется отправка по адресу
+															 *       получателя, годная лишь первой посылке
+															 */
+															net::sctp::event_types_t events = client->transfer.sctp.use().events;
+															// Добавляем известие о смене состояния связи
+															events.emplace(net::sctp::event_type_t::ASSOC_CHANGE);
+															// Выполняем подписку на известия SCTP
+															this->_eth.sctp.eventsSubscribe(client->transfer.fd, events);
+															/**
+															 * Если установлен любой из откликов, которым нужны метаданные
+															 *
+															 * @note Подписка нужна не только новому отклику: у современного набора
+															 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
+															 *       прежний отклик сведений получал бы вчерашнее содержимое
+															 */
+															if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
+																// Выполняем подписку на метаданные принимаемых сообщений
+																this->_eth.sctp.receiveInfo(client->transfer.fd, true);
+														break;
 													}
+												}
 												/**
 												 * Определяем тип сокета
 												 */
@@ -43327,6 +43420,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															client->transfer.actions |= ::action::RECONNECT;
 															// Устанавливаем флаг разрешающий выполнять отключение от сервера
 															client->transfer.actions |= ::action::DISCONNECT;
+															/**
+															 * Извещаем потребителя о входе узла в исходное состояние
+															 *
+															 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+															 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+															 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+															 *          а не общим сторожем смены состояния: сторож привязан к правке
+															 *          подписок, и состав извещений зависел бы от мгновения подписки,
+															 *          а не от того, что произошло с узлом
+															 */
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова статуса события
+																client->callbacks.status(client->id, client->state.status);
 														}
 													} break;
 													// Если событие принадлежит к типу RAW
@@ -43374,6 +43481,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		client->transfer.actions |= ::action::RECONNECT;
 																		// Устанавливаем флаг разрешающий выполнять отключение от сервера
 																		client->transfer.actions |= ::action::DISCONNECT;
+																		/**
+																		 * Извещаем потребителя о входе узла в исходное состояние
+																		 *
+																		 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																		 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																		 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																		 *          а не общим сторожем смены состояния: сторож привязан к правке
+																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																		 *          а не от того, что произошло с узлом
+																		 */
+																		if(client->callbacks.status != nullptr)
+																			// Вызываем функцию обратного вызова статуса события
+																			client->callbacks.status(client->id, client->state.status);
 																	// Если источник сетевого адреса не установлен
 																	} else {
 																		// Если установлена функция обратного вызова
@@ -43476,6 +43597,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		client->transfer.actions |= ::action::RECONNECT;
 																		// Устанавливаем флаг разрешающий выполнять отключение от сервера
 																		client->transfer.actions |= ::action::DISCONNECT;
+																		/**
+																		 * Извещаем потребителя о входе узла в исходное состояние
+																		 *
+																		 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																		 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																		 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																		 *          а не общим сторожем смены состояния: сторож привязан к правке
+																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																		 *          а не от того, что произошло с узлом
+																		 */
+																		if(client->callbacks.status != nullptr)
+																			// Вызываем функцию обратного вызова статуса события
+																			client->callbacks.status(client->id, client->state.status);
 																	// Если режим ручного формирования заголовков не активирован
 																	} else {
 																		// Устанавливаем размер структуры для целевой машины
@@ -43570,6 +43705,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			client->transfer.actions |= ::action::RECONNECT;
 																			// Устанавливаем флаг разрешающий выполнять отключение от сервера
 																			client->transfer.actions |= ::action::DISCONNECT;
+																			/**
+																			 * Извещаем потребителя о входе узла в исходное состояние
+																			 *
+																			 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																			 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																			 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																			 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																			 *          а не общим сторожем смены состояния: сторож привязан к правке
+																			 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																			 *          а не от того, что произошло с узлом
+																			 */
+																			if(client->callbacks.status != nullptr)
+																				// Вызываем функцию обратного вызова статуса события
+																				client->callbacks.status(client->id, client->state.status);
 																		}
 																	}
 																// Если источник сетевого адреса не установлен
@@ -43690,6 +43839,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	client->transfer.actions |= ::action::WRITE;
 																	// Устанавливаем флаг разрешающий закрытие сокета
 																	client->transfer.actions |= ::action::CLOSE;
+																	/**
+																	 * Извещаем потребителя о входе узла в исходное состояние
+																	 *
+																	 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																	 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																	 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																	 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																	 *          а не общим сторожем смены состояния: сторож привязан к правке
+																	 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																	 *          а не от того, что произошло с узлом
+																	 */
+																	if(client->callbacks.status != nullptr)
+																		// Вызываем функцию обратного вызова статуса события
+																		client->callbacks.status(client->id, client->state.status);
 																}
 															} break;
 															// Если протокол определён как RAW
@@ -43801,43 +43964,42 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if((result = (client->target != nullptr))){
-													// Если протокол интернета установлен как SCTP
-													if(client->state.protocol == event::protocol_t::SCTP){
-														/**
-														 * Определяем тип сокета
-														 */
-														switch(static_cast <uint8_t> (client->state.type)){
-															// Если событие принадлежит к типу STREAM
-															case static_cast <uint8_t> (event::type_t::STREAM):
-															// Если событие принадлежит к типу SEQPACKET
-															case static_cast <uint8_t> (event::type_t::SEQPACKET):
-																// Выполняем активацию событий SCTP
-																/**
-																 * Выполняем активацию событий SCTP
-																 *
-																 * @note Смена состояния связи добавляется к перечню потребителя всегда:
-																 *       опознаватель связи приходит только этим известием, а нужен он
-																 *       самому движку - отправкой по нему заменяется отправка по адресу
-																 *       получателя, годная лишь первой посылке
-																 */
-																net::sctp::event_types_t events = client->transfer.sctp.use().events;
-																// Добавляем известие о смене состояния связи
-																events.emplace(net::sctp::event_type_t::ASSOC_CHANGE);
-																// Выполняем подписку на известия SCTP
-																this->_eth.sctp.eventsSubscribe(client->transfer.fd, events);
-																/**
-																 * Если установлен любой из откликов, которым нужны метаданные
-																 *
-																 * @note Подписка нужна не только новому отклику: у современного набора
-																 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
-																 *       прежний отклик сведений получал бы вчерашнее содержимое
-																 */
-																if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
-																	// Выполняем подписку на метаданные принимаемых сообщений
-																	this->_eth.sctp.receiveInfo(client->transfer.fd, true);
-															break;
-														}
+												// Если протокол интернета установлен как SCTP
+												if(client->state.protocol == event::protocol_t::SCTP){
+													/**
+													 * Определяем тип сокета
+													 */
+													switch(static_cast <uint8_t> (client->state.type)){
+														// Если событие принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+														// Если событие принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															/**
+															 * Выполняем активацию событий SCTP
+															 *
+															 * @note Смена состояния связи добавляется к перечню потребителя всегда:
+															 *       опознаватель связи приходит только этим известием, а нужен он
+															 *       самому движку - отправкой по нему заменяется отправка по адресу
+															 *       получателя, годная лишь первой посылке
+															 */
+															net::sctp::event_types_t events = client->transfer.sctp.use().events;
+															// Добавляем известие о смене состояния связи
+															events.emplace(net::sctp::event_type_t::ASSOC_CHANGE);
+															// Выполняем подписку на известия SCTP
+															this->_eth.sctp.eventsSubscribe(client->transfer.fd, events);
+															/**
+															 * Если установлен любой из откликов, которым нужны метаданные
+															 *
+															 * @note Подписка нужна не только новому отклику: у современного набора
+															 *       вызовов метаданные приходят ТОЛЬКО по ней, и без подписки
+															 *       прежний отклик сведений получал бы вчерашнее содержимое
+															 */
+															if((client->transfer.sctp.endpoint().callbacks.message != nullptr) || (client->transfer.sctp.endpoint().callbacks.info != nullptr))
+																// Выполняем подписку на метаданные принимаемых сообщений
+																this->_eth.sctp.receiveInfo(client->transfer.fd, true);
+														break;
 													}
+												}
 												/**
 												 * Определяем тип сокета
 												 */
@@ -43863,7 +44025,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															// Устанавливаем произвольный порт для локального подключения
 															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 															// Устанавливаем адрес IPv6 для клиента
-															{
 															::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 															/**
 															 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
@@ -43871,7 +44032,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * и отвечает отказом в маршруте
 															 */
 															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
-															}
 														// Если источник сетевого адреса не установлен
 														} else {
 															// Устанавливаем произвольный порт для локального подключения
@@ -43952,6 +44112,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															client->transfer.actions |= ::action::RECONNECT;
 															// Устанавливаем флаг разрешающий выполнять отключение от сервера
 															client->transfer.actions |= ::action::DISCONNECT;
+															/**
+															 * Извещаем потребителя о входе узла в исходное состояние
+															 *
+															 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+															 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+															 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+															 *          а не общим сторожем смены состояния: сторож привязан к правке
+															 *          подписок, и состав извещений зависел бы от мгновения подписки,
+															 *          а не от того, что произошло с узлом
+															 */
+															if(client->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова статуса события
+																client->callbacks.status(client->id, client->state.status);
 														}
 													} break;
 													// Если событие принадлежит к типу RAW
@@ -44004,6 +44178,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		client->transfer.actions |= ::action::RECONNECT;
 																		// Устанавливаем флаг разрешающий выполнять отключение от сервера
 																		client->transfer.actions |= ::action::DISCONNECT;
+																		/**
+																		 * Извещаем потребителя о входе узла в исходное состояние
+																		 *
+																		 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																		 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																		 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																		 *          а не общим сторожем смены состояния: сторож привязан к правке
+																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																		 *          а не от того, что произошло с узлом
+																		 */
+																		if(client->callbacks.status != nullptr)
+																			// Вызываем функцию обратного вызова статуса события
+																			client->callbacks.status(client->id, client->state.status);
 																	// Если источник сетевого адреса не установлен
 																	} else {
 																		// Если установлена функция обратного вызова
@@ -44111,6 +44299,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		client->transfer.actions |= ::action::RECONNECT;
 																		// Устанавливаем флаг разрешающий выполнять отключение от сервера
 																		client->transfer.actions |= ::action::DISCONNECT;
+																		/**
+																		 * Извещаем потребителя о входе узла в исходное состояние
+																		 *
+																		 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																		 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																		 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																		 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																		 *          а не общим сторожем смены состояния: сторож привязан к правке
+																		 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																		 *          а не от того, что произошло с узлом
+																		 */
+																		if(client->callbacks.status != nullptr)
+																			// Вызываем функцию обратного вызова статуса события
+																			client->callbacks.status(client->id, client->state.status);
 																	// Если режим ручного формирования заголовков не активирован
 																	} else {
 																		// Устанавливаем размер структуры для целевой машины
@@ -44134,7 +44336,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Устанавливаем произвольный порт для локального подключения
 																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 																			// Устанавливаем адрес IPv6 для клиента
-																			{
 																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 																			/**
 																			 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
@@ -44142,7 +44343,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 * и отвечает отказом в маршруте
 																			 */
 																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
-																			}
 																		// Если источник сетевого адреса не установлен
 																		} else {
 																			// Устанавливаем произвольный порт для локального подключения
@@ -44217,6 +44417,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			client->transfer.actions |= ::action::RECONNECT;
 																			// Устанавливаем флаг разрешающий выполнять отключение от сервера
 																			client->transfer.actions |= ::action::DISCONNECT;
+																			/**
+																			 * Извещаем потребителя о входе узла в исходное состояние
+																			 *
+																			 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																			 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																			 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																			 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																			 *          а не общим сторожем смены состояния: сторож привязан к правке
+																			 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																			 *          а не от того, что произошло с узлом
+																			 */
+																			if(client->callbacks.status != nullptr)
+																				// Вызываем функцию обратного вызова статуса события
+																				client->callbacks.status(client->id, client->state.status);
 																		}
 																	}
 																// Если источник сетевого адреса не установлен
@@ -44270,9 +44484,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Получаем объект источника сетевого адреса
 																net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																// Если источник сетевого адреса установлен
-																if(source != nullptr)
+																if(source != nullptr){
 																	// Устанавливаем адрес IPv6 для клиента
-																	{
 																	::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 																	/**
 																	 * Переносим зону адреса: без неё адрес канальной связи и групповой адрес
@@ -44280,9 +44493,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * и отвечает отказом в маршруте
 																	 */
 																	::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_scope_id = awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->zone;
-																	}
 																// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-																else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+																} else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 																// Получаем объект целевой машины
 																net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																// Устанавливаем адрес для удаленного подключения целевой машины
@@ -44346,6 +44558,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	client->transfer.actions |= ::action::WRITE;
 																	// Устанавливаем флаг разрешающий закрытие сокета
 																	client->transfer.actions |= ::action::CLOSE;
+																	/**
+																	 * Извещаем потребителя о входе узла в исходное состояние
+																	 *
+																	 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+																	 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+																	 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+																	 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+																	 *          а не общим сторожем смены состояния: сторож привязан к правке
+																	 *          подписок, и состав извещений зависел бы от мгновения подписки,
+																	 *          а не от того, что произошло с узлом
+																	 */
+																	if(client->callbacks.status != nullptr)
+																		// Вызываем функцию обратного вызова статуса события
+																		client->callbacks.status(client->id, client->state.status);
 																}
 															} break;
 															// Если протокол определён как RAW
@@ -44556,10 +44782,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * порту группы, и потому идёт сразу за заведением сокета, прежде всей
 							 * остальной работы по фиксации настроек
 							 */
-							if(server->membership.active){
+							if(server->membership.active)
 								// Выполняем отложенное вступление в группу рассылки
 								this->membership(id, server->membership.mode, server->membership.group, server->membership.source, server->membership.port);
-							}
 							/**
 							 * Применяем настройки, отложенные до заведения сокета
 							 *
@@ -44570,10 +44795,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * @note Сроки ожидания нужны только сокету с блокировкой - неблокирующий
 							 * ведёт их своими таймерами, а у свежего сокета срок и так пуст
 							 */
-							if(!server->iface.empty()){
+							if(!server->iface.empty())
 								// Устанавливаем отложенное устройство групповой рассылки
 								this->_eth.socket.setMulticastIface(server->fd, server->state.family, server->iface);
-							}
 							// Если событие работает с блокировкой ввода/вывода
 							if(!((server->state.options & event::options::NO_IO_BLOCK) || (server->state.options & event::options::SM_IO_BLOCK))){
 								// Если задан срок ожидания чтения
@@ -44592,7 +44816,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						}
 						// Устанавливаем статус события в состояние инициализировано
 						server->state.status = event::status_t::INITIAL;
-						// Если файловый дескриптор сервера существует
 						/**
 						 * Описатель, принятый передачей, привязывать не нужно
 						 *
@@ -44600,7 +44823,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						 *       а у получателя его нет вовсе. Остальной путь фиксации событие
 						 *       проходит обычным порядком
 						 */
-						if(server->state.adopted){
+						if((result = server->state.adopted)){
 							// Устанавливаем флаг разрешающий выполнять чтение из сокета
 							server->actions |= ::action::READ;
 							// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -44609,9 +44832,22 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							server->actions |= ::action::CLOSE;
 							// Устанавливаем флаг разрешающий выполнять принятие подключений
 							server->actions |= ::action::ACCEPT;
-							// Отмечаем привязку сделанной: её сделал отправитель
-							result = true;
-						} else if((server->fd != net::invalid_socket_t) && (server->host != nullptr)){
+							/**
+							 * Извещаем потребителя о входе узла в исходное состояние
+							 *
+							 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+							 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+							 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+							 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+							 *          а не общим сторожем смены состояния: сторож привязан к правке
+							 *          подписок, и состав извещений зависел бы от мгновения подписки,
+							 *          а не от того, что произошло с узлом
+							 */
+							if(server->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова статуса события
+								server->callbacks.status(server->id, server->state.status);
+						// Если файловый дескриптор создан и хост сервера инициализирован
+						} else if((server->fd != net::invalid_socket_t) && (server->host != nullptr)) {
 							/**
 							 * Определяем тип приведения события
 							 */
@@ -44663,6 +44899,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												server->actions |= ::action::CLOSE;
 												// Устанавливаем флаг разрешающий выполнять принятие подключений
 												server->actions |= ::action::ACCEPT;
+												/**
+												 * Извещаем потребителя о входе узла в исходное состояние
+												 *
+												 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+												 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+												 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+												 *          а не общим сторожем смены состояния: сторож привязан к правке
+												 *          подписок, и состав извещений зависел бы от мгновения подписки,
+												 *          а не от того, что произошло с узлом
+												 */
+												if(server->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова статуса события
+													server->callbacks.status(server->id, server->state.status);
 											// Если адрес целевой машины не указан
 											} else {
 												// Если установлена функция обратного вызова
@@ -44742,6 +44992,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												server->actions |= ::action::CLOSE;
 												// Устанавливаем флаг разрешающий выполнять принятие подключений
 												server->actions |= ::action::ACCEPT;
+												/**
+												 * Извещаем потребителя о входе узла в исходное состояние
+												 *
+												 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+												 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+												 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+												 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+												 *          а не общим сторожем смены состояния: сторож привязан к правке
+												 *          подписок, и состав извещений зависел бы от мгновения подписки,
+												 *          а не от того, что произошло с узлом
+												 */
+												if(server->callbacks.status != nullptr)
+													// Вызываем функцию обратного вызова статуса события
+													server->callbacks.status(server->id, server->state.status);
 											// Если адрес целевой машины не указан
 											} else {
 												// Если установлена функция обратного вызова
@@ -44812,8 +45076,8 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 * Определяем тип сокета
 														 */
 														switch(static_cast <uint8_t> (server->state.type)){
-																// Если событие принадлежит к типу SEQPACKET
-																case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Если событие принадлежит к типу SEQPACKET
+															case static_cast <uint8_t> (event::type_t::SEQPACKET):
 															// Если событие принадлежит к типу STREAM
 															case static_cast <uint8_t> (event::type_t::STREAM): {
 																// Структура статистики файла
@@ -44859,7 +45123,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																		#endif
 																	}
-																	// Выводим результат
 																	/**
 																	 * Возвращаем узел в несведённое состояние
 																	 *
@@ -44869,6 +45132,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * событие числится запущенным
 																	 */
 																	server->state.status = event::status_t::NONE;
+																	// Выводим результат
 																	return result;
 																}
 															} break;
@@ -44989,6 +45253,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														server->actions |= ::action::CLOSE;
 														// Устанавливаем флаг разрешающий выполнять принятие подключений
 														server->actions |= ::action::ACCEPT;
+														/**
+														 * Извещаем потребителя о входе узла в исходное состояние
+														 *
+														 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+														 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+														 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+														 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+														 *          а не общим сторожем смены состояния: сторож привязан к правке
+														 *          подписок, и состав извещений зависел бы от мгновения подписки,
+														 *          а не от того, что произошло с узлом
+														 */
+														if(server->callbacks.status != nullptr)
+															// Вызываем функцию обратного вызова статуса события
+															server->callbacks.status(server->id, server->state.status);
 													// Если установленный адрес клиента пустой
 													} else {
 														// Если установлена функция обратного вызова
@@ -45056,58 +45334,39 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
-													// Если протокол интернета установлен как SCTP
-													if(server->state.protocol == event::protocol_t::SCTP){
-														/**
-														 * Определяем тип сокета
-														 */
-														switch(static_cast <uint8_t> (server->state.type)){
-															// Если событие принадлежит к типу STREAM
-															case static_cast <uint8_t> (event::type_t::STREAM):
-																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
-															break;
-															// Если событие принадлежит к типу SEQPACKET
-															case static_cast <uint8_t> (event::type_t::SEQPACKET):
-																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
-																/**
-																 * Подписка на метаданные у сокета упорядоченных сообщений ОБЯЗАТЕЛЬНА
-																 *
-																 * @details Подключение здесь принимается не вызовом accept, а чтением сообщения
-																 *          с прослушивающего сокета и отделением связи вызовом sctp_peeloff по
-																 *          её опознавателю. Опознаватель же приходит только метаданными: без
-																 *          подписки он остаётся нулевым, и отделение отвергается отказом.
-																 *          Наружу это выходит тем, что сервер не принимает подключений ВОВСЕ
-																 *
-																 * @warning Оттого подписка здесь безусловна и не зависит от установленных
-																 *          откликов: она нужна самому движку, а не потребителю. Замерено щупом
-																 *          на FreeBSD, Debian и Sun Solaris - всюду одинаково: без подписки
-																 *          опознаватель нулевой и sctp_peeloff отвечает отказом, с подпиской
-																 *          опознаватель приходит и отделение проходит
-																 *
-																 * @note У систем Sun метод отвечает согласием, ничего не делая: там опознаватель
-																 *       приносит подписка на события выше, а трогать SCTP_RECVRCVINFO нельзя -
-																 *       она отключила бы её
-																 */
-																/**
-																 * Если приём идёт современным набором вызовов
-																 *
-																 * @warning Условие здесь обязано в точности совпадать с условием ветви приёма
-																 *          в eth::sctp::receive. Подписка эта не добавляет метаданные, а
-																 *          ПЕРЕКЛЮЧАЕТ их вид: включив её, ядро Linux перестаёт слать сведения
-																 *          прежнего вида SCTP_SNDRCV, которыми старая ветвь приёма только и
-																 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
-																 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
-																 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
-																 */
-																#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
-																	// Выполняем подписку на метаданные принимаемых сообщений
-																	this->_eth.sctp.receiveInfo(server->fd, true);
-																#endif
-															break;
-														}
+												// Если протокол интернета установлен как SCTP
+												if(server->state.protocol == event::protocol_t::SCTP){
+													/**
+													 * Определяем тип сокета
+													 */
+													switch(static_cast <uint8_t> (server->state.type)){
+														// Если событие принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+															// Выполняем активацию событий SCTP
+															this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+														break;
+														// Если событие принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Выполняем активацию событий SCTP
+															this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+															/**
+															 * Если приём идёт современным набором вызовов
+															 *
+															 * @warning Условие здесь обязано в точности совпадать с условием ветви приёма
+															 *          в eth::sctp::receive. Подписка эта не добавляет метаданные, а
+															 *          ПЕРЕКЛЮЧАЕТ их вид: включив её, ядро Linux перестаёт слать сведения
+															 *          прежнего вида SCTP_SNDRCV, которыми старая ветвь приёма только и
+															 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
+															 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
+															 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
+															 */
+															#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+																// Выполняем подписку на метаданные принимаемых сообщений
+																this->_eth.sctp.receiveInfo(server->fd, true);
+															#endif
+														break;
 													}
+												}
 												/**
 												 * Определяем тип сокета
 												 */
@@ -45164,7 +45423,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
-															// Выводим результат
 															/**
 															 * Возвращаем узел в несведённое состояние
 															 *
@@ -45174,6 +45432,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * событие числится запущенным
 															 */
 															server->state.status = event::status_t::NONE;
+															// Выводим результат
 															return result;
 														// Если бинд события выполнен успешно
 														} else {
@@ -45198,6 +45457,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															server->actions |= ::action::CLOSE;
 															// Устанавливаем флаг разрешающий выполнять принятие подключений
 															server->actions |= ::action::ACCEPT;
+															/**
+															 * Извещаем потребителя о входе узла в исходное состояние
+															 *
+															 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+															 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+															 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+															 *          а не общим сторожем смены состояния: сторож привязан к правке
+															 *          подписок, и состав извещений зависел бы от мгновения подписки,
+															 *          а не от того, что произошло с узлом
+															 */
+															if(server->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова статуса события
+																server->callbacks.status(server->id, server->state.status);
 														}
 													} break;
 													// Для других типов сокетов
@@ -45268,58 +45541,39 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Если адрес целевой машины указан
 											if((result = (server->host != nullptr))){
-													// Если протокол интернета установлен как SCTP
-													if(server->state.protocol == event::protocol_t::SCTP){
-														/**
-														 * Определяем тип сокета
-														 */
-														switch(static_cast <uint8_t> (server->state.type)){
-															// Если событие принадлежит к типу STREAM
-															case static_cast <uint8_t> (event::type_t::STREAM):
-																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
-															break;
-															// Если событие принадлежит к типу SEQPACKET
-															case static_cast <uint8_t> (event::type_t::SEQPACKET):
-																// Выполняем активацию событий SCTP
-																this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
-																/**
-																 * Подписка на метаданные у сокета упорядоченных сообщений ОБЯЗАТЕЛЬНА
-																 *
-																 * @details Подключение здесь принимается не вызовом accept, а чтением сообщения
-																 *          с прослушивающего сокета и отделением связи вызовом sctp_peeloff по
-																 *          её опознавателю. Опознаватель же приходит только метаданными: без
-																 *          подписки он остаётся нулевым, и отделение отвергается отказом.
-																 *          Наружу это выходит тем, что сервер не принимает подключений ВОВСЕ
-																 *
-																 * @warning Оттого подписка здесь безусловна и не зависит от установленных
-																 *          откликов: она нужна самому движку, а не потребителю. Замерено щупом
-																 *          на FreeBSD, Debian и Sun Solaris - всюду одинаково: без подписки
-																 *          опознаватель нулевой и sctp_peeloff отвечает отказом, с подпиской
-																 *          опознаватель приходит и отделение проходит
-																 *
-																 * @note У систем Sun метод отвечает согласием, ничего не делая: там опознаватель
-																 *       приносит подписка на события выше, а трогать SCTP_RECVRCVINFO нельзя -
-																 *       она отключила бы её
-																 */
-																/**
-																 * Если приём идёт современным набором вызовов
-																 *
-																 * @warning Условие здесь обязано в точности совпадать с условием ветви приёма
-																 *          в eth::sctp::receive. Подписка эта не добавляет метаданные, а
-																 *          ПЕРЕКЛЮЧАЕТ их вид: включив её, ядро Linux перестаёт слать сведения
-																 *          прежнего вида SCTP_SNDRCV, которыми старая ветвь приёма только и
-																 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
-																 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
-																 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
-																 */
-																#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
-																	// Выполняем подписку на метаданные принимаемых сообщений
-																	this->_eth.sctp.receiveInfo(server->fd, true);
-																#endif
-															break;
-														}
+												// Если протокол интернета установлен как SCTP
+												if(server->state.protocol == event::protocol_t::SCTP){
+													/**
+													 * Определяем тип сокета
+													 */
+													switch(static_cast <uint8_t> (server->state.type)){
+														// Если событие принадлежит к типу STREAM
+														case static_cast <uint8_t> (event::type_t::STREAM):
+															// Выполняем активацию событий SCTP
+															this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+														break;
+														// Если событие принадлежит к типу SEQPACKET
+														case static_cast <uint8_t> (event::type_t::SEQPACKET):
+															// Выполняем активацию событий SCTP
+															this->_eth.sctp.eventsSubscribe(server->fd, server->sctp.events);
+															/**
+															 * Если приём идёт современным набором вызовов
+															 *
+															 * @warning Условие здесь обязано в точности совпадать с условием ветви приёма
+															 *          в eth::sctp::receive. Подписка эта не добавляет метаданные, а
+															 *          ПЕРЕКЛЮЧАЕТ их вид: включив её, ядро Linux перестаёт слать сведения
+															 *          прежнего вида SCTP_SNDRCV, которыми старая ветвь приёма только и
+															 *          живёт. Выдав её там, где приём идёт по старой ветви, мы отнимаем у
+															 *          него опознаватель связи: он приходит нулевым, sctp_peeloff отвечает
+															 *          отказом, и сервер не принимает подключений вовсе. Проверено на Debian
+															 */
+															#if defined(SCTP_RECVRCVINFO) && defined(SCTP_RECVV_RCVINFO)
+																// Выполняем подписку на метаданные принимаемых сообщений
+																this->_eth.sctp.receiveInfo(server->fd, true);
+															#endif
+														break;
 													}
+												}
 												/**
 												 * Определяем тип сокета
 												 */
@@ -45380,7 +45634,6 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
-															// Выводим результат
 															/**
 															 * Возвращаем узел в несведённое состояние
 															 *
@@ -45390,6 +45643,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * событие числится запущенным
 															 */
 															server->state.status = event::status_t::NONE;
+															// Выводим результат
 															return result;
 														// Если бинд события выполнен успешно
 														} else {
@@ -45414,6 +45668,20 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															server->actions |= ::action::CLOSE;
 															// Устанавливаем флаг разрешающий выполнять принятие подключений
 															server->actions |= ::action::ACCEPT;
+															/**
+															 * Извещаем потребителя о входе узла в исходное состояние
+															 *
+															 * @details Здесь - и только здесь - `INITIAL` есть настоящая СМЕНА состояния:
+															 *          узел заведён и готов к работе. Прочие присвоения `INITIAL` по коду
+															 *          суть ОТКАТ после неудавшейся смены, и извещать о них нельзя - о том
+															 *          потребителю говорит `FAILURE`. Оттого извещение идёт явным вызовом,
+															 *          а не общим сторожем смены состояния: сторож привязан к правке
+															 *          подписок, и состав извещений зависел бы от мгновения подписки,
+															 *          а не от того, что произошло с узлом
+															 */
+															if(server->callbacks.status != nullptr)
+																// Вызываем функцию обратного вызова статуса события
+																server->callbacks.status(server->id, server->state.status);
 														}
 													} break;
 													// Для других типов сокетов

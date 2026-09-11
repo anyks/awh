@@ -31309,6 +31309,686 @@ TEST_F(IoFixture, IoQueueRefundOnDestroyTest){
 	}
 
 /**
+ * @brief Парная проверка СОСТАВА И ПОРЯДКА извещений за круг жизни клиента
+ *
+ * @details Проверка эта наречия НЕ РАЗЛИЧАЕТ и стоит в общей части файла НАМЕРЕННО: текст
+ *          у неё один на все пять движков, и сличаются движки её ПЕЧАТЬЮ, а не исходом.
+ *          Отказы ловятся сличением доводов, а расхождение договора о том, ЧТО и В КАКОМ
+ *          ПОРЯДКЕ приходит потребителю, по журналу не ловится вовсе: движок не отказывает,
+ *          он тихо отдаёт другое
+ *
+ * @note Единство текста здесь важнее удобства: два похожих текста расходятся на первой же
+ *       правке, и расхождение движков стало бы неотличимо от расхождения проверок
+ *
+ * @warning Печать состава выполняется и ПУСТЫМ составом, а пустой состав неотличим от
+ *          движка, промолчавшего вовсе. Оттого у проверки стоит оберег: она утверждает,
+ *          что до предмета ДОШЛА - клиент подключился и узел его изъят, - и лишь затем
+ *          печатает след. Без оберега зелень её ничего бы не стоила
+ *
+ */
+	TEST_F(IoFixture, IoClientLifecycleOrderTest){
+		/**
+		 * Вид сокета домена UNIX развилкой по системам, а НЕ общей заменой
+		 *
+		 * Довод тот же, что и у проверки молчания круга жизни: у Windows предметом
+		 * является изображение именованным каналом, а у наречий POSIX домен UNIX
+		 * слушается лишь потоковым. Замена вида общей строкой потеряла бы предмет
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Вид сокета, изображаемый именованным каналом
+			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		#else
+			// Вид сокета, каким домен UNIX слушается у систем POSIX
+			const awh::event::type_t kind = awh::event::type_t::STREAM;
+		#endif
+		// След извещений, пришедших клиенту за круг его жизни
+		std::vector <std::string> trail;
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("cliorder.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Признак того, что подключение было принято сервером
+		bool taken = false;
+		// Идентификатор принятого сервером узла
+		awh::event::id_t peer = 0;
+		// Подписываемся на приём подключения
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&taken, &peer, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Отмечаем подключение принятым
+			taken = true;
+			// Запоминаем идентификатор принятого узла
+			peer = cid;
+			// Выставляем опции принятому узлу: они не наследуются
+			(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+		}));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Сервер обязан встать на слушание
+		ASSERT_TRUE(this->_io->listen(sid, 16));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, kind);
+		// Проверяем, что событие заведено
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		/**
+		 * Подписываемся на ОБА рода извещений клиента, складывая их в общий след
+		 *
+		 * @note Роды складываются в ОДИН список намеренно: порядок между ними и есть
+		 *       предмет сличения. Разложи их по двум спискам - и чередование родов,
+		 *       какое потребитель как раз и видит, пропало бы из замера
+		 */
+		this->_io->on(cid, static_cast <awh::engine::callback::event_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+			// Запоминаем в следе пришедшее извещение о действии
+			trail.emplace_back(std::string("action:") + std::to_string(static_cast <uint16_t> (action)));
+		}));
+		// Подписываемся на смену состояния клиента
+		this->_io->on(cid, static_cast <awh::engine::callback::status_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Запоминаем в следе пришедшую смену состояния
+			trail.emplace_back(std::string("status:") + std::to_string(static_cast <uint16_t> (status)));
+		}));
+		// Клиент обязан зафиксировать настройки
+		ASSERT_TRUE(this->_io->commit(cid));
+		// Клиент обязан подключиться
+		ASSERT_TRUE(this->_io->connect(cid));
+		// Запускаем клиента
+		ASSERT_TRUE(this->_io->launch(cid));
+		/**
+		 * Даём циклу обороты на приём подключения
+		 */
+		for(uint8_t i = 0; (i < 50) && !taken; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		/**
+		 * ОБЕРЕГ ПЕРВЫЙ: до предмета дошли, подключение состоялось
+		 *
+		 * @warning Без него след мог бы оказаться пустым по той причине, что клиент не
+		 *          подключился вовсе, - и печать пустого следа прошла бы зелёной
+		 */
+		ASSERT_TRUE(taken) << "подключение не состоялось: след круга жизни снят не с того";
+		// Сносим принятый сервером узел, разрывая связь с клиентом
+		this->_io->destroy(peer);
+		/**
+		 * Даём циклу обороты на разрыв и изъятие узла клиента
+		 */
+		for(uint8_t i = 0; i < 20; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сносим клиента
+		this->_io->destroy(cid);
+		/**
+		 * Даём циклу обороты: окончательное изъятие узла отложено
+		 */
+		for(uint8_t i = 0; i < 10; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Собранный след извещений одной строкой
+		std::string line;
+		// Переходим по всему следу извещений
+		for(const auto & item : trail){
+			// Если строка следа не пуста
+			if(!line.empty())
+				// Добавляем разделитель записей следа
+				line.append(" -> ");
+			// Добавляем в строку запись следа
+			line.append(item);
+		}
+		// Печатаем состав и порядок извещений для сличения между движками
+		std::cout << "[          ] СЛЕД КРУГА ЖИЗНИ КЛИЕНТА: " << line << std::endl;
+		/**
+		 * ОБЕРЕГ ВТОРОЙ: движок извещал, а не молчал
+		 *
+		 * @note Утверждение о составе никогда не полно в одиночку: пустой след означал бы
+		 *       движок, не сказавший потребителю ничего, и печать его прошла бы зелёной
+		 */
+		ASSERT_FALSE(trail.empty()) << "движок не прислал клиенту ни одного извещения за круг его жизни";
+		// Сносим сервер
+		this->_io->destroy(sid);
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+/**
+ * @brief Парная проверка СОСТАВА И ПОРЯДКА извещений при ПРИЁМЕ подключения
+ *
+ * @details Вторая мера четвёртого слоя сверки договора, устроенная так же, как и проверка
+ *          круга жизни клиента: один текст на пять движков, печать следа, сличение движков
+ *          ПЕЧАТЬЮ. Предмет иной - сторона СЕРВЕРА и принятого узла, где извещений больше
+ *          и порядок их сложнее: приём, готовность принятого узла, разрыв встречной стороной
+ *
+ * @note След ведётся ПО ДВУМ узлам разом, с пометкой стороны у каждой записи. Разложи их по
+ *       двум спискам - и чередование сторон, какое потребитель как раз и видит, пропало бы
+ *       из замера: а именно на нём и стоит вопрос, узнаёт ли сервер о судьбе принятого узла
+ *
+ * @warning Оберегов у проверки два, и оба обязательны. Первый: подключение принято - иначе
+ *          след снят не с того. Второй: след не пуст - иначе движок не сказал потребителю
+ *          ничего, а печать пустого следа прошла бы зелёной
+ *
+ */
+	TEST_F(IoFixture, IoServerAcceptOrderTest){
+		/**
+		 * Вид сокета домена UNIX развилкой по системам, а НЕ общей заменой
+		 *
+		 * Довод тот же, что и у прочих проверок домена UNIX: у Windows предметом является
+		 * изображение именованным каналом, у наречий POSIX домен UNIX слушается потоковым
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Вид сокета, изображаемый именованным каналом
+			const awh::event::type_t kind = awh::event::type_t::SEQPACKET;
+		#else
+			// Вид сокета, каким домен UNIX слушается у систем POSIX
+			const awh::event::type_t kind = awh::event::type_t::STREAM;
+		#endif
+		// След извещений, пришедших стороне сервера и принятому узлу
+		std::vector <std::string> trail;
+		// Путь, каким задаётся сервер домена UNIX
+		const std::string path = ::uds("srvorder.sock");
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим сервер домена UNIX
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, kind);
+		// Проверяем, что событие заведено
+		ASSERT_GT(sid, 0u);
+		// Устанавливаем серверу путь привязки
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Признак того, что подключение было принято сервером
+		bool taken = false;
+		// Подписываемся на извещения самого сервера
+		this->_io->on(sid, static_cast <awh::engine::callback::event_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+			// Запоминаем в следе извещение о действии, пришедшее серверу
+			trail.emplace_back(std::string("srv.action:") + std::to_string(static_cast <uint16_t> (action)));
+		}));
+		// Подписываемся на смену состояния сервера
+		this->_io->on(sid, static_cast <awh::engine::callback::status_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Запоминаем в следе смену состояния, пришедшую серверу
+			trail.emplace_back(std::string("srv.status:") + std::to_string(static_cast <uint16_t> (status)));
+		}));
+		/**
+		 * Подписываемся на приём подключения, а через него - на извещения принятого узла
+		 *
+		 * @note Подписка на принятый узел иначе невозможна: до приёма его не существует, и
+		 *       именно оттого след приёма и след принятого узла ведутся одним списком
+		 */
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&trail, &taken, io = this->_io.get()]([[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
+			// Отмечаем подключение принятым
+			taken = true;
+			// Запоминаем в следе сам приём подключения
+			trail.emplace_back("srv.accept");
+			// Выставляем опции принятому узлу: они не наследуются
+			(void) io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK);
+			// Подписываемся на извещения принятого узла
+			io->on(cid, static_cast <awh::engine::callback::event_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+				// Запоминаем в следе извещение о действии, пришедшее принятому узлу
+				trail.emplace_back(std::string("peer.action:") + std::to_string(static_cast <uint16_t> (action)));
+			}));
+			// Подписываемся на смену состояния принятого узла
+			io->on(cid, static_cast <awh::engine::callback::status_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+				// Запоминаем в следе смену состояния, пришедшую принятому узлу
+				trail.emplace_back(std::string("peer.status:") + std::to_string(static_cast <uint16_t> (status)));
+			}));
+		}));
+		// Сервер обязан подняться
+		ASSERT_TRUE(this->_io->commit(sid));
+		// Сервер обязан встать на слушание
+		ASSERT_TRUE(this->_io->listen(sid, 16));
+		// Запускаем сервер
+		ASSERT_TRUE(this->_io->launch(sid));
+		// Заводим клиента домена UNIX
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, kind);
+		// Проверяем, что событие заведено
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем клиенту путь подключения
+		ASSERT_TRUE(this->_io->setTarget(cid, path));
+		// Выставляем неблокирующий обмен
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		// Клиент обязан зафиксировать настройки
+		ASSERT_TRUE(this->_io->commit(cid));
+		// Клиент обязан подключиться
+		ASSERT_TRUE(this->_io->connect(cid));
+		// Запускаем клиента
+		ASSERT_TRUE(this->_io->launch(cid));
+		/**
+		 * Даём циклу обороты на приём подключения
+		 */
+		for(uint8_t i = 0; (i < 50) && !taken; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		/**
+		 * ОБЕРЕГ ПЕРВЫЙ: до предмета дошли, подключение принято
+		 *
+		 * @warning Без него след мог бы оказаться снятым с сервера, не принявшего никого, -
+		 *          и печать такого следа прошла бы зелёной
+		 */
+		ASSERT_TRUE(taken) << "подключение не было принято: след приёма снят не с того";
+		/**
+		 * Сносим КЛИЕНТА, а не принятый узел: предмет здесь - узнаёт ли принятая сторона
+		 * о разрыве, учинённом встречным концом
+		 */
+		this->_io->destroy(cid);
+		/**
+		 * Даём циклу обороты на разрыв и изъятие принятого узла
+		 */
+		for(uint8_t i = 0; i < 20; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Собранный след извещений одной строкой
+		std::string line;
+		// Переходим по всему следу извещений
+		for(const auto & item : trail){
+			// Если строка следа не пуста
+			if(!line.empty())
+				// Добавляем разделитель записей следа
+				line.append(" -> ");
+			// Добавляем в строку запись следа
+			line.append(item);
+		}
+		// Печатаем состав и порядок извещений для сличения между движками
+		std::cout << "[          ] СЛЕД ПРИЁМА ПОДКЛЮЧЕНИЯ: " << line << std::endl;
+		/**
+		 * ОБЕРЕГ ВТОРОЙ: движок извещал, а не молчал
+		 */
+		ASSERT_FALSE(trail.empty()) << "движок не прислал ни одного извещения за приём подключения";
+		// Сносим сервер
+		this->_io->destroy(sid);
+		/**
+		 * Даём циклу обороты: окончательное уничтожение узла отложено
+		 */
+		for(uint8_t i = 0; i < 5; i++)
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+
+/**
+ * @brief Парная проверка СОСТАВА И ПОРЯДКА извещений при ПЕРЕПОДКЛЮЧЕНИИ клиента
+ *
+ * @details Третья мера четвёртого слоя сверки договора. Предмет выбран по находке: состояние
+ *          `REBIRTHED` выдаётся у всех пяти движков ровно тремя местами, и ВСЕ ТРИ лежат на
+ *          пути возврата клиента после обрыва - к перестроению узла оно отношения не имеет,
+ *          вопреки своему имени. Раз значение это живое и общее пяти наречиям, состав
+ *          извещений вокруг него обязан сходиться
+ *
+ * @note Семейство здесь IPv4 по петле, а не домен UNIX: путь возврата у клиента общий всем
+ *       семействам, а петля переносима без развилок по системам. Встречная сторона - сырой
+ *       слушатель, а не сервер движка: обрыв учиняется ЕЮ, и движку он должен прийти извне,
+ *       как приходит в жизни
+ *
+ * @warning Оберег утверждает, что до предмета дошли: подключение состоялось ДО обрыва и
+ *          состоялось ПОСЛЕ него. Без второй половины проверка прошла бы зелёной и у движка,
+ *          который не переподключается вовсе, - напечатав правдоподобный след одной жизни
+ *
+ */
+TEST_F(IoFixture, IoClientReconnectOrderTest){
+	// След извещений, пришедших клиенту за обрыв и возврат
+	std::vector <std::string> trail;
+	// Число состоявшихся подключений
+	uint8_t successes = 0;
+	// Заводим слушающий сокет на петле
+	const int32_t listener = static_cast <int32_t> (::socket(AF_INET, SOCK_STREAM, 0));
+	// Проверяем, что слушатель заведён
+	ASSERT_GT(listener, 0);
+	// Адрес, каким слушатель привязывается к петле
+	struct sockaddr_in host{};
+	/**
+	 * У систем BSD длина адреса задаётся полем самого адреса
+	 */
+	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		// Устанавливаем размер объекта адреса
+		host.sin_len = sizeof(host);
+	#endif
+	// Устанавливаем семейство адреса
+	host.sin_family = AF_INET;
+	// Порт выбирает система сама
+	host.sin_port = 0;
+	// Устанавливаем адрес петли
+	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	// Привязываем слушателя к петле
+	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	// Размер объекта адреса, отдаваемый системой
+	socklen_t length = sizeof(host);
+	// Узнаём порт, выбранный системой
+	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
+	// Ставим слушателя на приём
+	ASSERT_EQ(0, ::listen(listener, 16));
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие клиента
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	// Проверяем, что событие заведено
+	ASSERT_GT(eid, 0u);
+	// Заводим тикающий интервал, каким движок ведёт возврат
+	const awh::event::id_t tick = this->_io->event(awh::event::node_t::INTERVAL, awh::event::family_t::TIMER);
+	// Проверяем, что событие заведено
+	ASSERT_GT(tick, 0u);
+	/**
+	 * Выставляем неблокирующий обмен И САМОЧИННЫЙ ВОЗВРАТ
+	 *
+	 * @warning Опция `AUTO_RECONNECT` здесь обязательна и составляет условие предмета:
+	 *          сам по себе движок клиента не возвращает, возврат у него делается ЯВНО -
+	 *          перестройка, подключение, запуск. Первая редакция этой проверки опции не
+	 *          ставила и отказала с доводом «движок не переподключил клиента», хотя
+	 *          движок вёл себя верно: не включённого возврата не бывает
+	 *
+	 * @note Отказ тот стоит помнить как образец: проверка утверждала ДОГОВОР, какого не
+	 *       заводила. Прежде чем звать отказ находкой, спросить, поставлено ли условие
+	 */
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY | awh::event::options::AUTO_RECONNECT));
+	// Устанавливаем клиенту адрес подключения
+	ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+	// Устанавливаем клиенту порт подключения
+	ASSERT_TRUE(this->_io->setTargetPort(eid, ntohs(host.sin_port)));
+	// Устанавливаем срок тикающего интервала
+	this->_io->setTimeout(tick, awh::event::action_t::NONE, 100);
+	// Подписываемся на извещения о действиях клиента
+	this->_io->on(eid, static_cast <awh::engine::callback::event_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+		// Запоминаем в следе пришедшее извещение о действии
+		trail.emplace_back(std::string("action:") + std::to_string(static_cast <uint16_t> (action)));
+	}));
+	// Подписываемся на смену состояния клиента
+	this->_io->on(eid, static_cast <awh::engine::callback::status_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Запоминаем в следе пришедшую смену состояния
+		trail.emplace_back(std::string("status:") + std::to_string(static_cast <uint16_t> (status)));
+	}));
+	// Подписываемся на исход подключения: им и считаются состоявшиеся жизни
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> ([&successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Если подключение состоялось
+		if(ok)
+			// Увеличиваем счётчик состоявшихся подключений
+			successes++;
+	}));
+	// Клиент обязан зафиксировать настройки
+	ASSERT_TRUE(this->_io->commit(eid));
+	// Интервал обязан зафиксировать настройки
+	ASSERT_TRUE(this->_io->commit(tick));
+	// Клиент обязан подключиться
+	ASSERT_TRUE(this->_io->connect(eid));
+	// Запускаем клиента
+	ASSERT_TRUE(this->_io->launch(eid));
+	// Запускаем интервал
+	ASSERT_TRUE(this->_io->launch(tick));
+	// Засекаем время начала ожидания первого подключения
+	auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся первого подключения
+	 */
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
+		// Выполняем оборот цикла событий
+		this->_io->poll(__AWH_TEST_POLL_SLICE__);
+	/**
+	 * ОБЕРЕГ ПЕРВЫЙ: первая жизнь состоялась
+	 */
+	ASSERT_GE(successes, 1) << "первое подключение не состоялось: след возврата снят не с того";
+	// Отмечаем в следе сам обрыв, учинённый встречной стороной
+	trail.emplace_back("--обрыв--");
+	/**
+	 * Принимаем подключение у сырого слушателя и рвём его
+	 *
+	 * @note Обрыв учиняется ВСТРЕЧНОЙ стороной намеренно: возврат клиента обязан
+	 *       заводиться внешним обрывом, как оно и бывает в жизни
+	 */
+	{
+		// Принимаем подключение, заведённое клиентом движка
+		const int32_t taken = static_cast <int32_t> (::accept(listener, nullptr, nullptr));
+		// Если подключение принято - рвём его
+		if(taken > 0)
+			/**
+			 * Закрываем принятый конец тем средством, каким его закрывает система
+			 */
+			#if defined(_WIN32) || defined(_WIN64)
+				// Закрываем принятое подключение
+				::closesocket(static_cast <SOCKET> (taken));
+			#else
+				// Закрываем принятое подключение
+				::close(taken);
+			#endif
+	}
+	// Запоминаем число подключений, бывших до обрыва
+	const uint8_t before = successes;
+	// Засекаем время начала ожидания возврата
+	start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся возврата клиента
+	 */
+	while((successes <= before) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 20000))
+		// Выполняем оборот цикла событий
+		this->_io->poll(__AWH_TEST_POLL_SLICE__);
+	// Собранный след извещений одной строкой
+	std::string line;
+	// Переходим по всему следу извещений
+	for(const auto & item : trail){
+		// Если строка следа не пуста
+		if(!line.empty())
+			// Добавляем разделитель записей следа
+			line.append(" -> ");
+		// Добавляем в строку запись следа
+		line.append(item);
+	}
+	// Печатаем состав и порядок извещений для сличения между движками
+	std::cout << "[          ] СЛЕД ВОЗВРАТА КЛИЕНТА: " << line << std::endl;
+	/**
+	 * ОБЕРЕГ ВТОРОЙ: возврат СОСТОЯЛСЯ
+	 *
+	 * @warning Без него проверка прошла бы зелёной и у движка, не возвращающегося вовсе:
+	 *          след одной жизни выглядит правдоподобно, и печать его никого бы не насторожила
+	 */
+	ASSERT_GT(successes, before) << "возврат не состоялся: движок не переподключил клиента после обрыва";
+	// Сносим клиента
+	this->_io->destroy(eid);
+	// Сносим интервал
+	this->_io->destroy(tick);
+	/**
+	 * Даём циклу обороты: окончательное изъятие узлов отложено
+	 */
+	for(uint8_t i = 0; i < 5; i++)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	/**
+	 * Закрываем сырого слушателя
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Закрываем слушающий сокет
+		::closesocket(static_cast <SOCKET> (listener));
+	#else
+		// Закрываем слушающий сокет
+		::close(listener);
+	#endif
+	// Сворачиваем движок
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+/**
+ * @brief Парная проверка СОСТАВА И ПОРЯДКА извещений при ПАУЗЕ и ВОЗОБНОВЛЕНИИ
+ *
+ * @details Четвёртая мера четвёртого слоя сверки договора. Место выбрано по устройству
+ *          сторожа смены состояния: `PAUSED` и `RESUMED` разобраны в нём ОСОБО, и
+ *          возобновление - ЕДИНСТВЕННОЕ место, где сторож шлёт ДВА извещения подряд:
+ *          сперва само `RESUMED`, затем возвращённое прежнее состояние узла
+ *
+ * @note Устройство это заведомо непростое, а проверок на него не было ни одной ни у
+ *       одного из пяти наречий. Мера та же, что и у прочих парных проверок: один текст,
+ *       печать следа, сличение движков ПЕЧАТЬЮ
+ *
+ * @warning Оберег утверждает, что до предмета дошли ОБА раза: пауза принята и
+ *          возобновление принято. Без него проверка прошла бы зелёной у движка, который
+ *          паузы не делает вовсе, - напечатав след одной непрерывной жизни
+ *
+ */
+TEST_F(IoFixture, IoPauseResumeOrderTest){
+	// След извещений, пришедших клиенту за паузу и возобновление
+	std::vector <std::string> trail;
+	// Число состоявшихся подключений
+	uint8_t successes = 0;
+	// Заводим слушающий сокет на петле
+	const int32_t listener = static_cast <int32_t> (::socket(AF_INET, SOCK_STREAM, 0));
+	// Проверяем, что слушатель заведён
+	ASSERT_GT(listener, 0);
+	// Адрес, каким слушатель привязывается к петле
+	struct sockaddr_in host{};
+	/**
+	 * У систем BSD длина адреса задаётся полем самого адреса
+	 */
+	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		// Устанавливаем размер объекта адреса
+		host.sin_len = sizeof(host);
+	#endif
+	// Устанавливаем семейство адреса
+	host.sin_family = AF_INET;
+	// Порт выбирает система сама
+	host.sin_port = 0;
+	// Устанавливаем адрес петли
+	::inet_pton(AF_INET, "127.0.0.1", &host.sin_addr);
+	// Привязываем слушателя к петле
+	ASSERT_EQ(0, ::bind(listener, reinterpret_cast <struct sockaddr *> (&host), sizeof(host)));
+	// Размер объекта адреса, отдаваемый системой
+	socklen_t length = sizeof(host);
+	// Узнаём порт, выбранный системой
+	ASSERT_EQ(0, ::getsockname(listener, reinterpret_cast <struct sockaddr *> (&host), &length));
+	// Ставим слушателя на приём
+	ASSERT_EQ(0, ::listen(listener, 16));
+	// Выполняем инициализацию сетевого движка
+	ASSERT_TRUE(this->_io->initialize());
+	// Заводим событие клиента
+	const awh::event::id_t eid = this->_io->event(
+		awh::event::node_t::CLIENT, awh::event::family_t::IPV4,
+		awh::event::type_t::STREAM, awh::event::protocol_t::TCP
+	);
+	// Проверяем, что событие заведено
+	ASSERT_GT(eid, 0u);
+	// Выставляем неблокирующий обмен
+	ASSERT_TRUE(this->_io->setOptions(eid, awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::TCP_NO_DELAY));
+	// Устанавливаем клиенту адрес подключения
+	ASSERT_TRUE(this->_io->setTarget(eid, "127.0.0.1"));
+	// Устанавливаем клиенту порт подключения
+	ASSERT_TRUE(this->_io->setTargetPort(eid, ntohs(host.sin_port)));
+	// Подписываемся на извещения о действиях клиента
+	this->_io->on(eid, static_cast <awh::engine::callback::event_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+		// Запоминаем в следе пришедшее извещение о действии
+		trail.emplace_back(std::string("action:") + std::to_string(static_cast <uint16_t> (action)));
+	}));
+	// Подписываемся на смену состояния клиента
+	this->_io->on(eid, static_cast <awh::engine::callback::status_t> ([&trail]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Запоминаем в следе пришедшую смену состояния
+		trail.emplace_back(std::string("status:") + std::to_string(static_cast <uint16_t> (status)));
+	}));
+	// Подписываемся на исход подключения
+	this->_io->on(eid, static_cast <awh::engine::callback::connect_t> ([&successes]([[maybe_unused]] const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Если подключение состоялось
+		if(ok)
+			// Увеличиваем счётчик состоявшихся подключений
+			successes++;
+	}));
+	// Клиент обязан зафиксировать настройки
+	ASSERT_TRUE(this->_io->commit(eid));
+	// Клиент обязан подключиться
+	ASSERT_TRUE(this->_io->connect(eid));
+	// Запускаем клиента
+	ASSERT_TRUE(this->_io->launch(eid));
+	// Засекаем время начала ожидания подключения
+	const auto start = std::chrono::steady_clock::now();
+	/**
+	 * Дожидаемся подключения
+	 */
+	while((successes < 1) && (std::chrono::duration_cast <std::chrono::milliseconds> (std::chrono::steady_clock::now() - start).count() < 3000))
+		// Выполняем оборот цикла событий
+		this->_io->poll(__AWH_TEST_POLL_SLICE__);
+	/**
+	 * ОБЕРЕГ ПЕРВЫЙ: подключение состоялось
+	 */
+	ASSERT_GE(successes, 1) << "подключение не состоялось: след паузы снят не с того";
+	// Отмечаем в следе саму подачу паузы
+	trail.emplace_back("--пауза--");
+	/**
+	 * ОБЕРЕГ ВТОРОЙ: пауза ПРИНЯТА движком
+	 *
+	 * @warning Без него след мог бы оказаться следом непрерывной жизни узла, какой у
+	 *          движка, паузы не делающего вовсе, выглядит совершенно правдоподобно
+	 */
+	ASSERT_TRUE(this->_io->pause(eid)) << "движок не принял паузу: мерить нечего";
+	/**
+	 * Даём циклу обороты на разбор паузы
+	 */
+	for(uint8_t i = 0; i < 10; i++)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	// Отмечаем в следе саму подачу возобновления
+	trail.emplace_back("--возобновление--");
+	/**
+	 * ОБЕРЕГ ТРЕТИЙ: возобновление ПРИНЯТО движком
+	 */
+	ASSERT_TRUE(this->_io->resume(eid)) << "движок не принял возобновление: второй половины предмета нет";
+	/**
+	 * Даём циклу обороты на разбор возобновления
+	 */
+	for(uint8_t i = 0; i < 10; i++)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	// Собранный след извещений одной строкой
+	std::string line;
+	// Переходим по всему следу извещений
+	for(const auto & item : trail){
+		// Если строка следа не пуста
+		if(!line.empty())
+			// Добавляем разделитель записей следа
+			line.append(" -> ");
+		// Добавляем в строку запись следа
+		line.append(item);
+	}
+	// Печатаем состав и порядок извещений для сличения между движками
+	std::cout << "[          ] СЛЕД ПАУЗЫ И ВОЗОБНОВЛЕНИЯ: " << line << std::endl;
+	/**
+	 * ОБЕРЕГ ЧЕТВЁРТЫЙ: движок извещал, а не молчал
+	 */
+	ASSERT_FALSE(trail.empty()) << "движок не прислал ни одного извещения за паузу и возобновление";
+	// Сносим клиента
+	this->_io->destroy(eid);
+	/**
+	 * Даём циклу обороты: окончательное изъятие узла отложено
+	 */
+	for(uint8_t i = 0; i < 5; i++)
+		// Выполняем оборот цикла событий
+		this->_io->poll(10);
+	/**
+	 * Закрываем сырого слушателя
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Закрываем слушающий сокет
+		::closesocket(static_cast <SOCKET> (listener));
+	#else
+		// Закрываем слушающий сокет
+		::close(listener);
+	#endif
+	// Сворачиваем движок
+	ASSERT_TRUE(this->_io->deinitialize());
+}
+
+
+
+
+
+/**
  * @note Проверка эта наречия НЕ РАЗЛИЧАЕТ: счёт подключений сервера и его предел суть
  *       устройство движка, а не системы, и договор «счёт возвращается при сносе принятого
  *       узла» обязан держаться у всех пяти. Стоять ей потому в общей части файла.
