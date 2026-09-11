@@ -2385,18 +2385,36 @@ namespace io {
 			return (* this->_bandwidth);
 		}
 	public:
-		// Общее количество подключений сервера
-		uint32_t & peers;
+		/**
+		 * @brief Опознаватель узла сервера, принявшего это подключение
+		 *
+		 * @warning Здесь ОПОЗНАВАТЕЛЬ, а не ссылка на счётчик сервера. Прежде поле было
+		 *          объявлено `uint32_t & peers` и связывалось со счётчиком ВНУТРИ узла
+		 *          сервера (`server->backlog.count`). Договор при этом был негласный:
+		 *          сервер обязан пережить все свои принятые узлы, - и сборщик мусора
+		 *          движка его нарушал, освобождая сервер раньше. Снос принятого узла
+		 *          уменьшал тогда счётчик в УЖЕ ОСВОБОЖДЁННОЙ памяти
+		 *
+		 * @details Найдено надзирателем памяти 09.09.2026: `heap-use-after-free` при
+		 *          чтении счётчика в `io::destroy`, воспроизводится проверкой
+		 *          `IoFixture.IoTimerDifficultNetworkNodeTest`. Обычные прогоны молчали
+		 *          на всех пяти сочетаниях системы и движка
+		 *
+		 * @note Опознаватель разрешается по месту употребления и лишь при живом сервере:
+		 *       адрес в поле живости не доказывает, а опознаватель её и не обещает -
+		 *       он требует спросить хранилище
+		 */
+		event::id_t owner;
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param num общее количество подключений сервера
-		 * @param fmk объект фреймворка
-		 * @param log объект работы с логами
+		 * @param owner опознаватель узла сервера, принявшего подключение
+		 * @param fmk   объект фреймворка
+		 * @param log   объект работы с логами
 		 *
 		 */
-		explicit Peer(uint32_t & num, const fmk_t * fmk, const log_t * log) noexcept :
-		 activity(::activity::NONE), transfer(fmk, log), peers(num) {}
+		explicit Peer(const event::id_t owner, const fmk_t * fmk, const log_t * log) noexcept :
+		 activity(::activity::NONE), transfer(fmk, log), owner(owner) {}
 	} peer_t;
 
 	/**
@@ -2412,8 +2430,6 @@ namespace io {
 		transfer_t transfer;
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
-		// Общее количество подключений сервера
-		uint32_t & origins;
 		/**
 		 * Ключи, по которым маршрутизируется сессия. Протоколы со сменой
 		 * идентификатора на лету адресуют одну сессию произвольным их числом,
@@ -2424,13 +2440,12 @@ namespace io {
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param num общее количество подключений сервера
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 *
 		 */
-		explicit Origin(uint32_t & num, const fmk_t * fmk, const log_t * log) noexcept :
-		 sid(0), wrate(5), transfer(fmk, log), origins(num) {}
+		explicit Origin(const fmk_t * fmk, const log_t * log) noexcept :
+		 sid(0), wrate(5), transfer(fmk, log) {}
 	} origin_t;
 
 	/**
@@ -7412,17 +7427,44 @@ namespace handoff {
 	 * @param label метка передачи
 	 *
 	 */
-	static void defer(const event::id_t id, const net::socket_t fd, const uint64_t label) noexcept {
-		// Отмечаем отложенную передачу описателя у узла-переносчика
-		::handoff::__awh_outgoing__[id].push_back(::handoff::pending_t{label, fd});
+	static void defer(const event::id_t id, const net::socket_t fd, const uint64_t label, const log_t * log) noexcept {
+		/**
+		 * @warning Описатель УДВАИВАЕТСЯ, а не запоминается как есть. Отметка живёт до
+		 *          ближайшего исходящего сообщения переносчика, а настоящий `sendmsg`
+		 *          случается позже, если очередь переносчика занята: пустую очередь
+		 *          `::io::send` отправляет немедленно, а занятая откладывает остаток.
+		 *          Потребители же (`unit::Server::handover`, `unit::Cluster::establish`)
+		 *          зовут `send` и следом `destroy` - и закрывали описатель раньше, чем
+		 *          тот уезжал. Работало это на удаче: сообщения коротки, очередь пуста
+		 *
+		 * @note Копия закрывается в ТРЁХ местах, и все три обязательны: по отъезду
+		 *       (`::handoff::send`), при снятии отметок узла (`::handoff::forget`) и
+		 *       при общей очистке движка. Пропуск любого из них - утечка описателей
+		 */
+		const net::socket_t copy = static_cast <net::socket_t> (::fcntl(fd, F_DUPFD_CLOEXEC, 0));
+		// Если удвоить описатель не удалось
+		if(copy == net::invalid_socket_t){
+			// Записываем ошибку в лог
+			log->print("handoff: cannot duplicate the descriptor for the deferred transfer: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			// Отмечаем передачу ИСХОДНЫМ описателем: передача дороже строгости владения
+			::handoff::__awh_outgoing__[id].push_back(::handoff::pending_t{label, fd});
+			// Увеличиваем счётчик отложенных передач
+			::handoff::__awh_deferred__++;
+			// Выходим из функции
+			return;
+		}
+		// Отмечаем отложенную передачу КОПИИ описателя у узла-переносчика
+		::handoff::__awh_outgoing__[id].push_back(::handoff::pending_t{label, copy});
 		// Увеличиваем счётчик отложенных передач
 		::handoff::__awh_deferred__++;
 	}
 	/**
 	 * @brief Функция снятия отметок отложенной передачи узла
 	 *
-	 * @note Зовётся при уничтожении узла: описатели здесь ЧУЖИЕ - они принадлежат
-	 *       событиям, снимок с которых снимали, - и закрывать их нельзя
+	 * @note Зовётся при уничтожении узла. Описатели здесь НАШИ - это копии, заведённые
+	 *       `::handoff::defer`, - и закрывать их ОБЯЗАТЕЛЬНО. Прежде здесь лежали сырые
+	 *       описатели событий, снимок с которых снимали, и довод запрещал их трогать;
+	 *       с удвоением владение перешло к переносчику, и запрет обратился в утечку
 	 *
 	 * @param id идентификатор узла-переносчика
 	 *
@@ -7434,6 +7476,12 @@ namespace handoff {
 		if(i == ::handoff::__awh_outgoing__.end())
 			// Выходим из функции
 			return;
+		/**
+		 * Закрываем копии описателей, не успевшие уехать
+		 */
+		for(auto & item : i->second)
+			// Закрываем копию описателя
+			::close(static_cast <int32_t> (item.fd));
 		// Уменьшаем счётчик отложенных передач на снимаемые отметки
 		::handoff::__awh_deferred__ -= i->second.size();
 		// Снимаем отметки отложенной передачи у узла
@@ -7554,6 +7602,16 @@ namespace handoff {
 			/**
 			 * Снимаем отметки об уехавших описателях
 			 */
+			/**
+			 * Закрываем уехавшие КОПИИ описателей: встречная сторона получила свои
+			 *
+			 * @note Копии заведены `::handoff::defer` и принадлежат переносчику. Ядро
+			 *       при передаче заводит у получателя СВОЙ описатель, наша копия после
+			 *       отъезда не нужна никому
+			 */
+			for(size_t index = 0; index < count; index++)
+				// Закрываем уехавшую копию описателя
+				::close(static_cast <int32_t> (i->second.at(index).fd));
 			i->second.erase(i->second.begin(), i->second.begin() + static_cast <ssize_t> (count));
 			// Уменьшаем счётчик отложенных передач на уехавшие описатели
 			::handoff::__awh_deferred__ -= count;
@@ -7688,6 +7746,20 @@ namespace handoff {
 			::events::close(arrived.fd);
 		// Снимаем список придержанных описателей
 		::handoff::__awh_incoming__.clear();
+		/**
+		 * Закрываем копии описателей, отложенных к передаче и не уехавших
+		 *
+		 * @note Это ТРЕТИЙ путь прибирания копий, заведённых `::handoff::defer`: по
+		 *       отъезду их закрывает `::handoff::send`, при сносе узла - `forget`, а
+		 *       здесь снимается всё, что пережило и то, и другое. Без него копии
+		 *       доставались бы следующему движку того же процесса уже осиротевшими
+		 */
+		for(auto & item : ::handoff::__awh_outgoing__){
+			// Перебираем отметки отложенной передачи узла
+			for(auto & pending : item.second)
+				// Закрываем копию описателя
+				::close(static_cast <int32_t> (pending.fd));
+		}
 		// Снимаем отметки отложенной передачи
 		::handoff::__awh_outgoing__.clear();
 		// Сбрасываем счётчик отложенных передач
@@ -31404,10 +31476,23 @@ namespace io {
 						 *          освободившийся номер операционная система успевает выдать
 						 *          заново - и снятие приходилось уже по новому владельцу.
 						 */
-						// Уменьшаем общее количество подключений сервера
-						if(peer->peers > 0)
-							// Уменьшаем общее количество подключений сервера
-							peer->peers--;
+						/**
+						 * Уменьшаем общее количество подключений сервера
+						 *
+						 * @note Сервер разыскивается по опознавателю, а не держится ссылкой:
+						 *       сборщик мусора вправе освободить его раньше принятого узла,
+						 *       и ссылка повисала бы. Нет сервера - уменьшать нечего
+						 */
+						auto owner = ::__awh_nodes__.find(peer->owner);
+						// Если узел сервера ещё жив
+						if((owner != ::__awh_nodes__.end()) && (owner->second != nullptr)){
+							// Получаем текущее значение объекта сервера
+							::io::server_t * server = awh_cast <::io::server_t *> (owner->second.get());
+							// Если подключения у сервера ещё числятся
+							if(server->backlog.count > 0)
+								// Уменьшаем общее количество подключений сервера
+								server->backlog.count--;
+						}
 						// Если событие закрытия разрешено
 						if(peer->transfer.actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
@@ -31447,10 +31532,21 @@ namespace io {
 								);
 							break;
 						}
-						// Уменьшаем общее количество подключений сервера
-						if(origin->origins > 0)
-							// Уменьшаем общее количество подключений сервера
-							origin->origins--;
+						/**
+						 * @note Сервер разыскивается по опознавателю, а не держится ссылкой:
+						 *       сборщик мусора вправе освободить его раньше сессии источника,
+						 *       и ссылка повисала бы. Нет сервера - уменьшать нечего
+						 */
+						auto owner = ::__awh_nodes__.find(origin->sid);
+						// Если узел сервера ещё жив
+						if((owner != ::__awh_nodes__.end()) && (owner->second != nullptr)){
+							// Получаем текущее значение объекта сервера
+							::io::server_t * server = awh_cast <::io::server_t *> (owner->second.get());
+							// Если подключения у сервера ещё числятся
+							if(server->backlog.count > 0)
+								// Уменьшаем общее количество подключений сервера
+								server->backlog.count--;
+						}
 						// Если событие закрытия разрешено
 						if(origin->transfer.actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
@@ -31999,20 +32095,31 @@ namespace io {
 		 */
 		switch(static_cast <uint8_t> (node->state.type)){
 			// Если устройство обмена является потоковым
-			case static_cast <uint8_t> (event::type_t::STREAM): return (type == SOCK_STREAM);
-			// Если устройство обмена является дейтаграммным
-			case static_cast <uint8_t> (event::type_t::DATAGRAM): return (type == SOCK_DGRAM);
+			case static_cast <uint8_t> (event::type_t::STREAM):
+				// Выводим совпадение устройства с родным
+				return (type == SOCK_STREAM);
 			// Если устройство обмена является сырым
-			case static_cast <uint8_t> (event::type_t::RAW): return (type == SOCK_RAW);
-			/**
-			 * Если устройство обмена является упорядоченными сообщениями
-			 *
-			 * @note Есть не у всякой системы: у macOS и OpenBSD в домене UNIX его нет
-			 *       вовсе, и сверять там нечего - до сюда дело не дойдёт
-			 */
-			#if defined(SOCK_SEQPACKET)
-				case static_cast <uint8_t> (event::type_t::SEQPACKET): return (type == SOCK_SEQPACKET);
-			#endif
+			case static_cast <uint8_t> (event::type_t::RAW):
+				// Выводим совпадение устройства с родным
+				return (type == SOCK_RAW);
+			// Если устройство обмена является дейтаграммным
+			case static_cast <uint8_t> (event::type_t::DATAGRAM):
+				// Выводим совпадение устройства с родным
+				return (type == SOCK_DGRAM);
+			// Если устройство обмена является упорядоченными сообщениями
+			case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+				// Если устройство обмена является упорядоченными сообщениями
+				#if defined(SOCK_SEQPACKET)
+					// Выводим совпадение устройства с родным
+					return (type == SOCK_SEQPACKET);
+				/**
+				 * Для остальных операционных систем
+				 */
+				#else
+					// Выводим совпадение устройства с подменённым дейтаграммным
+					return (type == SOCK_DGRAM);
+				#endif
+			}
 		}
 		// Выводим совпадение устройства: вид узлу явно не задан
 		return true;
@@ -32103,6 +32210,24 @@ namespace io {
 				// Выводим успешный результат
 				return true;
 			}
+			/**
+			 * Если узел является межпроцессным обменом
+			 *
+			 * @details Конец пары переезжает наравне с прочими: поле описателя у него то
+			 *          же самое. Отказывать ему значило бы держать перекос - везти
+			 *          описатель он годился, а переехать сам не мог
+			 *
+			 * @warning Пропуск этот отвергал ВСЯКУЮ передачу конца пары: подъём доходил
+			 *          до раздачи описателя и отвечал отказом «передача сокета узлу
+			 *          такого вида невозможна». Найдено щупом связи работников кластера
+			 *
+			 */
+			case static_cast <uint8_t> (event::node_t::IPC): {
+				// Передаём узлу межпроцессного обмена готовый дескриптор сокета
+				awh_cast <::io::ipc_t *> (node)->transfer.fd = sock;
+				// Выводим успешный результат
+				return true;
+			}
 			// Если узел является исходящим узлом
 			case static_cast <uint8_t> (event::node_t::ORIGIN): {
 				// Передаём узлу исходящего узла готовый дескриптор сокета
@@ -32169,7 +32294,78 @@ namespace io {
 		// Выводим недействительный дескриптор сокета
 		return net::invalid_socket_t;
 	}
+
 	/**
+	 * @brief Метод розыска настоящего кода отказа у узла
+	 *
+	 * @details У kqueue и epoll событие готовности несёт код отказа полем `ev.data`,
+	 *          и он уходит в обработчик как есть. У Event Ports такого поля НЕТ вовсе:
+	 *          `portev_events` несёт лишь разряды `POLL*`, а сам код приходится
+	 *          спрашивать у сокета отдельно - `SO_ERROR` и есть тот путь, каким POSIX
+	 *          отдаёт причину, о которой сообщил `POLLERR`
+	 *
+	 * @warning Прежде сюда подставлялась метка `AWH_VOLUME_UNKNOWN`, то есть «объём
+	 *          неизвестен» (-1). Метка эта - из другого мира: она означает неизвестный
+	 *          ОБЪЁМ ДАННЫХ, а не код отказа, и `strerror(-1)` отдавал «Unknown error»
+	 *          ВСЕГДА. Разбор отказа у обеих систем Sun оттого не работал вовсе, и
+	 *          молчал об этом: запись в журнал шла, но причины не называла ни разу
+	 *
+	 * @param  node узел, у которого разыскивается код отказа
+	 * @return      код отказа, годный для strerror
+	 *
+	 */
+	static int32_t reason(::io::node_t * node) noexcept {
+		// Получаем описатель узла
+		const net::socket_t fd = ::io::descriptor(node);
+		// Код отказа, о котором сообщил сокет
+		int32_t code = 0;
+		// Размер значения настройки сокета
+		socklen_t length = sizeof(code);
+		// Если описатель годен и сокет назвал причину
+		if((fd != net::invalid_socket_t) && (::getsockopt(fd, SOL_SOCKET, SO_ERROR, &code, &length) == 0) && (code != 0))
+			// Выводим причину, названную самим сокетом
+			return code;
+		/**
+		 * Причины нет: ни сокет её не назвал, ни спросить не у кого
+		 *
+		 * @note errno запасным путём НЕГОДЕН - к этому месту он хранит исход
+		 *       постороннего вызова, и разбор отказа называл бы чужую причину.
+		 *       Замерено: отдавал «Timer expired» при разрыве связи по сокету
+		 */
+		return 0;
+	}
+	/**
+	 * @brief Метод разбора отказа, сообщённого разрядом POLLERR
+	 *
+	 * @details ОБЕ системы Sun сообщают обычное закрытие встречной стороны разрядом
+	 *          POLLERR В ОДИНОЧКУ - без POLLIN и без POLLHUP, при SO_ERROR равном нулю
+	 *          и чистом конце файла у чтения. Опыт на чистом C (socketpair AF_UNIX
+	 *          STREAM, port_associate POLLIN, закрытие встречного конца) даёт на
+	 *          Solaris 11.4 и OpenIndiana одно и то же: разряды 0x8, SO_ERROR 0,
+	 *          чтение 0 октетов. То есть POLLERR у Event Ports НЕ означает отказа
+	 *
+	 * @warning Прежде всякий POLLERR шёл в разбор отказа, и разрыв связи оттого
+	 *          сопровождался записью в журнал у обеих систем Sun. Для потребителя
+	 *          это хуже лишней записи: обычное завершение связи выглядело сбоем
+	 *
+	 * @param  node узел, у которого разбирается отказ
+	 * @param  log  объект работы с логами
+	 * @return      следует ли сносить узел
+	 *
+	 */
+	static bool fault(::io::node_t * node, const log_t * log) noexcept {
+		// Разыскиваем настоящую причину отказа
+		const int32_t code = ::io::reason(node);
+		// Если сокет назвал причину, разбираем её как отказ
+		if(code != 0)
+			// Выполняем обработку отказа
+			return ::io::error(node, code, log);
+		/**
+		 * Причины нет - это конец связи, а не отказ: узел сносится молча,
+		 * а о разрыве потребитель узнаёт откликом события, как и всегда
+		 */
+		return true;
+	}	/**
 	 * @brief Функция создания сокета события
 	 *
 	 * @param node узел для которого создаётся сокет
@@ -34322,7 +34518,7 @@ namespace io {
 							return false;
 						}
 						// Выполняем создание нового объекта узла
-						unique_ptr <::io::peer_t> peer = make_unique <::io::peer_t> (server->backlog.count, fmk, log);
+						unique_ptr <::io::peer_t> peer = make_unique <::io::peer_t> (server->id, fmk, log);
 						// Устанавливаем файловый дескриптор сокета
 						peer->transfer.fd = sock;
 						// Устанавливаем тип узла
@@ -34790,8 +34986,8 @@ namespace io {
 						}
 						// Извлекаем параметры таймаутов для нового подключения
 						peer->timeouts = server->timeouts;
-						// Увеличиваем текущее количество подключений
-						peer->peers++;
+						// Увеличиваем текущее количество подключений сервера
+						server->backlog.count++;
 						// Устанавливаем флаг разрешающий выполнять чтение из сокета
 						peer->transfer.actions |= ::action::READ;
 						// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -35535,7 +35731,7 @@ namespace io {
 						// Если мы детектировали наличие ошибки
 						if(ev.portev_events & EV_ERROR){
 							// Выполняем обработку ошибки
-							if(::io::error(node, AWH_VOLUME_UNKNOWN, log))
+							if(::io::fault(node, log))
 								// Выполняем удаление узла
 								::io::destroy(node, eth, log);
 							// Пропускаем дальнейшую обработку события
@@ -35642,7 +35838,7 @@ namespace io {
 						// Если мы детектировали наличие ошибки
 						if(ev.portev_events & EV_ERROR){
 							// Выполняем обработку ошибки
-							if(::io::error(node, AWH_VOLUME_UNKNOWN, log))
+							if(::io::fault(node, log))
 								// Выполняем удаление узла
 								::io::destroy(node, eth, log);
 							// Пропускаем дальнейшую обработку события
@@ -35755,7 +35951,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.portev_events & EV_ERROR){
 					// Выполняем обработку ошибки
-					if(::io::error(node, AWH_VOLUME_UNKNOWN, log))
+					if(::io::fault(node, log))
 						// Выполняем удаление узла
 						::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
@@ -35767,7 +35963,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.portev_events & EV_ERROR){
 					// Выполняем обработку ошибки
-					if(::io::error(node, AWH_VOLUME_UNKNOWN, log))
+					if(::io::fault(node, log))
 						// Выполняем удаление узла
 						::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
@@ -35797,7 +35993,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.portev_events & EV_ERROR){
 					// Выполняем обработку ошибки
-					::io::error(node, AWH_VOLUME_UNKNOWN, log);
+					::io::fault(node, log);
 					// Выполняем удаление узла
 					return !::io::destroy(node, eth, log);
 				}
@@ -35890,7 +36086,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.portev_events & EV_ERROR){
 					// Выполняем обработку ошибки
-					::io::error(node, AWH_VOLUME_UNKNOWN, log);
+					::io::fault(node, log);
 					// Выполняем удаление узла
 					return !::io::destroy(node, eth, log);
 				}
@@ -35969,7 +36165,7 @@ namespace io {
 					// Если мы детектировали наличие ошибки
 					if(ev.portev_events & EV_ERROR)
 						// Выполняем обработку ошибки
-						::io::error(node, AWH_VOLUME_UNKNOWN, log);
+						::io::fault(node, log);
 					// Выполняем удаление узла
 					return !::io::destroy(node, eth, log);
 				}
@@ -36152,7 +36348,7 @@ namespace io {
 					return true;
 				}
 				// Выполняем создание нового объекта однорангового узла-источника
-				unique_ptr <::io::origin_t> origin = make_unique <::io::origin_t> (server->backlog.count, fmk, log);
+				unique_ptr <::io::origin_t> origin = make_unique <::io::origin_t> (fmk, log);
 				// Устанавливаем файловый дескриптор сокета
 				origin->transfer.fd = server->fd;
 				// Устанавливаем тип узла
@@ -36563,7 +36759,7 @@ namespace io {
 				// Извлекаем параметры таймаутов для нового подключения
 				origin->timeouts = server->timeouts;
 				// Увеличиваем текущее количество подключений
-				origin->origins++;
+				server->backlog.count++;
 				// Устанавливаем флаг разрешающий выполнять чтение из сокета
 				origin->transfer.actions |= ::action::READ;
 				// Устанавливаем флаг разрешающий выполнять запись в сокет
@@ -59803,6 +59999,58 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 					}
 				}
 			} break;
+			/**
+			 * Если узел является межпроцессным обменом
+			 *
+			 * @details Узел этот заводится ПУСТЫМ - без описателя, - и годен лишь под
+			 *          подъём снимка, снятого чужим процессом: описатель ему достаётся
+			 *          от `restore`, а фиксацию тот зовёт сам. Пары заводятся не здесь,
+			 *          а вызовом `events`: концы её рождаются одним обращением к
+			 *          системе, и разделить его между двумя вызовами нечем
+			 *
+			 * @note Фиксация пустому узлу отвечает отказом намеренно: описателя у него
+			 *       нет, а заводить его здесь значило бы завести одинокий конец пары,
+			 *       которому не с кем говорить
+			 *
+			 */
+			case static_cast <uint8_t> (event::node_t::IPC): {
+				/**
+				 * Если семейство узла обмена парой не ведётся
+				 *
+				 * @note Домен UNIX и канал допускаются наравне: у систем POSIX пара
+				 *       строится сокетами в обоих случаях, и расходятся они лишь у
+				 *       MS Windows
+				 */
+				if((family != event::family_t::PIPE) && (family != event::family_t::UDS))
+					// Выводим пустой идентификатор события
+					return 0;
+				// Выполняем создание события
+				auto ret = ::__awh_nodes__.emplace(::local::identifier(), make_unique <::io::ipc_t> (this->_fmk, this->_log));
+				// Если добавить узел события в хранилище не удалось
+				if(!ret.second)
+					// Выводим пустой идентификатор события
+					return 0;
+				// Устанавливаем идентификатор события
+				ret.first->second->id = ret.first->first;
+				// Устанавливаем тип узла события
+				ret.first->second->state.node = node;
+				// Устанавливаем флаг типа сокета
+				ret.first->second->state.type = type;
+				// Устанавливаем флаг семейства сокета
+				ret.first->second->state.family = family;
+				// Устанавливаем флаг протокола сокета
+				ret.first->second->state.protocol = protocol;
+				// Получаем объект межпроцессного обмена
+				::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (ret.first->second.get());
+				// Если событие принадлежит к типу STREAM
+				if((type == event::type_t::NONE) || (type == event::type_t::STREAM))
+					// Устанавливаем тип очереди обмена
+					ipc->transfer.queue.type(net_queue_t::type_t::TCP);
+				// Устанавливаем тип очереди обмена
+				else ipc->transfer.queue.type(net_queue_t::type_t::UDP);
+				// Возвращаем идентификатор созданного события
+				return ret.first->first;
+			}
 			// Если узел является пользовательским событием
 			case static_cast <uint8_t> (event::node_t::NOTIFY): {
 				/**
@@ -63675,7 +63923,7 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 		// Выдаём метку передачи
 		const uint64_t label = ::handoff::label();
 		// Отмечаем отложенную передачу описателя у события-переносчика
-		::handoff::defer(dest, sock, label);
+		::handoff::defer(dest, sock, label, this->_log);
 		// Складываем метку передачи в буфер снимка
 		snapshot.assign(reinterpret_cast <const uint8_t *> (&label), reinterpret_cast <const uint8_t *> (&label) + sizeof(label));
 		// Формируем положительный результат

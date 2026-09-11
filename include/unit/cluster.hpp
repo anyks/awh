@@ -122,6 +122,80 @@ namespace awh {
 					GRACEFUL = 0x01, // Тип завершения работы кластера - плавное завершение
 					FORCEFUL = 0x02  // Тип завершения работы кластера - принудительное завершение
 				};
+				/**
+				 * \~russian
+				 * @brief Виды служебных сообщений кластера
+				 *
+				 * @details Идут они своим каналом, отдельным от пользовательского, и
+				 *          устройство его задано `SEQPACKET` безусловно: границы сообщений
+				 *          держит сам канал, и разбирать заголовок не приходится. Разбор
+				 *          устройства целиком - в `src/unit/CLUSTER-LINK.md`
+				 *
+				 * \~english
+				 * @brief Kinds of the service messages of the cluster
+				 * @details They go by their own channel, separate from the user one, and
+				 *          its layout is set to `SEQPACKET` unconditionally: the boundaries of the messages
+				 *          are held by the channel itself, and the header does not have to be parsed. The whole
+				 *          arrangement is described in `src/unit/CLUSTER-LINK.md`
+				 *
+				 * \~
+				 */
+				enum class control_t : uint8_t {
+					NONE     = 0x00, // Вид служебного сообщения не определён
+					ONLINE   = 0x01, // Работник поднялся и дошёл до цикла событий
+					OFFLINE  = 0x02, // Работник уходит сам
+					LINK     = 0x03, // Заказ прямой связи с названным узлом
+					UNLINK   = 0x04, // Связь с названным узлом больше не нужна
+					RELAY    = 0x05, // Пересылка сообщения через мастера
+					GRANT    = 0x06, // Связь заведена, подъём своего конца
+					DENY     = 0x07, // Связь не заведена
+					DROP     = 0x08, // Связь с названным узлом разорвана
+					JOIN     = 0x09, // В кластер вошёл названный узел
+					LEAVE    = 0x0A, // Названный узел из кластера выбыл
+					SHUTDOWN = 0x0B  // Завершить работу названным кодом
+				};
+				/**
+				 * \~russian
+				 * @brief Причины отказа в заведении связи
+				 *
+				 * @note Отказ называет причину, а не молчит: вызывающей стороне решать,
+				 *       повторять ли заказ, и по молчаливому отказу решить это нечем
+				 *
+				 * \~english
+				 * @brief Reasons of the refusal to establish a link
+				 * @note The refusal names the reason rather than keeping silent: it is up to the calling side
+				 *       to decide whether to repeat the order, and a silent refusal gives nothing to decide by
+				 *
+				 * \~
+				 */
+				enum class reason_t : uint8_t {
+					NONE    = 0x00, // Причина отказа не определена
+					UNKNOWN = 0x01, // Названного узла в кластере нет
+					ITSELF  = 0x02, // Узел заказал связь с самим собой
+					REFUSED = 0x03, // Мастер связь запретил
+					EXISTS  = 0x04, // Связь между этими узлами уже заведена
+					FAILED  = 0x05  // Пара не завелась либо снимок не снялся
+				};
+			public:
+				/**
+				 * \~russian
+				 * Код завершения работника, когда мастер кода не назвал
+				 *
+				 * @details Постоянная эта - кластерная, а не системный номер сигнала:
+				 *          `SIGUSR1` у MS Windows не значит ничего, и код завершения
+				 *          сложился бы там не тот, какого ждали. Нужен потребителю номер
+				 *          сигнала - он волен назвать его сам
+				 *
+				 * \~english
+				 * Exit code of a worker when the master has not named a code
+				 * @details This constant is the cluster's own one rather than a system number of a signal:
+				 *          `SIGUSR1` means nothing on MS Windows, and the termination code
+				 *          would come out there not as the one expected. Should the consumer need a number
+				 *          of a signal — he is free to name it himself
+				 *
+				 * \~
+				 */
+				static constexpr int32_t SHUTDOWN_CODE = 0x0A;
 			private:
 				/**
 				 * \~russian
@@ -142,6 +216,8 @@ namespace awh {
 					uint64_t life;
 					// Идентификаторы события для обмена сообщениями между процессами
 					event::id_t eid;
+					// Идентификатор события служебного канала обмена между процессами
+					event::id_t cid;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -273,6 +349,59 @@ namespace awh {
 				unordered_map <event::id_t, pid_t> _matching;
 				// Список активных воркеров
 				unordered_map <pid_t, unique_ptr <worker_t>> _workers;
+			private:
+				/**
+				 * \~russian
+				 * Идентификатор своего служебного события у работника
+				 *
+				 * @note У мастера поле пустует: служебных каналов у него столько же,
+				 *       сколько работников, и лежат они у самих работников в поле `cid`
+				 *
+				 * \~english
+				 * Identifier of one's own service event in a worker
+				 * @note In the master the field stays empty: it has as many service channels
+				 *       as it has workers, and they lie in the workers themselves in the `cid` field
+				 *
+				 * \~
+				 */
+				event::id_t _control;
+			private:
+				// Список соответствия идентификаторов служебных событий и идентификаторов процессов
+				unordered_map <event::id_t, pid_t> _controls;
+			private:
+				/**
+				 * \~russian
+				 * Список узлов, поднявшихся и дошедших до цикла событий (у мастера)
+				 *
+				 * @details Порождённый узел работником ещё не является: дошёл ли он до
+				 *          цикла, мастер узнаёт извещением `ONLINE`, а не порождением.
+				 *          Список этот и есть единственная правда о том, кому извещения
+				 *          доходят
+				 *
+				 * @warning Без него извещения о входе двоились: новичку уходил список
+				 *          ВСЕХ порождённых узлов, а затем каждый из них получал ещё и
+				 *          извещение о новичке - и заказ связи уходил дважды
+				 *
+				 * \~english
+				 * List of the nodes that have risen and reached the event loop (in the master)
+				 * @details A spawned node is not a worker yet: whether it has reached the loop
+				 *          the master learns by the `ONLINE` notification rather than by the spawning.
+				 *          This list is the only truth about whom the notifications reach
+				 *
+				 * \~
+				 */
+				unordered_set <pid_t> _online;
+				// Список узлов, уходящих намеренно, - возрождению они не подлежат (у мастера)
+				unordered_set <pid_t> _leaving;
+				// Список заведённых связей между работниками (у мастера)
+				unordered_map <pid_t, unordered_set <pid_t>> _links;
+			private:
+				// Список известных узлов кластера (у работника)
+				unordered_set <pid_t> _nodes;
+				// Список заведённых связей работника: узел и его событие обмена
+				unordered_map <pid_t, event::id_t> _peers;
+				// Список соответствия идентификаторов событий связей и идентификаторов узлов
+				unordered_map <event::id_t, pid_t> _matchingPeers;
 			private:
 				/**
 				 * \~russian
@@ -409,6 +538,39 @@ namespace awh {
 					 * \~
 					 */
 					pid_t execute() noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод заведения своего конца канала обмена для порождаемого процесса
+					 *
+					 * @param variable имя переменной окружения, какой имя канала уходит порождаемому процессу
+					 * @param type     устройство обмена канала
+					 * @param service  признак служебного канала
+					 * @return         идентификатор заведённого события, либо 0 при отказе
+					 *
+					 * @details Сводит в одно место весь порядок, каким конец канала доводится
+					 *          до ожидания подключения ПРЕЖДЕ порождения процесса: заведение
+					 *          пары, передачу имени окружением, уничтожение конца работника,
+					 *          подписку откликов, фиксацию, запуск и ожидание готовности.
+					 *          Порядок этот тонкий и добыт щупом на стендах, и разводить его
+					 *          по двум каналам - пользовательскому и служебному - значило бы
+					 *          завести второе место, где его надо помнить
+					 *
+					 * @note Служебный канал отличается одними лишь откликами: наружу он не
+					 *       выходит вовсе, и пользовательские отклики его не касаются
+					 *
+					 * @note Метода этого на системах POSIX нет вовсе: там оба конца пары
+					 *       достаются дочернему процессу вызовом fork
+					 *
+					 * \~english
+					 * @brief Method of the establishment of one's own end of the exchange channel for the spawned process
+					 * @param variable name of the environment variable by which the name of the channel goes to the spawned process
+					 * @param type     layout of the exchange of the channel
+					 * @param service  flag of the service channel
+					 * @return         identifier of the established event, or 0 on a refusal
+					 *
+					 * \~
+					 */
+					event::id_t provision(const wchar_t * variable, const event::type_t type, const bool service) noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод распознавания роли дочернего процесса и захвата мастера
@@ -579,6 +741,171 @@ namespace awh {
 					 */
 					static void __stdcall child(void * ctx, uint8_t timeout) noexcept;
 				#endif
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод разбора служебного сообщения кластера
+				 *
+				 * @param eid  идентификатор служебного события
+				 * @param data данные служебного сообщения
+				 * @param size размер служебного сообщения
+				 *
+				 * \~english
+				 * @brief Method of the parsing of a service message of the cluster
+				 * @param eid  identifier of the service event
+				 * @param data data of the service message
+				 * @param size size of the service message
+				 *
+				 * \~
+				 */
+				void control(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод отправки служебного сообщения кластера
+				 *
+				 * @param eid    идентификатор служебного события
+				 * @param type   вид служебного сообщения
+				 * @param pid    узел, которого сообщение касается
+				 * @param buffer тело служебного сообщения
+				 * @param size   размер тела служебного сообщения
+				 * @return       количество отправленных байт
+				 *
+				 * \~english
+				 * @brief Method of the sending of a service message of the cluster
+				 * @param eid    identifier of the service event
+				 * @param type   kind of the service message
+				 * @param pid    node the message concerns
+				 * @param buffer body of the service message
+				 * @param size   size of the body of the service message
+				 * @return       number of the sent bytes
+				 *
+				 * \~
+				 */
+				size_t dispatch(const event::id_t eid, const control_t type, const pid_t pid, const void * buffer = nullptr, const size_t size = 0) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извещения работников о входе либо выбытии узла
+				 *
+				 * @param type вид служебного сообщения
+				 * @param pid  узел, о котором идёт речь
+				 *
+				 * @note Извещение уходит всем работникам, КРОМЕ названного: себе о своём
+				 *       входе работник вести счёт не обязан
+				 *
+				 * \~english
+				 * @brief Method of the notification of the workers about the entering or the leaving of a node
+				 * @param type kind of the service message
+				 * @param pid  node in question
+				 * @note The notification goes to all the workers EXCEPT the named one: a worker is not obliged
+				 *       to keep count of his own entering
+				 *
+				 * \~
+				 */
+				void announce(const control_t type, const pid_t pid) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод заведения прямой связи между двумя работниками
+				 *
+				 * @param initiator узел, заказавший связь
+				 * @param peer      узел, с которым связь заказана
+				 * @param data      тело заказа: имя канала у MS Windows, пустое у систем POSIX
+				 * @param size      размер тела заказа
+				 *
+				 * \~english
+				 * @brief Method of the establishment of a direct link between two workers
+				 * @param initiator node that has ordered the link
+				 * @param peer      node the link with which has been ordered
+				 *
+				 * \~
+				 */
+				void establish(const pid_t initiator, const pid_t peer, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод разрыва всех связей выбывающего узла
+				 *
+				 * @param pid выбывающий узел
+				 *
+				 * \~english
+				 * @brief Method of the breaking of all the links of a leaving node
+				 * @param pid leaving node
+				 *
+				 * \~
+				 */
+				void dissolve(const pid_t pid) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод обработки событий чтения по прямой связи с соседом
+				 *
+				 * @param eid  идентификатор события связи
+				 * @param data данные сообщения
+				 * @param size размер сообщения
+				 *
+				 * \~english
+				 * @brief Method of processing the read events on a direct link with a neighbour
+				 * @param eid  identifier of the link event
+				 * @param data data of the message
+				 * @param size size of the message
+				 *
+				 * \~
+				 */
+				void incoming(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод обработки состояния прямой связи с соседом
+				 *
+				 * @param eid    идентификатор события связи
+				 * @param status статус события
+				 *
+				 * \~english
+				 * @brief Method of processing the state of a direct link with a neighbour
+				 * @param eid    identifier of the link event
+				 * @param status status of the event
+				 *
+				 * \~
+				 */
+				void broken(const event::id_t eid, const event::status_t status) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод обработки закрытия прямой связи с соседом
+				 *
+				 * @param eid    идентификатор события связи
+				 * @param action действие, случившееся с событием
+				 *
+				 * @details Признаков разрыва у движка два, и приходят они в разные мгновения:
+				 *          действие `CLOSE` - сразу, в самый миг закрытия, а состояние
+				 *          `DESTROYED` - позже, когда движок доберётся до изъятия узла.
+				 *          Подписаны оба: первый даёт скорость, второй ловит те пути изъятия,
+				 *          где действия не было. Оба ведут к одному разбору, и повторного
+				 *          извещения потребителя не выходит - разбор ищет связь по событию, а
+				 *          вторым заходом уже не находит
+				 *
+				 * \~english
+				 * @brief Method of processing the closing of a direct link with a neighbour
+				 * @param eid    identifier of the link event
+				 * @param action action that has happened to the event
+				 *
+				 * \~
+				 */
+				void closed(const event::id_t eid, const event::action_t action) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод разбора разорванной прямой связи
+				 *
+				 * @param eid идентификатор события связи
+				 *
+				 * @note Разбор идемпотентен намеренно: признаков разрыва два, и приходят они
+				 *       оба - вторым заходом связи по событию уже не находится, и потребитель
+				 *       извещается ровно однажды
+				 *
+				 * \~english
+				 * @brief Method of the disassembling of a broken direct link
+				 * @param eid identifier of the link event
+				 *
+				 * \~
+				 */
+				void sever(const event::id_t eid) noexcept;
 			private:
 				/**
 				 * \~russian
@@ -1110,6 +1437,159 @@ namespace awh {
 				 * \~
 				 */
 				size_t broadcast(const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод заказа прямой связи с соседним работником
+				 *
+				 * @details Заказ уходит мастеру; тот заводит пару и раздаёт её концы обоим
+				 *          работникам, после чего в обмене не участвует вовсе. Готовность
+				 *          связи приходит откликом `"linked"`, отказ - откликом
+				 *          `"unlinked"` с причиной
+				 *
+				 * @note Связь между парой узлов одна: повторный заказ отвечает отказом
+				 *       `EXISTS`, а не заводит вторую
+				 *
+				 * @param pid узел, с которым заказывается связь
+				 * @return    признак того, что заказ отправлен мастеру
+				 *
+				 * \~english
+				 * @brief Method of ordering a direct link with a neighbouring worker
+				 * @param pid node the link with which is ordered
+				 * @return   flag of the order being sent to the master
+				 *
+				 * \~
+				 */
+				bool link(const pid_t pid) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод разрыва прямой связи с соседним работником
+				 *
+				 * @param pid узел, связь с которым разрывается
+				 * @return    признак того, что разрыв отправлен мастеру
+				 *
+				 * \~english
+				 * @brief Method of breaking a direct link with a neighbouring worker
+				 * @param pid node the link with which is broken
+				 * @return   flag of the breaking being sent to the master
+				 *
+				 * \~
+				 */
+				bool unlink(const pid_t pid) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод отправки сообщения соседу по прямой связи
+				 *
+				 * @param pid    узел, которому предназначено сообщение
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 *
+				 * \~english
+				 * @brief Method of sending a message to a neighbour over a direct link
+				 * @param pid    node the message is meant for
+				 * @param buffer binary buffer for sending the message
+				 * @param size   size of the binary buffer for sending the message
+				 * @return       number of the bytes of the sent message
+				 *
+				 * \~
+				 */
+				size_t transmit(const pid_t pid, const void * buffer, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод пересылки сообщения соседу через мастера
+				 *
+				 * @details Связи для пересылки не требуется, и заводить её ради одного
+				 *          короткого сообщения дороже самого сообщения. Платой идут две
+				 *          передачи вместо одной и предел размера - `maximumRelay`
+				 *
+				 * @param pid    узел, которому предназначено сообщение
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 *
+				 * \~english
+				 * @brief Method of relaying a message to a neighbour through the master
+				 * @param pid    node the message is meant for
+				 * @param buffer binary buffer for sending the message
+				 * @param size   size of the binary buffer for sending the message
+				 * @return       number of the bytes of the sent message
+				 *
+				 * \~
+				 */
+				size_t relay(const pid_t pid, const void * buffer, const size_t size) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод получения предельного размера пересылаемого сообщения
+				 *
+				 * @return предельный размер тела пересылаемого сообщения в байтах
+				 *
+				 * \~english
+				 * @brief Method of getting the limiting size of a relayed message
+				 * @return limiting size of the body of a relayed message in bytes
+				 *
+				 * \~
+				 */
+				size_t maximumRelay() const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод получения списка известных работнику узлов кластера
+				 *
+				 * @details Список этот наполняется извещениями мастера о входе и выбытии
+				 *          узлов: собственного способа узнать соседей у работника нет
+				 *
+				 * @return список известных узлов кластера
+				 *
+				 * \~english
+				 * @brief Method of getting the list of the nodes of the cluster known to the worker
+				 * @return list of the known nodes of the cluster
+				 *
+				 * \~
+				 */
+				unordered_set <pid_t> nodes() const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод приказа работнику завершить работу
+				 *
+				 * @details Приказ этот - не сигнал: работник доводит своё дело до конца,
+				 *          извещает мастера и выходит названным кодом сам. Убийство извне
+				 *          осталось за `erase(pid, FORCEFUL)`
+				 *
+				 * @note Возрождению ушедший по приказу работник не подлежит, и счётчик
+				 *       быстрых падений его уход не задевает
+				 *
+				 * @param pid  узел, которому велено завершить работу
+				 * @param code код завершения работы
+				 * @return     признак того, что приказ отправлен работнику
+				 *
+				 * \~english
+				 * @brief Method of ordering a worker to terminate its work
+				 * @param pid  node ordered to terminate its work
+				 * @param code termination code of the work
+				 * @return     flag of the order being sent to the worker
+				 *
+				 * \~
+				 */
+				bool shutdown(const pid_t pid, const int32_t code = SHUTDOWN_CODE) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод ухода работника из кластера по своей воле
+				 *
+				 * @details Работник извещает мастера и выходит названным кодом, дождавшись
+				 *          отдачи извещения каналу. Возрождению он не подлежит
+				 *
+				 * @param code код завершения работы
+				 *
+				 * \~english
+				 * @brief Method of a worker leaving the cluster of its own will
+				 * @param code termination code of the work
+				 *
+				 * \~
+				 */
+				void leave(const int32_t code = 0) noexcept;
 			public:
 				/**
 				 * \~russian

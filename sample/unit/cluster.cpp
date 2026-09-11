@@ -13,7 +13,11 @@
  * @site https://anyks.com
  *
  * @brief Пример работы с модулем кластера — демонстрация запуска дочерних воркеров,
- *        обмена сообщениями между процессами и обработки событий падения и перезапуска воркеров
+ *        обмена сообщениями между процессами, прямой связи работников между собой,
+ *        пересылки через мастера и обработки событий падения и перезапуска воркеров
+ *
+ * @details Устройство прямой связи работников и служебного канала разобрано в
+ *          `src/unit/CLUSTER-LINK.md`
  *
  * @copyright Copyright © 2026
  *
@@ -149,6 +153,130 @@ int32_t main(){
 		// Если процесс был остановлен мастером
 		else log.print("Cluster process [%u] has been stopped by master", log_t::flag_t::INFO, pid);
 	}, placeholders::_1, placeholders::_2);
+	/**
+	 * Устанавливаем функцию обратного вызова на вход узла в кластер
+	 *
+	 * @details Своего способа узнать соседей у работника нет вовсе: он знает свой номер
+	 *          и номер мастера. Извещения эти - единственный путь к связи, и приходят
+	 *          они лишь о тех узлах, которые ПОДНЯЛИСЬ и дошли до цикла событий
+	 */
+	cluster.on <void (const pid_t)> ("join", [&cluster, &log](const pid_t pid) noexcept -> void {
+		/**
+		 * Возвращаем событие входа узла в кластер
+		 *
+		 * @note Список узлов спрашивается по-разному у двух ролей: мастер ведёт список
+		 *       своих работников, а работник - список соседей, о которых его известили.
+		 *       У мастера `nodes` пустует всегда: список соседей заводится извещениями,
+		 *       а извещает как раз он сам
+		 */
+		log.print("Cluster node [%u] has joined (known to [%u]: %zu)", log_t::flag_t::INFO, pid, ::getpid(),
+		 (cluster.master() ? cluster.workers().size() : cluster.nodes().size()));
+		/**
+		 * Заказываем прямую связь с соседом
+		 *
+		 * @note Заказ ведёт МЛАДШИЙ по номеру процесса: узнают друг о друге оба, и
+		 *       закажи связь оба - второй заказ получил бы отказ EXISTS. Правило это
+		 *       произвольно, но однозначно, и оттого годится обеим сторонам без уговора
+		 */
+		if(!cluster.master() && (static_cast <pid_t> (::getpid()) < pid))
+			// Заказываем прямую связь с соседом
+			cluster.link(pid);
+	}, placeholders::_1);
+	// Устанавливаем функцию обратного вызова на выбытие узла из кластера
+	cluster.on <void (const pid_t)> ("leave", [&log](const pid_t pid) noexcept -> void {
+		// Возвращаем событие выбытия узла из кластера
+		log.print("Cluster node [%u] has left", log_t::flag_t::INFO, pid);
+	}, placeholders::_1);
+	/**
+	 * Устанавливаем функцию обратного вызова на запрос разрешения связи
+	 *
+	 * @details Сводит работников мастер, и право отказать принадлежит ему: связь
+	 *          заводится лишь тогда, когда отклик этот отвечает согласием. Не установлен
+	 *          отклик - разрешены все связи
+	 */
+	cluster.on <bool (const pid_t, const pid_t)> ("linking", [&log](const pid_t initiator, const pid_t peer) noexcept -> bool {
+		// Возвращаем событие запроса разрешения связи
+		log.print("Cluster link [%u] <-> [%u] is permitted", log_t::flag_t::INFO, initiator, peer);
+		// Разрешаем заведение связи
+		return true;
+	}, placeholders::_1, placeholders::_2);
+	// Устанавливаем функцию обратного вызова на заведение прямой связи
+	cluster.on <void (const pid_t, const event::id_t)> ("linked", [&cluster, &log](const pid_t pid, const event::id_t eid) noexcept -> void {
+		// Возвращаем событие заведения прямой связи
+		log.print("Cluster process [%u] is linked to [%u], event: %llu", log_t::flag_t::INFO, ::getpid(), pid, static_cast <uint64_t> (eid));
+		/**
+		 * Отправляем посылку соседу НАПРЯМУЮ
+		 *
+		 * @note Мастер в этом обмене не участвует вовсе: пара заведена им, но концы её
+		 *       принадлежат работникам, и байты идут между ними
+		 */
+		if(static_cast <pid_t> (::getpid()) < pid){
+			// Текст посылки по прямой связи
+			const string message = "Hello from a neighbour worker!";
+			// Отправляем посылку соседу напрямую
+			cluster.transmit(pid, message.c_str(), message.length());
+		}
+	}, placeholders::_1, placeholders::_2);
+	// Устанавливаем функцию обратного вызова на разрыв прямой связи
+	cluster.on <void (const pid_t, const unit::cluster_t::reason_t)> ("unlinked", [&log](const pid_t pid, const unit::cluster_t::reason_t reason) noexcept -> void {
+		// Возвращаем событие разрыва прямой связи
+		log.print("Cluster process [%u] is unlinked from [%u], reason: %u", log_t::flag_t::WARNING, ::getpid(), pid, static_cast <uint16_t> (reason));
+	}, placeholders::_1, placeholders::_2);
+	// Устанавливаем функцию обратного вызова на получение сообщения по прямой связи
+	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("peer", [&cluster, &log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
+		// Текст входящего сообщения
+		const string message(reinterpret_cast <const char *> (data), size);
+		// Возвращаем событие получения сообщения по прямой связи
+		log.print("Cluster process [%u] has received a direct message from [%u]: %s", log_t::flag_t::INFO, ::getpid(), pid, message.c_str());
+		/**
+		 * Пересылаем соседу подтверждение ЧЕРЕЗ МАСТЕРА
+		 *
+		 * @details Пересылка связи не требует и заводится ради коротких сообщений,
+		 *          какие случаются изредка: заводить ради одного такого пару дороже
+		 *          самого сообщения. Платой идут две передачи вместо одной и предел
+		 *          размера - maximumRelay
+		 */
+		if(static_cast <pid_t> (::getpid()) > pid){
+			// Текст подтверждения, пересылаемого через мастера
+			const string relay = "Acknowledged through the master";
+			// Если подтверждение вмещается в предел пересылки
+			if(relay.length() <= cluster.maximumRelay())
+				// Пересылаем подтверждение соседу через мастера
+				cluster.relay(pid, relay.c_str(), relay.length());
+		}
+	}, placeholders::_1, placeholders::_2, placeholders::_3);
+	// Устанавливаем функцию обратного вызова на получение пересылки через мастера
+	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("relay", [&log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
+		// Текст входящей пересылки
+		const string message(reinterpret_cast <const char *> (data), size);
+		// Возвращаем событие получения пересылки
+		log.print("Cluster process [%u] has received a relayed message from [%u]: %s", log_t::flag_t::INFO, ::getpid(), pid, message.c_str());
+	}, placeholders::_1, placeholders::_2, placeholders::_3);
+	/**
+	 * Устанавливаем функцию обратного вызова на приказ завершить работу
+	 *
+	 * @details Приказ этот - НЕ сигнал: работник вправе довести своё дело до конца и
+	 *          уйти сам, вызовом leave. Установлен отклик - уход за работником; не
+	 *          установлен - кластер уходит немедленно названным кодом
+	 *
+	 * @note Ушедший по приказу работник возрождению не подлежит, и счётчик быстрых
+	 *       падений его уход не задевает: мастер отличает уход от падения
+	 */
+	cluster.on <void (const int32_t)> ("shutdown", [&cluster, &log](const int32_t code) noexcept -> void {
+		// Возвращаем событие получения приказа завершить работу
+		log.print("Cluster process [%u] has been ordered to terminate with code %d", log_t::flag_t::WARNING, ::getpid(), code);
+		// Уходим из кластера названным кодом, доведя своё дело до конца
+		cluster.leave(code);
+	}, placeholders::_1);
+	/**
+	 * Мастер вправе велеть работнику уйти, а работник - уйти по своей воле
+	 *
+	 * // Мастер велит работнику завершить работу условленным кодом
+	 * cluster.shutdown(pid, 42);
+	 *
+	 * // Работник уходит сам, известив мастера
+	 * cluster.leave(EXIT_SUCCESS);
+	 */
 	// Запускаем работу кластера
 	cluster.start();
 	// Возвращаем результат
