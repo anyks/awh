@@ -628,6 +628,17 @@ if (MSVC)
      # чем допускает обычный предел формата
      ##
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc /utf-8 /W3 /bigobj")
+    ##
+     # Зависимость сжатия LZMA объявляет свои имена берущимися из динамической
+     # библиотеки, пока не сказано обратное
+     #
+     # Собирается она у нас неразделяемой, и без этого признака заголовок её помечает
+     # каждое имя указанием ВЗЯТЬ его у файла рядом. Перевод отказа не даёт, а
+     # связывание отвечает о неразрешённых именах вида __imp_lzma_code - о тех самых,
+     # какие в архиве ЕСТЬ. Указание это ставит только оснастка MSVC, оттого и признак
+     # задаётся здесь
+     ##
+    add_compile_definitions(LZMA_API_STATIC)
 # Если процессор архитектуры ARM
 elseif (${ARCHITECTURE} MATCHES "aarch64" OR ${ARCHITECTURE} MATCHES "arm*")
     SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -pipe -DNDEBUG")
@@ -2006,7 +2017,22 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
      # связанную с библиотекой, и отбор его в наборе замеров не спасал. Обнаружено на стенде
      # MSYS2 MinGW64 (14.08.2026)
      ##
-    SET(AWH_FLAGS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
+    ##
+     # Написание перечня зависит от оснастки
+     #
+     # Оснастка MSVC записи «-lws2_32» не понимает вовсе, а неизвестный ключ принимает
+     # за ИМЯ ФАЙЛА - отказ приходит тогда не о ключе, а о ненайденном файле. Библиотеки
+     # системы называются ей полным именем, и сквозная оптимизация у неё своя, потому
+     # ключ, принятый у GCC, здесь не ставится.
+     #
+     # Normaliz упомянут только здесь: перевод имён по правилам IDN берётся из него, и
+     # у оснастки MinGW он приходит вместе с прочими сам собой, а у MSVC - нет
+     ##
+    if (MSVC)
+        SET(AWH_FLAGS ws2_32.lib Iphlpapi.lib psapi.lib dbghelp.lib crypt32.lib bcrypt.lib gdi32.lib Normaliz.lib)
+    else (MSVC)
+        SET(AWH_FLAGS -lws2_32 -lIphlpapi -lpsapi -ldbghelp -lcrypt32 -lbcrypt -lgdi32 -flto=auto)
+    endif (MSVC)
 
     # Устанавливаем иконку для windows под MinGW.
     SET(RES_FILES ${CMAKE_PROJECT_NAME}.rc)

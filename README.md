@@ -740,7 +740,7 @@ Verified on Windows 11 ARM64, Visual Studio 2022 Community, toolset 14.43.
 
 #### Development environment configuration
 
-| | | |
+| Means | Necessarily | For what |
 |---|---|---|
 | [Visual Studio](https://visualstudio.microsoft.com) 2019 or newer | required | the "Desktop development with C++" workload |
 | [GIT](https://git-scm.com) | optional | needed only to move the dependency sources onto the versions named in `Requirements.txt` — a tree taken as an archive builds without it |
