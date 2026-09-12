@@ -1349,7 +1349,7 @@ void awh::Logging::async(const bool mode) noexcept {
  */
 void awh::Logging::maxSize(const float size) noexcept {
 	// Устанавливаем максимальный размер файла логов
-	this->_maxSize = size;
+	this->_maxSize = static_cast <size_t> (size);
 }
 /**
  * @brief Метод установки размера текста для формирования разделителя

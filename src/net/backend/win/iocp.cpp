@@ -886,7 +886,24 @@ static const char * __awh_strerror__(const int32_t code) noexcept {
 	 * @note Коды, доставшиеся MinGW от MS-DOS, обращение знает, и описывать их своими
 	 *       словами значило бы разойтись с системой на ровном месте
 	 */
+#if defined(_MSC_VER)
+	/**
+	 * Описание у оснастки MSVC берётся приёмом с буфером
+	 *
+	 * @note Приём без буфера объявлен у неё устаревшим, а буфер этот - свой у каждого
+	 *       потока: описание отдаётся указателем, и общий на всех буфер переписывался
+	 *       бы соседним потоком прямо под читающим
+	 */
+	static thread_local char buffer[256];
+	// Если описание получить не удалось
+	if(::strerror_s(buffer, sizeof(buffer), code) != 0)
+		// Выводим описание, какого у системы нет
+		return "Unknown error";
+	// Выводим полученное описание
+	return buffer;
+#else
 	return ::strerror(code);
+#endif
 }
 /**
  * @brief Функция перевода кода отказа, отданного завершением, в понятия POSIX
@@ -1071,7 +1088,18 @@ static int32_t __awh_close__(const SOCKET sock) noexcept {
 		 */
 		if(::_get_osfhandle(static_cast <int32_t> (sock)) != -1)
 			// Выводим результат закрытия дескриптора времени выполнения
-			return ::close(static_cast <int32_t> (sock));
+			/**
+			 * Описатель времени выполнения закрывается приёмом оснастки
+			 *
+			 * @note Имя POSIX у оснастки MSVC объявлено устаревшим, а ЗАНЯТО оно всё
+			 *       равно: свой приём с таким именем она объявляет сама, и завести
+			 *       посредника под тем же именем нельзя - выйдет переопределение
+			 */
+			#if defined(_MSC_VER)
+				return ::_close(static_cast <int32_t> (sock));
+			#else
+				return ::close(static_cast <int32_t> (sock));
+			#endif
 		/**
 		 * Закрываем описатель системы
 		 *
@@ -6715,7 +6743,7 @@ namespace {
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
 									::trust_cast <struct sockaddr_un> (client->endpoint.client),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+									static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -6745,7 +6773,7 @@ namespace {
 						// Извлекаем файл сокета клиента
 						const string & address = ::fs::unixSocketAddress(
 							::trust_cast <struct sockaddr_un> (server->endpoint.server),
-							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+							static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
 						);
 						// Если адрес получен
 						if(!address.empty())
@@ -18928,7 +18956,7 @@ namespace io {
 				// Размер полученных данных
 				size_t size = 0;
 				// Смещение в файле
-				off_t offset = 0;
+				int64_t offset = 0;
 				// Создаём сторож времени цикла обработки события
 				::local::watchdog_t watchdog;
 				/**
@@ -18936,13 +18964,13 @@ namespace io {
 				 */
 				while(watchdog){
 					// Если файл открыт удачно
-					if(::fstat(fs->fd, &fs->info) == 0){
+					if(::fstat(static_cast <int32_t> (fs->fd), &fs->info) == 0){
 						// Если размер файла изменился
 						if(fs->info.st_size > fs->offset){
 							// Выполняем расчёт смещения в файле
-							offset = (fs->offset > 0 ? ((fs->offset / fs->size) * fs->size) : 0);
+							offset = (fs->offset > 0 ? ((fs->offset / static_cast <int64_t> (fs->size)) * static_cast <int64_t> (fs->size)) : 0);
 							// Считываем данные из файла
-							char * buffer = static_cast <char *> (::mmap(nullptr, fs->size, PROT_READ, MAP_SHARED, fs->fd, offset));
+							char * buffer = static_cast <char *> (::mmap(nullptr, fs->size, PROT_READ, MAP_SHARED, static_cast <int32_t> (fs->fd), offset));
 							// Если мы прочитали нормально файл
 							if((result = (buffer != MAP_FAILED))){
 								// Если функция обратного вызова для вывода события установлена
@@ -19640,12 +19668,12 @@ namespace io {
 									// Для семейства IPv4
 									case static_cast <uint8_t> (event::family_t::IPV4):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(peer->bandwidth().read.tokens, ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
+										size = static_cast <size_t> (::local::min(peer->bandwidth().read.tokens, ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE));
 									break;
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(peer->bandwidth().read.tokens, ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
+										size = static_cast <size_t> (::local::min(peer->bandwidth().read.tokens, ::local::burst(peer->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE));
 									break;
 								}
 							}
@@ -21669,12 +21697,12 @@ namespace io {
 									// Для семейства IPv4
 									case static_cast <uint8_t> (event::family_t::IPV4):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(client->bandwidth().read.tokens, ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
+										size = static_cast <size_t> (::local::min(client->bandwidth().read.tokens, ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV4_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE));
 									break;
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6):
 										// Выполняем рассчёт размера байт для чтения из сокета
-										size = ::local::min(client->bandwidth().read.tokens, ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE);
+										size = static_cast <size_t> (::local::min(client->bandwidth().read.tokens, ::local::burst(client->bandwidth().read.limit, AWH_MTU_TCP_IPV6_PAYLOAD_SIZE), AWH_EVENT_MAX_BUFFER_SIZE));
 									break;
 								}
 							}
@@ -27940,13 +27968,13 @@ namespace io {
 				// Завершаем выполнение функции, так как отправлять нечего
 				return result;
 			// Получаем актуальный итоговый размер файла
-			const off_t actual = (fs->offset + static_cast <intptr_t> (size));
+			const int64_t actual = (fs->offset + static_cast <int64_t> (size));
 			// Получаем смещение в файле с учётом размера страницы
-			const off_t offset = ((fs->offset / fs->size) * fs->size);
+			const int64_t offset = ((fs->offset / static_cast <int64_t> (fs->size)) * static_cast <int64_t> (fs->size));
 			// Выделяем память под запись данных в файл
-			::ftruncate(fs->fd, (((actual + fs->size - 1) / fs->size) * fs->size));
+			::ftruncate(static_cast <int32_t> (fs->fd), (((actual + static_cast <int64_t> (fs->size) - 1) / static_cast <int64_t> (fs->size)) * static_cast <int64_t> (fs->size)));
 			// Выполняем маппинг файла в память
-			char * data = reinterpret_cast <char *> (::mmap(nullptr, fs->size, PROT_READ | PROT_WRITE, MAP_SHARED, fs->fd, offset));
+			char * data = reinterpret_cast <char *> (::mmap(nullptr, fs->size, PROT_READ | PROT_WRITE, MAP_SHARED, static_cast <int32_t> (fs->fd), offset));
 			// Если mmap выполнился с ошибкой
 			if(data == MAP_FAILED){
 				// Если установлена функция обратного вызова
@@ -27992,7 +28020,7 @@ namespace io {
 			// Выполняем освобождение маппинга файла
 			::munmap(data, fs->size);
 			// Обрезаем файл до нужных нам размеров
-			::ftruncate(fs->fd, actual);
+			::ftruncate(static_cast <int32_t> (fs->fd), actual);
 			// Если чтение из файла не предполагается
 			if(!(fs->actions & ::action::READ) || ((fs->callbacks.read == nullptr) && (fs->dest == 0)))
 				// Увеличиваем смещение в файле
@@ -41828,7 +41856,7 @@ namespace io {
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & ::change::ERROR){
 							// Выполняем обработку ошибки
-							if(::io::error(node, ev.data, log))
+							if(::io::error(node, static_cast <int32_t> (ev.data), log))
 								// Выполняем удаление узла
 								::io::destroy(node, eth, log);
 							// Пропускаем дальнейшую обработку события
@@ -41955,7 +41983,7 @@ namespace io {
 						// Если мы детектировали наличие ошибки
 						if(ev.flags & ::change::ERROR){
 							// Выполняем обработку ошибки
-							if(::io::error(node, ev.data, log))
+							if(::io::error(node, static_cast <int32_t> (ev.data), log))
 								// Выполняем удаление узла
 								::io::destroy(node, eth, log);
 							// Пропускаем дальнейшую обработку события
@@ -42068,7 +42096,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.flags & ::change::ERROR){
 					// Выполняем обработку ошибки
-					if(::io::error(node, ev.data, log))
+					if(::io::error(node, static_cast <int32_t> (ev.data), log))
 						// Выполняем удаление узла
 						::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
@@ -42080,7 +42108,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.flags & ::change::ERROR){
 					// Выполняем обработку ошибки
-					if(::io::error(node, ev.data, log))
+					if(::io::error(node, static_cast <int32_t> (ev.data), log))
 						// Выполняем удаление узла
 						::io::destroy(node, eth, log);
 					// Пропускаем дальнейшую обработку события
@@ -42110,7 +42138,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.flags & ::change::ERROR){
 					// Выполняем обработку ошибки
-					::io::error(node, ev.data, log);
+					::io::error(node, static_cast <int32_t> (ev.data), log);
 					// Выполняем удаление узла
 					return !::io::destroy(node, eth, log);
 				}
@@ -42216,7 +42244,7 @@ namespace io {
 				// Если мы детектировали наличие ошибки
 				if(ev.flags & ::change::ERROR){
 					// Выполняем обработку ошибки
-					::io::error(node, ev.data, log);
+					::io::error(node, static_cast <int32_t> (ev.data), log);
 					// Выполняем удаление узла
 					return !::io::destroy(node, eth, log);
 				}
@@ -42309,7 +42337,7 @@ namespace io {
 					// Если мы детектировали наличие ошибки
 					if(ev.flags & ::change::ERROR){
 						// Выполняем обработку ошибки
-						::io::error(node, ev.data, log);
+						::io::error(node, static_cast <int32_t> (ev.data), log);
 					}
 					// Выполняем удаление узла
 					return !::io::destroy(node, eth, log);
@@ -44029,7 +44057,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Устанавливаем флаги разрешающие получать события
 									fs->actions |= (::action::CHANGE | ::action::DELETE | ::action::RENAME | ::action::ATTRIB | ::action::REVOKE | ::action::HDLINK | ::action::CLOSE | ::action::READ | ::action::WRITE);
 									// Если файл открыт удачно
-									if(::fstat(fs->fd, &fs->info) == 0){
+									if(::fstat(static_cast <int32_t> (fs->fd), &fs->info) == 0){
 										// Если размер файла не пустой
 										if(fs->info.st_size > 0)
 											// Выполняем чтение данных из файла
@@ -45171,7 +45199,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																::memcpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 															} break;
 															// Если событие принадлежит к типу DATAGRAM
 															case static_cast <uint8_t> (event::type_t::DATAGRAM): {
@@ -45184,7 +45212,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path));
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
+																::memcpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем путь к файлу unix-сокета
 																string fullpath = "", sockname = "";
 																// Выполняем поиск последнего слеша разделителя
@@ -45334,7 +45362,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Копируем установленный адрес клиента
 																	::memcpy(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path, filename.c_str(), filename.length());
 																	// Получаем размер объекта сокета
-																	const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
+																	const socklen_t size = static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path));
 																	// Выполняем бинд сокета клиента на адрес unix-сокета
 																	if(::__awh_bind__(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), size) < 0){
 																		// Если установлена функция обратного вызова
@@ -47403,9 +47431,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																// Очищаем всю структуру для сервера
 																::memset(&::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, 0, sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
+																::memcpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
+																const socklen_t size = static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																/**
 																 * Привязка пропускается у дескриптора, пришедшего снимком
 																 *
@@ -47472,9 +47500,9 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::unlink(unixsocket.c_str());
 																}
 																// Копируем установленный адрес сервера
-																::strncpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
+																::memcpy(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path), unixsocket.length()));
 																// Получаем размер объекта сокета
-																const socklen_t size = (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
+																const socklen_t size = static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path));
 																/**
 																 * Привязка пропускается у дескриптора, пришедшего снимком
 																 *
@@ -63480,7 +63508,7 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 							// Получаем текущее значение объекта файловой системы
 							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 							// Если файл открыт удачно
-							if(::fstat(fs->fd, &fs->info) == 0)
+							if(::fstat(static_cast <int32_t> (fs->fd), &fs->info) == 0)
 								// Возвращаем смещение в файле события
 								return (fs->info.st_size - fs->offset);
 							// Возвращаем смещение в файле события
@@ -63572,7 +63600,7 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 							// Получаем текущее значение объекта файловой системы
 							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 							// Если файл открыт удачно
-							if(::fstat(fs->fd, &fs->info) == 0)
+							if(::fstat(static_cast <int32_t> (fs->fd), &fs->info) == 0)
 								// Устанавливаем смещение в файле события
 								fs->offset = (fs->info.st_size - offset);
 							// Устанавливаем смещение в файле события
@@ -67816,7 +67844,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 													// Если событие является UNIX-сокетом
 													if(client->state.family == event::family_t::UDS){
 														// Получаем размер объекта сокета
-														client->endpoint.size = (
+														client->endpoint.size = static_cast <socklen_t> (
 															offsetof(struct sockaddr_un, sun_path) +
 															::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path)
 														);
@@ -76654,7 +76682,7 @@ void awh::engine::IO::clear() noexcept {
 										// Извлекаем файл сокета клиента
 										const string & address = ::fs::unixSocketAddress(
 											::trust_cast <struct sockaddr_un> (client->endpoint.client),
-											(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+											static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
 										);
 										// Если адрес получен
 										if(!address.empty())
@@ -76723,7 +76751,7 @@ void awh::engine::IO::clear() noexcept {
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
 									::trust_cast <struct sockaddr_un> (server->endpoint.server),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+									static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -77823,7 +77851,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
 									::trust_cast <struct sockaddr_un> (client->endpoint.client),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+									static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -77855,7 +77883,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 						// Извлекаем файл сокета клиента
 						const string & address = ::fs::unixSocketAddress(
 							::trust_cast <struct sockaddr_un> (server->endpoint.server),
-							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+							static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
 						);
 						// Если адрес получен
 						if(!address.empty())
@@ -78097,7 +78125,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 					// Получаем текущее значение объекта файловой системы
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если файл открыт удачно
-					if(::fstat(fs->fd, &fs->info) == 0)
+					if(::fstat(static_cast <int32_t> (fs->fd), &fs->info) == 0)
 						// Возвращаем смещение в файле события
 						result = static_cast <size_t> (fs->info.st_size);
 				} break;
@@ -81543,7 +81571,7 @@ awh::engine::IO::~IO() noexcept {
 								// Извлекаем файл сокета клиента
 								const string & address = ::fs::unixSocketAddress(
 									::trust_cast <struct sockaddr_un> (client->endpoint.client),
-									(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
+									static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (client->endpoint.client).sun_path))
 								);
 								// Если адрес получен
 								if(!address.empty())
@@ -81571,7 +81599,7 @@ awh::engine::IO::~IO() noexcept {
 						// Извлекаем файл сокета клиента
 						const string & address = ::fs::unixSocketAddress(
 							::trust_cast <struct sockaddr_un> (server->endpoint.server),
-							(offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
+							static_cast <socklen_t> (offsetof(struct sockaddr_un, sun_path) + ::strlen(::trust_cast <struct sockaddr_un> (server->endpoint.server).sun_path))
 						);
 						// Если адрес получен
 						if(!address.empty())

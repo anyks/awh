@@ -1828,7 +1828,7 @@ namespace driver {
 					// Если необходимо выполнить компрессию данных
 					case static_cast <uint8_t> (compressor::event_t::ENCODE): {
 						// Выполняем получение размер результирующего буфера
-						int32_t actual = ::LZ4_compressBound(size);
+						int32_t actual = ::LZ4_compressBound(static_cast <int32_t> (size));
 						// Если размер выделен
 						if(actual <= 0){
 							// Выполняем очистку результата
@@ -1859,9 +1859,9 @@ namespace driver {
 						 */
 						if(level >= LZ4HC_CLEVEL_MIN)
 							// Выполняем компрессию буфера бинарных данных режимом высокой степени сжатия
-							actual = ::LZ4_compress_HC(reinterpret_cast <const char *> (buffer), reinterpret_cast <char *> (&result[0]), size, actual, level);
+							actual = ::LZ4_compress_HC(reinterpret_cast <const char *> (buffer), reinterpret_cast <char *> (&result[0]), static_cast <int32_t> (size), actual, level);
 						// Если задан быстрый режим компрессии
-						else actual = ::LZ4_compress_fast(reinterpret_cast <const char *> (buffer), reinterpret_cast <char *> (&result[0]), size, actual, ((level < 0) ? (1 - level) : 1));
+						else actual = ::LZ4_compress_fast(reinterpret_cast <const char *> (buffer), reinterpret_cast <char *> (&result[0]), static_cast <int32_t> (size), actual, ((level < 0) ? (1 - level) : 1));
 						// Если компрессия не выполнена (расширение данных при сжатии не является ошибкой)
 						if(actual <= 0){
 							// Выполняем очистку результата

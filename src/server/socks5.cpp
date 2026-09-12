@@ -2683,7 +2683,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												// Инициализируем генератор случайных чисел с помощью устройства случайных чисел
 												static ::mt19937 gen(randev());
 												// Генерируем индекс от 0 до size - 1
-												::uniform_int_distribution <> distrib(0, this->_udp.events.size() - 1);
+												::uniform_int_distribution <> distrib(0, static_cast <int32_t> (this->_udp.events.size() - 1));
 												// Выбираем UDP-сервер случайным образом
 												const event::id_t sid = this->_udp.events[distrib(gen)];
 												// Устанавливаем порт для UDP-сервера

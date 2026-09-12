@@ -1795,7 +1795,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 								// Зануляем буфер доменного имени
 								::memset(record.domain, 0, sizeof(record.domain));
 								// Копируем доменное имя в запись
-								::strncpy(reinterpret_cast <char *> (record.domain), domain.data(), size);
+								::memcpy(record.domain, domain.data(), size);
 								// Устанавливаем завершающий нулевой байт в доменном имени
 								record.domain[size] = '\0';
 								// Устанавливаем время жизни записи
@@ -5765,11 +5765,11 @@ void awh::unit::DNS::setTargetPort(const uint16_t port) noexcept {
 		 */
 		if(!this->_resolver.idv4.empty())
 			// Переинициализируем DNS-резолвер для семейства IPv4
-			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 		// Если DNS-резолверы IPv6 уже инициализированы
 		if(!this->_resolver.idv6.empty())
 			// Переинициализируем DNS-резолвер для семейства IPv6
-			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+			this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -5828,12 +5828,12 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 						// Переинициализируем DNS-резолвер для семейства IPv4
-						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+						this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
 						// Переинициализируем DNS-резолвер для семейства IPv6
-						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+						this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 					break;
 				}
 			}
@@ -5844,9 +5844,9 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 			// Переинициализируем DNS-резолвер для семейства IPv4
-			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 			// Переинициализируем DNS-резолвер для семейства IPv6
-			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+			this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 		}
 	/**
 	 * Если возникает ошибка
@@ -5891,7 +5891,7 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
 					// Переинициализируем DNS-резолвер для семейства IPv4
-					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+					this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 				} break;
 				// Если адрес является IPv6
 				case 16: {
@@ -5900,7 +5900,7 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
 					// Переинициализируем DNS-резолвер для семейства IPv6
-					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+					this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 				} break;
 			}
 		// Если адрес DNS-сервера не передан
@@ -5910,9 +5910,9 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 			// Переинициализируем DNS-резолвер для семейства IPv4
-			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 			// Переинициализируем DNS-резолвер для семейства IPv6
-			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+			this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 		}
 	/**
 	 * Если возникает ошибка
@@ -5960,7 +5960,7 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 						// Переинициализируем DNS-резолвер для семейства IPv4
-						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+						this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 					}
 				} break;
 				// Для семейства IPv6
@@ -5972,7 +5972,7 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 						// Переинициализируем DNS-резолвер для семейства IPv6
-						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+						this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 					}
 				} break;
 			}
@@ -5987,14 +5987,14 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
 					// Переинициализируем DNS-резолвер для семейства IPv4
-					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+					this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
 					// Переинициализируем DNS-резолвер для семейства IPv6
-					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+					this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 				} break;
 			}
 		}
@@ -6041,12 +6041,12 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 						// Переинициализируем DNS-резолвер для семейства IPv4
-						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+						this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
 						// Переинициализируем DNS-резолвер для семейства IPv6
-						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+						this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 					break;
 				}
 			}
@@ -6092,14 +6092,14 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
 					// Переинициализируем DNS-резолвер для семейства IPv4
-					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+					this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 				} break;
 				// Если адрес является IPv6
 				case 16: {
 					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
 					// Переинициализируем DNS-резолвер для семейства IPv6
-					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+					this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 				} break;
 			}
 		}
@@ -6147,7 +6147,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 						// Переинициализируем DNS-резолвер для семейства IPv4
-						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+						this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 					}
 				} break;
 				// Для семейства IPv6
@@ -6157,7 +6157,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 						// Переинициализируем DNS-резолвер для семейства IPv6
-						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+						this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 					}
 				} break;
 			}
@@ -6246,11 +6246,11 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 				// Если необходимо сбросить список IPv4
 				if(resetIPv4)
 					// Переинициализируем DNS-резолвер для семейства IPv4
-					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+					this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 				// Если необходимо сбросить список IPv6
 				if(resetIPv6)
 					// Переинициализируем DNS-резолвер для семейства IPv6
-					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+					this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 			}
 		// Если адреса DNS-серверов не переданы
 		} else {
@@ -6259,9 +6259,9 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 			// Переинициализируем DNS-резолвер для семейства IPv4
-			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 			// Переинициализируем DNS-резолвер для семейства IPv6
-			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+			this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 		}
 	/**
 	 * Если возникает ошибка
@@ -6359,11 +6359,11 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 			// Если необходимо сбросить список IPv4
 			if(resetIPv4)
 				// Переинициализируем DNS-резолвер для семейства IPv4
-				this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+				this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 			// Если необходимо сбросить список IPv6
 			if(resetIPv6)
 				// Переинициализируем DNS-резолвер для семейства IPv6
-				this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+				this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 		// Если адрес DNS-сервера не передан
 		} else {
 			// Сбрасываем список DNS-серверов для семейства IPv4
@@ -6371,9 +6371,9 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
 			// Переинициализируем DNS-резолвер для семейства IPv4
-			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 			// Переинициализируем DNS-резолвер для семейства IPv6
-			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+			this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 		}
 	/**
 	 * Если возникает ошибка
@@ -6428,7 +6428,7 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 						else break;
 					}
 					// Переинициализируем DNS-резолвер для семейства IPv4
-					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+					this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -6446,7 +6446,7 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 						else break;
 					}
 					// Переинициализируем DNS-резолвер для семейства IPv6
-					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+					this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 				} break;
 			}
 		// Если адрес DNS-сервера не передан
@@ -6460,14 +6460,14 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(family);
 					// Переинициализируем DNS-резолвер для семейства IPv4
-					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+					this->init(event::family_t::IPV4, static_cast <uint16_t> (this->_resolver.idv4.size()));
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(family);
 					// Переинициализируем DNS-резолвер для семейства IPv6
-					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+					this->init(event::family_t::IPV6, static_cast <uint16_t> (this->_resolver.idv6.size()));
 				} break;
 			}
 		}

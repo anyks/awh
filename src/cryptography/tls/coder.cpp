@@ -1119,7 +1119,7 @@ namespace ssl {
 							// Зануляем буфер данных
 							::memset(buffer, 0, sizeof(buffer));
 							// Получаем сообщение об ошибке
-							::ERR_error_string_n(error, buffer, sizeof(buffer));
+							::ERR_error_string_n(static_cast <uint32_t> (error), buffer, sizeof(buffer));
 							// Если результат уже сформирован
 							if(!result.empty())
 								// Добавляем разделитель
@@ -1178,7 +1178,7 @@ namespace ssl {
 		 */
 		while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
 			// Читаем данные из BIO буфера записи
-			bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+			bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <int32_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 			// Если данные не прочитаны (SSL_get_error здесь неприменим — это BIO, не SSL)
 			if(bytes <= 0)
 				// Выходим из цикла
@@ -6059,7 +6059,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 								 */
 								while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
 									// Читаем данные из BIO буфера записи
-									bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+									bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <int32_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
 									// Если данные не прочитаны (SSL_get_error здесь неприменим — это BIO, не SSL)
 									if(bytes <= 0){
 										// Устанавливаем отрицательный результат

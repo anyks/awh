@@ -6519,7 +6519,7 @@ bool awh::codec::yaml::Reader::settle() noexcept {
 	 *       за закавыченным значением пустая строка выдавалась, а за простым пропадала,
 	 *       ибо простое ждало продолжения и строку эту съедало
 	 */
-	const uint32_t folds = this->_folds;
+	const uint32_t folds = static_cast <uint32_t> (this->_folds);
 	// Выполняем сброс количества пустых строк значения
 	this->_folds = 0;
 	/**

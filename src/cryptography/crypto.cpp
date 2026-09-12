@@ -2230,7 +2230,7 @@ namespace gost {
 				// Если очередной разряд окна установлен
 				if(bignum::bit(factor, field.width, (i * WINDOW) + k))
 					// Выполняем установку разряда в значение окна
-					index |= (1u << k);
+					index |= (static_cast <size_t> (1) << k);
 			}
 			/**
 			 * Если значение окна не пусто
@@ -2325,7 +2325,7 @@ namespace gost {
 					// Переходим к следующей доле сочетания
 					index++;
 				// Выполняем сложение кратного доли с сочетанием без неё
-				append(combs[curve].table[i], combs[curve].table[i ^ (1u << index)], powers[index], field);
+				append(combs[curve].table[i], combs[curve].table[i ^ (static_cast <size_t> (1) << index)], powers[index], field);
 			}
 		});
 		// Выводим предвычисленные кратные точки основания
@@ -2365,7 +2365,7 @@ namespace gost {
 				// Если очередной разряд доли множителя установлен
 				if(bignum::bit(factor, field.width, (k * part) + i))
 					// Выполняем установку доли в сочетание
-					index |= (1u << k);
+					index |= (static_cast <size_t> (1) << k);
 			}
 			/**
 			 * Если сочетание долей не пусто
@@ -4359,7 +4359,7 @@ namespace driver {
 									// Если производится кодирование данных
 									case static_cast <uint8_t> (crypto_t::event_t::ENCODE): {
 										// Выполняем кодирование в BASE64
-										length = ::BIO_write(b64, buffer, size);
+										length = ::BIO_write(b64, buffer, static_cast <int32_t> (size));
 										// Выполняем очистку объекта
 										BIO_flush(b64);
 										/**
@@ -4373,7 +4373,7 @@ namespace driver {
 											// Выделяем память под запрошенный результат
 											result.resize((4 * ((length + 2) / 3)) + 1, 0);
 											// Выполняем чтение полученного результата
-											length = ::BIO_read(bio, result.data(), result.size());
+											length = ::BIO_read(bio, result.data(), static_cast <int32_t> (result.size()));
 										/**
 										 * Отказ выражается длиной, а не пропуском чтения: длина
 										 * неполной записи осталась бы положительной, и работа
@@ -4386,7 +4386,7 @@ namespace driver {
 									// Если производится декодирование данных
 									case static_cast <uint8_t> (crypto_t::event_t::DECODE): {
 										// Выполняем декодирование из BASE64
-										length = ::BIO_write(bio, buffer, size);
+										length = ::BIO_write(bio, buffer, static_cast <int32_t> (size));
 										// Выполняем очистку объекта
 										BIO_flush(bio);
 										/**
@@ -4399,7 +4399,7 @@ namespace driver {
 											// Выделяем память под запрошенный результат
 											result.resize((3 * length / 4) + 1, 0);
 											// Выполняем чтение полученного результата
-											length = ::BIO_read(b64, result.data(), result.size());
+											length = ::BIO_read(b64, result.data(), static_cast <int32_t> (result.size()));
 										/**
 										 * Отказ выражается длиной по тому же доводу, что и при
 										 * кодировании: длина неполной записи осталась бы
@@ -8200,7 +8200,7 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 			return result;
 		}
 		// Выполняем генерацию ключа RSA
-		EVP_PKEY * privKey = ::EVP_RSA_gen(bits);
+		EVP_PKEY * privKey = ::EVP_RSA_gen(static_cast <uint32_t> (bits));
 		// Если ключ не получен
 		if(privKey == nullptr){
 			/**

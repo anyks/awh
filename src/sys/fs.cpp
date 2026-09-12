@@ -2487,7 +2487,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 												// Выполняем выделение памяти для результирующего буфера
 												result.resize(static_cast <size_t> (size), 0);
 												// Выполняем извлечение полного адреса ярлыка
-												::WideCharToMultiByte(CP_UTF8, 0, achPath, -1, result.data(), result.size(), 0, 0);
+												::WideCharToMultiByte(CP_UTF8, 0, achPath, -1, result.data(), static_cast <int32_t> (result.size()), 0, 0);
 											}
 										}
 									}

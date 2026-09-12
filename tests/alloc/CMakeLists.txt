@@ -90,9 +90,14 @@ if (${GTest_FOUND})
             message(STATUS "Build tests ALLOCATOR module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_ALLOCATOR_TEST})
 
-        # Библиотеки GTest для линковки
+        ##
+         # Библиотеки GTest для линковки
+         #
+         # Называется одна лишь GTest::gmock: она объявляет GTest::gtest своей
+         # зависимостью, и упоминание обеих клало libgtest.a в строку сборки
+         # дважды, отчего компоновщик отвечал "ignoring duplicate libraries"
+         ##
         SET(${PROJECT_NAME}_GTEST_LIBS
-            GTest::gtest
             GTest::gmock
         )
 
