@@ -67,7 +67,11 @@ FRAMEWORK="src/sys/log.cpp src/sys/chrono.cpp src/sys/fmk.cpp src/net/nwt.cpp
 	src/alloc/capture/elf.cpp src/alloc/capture/mach.cpp src/alloc/capture/pe.cpp
 	src/num/lexical/table.cpp"
 [ "$SYS" = OpenBSD ] && FRAMEWORK="$(echo "$FRAMEWORK" | sed 's|src/alloc/alloc\.cpp||') src/alloc/capture/obsd.cpp"
-CODEC="src/codec/numeric.cpp src/codec/replace.cpp src/codec/bridge.cpp"
+# «src/codec/replace.cpp» из перечня СНЯТ: владелец перенёс подмену целевого файла в
+# «sys/fs» ходом replaceAddress и удалил модуль после перехода всех кодеков. Перечень
+# частей у стенда ведётся вручную, и удалённый файл остался бы в нём молча - стенд
+# отказал бы на сборке, а причина выглядела бы поломкой кода
+CODEC="src/codec/numeric.cpp src/codec/bridge.cpp"
 for D in abc json yaml xml toml ini; do CODEC="$CODEC $(echo src/codec/$D/*.cpp)"; done
 # Часть шифрования и сжатия: её требует контейнер ABC, на который опирается мост
 EXTRA="src/compressor/block.cpp src/compressor/stream.cpp src/compressor/types.cpp
@@ -109,7 +113,7 @@ done
 # ПРЕЖДЕ здесь стоял отбор пробою по цепочке «c++2b → c++23 → c++20 → gnu++17», и это
 # была ошибка устройства, а не мелочь: цепочка искала наречие НОВЕЕ объявленного, и
 # стенд выходил зелёным там, где сборка проекта красна. Ровно так и вышло с
-# «src/codec/replace.cpp», где употреблён unique_ptr без «#include <memory>»: при c++2b
+# ныне удалённом «src/codec/replace.cpp», где unique_ptr стоял без «#include <memory>»: при c++2b
 # заголовок приходит косвенно и стенд зелен, при c++17 сборка отказывает. Стенд обязан
 # мерить ТО, что собирает проект, иначе он мерит нечто иное и молчит о настоящем.
 #

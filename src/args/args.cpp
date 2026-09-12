@@ -984,7 +984,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		// Выполняем снос временного файла записи
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
-		this->_errors.emplace_back(error_t::UNSUPPORTED, location_t());
+		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отказе записи файла настроек
 		this->_log->print("Args: settings are not written to \"%s\"", log_t::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, запись отвечена отказом
@@ -1008,7 +1008,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		// Выполняем снос временного файла записи
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
-		this->_errors.emplace_back(error_t::UNSUPPORTED, location_t());
+		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отказе сброса записи на носитель
 		this->_log->print("Args: settings are not flushed into \"%s\"", log_t::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, запись отвечена отказом
@@ -1019,7 +1019,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		// Выполняем снос временного файла записи
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Выполняем запоминание отказа записи файла настроек
-		this->_errors.emplace_back(error_t::UNSUPPORTED, location_t());
+		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отказе подмены файла настроек
 		this->_log->print("Args: settings are not moved into \"%s\"", log_t::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, запись отвечена отказом

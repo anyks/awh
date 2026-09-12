@@ -109,10 +109,20 @@ const char * awh::args::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::UNSUPPORTED):
 			// Выводим описание кода ошибки разбора
 			return "value unsupported by the codec";
-		// Если файла настроек нет вовсе либо чтение его отказало
+		/**
+		 * Если работа с файлом настроек отказала
+		 *
+		 * @note Код этот несёт ОБЕ стороны - и чтение, и запись, - и отделён от
+		 *       `UNSUPPORTED` намеренно: тот означает «кодек выдачи вместить дерево
+		 *       не может», и чинится он сменою ДЕРЕВА, а этот означает «до файла
+		 *       дело не дошло», и чинится он путём либо правами. Прежде отказы
+		 *       записи оглашались кодом `UNSUPPORTED`, и потребитель, увидев его,
+		 *       искал изъян в своих настройках, тогда как настройки были верны, а
+		 *       негоден был путь
+		 */
 		case static_cast <uint8_t> (error_t::FILESYSTEM):
 			// Выводим описание кода ошибки разбора
-			return "settings file is unreadable";
+			return "settings file cannot be read or written";
 		// Если обязательный параметр описания не подан вовсе
 		case static_cast <uint8_t> (error_t::REQUIRED):
 			// Выводим описание кода ошибки разбора
