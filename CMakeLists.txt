@@ -992,7 +992,8 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
  # Если сборка производится под операционную систему MS Windows
  #
  # Состояние переноса движка ввода-вывода описано в src/net/backend/win/README.md.
- # Сборка ведётся только в MSYS2 MinGW 64bit, вариант с MSVC не рассматривается
+ # Собирается двумя оснастками: MSYS2 MinGW 64bit и Microsoft Visual Studio. Средства
+ # сборки зависимостей у них разные (sh/ и bat/), а описание сборки - одно
  ##
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     # Выполняем подключение бэкендов IO

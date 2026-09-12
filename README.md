@@ -415,6 +415,10 @@ answers, it does not initiate.
 $ ./sh/build_third_party.sh
 ```
 
+> On MS Windows this serves the MinGW build. For Microsoft Visual Studio there is a
+> standalone counterpart that needs no MSYS2 — `bat\build_third_party.bat`, see
+> [Build on Windows [Visual Studio]](#build-on-windows-visual-studio).
+
 ### Build documentation
 
 ```bash
@@ -721,6 +725,103 @@ $ cmake \
 
 $ cmake --build .
 ```
+
+### Build on Windows [Visual Studio]
+
+MSYS2 takes no part in this path. Visual Studio is located through `vswhere`, CMake and
+Ninja are taken from its own installation, and the dependency archives are merged by
+`lib.exe`. The two toolchains are **not interchangeable** — MinGW and MSVC produce
+incompatible binaries, and some dependencies decide the fate of their own headers at build
+time (`zlib` settles `unistd.h` that way). The builds are therefore kept apart: the MinGW
+one goes to `third_party`, the Visual Studio one to `third_party-msvc`, and neither
+disturbs the other.
+
+Verified on Windows 11 ARM64, Visual Studio 2022 Community, toolset 14.43.
+
+#### Development environment configuration
+
+| | | |
+|---|---|---|
+| [Visual Studio](https://visualstudio.microsoft.com) 2019 or newer | required | the "Desktop development with C++" workload |
+| [GIT](https://git-scm.com) | optional | needed only to move the dependency sources onto the versions named in `Requirements.txt` — a tree taken as an archive builds without it |
+| CMake, Ninja | optional | taken from the Visual Studio installation when none are in `PATH` |
+| "C++ Clang tools for Windows" | optional | the accelerated parts of BoringSSL, see below |
+
+#### Build third party
+
+```bat
+> git submodule update --init --recursive
+> bat\build_third_party.bat
+```
+
+That single command finds the toolset, brings up its environment and builds all ten
+dependencies. Their versions, the order and the very composition of the build come from
+`Requirements.txt` in the root of the tree — **the same file that governs the MinGW
+build**; there is no need to edit the scripts to change a version.
+
+```bat
+> bat\build_third_party.bat --rebuild  build afresh, disregarding the marks
+> bat\build_third_party.bat --clean    remove what has been built
+> bat\build_third_party.bat zlib       build a single dependency
+```
+
+> The instruction set is asked of the system itself rather than of the environment
+> variables: under x86-64 emulation those answer about the emulation and not about the
+> machine, and the build would silently go to x64 on an ARM64 machine. To name it by hand:
+> `set AWH_ARCH=x64`.
+
+#### Project build
+
+Run from the developer command prompt of the matching instruction set ("ARM64 Native Tools
+Command Prompt for VS 2022", or the x64 one) so that `cl.exe` is on the path:
+
+```bat
+> mkdir build
+> cd build
+
+> cmake -G Ninja ^
+   -DCMAKE_BUILD_TYPE=Release ^
+   -DCMAKE_C_COMPILER=cl.exe ^
+   -DCMAKE_CXX_COMPILER=cl.exe ^
+   ..
+
+> cmake --build .
+```
+
+The dependencies are attached to the freshly built `awh.lib` and `FindAWH.cmake` is written
+for the place of installation at the end of the build — the same two steps the shell scripts
+perform under MinGW, called here as their `.bat` counterparts.
+
+#### Build as a shared library (DLL)
+
+```bat
+> cmake -G Ninja ^
+   -DCMAKE_BUILD_TYPE=Release ^
+   -DCMAKE_SHARED_BUILD_LIB=YES ^
+   -DCMAKE_C_COMPILER=cl.exe ^
+   -DCMAKE_CXX_COMPILER=cl.exe ^
+   ..
+```
+
+This yields `awh.dll` together with the import library beside it, which is what a consuming
+program links against.
+
+> The list of exported symbols is collected from the object files, not marked up in the
+> code. Marking a **class** for export makes MSVC instantiate every implicit member of it at
+> once, the copy assignment included — and a class holding a non-copyable field (a vector of
+> unique pointers, say) cannot have one. The build then fails on a deleted function inside
+> the toolset headers, pointing at a class that no line of code ever copies.
+
+#### What you should know
+
+**Without `clang-cl` the accelerated parts of BoringSSL are turned off.** They are written
+in the GNU assembly dialect, which the MSVC assembler does not read, while `armasm64` from
+the same installation accepts only its own. The library still works, it merely encrypts
+more slowly. The build says so every time it happens; install the "C++ Clang tools for
+Windows" component and they turn themselves back on.
+
+**The unit-test suite is built and run under MinGW.** The Visual Studio path builds the
+library itself; GoogleTest is not part of it.
 
 ### Make installation packages
 
