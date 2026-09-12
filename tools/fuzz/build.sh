@@ -649,10 +649,30 @@ case "$CODEC" in
 		#       «CLSIDFromString», и это единственное имя из библиотеки объектной модели
 		##
 		if [ "$PLATFORM" = "win" ]; then
+			##
+			# Работа с файловой системой и нити берутся там же
+			#
+			# @note Движок этой системы зовёт и то, и другое: наблюдение за файлами он
+			#       ведёт через объект файловой системы, а долгие работы уводит в нить,
+			#       чтобы не держать оборот опроса. У движков наречий POSIX ни того, ни
+			#       другого в теле нет, оттого части эти и не значились в общем перечне,
+			#       а связывание валилось на «awh::Filesystem::Filesystem» и
+			#       «awh::fiber::dismissed»
+			##
 			TARGET="$TARGET
 				$ROOT/src/net/backend/win/tunnel.cpp
-				$ROOT/src/net/backend/win/qos.cpp"
-			SYSTEM_LIBS="$SYSTEM_LIBS -lole32"
+				$ROOT/src/net/backend/win/qos.cpp
+				$ROOT/src/net/backend/win/message.cpp
+				$ROOT/src/sys/fs.cpp
+				$ROOT/src/sys/fiber.cpp"
+			##
+			# «-luuid» нужна работе с файловой системой
+			#
+			# @note Ярлыки этой системы разбираются через объектную модель, а опознаватели
+			#       её сопряжений («IID_IShellLinkW», «IID_IPersistFile») лежат отдельной
+			#       библиотекой постоянных - в самой «ole32» их нет
+			##
+			SYSTEM_LIBS="$SYSTEM_LIBS -lole32 -luuid"
 		fi
 	;;
 	# Прочие ворошители поверяют кодеки, и части их берутся каталогом целиком

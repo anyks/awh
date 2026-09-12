@@ -30097,6 +30097,236 @@ TEST_F(IoFixture, IoCountHopsRankedTest){
 #endif
 
 
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * @brief Проверка отказа настройки сессии, живущей на сокете своего сервера
+	 *
+	 * @details Дейтаграммный сервер принятие изображает сам: принятая связь заводится
+	 *          узлом-источником и описателя своего не имеет вовсе - она живёт на сокете
+	 *          СВОЕГО СЕРВЕРА. Настроить одну такую сессию нельзя по устройству: настройка
+	 *          тронула бы разом и сервер, и все прочие сессии на нём, а спроса «настроить
+	 *          одну» сокет не несёт.
+	 *
+	 *          Отказ потому обязателен, и проверка стоит здесь затем, чтобы отказ этот не
+	 *          обратили когда-нибудь в согласие, приняв его за пропуск разбора.
+	 *
+	 * @note Утверждается и то, что отказ сессии НЕ задел сервера: настройка самого сервера
+	 *       тем же набором обязана пройти
+	 *
+	 */
+	TEST_F(IoFixture, IoOriginOptionsRefusedTest){
+		// Идентификатор принятой сервером сессии
+		awh::event::id_t peer = 0;
+		// Принятое сессией тело
+		std::string received;
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим событие сервера домена UNIX дейтаграммного вида
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+		// Заводим событие клиента домена UNIX дейтаграммного вида
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::DATAGRAM);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем путь, каким сервер и клиент встречаются
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("originopts.sock")));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([&peer]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+			// Запоминаем идентификатор принятой сессии
+			peer = pid;
+		}));
+		// Устанавливаем функцию обратного вызова на чтение данных сервером
+		this->_io->on(sid, static_cast <awh::engine::callback::read_t> ([&received]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Запоминаем принятое
+			received.append(reinterpret_cast <const char *> (buffer), size);
+		}));
+		// Выставляем серверу неблокирующий обмен и поднимаем его
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(sid)) << "узел сервера домена UNIX не зафиксирован";
+		/**
+		 * @note Слушание дейтаграммному серверу не объявляется: принятие он изображает сам
+		 */
+		ASSERT_TRUE(this->_io->launch(sid)) << "узел сервера домена UNIX не запущен";
+		// Тело, каким вызывается принятие
+		const std::string body(64, 'O');
+		// Устанавливаем клиенту путь сервера и поднимаем его
+		ASSERT_TRUE(this->_io->setTarget(cid, ::uds("originopts.sock")));
+		// Отдаём тело серверу откликом подключения
+		this->_io->on(cid, static_cast <awh::engine::callback::status_t> ([this, &body](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Если узел клиента объявлен подключённым
+			if(status == awh::event::status_t::CONNECTED)
+				// Отдаём тело серверу
+				this->_io->send(eid, body.data(), body.size());
+		}));
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(cid)) << "узел клиента домена UNIX не зафиксирован";
+		ASSERT_TRUE(this->_io->connect(cid)) << "узел клиента домена UNIX не подключился";
+		ASSERT_TRUE(this->_io->launch(cid)) << "узел клиента домена UNIX не запущен";
+		// Запоминаем миг начала ожидания
+		const auto start = std::chrono::steady_clock::now();
+		/**
+		 * Крутим цикл, покуда сервер не примет сессию
+		 */
+		while((peer == 0) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Сессия обязана быть принята, иначе настраивать нечего
+		ASSERT_GT(peer, 0u) << "сервер сессии не принял";
+		// Настройка сессии обязана быть отвергнута: описатель ей не принадлежит
+		EXPECT_FALSE(this->_io->setOptions(peer, awh::event::options::NO_IO_BLOCK)) << "настройка сессии принята, хотя описатель принадлежит серверу";
+		// Настройка сервера тем же набором обязана пройти: отказ сессии его не задел
+		EXPECT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_IO_BLOCK)) << "настройка сервера отвергнута";
+		// Уничтожаем заведённые события
+		this->_io->destroy(cid);
+		this->_io->destroy(sid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
+
+
+#if !defined(_WIN32) && !defined(_WIN64)
+	/**
+	 * @brief Проверка полного круга обмена по домену UNIX видом SEQPACKET
+	 *
+	 * @details Вид этот у macOS, NetBSD и OpenBSD изображается дейтаграммным, а у прочих
+	 *          систем POSIX несётся ядром как есть, и обмен обязан идти ОДИНАКОВО в обоих
+	 *          случаях: клиент подключается, сообщение доходит до сервера целиком, ответ
+	 *          возвращается клиенту целиком. Прежде набор круг этот не покрывал вовсе -
+	 *          проверялось одно лишь заведение узлов, - и разойдись изображение с обменом,
+	 *          отказ всплыл бы у потребителя, а не здесь.
+	 *
+	 * @note Ответ отдаётся тем узлом, каким сервер сообщение получил: у связного вида это
+	 *       ПРИНЯТЫЙ узел, у изображённого - сам сервер. Перечень систем здесь не
+	 *       повторяется, путь выбирается по тому, состоялось ли принятие
+	 *
+	 * @note Утверждается и ЧИСЛО откликов чтения: вид SEQPACKET держит границы сообщений,
+	 *       и одна отправка обязана дойти одним откликом, а не сложенными долями
+	 *
+	 */
+	TEST_F(IoFixture, IoUdsSeqpacketExchangeTest){
+		// Принятое сервером и принятое клиентом
+		std::string fromClient, fromServer;
+		// Число откликов чтения у сервера и у клиента
+		uint32_t serverReads = 0, clientReads = 0;
+		// Идентификатор принятого сервером узла
+		awh::event::id_t peer = 0;
+		// Выполняем инициализацию сетевого движка
+		ASSERT_TRUE(this->_io->initialize());
+		// Заводим событие сервера домена UNIX вида SEQPACKET
+		const awh::event::id_t sid = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Заводим событие клиента домена UNIX вида SEQPACKET
+		const awh::event::id_t cid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::UDS, awh::event::type_t::SEQPACKET);
+		// Проверяем, что оба события заведены
+		ASSERT_GT(sid, 0u);
+		ASSERT_GT(cid, 0u);
+		// Устанавливаем путь, каким сервер и клиент встречаются
+		ASSERT_TRUE(this->_io->setAddress(sid, awh::event::address_t::UDS, ::uds("seqexchange.sock")));
+		// Устанавливаем функцию обратного вызова на принятие подключения
+		this->_io->on(sid, static_cast <awh::engine::callback::accept_t> ([this, &peer, &fromClient, &serverReads]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t pid) noexcept -> void {
+			// Запоминаем идентификатор принятого узла
+			peer = pid;
+			/**
+			 * @note Опции принятому узлу здесь НЕ выставляются: у изображённого вида принятая
+			 *       связь описателя своего не заводит и живёт на сокете сервера, настройки
+			 *       которого уже применены
+			 */
+			// Устанавливаем функцию обратного вызова на чтение данных принятым узлом
+			this->_io->on(pid, static_cast <awh::engine::callback::read_t> ([&fromClient, &serverReads]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+				// Считаем отклик чтения и запоминаем принятое
+				serverReads++;
+				// Запоминаем принятое принятым узлом
+				fromClient.append(reinterpret_cast <const char *> (buffer), size);
+			}));
+		}));
+		/**
+		 * Отклик чтения вешается и на сам сервер
+		 *
+		 * @details Изображённый дейтаграммным узел принятия не заводит, и данные приходят
+		 *          ему самому: обе подписки нужны разом, чтобы проверка не зависела от того,
+		 *          каким путём система повела обмен
+		 */
+		this->_io->on(sid, static_cast <awh::engine::callback::read_t> ([&fromClient, &serverReads]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Считаем отклик чтения
+			serverReads++;
+			// Запоминаем принятое сервером
+			fromClient.append(reinterpret_cast <const char *> (buffer), size);
+		}));
+		// Выставляем серверу неблокирующий обмен и поднимаем его
+		ASSERT_TRUE(this->_io->setOptions(sid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(sid)) << "узел сервера домена UNIX не зафиксирован";
+		ASSERT_TRUE(this->_io->listen(sid, 10)) << "узел сервера домена UNIX не встал на слушание";
+		ASSERT_TRUE(this->_io->launch(sid)) << "узел сервера домена UNIX не запущен";
+		// Устанавливаем функцию обратного вызова на чтение данных клиентом
+		this->_io->on(cid, static_cast <awh::engine::callback::read_t> ([&fromServer, &clientReads]([[maybe_unused]] const awh::event::id_t eid, const uint8_t * buffer, const size_t size) noexcept -> void {
+			// Считаем отклик чтения
+			clientReads++;
+			// Запоминаем принятое клиентом
+			fromServer.append(reinterpret_cast <const char *> (buffer), size);
+		}));
+		// Запрос клиента, каким проверяется путь к серверу
+		const std::string request(512, 'Q');
+		// Число октет запроса, принятых очередью клиента
+		size_t requested = 0;
+		/**
+		 * Запрос отдаётся откликом ПОДКЛЮЧЕНИЯ, а не сразу после `connect`
+		 *
+		 * @details Обмен узлу открыт не раньше, чем движок объявит подключение состоявшимся:
+		 *          отдача до того ложится в очередь нулём октет
+		 */
+		this->_io->on(cid, static_cast <awh::engine::callback::status_t> ([this, &request, &requested](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			// Если узел клиента объявлен подключённым
+			if(status == awh::event::status_t::CONNECTED)
+				// Отдаём запрос серверу
+				requested = this->_io->send(eid, request.data(), request.size());
+		}));
+		// Устанавливаем клиенту путь сервера и поднимаем его
+		ASSERT_TRUE(this->_io->setTarget(cid, ::uds("seqexchange.sock")));
+		ASSERT_TRUE(this->_io->setOptions(cid, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK));
+		ASSERT_TRUE(this->_io->commit(cid)) << "узел клиента домена UNIX не зафиксирован";
+		ASSERT_TRUE(this->_io->connect(cid)) << "узел клиента домена UNIX не подключился";
+		ASSERT_TRUE(this->_io->launch(cid)) << "узел клиента домена UNIX не запущен";
+		// Запоминаем миг начала ожидания
+		auto start = std::chrono::steady_clock::now();
+		/**
+		 * Крутим цикл, покуда запрос не дойдёт до сервера
+		 */
+		while((fromClient.size() < request.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Запрос обязан быть принят очередью клиента целиком
+		ASSERT_EQ(requested, request.size()) << "запрос очередью принят не целиком";
+		// Запрос обязан дойти до сервера целиком и одним откликом
+		ASSERT_EQ(fromClient, request) << "сервер принял " << fromClient.size() << " из " << request.size();
+		EXPECT_EQ(serverReads, 1u) << "запрос пришёл серверу " << serverReads << " откликами: границы сообщения потеряны";
+		// Ответ сервера, каким проверяется обратный путь
+		const std::string answer(256, 'A');
+		/**
+		 * Ответ отдаётся тем узлом, каким сервер запрос получил
+		 */
+		const awh::event::id_t back = ((peer > 0) ? peer : sid);
+		// Отдаём ответ клиенту
+		ASSERT_EQ(this->_io->send(back, answer.data(), answer.size()), answer.size()) << "ответ очередью принят не целиком";
+		// Запоминаем миг начала ожидания
+		start = std::chrono::steady_clock::now();
+		/**
+		 * Крутим цикл, покуда ответ не дойдёт до клиента
+		 */
+		while((fromServer.size() < answer.size()) && (std::chrono::duration_cast <std::chrono::seconds> (std::chrono::steady_clock::now() - start).count() < 5))
+			// Выполняем оборот цикла событий
+			this->_io->poll(10);
+		// Ответ обязан дойти до клиента целиком и одним откликом
+		ASSERT_EQ(fromServer, answer) << "клиент принял " << fromServer.size() << " из " << answer.size();
+		EXPECT_EQ(clientReads, 1u) << "ответ пришёл клиенту " << clientReads << " откликами: границы сообщения потеряны";
+		// Уничтожаем заведённые события
+		this->_io->destroy(cid);
+		this->_io->destroy(sid);
+		// Сворачиваем движок
+		ASSERT_TRUE(this->_io->deinitialize());
+	}
+#endif
+
+
 #if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Проверка обмена между сервером и клиентом домена UNIX видом SEQPACKET

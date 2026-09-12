@@ -674,8 +674,16 @@ namespace {
 		 * Для списков доступа расхождение это опаснее любого из двух прочтений
 		 */
 		if((token.size() > 1) && (token[0] == '0'))
-			// Возвращаем восьмеричную систему счисления либо негодное основание
-			return (::all_of(token.begin() + 1, token.end(), ascii::isOctal) ? 8 : 0);
+			/**
+			 * Условие подаётся замыканием, а не именем приёма
+			 *
+			 * @note Приёмы разбора знаков помечены обязательной встройкой, а имя, поданное
+			 *       алгоритму, обращается в УКАЗАТЕЛЬ: вызов выходит косвенным, встроить
+			 *       его нечем, и часть оснасток отвечает на это не предупреждением, а
+			 *       отказом сборки («inlining failed in call to always_inline»). Замыкание
+			 *       зовёт приём прямо, и встройка остаётся возможной
+			 */
+			return (::all_of(token.begin() + 1, token.end(), [](const char letter) noexcept -> bool { return ascii::isOctal(letter); }) ? 8 : 0);
 		// Возвращаем десятичную систему счисления
 		return 10;
 	}
@@ -936,7 +944,7 @@ namespace {
 				// Возвращаем ошибку
 				return false;
 			// Проверяем каждый символ октета строки IP-адреса
-			if(!::all_of(octet.begin(), octet.end(), ascii::isDigit))
+			if(!::all_of(octet.begin(), octet.end(), [](const char letter) noexcept -> bool { return ascii::isDigit(letter); }))
 				// Возвращаем ошибку
 				return false;
 			/**
@@ -2906,7 +2914,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 							// Возвращаем результат проверки
 							return false;
 						// Проверяем является ли суффикс числом
-						if(::all_of(suffix.begin(), suffix.end(), ascii::isDigit)){
+						if(::all_of(suffix.begin(), suffix.end(), [](const char letter) noexcept -> bool { return ascii::isDigit(letter); })){
 							/**
 							 * Длина префикса читается широким числом, а запись его - не
 							 * длиннее трёх разрядов: перевод в однобайтное число отдавал
@@ -2969,7 +2977,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 							// Возвращаем результат проверки
 							return false;
 						// Проверяем является ли суффикс числом
-						if(::all_of(suffix.begin(), suffix.end(), ascii::isDigit)){
+						if(::all_of(suffix.begin(), suffix.end(), [](const char letter) noexcept -> bool { return ascii::isDigit(letter); })){
 							/**
 							 * Длина префикса читается широким числом, а запись его - не
 							 * длиннее трёх разрядов: перевод в однобайтное число отдавал
