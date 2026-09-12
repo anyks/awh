@@ -95,7 +95,7 @@ readonly WORK_PREFIX="$ROOT/../pkg-$PACKAGE_NAME"
 SYSTEM_ARCHITECTURE=$(uname -m)
 
 # Получаем версию приложения
-readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+readonly VERSION=$(cat $ROOT/../include/sys/macro/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Создаем необходимые каталоги
 mkdir -p $WORK_PREFIX/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}

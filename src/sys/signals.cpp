@@ -68,7 +68,7 @@
 	 *       ни обозначения видов исключений, ни типы PVOID и LONG
 	 *
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 #endif
 
 /**

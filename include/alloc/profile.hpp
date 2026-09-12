@@ -63,7 +63,7 @@
 #include "spin.hpp"
 #include "trace.hpp"
 #include "source.hpp"
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * Если компилятор принадлежит к Visual Studio

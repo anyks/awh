@@ -42,7 +42,7 @@
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 #endif
 
 /**

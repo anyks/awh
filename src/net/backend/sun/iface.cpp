@@ -110,7 +110,7 @@ static constexpr const char * __AWH_IFACE_BACKEND__ = "Sun Solaris interface bac
  * @note Нужен ради краткого имени библиотеки: из него выводится приставка
  *       имени связи, отводимой под туннель
  */
-#include <sys/lib.hpp>
+#include <sys/macro/lib.hpp>
 #include <sys/locker.hpp>
 
 /**

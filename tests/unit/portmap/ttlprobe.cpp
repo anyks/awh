@@ -18,7 +18,7 @@
 #include <string>
 
 #if _WIN32 || _WIN64
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 	#include <iphlpapi.h>
 #else
 	#include <unistd.h>

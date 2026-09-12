@@ -1262,3 +1262,55 @@ TEST_F(FSFixture, TheDirHandleServesOneDirectoryAtATimeTest){
 	// Удаляем корневой каталог рекурсивно
 	ASSERT_TRUE(this->_fs->unlink(root));
 }
+
+/**
+ * @brief Проверка усечения файла до заданной длины
+ *
+ * @details Работа эта закрывает то, чего записью не сделать: `write` нулевой длины
+ *          отвечает отказом, а усечение существующего файла записью не выражается
+ *          вовсе. Усечение до нуля служит и способом завести ПУСТОЙ файл
+ *
+ * @note Файл короче заданной длины наращивается нулями - так велит работа самих
+ *       систем, и своего здесь не придумано
+ *
+ */
+TEST_F(FSFixture, TruncateCutsAndCreatesEmptyTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Проверяемый файл
+	const std::string file = "test_truncate_unit.bin";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(file) != awh::fs_t::type_t::NONE)
+		// Удаляем проверяемый файл
+		ASSERT_TRUE(this->_fs->unlink(file));
+	// Усечение отсутствующего файла обязано завести его пустым
+	ASSERT_TRUE(this->_fs->truncate(file));
+	// Файл обязан появиться
+	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	// Длина заведённого файла обязана быть нулевой
+	ASSERT_EQ(this->_fs->size(file), 0u);
+	// Заполняем проверяемый файл
+	ASSERT_TRUE(this->_fs->write(file, "abcdefgh", 8));
+	// Усечение до длины меньшей обязано пройти
+	ASSERT_TRUE(this->_fs->truncate(file, 3));
+	// От содержимого обязано остаться ровно начало
+	ASSERT_EQ(this->_fs->read <std::string> (file), "abc");
+	// Наращивание до длины большей обязано пройти
+	ASSERT_TRUE(this->_fs->truncate(file, 6));
+	// Длина файла обязана вырасти
+	ASSERT_EQ(this->_fs->size(file), 6u);
+	// Прежнее начало обязано уцелеть, а хвост обязан быть нулевым
+	ASSERT_EQ(this->_fs->read <std::string> (file), std::string("abc\0\0\0", 6));
+	// Очистка существующего файла обязана пройти
+	ASSERT_TRUE(this->_fs->truncate(file, 0));
+	// Файл обязан остаться на месте пустым
+	ASSERT_EQ(this->_fs->type(file), awh::fs_t::type_t::FILE);
+	// Длина очищенного файла обязана быть нулевой
+	ASSERT_EQ(this->_fs->size(file), 0u);
+	// Усечение по негодному пути обязано ответить отказом
+	ASSERT_FALSE(this->_fs->truncate("test_truncate_unit_no/such/path/at/all.bin"));
+	// Усечение по пустому адресу обязано ответить отказом
+	ASSERT_FALSE(this->_fs->truncate(""));
+	// Удаляем проверяемый файл
+	ASSERT_TRUE(this->_fs->unlink(file));
+}

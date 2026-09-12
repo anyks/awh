@@ -715,6 +715,44 @@ namespace awh {
 			 * \~
 			 */
 			bool flush(string_view filename, const bool durable = true, const handle_file_t & handle = {}) const noexcept;
+			/**
+			 * \~russian
+			 * @brief Метод усечения файла до заданной длины
+			 *
+			 * @details Файл, длины не имеющий, заводится ПУСТЫМ: усечение до нуля есть и способ
+			 *          завести пустой файл, и способ очистить существующий. Файл длиною меньше
+			 *          заданной наращивается нулями - так велит сама работа систем, и своего
+			 *          здесь не придумано
+			 *
+			 * @note Работа эта закрывает то, чего записью не сделать: `write` нулевой длины
+			 *       отвечает отказом, а усечение существующего файла записью не выражается вовсе
+			 *
+			 * @param filename путь к файлу который необходимо усечь
+			 * @param length   длина, до какой усекается файл
+			 * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+			 *
+			 * @return         признак того, что усечение выполнено
+			 *
+			 * \~english
+			 * @brief Method of the truncation of a file to a given length
+			 *
+			 * @details A file having no length is created EMPTY: the truncation to zero is both the way
+			 *          to create an empty file and the way to clear an existing one. A file shorter than
+			 *          the given length is extended with zeroes - so the work of the systems themselves
+			 *          ordains, and nothing of our own is invented here
+			 *
+			 * @note This work closes what cannot be done by the writing: `write` of a zero length answers
+			 *       with a refusal, and the truncation of an existing file is not expressed by a writing at all
+			 *
+			 * @param filename path to the file that needs to be truncated
+			 * @param length   length the file is truncated to
+			 * @param handle   external file object if batch processing support is required
+			 *
+			 * @return         sign that the truncation has been performed
+			 *
+			 * \~
+			 */
+			bool truncate(string_view filename, const uint64_t length = 0, const handle_file_t & handle = {}) const noexcept;
 		public:
 			/**
 			 * \~russian

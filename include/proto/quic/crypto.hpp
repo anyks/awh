@@ -43,7 +43,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "quic.hpp"
-#include "../../sys/global.hpp"
+#include "../../sys/macro/global.hpp"
 
 /**
  * Предварительные объявления типов BoringSSL (реализация в crypto.cpp)

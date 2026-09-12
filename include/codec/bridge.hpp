@@ -42,7 +42,7 @@
  */
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 #include "numeric.hpp"
 #include "abc/value.hpp"
 #include "json/json.hpp"

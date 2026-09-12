@@ -59,7 +59,7 @@
 #include "spin.hpp"
 #include "pages.hpp"
 #include "classes.hpp"
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * Если компилятор принадлежит к Visual Studio

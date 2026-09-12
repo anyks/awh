@@ -49,7 +49,7 @@
  * Для операционной системы не являющейся MS Windows
  *
  * @note Заголовков MS Windows здесь нет намеренно. Единая точка их подключения
- *       (sys/win32.hpp) снимает макросы, чьи имена заняты членами перечислений AWH,
+ *       (sys/macro/win32.hpp) снимает макросы, чьи имена заняты членами перечислений AWH,
  *       и подключайся она из открытого заголовка — снятия эти протекали бы в единицу
  *       трансляции потребителя библиотеки, отнимая у него DELETE, NO_ERROR и прочие.
  *       Поэтому заголовки MS Windows подключаются только в файлах реализации
@@ -57,7 +57,7 @@
  * \~english
  * For an operating system that is not MS Windows
  * @note There are no headers of MS Windows here deliberately. The single point of their inclusion
- *       (sys/win32.hpp) removes the macros whose names are taken by the members of the enumerations of AWH,
+ *       (sys/macro/win32.hpp) removes the macros whose names are taken by the members of the enumerations of AWH,
  *       and were it included from a public header — these removals would leak into the translation
  *       unit of the consumer of the library, taking away from it DELETE, NO_ERROR and the others.
  *       Therefore the headers of MS Windows are included only in the files of the implementation
@@ -75,7 +75,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "event.hpp"
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:

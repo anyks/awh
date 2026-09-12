@@ -67,7 +67,7 @@
  *       безопасно — сохранённые определения складываются стопкой, и возврат идёт в
  *       обратном порядке
  *
- * @note Перечень шире того, что снимает sys/win32.hpp. Там снятие постоянное, и потому
+ * @note Перечень шире того, что снимает sys/macro/win32.hpp. Там снятие постоянное, и потому
  *       ограничено именами, сталкивающимися сейчас: макросы-функции FAILED(hr) и
  *       TEXT(quote) раскрываются лишь перед открывающей скобкой и в записи вида
  *       `FAILED = 0x02` безвредны. Здесь же снятие временное и ничего не стоит, поэтому
@@ -116,7 +116,7 @@
  *       is safe — the kept definitions are stacked, and the restoration goes in the
  *       reverse order
  *
- * @note The list is wider than what sys/win32.hpp removes. There the removal is permanent, and therefore
+ * @note The list is wider than what sys/macro/win32.hpp removes. There the removal is permanent, and therefore
  *       is limited to the names colliding right now: the function-like macros FAILED(hr) and
  *       TEXT(quote) expand only before an opening parenthesis and in a record of the
  *       `FAILED = 0x02` form are harmless. Here, on the other hand, the removal is temporary and costs nothing, therefore

@@ -81,7 +81,7 @@
 #include "source.hpp"
 #include "profile.hpp"
 #include "../sys/log.hpp"
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * @brief Пространство имён фреймворка

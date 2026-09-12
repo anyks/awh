@@ -26,7 +26,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../../main.hpp"
-#include "../../../../include/sys/lib.hpp"
+#include "../../../../include/sys/macro/lib.hpp"
 #include "../../../../include/proto/http/headers.hpp"
 
 /**

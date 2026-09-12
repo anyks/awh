@@ -22,7 +22,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/lib.hpp>
+#include <sys/macro/lib.hpp>
 #include <proto/portmap/ssdp.hpp>
 
 /**

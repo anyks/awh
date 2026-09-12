@@ -30,8 +30,8 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <sys/lib.hpp>
-#include <sys/global.hpp>
+#include <sys/macro/lib.hpp>
+#include <sys/macro/global.hpp>
 #include <container/queue.hpp>
 
 /**

@@ -98,7 +98,7 @@ namespace awh {
 			 * сборка отвечает "expected unqualified-id"
 			 *
 			 * @note Разрядности отказ не разбирает: макрос приходит по цепочке
-			 * `include/sys/global.hpp` -> `sys/param.h`, а она одна на все FreeBSD.
+			 * `include/sys/macro/global.hpp` -> `sys/param.h`, а она одна на все FreeBSD.
 			 * Проверено опытом на обоих стендах - 15.1 arm64 и 14.1 amd64
 			 *
 			 */

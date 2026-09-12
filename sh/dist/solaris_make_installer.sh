@@ -104,7 +104,7 @@ fi
 readonly MANIFEST_PREFIX="$ROOT/../${PACKAGE_NAME}_manifest"
 
 # Получаем версию приложения
-readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | ggrep AWH_VERSION | gawk '{print $3}' | gsed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+readonly VERSION=$(cat $ROOT/../include/sys/macro/lib.hpp | ggrep AWH_VERSION | gawk '{print $3}' | gsed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Получаем мажёрное значение версии
 readonly VERSION_P=$(echo $VERSION | awk -F '\\.' '{print $1}')

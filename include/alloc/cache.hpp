@@ -103,7 +103,7 @@
 #include "link.hpp"
 #include "central.hpp"
 #include "classes.hpp"
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * Если компилятор принадлежит к Visual Studio

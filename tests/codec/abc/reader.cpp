@@ -3455,15 +3455,17 @@ TEST(CodecAbcReader, EveryRefusalNamesItsCauseNotOnlyItsFact) {
  */
 TEST(CodecAbcReader, WideNumbersAndExtensionsNameTheirCauses) {
 	/**
-	 * @brief Метод подачи записи разбирателю с проверкой отказа и причины его
+	 * @brief Метод подачи записи разбирателю с извлечением названной причины отказа
+	 *
+	 * @note Ожидаемая причина сюда НЕ передаётся, хотя прежде передавалась и не
+	 *       употреблялась: назови вызывающий одну причину доводом, а другую сличением -
+	 *       расхождения он бы не заметил вовсе. Ожидание живёт в одном месте, у `ASSERT_EQ`
 	 *
 	 * @param record запись, подаваемая разбирателю
-	 * @param cause  ожидаемая причина отказа разбора
 	 * @param blob   предел длины двоичного значения, ноль - без предела
 	 *
 	 */
-	const auto refuses = [](const vector <uint8_t> & record, const abc::error_t cause,
-	 const uint64_t blob = 0) noexcept -> abc::error_t {
+	const auto refuses = [](const vector <uint8_t> & record, const uint64_t blob = 0) noexcept -> abc::error_t {
 		// Объект разбирателя
 		abc::reader_t reader(::logger());
 		/**
@@ -3485,27 +3487,24 @@ TEST(CodecAbcReader, WideNumbersAndExtensionsNameTheirCauses) {
 		return abc::error_t::NONE;
 	};
 	// Десятичный порядок, целым со знаком не представимый
-	ASSERT_EQ(refuses({0xE1, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-	 abc::error_t::INVALID_DECIMAL), abc::error_t::INVALID_DECIMAL);
+	ASSERT_EQ(refuses({0xE1, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}), abc::error_t::INVALID_DECIMAL);
 	// Величина неограниченной ширины с неснимаемой единицей длины
-	ASSERT_EQ(refuses({0xE0, 0x1C}, abc::error_t::INVALID_BIGNUM), abc::error_t::INVALID_BIGNUM);
+	ASSERT_EQ(refuses({0xE0, 0x1C}), abc::error_t::INVALID_BIGNUM);
 	// Величина неограниченной ширины, длина какой числом не является
-	ASSERT_EQ(refuses({0xE0, 0x41, 0x61}, abc::error_t::INVALID_BIGNUM), abc::error_t::INVALID_BIGNUM);
+	ASSERT_EQ(refuses({0xE0, 0x41, 0x61}), abc::error_t::INVALID_BIGNUM);
 	// Величина неограниченной ширины с неопознанным октетом знака
-	ASSERT_EQ(refuses({0xE0, 0x02, 0x05, 0x01}, abc::error_t::INVALID_BIGNUM), abc::error_t::INVALID_BIGNUM);
+	ASSERT_EQ(refuses({0xE0, 0x02, 0x05, 0x01}), abc::error_t::INVALID_BIGNUM);
 	// Величина неограниченной ширины, длина какой превышает предел настроек
-	ASSERT_EQ(refuses({0xE0, 0x0A, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09},
-	 abc::error_t::BLOB_TOO_LONG, 4), abc::error_t::BLOB_TOO_LONG);
+	ASSERT_EQ(refuses({0xE0, 0x0A, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09}, 4), abc::error_t::BLOB_TOO_LONG);
 	/**
 	 * Величина неограниченной ширины, ОБЪЯВЛЕННАЯ длина какой шире четырёх гигабайт
 	 *
 	 * @note Место это достижимо оттого, что сличается слово записи, а не отведённое по
 	 *       нему: заслон стоит ПЕРЕД отведением, и в том его смысл
 	 */
-	ASSERT_EQ(refuses({0xE0, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-	 abc::error_t::INVALID_LENGTH), abc::error_t::INVALID_LENGTH);
+	ASSERT_EQ(refuses({0xE0, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}), abc::error_t::INVALID_LENGTH);
 	// Открытое расширение, длина октетов какого превышает предел настроек
-	ASSERT_EQ(refuses({0xE2, 0x01, 0x0A, 0x00}, abc::error_t::BLOB_TOO_LONG, 4),
+	ASSERT_EQ(refuses({0xE2, 0x01, 0x0A, 0x00}, 4),
 	 abc::error_t::BLOB_TOO_LONG);
 	/**
 	 * Открытое расширение, ОБЪЯВЛЕННАЯ длина какого шире четырёх гигабайт
@@ -3515,8 +3514,7 @@ TEST(CodecAbcReader, WideNumbersAndExtensionsNameTheirCauses) {
 	 * ОБОИХ - у величины и у расширения, - двумя отдельными местами с дословно одинаковым
 	 * доводом. Одна причина, два места, покрыто было одно
 	 */
-	ASSERT_EQ(refuses({0xE2, 0x01, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF},
-	 abc::error_t::INVALID_LENGTH), abc::error_t::INVALID_LENGTH);
+	ASSERT_EQ(refuses({0xE2, 0x01, 0x1B, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}), abc::error_t::INVALID_LENGTH);
 }
 
 /**

@@ -135,7 +135,7 @@ if [ -n "$1" ]; then
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -DINSTALL_INC_DIR="$PREFIX/include/zlib" \
 				 -DBUILD_SHARED_LIBS="NO" \
-				 -G "MSYS Makefiles" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			else
 				./configure \
@@ -145,10 +145,26 @@ if [ -n "$1" ]; then
 				 --static || exit 1
 			fi
 
+			##
+			 # Средство сборки у систем POSIX здесь своё
+			 #
+			 # Настройка идёт не через CMake, а собственным configure этой зависимости,
+			 # и заводит он Makefile. Общий выбор средства сборки к нему неприменим:
+			 # Ninja описания для себя тут не найдёт вовсе
+			 #
+			 # Имя переменной своё, не общее: сценарии подключаются в ОДНУ оболочку, и
+			 # присваивание общему имени досталось бы и следующим за этим зависимостям
+			##
+			ZLIB_BUILDER="$BUILDER"
+
+			if [[ $OS != "Windows" ]]; then
+				ZLIB_BUILDER="$MAKE"
+			fi
+
 			# Выполняем сборку на всех логических ядрах
-			$MAKE -j"$numproc" || exit 1
+			$ZLIB_BUILDER -j"$numproc" || exit 1
 			# Выполняем установку проекта
-			$MAKE install || exit 1
+			$ZLIB_BUILDER install || exit 1
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX

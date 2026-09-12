@@ -40,7 +40,7 @@
 	 *       "typedef unsigned unsigned char", и сборка ответила бы отказом
 	 *
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 /**
  * Для всех остальных операционных систем
  */

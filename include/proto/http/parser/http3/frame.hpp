@@ -44,7 +44,7 @@
  */
 #include "h3.hpp"
 #include "../../../quic/varint.hpp"
-#include "../../../../sys/global.hpp"
+#include "../../../../sys/macro/global.hpp"
 
 /**
  * \~russian

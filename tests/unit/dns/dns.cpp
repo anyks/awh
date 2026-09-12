@@ -34,11 +34,11 @@
  *
  * @note Заголовки эти принадлежат POSIX и у MS Windows отсутствуют: отвечающие им
  *       объявления приходят там из winsock2.h, подключаемого через единую точку
- *       sys/win32.hpp, а недостающее восполняет tests/posix.hpp
+ *       sys/macro/win32.hpp, а недостающее восполняет tests/posix.hpp
  *
  */
 #if _WIN32 || _WIN64
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 /**
  * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
  */

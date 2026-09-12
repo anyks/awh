@@ -45,7 +45,7 @@
  */
 #include "h3.hpp"
 #include "../http2/hpack.hpp"
-#include "../../../../sys/global.hpp"
+#include "../../../../sys/macro/global.hpp"
 
 /**
  * \~russian

@@ -79,7 +79,7 @@ else()
 endif()
 
 # Поиск пути к заголовочным файлам
-find_path(AWH_INCLUDE_DIR NAMES sys/lib.hpp PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
+find_path(AWH_INCLUDE_DIR NAMES sys/macro/lib.hpp PATHS ${AWH_HEADERS_PATH} NO_DEFAULT_PATH)
 
 # Если операцинная система относится к MS Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")

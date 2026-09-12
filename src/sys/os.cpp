@@ -163,7 +163,7 @@
 	 *          бы отказом "duplicate 'unsigned'"
 	 *
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 
 	/**
 	 * Системные заголовочные файлы

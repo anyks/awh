@@ -144,7 +144,7 @@ if [ -n "$1" ]; then
 				 -DBROTLI_LIBRARIES="$PREFIX/lib" \
 				 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
 				 -DBUILD_SHARED_LIBS="OFF" \
-				 -G "MSYS Makefiles" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			else
 				cmake \
@@ -155,11 +155,12 @@ if [ -n "$1" ]; then
 				 -DBROTLI_LIBRARIES="$PREFIX/lib" \
 				 -DBROTLI_INCLUDE_DIRS="$PREFIX/include" \
 				 -DBUILD_SHARED_LIBS="OFF" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			fi
 
 			# Выполняем сборку на всех логических ядрах
-			$MAKE -j"$numproc" || exit 1
+			$BUILDER -j"$numproc" || exit 1
 
 			##
 			 # Команда установки задаётся родительским скриптом build_third_party.sh:

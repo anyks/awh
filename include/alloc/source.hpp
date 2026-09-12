@@ -55,7 +55,7 @@
 /**
  * Наши модули
  */
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * @brief Пространство имён фреймворка

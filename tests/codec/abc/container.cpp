@@ -45,7 +45,7 @@
 	 *       кодека перестаёт разбираться вовсе. Единая точка и пара
 	 *       suppress.hpp / restore.hpp заведены ровно для этого
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 
 	// Признак отказа выдачи участка памяти приводится к общему для систем виду
 	#define MAP_FAILED (reinterpret_cast <void *> (-1))

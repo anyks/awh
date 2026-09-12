@@ -377,7 +377,10 @@ EXECUTE_PROCESS(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE ARCHITECTURE
  # Тем же признаком пользуется и sh/build_third_party.sh, чтобы опознание было единым
  ##
 EXECUTE_PROCESS(COMMAND uname -s OUTPUT_VARIABLE SYSTEM_NAME OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+# Если процессор соответствует ARM64
 if (SYSTEM_NAME MATCHES "ARM64")
+    # Устанавливаем поддерживаемую архитектуру
     SET(ARCHITECTURE "aarch64")
 endif()
 
@@ -392,15 +395,19 @@ if (ARCHITECTURE STREQUAL "")
     SET(ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
     # Приводим написание ARM64 к общему для всего файла виду
     if (ARCHITECTURE MATCHES "^[Aa][Rr][Mm]64$")
+        # Устанавливаем поддерживаемую архитектуру
         SET(ARCHITECTURE "aarch64")
     endif()
 endif()
 
+# Выводим поддерживаемую архитектуру
 message(STATUS "Architecture: ${ARCHITECTURE}")
 
 # Если сборка производится под операционную систему Linux
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: Linux")
+    # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
     ##
      # Подключаем библиотеку SCTP
@@ -438,10 +445,13 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     endif()
 # Если сборка производится под операционную систему Solaris
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+    # Если версию получить не удалось
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND uname -a COMMAND gawk "{print $4}" COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: Solaris v${OS_VERSION}")
+    # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
      # Используем Clang
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -479,8 +489,11 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
      # объявлен одинаково
      ##
     INCLUDE(CheckCXXSymbolExists)
+    # Активируем поддержку SCTP
     SET(CMAKE_REQUIRED_LIBRARIES sctp)
+    # Проверяем что функция множественных подключений поддерживается в SCTP
     CHECK_CXX_SYMBOL_EXISTS(sctp_connectx "netinet/sctp.h" AWH_HAVE_SCTP_CONNECTX)
+    # Снимаем поддержку библиотек
     UNSET(CMAKE_REQUIRED_LIBRARIES)
 
     # Если вызов заведения связи SCTP системой поддерживается
@@ -490,18 +503,25 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
 # Если сборка производится под операционную систему macOS
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    # Если версию получить не удалось
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: macOS v${OS_VERSION}")
-    SET(DEBUGGER "-glldb")    
+    # Активируем дебаггер
+    SET(DEBUGGER "-glldb")
+    # Активируем поддерживаемую версию операционной системы
     SET(CMAKE_OSX_DEPLOYMENT_TARGET ${OS_VERSION})
 # Если сборка производится под операционную систему FreeBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
+    # Если версию получить не удалось
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND uname -a COMMAND awk "{print $3}" COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: FreeBSD v${OS_VERSION}")
+    # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
 ##
  # Если сборка производится под операционную систему DragonFly BSD
@@ -523,22 +543,31 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "DragonFly")
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND uname -r COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: DragonFly BSD v${OS_VERSION}")
+    # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
 # Если сборка производится под операционную систему NetBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD")
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: NetBSD")
+    # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
 # Если сборка производится под операционную систему OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: OpenBSD")
+    # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
 # Если сборка производится под операционную систему Windows
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+    # Выводим поддерживаемую операционную систему
     message(STATUS "Detected OS: Microsoft Windows")
+    # Активируем дебаггер
     SET(DEBUGGER "-ggdb3")
 # Если операционная система не определена
 else()
+    # Деактивируем дебаггер
     SET(DEBUGGER "")
 endif()
 
@@ -768,6 +797,7 @@ find_package(Dependence REQUIRED)
 # Провекра Dependence
 if (Dependence_FOUND)
     message(STATUS "Dependence lib found: " ${DEPEND_LIBRARY})
+    message(STATUS "BoringSSL include dir found: " ${BORINGSSL_INCLUDE_DIR})
     message(STATUS "LZ4 include dir found: " ${LZ4_INCLUDE_DIR})
     message(STATUS "BZ2 include dir found: " ${BZ2_INCLUDE_DIR})
     message(STATUS "ZSTD include dir found: " ${ZSTD_INCLUDE_DIR})
@@ -776,8 +806,6 @@ if (Dependence_FOUND)
     message(STATUS "Snappy include dir found: " ${SNAPPY_INCLUDE_DIR})
     message(STATUS "Lizard include dir found: " ${LIZARD_INCLUDE_DIR})
     message(STATUS "Density include dir found: " ${DENSITY_INCLUDE_DIR})
-    message(STATUS "NgHttp2 include dir found: " ${NGHTTP2_INCLUDE_DIR})
-    message(STATUS "BoringSSL include dir found: " ${BORINGSSL_INCLUDE_DIR})
     message(STATUS "Brotli include dir found: " ${BROTLI_INCLUDE_ENCODE_DIR} " " ${BROTLI_INCLUDE_DECODE_DIR})
 # Если библиотека зависимостей не найдена
 else (Dependence_FOUND)
@@ -1425,7 +1453,7 @@ if (CMAKE_SHARED_BUILD_LIB)
     ##
      # Выполняем экспорт методов доступных извне в динамических библиотеках
      #
-     # Имя признака обязано совпадать с тем, какое спрашивает include/sys/global.hpp:
+     # Имя признака обязано совпадать с тем, какое спрашивает include/sys/macro/global.hpp:
      # препроцессор считает неизвестный ему макрос нулём БЕЗ ЕДИНОГО СЛОВА, и опечатка
      # в имени отключает пометку экспорта у всего открытого договора молча
      ##
@@ -1435,7 +1463,7 @@ else (CMAKE_SHARED_BUILD_LIB)
     ##
      # Статическая сборка признака не требует: пометка экспорта ставится лишь при
      # заданном признаке динамической сборки, а при незаданном разворачивается в
-     # пустоту сама собой (include/sys/global.hpp, ветвь else)
+     # пустоту сама собой (include/sys/macro/global.hpp, ветвь else)
      ##
     # Добавляем статическу библиотеку
     add_library(${AWH_LIB_NAME} STATIC ${SOURCE_FILES})
@@ -6947,6 +6975,9 @@ if (CMAKE_BUILD_TESTS)
     # Если набор GTest не найден
     if (NOT GTest_FOUND AND NOT GTEST_FOUND)
         message(FATAL_ERROR "GTest not found: unit tests were requested but cannot be built. Install it (pkgin install googletest, pkg install googletest, apt install libgtest-dev libgmock-dev, dnf install gtest-devel gmock-devel) or configure without CMAKE_BUILD_TESTS")
+    # Если набор GTest найден
+    else()
+        message(STATUS "")
     endif()
 
     # Сборка тестов

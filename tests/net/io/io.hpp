@@ -64,7 +64,7 @@
  *       совсем не туда
  */
 #elif defined(_WIN32) || defined(_WIN64)
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 #endif
 
 /**

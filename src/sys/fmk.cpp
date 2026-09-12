@@ -31,7 +31,7 @@
 	 *       имя u_char, какое системный _bsd_types.h объявляет типом через typedef
 	 *
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 #endif
 
 /**
@@ -72,7 +72,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/lib.hpp>
+#include <sys/macro/lib.hpp>
 #include <alloc/alloc.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
@@ -1319,7 +1319,7 @@ namespace {
 		 * @return    результат проверки
 		 *
 		 */
-		auto shielded = [&text, &BACKSLASH](const size_t pos) noexcept -> bool {
+		auto shielded = [&text](const size_t pos) noexcept -> bool {
 			// Количество обратных слэшей перед проверяемым символом
 			size_t count = 0;
 			/**

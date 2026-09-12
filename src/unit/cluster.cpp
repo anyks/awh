@@ -37,7 +37,7 @@
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 /**
  * Для всех остальных операционных систем
  */
@@ -64,7 +64,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/lib.hpp>
+#include <sys/macro/lib.hpp>
 #include <unit/cluster.hpp>
 
 /**

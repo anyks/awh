@@ -26,12 +26,12 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD")
 
     # Если заголовочные файлы GTest не найдены
     if(NOT GTEST_INCLUDE_DIR)
-        message(FATAL_ERROR "GTest headers not found in /usr/local/include")
+        message(FATAL_ERROR "GTest headers not found in /usr/local/include\n")
     endif()
 
     # Если библиотека GTest не найдена
     if(NOT GTEST_LIBRARY)
-        message(FATAL_ERROR "GTest library not found in /usr/local/lib")
+        message(FATAL_ERROR "GTest library not found in /usr/local/lib\n")
     endif()
 endif()
 

@@ -120,7 +120,7 @@ using namespace std;
 	 *          системы. Посредник win32.hpp ставит WIN32_LEAN_AND_MEAN, NOMINMAX
 	 *          и порядок winsock2.h → windows.h за нас
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 /**
  * Если операционной системой является OpenBSD
  */

@@ -114,7 +114,7 @@ for pkg in $DEPENDENCIES_LIST; do
 done
 
 # Получаем версию приложения
-readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+readonly VERSION=$(cat $ROOT/../include/sys/macro/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Выполняем создание каталогов
 mkdir -p "$WORK_PREFIX/usr/lib" || exit 1

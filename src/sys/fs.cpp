@@ -36,7 +36,7 @@
 	 *          «переопределение типа struct» - и указывает при этом на заголовок
 	 *          системы, а не на место, где порядок нарушен
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 
 	/**
 	 * Системные заголовочные файлы
@@ -3653,6 +3653,192 @@ awh::handle_dir_t awh::Filesystem::handleDir() const noexcept {
 awh::handle_file_t awh::Filesystem::handleFile() const noexcept {
 	// Выводим созданный объект файла
 	return handle_file_t(new HandleFile());
+}
+/**
+ * @brief Метод усечения файла до заданной длины
+ *
+ * @param filename путь к файлу который необходимо усечь
+ * @param length   длина, до какой усекается файл
+ * @param handle   внешний объект файла, если необходима поддержка пакетной обработки
+ *
+ * @return         признак того, что усечение выполнено
+ *
+ */
+bool awh::Filesystem::truncate(string_view filename, const uint64_t length, const handle_file_t & handle) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если адрес файла передан
+	if(!filename.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * @brief Свой объект файла
+			 *
+			 * @note Заводится он всегда, но в дело идёт ЛИШЬ когда внешний объект не передан.
+			 *       Так путь работы выходит один на оба случая, а закрытие описателя остаётся
+			 *       делом самого объекта
+			 */
+			HandleFile local;
+			// Объект файла, которым идёт работа
+			HandleFile & file = (handle != nullptr ? (* handle) : local);
+			/**
+			 * Выполняем извлечение актуального значения адреса
+			 *
+			 * @note Извлекается он ЛИШЬ когда объект файла ещё не заведён: адрес идёт только
+			 *       в открытие, а при уже открытом описателе не нужен вовсе
+			 */
+			const string address = (!file.valid() ? this->fullpath(filename, true) : string());
+			// Если объект файла заведён либо адрес получен правильный
+			if(file.valid() || !address.empty()){
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Если объект файла ещё не заведён
+					if(!file.valid())
+						/**
+						 * @brief Открываем файл на чтение и запись, заводя отсутствующий
+						 *
+						 * @note Признак `OPEN_ALWAYS` заводит отсутствующий файл и оставляет
+						 *       существующий как есть: усечение до нуля обязано и заводить
+						 *       пустой файл, а `CREATE_ALWAYS` усекал бы и то, что усекать
+						 *       не велено
+						 */
+						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+					// Если файл открыт нормально
+					if(file.valid()){
+						// Создаём объект большого числа
+						LARGE_INTEGER li;
+						// Устанавливаем длину, до какой усекается файл
+						li.QuadPart = static_cast <LONGLONG> (length);
+						/**
+						 * Выполняем установку позиции и усечение файла по ней
+						 *
+						 * @note Разделения на усечение и наращивание у MS Windows нет:
+						 *       `SetEndOfFile` кладёт конец файла туда, где стоит позиция,
+						 *       в обе стороны
+						 */
+						result = ((::SetFilePointerEx(file, li, nullptr, FILE_BEGIN) != FALSE) && (::SetEndOfFile(file) != FALSE));
+						// Если усечение отвечено отказом
+						if(!result){
+							// Создаём буфер сообщения ошибки
+							wchar_t message[0xFF] = {0};
+							// Выполняем формирование текста ошибки
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, message);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+							#endif
+						}
+					/**
+					 * Если открыть файл не удалось
+					 */
+					} else {
+						// Создаём буфер сообщения ошибки
+						wchar_t message[0xFF] = {0};
+						// Выполняем формирование текста ошибки
+						::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, message);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+						#endif
+					}
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#else
+					// Если объект файла ещё не заведён
+					if(!file.valid())
+						/**
+						 * @brief Открываем файл на запись, заводя отсутствующий
+						 *
+						 * @note Ход этот равен `OPEN_ALWAYS` у ветви MS Windows: отсутствующий
+						 *       файл заводится, существующий открывается КАК ЕСТЬ. Признак
+						 *       `O_TRUNC` здесь негоден - он усекал бы и тогда, когда велено
+						 *       усечь до длины ненулевой
+						 */
+						file.set(::open(address.c_str(), O_WRONLY | O_CREAT, 0644));
+					// Если файл открыт нормально
+					if(file.valid()){
+						// Выполняем усечение файла до заданной длины
+						result = (::ftruncate(file, static_cast <off_t> (length)) == 0);
+						// Если усечение отвечено отказом
+						if(!result){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+						}
+					/**
+					 * Если открыть файл не удалось
+					 */
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод сброса записанного из ядра на носитель

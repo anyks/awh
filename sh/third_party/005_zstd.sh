@@ -142,7 +142,7 @@ if [ -n "$1" ]; then
 				 -DZSTD_BUILD_SHARED="OFF" \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-				 -G "MSYS Makefiles" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			else
 				cmake \
@@ -151,13 +151,14 @@ if [ -n "$1" ]; then
 				 -DZSTD_BUILD_SHARED="OFF" \
 				 -DCMAKE_BUILD_TYPE=Release \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			fi
 
 			# Выполняем сборку на всех логических ядрах
-			$MAKE -j"$numproc" || exit 1
+			$BUILDER -j"$numproc" || exit 1
 			# Выполняем установку проекта
-			$MAKE install || exit 1
+			$BUILDER install || exit 1
 
 			# Выполняем компенсацию каталогов
 			restorelibs $PREFIX

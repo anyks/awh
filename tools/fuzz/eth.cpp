@@ -71,7 +71,7 @@
 #else
 	#include <io.h>
 	#include <fcntl.h>
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 #endif
 
 /**

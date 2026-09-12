@@ -202,8 +202,12 @@ namespace {
 	 * @param gen источник псевдослучайных значений
 	 * @return    порождённое регулярное выражение
 	 *
+	 * @note Признак «maybe_unused» стоит ради сборки БЕЗ эталона: тела всех
+	 *       сличений лежат под признаком «AWH_TEST_PCRE2», и порождение
+	 *       образцов остаётся тогда незваным
+	 *
 	 */
-	string pattern(mt19937 & gen) noexcept {
+	[[maybe_unused]] string pattern(mt19937 & gen) noexcept {
 		// Формируем порождаемое регулярное выражение
 		string result(ANCHORS[gen() % 12]);
 		// Получаем количество частей порождаемого выражения
@@ -298,7 +302,7 @@ namespace {
 	 * @return       порождённый текст сопоставления
 	 *
 	 */
-	string subject(mt19937 & gen, const size_t length, const bool utf) noexcept {
+	[[maybe_unused]] string subject(mt19937 & gen, const size_t length, const bool utf) noexcept {
 		// Формируем порождаемый текст сопоставления
 		string result;
 		// Получаем длину порождаемого текста в символах

@@ -45,7 +45,7 @@
  *
  */
 #if defined(_WIN32) || defined(_WIN64)
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 #else
 	#include <csignal>
 	#include <pthread.h>

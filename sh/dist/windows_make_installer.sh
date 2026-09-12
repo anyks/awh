@@ -31,6 +31,21 @@ mkdir -p "$ROOT/../setup/include/$PACKAGE_NAME" || exit 1
 # Адрес каталога с собранными бинарями
 readonly BUILD_DIR="$ROOT/../build"
 
+##
+ # Описание сборки выбирается по наличию средства
+ #
+ # Ninja собирает то же дерево заметно быстрее, но ставится он отдельным пакетом, и у
+ # того, кто его не ставил, сборка обязана идти по-прежнему. Оттого проверка наличием,
+ # а не требование
+##
+GENERATOR="MSYS Makefiles"
+
+if command -v ninja > /dev/null 2>&1; then
+	GENERATOR="Ninja"
+fi
+
+echo "CMake generator: $GENERATOR"
+
 # Очистка сборочной директории
 if [ -d $BUILD_DIR ]; then
 	rm -rf $BUILD_DIR || exit 1
@@ -42,7 +57,7 @@ cd $BUILD_DIR || exit 1
 
 # Выполняем сборку приложения
 cmake \
- -G "MSYS Makefiles" \
+ -G "$GENERATOR" \
  -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SHARED_BUILD_LIB=YES \
@@ -63,7 +78,7 @@ rm -rf $BUILD_DIR/*
 
 # Выполняем сборку приложения
 cmake \
- -G "MSYS Makefiles" \
+ -G "$GENERATOR" \
  -DCMAKE_BUILD_IDN=YES \
  -DCMAKE_BUILD_TYPE=Release \
  -DCMAKE_SYSTEM_NAME=Windows \
@@ -84,7 +99,7 @@ if [ -d $BUILD_DIR ]; then
 fi
 
 # Получаем версию приложения
-readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+readonly VERSION=$(cat $ROOT/../include/sys/macro/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Копируем иконку приложения
 cp "$ROOT/../icons"/icon.ico $ROOT/../setup/

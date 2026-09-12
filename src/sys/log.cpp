@@ -32,7 +32,7 @@
 	 *       имя u_char, какое системный _bsd_types.h объявляет типом через typedef
 	 *
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 #endif
 
 /**
@@ -55,7 +55,7 @@
  * Для операционной системы не являющейся MS Windows
  *
  * @note Заголовки unistd.h и sys/file.h принадлежат POSIX и у MS Windows отсутствуют.
- *       Работа с файлами ведётся там средствами самой системы через sys/win32.hpp
+ *       Работа с файлами ведётся там средствами самой системы через sys/macro/win32.hpp
  *
  */
 #if !_WIN32 && !_WIN64
@@ -82,7 +82,7 @@
  */
 #include <sys/os.hpp>
 #include <sys/log.hpp>
-#include <sys/lib.hpp>
+#include <sys/macro/lib.hpp>
 
 /**
  * Используем стандартное пространство имён

@@ -252,8 +252,8 @@ awh::codec::ini::Writer::Settings::Settings() noexcept :
  marker(';'), separator('='), delimiter('.'), global(true), arrays(false), valueless(false), trim(true), trimSections(true), greedySections(false),
  strictNames(false),
  separators(separator_t::EQUALS), quotes(true), quoting(quoting_t::AUTO),
- subsections(subsection_t::NONE), newline(newline_t::LF), inlineComments(false), spacedComments(true), comments(marker_t::BOTH),
- spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME), malformed(malformed_t::REPLACE) {}
+ subsections(subsection_t::NONE), newline(newline_t::LF), malformed(malformed_t::REPLACE), inlineComments(false), spacedComments(true), comments(marker_t::BOTH),
+ spaces(true), escapes(false), continuations(false), indent(false), indents(false), separated(true), maxName(MAX_NAME) {}
 /**
  * @brief Метод получения настроек наречия MS Windows
  *

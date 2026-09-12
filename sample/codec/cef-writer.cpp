@@ -64,6 +64,25 @@ namespace {
 		// Выводим объект для работы с логами
 		return &log;
 	}
+	/**
+	 * @brief Функция постановки поля дерева с поверкою итога
+	 *
+	 * @details Ход `insert` объявлен `[[nodiscard]]`, и брошенный его итог есть
+	 * предупреждение сборки: постановка поля БЫВАЕТ отказной - имя уже занято, вместилище
+	 * отображением не является, - и образец, итога не смотрящий, учил бы дурному
+	 *
+	 * @note Заведено 12.09.2026: образец давал 14 предупреждений `-Wunused-result`
+	 *
+	 * @param value вместилище, поле принимающее
+	 * @param name  имя ставимого поля
+	 * @param item  значение ставимого поля
+	 * @return      признак успешности постановки поля
+	 *
+	 */
+	bool place(awh::codec::abc::value_t & value, const ::std::string & name, const awh::codec::abc::value_t & item) noexcept {
+		// Выводим признак успешности постановки поля дерева
+		return value.insert(awh::codec::abc::value_t(name), item);
+	}
 }
 
 /**
@@ -94,6 +113,16 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Дерево собираемого события
 	codec::abc::value_t root;
 	/**
+	 * Признак успешности построения дерева события
+	 *
+	 * @details Итоги постановки полей накапливаются, а не смотрятся порознь: отказ любой
+	 * из них делает дерево неполным, и собирать запись из него нечего. Накопление ведётся
+	 * так, чтобы ВСЕ постановки прошли - `&& built` стоит ВТОРЫМ доводом, - иначе первый
+	 * же отказ отсекал бы остальные и образец учил бы сокращённому вычислению вместо
+	 * поверки итога
+	 */
+	bool built = true;
+	/**
 	 * Выполняем построение заголовка записи
 	 *
 	 * @note Заголовок полей несёт ровно семь, и порядок их описанием закреплён:
@@ -102,24 +131,24 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	codec::abc::value_t header;
 	// Устанавливаем редакцию описания записи
-	header.insert(codec::abc::value_t(string("version")), codec::abc::value_t(static_cast <int64_t> (0)));
+	built = (::place(header, "version", codec::abc::value_t(static_cast <int64_t> (0))) && built);
 	// Устанавливаем поставщика изделия
-	header.insert(codec::abc::value_t(string("vendor")), codec::abc::value_t(string("ANYKS")));
+	built = (::place(header, "vendor", codec::abc::value_t(string("ANYKS"))) && built);
 	// Устанавливаем изделие, событие породившее
-	header.insert(codec::abc::value_t(string("product")), codec::abc::value_t(string("AWH")));
+	built = (::place(header, "product", codec::abc::value_t(string("AWH"))) && built);
 	// Устанавливаем редакцию изделия
-	header.insert(codec::abc::value_t(string("release")), codec::abc::value_t(string("5.0.0")));
+	built = (::place(header, "release", codec::abc::value_t(string("5.0.0"))) && built);
 	/**
 	 * Устанавливаем опознаватель события
 	 *
 	 * @note Черта внутри поля заголовка отменяется писателем сама: в заголовке она
 	 *       поля и разделяет, оттого писать её надлежит отменённой
 	 */
-	header.insert(codec::abc::value_t(string("signature")), codec::abc::value_t(string("net|drop")));
+	built = (::place(header, "signature", codec::abc::value_t(string("net|drop"))) && built);
 	// Устанавливаем человеческое название события
-	header.insert(codec::abc::value_t(string("name")), codec::abc::value_t(string("Connection dropped")));
+	built = (::place(header, "name", codec::abc::value_t(string("Connection dropped"))) && built);
 	// Устанавливаем важность события
-	header.insert(codec::abc::value_t(string("severity")), codec::abc::value_t(static_cast <int64_t> (7)));
+	built = (::place(header, "severity", codec::abc::value_t(static_cast <int64_t> (7))) && built);
 	/**
 	 * Выполняем построение расширения записи
 	 *
@@ -128,15 +157,24 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	codec::abc::value_t extension;
 	// Устанавливаем адрес источника события
-	extension.insert(codec::abc::value_t(string("src")), codec::abc::value_t(string("192.168.59.39")));
+	built = (::place(extension, "src", codec::abc::value_t(string("192.168.59.39"))) && built);
 	// Устанавливаем порт источника события
-	extension.insert(codec::abc::value_t(string("spt")), codec::abc::value_t(static_cast <int64_t> (8082)));
+	built = (::place(extension, "spt", codec::abc::value_t(static_cast <int64_t> (8082))) && built);
 	// Устанавливаем сообщение события со знаком равенства внутри
-	extension.insert(codec::abc::value_t(string("msg")), codec::abc::value_t(string("reason=timeout")));
+	built = (::place(extension, "msg", codec::abc::value_t(string("reason=timeout"))) && built);
 	// Устанавливаем заголовок записи деревом события
-	root.insert(codec::abc::value_t(string("header")), header);
+	built = (::place(root, "header", header) && built);
 	// Устанавливаем расширение записи деревом события
-	root.insert(codec::abc::value_t(string("extension")), extension);
+	built = (::place(root, "extension", extension) && built);
+	/**
+	 * Если построение дерева события отказом завершилось
+	 */
+	if(!built){
+		// Выводим сведения об отказе построения дерева события
+		cout << "ошибка: дерево события построить не удалось" << endl;
+		// Выводим код выхода из приложения с ошибкой
+		return EXIT_FAILURE;
+	}
 	// Собираемая запись события
 	string record;
 	/**
@@ -157,9 +195,18 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *       прочлась бы иначе, нежели писалась. Писатель отвечает отказом, а не пишет
 	 *       заведомо испорченное
 	 */
-	extension.insert(codec::abc::value_t(string("bad key")), codec::abc::value_t(string("значение")));
+	built = (::place(extension, "bad key", codec::abc::value_t(string("значение"))) && built);
 	// Устанавливаем расширение записи деревом события
-	root.insert(codec::abc::value_t(string("extension")), extension);
+	built = (::place(root, "extension", extension) && built);
+	/**
+	 * Если постановка пары расширения отказом завершилась
+	 */
+	if(!built){
+		// Выводим сведения об отказе построения дерева события
+		cout << "ошибка: дерево события построить не удалось" << endl;
+		// Выводим код выхода из приложения с ошибкой
+		return EXIT_FAILURE;
+	}
 	// Выводим обозначение сборки дерева, записи не поддающегося
 	cout << endl << "== дерево, записи не поддающееся ==" << endl;
 	/**

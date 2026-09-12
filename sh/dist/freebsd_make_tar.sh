@@ -66,7 +66,7 @@ cp $BUILD_DIR/lib$PACKAGE_NAME.a $APP_DIR/usr/local/lib/
 cd $ROOT/../
 
 # Получаем версию приложения
-readonly VERSION=$(cat $ROOT/../include/sys/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
+readonly VERSION=$(cat $ROOT/../include/sys/macro/lib.hpp | grep AWH_VERSION | awk '{print $3}' | sed "s/^\([\"']\)\(.*\)\1\$/\2/g")
 
 # Получаем архитектуру машины 
 SYSTEM_ARCHITECTURE=$(uname -m)

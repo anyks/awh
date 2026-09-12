@@ -39,7 +39,7 @@
  *       такой замок остановил бы потомка намертво
  *
  */
-#include <sys/lib.hpp>
+#include <sys/macro/lib.hpp>
 #include <sys/locker.hpp>
 
 /**

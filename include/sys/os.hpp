@@ -112,14 +112,14 @@
 	 *
 	 * @note Заголовков MS Windows здесь нет намеренно: телу макроса объявление в точке
 	 *       определения не требуется, оно нужно лишь в точке применения, то есть в файле
-	 *       реализации. Подключайся здесь sys/win32.hpp, снятия макросов протекали бы
+	 *       реализации. Подключайся здесь sys/macro/win32.hpp, снятия макросов протекали бы
 	 *       в единицу трансляции потребителя библиотеки
 	 *
 	 * \~english
 	 * Replace the AWH ERROR variable
 	 * @note The MS Windows headers are absent here deliberately: the body of the macro requires no declaration at the point
 	 *       of definition, it needs it only at the point of use, that is, in the implementation
-	 *       file. Were sys/win32.hpp included here, the removals of the macros would leak
+	 *       file. Were sys/macro/win32.hpp included here, the removals of the macros would leak
 	 *       into the translation unit of the consumer of the library
 	 *
 	 * \~
@@ -272,7 +272,7 @@
 /**
  * Разрешаем сборку под Windows
  */
-#include "global.hpp"
+#include "macro/global.hpp"
 
 /**
  * \~russian

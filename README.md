@@ -476,6 +476,7 @@ $ mkdir ./build
 $ cd ./build
 
 $ cmake \
+ -G Ninja \
  -DCMAKE_BUILD_TESTS=YES \
  -DCMAKE_BUILD_TYPE=Release \
  ..
@@ -658,6 +659,14 @@ $ genhtml -o report awh_filtered.info
 - [MSYS2](https://www.msys2.org)
 - [CMAKE](https://cmake.org/download)
 
+> **Ninja instead of Make.** Where `ninja` is installed it builds the same tree
+> noticeably faster — it hands out jobs as they become ready rather than layer by layer.
+> It is not required: install it with `pacman -S mingw-w64-x86_64-ninja`
+> (`mingw-w64-clang-aarch64-ninja` in the CLANGARM64 terminal) and pass `-G Ninja` in
+> place of `-G "MSYS Makefiles"` in the commands below. `sh/build_third_party.sh` and
+> `sh/dist/windows_make_installer.sh` need no flag at all — they look for `ninja`
+> themselves and say which build tool they took.
+
 #### Assembly is done in MSYS2 - MINGW64 terminal (x86_64)
 
 ```bash
@@ -804,13 +813,18 @@ perform under MinGW, called here as their `.bat` counterparts.
 ```
 
 This yields `awh.dll` together with the import library beside it, which is what a consuming
-program links against.
+program links against — nothing else has to be defined on its side, and the DLL has to sit
+where the program can find it at run time.
 
 > The list of exported symbols is collected from the object files, not marked up in the
 > code. Marking a **class** for export makes MSVC instantiate every implicit member of it at
 > once, the copy assignment included — and a class holding a non-copyable field (a vector of
 > unique pointers, say) cannot have one. The build then fails on a deleted function inside
 > the toolset headers, pointing at a class that no line of code ever copies.
+
+> A static build proves less than it looks: there is no linking in it at all, so a missing
+> dependency shows up only when something is actually linked — a shared library or a
+> consuming program.
 
 #### What you should know
 
@@ -890,7 +904,7 @@ sudo rpm -i glb-X.X.X-X.X_amd64.rpm
 // main.cpp
 // cmake -DCMAKE_SHARED_LIB_AWH=YES ..
 #include <iostream>
-#include <awh/sys/lib.hpp>
+#include <awh/sys/macro/lib.hpp>
 
 int main(){
     std::cout << "AWH Version: " << AWH_VERSION << std::endl;

@@ -39,14 +39,14 @@
  *
  * @note Заголовки arpa/inet.h и net/if.h принадлежат POSIX и у MS Windows
  *       отсутствуют: inet_pton, inet_ntop и if_nametoindex приходят там из
- *       ws2tcpip.h и netioapi.h, подключаемых через единую точку sys/win32.hpp
+ *       ws2tcpip.h и netioapi.h, подключаемых через единую точку sys/macro/win32.hpp
  *
  */
 #if _WIN32 || _WIN64
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
-	#include <sys/win32.hpp>
+	#include <sys/macro/win32.hpp>
 	/**
 	 * Подключаем системный перевод названия устройства зоны адреса в его номер
 	 */

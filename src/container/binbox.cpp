@@ -27,8 +27,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/lib.hpp>
-#include <sys/global.hpp>
+#include <sys/macro/lib.hpp>
+#include <sys/macro/global.hpp>
 #include <sys/version.hpp>
 #include <container/binbox.hpp>
 

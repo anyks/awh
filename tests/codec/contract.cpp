@@ -7330,9 +7330,9 @@ TEST(CodecContract, OversizedPathIndexIsRefusedByEveryCodec) {
 		// Владеющее значение документа ABC
 		abc::value_t value;
 		// Выполняем добавление первого значения
-		value.push(abc::value_t(static_cast <int64_t> (1)));
+		ASSERT_TRUE(value.push(abc::value_t(static_cast <int64_t> (1))));
 		// Выполняем добавление второго значения
-		value.push(abc::value_t(static_cast <int64_t> (2)));
+		ASSERT_TRUE(value.push(abc::value_t(static_cast <int64_t> (2))));
 		/**
 		 * Выполняем перебор всех непомещающихся номеров
 		 */

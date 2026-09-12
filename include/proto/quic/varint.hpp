@@ -39,7 +39,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/global.hpp"
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian

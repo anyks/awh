@@ -78,7 +78,7 @@
 #include "spin.hpp"
 #include "source.hpp"
 #include "classes.hpp"
-#include "../sys/global.hpp"
+#include "../sys/macro/global.hpp"
 
 /**
  * @brief Пространство имён фреймворка

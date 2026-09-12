@@ -203,7 +203,7 @@ if [ -n "$1" ]; then
 				 -DBUILD_SHARED_LIBS=OFF \
 				 -DBUILD_TESTING=OFF \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-				 -G "MSYS Makefiles" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			# Выполняем конфигурацию проекта под macOS
 			elif [ $OS = "Darwin" ]; then
@@ -227,6 +227,7 @@ if [ -n "$1" ]; then
 				 -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET \
 				 -DBUILD_TESTING=OFF \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			# Выполняем конфигурацию проекта под все остальные операционные системы
 			else
@@ -304,13 +305,14 @@ if [ -n "$1" ]; then
 				 -DCMAKE_CXX_FLAGS="$EXTRA_FLAGS" \
 				 -DCMAKE_EXE_LINKER_FLAGS="$EXTRA_LIBS" \
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+				 -G "$GENERATOR" \
 				 .. || exit 1
 			fi
 
 			# Выполняем сборку на всех логических ядрах
-			$MAKE -j"$numproc" || exit 1
+			$BUILDER -j"$numproc" || exit 1
 			# Выполняем установку проекта
-			$MAKE install || exit 1
+			$BUILDER install || exit 1
 
 			# Копируем статическую библиотеку в каталог установки
 			cp ./libdecrepit.a "$PREFIX/lib/"

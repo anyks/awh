@@ -64,7 +64,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "h2.hpp"
-#include "../../../../sys/global.hpp"
+#include "../../../../sys/macro/global.hpp"
 
 /**
  * \~russian

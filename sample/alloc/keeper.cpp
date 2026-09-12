@@ -33,7 +33,7 @@
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <sys/lib.hpp>
+#include <sys/macro/lib.hpp>
 #include <alloc/alloc.hpp>
 #include <alloc/keeper.hpp>
 

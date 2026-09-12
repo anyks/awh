@@ -46,7 +46,7 @@
 /**
  * Разрешаем сборку под Windows
  */
-#include "global.hpp"
+#include "macro/global.hpp"
 
 /**
  * \~russian

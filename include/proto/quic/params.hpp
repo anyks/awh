@@ -41,7 +41,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "quic.hpp"
-#include "../../sys/global.hpp"
+#include "../../sys/macro/global.hpp"
 
 /**
  * \~russian
