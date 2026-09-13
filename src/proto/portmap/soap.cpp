@@ -23,6 +23,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <proto/portmap/soap.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -158,13 +159,13 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(string(service), string(action)), log_t::flag_t::WARNING, message(error_t::INVALID_ACTION));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(service), string(action)}, awh::log::flag_t::WARNING, message(error_t::INVALID_ACTION));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error_t::INVALID_ACTION));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error_t::INVALID_ACTION));
 		#endif
 		// Выводим пустой текст вызова действия службы
 		return string();
@@ -186,7 +187,7 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 	 */
 	settings.collapse = false;
 	// Создаём объект записи текста разметки
-	codec::xml::writer_t writer(this->_log, settings);
+	codec::xml::writer_t writer(settings);
 	// Выполняем запись объявления разметки
 	writer.declaration();
 	// Выполняем открытие конверта запроса
@@ -221,13 +222,13 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(string(service), string(action)), log_t::flag_t::WARNING, codec::xml::message(writer.error()));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(service), string(action)}, awh::log::flag_t::WARNING, codec::xml::message(writer.error()));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, codec::xml::message(writer.error()));
+			awh::log::print("%s", awh::log::flag_t::WARNING, codec::xml::message(writer.error()));
 		#endif
 		// Выводим пустой текст вызова действия службы
 		return string();
@@ -261,7 +262,7 @@ string awh::proto::portmap::SOAP::action(const string_view service, const string
 	 */
 	if(!::printable(service) || !::printable(action)){
 		// Выводим сообщение об ошибке
-		this->_log->print("%s", log_t::flag_t::WARNING, "service or action is not printable");
+		awh::log::print("%s", awh::log::flag_t::WARNING, "service or action is not printable");
 		// Выводим пустое обозначение вызываемого действия службы
 		return result;
 	}
@@ -302,13 +303,13 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text.length()), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -324,19 +325,19 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text.length()), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Объект дерева разметки ответа службы
-	codec::xml::document_t document(this->_fmk, this->_log);
+	codec::xml::document_t document;
 	/**
 	 * Если разбор ответа службы выполнить не удалось
 	 */
@@ -348,17 +349,17 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(document.errorLocation().line, document.errorLocation().column),
-				log_t::flag_t::WARNING, codec::xml::message(document.error())
+				{document.errorLocation().line, document.errorLocation().column},
+				awh::log::flag_t::WARNING, codec::xml::message(document.error())
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, codec::xml::message(document.error()));
+			awh::log::print("%s", awh::log::flag_t::WARNING, codec::xml::message(document.error()));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -376,13 +377,13 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(envelope.name().local), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().local}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -400,13 +401,13 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(envelope.name().uri), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().uri}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -470,13 +471,13 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(envelope.name().uri), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().uri}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;

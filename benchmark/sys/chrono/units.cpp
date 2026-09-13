@@ -90,7 +90,7 @@ namespace {
 	 */
 	static outcome_t stamping() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель полученных штампов времени
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -115,7 +115,7 @@ namespace {
 	 */
 	static outcome_t extraction() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель извлечённых составляющих даты
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -144,7 +144,7 @@ namespace {
 	 */
 	static outcome_t bounding() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель полученных границ месяца
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -171,7 +171,7 @@ namespace {
 	 */
 	static outcome_t actualization() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель результатов актуализации
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -200,7 +200,7 @@ namespace {
 	 */
 	static outcome_t shifting() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель смещённых дат
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -228,7 +228,7 @@ namespace {
 	 */
 	static outcome_t abbreviating() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель полученных аббревиатур даты
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -259,7 +259,7 @@ namespace {
 	 */
 	static outcome_t setting() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Устанавливаем сводную временную зону Северной Америки
 		chrono.setTimeZone(awh::chrono_t::zone_t::ET);
 		// Накопитель установленных номеров месяца

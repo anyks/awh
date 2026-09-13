@@ -240,7 +240,7 @@ TEST_F(NetworkQueueFixture, ResetAndCreateQueueTest){
 	// Проверяем удаление объекта очереди
 	ASSERT_TRUE(this->_queue == nullptr);
 	// Создаём объект очереди
-	this->_queue = std::make_unique <awh::net_queue_t> (this->_fmk.get(), this->_log.get());
+	this->_queue = std::make_unique <awh::net_queue_t> ();
 	// Проверяем создание объекта очереди
 	ASSERT_TRUE(this->_queue != nullptr);
 }
@@ -253,7 +253,7 @@ TEST_F(NetworkQueueFixture, ReCreateQueueTest){
 	// Проверяем создание объекта очереди
 	ASSERT_TRUE(this->_queue != nullptr);
 	// Cоздаём объект очереди заново
-	this->_queue = std::make_unique <awh::net_queue_t> (this->_fmk.get(), this->_log.get());
+	this->_queue = std::make_unique <awh::net_queue_t> ();
 	// Проверяем создание объекта очереди
 	ASSERT_TRUE(this->_queue != nullptr);
 }
@@ -824,7 +824,7 @@ TEST_F(NetworkQueueFixture, DISABLED_RssFootprintBenchmark){
 	 */
 	for(size_t i = 0; i < CONNECTIONS; i++)
 		// Создаём очередь отправки для соединения
-		queues.push_back(std::make_unique <awh::net_queue_t> (this->_fmk.get(), this->_log.get()));
+		queues.push_back(std::make_unique <awh::net_queue_t> ());
 	// Замер резидентной памяти при N пустых очередях (ленивое выделение - буферы ещё не созданы)
 	const size_t rssEmpty = currentRSS();
 	// Блок данных для активации буфера у части соединений

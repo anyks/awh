@@ -49,7 +49,7 @@ TEST_F(FSFixture, ResetAndCreateFSTest){
 	// Проверяем что объект сброшен
 	ASSERT_TRUE(this->_fs == nullptr);
 	// Создаём объект работы с ФС
-	this->_fs = std::make_unique <awh::fs_t> (this->_fmk.get(), this->_log.get());
+	this->_fs = std::make_unique <awh::fs_t> ();
 	// Проверяем что объект создан
 	ASSERT_TRUE(this->_fs != nullptr);
 }
@@ -62,7 +62,7 @@ TEST_F(FSFixture, ReCreateFSTest){
 	// Если объект работы с ФС создан
 	ASSERT_TRUE(this->_fs != nullptr);
 	// Создаём объект работы с ФС
-	this->_fs = std::make_unique <awh::fs_t> (this->_fmk.get(), this->_log.get());
+	this->_fs = std::make_unique <awh::fs_t> ();
 	// Проверяем что объект создан
 	ASSERT_TRUE(this->_fs != nullptr);
 }

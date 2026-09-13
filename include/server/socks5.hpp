@@ -1555,36 +1555,26 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param fmk framework object
-				 * @param log object for working with logs
-				 *
 				 * \~
 				 */
-				explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param dns объект DNS-резолвера
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * @param dns DNS resolver object
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(unit::dns_t * dns) noexcept;
 			public:
 				/**
 				 * \~russian

@@ -28,10 +28,9 @@
  */
 #include <gtest/gtest.h>
 #include <codec/abc/value.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
-#include <sys/fmk.hpp>
 #include <codec/abc/writer.hpp>
+#include <codec/abc/document.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -46,47 +45,19 @@ using namespace awh::codec;
  */
 namespace {
 	/**
-	 * @brief Функция получения объекта фреймворка проверок
+	 * @brief Гашение вывода журнала на время проверок
 	 *
-	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самих
-	 * проверок: фреймворк и журнал передаются указателями от пользователя, как то
-	 * заведено во всём AWH, и заводить их порознь на каждое дерево незачем
-	 *
-	 * @return объект фреймворка проверок
+	 * @details Выполняется единожды на набор: проверки отказов выводили бы записью
+	 *          всякий свой отказ, а их тут большинство. Гашение это - настройка
+	 *          журнала, а не молчание модуля
 	 *
 	 */
-	const fmk_t * framework() noexcept {
-		// Объект фреймворка проверок
-		static fmk_t fmk;
-		// Выводим объект фреймворка проверок
-		return & fmk;
-	}
-	/**
-	 * @brief Функция извлечения объекта журнала проверок
-	 *
-	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
-	 *          выводили бы записью всякий свой отказ, а их тут большинство. Гашение
-	 *          это - настройка журнала, а не молчание модуля: модуль доносит как
-	 *          обычно, а показывать ли - решает журнал
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const log_t * logger() noexcept {
-		// Объект журнала проверок
-		static log_t log(::framework());
-		// Признак выполненной настройки журнала
-		static const bool ready = [](){
-			// Выполняем гашение вывода журнала проверок
-			log.level(log_t::level_t::NONE);
-			// Выводим признак выполненной настройки
-			return true;
-		}();
-		// Снимаем неиспользуемый признак настройки
-		(void) ready;
-		// Выводим объект журнала проверок
-		return & log;
-	}
+	[[maybe_unused]] const bool __awh_quenched__ = [](){
+		// Выполняем гашение вывода журнала проверок
+		awh::log::level(awh::log::level_t::NONE);
+		// Выводим признак выполненного гашения
+		return true;
+	}();
 };
 
 /**
@@ -367,7 +338,7 @@ TEST(CodecAbcValue, AbsorbFromDocument) {
 	// Октеты величины числа
 	const vector <uint8_t> magnitude = {0x39, 0x30, 0x01};
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку отображения из двух пар
 	ASSERT_TRUE(writer.mapBegin(2));
 	// Выполняем укладку имени поля числа неограниченной ширины
@@ -381,7 +352,7 @@ TEST(CodecAbcValue, AbsorbFromDocument) {
 	// Выполняем укладку конца отображения
 	ASSERT_TRUE(writer.mapEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()));
 	// Владеющее значение, перенесённое из дерева документа
@@ -583,7 +554,7 @@ TEST(CodecAbcValue, RealToWholeContract) {
  */
 TEST(CodecAbcValue, TruncationAndCorruption) {
 	// Сборка образцовой записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку записи отображения
 	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (2)));
 	ASSERT_TRUE(writer.text("имя") && writer.text("Юрий"));
@@ -736,7 +707,7 @@ TEST(CodecAbcValue, MoveAssignment) {
  */
 TEST(CodecAbcValue, BuilderAssembly) {
 	// Потоковая сборка владеющего значения
-	abc::builder_t builder(::logger());
+	abc::builder_t builder;
 	// Выполняем открытие корневого отображения
 	ASSERT_TRUE(builder.map());
 	// Выполняем проверку глубины открытых вместилищ
@@ -788,7 +759,7 @@ TEST(CodecAbcValue, BuilderAssembly) {
  */
 TEST(CodecAbcValue, BuilderRefusals) {
 	// Потоковая сборка владеющего значения
-	abc::builder_t builder(::logger());
+	abc::builder_t builder;
 	/**
 	 * Выполняем проверку отказа назначения имени до открытия вместилища
 	 *
@@ -873,7 +844,7 @@ TEST(CodecAbcValue, NonStringKeys) {
 	// Выполняем проверку того, что круговой ход записи сошёлся
 	ASSERT_EQ(parsed, value);
 	// Потоковая сборка значения
-	abc::builder_t builder(::logger());
+	abc::builder_t builder;
 	// Выполняем заведение отображения потоковой сборкой
 	ASSERT_TRUE(builder.map());
 	/**
@@ -893,7 +864,7 @@ TEST(CodecAbcValue, NonStringKeys) {
 	 */
 	ASSERT_EQ(builder.finish(), parsed);
 	// Потоковая сборка с вместимым именем поля
-	abc::builder_t refused(::logger());
+	abc::builder_t refused;
 	// Выполняем заведение отображения потоковой сборкой
 	ASSERT_TRUE(refused.map());
 	// Выполняем проверку отказа назначения вместимого имени поля
@@ -1000,7 +971,7 @@ TEST(CodecAbcValue, GraftRoundTrip) {
 	// Выполняем установку поля с именем любого вида
 	ASSERT_TRUE(value.insert(abc::value_t(static_cast <uint64_t> (7)), abc::value_t(string{"семь"})));
 	// Дерево документа, куда переносится значение
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем перенос владеющего значения в дерево документа
 	ASSERT_TRUE(value.graft(document)) << "код отказа: " << abc::message(document.error());
 	// Выполняем подъём дерева документа обратно во владеющее значение
@@ -1032,7 +1003,7 @@ TEST(CodecAbcValue, GraftRoundTrip) {
 	 */
 	abc::value_t empty;
 	// Дерево документа, куда переносится пустое значение
-	abc::document_t plain(::framework(), ::logger());
+	abc::document_t plain;
 	// Выполняем перенос пустого значения в дерево документа
 	ASSERT_TRUE(empty.graft(plain)) << "код отказа: " << abc::message(plain.error());
 	// Выполняем подъём дерева документа обратно во владеющее значение
@@ -1115,7 +1086,7 @@ TEST(CodecAbcValue, NameIndexRefill) {
  */
 TEST(CodecAbcValue, BuilderScalarRoot) {
 	// Потоковая сборка владеющего значения
-	abc::builder_t builder(::logger());
+	abc::builder_t builder;
 	// Выполняем запись одиночного значения корнем сборки
 	ASSERT_TRUE(builder.value(string("одиночное")));
 	// Выполняем проверку отказа записи второго значения: корень одиночный вместить не может
@@ -1142,7 +1113,7 @@ TEST(CodecAbcValue, BuilderScalarRoot) {
 	// Выполняем проверку равенства разобранного собранному
 	ASSERT_EQ(parsed, value);
 	// Потоковая сборка с назначенным именем до открытия вместилища
-	abc::builder_t named(::logger());
+	abc::builder_t named;
 	// Выполняем проверку отказа назначения имени до открытия вместилища
 	ASSERT_FALSE(named.key("имя"));
 	// Выполняем проверку того, что одиночный корень после этого записывается
@@ -1184,7 +1155,7 @@ TEST(CodecAbcValue, BuilderScalarRoot) {
  * @details Конструктор от истинности неявен НАМЕРЕННО - без него не собрать
  * `insert("имя", true)`, - и всякий указатель проходил бы в него стандартным
  * преобразованием, молча обращаясь в ИСТИНУ. Ловушка тем острее, что всякий иной разряд
- * кодека берёт журнал конструктором, и `value_t v(log)` собиралось бы молча
+ * кодека берёт журнал конструктором, и `value_t v()` собиралось бы молча
  *
  * @note Утверждение это ВРЕМЕНИ СБОРКИ, и проверить его прогоном нельзя: удавшаяся
  * сборка от указателя не отказывает, а даёт истину, неотличимую от нарочно уложенной.
@@ -1192,9 +1163,6 @@ TEST(CodecAbcValue, BuilderScalarRoot) {
  *
  */
 TEST(CodecAbcValue, PointerConstructionForbidden){
-	// Указатель на журнал не должен собираться значением дерева
-	static_assert(!is_constructible <abc::value_t, log_t *>::value,
-	 "значение дерева собирается от указателя на журнал");
 	// Указатель на само значение не должен собираться значением дерева
 	static_assert(!is_constructible <abc::value_t, abc::value_t *>::value,
 	 "значение дерева собирается от указателя на себя");
@@ -1276,7 +1244,7 @@ TEST(CodecAbcValue, ContainerKeyRefusedByEveryLayer){
 		 */
 		{
 			// Потоковая сборка владеющего значения
-			abc::builder_t builder(::logger());
+			abc::builder_t builder;
 			// Выполняем открытие отображения сборкою
 			ASSERT_TRUE(builder.map());
 			// Назначение вместимого именем поля обязано быть отвергнуто
@@ -1319,7 +1287,7 @@ TEST(CodecAbcValue, KindConstructedValueIsDumpable){
 		// Запись обязана выйти непустой
 		ASSERT_FALSE(record.empty()) << "вид: " << static_cast <uint16_t> (kind);
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Уложенная запись обязана разобраться обратно
 		ASSERT_TRUE(document.parse(record.data(), record.size()))
 			<< "вид: " << static_cast <uint16_t> (kind)
@@ -1340,7 +1308,7 @@ TEST(CodecAbcValue, KindConstructedValueIsDumpable){
 			// Запись отображения обязана выйти непустой
 			ASSERT_FALSE(nested.empty()) << "вид: " << static_cast <uint16_t> (kind);
 			// Дерево документа
-			abc::document_t digest(::framework(), ::logger());
+			abc::document_t digest;
 			// Уложенная запись отображения обязана разобраться обратно
 			ASSERT_TRUE(digest.parse(nested.data(), nested.size()))
 				<< "вид: " << static_cast <uint16_t> (kind)
@@ -1702,7 +1670,7 @@ TEST(CodecAbcValue, ExtendedDigits){
 	// Октеты величины числа неограниченной ширины, старшим октетом вперёд
 	const vector <uint8_t> magnitude = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09};
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку отображения из двух пар
 	ASSERT_TRUE(writer.mapBegin(2));
 	// Выполняем укладку имени поля числа неограниченной ширины
@@ -1716,7 +1684,7 @@ TEST(CodecAbcValue, ExtendedDigits){
 	// Выполняем укладку конца отображения
 	ASSERT_TRUE(writer.mapEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()));
 	// Владеющее значение, перенесённое из дерева документа
@@ -1828,7 +1796,7 @@ TEST(CodecAbcValue, GraftUsesDefaultSettings) {
 	// Выполняем внесение поля с негодною строкою
 	value["поле"] = string("a\xF0\x9F" "b");
 	// Дерево документа, куда переносится значение
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	/**
 	 * Перенос обязан отвечаться отказом: поверка кодировки объявлена умолчанием
 	 * сборки, а строка ей не отвечает
@@ -1849,7 +1817,7 @@ TEST(CodecAbcValue, GraftUsesDefaultSettings) {
 	// Выполняем объявление пропуска негодных последовательностей
 	parsing.malformed = abc::malformed_t::PASS;
 	// Дерево документа, куда разбирается собранная запись
-	abc::document_t other(::framework(), ::logger());
+	abc::document_t other;
 	// Дорогою из двух половин запись обязана разбираться
 	ASSERT_TRUE(other.parse(record.data(), record.size(), parsing))
 		<< "код отказа: " << abc::message(other.error());
@@ -1875,7 +1843,7 @@ TEST(CodecAbcValue, GraftUsesDefaultSettings) {
  */
 TEST(CodecAbcValue, BuilderReopensTheFieldOfTheOccupiedName){
 	// Потоковая сборка владеющего значения
-	abc::builder_t builder(::logger());
+	abc::builder_t builder;
 	// Выполняем открытие отображения сборкою
 	ASSERT_TRUE(builder.map());
 	// Выполняем укладку первой пары отображения
@@ -1946,15 +1914,13 @@ TEST(CodecAbcValue, DigitsComeLeastSignificantFirst){
 	// Октеты числа 258 младшим октетом вперёд
 	const vector <uint8_t> octets = {0x02, 0x01};
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Величина обязана укладываться сборкою
 	ASSERT_TRUE(writer.decimal(octets.data(), octets.size(), false, 0));
 	// Собранная запись величины
 	const vector <uint8_t> record = writer.record();
 	// Владеющее значение, куда разбирается запись
 	abc::value_t value;
-	// Выполняем установку объекта логирования
-	value.setLogger(::logger());
 	// Запись обязана разбираться во владеющее значение
 	ASSERT_TRUE(value.parse(record.data(), record.size()));
 	// Извлекаемые цифры числа
@@ -1968,7 +1934,7 @@ TEST(CodecAbcValue, DigitsComeLeastSignificantFirst){
 	 */
 	{
 		// Сборка бинарной записи из извлечённых цифр
-		abc::writer_t again(::logger());
+		abc::writer_t again;
 		// Извлечённые цифры обязаны укладываться той же сборкой
 		ASSERT_TRUE(again.decimal(digits.data(), digits.size(), value.negative(), value.exponent()));
 		// Собранная наново запись обязана совпасть с исходной октет в октет
@@ -1997,8 +1963,6 @@ TEST(CodecAbcValue, DecimalIsBuildableWithoutARecord){
 	for(const int64_t exponent : {static_cast <int64_t> (0), static_cast <int64_t> (-3)}){
 		// Владеющее значение, собираемое из октетов величины
 		abc::value_t value;
-		// Выполняем установку объекта логирования
-		value.setLogger(::logger());
 		// Величина обязана заводиться владеющим значением
 		ASSERT_TRUE(value.decimal(octets.data(), octets.size(), true, exponent));
 		// Вид значения обязан выбираться порядком, как то делает сборка записи
@@ -2020,15 +1984,13 @@ TEST(CodecAbcValue, DecimalIsBuildableWithoutARecord){
 		// Собранное значение обязано укладываться в запись
 		ASSERT_TRUE(value.dump(record, error)) << "код отказа: " << abc::message(error);
 		// Сборка записи напрямую сборщиком
-		abc::writer_t writer(::logger());
+		abc::writer_t writer;
 		// Та же величина обязана укладываться сборщиком
 		ASSERT_TRUE(writer.decimal(octets.data(), octets.size(), true, exponent));
 		// Обе записи обязаны совпасть октет в октет
 		ASSERT_EQ(record, writer.record());
 		// Владеющее значение, куда разбирается собранная запись
 		abc::value_t other;
-		// Выполняем установку объекта логирования
-		other.setLogger(::logger());
 		// Собранная запись обязана разбираться обратно
 		ASSERT_TRUE(other.parse(record.data(), record.size()));
 		// Разобранное значение обязано равняться собранному
@@ -2040,8 +2002,6 @@ TEST(CodecAbcValue, DecimalIsBuildableWithoutARecord){
 	{
 		// Владеющее значение, поверками отвергаемое
 		abc::value_t value;
-		// Выполняем установку объекта логирования
-		value.setLogger(::logger());
 		// Величина с нулевым старшим октетом обязана быть отвергнута
 		const vector <uint8_t> leading = {0x02, 0x00};
 		// Неканоничная величина заводиться не должна
@@ -2310,7 +2270,7 @@ TEST(CodecAbcValue, UndefinedIsLaidAsNull) {
 	// Выполняем проверку самой метки уложенного значения
 	ASSERT_EQ(record.front(), 0xC0);
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор уложенной записи
 	ASSERT_TRUE(document.parse(record.data(), record.size())) << abc::message(document.error());
 	// Выполняем проверку пригодности корня разобранного дерева
@@ -2492,4 +2452,116 @@ TEST(CodecAbcValue, TheSelfAssignmentKeepsTheValueWhole) {
 		// Содержимое полей обязано уцелеть
 		ASSERT_EQ(value["имя"].text(), "Юрий");
 	}
+}
+
+/**
+ * @brief Поверка того, что журнал перенимается копией, переносом и присваиванием
+ *
+ * @details Значение НЕ принимает объект журнала конструктором: прими оно пару указателей,
+ * неявное приведение вида `value_t v = "текст"` стало бы невозможным. Оттого журнал
+ * перенимается встречей - у дерева, откуда значение взято, и у образца, с какого оно
+ * скопировано, - как то сделано у `awh::Buffer` и у значения кодека JSON
+ *
+ * @note Прежде здесь стоял назначатель `setLogger`, и владелец его снял. Снятие вскрыло
+ * дыру, а не завело её: назначатель метил РОВНО ОДИН узел, тогда как `clone` не нёс
+ * ни журнала, ни фреймворка вовсе, и всякий ребёнок с копией оставались пустыми
+ *
+ * @note Наблюдаемый признак - САМА ЗАПИСЬ в журнал: значение журнала не показывает,
+ * и судить о нём можно лишь по тому, доносит ли отказ разбора. Вывод переведён в
+ * отклик `DEFERRED`, иначе записи ушли бы в консоль мимо счёта
+ *
+ * @note Щуп нужности 13.09.2026: перенимание у `clone` снято признаком `&& false` -
+ * случаи копии, переноса и присваивания замолчали все три, а перенявшее у дерева
+ * донесло по-прежнему. Поверка зряча
+ *
+ */
+TEST(CodecAbcValue, TheJournalIsTakenOverByCopyAndMove){
+	// Разрешаем вывод журнала одним лишь откликом
+	awh::log::mode({awh::log::mode_t::DEFERRED});
+	// Число донесений, снятых откликом
+	uint32_t records = 0;
+	// Выполняем перехват донесений журнала
+	awh::log::subscribe([&records](const awh::log::flag_t, string_view) noexcept -> void {
+		// Считаем донесение журнала
+		records++;
+	});
+	/**
+	 * @brief Работа понуждения значения к отказу разбора
+	 *
+	 * @param value понуждаемое значение
+	 * @return      число донесений, снятых журналом за разбор
+	 *
+	 */
+	auto refuses = [&records](abc::value_t & value) noexcept -> uint32_t {
+		// Выполняем сброс счётчика донесений
+		records = 0;
+		// Запись, разбору заведомо не поддающаяся
+		const uint8_t junk[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+		// Разбор негодной записи обязан отвечать отказом
+		EXPECT_FALSE(value.parse(junk, sizeof(junk)));
+		// Выводим число снятых донесений
+		return records;
+	};
+	// Собираемое дерево значений
+	abc::value_t tree(abc::kind_t::MAP);
+	// Выполняем заведение поля дерева
+	ASSERT_TRUE(tree.insert(string("k"), abc::value_t(string("v"))));
+	// Укладываемая запись дерева
+	vector <uint8_t> record;
+	// Код отказа укладки
+	abc::error_t error = abc::error_t::NONE;
+	// Дерево обязано укладываться в запись
+	ASSERT_TRUE(tree.dump(record, error)) << "код отказа: " << abc::message(error);
+	// Дерево документа, журнал держащее
+	abc::document_t document;
+	// Запись обязана разбираться в дерево документа
+	ASSERT_TRUE(document.parse(record.data(), record.size()));
+	// Значение, перенявшее журнал у дерева документа
+	abc::value_t seeded(document.root());
+	/**
+	 * Заводим ВСЕ поверяемые прежде первого понуждения.
+	 *
+	 * @warning Понуждение СНОСИТ поверяемое: разбор начинается с очистки значения, и
+	 *          детей у понуждённого более нет. Заведи мы ребёнка после понуждения
+	 *          корня - взяли бы пустое место и получили бы ложный приговор «журнал
+	 *          не перенят». Беда эта была настоящей и найдена не рассуждением
+	 */
+	// Копия значения
+	abc::value_t copied(seeded);
+	// Значение, присвоенное копированием
+	abc::value_t assigned;
+	// Выполняем присваивание значения копированием
+	assigned = seeded;
+	/**
+	 * Ребёнок перенявшего обязан доносить САМ.
+	 *
+	 * @note Прежде перенимание стояло при входе в `absorb` и метило РОВНО ОДИН узел,
+	 * корень, - ровно тою же бедою был порочен снятый владельцем назначатель. Замер
+	 * оснасткой 13.09.2026 показал у детей пустую пару, после чего перенимание
+	 * переехало ВНУТРЬ обхода переноса
+	 */
+	abc::value_t child(seeded.at(string("k")));
+	// Перенявшее у дерева обязано доносить об отказе
+	ASSERT_EQ(refuses(seeded), 1u) << "значение не переняло журнал у дерева документа";
+	// Копия обязана доносить об отказе
+	ASSERT_EQ(refuses(copied), 1u) << "копия не переняла журнал у образца";
+	// Присвоенное копированием обязано доносить об отказе
+	ASSERT_EQ(refuses(assigned), 1u) << "присвоенное копированием не переняло журнал";
+	// Ребёнок обязан доносить об отказе сам
+	ASSERT_EQ(refuses(child), 1u) << "ребёнок не перенял журнал у дерева документа";
+	// Значение, перенесённое из присвоенного
+	abc::value_t moved(std::move(assigned));
+	// Перенесённое обязано доносить об отказе
+	ASSERT_EQ(refuses(moved), 1u) << "перенесённое не переняло журнал";
+	/**
+	 * Значение, ни к какому дереву не приставшее
+	 *
+	 * @note Прежде здесь утверждалось молчание: журнал приходил значению доводом, и
+	 * значению без роду доносить было НЕКУДА. Журнал же стал один на процесс, и
+	 * молчания этого больше нет вовсе - утверждается ровно обратное, и утверждать
+	 * его надо, иначе отказ такого значения уходил бы в никуда незамеченным
+	 */
+	abc::value_t bare;
+	// Значение без роду обязано доносить наравне с прочими
+	ASSERT_EQ(refuses(bare), 1u) << "значение вне дерева об отказе смолчало";
 }

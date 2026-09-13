@@ -265,11 +265,6 @@
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include "log.hpp"
-
-/**
  * Разрешаем сборку под Windows
  */
 #include "macro/global.hpp"
@@ -300,9 +295,6 @@ namespace awh {
 	 * \~
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Operating_System {
-		private:
-			// Объект логера
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
@@ -920,15 +912,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Operating_System(const log_t * log) noexcept : _log(log) {}
+			explicit Operating_System() noexcept {}
 	} os_t;
 };
 

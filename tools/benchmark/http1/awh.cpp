@@ -34,7 +34,7 @@
  * Подключаем заголовочный файл сравниваемой реализации
  */
 #include <proto/http/parser/http1/http.hpp>
-#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Подписываемся на пространство имён HTTP-протокола
@@ -52,10 +52,6 @@ namespace {
 	 */
 	class Engine {
 		private:
-			// Объект фреймворка окружения парсера
-			awh::fmk_t _fmk;
-			// Объект логирования окружения парсера
-			awh::log_t _log;
 			// Объект парсера сравниваемой реализации
 			parser_http_t _parser;
 		public:
@@ -102,7 +98,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Engine() noexcept : _fmk(), _log(&_fmk), _parser(direct_t::REQUEST, &_fmk, &_log) {
+			explicit Engine() noexcept : _parser(direct_t::REQUEST) {
 				// Устанавливаем функцию обратного вызова обработки фрагмента тела сообщения
 				this->_parser.on(parser_http_t::data_callback_t([](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 					// Выполняем потребление фрагмента тела сообщения
@@ -130,6 +126,13 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char ** argv) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Получаем фильтр названий выполняемых сценариев
 	const char * mask = rival::filter(argc, argv);
 	// Создаём объект разбора сообщений сравниваемой реализацией

@@ -46,10 +46,6 @@
  */
 class HashCryptoFixture : public testing::Test {
 	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект работы с логами
-		std::unique_ptr <awh::log_t> _log;
 		// Объект криптографии
 		std::unique_ptr <awh::crypto_t> _crypto;
 		// Объект хэширования данных
@@ -60,12 +56,8 @@ class HashCryptoFixture : public testing::Test {
 		 *
 		 */
 		void SetUp() override {
-			// Создаём объект фреймворка
-			this->_fmk = std::make_unique <awh::fmk_t> ();
-			// Создаём объект работы с логами
-			this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 			// Создаём объект криптографии
-			this->_crypto = std::make_unique <awh::crypto_t> (this->_fmk.get(), this->_log.get());
+			this->_crypto = std::make_unique <awh::crypto_t> ();
 			// Создаём объект хэширования данных
 			this->_hash = std::make_unique <awh::hash_t> ();
 		}

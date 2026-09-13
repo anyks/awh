@@ -201,9 +201,6 @@ namespace awh {
 			awh::alloc::shelter_t _shelter;
 		private:
 			// Объект фреймворка
-			[[maybe_unused]] const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
@@ -342,11 +339,8 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 */
-			explicit Vault(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Vault() noexcept;
 			/**
 			 * @brief Деструктор
 			 *

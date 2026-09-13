@@ -31,9 +31,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <proto/http/parser/http2/http.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -111,11 +111,8 @@ static void subscribe(parser_http2_t & parser, const string role) noexcept {
 /**
  * @brief Демонстрация рукопожатия соединения (preface + обмен SETTINGS)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleHandshake() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== HANDSHAKE ======== " << endl;
 	/**
@@ -125,9 +122,9 @@ static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
 	 * - direct_t::REQUEST  - разбираем запросы клиента (мы - сервер);
 	 * - direct_t::RESPONSE - разбираем ответы сервера (мы - клиент)
 	 */
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Создаём объект парсера клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Исходящие байты клиента подаём на разбор серверу (эмуляция сети)
 	client.on(parser_http2_t::write_callback_t([&server](const void * buffer, const size_t size) noexcept {
 		// Выполняем разбор исходящих байтов клиента на сервере
@@ -163,17 +160,14 @@ static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация полного обмена запросом и ответом с телами
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleExchange(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleExchange() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== EXCHANGE ======== " << endl;
 	// Создаём объект парсера сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Создаём объект парсера клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Исходящие байты клиента подаём на разбор серверу
 	client.on(parser_http2_t::write_callback_t([&server](const void * buffer, const size_t size) noexcept {
 		// Выполняем разбор исходящих байтов клиента на сервере
@@ -229,17 +223,14 @@ static void sampleExchange(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация отправки заголовков из контейнера headers_t
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleContainer(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleContainer() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== HEADERS CONTAINER ======== " << endl;
 	// Создаём объект парсера сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Создаём объект парсера клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Исходящие байты клиента подаём на разбор серверу
 	client.on(parser_http2_t::write_callback_t([&server](const void * buffer, const size_t size) noexcept {
 		// Выполняем разбор исходящих байтов клиента на сервере
@@ -289,17 +280,14 @@ static void sampleContainer(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация pull-источника данных тела и flow control
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleDataSource(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleDataSource() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== DATA SOURCE (FLOW CONTROL) ======== " << endl;
 	// Создаём объект парсера сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Создаём объект парсера клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Исходящие байты клиента подаём на разбор серверу
 	client.on(parser_http2_t::write_callback_t([&server](const void * buffer, const size_t size) noexcept {
 		// Выполняем разбор исходящих байтов клиента на сервере
@@ -380,17 +368,14 @@ static void sampleDataSource(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация server push (PUSH_PROMISE)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void samplePush(const fmk_t * fmk, const log_t * log) noexcept {
+static void samplePush() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== SERVER PUSH ======== " << endl;
 	// Создаём объект парсера сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Создаём объект парсера клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Исходящие байты клиента подаём на разбор серверу
 	client.on(parser_http2_t::write_callback_t([&server](const void * buffer, const size_t size) noexcept {
 		// Выполняем разбор исходящих байтов клиента на сервере
@@ -466,11 +451,8 @@ static void samplePush(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация pull-модели выборки исходящих байтов (pending/consumePending)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void samplePullOutput(const fmk_t * fmk, const log_t * log) noexcept {
+static void samplePullOutput() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== PULL OUTPUT MODEL ======== " << endl;
 	/**
@@ -479,9 +461,9 @@ static void samplePullOutput(const fmk_t * fmk, const log_t * log) noexcept {
 	 * сам: pending() возвращает view на неотправленные байты, consumePending()
 	 * освобождает отправленную в сокет часть
 	 */
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Создаём объект парсера клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Подключаем отладочный вывод событий сервера
 	subscribe(server, "server");
 	// Клиент отправляет magic-строку и свой SETTINGS (байты копятся в буфере)
@@ -518,17 +500,14 @@ static void samplePullOutput(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация обработки ошибок и завершения соединения
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleShutdown(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleShutdown() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== ERRORS & SHUTDOWN ======== " << endl;
 	// Создаём объект парсера сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Создаём объект парсера клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Исходящие байты клиента подаём на разбор серверу
 	client.on(parser_http2_t::write_callback_t([&server](const void * buffer, const size_t size) noexcept {
 		// Выполняем разбор исходящих байтов клиента на сервере
@@ -582,31 +561,35 @@ static void sampleShutdown(const fmk_t * fmk, const log_t * log) noexcept {
  *
  */
 int32_t main(int32_t count, char * params[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Не используемые параметры
 	(void) count;
 	(void) params;
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Устанавливаем название сервиса
-	log.name("Parser HTTP2");
+	awh::log::name("Parser HTTP2");
 	// Устанавливаем формат даты
-	log.format("%H:%M:%S %d.%m.%Y");
+	awh::log::format("%H:%M:%S %d.%m.%Y");
 	// Выполняем демонстрацию рукопожатия соединения
-	sampleHandshake(&fmk, &log);
+	sampleHandshake();
 	// Выполняем демонстрацию полного обмена запросом и ответом
-	sampleExchange(&fmk, &log);
+	sampleExchange();
 	// Выполняем демонстрацию отправки заголовков из контейнера
-	sampleContainer(&fmk, &log);
+	sampleContainer();
 	// Выполняем демонстрацию pull-источника данных тела
-	sampleDataSource(&fmk, &log);
+	sampleDataSource();
 	// Выполняем демонстрацию server push
-	samplePush(&fmk, &log);
+	samplePush();
 	// Выполняем демонстрацию pull-модели выборки исходящих байтов
-	samplePullOutput(&fmk, &log);
+	samplePullOutput();
 	// Выполняем демонстрацию обработки ошибок и завершения соединения
-	sampleShutdown(&fmk, &log);
+	sampleShutdown();
 	// Выводим удачное завершение работы
 	return EXIT_SUCCESS;
 }

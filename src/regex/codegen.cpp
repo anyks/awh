@@ -3459,7 +3459,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	// Подписываемся на перечисление условий выполнения перехода
 	using cond_t = Emitter::cond_t;
 	// Создаём объект порождения машинного кода
-	Emitter emitter(this->_log);
+	Emitter emitter;
 	// Выполняем заведение мест обстановки, отведённых прежде таблиц
 	this->_context.assign(SLOT_TABLES, nullptr);
 	// Выполняем перенос предварительного отбора позиций из программы
@@ -8349,8 +8349,6 @@ bool awh::regex::Codegen::skipping() const noexcept {
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::regex::Codegen::Codegen(const log_t * log) noexcept :
- _assembly(log), _log(log), _filter(filter_t::NONE), _feasible(false), _skipping(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}
+awh::regex::Codegen::Codegen() noexcept :
+ _assembly(), _filter(filter_t::NONE), _feasible(false), _skipping(false), _captures(0), _frame(0), _levels(0), _identity(0), _matcher(nullptr) {}

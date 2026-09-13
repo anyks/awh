@@ -68,6 +68,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/fds.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -87,7 +88,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	 */
 	#if _WIN32 || _WIN64
 		// Выполняем формирование лога
-		this->_log->print(
+		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"On Windows, the default handle limit is ~16K. If you need more, increase it programmatically.\n\n"
 			"🔧 How to increase the limit on Windows:\n\n"
@@ -109,14 +110,14 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"3. For server applications — prefer SetHandleCount().\n\n"
 			"💡 Important: SetHandleCount() is a hint to the system — actual limit depends on Windows version and available memory.\n"
 			"💡 Tip: Check current handle usage in Task Manager → Details tab → \"Handles\" column.",
-			log_t::flag_t::WARNING, desired, actual, desired, desired, desired
+			awh::log::flag_t::WARNING, desired, actual, desired, desired, desired
 		);
 	/**
 	 * Для операционной системы Linux
 	 */
 	#elif __linux__
 		// Выполняем формирование лога
-		this->_log->print(
+		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"This may cause failures under high load.\n\n"
 			"🔧 How to increase the limit on Linux:\n\n"
@@ -138,14 +139,14 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"💡 Tip: You can also increase system-wide limit:\n"
 			"   echo 'fs.file-max = 2000000' | sudo tee -a /etc/sysctl.conf\n"
 			"   sudo sysctl -p",
-			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired
+			awh::log::flag_t::WARNING, desired, actual, desired, desired, desired, desired
 		);
 	/**
 	 * Для операционной системы OpenBSD
 	 */
 	#elif __OpenBSD__
 		// Выполняем формирование лога
-		this->_log->print(
+		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"OpenBSD has strict defaults for security.\n\n"
 			"🔧 How to increase the limit on OpenBSD:\n\n"
@@ -166,14 +167,14 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"      kern.maxfilesperproc=%u\n\n"
 			"5. Reboot or re-login to apply.\n\n"
 			"💡 Note: OpenBSD may require reboot for some changes to take effect.",
-			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired, desired
+			awh::log::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired, desired
 		);
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
 	#elif __sun__
 		// Выполняем формирование лога
-		this->_log->print(
+		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"Solaris requires configuration via projects and system parameters.\n\n"
 			"🔧 How to increase the limit on Solaris:\n\n"
@@ -195,14 +196,14 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"   echo \"rlim_fd_cur=%u\" >> /etc/system\n"
 			"   Reboot system.\n\n"
 			"💡 Tip: Use `prctl -n process.max-file-descriptor -i process $$` to check current process limit.",
-			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired
+			awh::log::flag_t::WARNING, desired, actual, desired, desired, desired, desired
 		);
 	/**
 	 * Для операционной системы FreeBSD
 	 */
 	#elif __FreeBSD__
 		// Выполняем формирование лога
-		this->_log->print(
+		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"FreeBSD allows tuning limits via login.conf and sysctl.\n\n"
 			"🔧 How to increase the limit on FreeBSD:\n\n"
@@ -223,14 +224,14 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"      kern.maxfiles=%u\n"
 			"      kern.maxfilesperproc=%u\n\n"
 			"6. Restart application or re-login.",
-			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired
+			awh::log::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired
 		);
 	/**
 	 * Для операционной системы NetBSD
 	 */
 	#elif __NetBSD__
 		// Выполняем формирование лога
-		this->_log->print(
+		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"NetBSD uses login.conf and sysctl for tuning limits.\n\n"
 			"🔧 How to increase the limit on NetBSD:\n\n"
@@ -250,14 +251,14 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"      kern.maxfilesperproc=%u\n\n"
 			"5. Restart application or re-login.\n\n"
 			"💡 Tip: Use `sysctl -a | grep maxfiles` to view current system limits.",
-			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired
+			awh::log::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired
 		);
 	/**
 	 * Для операционной системы macOS
 	 */
 	#elif __APPLE__ || __MACH__
 		// Выполняем формирование лога
-		this->_log->print(
+		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
 			"macOS default limits are often too low for server applications.\n\n"
 			"🔧 How to increase the limit on macOS:\n\n"
@@ -292,7 +293,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"   sudo launchctl load -w /Library/LaunchDaemons/limit.maxfiles.plist\n\n"
 			"4. Reboot or restart your application.\n\n"
 			"💡 Note: On some macOS versions, disabling SIP (System Integrity Protection) may be required — proceed with caution.",
-			log_t::flag_t::WARNING, desired, actual, desired, desired, desired
+			awh::log::flag_t::WARNING, desired, actual, desired, desired, desired
 		);
 	#endif
 }
@@ -315,7 +316,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Печатаем информационное сообщение
-				this->_log->print("Called SetHandleCount(%u) successfully", log_t::flag_t::INFO, limit);
+				awh::log::print("Called SetHandleCount(%u) successfully", awh::log::flag_t::INFO, limit);
 			#endif
 			// Возвращаем true
 			return true;
@@ -326,13 +327,13 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit);
+				awh::log::debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::WARNING, limit);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, limit);
+				awh::log::print("SetHandleCount(%u) failed", awh::log::flag_t::WARNING, limit);
 			#endif
 		}
 	/**
@@ -350,13 +351,13 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::CRITICAL, ::strerror(errno));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из функции
 			return false;
@@ -370,7 +371,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Печатаем информационное сообщение
-			this->_log->print("Current FD limits: soft=%u, hard=%u", log_t::flag_t::INFO, currentSoft, currentHard);
+			awh::log::print("Current FD limits: soft=%u, hard=%u", awh::log::flag_t::INFO, currentSoft, currentHard);
 		#endif
 		// Если soft лимит уже >= target — ничего не делаем
 		if(currentSoft >= limit)
@@ -389,7 +390,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Печатаем информационное сообщение
-					this->_log->print("Successfully raised soft FD limit to %u", log_t::flag_t::INFO, limit);
+					awh::log::print("Successfully raised soft FD limit to %u", awh::log::flag_t::INFO, limit);
 				#endif
 				// Возвращаем true
 				return true;
@@ -399,13 +400,13 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
+				awh::log::debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::WARNING, limit, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
+				awh::log::print("Failed to raise soft FD limit to %u: %s", awh::log::flag_t::WARNING, limit, ::strerror(errno));
 			#endif
 			// Возвращаем результат неудачи
 			return false;
@@ -424,7 +425,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Печатаем информационное сообщение
-				this->_log->print("Successfully raised soft and hard FD limit to %u", log_t::flag_t::INFO, limit);
+				awh::log::print("Successfully raised soft and hard FD limit to %u", awh::log::flag_t::INFO, limit);
 			#endif
 			// Возвращаем true
 			return true;
@@ -443,7 +444,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Печатаем информационное сообщение
-				this->_log->print("Raised soft FD limit to hard maximum %u (requested %u)", log_t::flag_t::INFO, currentHard, limit);
+				awh::log::print("Raised soft FD limit to hard maximum %u (requested %u)", awh::log::flag_t::INFO, currentHard, limit);
 			#endif
 		// Если даже это не удалось
 		} else {
@@ -452,13 +453,13 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, currentHard, ::strerror(errno));
+				awh::log::debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::WARNING, currentHard, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, currentHard, ::strerror(errno));
+				awh::log::print("Failed to raise soft FD limit to %u: %s", awh::log::flag_t::WARNING, currentHard, ::strerror(errno));
 			#endif
 		}
 	#endif
@@ -495,7 +496,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Печатаем информационное сообщение
-			this->_log->print("Current FD limits: soft=%u, hard=%u", log_t::flag_t::INFO, result.first, result.second);
+			awh::log::print("Current FD limits: soft=%u, hard=%u", awh::log::flag_t::INFO, result.first, result.second);
 		#endif
 	/**
 	 * Для всех остальных операционных систем
@@ -516,13 +517,13 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -540,13 +541,13 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	#endif
@@ -584,13 +585,13 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::sockets(const uint32_t ma
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("WSAStartup failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					awh::log::debug("WSAStartup failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("WSAStartup failed", log_t::flag_t::CRITICAL);
+					awh::log::print("WSAStartup failed", awh::log::flag_t::CRITICAL);
 				#endif
 				// Возвращаем результат
 				return result;
@@ -635,13 +636,13 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::sockets(const uint32_t ma
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	/**
@@ -661,10 +662,8 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::sockets(const uint32_t ma
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::Files_Descriptors::Files_Descriptors(const log_t * log) noexcept : _log(log) {}
+awh::Files_Descriptors::Files_Descriptors() noexcept {}
 /**
  * @brief Деструктор
  *

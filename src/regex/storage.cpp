@@ -30,6 +30,7 @@
  */
 #include <ctime>
 #include <cstring>
+#include <sys/log.hpp>
 
 /**
  * Если сборка выполняется для операционной системы семейства Windows
@@ -1525,28 +1526,18 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 		// Выводим результат восстановления собранных выражений
 		return true;
 	/**
-	 * Если объект журнала событий передан
-	 *
-	 * @details Запись хранилища приходит извне - файлом либо сетью, - и порча её
-	 *          равно как и несовпадение вида записи есть происшествие, о каком
-	 *          потребителю знать надлежит: выражения молча не восстановятся вовсе.
-	 *
+	 * Если включён режим отладки
 	 */
-	if(this->_log != nullptr) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("Storage record of %zu bytes could not be restored: error %u", __PRETTY_FUNCTION__, make_tuple(blob ? blob->size() : 0), log_t::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("Storage record of %zu bytes could not be restored: error %u", log_t::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
-		#endif
-	}
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		awh::log::debug("Storage record of %zu bytes could not be restored: error %u", __PRETTY_FUNCTION__, {blob ? blob->size() : 0}, awh::log::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		awh::log::print("Storage record of %zu bytes could not be restored: error %u", awh::log::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
+	#endif
 	// Выводим результат восстановления собранных выражений
 	return false;
 }
@@ -2046,7 +2037,7 @@ bool awh::regex::Storage::restoring(const shared_ptr <const string> & blob, vect
 		  static_cast <uint32_t> (flag_t::NOTEMPTY) | static_cast <uint32_t> (flag_t::ATSTART))) == 0) &&
 		 !expression->forward.plain) {
 			// Создаём сопоставитель выражения в виде порождённого машинного кода
-			expression->machine = make_shared <codegen_t> (this->_log);
+			expression->machine = make_shared <codegen_t> ();
 			// Позиция чтения записи порождённого сопоставителя
 			size_t position = 0;
 			// Признак восстановления порождённого сопоставителя из записи

@@ -52,7 +52,7 @@ TEST_F(FiberFixture, FiberSpawnAndDestroyTest){
 	fiber::ctx_t * worker = fiber::spawn([&executed]() noexcept -> void {
 		// Отмечаем работу волокна выполненной
 		executed = true;
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Проверяем что заведённое волокно спит, а не работает
@@ -87,7 +87,7 @@ TEST_F(FiberFixture, FiberKeepsFrameAcrossYieldTest){
 		fiber::yield();
 		// Собираем итог, обращаясь к переменной кадра ПОСЛЕ сна
 		result = (before + "-после");
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Пробуждаем волокно: оно дойдёт до сна и вернёт управление
@@ -126,7 +126,7 @@ TEST_F(FiberFixture, FiberManyYieldsTest){
 			// Усыпляем волокно
 			fiber::yield();
 		}
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	/**
@@ -159,7 +159,7 @@ TEST_F(FiberFixture, FiberCurrentTest){
 	fiber::ctx_t * worker = fiber::spawn([&inside]() noexcept -> void {
 		// Запоминаем волокно, увиденное изнутри
 		inside = fiber::current();
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Пробуждаем волокно
@@ -204,7 +204,7 @@ TEST_F(FiberFixture, FiberSelfDestroyRefusedTest){
 		refused = !fiber::destroy(fiber::current());
 		// Отмечаем, что управление вернулось и работа продолжилась
 		survived = true;
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Пробуждаем волокно
@@ -230,7 +230,7 @@ TEST_F(FiberFixture, FiberNestedTest){
 		fiber::yield();
 		// Отмечаем возврат во внутреннее волокно
 		sign.append("[внутреннее:возврат]");
-	}, this->_log.get());
+	});
 	// Проверяем что внутреннее волокно заведено
 	ASSERT_NE(inner, nullptr);
 	// Внешнее волокно
@@ -245,7 +245,7 @@ TEST_F(FiberFixture, FiberNestedTest){
 		fiber::yield();
 		// Отмечаем возврат во внешнее волокно
 		sign.append("[внешнее:возврат]");
-	}, this->_log.get());
+	});
 	// Проверяем что внешнее волокно заведено
 	ASSERT_NE(outer, nullptr);
 	// Пробуждаем внешнее волокно
@@ -270,7 +270,7 @@ TEST_F(FiberFixture, FiberNestedTest){
  */
 TEST_F(FiberFixture, FiberSpawnWithoutTaskTest){
 	// Проверяем что волокно без работы не заводится
-	ASSERT_EQ(fiber::spawn(nullptr, this->_log.get()), nullptr);
+	ASSERT_EQ(fiber::spawn(nullptr), nullptr);
 }
 
 /**
@@ -285,7 +285,7 @@ TEST_F(FiberFixture, FiberDestroySuspendedRefusedTest){
 	fiber::ctx_t * worker = fiber::spawn([]() noexcept -> void {
 		// Усыпляем волокно
 		fiber::yield();
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Проверяем что заведённое, но ни разу не разбуженное волокно уничтожить нельзя
@@ -322,7 +322,7 @@ TEST_F(FiberFixture, FiberDismissSuspendedTest){
 			// Усыпляем волокно
 			fiber::yield();
 		}
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Прокручиваем тело волокна трижды
@@ -362,7 +362,7 @@ TEST_F(FiberFixture, FiberDismissIgnoredRefusedTest){
 		while(true)
 			// Усыпляем волокно
 			fiber::yield();
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Пробуждаем волокно: оно дойдёт до сна
@@ -405,7 +405,7 @@ TEST_F(FiberFixture, FiberSelfDismissTest){
 		EXPECT_FALSE(fiber::dismiss(worker));
 		// Запоминаем, увидело ли тело свой роспуск
 		noticed = fiber::dismissed();
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Пробуждаем волокно: оно распустит само себя и выйдет
@@ -444,7 +444,7 @@ TEST_F(FiberFixture, FiberResumeFinishedRefusedTest){
 	fiber::ctx_t * worker = fiber::spawn([&counter]() noexcept -> void {
 		// Считаем выполнение работы волокна
 		counter++;
-	}, this->_log.get());
+	});
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Пробуждаем волокно
@@ -472,7 +472,7 @@ TEST_F(FiberFixture, FiberHugeStackRefusedTest){
 	 */
 	#if (SIZE_MAX > 0xFFFFFFFFULL)
 		// Проверяем что волокно с непосильным стеком не заводится
-		ASSERT_EQ(fiber::spawn([]() noexcept -> void {}, (static_cast <size_t> (1) << 62), this->_log.get()), nullptr);
+		ASSERT_EQ(fiber::spawn([]() noexcept -> void {}, (static_cast <size_t> (1) << 62)), nullptr);
 	/**
 	 * Если разрядность машины 32-битная
 	 */
@@ -503,7 +503,7 @@ TEST_F(FiberFixture, FiberManyAliveTest){
 			fiber::yield();
 			// Собираем итог: каждое волокно пишет СВОЁ число
 			results[i] = (i + 1);
-		}, this->_log.get());
+		});
 		// Проверяем что волокно заведено
 		ASSERT_NE(worker, nullptr) << "волокно: " << i;
 		// Запоминаем заведённое волокно
@@ -554,7 +554,7 @@ TEST_F(FiberFixture, FiberSinglePageStackRunsTest){
 	fiber::ctx_t * worker = fiber::spawn([&executed]() noexcept -> void {
 		// Отмечаем работу волокна выполненной
 		executed = true;
-	}, static_cast <size_t> (::sysconf(_SC_PAGESIZE)), this->_log.get());
+	}, static_cast <size_t> (::sysconf(_SC_PAGESIZE)));
 	// Проверяем что волокно заведено
 	ASSERT_NE(worker, nullptr);
 	// Пробуждаем волокно
@@ -642,7 +642,7 @@ TEST_F(FiberFixture, FiberStackGuardPageTest){
 			probes[i] = static_cast <int32_t> (::write(sink[1], (stacks[i] - static_cast <std::ptrdiff_t> (page)), 1));
 			// Запоминаем код отказа
 			errors[i] = errno;
-		}, page, nullptr);
+		}, page);
 		// Проверяем что волокно заведено
 		ASSERT_NE(worker, nullptr) << "волокно: " << i;
 		// Запоминаем заведённое волокно

@@ -23,6 +23,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <client/client.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -41,9 +43,6 @@ using namespace placeholders;
 class Executor {
 	private:
 		// Объект фреймворка
-		[[maybe_unused]] const fmk_t * _fmk;
-		// Объект работы с логами
-		const log_t * _log;
 	public:
 		/**
 		 * @brief Метод обработки событий записи данных клиентом
@@ -53,7 +52,7 @@ class Executor {
 		 */
 		void write(const size_t size) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
-			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
+			awh::log::print("Client write event: %zu bytes", awh::log::flag_t::INFO, size);
 		}
 		/**
 		 * @brief Метод обработки событий чтения данных клиентом
@@ -67,9 +66,9 @@ class Executor {
 			// Если данные получены
 			if(size > 0)
 				// Записываем данные в лог
-				this->_log->print("%s", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
+				awh::log::print("%s", awh::log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
-			else this->_log->print("No data received", log_t::flag_t::WARNING);
+			else awh::log::print("No data received", awh::log::flag_t::WARNING);
 			// Останавливаем событие клиента
 			client->stop();
 		}
@@ -88,12 +87,12 @@ class Executor {
 				// Если событие клиента запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
 					// Записываем в лог сообщение об успешном запуске события клиента
-					this->_log->print("UDP client launched", log_t::flag_t::INFO);
+					awh::log::print("UDP client launched", awh::log::flag_t::INFO);
 				break;
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события клиента
-					this->_log->print("UDP client destroyed", log_t::flag_t::INFO);
+					awh::log::print("UDP client destroyed", awh::log::flag_t::INFO);
 				break;
 			}
 		}
@@ -107,7 +106,7 @@ class Executor {
 		 */
 		void launch(const string & address, const uint16_t port, client_t * client) noexcept {
 			// Записываем в лог сообщение о запуске клиента
-			this->_log->print("Client is launching to %s:%d", log_t::flag_t::INFO, address.c_str(), port);
+			awh::log::print("Client is launching to %s:%d", awh::log::flag_t::INFO, address.c_str(), port);
 			// Текст запроса к серверу
 			const string request =
 				"GET / HTTP/1.1\r\n"
@@ -118,7 +117,7 @@ class Executor {
 			// Если отправка данных данных клиентом на сервер не выполнена
 			if(client->send(request.c_str(), request.size()) == 0)
 				// Записываем ошибку в лог отправки данных клиентом на сервер
-				this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+				awh::log::print("Failed to send data to remote server", awh::log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки событий готовности клиента к работе
@@ -130,7 +129,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
-			this->_log->print("Client is ready to connect to remote server: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
+			awh::log::print("Client is ready to connect to remote server: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок клиента
@@ -141,17 +140,14 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
-			this->_log->print("Client error: %s", log_t::flag_t::CRITICAL, message.c_str());
+			awh::log::print("Client error: %s", awh::log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект логирования
-		 *
 		 */
-		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
+		Executor() {}
 };
 
 /**
@@ -161,16 +157,19 @@ class Executor {
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект исполнителя для обработки событий клиента
-	Executor executor(&fmk, &log);
+	Executor executor;
 	// Создаём объект DNS-резолвера
-	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
+	unit::dns_t dns(event::family_t::IPV4);
 	// Создаём объект клиента
-	client_t client(&dns, &fmk, &log);
+	client_t client(&dns);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор

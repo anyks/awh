@@ -37,6 +37,7 @@
  */
 #include <codec/csv/csv.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -56,44 +57,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -298,7 +269,7 @@ namespace {
 	 */
 	csv::error_t consume(const string & text, const csv::reader_t::settings_t & settings, const size_t chunk, vector <Event> & events, csv::location_t * position) noexcept {
 		// Чтение таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Смещение от начала таблицы
 		size_t offset = 0;
 		/**
@@ -654,7 +625,7 @@ namespace {
 	 */
 	bool roundtrip(const string & text, const csv::document_t::settings_t & settings) noexcept {
 		// Контейнер разбираемой таблицы
-		csv::document_t document(::logger(), settings);
+		csv::document_t document(settings);
 		/**
 		 * Если разбор таблицы не удался
 		 *
@@ -718,7 +689,7 @@ namespace {
 		// Выполняем учёт перезаписи таблицы
 		totals.rewrites++;
 		// Контейнер перезаписанной таблицы
-		csv::document_t reread(::logger(), settings);
+		csv::document_t reread(settings);
 		/**
 		 * Если разбор перезаписанной таблицы не удался
 		 *
@@ -813,7 +784,7 @@ namespace {
 	 */
 	bool rebuild(const string & text, const csv::document_t::settings_t & settings) noexcept {
 		// Контейнер разбираемой таблицы
-		csv::document_t document(::logger(), settings);
+		csv::document_t document(settings);
 		/**
 		 * Если разбор таблицы не удался
 		 */
@@ -821,7 +792,7 @@ namespace {
 			// Выводим результат проверки сборки таблицы
 			return true;
 			// Собираемая таблица, доливом наполняемая
-		csv::document_t built(::logger(), settings);
+		csv::document_t built(settings);
 		/**
 		 * Если заголовок таблицы объявлен
 		 */
@@ -956,7 +927,7 @@ namespace {
 		// Задаём запись метки порядка байтов
 		writing.signature = ((engine() % 2) == 0);
 		// Запись таблицы
-		csv::writer_t writer(::logger(), writing);
+		csv::writer_t writer(writing);
 		/**
 		 * Если записать запись не удалось
 		 *
@@ -1109,7 +1080,7 @@ namespace {
 	 */
 	bool streaming(const string & text, const csv::document_t::settings_t & settings) noexcept {
 		// Контейнер таблицы, собираемой целиком
-		csv::document_t document(::logger(), settings);
+		csv::document_t document(settings);
 		/**
 		 * Если разбор таблицы не удался
 		 */
@@ -1119,7 +1090,7 @@ namespace {
 		// Записи, выданные потоковым разбором
 		vector <vector <string>> records;
 		// Контейнер таблицы, разбираемой потоково
-		csv::document_t stream(::logger(), settings);
+		csv::document_t stream(settings);
 		// Выполняем потоковый разбор таблицы записями
 		stream.parse(text, [&records](const vector <string_view> & fields) noexcept -> bool {
 			// Поля очередной выданной записи
@@ -1196,6 +1167,13 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество выполняемых проходов генератора
 	uint64_t count = 3000;
 	/**

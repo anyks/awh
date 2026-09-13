@@ -29,6 +29,7 @@
  */
 #include <encoding/ascii.hpp>
 #include <codec/xml/encoding.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1368,45 +1369,28 @@ bool awh::codec::xml::Decoder::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки приведения
 	this->_error = error;
 	/**
-	 * Если объект ведения журнала работы установлен
+	 * Выполняем запись об отказе приведения в журнал
+	 *
+	 * @note Приведение работает над текстом, извне пришедшим, и негодность его беда
+	 *       не критическая - как и у разбора. Оттого запись идёт предупреждением
 	 */
-	if(this->_log != nullptr){
-		/**
-		 * Выполняем запись об отказе приведения в журнал
-		 *
-		 * @note Приведение работает над текстом, извне пришедшим, и негодность его беда
-		 *       не критическая - как и у разбора. Оттого запись идёт предупреждением
-		 */
-		#if DEBUG_MODE
-			// Записываем отказ приведения в журнал работы
-			this->_log->debug("XML decoding failed: %s", __PRETTY_FUNCTION__, ::std::make_tuple(),
-			                  log_t::flag_t::WARNING, message(error));
-		#else
-			// Записываем отказ приведения в журнал работы
-			this->_log->print("XML decoding failed: %s", log_t::flag_t::WARNING, message(error));
-		#endif
-	}
+	#if DEBUG_MODE
+		// Записываем отказ приведения в журнал работы
+		awh::log::debug("XML decoding failed: %s", __PRETTY_FUNCTION__, {},
+		                  awh::log::flag_t::WARNING, message(error));
+	#else
+		// Записываем отказ приведения в журнал работы
+		awh::log::print("XML decoding failed: %s", awh::log::flag_t::WARNING, message(error));
+	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
 }
 /**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::xml::Decoder::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-}
-/**
  * @brief Конструктор
  *
- * @param log объект ведения журнала работы
- *
  */
-awh::codec::xml::Decoder::Decoder(const log_t * log) noexcept :
- _encoding(encoding_t::NONE), _error(error_t::NONE), _log(log), _forced(false), _marked(false),
+awh::codec::xml::Decoder::Decoder() noexcept :
+ _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false), _marked(false),
  _signed(false), _started(false), _length(0), _surrogate(0) {
 	// Выполняем сброс удержанных байтов последовательности
 	::memset(this->_pending, 0, sizeof(this->_pending));

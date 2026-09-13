@@ -31,11 +31,11 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <sys/macro/lib.hpp>
 #include <alloc/alloc.hpp>
 #include <alloc/keeper.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -207,15 +207,18 @@ static void expense() noexcept {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Параметры приложения здесь не нужны
 	static_cast <void> (argc);
 	static_cast <void> (argv);
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект журнала
-	log_t log(&fmk);
 	// Устанавливаем название приложения журналу
-	log.name(AWH_SHORT_NAME);
+	awh::log::name(AWH_SHORT_NAME);
 	// Показываем прямую выдачу укрытой памяти
 	::direct();
 	// Показываем хранилища языка на укрытой памяти

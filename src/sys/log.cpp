@@ -1,5 +1,5 @@
 /**
- * @file log.cpp
+ * @file logger.cpp
  * @date 2025-10-25
  *
  * @license{LicenseRef-AWH-1.0}
@@ -73,16 +73,59 @@
 	/**
 	 * Системные заголовочные файлы для работы с syslog и обходом каталогов
 	 */
-	#include <dirent.h>
+	#include <sys/dirent.hpp>
 	#include <syslog.h>
 #endif
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Если перенос строки лога не установлен
+	 */
+	#ifndef AWH_STRING_BREAK
+		// Формируем перенос строк лога
+		#define AWH_STRING_BREAK "\r\n"
+	#endif
+	/**
+	 * Если переносы строки лога не установлены
+	 */
+	#ifndef AWH_STRING_BREAKS
+		// Формируем переносы строк лога
+		#define AWH_STRING_BREAKS AWH_STRING_BREAK"" AWH_STRING_BREAK
+	#endif
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	/**
+	 * Если перенос строки лога не установлен
+	 */
+	#ifndef AWH_STRING_BREAK
+		// Формируем перенос строк лога
+		#define AWH_STRING_BREAK "\n"
+	#endif
+	/**
+	 * Если переносы строки лога не установлены
+	 */
+	#ifndef AWH_STRING_BREAKS
+		// Формируем переносы строк лога
+		#define AWH_STRING_BREAKS AWH_STRING_BREAK"" AWH_STRING_BREAK
+	#endif
+#endif
+
 
 /**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/os.hpp>
-#include <sys/log.hpp>
+#include <sys/fmk.hpp>
+#include <sys/locker.hpp>
+#include <sys/chrono.hpp>
+#include <sys/screen.hpp>
 #include <sys/macro/lib.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -94,6 +137,439 @@ using namespace std;
  */
 using namespace placeholders;
 
+namespace awh {
+/**
+ * @brief Пространство имён работы с логами
+ *
+ */
+namespace log {
+/**
+ * @brief Пространство имён внутреннего устройства модуля логирования
+ *
+ * @details Полезная нагрузка, приёмники вывода и состояние модуля наружу не выставляются:
+ *          заголовочный файл несёт только договор, а всё устройство заведено здесь.
+ *
+ */
+namespace {
+	/**
+	 * @brief Класс полезной нагрузки
+	 *
+	 * @details Полезная нагрузка формируется в момент вызова логирования и содержит
+	 *          текст сообщения, дату формирования и флаг типа сообщения.
+	 *
+	 */
+	typedef class Payload {
+		public:
+			// Флаг полезной нагрузки
+			flag_t flag;
+			// Текст полезной нагрузки
+			string text;
+			// Дата формирования сообщения (фиксируется в момент вызова)
+			string date;
+		public:
+			/**
+			 * @brief Оператор перемещающего присваивания параметров полезной нагрузки
+			 *
+			 * @param payload объект полезной нагрузки для перемещения
+			 * @return        текущий объект полезной нагрузки
+			 *
+			 */
+			Payload & operator = (Payload && payload) noexcept;
+			/**
+			 * @brief Оператор присваивания присваивания параметров полезной нагрузки
+			 *
+			 * @param payload объект полезной нагрузки для копирования
+			 * @return        текущий объект полезной нагрузки
+			 *
+			 */
+			Payload & operator = (const Payload & payload) noexcept;
+		public:
+			/**
+			 * @brief Оператор сравнения
+			 *
+			 * @param payload объект полезной нагрузки для сравнения
+			 * @return        результат сравнения
+			 *
+			 */
+			bool operator == (const Payload & payload) noexcept;
+		public:
+			/**
+			 * @brief Конструктор перемещения
+			 *
+			 * @param payload объект полезной нагрузки для перемещения
+			 *
+			 */
+			explicit Payload(Payload && payload) noexcept;
+			/**
+			 * @brief Конструктор копирования
+			 *
+			 * @param payload объект полезной нагрузки для копирования
+			 *
+			 */
+			explicit Payload(const Payload & payload) noexcept;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Payload() noexcept;
+		public:
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Payload() noexcept = default;
+	} payload_t;
+	/**
+	 * @brief Базовый абстрактный приёмник вывода логов
+	 *
+	 * @details Приёмник вывода логов может быть реализован в виде консольного вывода,
+	 *          записи в файл, отправки в SysLog или передачи в функцию обратного вызова.
+	 *
+	 * @note Обратного указателя на владеющий объект приёмник больше не несёт:
+	 *       состояние модуля единственно на процесс и берётся напрямую.
+	 *
+	 */
+	class Sink {
+		public:
+			/**
+			 * @brief Метод записи полезной нагрузки в приёмник
+			 *
+			 * @param payload объект полезной нагрузки
+			 *
+			 */
+			virtual void write(const payload_t & payload) const noexcept = 0;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			Sink() noexcept = default;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~Sink() noexcept = default;
+	};
+	/**
+	 * @brief Приёмник вывода логов в консоль
+	 *
+	 */
+	class ConsoleSink : public Sink {
+		public:
+			/**
+			 * @brief Метод записи полезной нагрузки в консоль
+			 *
+			 * @param payload объект полезной нагрузки
+			 *
+			 */
+			void write(const payload_t & payload) const noexcept override;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			ConsoleSink() noexcept = default;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~ConsoleSink() noexcept = default;
+	};
+	/**
+	 * @brief Приёмник вывода логов в файл
+	 *
+	 */
+	class FileSink : public Sink {
+		private:
+			// Идентификатор процесса, владеющего дескриптором
+			mutable pid_t _pid;
+		private:
+			// Постоянный дескриптор записи (на POSIX - файловый дескриптор, на Windows - HANDLE)
+			mutable intptr_t _fd;
+		private:
+			// Путь к файлу, который сейчас открыт
+			mutable string _opened;
+			// Текущий размер открытого файла лога
+			mutable uintmax_t _size;
+		private:
+			/**
+			 * @brief Метод (пере)открытия постоянного дескриптора записи
+			 *
+			 */
+			void reopen() const noexcept;
+			/**
+			 * @brief Метод выполнения ротации файла лога
+			 *
+			 */
+			void rotate() const noexcept;
+			/**
+			 * @brief Метод удаления устаревших архивов логов (retention)
+			 *
+			 */
+			void retention() const noexcept;
+		private:
+			/**
+			 * @brief Метод формирования уникального имени архива логов
+			 *
+			 * @return путь к файлу архива, гарантированно не конфликтующий с существующими
+			 *
+			 */
+			string nextArchive() const noexcept;
+		public:
+			/**
+			 * @brief Метод записи полезной нагрузки в файл
+			 *
+			 * @param payload объект полезной нагрузки
+			 *
+			 */
+			void write(const payload_t & payload) const noexcept override;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			FileSink() noexcept;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~FileSink() noexcept;
+	};
+	/**
+	 * @brief Приёмник отправки логов в SysLog
+	 *
+	 */
+	class SyslogSink : public Sink {
+		public:
+			/**
+			 * @brief Метод отправки полезной нагрузки в SysLog
+			 *
+			 * @param payload объект полезной нагрузки
+			 *
+			 */
+			void write(const payload_t & payload) const noexcept override;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			SyslogSink() noexcept = default;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~SyslogSink() noexcept = default;
+	};
+	/**
+	 * @brief Приёмник передачи логов в функцию обратного вызова
+	 *
+	 */
+	class CallbackSink : public Sink {
+		public:
+			/**
+			 * @brief Метод передачи полезной нагрузки в функцию обратного вызова
+			 *
+			 * @param payload объект полезной нагрузки
+			 *
+			 */
+			void write(const payload_t & payload) const noexcept override;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			CallbackSink() noexcept = default;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			virtual ~CallbackSink() noexcept = default;
+	};
+}
+/**
+ * @brief Пространство имён состояния модуля логирования
+ *
+ */
+namespace {
+	/**
+	 * @brief Класс состояния модуля логирования
+	 *
+	 * @details Состояние заведено единственным на процесс: настройка журнала в пределах
+	 *          приложения одна, отчего передавать её объектом больше не требуется.
+	 *
+	 */
+	class State {
+		public:
+			// Флаг асинхронного режима работы
+			bool _async;
+		public:
+			// Уровень логирования
+			level_t _level;
+		public:
+			// Флаг формирования разделителя
+			separator_t _sep;
+		public:
+			// Название сервиса для вывода лога
+			string _name;
+			// Формат даты и времени для вывода лога
+			string _format;
+			// Адрес файла для сохранения логов
+			string _filename;
+		public:
+			// Максимальный размер файла лога
+			size_t _maxSize;
+			// Размер сообщения для формирования разделителя
+			size_t _sepSize;
+			// Максимальный размер очереди асинхронного вывода (0 - без ограничения)
+			size_t _maxQueue;
+			// Максимальное количество хранимых архивов логов (0 - без ограничения)
+			size_t _maxFiles;
+		public:
+			// Объект работы с датой и временем
+			awh::chrono_t _chrono;
+		public:
+			// Политика поведения при переполнении очереди асинхронного вывода
+			overflow_t _overflow;
+		public:
+			// Список доступных флагов
+			unordered_set <mode_t> _mode;
+		public:
+			// Идентификатор процесса, владеющего асинхронным потоком
+			mutable atomic <pid_t> _pid;
+		public:
+			// Счётчик для сброса накопленных логов
+			mutable atomic_uint8_t _counter;
+		public:
+			// Объект работы с дочерними потоками
+			mutable awh::screen_t <payload_t> _screen;
+		public:
+			// Мютекс для блокировки потока
+			mutable awh::lock_state_t <std::mutex> _mtx;
+		public:
+			// Набор приёмников вывода логов, построенный по текущему списку режимов
+			mutable vector <unique_ptr <Sink>> _sinks;
+		public:
+			// Функция обратного вызова которая срабатывает при появлении лога
+			function <void (const flag_t, string_view)> _callback;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			State() noexcept;
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~State() noexcept;
+	};
+	/**
+	 * @brief Функция получения состояния модуля логирования
+	 *
+	 * @details Состояние заводится при первом обращении: так снимается зависимость
+	 *          от порядка построения статических объектов приложения.
+	 *
+	 * @return состояние модуля логирования
+	 *
+	 */
+	State & state() noexcept {
+		// Выполняем создание состояния модуля логирования
+		static State instance;
+		// Возвращаем созданное состояние
+		return instance;
+	}
+}
+}
+}
+
+namespace awh {
+/**
+ * @brief Пространство имён работы с логами
+ *
+ */
+namespace log {
+/**
+ * @brief Пространство имён предварительных объявлений служебных средств
+ *
+ * @details Объявления нужны приёмникам вывода, которые зовут построение строки лога
+ *          до того, как она описана ниже по файлу.
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция построения набора приёмников вывода логов
+	 *
+	 * @details Состояние принимается доводом затем, что построение выполняется в том числе
+	 *          из конструктора состояния, когда обращаться к нему через state() ещё нельзя:
+	 *          объект на тот миг только строится.
+	 *
+	 * @param self состояние модуля логирования
+	 *
+	 */
+	void rebuild(State & self) noexcept;
+	/**
+	 * @brief Функция проверки разрешения на вывод лога
+	 *
+	 * @param flag флаг типа логирования
+	 * @return     результат проверки
+	 *
+	 */
+	bool allowed(const flag_t flag) noexcept;
+	/**
+	 * @brief Функция очистки текста от символов форматирования
+	 *
+	 * @param text текст для очистки
+	 * @return     очищенный текст
+	 *
+	 */
+	string & cleaner(string & text) noexcept;
+	/**
+	 * @brief Функция передачи полезной нагрузки в приёмники вывода
+	 *
+	 * @param payload объект полезной нагрузки
+	 *
+	 */
+	void dispatch(payload_t && payload) noexcept;
+	/**
+	 * @brief Функция получения полезной нагрузки из очереди асинхронного вывода
+	 *
+	 * @param payload объект полезной нагрузки
+	 *
+	 */
+	void receiving(const payload_t & payload) noexcept;
+	/**
+	 * @brief Функция разбора адреса файла лога на составляющие
+	 *
+	 * @param filename адрес файла лога
+	 * @return         каталог и название файла
+	 *
+	 */
+	pair <string, string> components(string_view filename) noexcept;
+	/**
+	 * @brief Функция построения текста лога
+	 *
+	 * @param payload объект полезной нагрузки
+	 * @param colored флаг цветового форматирования
+	 * @return        построенный текст лога
+	 *
+	 */
+	string compose(const payload_t & payload, const bool colored) noexcept;
+}
+}
+}
+
+namespace awh {
+/**
+ * @brief Пространство имён работы с логами
+ *
+ */
+namespace log {
+namespace {
+/**
+ * @brief Устройство полезной нагрузки, приёмников и служебных средств
+ *
+ */
 /**
  * @brief Оператор перемещающего присваивания параметров полезной нагрузки
  *
@@ -101,7 +577,7 @@ using namespace placeholders;
  * @return        текущий объект полезной нагрузки
  *
  */
-awh::Logging::Payload & awh::Logging::Payload::operator = (payload_t && payload) noexcept {
+Payload & Payload::operator = (payload_t && payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем перемещение текста
@@ -118,7 +594,7 @@ awh::Logging::Payload & awh::Logging::Payload::operator = (payload_t && payload)
  * @return        текущий объект полезной нагрузки
  *
  */
-awh::Logging::Payload & awh::Logging::Payload::operator = (const payload_t & payload) noexcept {
+Payload & Payload::operator = (const payload_t & payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем копирование текста
@@ -135,7 +611,7 @@ awh::Logging::Payload & awh::Logging::Payload::operator = (const payload_t & pay
  * @return        результат сравнения
  *
  */
-bool awh::Logging::Payload::operator == (const payload_t & payload) noexcept {
+bool Payload::operator == (const payload_t & payload) noexcept {
 	// Выполняем проверку полезной нагрузки
 	return (
 		(this->flag == payload.flag) &&
@@ -148,7 +624,7 @@ bool awh::Logging::Payload::operator == (const payload_t & payload) noexcept {
  * @param payload объект полезной нагрузки для перемещения
  *
  */
-awh::Logging::Payload::Payload(payload_t && payload) noexcept {
+Payload::Payload(payload_t && payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем перемещение текста
@@ -162,7 +638,7 @@ awh::Logging::Payload::Payload(payload_t && payload) noexcept {
  * @param payload объект полезной нагрузки для копирования
  *
  */
-awh::Logging::Payload::Payload(const payload_t & payload) noexcept {
+Payload::Payload(const payload_t & payload) noexcept {
 	// Выполняем установку флага
 	this->flag = payload.flag;
 	// Выполняем копирование текста
@@ -174,15 +650,8 @@ awh::Logging::Payload::Payload(const payload_t & payload) noexcept {
  * @brief Конструктор
  *
  */
-awh::Logging::Payload::Payload() noexcept : flag(flag_t::NONE), text{""}, date{""} {}
+Payload::Payload() noexcept : flag(flag_t::NONE), text{""}, date{""} {}
 
-/**
- * @brief Конструктор
- *
- * @param log объект логирования
- *
- */
-awh::Logging::Sink::Sink(const Logging * log) noexcept : _log(log) {}
 
 /**
  * @brief Метод записи полезной нагрузки в консоль
@@ -190,19 +659,17 @@ awh::Logging::Sink::Sink(const Logging * log) noexcept : _log(log) {}
  * @param payload объект полезной нагрузки
  *
  */
-void awh::Logging::ConsoleSink::write(const payload_t & payload) const noexcept {
-	// Получаем указатель на владеющий объект логирования
-	const Logging * self = this->_log;
+void ConsoleSink::write(const payload_t & payload) const noexcept {
 	// Если тип сообщения не является пустым
 	if(payload.flag != flag_t::NONE){
 		/**
 		 * Определяем флаг формирования разделителя
 		 */
-		switch(static_cast <uint8_t> (self->_sep)){
+		switch(static_cast <uint8_t> (state()._sep)){
 			// Если разделитель нужно отобразить с учётом размера текста
 			case static_cast <uint8_t> (separator_t::SMART): {
 				// Если размер текста соответствует размеру лога
-				if(payload.text.length() >= self->_sepSize)
+				if(payload.text.length() >= state()._sepSize)
 					// Возвращаем обозначение начала вывода лога
 					cout << "*************** START ***************" << endl << endl;
 			} break;
@@ -214,17 +681,17 @@ void awh::Logging::ConsoleSink::write(const payload_t & payload) const noexcept 
 		}
 	}
 	// Выводим сформированное сообщение лога с символами цветового форматирования
-	cout << self->compose(payload, true);
+	cout << compose(payload, true);
 	// Если тип сообщения не является пустым
 	if(payload.flag != flag_t::NONE){
 		/**
 		 * Определяем флаг формирования разделителя
 		 */
-		switch(static_cast <uint8_t> (self->_sep)){
+		switch(static_cast <uint8_t> (state()._sep)){
 			// Если разделитель нужно отобразить с учётом размера текста
 			case static_cast <uint8_t> (separator_t::SMART): {
 				// Если размер текста соответствует размеру лога
-				if(payload.text.length() >= self->_sepSize)
+				if(payload.text.length() >= state()._sepSize)
 					// Возвращаем обозначение конца вывода лога
 					cout << "---------------- END ----------------" << endl << endl;
 			} break;
@@ -236,27 +703,18 @@ void awh::Logging::ConsoleSink::write(const payload_t & payload) const noexcept 
 		}
 	}
 	// Увеличиваем счётчик для принудительного сброса накопленных логов
-	self->_counter.fetch_add(1, std::memory_order_relaxed);
+	state()._counter.fetch_add(1, std::memory_order_relaxed);
 	// Если мы прошли полный круг счётчика
-	if(self->_counter.load(std::memory_order_acquire) == 0)
+	if(state()._counter.load(std::memory_order_acquire) == 0)
 		// Выполняем сброс накопленных логов
 		cout << flush;
 }
-/**
- * @brief Конструктор
- *
- * @param log объект логирования
- *
- */
-awh::Logging::ConsoleSink::ConsoleSink(const Logging * log) noexcept : Sink(log) {}
 
 /**
  * @brief Метод (пере)открытия постоянного дескриптора записи
  *
  */
-void awh::Logging::FileSink::reopen() const noexcept {
-	// Получаем указатель на владеющий объект логирования
-	const Logging * self = this->_log;
+void FileSink::reopen() const noexcept {
 	// Если дескриптор ранее был открыт, закрываем его
 	if(this->_fd != -1){
 		/**
@@ -280,7 +738,7 @@ void awh::Logging::FileSink::reopen() const noexcept {
 	 */
 	#if _WIN32 || _WIN64
 		// Открываем файл лога на дозапись (FILE_APPEND_DATA обеспечивает атомарную дозапись)
-		HANDLE handle = ::CreateFileW(self->_fmk->convert(self->_filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+		HANDLE handle = ::CreateFileW(awh::fmk::convert(state()._filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 		// Если файл открыт нормально
 		if(handle != INVALID_HANDLE_VALUE){
 			// Запоминаем дескриптор файла
@@ -301,7 +759,7 @@ void awh::Logging::FileSink::reopen() const noexcept {
 	 */
 	#else
 		// Открываем файл лога на дозапись (O_APPEND гарантирует атомарную дозапись между процессами)
-		this->_fd = ::open(self->_filename.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+		this->_fd = ::open(state()._filename.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
 		// Структура для получения статистики файла
 		struct stat info;
 		// Получаем текущий размер файла лога единоразово при открытии
@@ -310,15 +768,13 @@ void awh::Logging::FileSink::reopen() const noexcept {
 	// Запоминаем идентификатор текущего процесса
 	this->_pid = ::getpid();
 	// Запоминаем путь открытого файла
-	this->_opened = self->_filename;
+	this->_opened = state()._filename;
 }
 /**
  * @brief Метод выполнения ротации файла лога
  *
  */
-void awh::Logging::FileSink::rotate() const noexcept {
-	// Получаем указатель на владеющий объект логирования
-	const Logging * self = this->_log;
+void FileSink::rotate() const noexcept {
 	// Формируем уникальное имя архива (без коллизий в пределах одной секунды)
 	const string archive = this->nextArchive();
 	/**
@@ -326,7 +782,7 @@ void awh::Logging::FileSink::rotate() const noexcept {
 	 */
 	#if _WIN32 || _WIN64
 		// Получаем путь к исходному файлу лога
-		const wstring & filename = self->_fmk->convert(self->_filename);
+		const wstring & filename = awh::fmk::convert(state()._filename);
 		// Открываем исходный файл лога на чтение
 		HANDLE file = ::CreateFileW(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 		// Если файл открыт нормально
@@ -334,7 +790,7 @@ void awh::Logging::FileSink::rotate() const noexcept {
 			// Флаг успешности сжатия
 			bool success = false;
 			// Открываем файл архива на сжатие
-			gzFile gz = ::gzopen_w(self->_fmk->convert(archive).c_str(), "wb9h");
+			gzFile gz = ::gzopen_w(awh::fmk::convert(archive).c_str(), "wb9h");
 			// Если файл архива открыт удачно
 			if(gz != nullptr){
 				// Буфер потокового чтения данных (64 Кб)
@@ -358,7 +814,7 @@ void awh::Logging::FileSink::rotate() const noexcept {
 				// Выполняем формирование текста ошибки
 				::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
 				// Возвращаем текст полученной ошибки
-				::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", self->_fmk->convert(message).c_str());
+				::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", awh::fmk::convert(message).c_str());
 			}
 			// Выполняем закрытие исходного файла
 			::CloseHandle(file);
@@ -376,7 +832,7 @@ void awh::Logging::FileSink::rotate() const noexcept {
 		// Если файл архива открыт удачно
 		if(gz != nullptr){
 			// Открываем исходный файл лога на чтение
-			ifstream file(self->_filename, ios::in | ios::binary);
+			ifstream file(state()._filename, ios::in | ios::binary);
 			// Если файл открыт
 			if(file.is_open()){
 				// Буфер потокового чтения данных (64 Кб)
@@ -400,7 +856,7 @@ void awh::Logging::FileSink::rotate() const noexcept {
 			// Закрываем сжатый файл
 			::gzclose(gz);
 			// Удаляем исходный файл логов только после успешного сжатия
-			::unlink(self->_filename.c_str());
+			::unlink(state()._filename.c_str());
 		// Если произошла ошибка сжатия, исходный файл не удаляем (во избежание потери данных)
 		} else ::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", ::strerror(errno));
 	#endif
@@ -411,15 +867,13 @@ void awh::Logging::FileSink::rotate() const noexcept {
  * @brief Метод удаления устаревших архивов логов (retention)
  *
  */
-void awh::Logging::FileSink::retention() const noexcept {
-	// Получаем указатель на владеющий объект логирования
-	const Logging * self = this->_log;
+void FileSink::retention() const noexcept {
 	// Если ограничение на количество архивов не установлено, выходим
-	if(self->_maxFiles == 0)
+	if(state()._maxFiles == 0)
 		// Выходим из метода
 		return;
 	// Получаем компоненты адреса файла лога
-	const auto & cmp = self->components(self->_filename);
+	const auto & cmp = components(state()._filename);
 	// Определяем каталог хранения архивов
 	const string dir = (cmp.first.empty() ? string{"./"} : cmp.first);
 	// Базовое имя файла лога без расширения
@@ -435,7 +889,7 @@ void awh::Logging::FileSink::retention() const noexcept {
 	 */
 	#if _WIN32 || _WIN64
 		// Формируем маску поиска архивов
-		const wstring & mask = self->_fmk->convert(self->_fmk->format("%s%s*.gz", dir.c_str(), base.c_str()));
+		const wstring & mask = awh::fmk::convert(awh::fmk::format("%s%s*.gz", dir.c_str(), base.c_str()));
 		// Структура данных результата поиска
 		WIN32_FIND_DATAW data;
 		// Выполняем поиск первого файла по маске
@@ -451,14 +905,14 @@ void awh::Logging::FileSink::retention() const noexcept {
 					// Переходим к следующему файлу
 					continue;
 				// Получаем имя найденного файла
-				const string name = self->_fmk->convert(data.cFileName);
+				const string name = awh::fmk::convert(data.cFileName);
 				// Пропускаем файлы, не являющиеся архивами лога (имя должно иметь вид <base>_...gz)
 				if((name.length() <= (base.length() + 3)) || (name.compare(0, base.length(), base) != 0) ||
 				   (name[base.length()] != '_') || (name.compare(name.length() - 3, 3, ".gz") != 0))
 					// Переходим к следующему файлу
 					continue;
 				// Формируем полный путь к архиву
-				const string & full = self->_fmk->format("%s%s", dir.c_str(), name.c_str());
+				const string & full = awh::fmk::format("%s%s", dir.c_str(), name.c_str());
 				// Формируем время модификации файла
 				const uintmax_t mtime = ((static_cast <uintmax_t> (data.ftLastWriteTime.dwHighDateTime) << 32) | data.ftLastWriteTime.dwLowDateTime);
 				// Добавляем архив в список
@@ -475,15 +929,15 @@ void awh::Logging::FileSink::retention() const noexcept {
 	 */
 	#else
 		// Открываем каталог хранения архивов
-		DIR * directory = ::opendir(dir.c_str());
+		awh::dir::DIR * directory = awh::dir::opendir(dir.c_str());
 		// Если каталог открыт
 		if(directory != nullptr){
 			// Объект записи каталога
-			struct dirent * entry = nullptr;
+			awh::dir::dirent * entry = nullptr;
 			/**
 			 * Перебираем все записи каталога
 			 */
-			while((entry = ::readdir(directory)) != nullptr){
+			while((entry = awh::dir::readdir(directory)) != nullptr){
 				// Получаем имя файла
 				const string name = entry->d_name;
 				// Проверяем что имя начинается с базового имени лога и оканчивается на .gz
@@ -500,18 +954,18 @@ void awh::Logging::FileSink::retention() const noexcept {
 				}
 			}
 			// Закрываем каталог
-			::closedir(directory);
+			awh::dir::closedir(directory);
 		}
 	#endif
 	// Если количество архивов превышает установленный лимит
-	if(archives.size() > self->_maxFiles){
+	if(archives.size() > state()._maxFiles){
 		// Выполняем сортировку архивов по времени модификации (от старых к новым)
 		std::sort(archives.begin(), archives.end(), [](const auto & a, const auto & b) noexcept -> bool {
 			// Сравниваем время модификации
 			return (a.second < b.second);
 		});
 		// Вычисляем количество архивов для удаления
-		const size_t count = (archives.size() - self->_maxFiles);
+		const size_t count = (archives.size() - state()._maxFiles);
 		/**
 		 * Удаляем самые старые архивы сверх установленного лимита
 		 */
@@ -521,7 +975,7 @@ void awh::Logging::FileSink::retention() const noexcept {
 			 */
 			#if _WIN32 || _WIN64
 				// Удаляем устаревший архив
-				::_wunlink(self->_fmk->convert(archives.at(i).first).c_str());
+				::_wunlink(awh::fmk::convert(archives.at(i).first).c_str());
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
@@ -538,27 +992,24 @@ void awh::Logging::FileSink::retention() const noexcept {
  * @return путь к файлу архива, гарантированно не конфликтующий с существующими
  *
  */
-string awh::Logging::FileSink::nextArchive() const noexcept {
-	// Получаем указатель на владеющий объект логирования
-	const Logging * self = this->_log;
+string FileSink::nextArchive() const noexcept {
 	// Получаем компоненты адреса файла лога
-	const auto & cmp = self->components(self->_filename);
+	const auto & cmp = components(state()._filename);
 	// Выполняем извлечение даты для имени архива
-	const string & date = self->_chrono.format("_%m-%d-%Y_%H-%M-%S");
+	const string & date = state()._chrono.format("_%m-%d-%Y_%H-%M-%S");
 	// Лямбда проверки существования файла
-	auto exists = [self](const string & path) noexcept -> bool {
+	auto exists = [](const string & path) noexcept -> bool {
 		/**
 		 * Для операционной системы MS Windows
 		 */
 		#if _WIN32 || _WIN64
 			// Проверяем существование файла по его атрибутам
-			return (::GetFileAttributesW(self->_fmk->convert(path).c_str()) != INVALID_FILE_ATTRIBUTES);
+			return (::GetFileAttributesW(awh::fmk::convert(path).c_str()) != INVALID_FILE_ATTRIBUTES);
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
 			// Подавляем предупреждение о неиспользуемом параметре захвата
-			(void) self;
 			// Структура для получения статистики файла
 			struct stat info{};
 			// Проверяем существование файла
@@ -566,7 +1017,7 @@ string awh::Logging::FileSink::nextArchive() const noexcept {
 		#endif
 	};
 	// Формируем базовое имя архива
-	string path = self->_fmk->format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.c_str());
+	string path = awh::fmk::format("%s%s%s.gz", cmp.first.c_str(), cmp.second.c_str(), date.c_str());
 	// Если архив с таким именем уже существует (несколько ротаций в течение одной секунды)
 	if(exists(path)){
 		/**
@@ -574,7 +1025,7 @@ string awh::Logging::FileSink::nextArchive() const noexcept {
 		 */
 		for(uint32_t i = 1; i > 0; i++){
 			// Формируем имя архива с порядковым индексом
-			const string candidate = self->_fmk->format("%s%s%s_%u.gz", cmp.first.c_str(), cmp.second.c_str(), date.c_str(), i);
+			const string candidate = awh::fmk::format("%s%s%s_%u.gz", cmp.first.c_str(), cmp.second.c_str(), date.c_str(), i);
 			// Если файла с таким именем нет, используем его
 			if(!exists(candidate)){
 				// Запоминаем найденное свободное имя
@@ -593,26 +1044,24 @@ string awh::Logging::FileSink::nextArchive() const noexcept {
  * @param payload объект полезной нагрузки
  *
  */
-void awh::Logging::FileSink::write(const payload_t & payload) const noexcept {
-	// Получаем указатель на владеющий объект логирования
-	const Logging * self = this->_log;
+void FileSink::write(const payload_t & payload) const noexcept {
 	// Если файл для вывода лога не указан, выходим
-	if(self->_filename.empty())
+	if(state()._filename.empty())
 		// Выходим из метода
 		return;
 	// Формируем запись с очищенным от управляющих символов текстом
 	payload_t record(payload);
 	// Выполняем очистку текста от символов форматирования
-	self->cleaner(record.text);
+	cleaner(record.text);
 	// Формируем строку лога без символов цветового форматирования
-	const string line = self->compose(record, false);
+	const string line = compose(record, false);
 	// Получаем идентификатор текущего процесса
 	const pid_t pid = ::getpid();
 	/**
 	 * (Пере)открываем дескриптор если: он ещё не открыт, изменился путь файла,
 	 * или мы оказались в дочернем процессе после fork (унаследованный дескриптор).
 	 */
-	if((this->_fd == -1) || (this->_opened != self->_filename) || (this->_pid != pid))
+	if((this->_fd == -1) || (this->_opened != state()._filename) || (this->_pid != pid))
 		// Выполняем (пере)открытие постоянного дескриптора записи
 		this->reopen();
 	// Если дескриптор открыть не удалось, выходим
@@ -683,7 +1132,7 @@ void awh::Logging::FileSink::write(const payload_t & payload) const noexcept {
 	// Увеличиваем накопленный размер файла лога
 	this->_size += line.size();
 	// Если накопленный размер файла превышает максимально-установленный
-	if(this->_size >= self->_maxSize){
+	if(this->_size >= state()._maxSize){
 		/**
 		 * Для операционной системы MS Windows
 		 */
@@ -708,16 +1157,14 @@ void awh::Logging::FileSink::write(const payload_t & payload) const noexcept {
 /**
  * @brief Конструктор
  *
- * @param log объект логирования
- *
  */
-awh::Logging::FileSink::FileSink(const Logging * log) noexcept :
- Sink(log), _pid(0), _fd(-1), _opened{""}, _size(0) {}
+FileSink::FileSink() noexcept :
+ Sink(), _pid(0), _fd(-1), _opened{""}, _size(0) {}
 /**
  * @brief Деструктор
  *
  */
-awh::Logging::FileSink::~FileSink() noexcept {
+FileSink::~FileSink() noexcept {
 	// Если дескриптор открыт, закрываем его
 	if(this->_fd != -1){
 		/**
@@ -744,15 +1191,13 @@ awh::Logging::FileSink::~FileSink() noexcept {
  * @param payload объект полезной нагрузки
  *
  */
-void awh::Logging::SyslogSink::write(const payload_t & payload) const noexcept {
+void SyslogSink::write(const payload_t & payload) const noexcept {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Получаем указатель на владеющий объект логирования
-		const Logging * self = this->_log;
 		// Открываем SysLog для нашего приложения
-		::openlog(!self->_name.empty() ? self->_name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
+		::openlog(!state()._name.empty() ? state()._name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
 		// Уровень сообщения SysLog
 		int32_t priority = LOG_NOTICE;
 		/**
@@ -792,13 +1237,6 @@ void awh::Logging::SyslogSink::write(const payload_t & payload) const noexcept {
 		(void) payload;
 	#endif
 }
-/**
- * @brief Конструктор
- *
- * @param log объект логирования
- *
- */
-awh::Logging::SyslogSink::SyslogSink(const Logging * log) noexcept : Sink(log) {}
 
 /**
  * @brief Метод передачи полезной нагрузки в функцию обратного вызова
@@ -806,79 +1244,70 @@ awh::Logging::SyslogSink::SyslogSink(const Logging * log) noexcept : Sink(log) {
  * @param payload объект полезной нагрузки
  *
  */
-void awh::Logging::CallbackSink::write(const payload_t & payload) const noexcept {
-	// Получаем указатель на владеющий объект логирования
-	const Logging * self = this->_log;
+void CallbackSink::write(const payload_t & payload) const noexcept {
 	// Если функция подписки на логи установлена, рассылаем сообщение подписчику
-	if(self->_callback != nullptr)
+	if(state()._callback != nullptr)
 		// Рассылаем сообщение лога подписчику
-		self->_callback(payload.flag, payload.text);
+		state()._callback(payload.flag, payload.text);
 }
-/**
- * @brief Конструктор
- *
- * @param log объект логирования
- *
- */
-awh::Logging::CallbackSink::CallbackSink(const Logging * log) noexcept : Sink(log) {}
 
 /**
- * @brief Метод перестроения набора приёмников по текущему списку режимов
+ * @brief Функция перестроения набора приёмников по текущему списку режимов
  *
  */
-void awh::Logging::rebuild() noexcept {
+void rebuild(State & self) noexcept {
 	// Очищаем текущий набор приёмников
-	this->_sinks.clear();
+	self._sinks.clear();
 	// Если разрешён вывод логов в функцию обратного вызова
-	if(this->_mode.find(mode_t::DEFERRED) != this->_mode.end())
+	if(self._mode.find(mode_t::DEFERRED) != self._mode.end())
 		// Добавляем приёмник функции обратного вызова
-		this->_sinks.push_back(std::make_unique <CallbackSink> (this));
+		self._sinks.push_back(std::make_unique <CallbackSink> ());
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
 		// Если разрешена отправка логов в SysLog
-		if(this->_mode.find(mode_t::SYSLOG) != this->_mode.end())
+		if(self._mode.find(mode_t::SYSLOG) != self._mode.end())
 			// Добавляем приёмник SysLog
-			this->_sinks.push_back(std::make_unique <SyslogSink> (this));
+			self._sinks.push_back(std::make_unique <SyslogSink> ());
 	#endif
 	// Если разрешён вывод логов в консоль
-	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end())
+	if(self._mode.find(mode_t::CONSOLE) != self._mode.end())
 		// Добавляем приёмник консоли
-		this->_sinks.push_back(std::make_unique <ConsoleSink> (this));
+		self._sinks.push_back(std::make_unique <ConsoleSink> ());
 	// Если разрешён вывод логов в файл
-	if(this->_mode.find(mode_t::FILE) != this->_mode.end())
+	if(self._mode.find(mode_t::FILE) != self._mode.end())
 		// Добавляем приёмник файла
-		this->_sinks.push_back(std::make_unique <FileSink> (this));
+		self._sinks.push_back(std::make_unique <FileSink> ());
 }
 
 /**
- * @brief Метод проверки разрешён ли вывод лога для указанного флага
+ * @brief Функция проверки разрешён ли вывод лога для указанного флага
  *
  * @param flag флаг типа логирования
  * @return     результат проверки соответствия уровню логирования
  *
  */
-bool awh::Logging::allowed(const flag_t flag) const noexcept {
+bool allowed(const flag_t flag) noexcept {
 	// Выполняем проверку соответствия флага установленному уровню логирования
 	return (
-		(this->_level == level_t::ALL) ||
-		((this->_level == level_t::INFO) && (flag == flag_t::INFO)) ||
-		((this->_level == level_t::WARNING) && (flag == flag_t::WARNING)) ||
-		((this->_level == level_t::CRITICAL) && (flag == flag_t::CRITICAL)) ||
-		((this->_level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
-		((this->_level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
-		((this->_level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))
+		(state()._level == level_t::ALL) ||
+		((state()._level == level_t::INFO) && (flag == flag_t::INFO)) ||
+		((state()._level == level_t::WARNING) && (flag == flag_t::WARNING)) ||
+		((state()._level == level_t::CRITICAL) && (flag == flag_t::CRITICAL)) ||
+		((state()._level == level_t::INFO_WARNING) && ((flag == flag_t::INFO) || (flag == flag_t::WARNING))) ||
+		((state()._level == level_t::INFO_CRITICAL) && ((flag == flag_t::INFO) || (flag == flag_t::CRITICAL))) ||
+		((state()._level == level_t::WARNING_CRITICAL) && ((flag == flag_t::WARNING) || (flag == flag_t::CRITICAL)))
 	);
 }
 /**
- * @brief Метод очистки строки от символов форматирования
+ * @brief Функция очистки строки от символов форматирования
  *
  * @param text текст для очистки
  * @return     очищенный текст
  *
  */
-string & awh::Logging::cleaner(string & text) const noexcept {
+string & cleaner(string & text) noexcept {
 	// Позиция найденного элемента
 	size_t pos = 0;
 	/**
@@ -902,7 +1331,7 @@ string & awh::Logging::cleaner(string & text) const noexcept {
 				// Выходим из цикла
 				break;
 			// Если символ не является числом и не является разделителем параметров
-			} else if(!this->_fmk->is(letter, fmk_t::check_t::NUMBER) && (letter != ';')) {
+			} else if(!awh::fmk::is(letter, awh::fmk::check_t::NUMBER) && (letter != ';')) {
 				// Удаляем некорректную (незавершённую) последовательность экранирования
 				text.erase(pos, i - pos);
 				// Устанавливаем флаг обнаружения завершения
@@ -920,16 +1349,16 @@ string & awh::Logging::cleaner(string & text) const noexcept {
 	return text;
 }
 /**
- * @brief Метод маршрутизации полезной нагрузки в приёмники (синхронно или асинхронно)
+ * @brief Функция маршрутизации полезной нагрузки в приёмники (синхронно или асинхронно)
  *
  * @param payload объект полезной нагрузки
  *
  */
-void awh::Logging::dispatch(payload_t && payload) const noexcept {
+void dispatch(payload_t && payload) noexcept {
 	// Если асинхронный режим работы не активирован, выводим сообщение синхронно
-	if(!this->_async){
+	if(!state()._async){
 		// Выполняем синхронный вывод полученного лога
-		this->receiving(payload);
+		receiving(payload);
 		// Выходим из метода
 		return;
 	}
@@ -939,47 +1368,47 @@ void awh::Logging::dispatch(payload_t && payload) const noexcept {
 	 * Быстрая проверка без блокировки: в типовом случае (тот же процесс и живой поток)
 	 * управление жизненным циклом скрина не требуется.
 	 */
-	if((pid != this->_pid.load(std::memory_order_acquire)) || !static_cast <bool> (this->_screen)){
+	if((pid != state()._pid.load(std::memory_order_acquire)) || !static_cast <bool> (state()._screen)){
 		// Выполняем блокировку потока на время управления жизненным циклом скрина
-		const locker_t <> lock(this->_mtx);
+		const locker_t <> lock(state()._mtx);
 		// Если идентификатор процесса сменился (например, после fork)
-		if(pid != this->_pid.load(std::memory_order_acquire)){
+		if(pid != state()._pid.load(std::memory_order_acquire)){
 			// Запоминаем идентификатор текущего процесса
-			this->_pid.store(pid, std::memory_order_release);
+			state()._pid.store(pid, std::memory_order_release);
 			/**
 			 * Останавливаем унаследованный скрин. Так-как Screen самостоятельно
 			 * обнаруживает смену процесса, join() унаследованного потока не выполняется.
 			 */
-			this->_screen.stop();
+			state()._screen.stop();
 		}
 		// Если дочерний поток не создан
-		if(!static_cast <bool> (this->_screen)){
+		if(!static_cast <bool> (state()._screen)){
 			// Выполняем установку функции обратного вызова
-			this->_screen = static_cast <function <void (const payload_t &)>> (std::bind(&log_t::receiving, this, _1));
+			state()._screen = static_cast <function <void (const payload_t &)>> (std::bind(&receiving, _1));
 			// Применяем ограничение размера очереди асинхронного вывода
-			this->_screen.capacity(this->_maxQueue);
+			state()._screen.capacity(state()._maxQueue);
 			// Применяем политику поведения при переполнении очереди
-			this->_screen.overflow(static_cast <screen_t <payload_t>::overflow_t> (this->_overflow));
+			state()._screen.overflow(static_cast <screen_t <payload_t>::overflow_t> (state()._overflow));
 			// Запускаем работу скрина
-			this->_screen.start();
+			state()._screen.start();
 		}
 	}
 	// Выполняем отправку сообщения дочернему потоку
-	this->_screen = ::move(payload);
+	state()._screen = ::move(payload);
 }
 /**
- * @brief Метод получения данных
+ * @brief Функция получения данных
  *
  * @param payload объект полезной нагрузки
  *
  */
-void awh::Logging::receiving(const payload_t & payload) const noexcept {
+void receiving(const payload_t & payload) noexcept {
 	// Выполняем блокировку потока
-	const locker_t <> lock(this->_mtx);
+	const locker_t <> lock(state()._mtx);
 	/**
 	 * Выполняем перебор всех установленных приёмников вывода логов
 	 */
-	for(const auto & sink : this->_sinks){
+	for(const auto & sink : state()._sinks){
 		// Если приёмник создан, выполняем запись полезной нагрузки
 		if(sink != nullptr)
 			// Записываем полезную нагрузку в приёмник
@@ -987,13 +1416,13 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 	}
 }
 /**
- * @brief Метод извлечения компонента адреса файла
+ * @brief Функция извлечения компонента адреса файла
  *
  * @param filename адрес где находится файл
  * @return         параметры компонента (адрес, название файла без расширения)
  *
  */
-pair <string, string> awh::Logging::components(string_view filename) const noexcept {
+pair <string, string> components(string_view filename) noexcept {
 	// Переменная результата
 	pair <string, string> result;
 	// Если адрес передан
@@ -1033,20 +1462,20 @@ pair <string, string> awh::Logging::components(string_view filename) const noexc
 		 */
 		if(result.second.empty())
 			// Добавляем имя-заглушку для формирования имени архива (в случае если имя файла не указано, например, при указании каталога)
-			result.second.append(this->_name.empty() ? AWH_SHORT_NAME : this->_name);
+			result.second.append(state()._name.empty() ? AWH_SHORT_NAME : state()._name);
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод формирования итоговой строки лога
+ * @brief Функция формирования итоговой строки лога
  *
  * @param payload объект полезной нагрузки
  * @param colored нужно ли добавлять символы цветового форматирования
  * @return        сформированная строка лога
  *
  */
-string awh::Logging::compose(const payload_t & payload, const bool colored) const noexcept {
+string compose(const payload_t & payload, const bool colored) noexcept {
 	// Флаг конца строки
 	bool isEnd = false;
 	// Если размер буфера меньше 3-х байт
@@ -1062,417 +1491,845 @@ string awh::Logging::compose(const payload_t & payload, const bool colored) cons
 		// Записываем в лог сообщение так-как оно есть
 		case static_cast <uint8_t> (flag_t::NONE):
 			// Формируем текстовый вид лога
-			return this->_fmk->format("%s%s", payload.text.c_str(), tail);
+			return awh::fmk::format("%s%s", payload.text.c_str(), tail);
 		// Печатаем информационное сообщение
 		case static_cast <uint8_t> (flag_t::INFO):
 			// Формируем текстовый вид лога
 			return (
 				colored ?
-				this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", payload.date.c_str(), this->_name.c_str(), payload.text.c_str(), tail) :
-				this->_fmk->format("Info %s %s : %s%s", payload.date.c_str(), this->_name.c_str(), payload.text.c_str(), tail)
+				awh::fmk::format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", payload.date.c_str(), state()._name.c_str(), payload.text.c_str(), tail) :
+				awh::fmk::format("Info %s %s : %s%s", payload.date.c_str(), state()._name.c_str(), payload.text.c_str(), tail)
 			);
 		// Записываем ошибку в лог
 		case static_cast <uint8_t> (flag_t::CRITICAL):
 			// Формируем текстовый вид лога
 			return (
 				colored ?
-				this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", payload.date.c_str(), this->_name.c_str(), payload.text.c_str(), tail) :
-				this->_fmk->format("Error %s %s : %s%s", payload.date.c_str(), this->_name.c_str(), payload.text.c_str(), tail)
+				awh::fmk::format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", payload.date.c_str(), state()._name.c_str(), payload.text.c_str(), tail) :
+				awh::fmk::format("Error %s %s : %s%s", payload.date.c_str(), state()._name.c_str(), payload.text.c_str(), tail)
 			);
 		// Записываем в лог сообщение предупреждения
 		case static_cast <uint8_t> (flag_t::WARNING):
 			// Формируем текстовый вид лога
 			return (
 				colored ?
-				this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", payload.date.c_str(), this->_name.c_str(), payload.text.c_str(), tail) :
-				this->_fmk->format("Warning %s %s : %s%s", payload.date.c_str(), this->_name.c_str(), payload.text.c_str(), tail)
+				awh::fmk::format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", payload.date.c_str(), state()._name.c_str(), payload.text.c_str(), tail) :
+				awh::fmk::format("Warning %s %s : %s%s", payload.date.c_str(), state()._name.c_str(), payload.text.c_str(), tail)
 			);
 	}
 	// Возвращаем пустой результат
 	return "";
 }
-/**
- * @brief Метод вывода текстовой информации в консоль или файл
- *
- * @param format формат строки вывода
- * @param flag   флаг типа логирования
- *
- */
-void awh::Logging::print(string_view format, flag_t flag, ...) const noexcept {
-	// Если формат передан и уровень логирования соответствует
-	if(!format.empty() && this->allowed(flag)){
-		// Создаём текст для логирования
-		const string text{format};
-		// Буфер данных для логирования
-		vector <char> buffer(1024);
-		// Результирующая строка логирования
-		string result;
-		// Создаём список аргументов
-		va_list args;
-		// Запускаем инициализацию списка аргументов
-		va_start(args, flag);
-		/**
-		 * Выполняем формирование строки лога с учётом списка аргументов
-		 */
-		for(;;){
-			// Создаем список аргументов
-			va_list args2;
-			// Копируем список аргументов
-			va_copy(args2, args);
-			// Выполняем запись в буфер данных
-			const int32_t res = ::vsnprintf(&buffer[0], buffer.size(), text.c_str(), args2);
-			// Завершаем список локальных аргументов
-			va_end(args2);
-			// Если произошла ошибка форматирования, прекращаем разбор
-			if(res < 0)
-				// Выходим из цикла
-				break;
-			// Если строка полностью поместилась в буфер
-			if(static_cast <size_t> (res) < buffer.size()){
-				// Копируем сформированную строку
-				result.assign(buffer.data(), static_cast <size_t> (res));
-				// Выходим из цикла
-				break;
-			}
-			// Увеличиваем буфер под требуемый размер (vsnprintf вернул необходимую длину)
-			buffer.resize(static_cast <size_t> (res) + 1);
-		}
-		// Завершаем список аргументов
-		va_end(args);
-		// Если результирующая строка сформирована
-		if(!result.empty()){
-			// Создаём объект полезной нагрузки
-			payload_t payload;
-			// Устанавливаем флаг логирования
-			payload.flag = flag;
-			// Устанавливаем данные сообщения
-			payload.text = ::move(result);
-			// Фиксируем дату формирования сообщения в момент вызова
-			payload.date = this->_chrono.format(this->_format);
-			// Выполняем маршрутизацию полезной нагрузки в приёмники
-			this->dispatch(::move(payload));
-		}
-	}
 }
+}
+}
+
+namespace awh {
 /**
- * @brief Метод вывода текстовой информации в консоль или файл
- *
- * @param format формат строки вывода
- * @param flag   флаг типа логирования
+ * @brief Пространство имён работы с логами
  *
  */
-void awh::Logging::print(wstring_view format, flag_t flag, ...) const noexcept {
-	// Если формат передан и уровень логирования соответствует
-	if(!format.empty() && this->allowed(flag)){
-		// Создаём текст для логирования
-		const wstring text{format};
-		// Буфер данных для логирования
-		vector <wchar_t> buffer(1024);
-		// Результирующая строка логирования
-		wstring result;
-		// Создаём список аргументов
-		va_list args;
-		// Запускаем инициализацию списка аргументов
-		va_start(args, flag);
+namespace log {
+/**
+ * @brief Пространство имён построения состояния модуля логирования
+ *
+ */
+namespace {
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	State::State() noexcept :
+	 _async(false), _level(level_t::ALL), _sep(separator_t::ALWAYS),
+	 _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{""},
+	 _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400), _maxQueue(0), _maxFiles(0),
+	 _overflow(overflow_t::DROP_OLD), _pid(0),
+	 _counter{1}, _screen(awh::Screen <payload_t>::health_t::DEAD), _callback(nullptr) {
+		// Запоминаем идентификатор родительского процесса
+		this->_pid = ::getpid();
 		/**
-		 * Выполняем формирование строки лога с учётом списка аргументов
+		 * Деактивируем мьютекс по умолчанию (основа фреймворка - однопоточный event-loop + fork,
+		 * потокобезопасность включается разработчиком явно через threadSafety(true))
 		 */
-		for(;;){
-			// Создаем список аргументов
-			va_list args2;
-			// Копируем список аргументов
-			va_copy(args2, args);
-			// Выполняем запись в буфер данных
-			const int32_t res = ::vswprintf(&buffer[0], buffer.size(), text.c_str(), args2);
-			// Завершаем список локальных аргументов
-			va_end(args2);
-			// Если строка успешно сформирована и поместилась в буфер
-			if((res >= 0) && (static_cast <size_t> (res) < buffer.size())){
-				// Копируем сформированную строку
-				result.assign(buffer.data(), static_cast <size_t> (res));
-				// Выходим из цикла
-				break;
-			}
+		this->_mtx.enabled = false;
+		// Выполняем разрешение на вывод всех видов логов
+		this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::DEFERRED};
+		// Выполняем построение набора приёмников вывода логов
+		rebuild(* this);
+	}
+	/**
+	 * @brief Деструктор
+	 *
+	 */
+	State::~State() noexcept {
+		// Если объект работы с дочерним потоком создан, удаляем
+		if(static_cast <bool> (this->_screen))
+			// Останавливаем работу скрина
+			this->_screen.stop();
+	}
+	/**
+	 * @brief Функция вывода записи с уже заведённым списком аргументов
+	 *
+	 * @details Тело это общее у print() и debug(): доводы «...» дальше по вызову не
+	 *          передаются никак, кроме как `va_list`, - оттого вывод и разрезан надвое.
+	 *          Прежде разреза не было, а debug() был шаблоном и передавал доводы прямою
+	 *          пачкою `args...`; шаблон же вынуждал держать сборку записи в заголовочном файле
+	 *
+	 * @param format формат строки вывода
+	 * @param flag   флаг типа логирования
+	 * @param args   заведённый список аргументов формирования записи
+	 *
+	 */
+	void emit(string_view format, awh::log::flag_t flag, va_list args) noexcept {
+		// Если формат передан и уровень логирования соответствует
+		if(!format.empty() && allowed(flag)){
+			// Создаём текст для логирования
+			const string text{format};
+			// Буфер данных для логирования
+			vector <char> buffer(1024);
+			// Результирующая строка логирования
+			string result;
 			/**
-			 * Функция vswprintf не возвращает требуемую длину буфера, поэтому при
-			 * нехватке места увеличиваем буфер вдвое. Предохранитель ограничивает
-			 * максимальный размер во избежание бесконечного цикла при ошибке.
+			 * Выполняем формирование строки лога с учётом списка аргументов
 			 */
-			if(buffer.size() >= 0x100000)
-				// Выходим из цикла (предохранитель)
+			for(;;){
+				// Создаем список аргументов
+				va_list args2;
+				// Копируем список аргументов
+				va_copy(args2, args);
+				// Выполняем запись в буфер данных
+				const int32_t res = ::vsnprintf(&buffer[0], buffer.size(), text.c_str(), args2);
+				// Завершаем список локальных аргументов
+				va_end(args2);
+				// Если произошла ошибка форматирования, прекращаем разбор
+				if(res < 0)
+					// Выходим из цикла
+					break;
+				// Если строка полностью поместилась в буфер
+				if(static_cast <size_t> (res) < buffer.size()){
+					// Копируем сформированную строку
+					result.assign(buffer.data(), static_cast <size_t> (res));
+					// Выходим из цикла
+					break;
+				}
+				// Увеличиваем буфер под требуемый размер (vsnprintf вернул необходимую длину)
+				buffer.resize(static_cast <size_t> (res) + 1);
+			}
+			// Если результирующая строка сформирована
+			if(!result.empty()){
+				// Создаём объект полезной нагрузки
+				payload_t payload;
+				// Устанавливаем флаг логирования
+				payload.flag = flag;
+				// Устанавливаем данные сообщения
+				payload.text = ::move(result);
+				// Фиксируем дату формирования сообщения в момент вызова
+				payload.date = state()._chrono.format(state()._format);
+				// Выполняем маршрутизацию полезной нагрузки в приёмники
+				dispatch(::move(payload));
+			}
+		}
+	}
+
+	/**
+	 * @brief Функция вывода широкой записи с уже заведённым списком аргументов
+	 *
+	 * @param format формат строки вывода
+	 * @param flag   флаг типа логирования
+	 * @param args   заведённый список аргументов формирования записи
+	 *
+	 */
+	void emit(wstring_view format, awh::log::flag_t flag, va_list args) noexcept {
+		// Если формат передан и уровень логирования соответствует
+		if(!format.empty() && allowed(flag)){
+			// Создаём текст для логирования
+			const wstring text{format};
+			// Буфер данных для логирования
+			vector <wchar_t> buffer(1024);
+			// Результирующая строка логирования
+			wstring result;
+			/**
+			 * Выполняем формирование строки лога с учётом списка аргументов
+			 */
+			for(;;){
+				// Создаем список аргументов
+				va_list args2;
+				// Копируем список аргументов
+				va_copy(args2, args);
+				// Выполняем запись в буфер данных
+				const int32_t res = ::vswprintf(&buffer[0], buffer.size(), text.c_str(), args2);
+				// Завершаем список локальных аргументов
+				va_end(args2);
+				// Если строка успешно сформирована и поместилась в буфер
+				if((res >= 0) && (static_cast <size_t> (res) < buffer.size())){
+					// Копируем сформированную строку
+					result.assign(buffer.data(), static_cast <size_t> (res));
+					// Выходим из цикла
+					break;
+				}
+				/**
+				 * Функция vswprintf не возвращает требуемую длину буфера, поэтому при
+				 * нехватке места увеличиваем буфер вдвое. Предохранитель ограничивает
+				 * максимальный размер во избежание бесконечного цикла при ошибке.
+				 */
+				if(buffer.size() >= 0x100000)
+					// Выходим из цикла (предохранитель)
+					break;
+				// Увеличиваем размер буфера в два раза
+				buffer.resize(buffer.size() * 2);
+			}
+			// Если результирующая строка сформирована
+			if(!result.empty()){
+				// Создаём объект полезной нагрузки
+				payload_t payload;
+				// Устанавливаем флаг логирования
+				payload.flag = flag;
+				// Устанавливаем данные сообщения
+				payload.text = awh::fmk::convert(result);
+				// Фиксируем дату формирования сообщения в момент вызова
+				payload.date = state()._chrono.format(state()._format);
+				// Выполняем маршрутизацию полезной нагрузки в приёмники
+				dispatch(::move(payload));
+			}
+		}
+	}
+
+	/**
+	 * @brief Внутренние средства сборки отладочной записи
+	 *
+	 */
+	/**
+	 * @brief Функция сведения доводов метода к строке
+	 *
+	 * @param params доводы, переданные в метод
+	 * @return       сведённая строка доводов, пустая при отсутствии доводов
+	 *
+	 */
+	string serialization(std::initializer_list <awh::log::arg_t> params) noexcept {
+		// Строка сведённых доводов
+		string result;
+		// Если доводы не поданы вовсе, сводить нечего
+		if(params.size() == 0)
+			// Выводим строку пустую: сборщик по ней узнаёт об их отсутствии
+			return result;
+		// Выполняем добавление открывающей скобки
+		result.append(1, '(');
+		// Признак того, что очередной довод первый
+		bool first = true;
+		/**
+		 * Выполняем перебор всех поданных доводов
+		 */
+		for(const awh::log::arg_t & param : params){
+			// Если довод не первый, отделяем его от предыдущего
+			if(!first)
+				// Выполняем добавление разделителя доводов
+				result.append(", ");
+			// Снимаем признак первого довода
+			first = false;
+			// Выполняем укладку очередного довода
+			param.lay(result);
+		}
+		// Выполняем добавление закрывающей скобки
+		result.append(1, ')');
+		// Выводим строку сведённых доводов
+		return result;
+	}
+	/**
+	 * @brief Функция сборки отладочной записи
+	 *
+	 * @details Сборка эта прежде стояла в заголовочном файле, в телах самих шаблонов
+	 *          debug(), и разбиралась заново каждою единицей трансляции, хотя от видов
+	 *          доводов не зависит ни единою своей частью
+	 *
+	 * @param format формат строки вывода
+	 * @param method название вызываемого метода
+	 * @param params доводы, переданные в метод
+	 * @return       собранная отладочная запись
+	 *
+	 */
+	string assemble(string_view format, string_view method, std::initializer_list <awh::log::arg_t> params) noexcept {
+		// Сведённые доводы метода
+		const string & arguments = serialization(params);
+		// Собираемая отладочная запись
+		string result = AWH_STRING_BREAKS"\x1B[1mCalled function:\x1B[0m" AWH_STRING_BREAK;
+		// Добавляем название вызываемого метода
+		result.append(method);
+		// Добавляем перенос строки
+		result.append(AWH_STRING_BREAKS);
+		/**
+		 * Если доводы метода поданы
+		 */
+		if(!arguments.empty()){
+			// Добавляем заголовок доводов метода
+			result.append("\x1B[1mArguments function:\x1B[0m" AWH_STRING_BREAK);
+			// Добавляем сами доводы метода
+			result.append(arguments);
+			// Добавляем перенос строки
+			result.append(AWH_STRING_BREAKS);
+			// Добавляем заголовок самого сообщения
+			result.append("\x1B[1mMessage:\x1B[0m" AWH_STRING_BREAK);
+		}
+		// Добавляем формат сообщения
+		result.append(format);
+		// Выводим собранную отладочную запись
+		return result;
+	}
+}
+}
+}
+
+
+/**
+ * @brief Функция вывода текстовой информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param flag   флаг типа логирования
+ *
+ */
+/**
+ * @brief Заведение пустого довода
+ *
+ */
+awh::log::Argument::Argument() noexcept : _kind(kind_t::NONE), _signed(0) {}
+/**
+ * @brief Заведение логического довода
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const bool value) noexcept : _kind(kind_t::BOOLEAN), _boolean(value) {}
+/**
+ * @brief Заведение символьного довода
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const char value) noexcept : _kind(kind_t::SYMBOL), _symbol(value) {}
+/**
+ * @brief Заведения знаковых числовых доводов
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const signed char value) noexcept : _kind(kind_t::SIGNED), _signed(static_cast <int64_t> (value)) {}
+awh::log::Argument::Argument(const short value) noexcept : _kind(kind_t::SIGNED), _signed(static_cast <int64_t> (value)) {}
+awh::log::Argument::Argument(const int value) noexcept : _kind(kind_t::SIGNED), _signed(static_cast <int64_t> (value)) {}
+awh::log::Argument::Argument(const long value) noexcept : _kind(kind_t::SIGNED), _signed(static_cast <int64_t> (value)) {}
+awh::log::Argument::Argument(const long long value) noexcept : _kind(kind_t::SIGNED), _signed(static_cast <int64_t> (value)) {}
+/**
+ * @brief Заведения беззнаковых числовых доводов
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const unsigned char value) noexcept : _kind(kind_t::UNSIGNED), _unsigned(static_cast <uint64_t> (value)) {}
+awh::log::Argument::Argument(const unsigned short value) noexcept : _kind(kind_t::UNSIGNED), _unsigned(static_cast <uint64_t> (value)) {}
+awh::log::Argument::Argument(const unsigned int value) noexcept : _kind(kind_t::UNSIGNED), _unsigned(static_cast <uint64_t> (value)) {}
+awh::log::Argument::Argument(const unsigned long value) noexcept : _kind(kind_t::UNSIGNED), _unsigned(static_cast <uint64_t> (value)) {}
+awh::log::Argument::Argument(const unsigned long long value) noexcept : _kind(kind_t::UNSIGNED), _unsigned(static_cast <uint64_t> (value)) {}
+/**
+ * @brief Заведения дробных числовых доводов
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const float value) noexcept : _kind(kind_t::REAL), _real(static_cast <double> (value)) {}
+awh::log::Argument::Argument(const double value) noexcept : _kind(kind_t::REAL), _real(value) {}
+awh::log::Argument::Argument(const long double value) noexcept : _kind(kind_t::REAL), _real(static_cast <double> (value)) {}
+/**
+ * @brief Заведения узких строковых доводов
+ *
+ * @details Строка держится обзором, а не копией: довод живёт до конца полного выражения
+ *          вызова, и записи журнала того довольно
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const char * value) noexcept : _kind(kind_t::TEXT), _text(value != nullptr ? string_view(value) : string_view()) {}
+awh::log::Argument::Argument(char * value) noexcept : _kind(kind_t::TEXT), _text(value != nullptr ? string_view(value) : string_view()) {}
+awh::log::Argument::Argument(const string & value) noexcept : _kind(kind_t::TEXT), _text(value) {}
+awh::log::Argument::Argument(string_view value) noexcept : _kind(kind_t::TEXT), _text(value) {}
+/**
+ * @brief Заведения широких строковых доводов
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const wchar_t * value) noexcept : _kind(kind_t::WTEXT), _wtext(value != nullptr ? wstring_view(value) : wstring_view()) {}
+awh::log::Argument::Argument(wchar_t * value) noexcept : _kind(kind_t::WTEXT), _wtext(value != nullptr ? wstring_view(value) : wstring_view()) {}
+awh::log::Argument::Argument(const wstring & value) noexcept : _kind(kind_t::WTEXT), _wtext(value) {}
+awh::log::Argument::Argument(wstring_view value) noexcept : _kind(kind_t::WTEXT), _wtext(value) {}
+/**
+ * @brief Заведения указательных доводов
+ *
+ * @param value укладываемое значение довода
+ *
+ */
+awh::log::Argument::Argument(const void * value) noexcept : _kind(kind_t::POINTER), _pointer(value) {}
+awh::log::Argument::Argument(std::nullptr_t) noexcept : _kind(kind_t::POINTER), _pointer(nullptr) {}
+/**
+ * @brief Метод укладки довода в строку доводов
+ *
+ * @details Вид укладки всякого довода взят не по вкусу, а по прежнему поведению: доводы
+ *          укладывались строковым потоком, и вид записи журнала обязан был остаться тем же.
+ *          Оттого логическое укладывается числом, а не словом, указатель пустой - нулём,
+ *          а дробное видом «%g» с шестью значащими
+ *
+ * @warning Дробному сюда просится `fmk::noexp`, и это было бы ошибкой: он для того и
+ *          заведён, чтобы порядок РАЗВОРАЧИВАТЬ, - `1e-308` вышел бы тремя сотнями нулей,
+ *          а бесконечность с не-числом обратились бы нулём. Сличением с прежней укладкой
+ *          поймано на 22 значениях из 30
+ *
+ * @note Одно расхождение с прежней укладкой оставлено НАМЕРЕННО: довод `uint8_t` поток
+ *       выводил ЗНАКОМ, а не числом, - байт со значением 200 уходил в журнал непечатным
+ *       знаком. Ровно оттого по дереву и стоят две с половиною тысячи приведений к
+ *       `uint16_t`: обход этот заводился вручную у всякого места. Двадцать два места
+ *       обойдены им НЕ были и печатали мусор; ныне байт укладывается числом
+ *
+ * @param result строка доводов, куда ведётся укладка
+ *
+ */
+void awh::log::Argument::lay(string & result) const noexcept {
+	// Место под запись числового довода
+	char buffer[64];
+	/**
+	 * Выполняем укладку довода по его виду
+	 */
+	switch(static_cast <uint8_t> (this->_kind)){
+		// Если довод логический
+		case static_cast <uint8_t> (kind_t::BOOLEAN):
+			// Выполняем укладку логического довода числом
+			result.append(1, (this->_boolean ? '1' : '0'));
+		break;
+		// Если довод символьный
+		case static_cast <uint8_t> (kind_t::SYMBOL):
+			// Выполняем укладку символьного довода
+			result.append(1, this->_symbol);
+		break;
+		// Если довод числовой со знаком
+		case static_cast <uint8_t> (kind_t::SIGNED):
+			// Выполняем укладку знакового довода
+			result.append(std::to_string(this->_signed));
+		break;
+		// Если довод числовой без знака
+		case static_cast <uint8_t> (kind_t::UNSIGNED):
+			// Выполняем укладку беззнакового довода
+			result.append(std::to_string(this->_unsigned));
+		break;
+		// Если довод числовой дробный
+		case static_cast <uint8_t> (kind_t::REAL): {
+			// Выполняем запись дробного довода
+			const int32_t length = ::snprintf(buffer, sizeof(buffer), "%g", this->_real);
+			// Если запись состоялась
+			if(length > 0)
+				// Выполняем укладку дробного довода
+				result.append(buffer, static_cast <size_t> (length));
+		} break;
+		// Если довод строковый узкий
+		case static_cast <uint8_t> (kind_t::TEXT):
+			// Выполняем укладку узкой строки
+			result.append(this->_text);
+		break;
+		// Если довод строковый широкий
+		case static_cast <uint8_t> (kind_t::WTEXT):
+			// Выполняем укладку широкой строки, обратив её узкою рамкою
+			result.append(awh::fmk::convert(wstring(this->_wtext)));
+		break;
+		// Если довод указателем
+		case static_cast <uint8_t> (kind_t::POINTER): {
+			/**
+			 * Если указатель пустым является
+			 */
+			if(this->_pointer == nullptr){
+				// Выполняем укладку пустого указателя нулём
+				result.append(1, '0');
+				// Выходим из разбора
 				break;
-			// Увеличиваем размер буфера в два раза
-			buffer.resize(buffer.size() * 2);
-		}
-		// Завершаем список аргументов
-		va_end(args);
-		// Если результирующая строка сформирована
-		if(!result.empty()){
-			// Создаём объект полезной нагрузки
-			payload_t payload;
-			// Устанавливаем флаг логирования
-			payload.flag = flag;
-			// Устанавливаем данные сообщения
-			payload.text = this->_fmk->convert(result);
-			// Фиксируем дату формирования сообщения в момент вызова
-			payload.date = this->_chrono.format(this->_format);
-			// Выполняем маршрутизацию полезной нагрузки в приёмники
-			this->dispatch(::move(payload));
-		}
+			}
+			// Выполняем запись адреса указателя
+			const int32_t length = ::snprintf(buffer, sizeof(buffer), "0x%llx", static_cast <unsigned long long> (reinterpret_cast <uintptr_t> (this->_pointer)));
+			// Если запись состоялась
+			if(length > 0)
+				// Выполняем укладку адреса указателя
+				result.append(buffer, static_cast <size_t> (length));
+		} break;
 	}
 }
+
+
 /**
- * @brief Метод вывода текстовой информации в консоль или файл
+ * @brief Функция вывода отладочной информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param method название вызываемого метода
+ * @param params доводы, переданные в метод
+ * @param flag   флаг типа логирования
+ *
+ */
+void awh::log::debug(string_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, ...) noexcept {
+	// Если формат строки вывода не передан, выводить нечего
+	if(format.empty())
+		// Выходим из функции
+		return;
+	// Список аргументов формирования записи
+	va_list args;
+	// Запускаем инициализацию списка аргументов
+	va_start(args, flag);
+	/**
+	 * Если название вызываемого метода не передано
+	 */
+	if(method.empty())
+		// Пишем запись без отладочной обвязки
+		emit(format, flag, args);
+	/**
+	 * Если название вызываемого метода передано
+	 */
+	else {
+		// Выполняем сборку отладочной записи
+		const string & record = assemble(format, method, params);
+		// Пишем собранную отладочную запись
+		emit(string_view(record), flag, args);
+	}
+	// Завершаем список аргументов
+	va_end(args);
+}
+/**
+ * @brief Функция вывода отладочной информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param method название вызываемого метода
+ * @param params доводы, переданные в метод
+ * @param flag   флаг типа логирования
+ *
+ */
+void awh::log::debug(wstring_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, ...) noexcept {
+	// Если формат строки вывода не передан, выводить нечего
+	if(format.empty())
+		// Выходим из функции
+		return;
+	// Список аргументов формирования записи
+	va_list args;
+	// Запускаем инициализацию списка аргументов
+	va_start(args, flag);
+	/**
+	 * Если название вызываемого метода не передано
+	 */
+	if(method.empty())
+		// Пишем запись без отладочной обвязки
+		emit(format, flag, args);
+	/**
+	 * Если название вызываемого метода передано
+	 */
+	else {
+		// Выполняем сборку записи, обратив формат узкою записью рамкою
+		const string & record = assemble(string_view(awh::fmk::convert(wstring(format))), method, params);
+		// Пишем собранную отладочную запись широким выводом
+		emit(wstring_view(awh::fmk::convert(record)), flag, args);
+	}
+	// Завершаем список аргументов
+	va_end(args);
+}
+/**
+ * @brief Функция вывода отладочной информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param method название вызываемого метода
+ * @param params доводы, переданные в метод
+ * @param flag   флаг типа логирования
+ * @param args   список аргументов для подстановки
+ *
+ */
+void awh::log::debug(string_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, const vector <string> & args) noexcept {
+	// Если формат строки вывода не передан, выводить нечего
+	if(format.empty())
+		// Выходим из функции
+		return;
+	/**
+	 * Если название вызываемого метода не передано
+	 */
+	if(method.empty()){
+		// Пишем запись без отладочной обвязки
+		print(format, flag, args);
+		// Выходим из функции
+		return;
+	}
+	// Пишем собранную отладочную запись
+	print(string_view(assemble(format, method, params)), flag, args);
+}
+/**
+ * @brief Функция вывода отладочной информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param method название вызываемого метода
+ * @param params доводы, переданные в метод
+ * @param flag   флаг типа логирования
+ * @param args   список аргументов для подстановки
+ *
+ */
+void awh::log::debug(wstring_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, const vector <wstring> & args) noexcept {
+	// Если формат строки вывода не передан, выводить нечего
+	if(format.empty())
+		// Выходим из функции
+		return;
+	/**
+	 * Если название вызываемого метода не передано
+	 */
+	if(method.empty()){
+		// Пишем запись без отладочной обвязки
+		print(format, flag, args);
+		// Выходим из функции
+		return;
+	}
+	// Выполняем сборку записи, обратив формат узкою записью рамкою
+	const string & record = assemble(string_view(awh::fmk::convert(wstring(format))), method, params);
+	// Пишем собранную отладочную запись широким выводом: широки и доводы подстановки
+	print(wstring_view(awh::fmk::convert(record)), flag, args);
+}
+
+void awh::log::print(string_view format, flag_t flag, ...) noexcept {
+	// Список аргументов формирования записи
+	va_list args;
+	// Запускаем инициализацию списка аргументов
+	va_start(args, flag);
+	// Выполняем вывод записи общим телом
+	emit(format, flag, args);
+	// Завершаем список аргументов
+	va_end(args);
+}
+/**
+ * @brief Функция вывода текстовой информации в консоль или файл
+ *
+ * @param format формат строки вывода
+ * @param flag   флаг типа логирования
+ *
+ */
+void awh::log::print(wstring_view format, flag_t flag, ...) noexcept {
+	// Список аргументов формирования записи
+	va_list args;
+	// Запускаем инициализацию списка аргументов
+	va_start(args, flag);
+	// Выполняем вывод записи общим телом
+	emit(format, flag, args);
+	// Завершаем список аргументов
+	va_end(args);
+}
+/**
+ * @brief Функция вывода текстовой информации в консоль или файл
  *
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  *
  */
-void awh::Logging::print(string_view format, flag_t flag, const vector <string> & args) const noexcept {
+void awh::log::print(string_view format, flag_t flag, const vector <string> & args) noexcept {
 	// Если формат передан, список аргументов не пустой и уровень логирования соответствует
-	if(!format.empty() && !args.empty() && this->allowed(flag)){
+	if(!format.empty() && !args.empty() && allowed(flag)){
 		// Создаём объект полезной нагрузки
 		payload_t payload;
 		// Устанавливаем флаг логирования
 		payload.flag = flag;
 		// Устанавливаем данные сообщения
-		payload.text = this->_fmk->format(format, args);
+		payload.text = awh::fmk::format(format, args);
 		// Фиксируем дату формирования сообщения в момент вызова
-		payload.date = this->_chrono.format(this->_format);
+		payload.date = state()._chrono.format(state()._format);
 		// Выполняем маршрутизацию полезной нагрузки в приёмники
-		this->dispatch(::move(payload));
+		dispatch(::move(payload));
 	}
 }
 /**
- * @brief Метод вывода текстовой информации в консоль или файл
+ * @brief Функция вывода текстовой информации в консоль или файл
  *
  * @param format формат строки вывода
  * @param flag   флаг типа логирования
  * @param args   список аргументов для замены
  *
  */
-void awh::Logging::print(wstring_view format, flag_t flag, const vector <wstring> & args) const noexcept {
+void awh::log::print(wstring_view format, flag_t flag, const vector <wstring> & args) noexcept {
 	// Если формат передан, список аргументов не пустой и уровень логирования соответствует
-	if(!format.empty() && !args.empty() && this->allowed(flag)){
+	if(!format.empty() && !args.empty() && allowed(flag)){
 		// Создаём объект полезной нагрузки
 		payload_t payload;
 		// Устанавливаем флаг логирования
 		payload.flag = flag;
 		// Устанавливаем данные сообщения
-		payload.text = this->_fmk->convert(this->_fmk->format(format, args));
+		payload.text = awh::fmk::convert(awh::fmk::format(format, args));
 		// Фиксируем дату формирования сообщения в момент вызова
-		payload.date = this->_chrono.format(this->_format);
+		payload.date = state()._chrono.format(state()._format);
 		// Выполняем маршрутизацию полезной нагрузки в приёмники
-		this->dispatch(::move(payload));
+		dispatch(::move(payload));
 	}
 }
 /**
- * @brief Метод установки безопасности работы потоков
+ * @brief Функция установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
  *
  */
-void awh::Logging::threadSafety(const bool mode) noexcept {
+void awh::log::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности потоков
-	this->_mtx.enabled = mode;
+	state()._mtx.enabled = mode;
 }
 /**
- * @brief Метод извлечения установленного формата лога
+ * @brief Функция извлечения установленного формата лога
  *
  * @return формат лога для извлечения
  *
  */
-const string & awh::Logging::format() const noexcept {
+const string & awh::log::format() noexcept {
 	// Возвращаем установленный формат
-	return this->_format;
+	return state()._format;
 }
 /**
- * @brief Метод установки формата даты и времени для вывода лога
+ * @brief Функция установки формата даты и времени для вывода лога
  *
  * @param format формат даты и времени для вывода лога
  *
  */
-void awh::Logging::format(string_view format) noexcept {
+void awh::log::format(string_view format) noexcept {
 	// Устанавливаем формат даты и времени для вывода лога
-	this->_format = format;
+	state()._format = format;
 }
 /**
- * @brief Метод получения установленных режимов вывода логов
+ * @brief Функция получения установленных режимов вывода логов
  *
  * @return список режимов вывода логов
  *
  */
-const unordered_set <awh::Logging::mode_t> & awh::Logging::mode() const noexcept {
+const unordered_set <awh::log::mode_t> & awh::log::mode() noexcept {
 	// Возвращаем список режимов вывода логов
-	return this->_mode;
+	return state()._mode;
 }
 /**
- * @brief Метод добавления режимов вывода логов
+ * @brief Функция добавления режимов вывода логов
  *
  * @param mode список режимов вывода логов
  *
  */
-void awh::Logging::mode(const unordered_set <mode_t> & mode) noexcept {
+void awh::log::mode(const unordered_set <mode_t> & mode) noexcept {
 	// Выполняем блокировку потока
-	const locker_t <> lock(this->_mtx);
+	const locker_t <> lock(state()._mtx);
 	// Выполняем установку списка режимов вывода логов
-	this->_mode = mode;
+	state()._mode = mode;
 	// Выполняем перестроение набора приёмников
-	this->rebuild();
+	rebuild(state());
 }
 /**
- * @brief Метод установки название сервиса для вывода лога
+ * @brief Функция установки название сервиса для вывода лога
  *
  * @param name название сервиса для вывода лога
  *
  */
-void awh::Logging::name(string_view name) noexcept {
+void awh::log::name(string_view name) noexcept {
 	// Устанавливаем название сервиса для вывода лога
-	this->_name = name;
+	state()._name = name;
 }
 /**
- * @brief Метод установки флага асинхронного режима работы
+ * @brief Функция установки флага асинхронного режима работы
  *
  * @param mode флаг асинхронного режима работы
  *
  */
-void awh::Logging::async(const bool mode) noexcept {
+void awh::log::async(const bool mode) noexcept {
 	// Устанавливаем флаг асинхронного режима работы
-	this->_async = mode;
+	state()._async = mode;
 }
 /**
- * @brief Метод установки максимального размера файла логов
+ * @brief Функция установки максимального размера файла логов
  *
  * @param size максимальный размер файла логов
  *
  */
-void awh::Logging::maxSize(const float size) noexcept {
+void awh::log::maxSize(const float size) noexcept {
 	// Устанавливаем максимальный размер файла логов
-	this->_maxSize = static_cast <size_t> (size);
+	state()._maxSize = static_cast <size_t> (size);
 }
 /**
- * @brief Метод установки размера текста для формирования разделителя
+ * @brief Функция установки размера текста для формирования разделителя
  *
  * @param size размер текста для формирования разделителя
  *
  */
-void awh::Logging::sepSize(const size_t size) noexcept {
+void awh::log::sepSize(const size_t size) noexcept {
 	// Устанавливаем размер текста для формирования разделителя
-	this->_sepSize = size;
+	state()._sepSize = size;
 }
 /**
- * @brief Метод установки уровня логирования
+ * @brief Функция установки уровня логирования
  *
  * @param level уровень логирования для установки
  *
  */
-void awh::Logging::level(const level_t level) noexcept {
+void awh::log::level(const level_t level) noexcept {
 	// Выполняем установку уровень логирования
-	this->_level = level;
+	state()._level = level;
 }
 /**
- * @brief Метод установки максимального размера очереди асинхронного вывода
+ * @brief Функция установки максимального размера очереди асинхронного вывода
  *
  * @param size максимальный размер очереди (0 - без ограничения)
  *
  */
-void awh::Logging::maxQueue(const size_t size) noexcept {
+void awh::log::maxQueue(const size_t size) noexcept {
 	// Устанавливаем максимальный размер очереди асинхронного вывода
-	this->_maxQueue = size;
+	state()._maxQueue = size;
 	// Если дочерний поток уже запущен, применяем ограничение немедленно
-	if(static_cast <bool> (this->_screen))
+	if(static_cast <bool> (state()._screen))
 		// Применяем ограничение размера очереди
-		this->_screen.capacity(size);
+		state()._screen.capacity(size);
 }
 /**
- * @brief Метод установки максимального количества хранимых архивов логов
+ * @brief Функция установки максимального количества хранимых архивов логов
  *
  * @param count максимальное количество архивов (0 - без ограничения)
  *
  */
-void awh::Logging::maxFiles(const size_t count) noexcept {
+void awh::log::maxFiles(const size_t count) noexcept {
 	// Устанавливаем максимальное количество хранимых архивов логов
-	this->_maxFiles = count;
+	state()._maxFiles = count;
 }
 /**
- * @brief Метод установки файла для сохранения логов
+ * @brief Функция установки файла для сохранения логов
  *
  * @param filename путь к файлу для сохранения логов
  *
  */
-void awh::Logging::filename(string_view filename) noexcept {
+void awh::log::filename(string_view filename) noexcept {
 	// Выполняем блокировку потока
-	const locker_t <> lock(this->_mtx);
+	const locker_t <> lock(state()._mtx);
 	// Устанавливаем путь к файлу для сохранения логов
-	this->_filename = filename;
+	state()._filename = filename;
 }
 /**
- * @brief Метод установки разделителя сообщений логирования
+ * @brief Функция установки разделителя сообщений логирования
  *
  * @param sep разделитель для установки
  *
  */
-void awh::Logging::separator(const separator_t sep) noexcept {
+void awh::log::separator(const separator_t sep) noexcept {
 	// Устанавливаем разделитель сообщений логирования
-	this->_sep = sep;
+	state()._sep = sep;
 }
 /**
- * @brief Метод установки политики поведения при переполнении очереди асинхронного вывода
+ * @brief Функция установки политики поведения при переполнении очереди асинхронного вывода
  *
  * @param overflow политика поведения при переполнении очереди
  *
  */
-void awh::Logging::overflow(const overflow_t overflow) noexcept {
+void awh::log::overflow(const overflow_t overflow) noexcept {
 	// Устанавливаем политику поведения при переполнении очереди
-	this->_overflow = overflow;
+	state()._overflow = overflow;
 	// Если дочерний поток уже запущен, применяем политику немедленно
-	if(static_cast <bool> (this->_screen))
+	if(static_cast <bool> (state()._screen))
 		// Применяем политику переполнения очереди
-		this->_screen.overflow(static_cast <screen_t <payload_t>::overflow_t> (overflow));
+		state()._screen.overflow(static_cast <screen_t <payload_t>::overflow_t> (overflow));
 }
 /**
- * @brief Метод подписки на события логов
+ * @brief Функция подписки на события логов
  *
  * @param callback функция обратного вызова
  *
  */
-void awh::Logging::subscribe(function <void (const flag_t, string_view)> callback) noexcept {
+void awh::log::subscribe(function <void (const flag_t, string_view)> callback) noexcept {
 	// Устанавливаем функцию подписки на получение лога
-	this->_callback = ::move(callback);
-}
-/**
- * @brief Конструктор
- *
- * @param fmk      объект фреймворка
- * @param filename путь к файлу для сохранения логов
- *
- */
-awh::Logging::Logging(const fmk_t * fmk, string_view filename) noexcept :
- _async(false), _level(level_t::ALL), _sep(separator_t::ALWAYS),
- _name{AWH_SHORT_NAME}, _format{DATE_FORMAT}, _filename{filename},
- _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400), _maxQueue(0), _maxFiles(0),
- _chrono(fmk, this), _overflow(overflow_t::DROP_OLD), _pid(0),
- _counter{1}, _screen(Screen <payload_t>::health_t::DEAD), _callback(nullptr), _fmk(fmk) {
-	// Запоминаем идентификатор родительского процесса
-	this->_pid = ::getpid();
-	/**
-	 * Деактивируем мьютекс по умолчанию (основа фреймворка - однопоточный event-loop + fork,
-	 * потокобезопасность включается разработчиком явно через threadSafety(true))
-	 */
-	this->_mtx.enabled = false;
-	// Выполняем разрешение на вывод всех видов логов
-	this->_mode = {mode_t::FILE, mode_t::CONSOLE, mode_t::DEFERRED};
-	// Выполняем построение набора приёмников вывода логов
-	this->rebuild();
-}
-/**
- * @brief Деструктор
- *
- */
-awh::Logging::~Logging() noexcept {
-	// Если объект работы с дочерним потоком создан, удаляем
-	if(static_cast <bool> (this->_screen))
-		// Останавливаем работу скрина
-		this->_screen.stop();
+	state()._callback = ::move(callback);
 }

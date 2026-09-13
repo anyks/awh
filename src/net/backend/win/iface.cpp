@@ -57,6 +57,7 @@
  */
 #include <iphlpapi.h>
 #include <netioapi.h>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -344,7 +345,7 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой результат
 		return result;
 	}
@@ -413,7 +414,7 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой размер кадра
 		return 0;
 	}
@@ -467,7 +468,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой перечень признаков
 		return result;
 	}
@@ -588,7 +589,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой результат
 		return result;
 	}
@@ -735,7 +736,7 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Записываем ошибку в лог
-		this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Возвращаем пустой результат
 		return string();
 	}
@@ -952,7 +953,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				// Запоминаем положительный результат установки
 				result = true;
 			// Если записать настройки устройства не удалось
-			else this->_log->print("%s: interface MTU could not be set, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+			else awh::log::print("%s: interface MTU could not be set, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 		}
 		// Завершаем перебор устройств
 		break;
@@ -1030,7 +1031,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 	// Если создаётся устройство неподдерживаемого вида
 	if((type != event::eth_t::TUN) && (type != event::eth_t::TAP)){
 		// Выводим в журнал сообщение о неподдерживаемом виде устройства
-		this->_log->print("%s: only TUN and TAP devices can be created", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: only TUN and TAP devices can be created", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Выводим пустой дескриптор
 		return net::invalid_socket_t;
 	}
@@ -1071,7 +1072,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 			// Если ни одного драйвера на машине не нашлось
 			else {
 				// Выводим в журнал сообщение об отсутствии драйверов
-				this->_log->print("%s: neither Wintun nor tap-windows6 is available on this machine", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+				awh::log::print("%s: neither Wintun nor tap-windows6 is available on this machine", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
 			}
@@ -1102,7 +1103,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 	 *
 	 */
 	// Выполняем создание туннельного устройства выбранным драйвером
-	const net::socket_t result = win::tunnel::create(type, driver, name, this->_log);
+	const net::socket_t result = win::tunnel::create(type, driver, name);
 	// Если устройство заведено и выбор драйвера был поручен модулю
 	if((result != net::invalid_socket_t) && (this->_driver == driver_t::AUTO))
 		// Запоминаем драйвер, каким устройство заведено на деле
@@ -1150,12 +1151,12 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 	// Если устройство среди заведённых не значится
 	if(sock == net::invalid_socket_t){
 		// Выводим в журнал сообщение о невозможности удаления устройства
-		this->_log->print("%s: interface \"%s\" was not created by this application and cannot be removed", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		awh::log::print("%s: interface \"%s\" was not created by this application and cannot be removed", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат удаления
 		return false;
 	}
 	// Выполняем удаление найденного устройства
-	return win::tunnel::destroy(sock, this->_log);
+	return win::tunnel::destroy(sock);
 }
 
 /**
@@ -1205,7 +1206,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	 */
 	if(prefix > ((ip->size == 4) ? 32 : 128)){
 		// Выводим в журнал сообщение о недопустимой длине префикса
-		this->_log->print("%s: Prefix length %u is out of range for the %s address", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, static_cast <uint32_t> (prefix), ((ip->size == 4) ? "IPv4" : "IPv6"));
+		awh::log::print("%s: Prefix length %u is out of range for the %s address", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, static_cast <uint32_t> (prefix), ((ip->size == 4) ? "IPv4" : "IPv6"));
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1214,7 +1215,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 	// Если сетевое устройство найти не удалось
 	if(!::__awh_luid__(name, luid)){
 		// Выводим в журнал сообщение о ненайденном устройстве
-		this->_log->print("%s: interface \"%s\" was not found", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		awh::log::print("%s: interface \"%s\" was not found", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1258,7 +1259,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Если семейство адреса определить не удалось
 		default: {
 			// Выводим в журнал сообщение о неподдерживаемом виде адреса
-			this->_log->print("%s: only IPv4 and IPv6 addresses can be assigned to an interface", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+			awh::log::print("%s: only IPv4 and IPv6 addresses can be assigned to an interface", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 			// Выводим отрицательный результат установки
 			return false;
 		}
@@ -1305,12 +1306,12 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Выполняем опознание устройства, за каким числится адрес
 		const string & holder = ::__awh_iface_holder__(row.Address, row.Address.si_family);
 		// Выводим в журнал сообщение о занятости адреса другим устройством
-		this->_log->print("%s: address is already assigned to another interface (%s), \"%s\" left without it", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, (holder.empty() ? "holder unknown" : holder.c_str()), string(name).c_str());
+		awh::log::print("%s: address is already assigned to another interface (%s), \"%s\" left without it", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, (holder.empty() ? "holder unknown" : holder.c_str()), string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
 	// Выводим в журнал сообщение о невозможности установки адреса
-	this->_log->print("%s: interface address could not be assigned, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	awh::log::print("%s: interface address could not be assigned, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 	// Выводим отрицательный результат установки
 	return false;
 }
@@ -1505,7 +1506,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Если семейство адреса определить не удалось
 		default: {
 			// Выводим в журнал сообщение о неподдерживаемом виде адреса
-			this->_log->print("%s: only IPv4 and IPv6 peer addresses are supported", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+			awh::log::print("%s: only IPv4 and IPv6 peer addresses are supported", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 			// Выводим отрицательный результат установки
 			return false;
 		}
@@ -1521,7 +1522,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 		// Выводим положительный результат установки
 		return true;
 	// Выводим в журнал сообщение о невозможности прокладки пути
-	this->_log->print("%s: route to the peer could not be created, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	awh::log::print("%s: route to the peer could not be created, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 	// Выводим отрицательный результат установки
 	return false;
 }
@@ -1643,7 +1644,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если правится признак, каким система распоряжаться не даёт
 	if(flag != event::eth_flag_t::UP){
 		// Выводим в журнал сообщение о неподдерживаемом признаке
-		this->_log->print("%s: only the UP flag can be changed, MS Windows derives the rest from the driver", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: only the UP flag can be changed, MS Windows derives the rest from the driver", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1652,7 +1653,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если сетевое устройство найти не удалось
 	if(!::__awh_luid__(name, luid)){
 		// Выводим в журнал сообщение о ненайденном устройстве
-		this->_log->print("%s: interface \"%s\" was not found", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		awh::log::print("%s: interface \"%s\" was not found", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1661,7 +1662,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если порядковый номер устройства по местному номеру получить не удалось
 	if(::ConvertInterfaceLuidToIndex(&luid, &index) != NO_ERROR){
 		// Выводим в журнал сообщение о ненайденном устройстве
-		this->_log->print("%s: interface \"%s\" has no index", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
+		awh::log::print("%s: interface \"%s\" has no index", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, string(name).c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1684,7 +1685,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 	// Если снять нынешние настройки устройства не удалось
 	if(::GetIfEntry(&row) != NO_ERROR){
 		// Выводим в журнал сообщение о невозможности опроса устройства
-		this->_log->print("%s: interface state could not be read", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
+		awh::log::print("%s: interface state could not be read", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__);
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -1697,7 +1698,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 		// Выводим положительный результат установки
 		return true;
 	// Выводим в журнал сообщение о невозможности записи настроек
-	this->_log->print("%s: interface state could not be changed, error %lu", log_t::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
+	awh::log::print("%s: interface state could not be changed, error %lu", awh::log::flag_t::WARNING, ::__AWH_IFACE_BACKEND__, code);
 	// Выводим отрицательный результат установки
 	return false;
 }

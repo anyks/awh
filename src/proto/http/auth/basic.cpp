@@ -23,6 +23,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/auth/basic.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -74,7 +76,7 @@ bool awh::http::Basic::parse(const string_view header) noexcept {
 			// На стороне сервера разбираем учётные данные клиента
 			if(this->_owner == auth_t::owner_t::SERVER){
 				// Удаляем крайние пробелы у полезной нагрузки
-				this->_fmk->transform(payload, fmk_t::transform_t::TRIM);
+				awh::fmk::transform(payload, awh::fmk::transform_t::TRIM);
 				// Если полезная нагрузка получена
 				if(!payload.empty()){
 					// Выполняем декодирование учётных данных из BASE64
@@ -103,13 +105,13 @@ bool awh::http::Basic::parse(const string_view header) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(header), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {header}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим в лог сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -143,21 +145,21 @@ string awh::http::Basic::header(const bool full) noexcept {
 					// Выполняем кодирование учётных данных в BASE64
 					const string & base64 = this->_crypto->encrypt <string> (credentials, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
 					// Формируем значение заголовка авторизации
-					result = this->_fmk->format("Basic %s", base64.c_str());
+					result = awh::fmk::format("Basic %s", base64.c_str());
 					// Если требуется вывести заголовок вместе с его именем
 					if(full)
 						// Дополняем результат именем заголовка
-						result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
+						result = awh::fmk::format("%s: %s\r\n", this->name().c_str(), result.c_str());
 				}
 			} break;
 			// На стороне сервера формируем вызов авторизации (WWW-Authenticate)
 			case static_cast <uint8_t> (auth_t::owner_t::SERVER): {
 				// Формируем значение вызова авторизации
-				result = this->_fmk->format("Basic realm=\"%s\"", this->_params.digest.realm.c_str());
+				result = awh::fmk::format("Basic realm=\"%s\"", this->_params.digest.realm.c_str());
 				// Если требуется вывести заголовок вместе с его именем
 				if(full)
 					// Дополняем результат именем заголовка
-					result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
+					result = awh::fmk::format("%s: %s\r\n", this->name().c_str(), result.c_str());
 			} break;
 		}
 	/**
@@ -169,13 +171,13 @@ string awh::http::Basic::header(const bool full) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(full), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {full}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим в лог сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -187,12 +189,10 @@ string awh::http::Basic::header(const bool full) noexcept {
  * @param owner  сторона работы (клиент/сервер)
  * @param params общие параметры авторизации
  * @param crypto объект криптографии
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
  *
  */
-awh::http::Basic::Basic(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
- auth_t::scheme_t(owner, params, crypto, fmk, log) {}
+awh::http::Basic::Basic(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto) noexcept :
+ auth_t::scheme_t(owner, params, crypto) {}
 /**
  * @brief Деструктор
  *

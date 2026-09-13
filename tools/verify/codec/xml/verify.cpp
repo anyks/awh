@@ -36,8 +36,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <codec/xml/xml.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён стенда этого файла
@@ -55,35 +56,15 @@ namespace {
 	 *
 	 */
 	struct Silent {
-		// Объект фреймворка
-		awh::fmk_t fmk;
-		// Объект журнала работы
-		awh::log_t log;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : fmk(), log(&fmk) {
+		Silent() noexcept {
 			// Выполняем отключение вывода журнала
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала стенда
-	 *
-	 * @details Объект заводится статикою местною, а не общею файла: заведение его
-	 *          порядком построения статики оканчивается падением ещё до входа в
-	 *          приложение
-	 *
-	 * @return объект журнала стенда
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала стенда
-		static Silent silent;
-		// Выводим объект журнала стенда
-		return &silent.log;
-	}
 }
 
 /**
@@ -164,7 +145,7 @@ namespace {
 		 */
 		settings.namespaces = namespaces;
 		// Объект чтения текста разметки
-		xml::reader_t reader(::logger(), settings);
+		xml::reader_t reader(settings);
 		// Получаем размер подаваемого куска
 		const size_t length = ((chunk > 0) ? chunk : (text.size() + 1));
 		// Положение подачи в разбираемом тексте
@@ -349,7 +330,7 @@ namespace {
 	 */
 	static bool rewritten(const string & text, const string & sample) noexcept {
 		// Объект дерева разметки
-		xml::document_t document(::logger());
+		xml::document_t document;
 		/**
 		 * Если разбор текста разметки деревом завершился отказом
 		 */
@@ -357,7 +338,7 @@ namespace {
 			// Выводим признак несовпадения строения
 			return false;
 		// Объект записи текста разметки
-		xml::writer_t writer(::logger());
+		xml::writer_t writer;
 		/**
 		 * Если запись дерева разметки выполнить не удалось
 		 */
@@ -388,6 +369,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	/**
 	 * Если корень корпуса не передан
 	 */

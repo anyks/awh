@@ -84,6 +84,7 @@
  */
 #include "../../../include/client/client.hpp"
 #include "../../../include/server/server.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -320,12 +321,9 @@ namespace {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 */
-			explicit Security(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
-			 _client(0), _server(0), _coder(fmk, log) {
+			explicit Security() noexcept :
+			 _client(0), _server(0), _coder() {
 				// Сертификат тестового узла в формате PEM
 				std::string certificate = "";
 				// Приватный ключ тестового узла в формате PEM
@@ -442,10 +440,6 @@ namespace {
 	 */
 	class Harness {
 		private:
-			// Объект фреймворка
-			awh::fmk_t * _fmk;
-			// Объект для работы с логами
-			awh::log_t * _log;
 			// Тестовое окружение транспортной безопасности
 			Security * _security;
 		private:
@@ -661,7 +655,7 @@ namespace {
 				// Формируем нагрузку обмена заданного размера
 				this->_payload = this->makePayload(this->_length);
 				// Создаём фасад сервера на серверном шаблоне контекста безопасности
-				this->_server = std::make_unique <awh::server_t> (this->_security->server(), &this->_security->coder(), this->_fmk, this->_log);
+				this->_server = std::make_unique <awh::server_t> (this->_security->server(), &this->_security->coder());
 				// Создаём событие сервера потокового транспорта поверх TCP
 				this->_server->init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 				// Устанавливаем хост сервера на локальной петле
@@ -683,7 +677,7 @@ namespace {
 				// Выполняем заведение транспортного уровня клиента
 				this->_ctl = this->_security->coder().transport(this->_security->client());
 				// Создаём фасад клиента на транспорте клиентского шаблона контекста безопасности
-				this->_client = std::make_unique <awh::client_t> (this->_ctl, &this->_security->coder(), this->_fmk, this->_log);
+				this->_client = std::make_unique <awh::client_t> (this->_ctl, &this->_security->coder());
 				// Создаём событие клиента потокового транспорта поверх TCP
 				this->_client->init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 				// Устанавливаем опции клиента: обе стороны на одном потоке цикла, блокирующая запись встала бы намертво
@@ -748,13 +742,11 @@ namespace {
 			 *
 			 * @param length   размер полезной нагрузки обмена
 			 * @param port     порт прослушивания сервера на локальной петле
-			 * @param fmk      объект фреймворка
-			 * @param log      объект для работы с логами
 			 * @param security тестовое окружение транспортной безопасности
 			 *
 			 */
-			Harness(const size_t length, const uint16_t port, awh::fmk_t * fmk, awh::log_t * log, Security * security) noexcept :
-			 _fmk(fmk), _log(log), _security(security), _length(length), _port(port),
+			Harness(const size_t length, const uint16_t port, Security * security) noexcept :
+			 _security(security), _length(length), _port(port),
 			 _ctl(0), _payload{""}, _serverOk(true), _clientOk(true), _finishing(false) {}
 			/**
 			 * @brief Деструктор
@@ -785,10 +777,6 @@ namespace {
  */
 class TlsFacadeTest : public testing::Test {
 	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект для работы с логами
-		std::unique_ptr <awh::log_t> _log;
 		// Тестовое окружение транспортной безопасности
 		std::unique_ptr <Security> _security;
 	protected:
@@ -817,14 +805,10 @@ class TlsFacadeTest : public testing::Test {
 		 *
 		 */
 		void SetUp() override {
-			// Инициализируем объект фреймворка
-			this->_fmk = std::make_unique <awh::fmk_t> ();
-			// Инициализируем объект логирования
-			this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 			// Отключаем вывод логов в тестовом окружении
-			this->_log->level(awh::log_t::level_t::NONE);
+			awh::log::level(awh::log::level_t::NONE);
 			// Инициализируем тестовое окружение транспортной безопасности
-			this->_security = std::make_unique <Security> (this->_fmk.get(), this->_log.get());
+			this->_security = std::make_unique <Security> ();
 		}
 		/**
 		 * @brief Метод очистки тестового окружения
@@ -846,7 +830,7 @@ TEST_F(TlsFacadeTest, ConnectAndEcho){
 	// Размер полезной нагрузки обмена
 	const size_t length = 4096;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(length, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(length, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(20000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом
@@ -884,7 +868,7 @@ TEST_F(TlsFacadeTest, CiphertextSurvivesQueueOverflow){
 	// Размер полезной нагрузки обмена, заведомо превышающий очередь отправки
 	const size_t length = (4 * 1024 * 1024);
 	// Создаём интеграционное окружение фасадов
-	Harness harness(length, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(length, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(60000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом

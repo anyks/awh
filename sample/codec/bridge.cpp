@@ -33,8 +33,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/bridge.hpp>
-#include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -58,12 +58,16 @@ using namespace awh::codec;
  *
  */
 int32_t main() noexcept {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Разбираемая запись настроек
 	const string text =
 		"{\"name\":\"служба\",\"net\":{\"host\":\"localhost\",\"port\":8080},\"list\":[1,2,3]}";
@@ -79,7 +83,7 @@ int32_t main() noexcept {
 	 */
 	if(!bridge.decode(text, value, Bridge::format_t::JSON)){
 		// Выводим сообщение об отказе перевода
-		log.print("Разбор записи JSON отвечен отказом", log_t::flag_t::CRITICAL);
+		awh::log::print("Разбор записи JSON отвечен отказом", awh::log::flag_t::CRITICAL);
 		// Выходим из приложения с кодом отказа
 		return EXIT_FAILURE;
 	}
@@ -111,7 +115,7 @@ int32_t main() noexcept {
 		// Выполняем перевод дерева значений в запись кодека
 		if(!bridge.encode(value, result, format.second)){
 			// Выводим сообщение об отказе перевода
-			log.print("Перевод в запись %s отвечен отказом", log_t::flag_t::WARNING, format.first.c_str());
+			awh::log::print("Перевод в запись %s отвечен отказом", awh::log::flag_t::WARNING, format.first.c_str());
 			// Продолжаем перебор видов записи дальше
 			continue;
 		}

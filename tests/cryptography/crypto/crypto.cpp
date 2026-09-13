@@ -29,12 +29,8 @@
  *
  */
 void CryptoFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект криптографии
-	this->_crypto = std::make_unique <awh::crypto_t> (this->_fmk.get(), this->_log.get());
+	this->_crypto = std::make_unique <awh::crypto_t> ();
 }
 
 /**

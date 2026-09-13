@@ -264,18 +264,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param fmk framework object
-				 * @param log object for working with logs
-				 *
 				 * \~
 				 */
-				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Unit() noexcept;
 			} unit_t;
 		protected:
 			// Идентификатор сервера
@@ -298,11 +292,6 @@ namespace awh {
 		protected:
 			// Объект юнита сервера
 			unique_ptr <unit_t> _unit;
-		protected:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		protected:
 			/**
 			 * \~russian
@@ -2873,56 +2862,42 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param fmk framework object
-			 * @param log object for working with logs
-			 *
 			 * \~
 			 */
-			explicit Server(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server() noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param dns объект DNS-резолвера
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * @param dns DNS resolver object
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(unit::dns_t * dns) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param cts   идентификатор шаблона контекста безопасности
 			 * @param coder объект транспортного уровня безопасности
-			 * @param fmk   объект фреймворка
-			 * @param log   объект для работы с логами
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * @param cts   security context template identifier
 			 * @param coder transport layer security object
-			 * @param fmk   framework object
-			 * @param log   object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
@@ -2930,8 +2905,6 @@ namespace awh {
 			 * @param cts   идентификатор шаблона контекста безопасности
 			 * @param coder объект транспортного уровня безопасности
 			 * @param dns   объект DNS-резолвера
-			 * @param fmk   объект фреймворка
-			 * @param log   объект для работы с логами
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -2939,12 +2912,10 @@ namespace awh {
 			 * @param cts   security context template identifier
 			 * @param coder transport layer security object
 			 * @param dns   DNS resolver object
-			 * @param fmk   framework object
-			 * @param log   object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder, unit::dns_t * dns) noexcept;
 		public:
 			/**
 			 * \~russian

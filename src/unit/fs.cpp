@@ -23,6 +23,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/fs.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -146,13 +147,13 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог создания события
-				this->_log->debug("Filesystem event could not be created because its type is not defined", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+				awh::log::debug("Filesystem event could not be created because its type is not defined", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				this->_log->print("Filesystem event could not be created because its type is not defined", log_t::flag_t::WARNING);
+				awh::log::print("Filesystem event could not be created because its type is not defined", awh::log::flag_t::WARNING);
 			#endif
 			// Возвращаем результат
 			return result;
@@ -182,13 +183,13 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог создания события
-			this->_log->debug("Filesystem event could not be created", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+			awh::log::debug("Filesystem event could not be created", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог создания события
-			this->_log->print("Filesystem event could not be created", log_t::flag_t::WARNING);
+			awh::log::print("Filesystem event could not be created", awh::log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем результат
@@ -367,11 +368,8 @@ bool awh::unit::Filesystem::setBufferSize(const event::id_t eid, const event::ac
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::Filesystem::Filesystem(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Filesystem::Filesystem() noexcept : unit_t() {}
 /**
  * @brief Деструктор
  *

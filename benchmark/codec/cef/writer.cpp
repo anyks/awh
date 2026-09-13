@@ -30,11 +30,11 @@
  * Подключаем заголовочные файлы бенчмарков
  */
 #include "cef.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён сценариев этого файла
@@ -48,17 +48,13 @@ namespace {
 	 *
 	 */
 	struct SilentCefWriter {
-		// Объект фреймворка сценариев
-		awh::fmk_t fmk;
-		// Объект журнала сценариев
-		awh::log_t log;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentCefWriter() noexcept : log(&this->fmk) {
+		SilentCefWriter() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 	/**
@@ -129,13 +125,13 @@ namespace {
 	 */
 	awh::benchmark::event::outcome_t assemble(const std::string & text, const size_t rounds) noexcept {
 		// Объект события CEF
-		awh::codec::cef::document_t doc(&::writerEnvironment().fmk, &::writerEnvironment().log);
+		awh::codec::cef::document_t doc;
 		// Выполняем разбор эталонной записи в дерево события
 		if(!doc.parse(text))
 			// Выводим пустые итоги прогона сценария
 			return awh::benchmark::event::outcome_t();
 		// Объект записи событий
-		awh::codec::cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+		awh::codec::cef::writer_t writer;
 		// Собираемая запись CEF
 		std::string result;
 		/**

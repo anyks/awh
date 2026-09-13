@@ -79,6 +79,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <cryptography/tls/fingerprint.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -5086,13 +5088,13 @@ awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ (
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -5124,11 +5126,9 @@ bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const
  * @brief Конструктор
  *
  * @param it  итератор для установки
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  *
  */
-awh::tls::Fingerprint::Iterator::Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept : _it(it), _fmk(fmk), _log(log) {}
+awh::tls::Fingerprint::Iterator::Iterator(iterator it) noexcept : _it(it) {}
 
 /**
  * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера
@@ -5840,13 +5840,13 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// В случае ошибки возвращаем пустую строку
@@ -5957,13 +5957,13 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем пустую строку при ошибке
@@ -5978,7 +5978,7 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
  */
 bool awh::tls::Fingerprint::looksLikeBrowser(const imprint_t & imp) const noexcept {
 	// Если TLS 1.3 не согласован
-	if(!this->_fmk->compare("772", imp.tls.negotiated))
+	if(!awh::fmk::compare("772", imp.tls.negotiated))
 		// (772 — это десятичное представление 0x0304, т.е. TLS 1.3)
 		return false;
 	// SNI присутствует (4-й символ ja4 == 'd')
@@ -6582,13 +6582,13 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -6619,13 +6619,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Fingerprint buffer too short: %zu bytes (need >= 11)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, size);
+				awh::log::debug("Fingerprint buffer too short: %zu bytes (need >= 11)", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, size);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Fingerprint buffer too short: %zu bytes (need >= 11)", log_t::flag_t::WARNING, size);
+				awh::log::print("Fingerprint buffer too short: %zu bytes (need >= 11)", awh::log::flag_t::WARNING, size);
 			#endif
 			// Возвращаем значение по умолчанию
 			return result;
@@ -6682,13 +6682,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Unsupported record version: 0x%04X", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + 1));
+					awh::log::debug("Unsupported record version: 0x%04X", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, ::local::u16(buffer + 1));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Unsupported record version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + 1));
+					awh::log::print("Unsupported record version: 0x%04X", awh::log::flag_t::WARNING, ::local::u16(buffer + 1));
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -6713,13 +6713,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Fingerprint buffer too short for %s headers: %zu bytes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
+					awh::log::debug("Fingerprint buffer too short for %s headers: %zu bytes", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Fingerprint buffer too short for %s headers: %zu bytes", log_t::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
+					awh::log::print("Fingerprint buffer too short for %s headers: %zu bytes", awh::log::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -6753,13 +6753,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Handshake entry does not match the ClientHello", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+						awh::log::debug("Handshake entry does not match the ClientHello", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Handshake entry does not match the ClientHello", log_t::flag_t::WARNING);
+						awh::log::print("Handshake entry does not match the ClientHello", awh::log::flag_t::WARNING);
 					#endif
 				}
 				// Возвращаем значение по умолчанию
@@ -6815,13 +6815,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
+					awh::log::debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Unsupported handshake version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
+					awh::log::print("Unsupported handshake version: 0x%04X", awh::log::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -6870,13 +6870,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello truncated at session_id_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+					awh::log::debug("ClientHello truncated at session_id_len", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello truncated at session_id_len", log_t::flag_t::WARNING);
+					awh::log::print("ClientHello truncated at session_id_len", awh::log::flag_t::WARNING);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -6890,13 +6890,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello session_id_len > 32 (%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, length);
+					awh::log::debug("ClientHello session_id_len > 32 (%zu)", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, length);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello session_id_len > 32 (%zu)", log_t::flag_t::WARNING, length);
+					awh::log::print("ClientHello session_id_len > 32 (%zu)", awh::log::flag_t::WARNING, length);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -6908,13 +6908,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, offset, length, size);
+					awh::log::debug("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, offset, length, size);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", log_t::flag_t::WARNING, offset, length, size);
+					awh::log::print("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", awh::log::flag_t::WARNING, offset, length, size);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -6937,13 +6937,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("ClientHello truncated at cookie_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+						awh::log::debug("ClientHello truncated at cookie_len", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("ClientHello truncated at cookie_len", log_t::flag_t::WARNING);
+						awh::log::print("ClientHello truncated at cookie_len", awh::log::flag_t::WARNING);
 					#endif
 					// Возвращаем значение по умолчанию
 					return result;
@@ -6957,13 +6957,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, offset, length, size);
+						awh::log::debug("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, offset, length, size);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", log_t::flag_t::WARNING, offset, length, size);
+						awh::log::print("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", awh::log::flag_t::WARNING, offset, length, size);
 					#endif
 					// Возвращаем значение по умолчанию
 					return result;
@@ -6985,13 +6985,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello truncated at cipher_suites_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+					awh::log::debug("ClientHello truncated at cipher_suites_len", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello truncated at cipher_suites_len", log_t::flag_t::WARNING);
+					awh::log::print("ClientHello truncated at cipher_suites_len", awh::log::flag_t::WARNING);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -7007,13 +7007,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello invalid cipher_suites length (%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, length);
+					awh::log::debug("ClientHello invalid cipher_suites length (%zu)", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, length);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello invalid cipher_suites length (%zu)", log_t::flag_t::WARNING, length);
+					awh::log::print("ClientHello invalid cipher_suites length (%zu)", awh::log::flag_t::WARNING, length);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -7172,13 +7172,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello truncated at compression_methods_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+					awh::log::debug("ClientHello truncated at compression_methods_len", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello truncated at compression_methods_len", log_t::flag_t::WARNING);
+					awh::log::print("ClientHello truncated at compression_methods_len", awh::log::flag_t::WARNING);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -7192,13 +7192,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello truncated at compression_methods", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+					awh::log::debug("ClientHello truncated at compression_methods", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello truncated at compression_methods", log_t::flag_t::WARNING);
+					awh::log::print("ClientHello truncated at compression_methods", awh::log::flag_t::WARNING);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -7210,13 +7210,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, length, buffer[offset]);
+					awh::log::debug("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, length, buffer[offset]);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", log_t::flag_t::WARNING, length, buffer[offset]);
+					awh::log::print("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", awh::log::flag_t::WARNING, length, buffer[offset]);
 				#endif
 			}
 			/**
@@ -7253,13 +7253,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello truncated at extensions_length", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+					awh::log::debug("ClientHello truncated at extensions_length", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello truncated at extensions_length", log_t::flag_t::WARNING);
+					awh::log::print("ClientHello truncated at extensions_length", awh::log::flag_t::WARNING);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -7275,13 +7275,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ClientHello truncated inside extensions", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+					awh::log::debug("ClientHello truncated inside extensions", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ClientHello truncated inside extensions", log_t::flag_t::WARNING);
+					awh::log::print("ClientHello truncated inside extensions", awh::log::flag_t::WARNING);
 				#endif
 				// Возвращаем значение по умолчанию
 				return result;
@@ -7551,13 +7551,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -7876,13 +7876,13 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем отрицательный результат
@@ -7923,13 +7923,13 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 			 */
 			#if DEBUG_MODE
 				// Записываем предупреждение в лог
-				this->_log->debug("ClientHello record is incomplete", __PRETTY_FUNCTION__, make_tuple(size, recordLen), log_t::flag_t::WARNING);
+				awh::log::debug("ClientHello record is incomplete", __PRETTY_FUNCTION__, {size, recordLen}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем предупреждение в лог
-				this->_log->print("ClientHello record is incomplete", log_t::flag_t::WARNING);
+				awh::log::print("ClientHello record is incomplete", awh::log::flag_t::WARNING);
 			#endif
 			// Возвращаем пустой результат
 			return result;
@@ -8784,13 +8784,13 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -8891,13 +8891,13 @@ bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (id)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -8932,13 +8932,13 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
 			 */
 			#if DEBUG_MODE
 				// Записываем предупреждение в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::WARNING, "Browser fingerprint id is not found");
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (id)}, awh::log::flag_t::WARNING, "Browser fingerprint id is not found");
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем предупреждение в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, "Browser fingerprint id is not found");
+				awh::log::print("%s", awh::log::flag_t::WARNING, "Browser fingerprint id is not found");
 			#endif
 		}
 	/**
@@ -8950,13 +8950,13 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (id)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9005,13 +9005,13 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Browser fingerprint storage is full");
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, "Browser fingerprint storage is full");
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, "Browser fingerprint storage is full");
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, "Browser fingerprint storage is full");
 			#endif
 		}
 	/**
@@ -9023,13 +9023,13 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9065,13 +9065,13 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, c
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9132,13 +9132,13 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9216,13 +9216,13 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.size()), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -10266,13 +10266,13 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -10872,13 +10872,13 @@ bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & o
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -10907,7 +10907,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
 	// Блокируем хранилище отпечатков для чтения
 	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Возвращаем результат
-	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
+	return iterator_t(this->_browsers.end());
 }
 /**
  * @brief Метод получение начального итератора
@@ -10919,7 +10919,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
 	// Блокируем хранилище отпечатков для чтения
 	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Возвращаем результат
-	return iterator_t(this->_browsers.begin(), this->_fmk, this->_log);
+	return iterator_t(this->_browsers.begin());
 }
 /**
  * @brief Метод поиска указанного заголовка
@@ -10938,7 +10938,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noe
 			// Блокируем хранилище отпечатков для чтения
 			const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 			// Извлекаем текущий итератор
-			return iterator_t(this->_browsers.find(id), this->_fmk, this->_log);
+			return iterator_t(this->_browsers.find(id));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -10948,18 +10948,18 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noe
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 	// Возвращаем результат
-	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
+	return iterator_t(this->_browsers.end());
 }
 /**
  * @brief Оператор извлечения цифрового отпечатка браузера
@@ -11089,11 +11089,8 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & f
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+awh::tls::Fingerprint::Fingerprint() noexcept {
 	// Мьютекс выключен по умолчанию; включается через threadSafety(true)
 	this->_mtx.enabled = false;
 }

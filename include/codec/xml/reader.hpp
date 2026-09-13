@@ -46,7 +46,6 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -1980,7 +1979,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log = nullptr;
 				private:
 					/**
 					 * \~russian
@@ -2689,22 +2687,6 @@ namespace awh {
 					 */
 					standalone_t standalone() const noexcept;
 				public:
-				public:
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2715,7 +2697,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Reader(const log_t * log) noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2728,7 +2710,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Reader(const log_t * log, const settings_t & settings) noexcept;
+					explicit Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -2750,5 +2732,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_CODEC_XML_READER__

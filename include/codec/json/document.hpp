@@ -96,6 +96,21 @@ namespace awh {
 		namespace json {
 			/**
 			 * \~russian
+			 * @brief Предобъявление владеющего значения документа
+			 *
+			 * @note Нужно дружеству у ссылки на узел: полное имя `awh::codec::json::Value`
+			 *       обязано разрешаться, иначе имя `Value` внутри документа ложится на
+			 *       вложенную ссылку `Document::Value`, и дружество означает НЕ ТО, что
+			 *       написано, - а вложенному классу оно и не нужно вовсе
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value of a document
+			 *
+			 * \~
+			 */
+			class Value;
+			/**
+			 * \~russian
 			 * @brief Предварительное объявление владеющего значения
 			 *
 			 * @details Объявление это заведено ради прививки: документ прививаемое значение
@@ -158,6 +173,17 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
+				private:
+					/**
+					 * Владеющее значение перенимает у документа объект фреймворка и объект
+					 * ведения журнала - ту самую пару, какою живёт сам документ
+					 *
+					 * @warning Имя пишется ПОЛНЫМ: краткое `Value` внутри документа ложится на
+					 *          вложенную ссылку на узел `Document::Value`, и дружество означало бы
+					 *          НЕ ТО, что написано, - а вложенному классу оно не нужно вовсе, он
+					 *          достаёт до закрытого у окружающего сам
+					 */
+					friend class awh::codec::json::Value;
 				public:
 					/**
 					 * \~russian
@@ -491,6 +517,12 @@ namespace awh {
 					 * \~
 					 */
 					typedef class __AWH_SHARED_EXPORT__ Value {
+						private:
+							/**
+							 * Владеющее значение читает у ссылки документ, которому узел принадлежит,
+							 * чтобы перенять у того пару указателей
+							 */
+							friend class awh::codec::json::Value;
 						private:
 							// Документ, которому принадлежит узел
 							const Document * _doc;
@@ -1234,7 +1266,6 @@ namespace awh {
 				private:
 					// Настройки документа
 					settings_t _settings;
-				private:
 					/**
 					 * \~russian
 					 * Чтение текста документа
@@ -1254,7 +1285,6 @@ namespace awh {
 					 * \~
 					 */
 					reader_t _reader;
-				private:
 					/**
 					 * @brief Код отказа последней работы над документом
 					 *
@@ -1264,7 +1294,6 @@ namespace awh {
 					 * лишь разбору, и отказ записи пропадал вовсе
 					 */
 					mutable error_t _error;
-				private:
 					/**
 					 * \~russian
 					 * Кодировка, какою исходный текст документа прочитан
@@ -1279,7 +1308,6 @@ namespace awh {
 					 * \~
 					 */
 					encoding_t _encoding = encoding_t::NONE;
-				private:
 					/**
 					 * \~russian
 					 * Объект ведения журнала работы
@@ -1292,23 +1320,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log = nullptr;
 					/**
 					 * \~russian
 					 * Объект фреймворка
 					 *
-					 * @note Держится ради работы с файловой системой: приведение пути к широкому
-					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
-					 *       узким. Кириллический путь при этом ложится на диск искажённым, а
-					 *       узкий же розыск находит его обратно тем же неверным приведением -
-					 *       оттого отказа не бывает никогда, и порок тише отказа
+					 * @note Держится ради передачи владеющему значению: значение, снятое с узла
+					 *       документа, обязано унаследовать ту же пару, какою живёт документ, - без
+					 *       неё первая же работа его с файловой системой валит процесс. Достать
+					 *       фреймворк из объекта работы с файловой системой нельзя: хода наружу он
+					 *       не даёт
 					 *
 					 * \~english
 					 * Framework object
 					 *
 					 * \~
 					 */
-					const fmk_t * _fmk = nullptr;
 					/**
 					 * \~russian
 					 * Объект для работы с файловой системой
@@ -1322,8 +1348,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					mutable fs_t _fs;
-				private:
+					fs_t _fs;
 					/**
 					 * \~russian
 					 * Перечень узлов документа
@@ -1338,7 +1363,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-				private:
 					/**
 					 * \~russian
 					 * Клеймо поколения дерева документа
@@ -1380,12 +1404,9 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _stamp;
-				private:
 					vector <node_t> _nodes;
-				private:
 					// Хранилище знаков всех строк и имён документа
 					string _storage;
-				private:
 					/**
 					 * \~russian
 					 * Отображение имён полей в номера узлов, заводимое по требованию
@@ -1403,7 +1424,6 @@ namespace awh {
 					 * \~
 					 */
 					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
-				private:
 					/**
 					 * \~russian
 					 * Перечень имён полей разбираемого объекта вместе с номерами их узлов
@@ -1421,10 +1441,8 @@ namespace awh {
 					 * \~
 					 */
 					vector <pair <string_view, uint32_t>> _naming;
-				private:
 					// Отображение имён полей крупного объекта в места их в перечне имён
 					unordered_map <string_view, size_t> _lookup;
-				private:
 					/**
 					 * @brief Положение отказа разбора в исходном тексте
 					 *
@@ -1434,7 +1452,6 @@ namespace awh {
 					 * пережив, складывалось бы с новым кодом в донесение стройное, но ложное
 					 */
 					mutable location_t _position;
-				private:
 					/**
 					 * \~russian
 					 * Стек номеров узлов открытых вместилищ
@@ -1452,10 +1469,8 @@ namespace awh {
 					 * \~
 					 */
 					vector <uint32_t> _nesting;
-				private:
 					// Длина имени поля объекта, ожидающего своего значения
 					uint32_t _named;
-				private:
 					// Признак того, что имя поля объекта разобрано, а значение его - ещё нет
 					bool _keyed;
 					/**
@@ -1488,7 +1503,6 @@ namespace awh {
 					 * договором это описывает
 					 */
 					bool _halted;
-				private:
 					/**
 					 * \~russian
 					 * Сквозное положение конца имени поля объекта, ожидающего своего значения
@@ -1506,7 +1520,6 @@ namespace awh {
 					 * \~
 					 */
 					uint64_t _pointer;
-				private:
 					/**
 					 * \~russian
 					 * Сквозное положение первого знака хранилища документа в потоке разобранных знаков
@@ -1526,7 +1539,6 @@ namespace awh {
 					 * \~
 					 */
 					uint64_t _base;
-				private:
 					/**
 					 * Обработчик потоковой выдачи значений, действующий на время разбора
 					 *
@@ -1534,7 +1546,6 @@ namespace awh {
 					 *       чтения прямо в сборку дерева, а передать его туда доводом неоткуда
 					 */
 					const callback_t * _callback;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод сборки дерева по очередному событию разбора
@@ -1652,7 +1663,6 @@ namespace awh {
 					 * \~
 					 */
 					bool locate(const vector <string> & parts, uint32_t & target, vector <uint32_t> & ancestors) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод переноса владеющего значения в перечень узлов дерева
@@ -1688,7 +1698,6 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t transplant(const json::Value & value, const string * name, vector <node_t> & nodes, const uint32_t depth) noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод определения вида числа вместе с преобразованием его
@@ -1751,7 +1760,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста документа
@@ -1816,7 +1824,6 @@ namespace awh {
 					 * \~
 					 */
 					bool load(const string & filename) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод перезаписи документа в текст
@@ -1901,7 +1908,6 @@ namespace awh {
 					 * \~
 					 */
 					bool save(const string & filename, const format_t format) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод прививки владеющего значения в дерево документа
@@ -2052,7 +2058,6 @@ namespace awh {
 					 * \~
 					 */
 					bool graft(const string & pointer, const json::Value & value) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения корневого значения документа
@@ -2205,7 +2210,6 @@ namespace awh {
 					 *      замкнутость обхода: всякое выданное звено годно для `at()` и ведёт к тому самому ребёнку
 					 */
 					vector <string> keys(const string & pointer) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества значений в корне документа
@@ -2340,7 +2344,6 @@ namespace awh {
 					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения настроек документа
@@ -2367,7 +2370,6 @@ namespace awh {
 					 * \~
 					 */
 					void settings(const settings_t & settings) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2378,21 +2380,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
+					Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

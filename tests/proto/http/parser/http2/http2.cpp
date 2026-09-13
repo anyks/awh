@@ -29,10 +29,6 @@
  *
  */
 void ParserHttp2Fixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 }
 
 /**
@@ -50,7 +46,7 @@ void ParserHttp2Fixture::TearDown() {}
  */
 std::unique_ptr <awh::http::parser_http2_t> ParserHttp2Fixture::make(const awh::http::direct_t direct) const noexcept {
 	// Создаём и возвращаем объект парсера
-	return std::make_unique <awh::http::parser_http2_t> (direct, this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::http::parser_http2_t> (direct);
 }
 
 /**

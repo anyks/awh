@@ -44,57 +44,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Способ выдачи объекта фреймворка проверок
-	 *
-	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
-	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -128,7 +85,7 @@ namespace {
 	 */
 	string events(const string & text, const size_t chunk, bool & ok) noexcept {
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Собираемый ряд событий разбора
 		string result;
 		// Запоминаем признак успешного разбора текста
@@ -248,7 +205,7 @@ TEST(CodecYamlReader, MalformedSequenceOutcomeIsIndependentOfTheChunking) {
 	 */
 	const auto outcome = [](const string & text, const size_t cut) noexcept -> uint8_t {
 		// Объект чтения текста настроек
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		/**
 		 * Если подача ведётся целиком
 		 */
@@ -477,7 +434,7 @@ TEST(CodecYamlReader, Quoting) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем подачу текста с оградою вокруг числа
 		ASSERT_TRUE(reader.feed("plain: 12\nquoted: '12'\n"));
 		// Виды значений, разрешённые разбором
@@ -541,7 +498,7 @@ TEST(CodecYamlReader, Comments) {
 	// Задаём выдачу пустых строк отдельным событием
 	settings.emitBlanks = true;
 	// Объект потокового чтения текста
-	yaml::reader_t reader(::logger(), settings);
+	yaml::reader_t reader(settings);
 	// Выполняем подачу текста с примечаниями и пустой строкой
 	ASSERT_TRUE(reader.feed("# сверху\nkey: value # сбоку\n\nnext: 1\n"));
 	// Собираемый ряд событий разбора
@@ -581,7 +538,7 @@ TEST(CodecYamlReader, Refusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора отступа со знаком подачи
 		ASSERT_FALSE(reader.feed("a:\n\tb: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -596,7 +553,7 @@ TEST(CodecYamlReader, Refusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора незакрытой ограды
 		ASSERT_FALSE(reader.feed("a: 'не закрыта\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -607,7 +564,7 @@ TEST(CodecYamlReader, Refusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора неопознанной последовательности
 		ASSERT_FALSE(reader.feed("a: \"\\q\"\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -621,7 +578,7 @@ TEST(CodecYamlReader, Refusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора записи суррогата
 		ASSERT_FALSE(reader.feed("a: \"\\uD800\"\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -731,7 +688,7 @@ TEST(CodecYamlReader, Chunking) {
  */
 TEST(CodecYamlReader, Cleared) {
 	// Объект потокового чтения текста
-	yaml::reader_t reader(::logger());
+	yaml::reader_t reader;
 	// Выполняем подачу текста, разбор которого отказывает
 	ASSERT_FALSE(reader.feed("a:\n\tb: 1\n"));
 	// Выполняем проверку состояния прекращения разбора
@@ -827,7 +784,7 @@ TEST(CodecYamlReader, Flow) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора незакрытого построения
 		ASSERT_FALSE(reader.feed("a: [1, 2\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -842,7 +799,7 @@ TEST(CodecYamlReader, Flow) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора построения, закрытого чужой скобкой
 		ASSERT_FALSE(reader.feed("a: [1, 2}\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -908,7 +865,7 @@ TEST(CodecYamlReader, BlockScalars) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем подачу текста с блочным значением из одних цифр
 		ASSERT_TRUE(reader.feed("text: |\n  12\n"));
 		// Вид значения, разрешённый разбором
@@ -939,7 +896,7 @@ TEST(CodecYamlReader, BlockScalars) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора заголовка с двумя правилами усечения
 		ASSERT_FALSE(reader.feed("text: |-+\n  одна\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -991,7 +948,7 @@ TEST(CodecYamlReader, Anchors) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора ссылки вперёд объявления
 		ASSERT_FALSE(reader.feed("a: *нет\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1005,7 +962,7 @@ TEST(CodecYamlReader, Anchors) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора ссылки через границу документа
 		ASSERT_FALSE(reader.feed("---\na: &я 1\n---\nb: *я\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1016,7 +973,7 @@ TEST(CodecYamlReader, Anchors) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора свойства над ссылкой
 		ASSERT_FALSE(reader.feed("a: &я 1\nb: &б *я\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1061,7 +1018,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора значения с меткой типа строки
 		ASSERT_TRUE(reader.feed("a: !!str 12\n"));
 		/**
@@ -1076,7 +1033,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора строки под меткой целого
 		ASSERT_FALSE(reader.feed("a: !!int строка\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1087,7 +1044,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора отображения под меткой строки
 		ASSERT_FALSE(reader.feed("a: !!str\n  x: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1102,7 +1059,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора перечня под меткой отображения
 		ASSERT_FALSE(reader.feed("a: !!map\n  - 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1116,7 +1073,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора пустого узла под меткой логического значения
 		ASSERT_FALSE(reader.feed("!!bool\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1130,7 +1087,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора пустого узла под меткой пустоты
 		ASSERT_TRUE(reader.feed("!!null\n"));
 		// Выполняем проверку того, что отказа разбор не дал
@@ -1144,7 +1101,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора отображения под меткой отображения
 		ASSERT_TRUE(reader.feed("a: !!map\n  x: 1\n"));
 		// Выполняем проверку того, что отказа разбор не дал
@@ -1155,7 +1112,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора необъявленного сокращения
 		ASSERT_FALSE(reader.feed("a: !e!mine 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1166,7 +1123,7 @@ TEST(CodecYamlReader, Tags) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора метки типа с письмом иным
 		ASSERT_FALSE(reader.feed("a: !своё 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1197,7 +1154,7 @@ TEST(CodecYamlReader, Directives) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора текста наречия 1.1
 		ASSERT_TRUE(reader.feed("%YAML 1.1\n---\na: yes\n"));
 		/**
@@ -1215,7 +1172,7 @@ TEST(CodecYamlReader, Directives) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора двух документов с разными наречиями
 		ASSERT_TRUE(reader.feed("%YAML 1.1\n---\na: yes\n---\nb: yes\n"));
 		/**
@@ -1232,7 +1189,7 @@ TEST(CodecYamlReader, Directives) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора неподдерживаемого наречия
 		ASSERT_FALSE(reader.feed("%YAML 2.0\n---\na: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1245,7 +1202,7 @@ TEST(CodecYamlReader, Directives) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора директивы без черты за нею
 		ASSERT_FALSE(reader.feed("%YAML 1.2\na: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1256,7 +1213,7 @@ TEST(CodecYamlReader, Directives) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора директивы посреди документа
 		ASSERT_FALSE(reader.feed("a: 1\n%YAML 1.2\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1267,7 +1224,7 @@ TEST(CodecYamlReader, Directives) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора повторного объявления сокращения
 		ASSERT_FALSE(reader.feed("%TAG !e! tag:a\n%TAG !e! tag:b\n---\na: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1329,7 +1286,7 @@ TEST(CodecYamlReader, FlowLines) {
 		// Устанавливаем признак выдачи примечаний отдельным событием
 		settings.emitComments = true;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Выполняем проверку разбора построения с примечаниями внутри
 		ASSERT_TRUE(reader.feed("a: [ # сбоку\n  1\n  ]\n"));
 		// Собираемый ряд названий событий разбора
@@ -1360,7 +1317,7 @@ TEST(CodecYamlReader, FlowLines) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора незакрытого построения
 		ASSERT_FALSE(reader.feed("a: [\n  1,\n  2\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1447,7 +1404,7 @@ TEST(CodecYamlReader, PlainLines) {
 		// Устанавливаем признак выдачи примечаний отдельным событием
 		settings.emitComments = true;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Выполняем проверку разбора значения, примечанием завершённого
 		ASSERT_TRUE(reader.feed("key: первая\n  вторая # сбоку\nnext: 1\n"));
 		// Собираемый ряд названий событий разбора
@@ -1481,7 +1438,7 @@ TEST(CodecYamlReader, PlainLines) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора значения, на две строки растянутого
 		ASSERT_TRUE(reader.feed("key: длинное\n  продолжение\n"));
 		/**
@@ -1501,7 +1458,7 @@ TEST(CodecYamlReader, PlainLines) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора пары внутри значения
 		ASSERT_FALSE(reader.feed("key: первая\n  вторая: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -1539,7 +1496,7 @@ TEST(CodecYamlReader, BrokenEncoding) {
 	// Разбираемый текст с битой последовательностью посреди его
 	const string text("a: 1\nb: 2\nc: \xE6\xBB\x64\n");
 	// Объект потокового чтения текста
-	yaml::reader_t reader(::logger());
+	yaml::reader_t reader;
 	// Выполняем проверку отказа разбора битой последовательности
 	ASSERT_FALSE(reader.feed(text));
 	// Выполняем проверку кода ошибки разбора
@@ -1867,7 +1824,7 @@ TEST(CodecYamlReader, FlowTags) {
  */
 TEST(CodecYamlReader, KeylessScalar) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Выполняем проверку отказа значения без имени под парою отображения
 	ASSERT_FALSE(doc.parse("a: 1\nb\n"));
 	// Выполняем проверку кода отказа разбора
@@ -1895,7 +1852,7 @@ TEST(CodecYamlReader, KeylessScalar) {
  */
 TEST(CodecYamlReader, Strictness) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку отказа содержимого за чертой конца документа
 	 *
@@ -1944,7 +1901,7 @@ TEST(CodecYamlReader, Strictness) {
  */
 TEST(CodecYamlReader, FlowStrictness) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку отказа пустой записи построения
 	 *
@@ -1998,7 +1955,7 @@ TEST(CodecYamlReader, FlowStrictness) {
  */
 TEST(CodecYamlReader, ColonStrictness) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку отказа двух имён пар в одной строке
 	 *
@@ -2054,7 +2011,7 @@ TEST(CodecYamlReader, ColonStrictness) {
  */
 TEST(CodecYamlReader, BlockPadding) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку отказа пустой строки, первой непустой строки глубже
 	 *
@@ -2092,7 +2049,7 @@ TEST(CodecYamlReader, BlockPadding) {
  */
 TEST(CodecYamlReader, HeaderStrictness) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку отказа запятой в записи сокращения метки типа
 	 *
@@ -2146,7 +2103,7 @@ TEST(CodecYamlReader, HeaderStrictness) {
  */
 TEST(CodecYamlReader, PropertyStrictness) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку отказа свойств узла в строке черты записи перечня
 	 *
@@ -2198,7 +2155,7 @@ TEST(CodecYamlReader, PropertyStrictness) {
  */
 TEST(CodecYamlReader, TabStrictness) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку отказа подачи прежде содержимого блочного значения
 	 *
@@ -2259,7 +2216,7 @@ TEST(CodecYamlReader, TabStrictness) {
  */
 TEST(CodecYamlReader, TabSeparation) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку того, что подача за отступом скаляр от него отделяет
 	 *
@@ -2313,7 +2270,7 @@ TEST(CodecYamlReader, TabSeparation) {
  */
 TEST(CodecYamlReader, KeyProperties) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку метки типа, имени пары предпосланной
 	 *
@@ -2363,7 +2320,7 @@ TEST(CodecYamlReader, KeyProperties) {
  */
 TEST(CodecYamlReader, RootScalar) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку продолжения простого значения с начала строки
 	 *
@@ -2474,7 +2431,7 @@ TEST(CodecYamlReader, StretchedScalar) {
 	 */
 	for(auto & sample : samples){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(sample.text)) << "текст [" << sample.text << "]: " << yaml::message(doc.error());
 		// Выполняем проверку собранного содержимого значения
@@ -2488,7 +2445,7 @@ TEST(CodecYamlReader, StretchedScalar) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("\"свёрнуто \nв пробел\"\n")) << yaml::message(doc.error());
 		// Выполняем проверку собранного содержимого значения
@@ -2499,7 +2456,7 @@ TEST(CodecYamlReader, StretchedScalar) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("- { \"в несколько\n  строк\": значение}\n")) << yaml::message(doc.error());
 		// Выполняем проверку собранного имени пары
@@ -2547,7 +2504,7 @@ TEST(CodecYamlReader, StretchedStrictness) {
 	 */
 	for(auto & sample : samples){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку отказа разбора текста
 		ASSERT_FALSE(doc.parse(sample)) << "текст [" << sample << "]";
 	}
@@ -2556,7 +2513,7 @@ TEST(CodecYamlReader, StretchedStrictness) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("{ \"а\n  б\": 1 }\n")) << yaml::message(doc.error());
 		// Выполняем проверку собранного значения пары
@@ -2580,7 +2537,7 @@ TEST(CodecYamlReader, ExplicitKey) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("? имя\n: значение\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества пар отображения
@@ -2596,7 +2553,7 @@ TEST(CodecYamlReader, ExplicitKey) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("? первое\n? второе\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества пар отображения
@@ -2614,7 +2571,7 @@ TEST(CodecYamlReader, ExplicitKey) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(": значение\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества пар отображения
@@ -2627,7 +2584,7 @@ TEST(CodecYamlReader, ExplicitKey) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("? имя\n: - один\n  - два\n")) << yaml::message(doc.error());
 		// Выполняем проверку вида значения пары
@@ -2642,7 +2599,7 @@ TEST(CodecYamlReader, ExplicitKey) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("? один\n: раз\nдва: 2\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества пар отображения
@@ -2660,7 +2617,7 @@ TEST(CodecYamlReader, ExplicitKey) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("?имя: значение\n")) << yaml::message(doc.error());
 		// Выполняем проверку собранного имени пары
@@ -2680,7 +2637,7 @@ TEST(CodecYamlReader, ExplicitKey) {
 		 */
 		for(auto & sample : samples){
 			// Объект дерева документа
-			yaml::document_t doc(::framework(), ::logger());
+			yaml::document_t doc;
 			// Выполняем проверку отказа разбора текста
 			ASSERT_FALSE(doc.parse(sample)) << "текст [" << sample << "]";
 		}
@@ -2703,7 +2660,7 @@ TEST(CodecYamlReader, EmptyDashedDocument) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("---\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества документов текста
@@ -2718,7 +2675,7 @@ TEST(CodecYamlReader, EmptyDashedDocument) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("---\n---\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества документов текста
@@ -2733,7 +2690,7 @@ TEST(CodecYamlReader, EmptyDashedDocument) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("---\nимя: значение\n---\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества документов текста
@@ -2751,7 +2708,7 @@ TEST(CodecYamlReader, EmptyDashedDocument) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста, одними примечаниями занятого
 		ASSERT_TRUE(doc.parse("# одно примечание\n# и другое\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества документов текста
@@ -2775,7 +2732,7 @@ TEST(CodecYamlReader, FlowPair) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("- [ имя: значение ]\n")) << yaml::message(doc.error());
 		// Выполняем проверку вида записи перечня
@@ -2795,7 +2752,7 @@ TEST(CodecYamlReader, FlowPair) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("[ один: 1, два: 2 ]\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества записей перечня
@@ -2810,7 +2767,7 @@ TEST(CodecYamlReader, FlowPair) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("[ : значение ]\n")) << yaml::message(doc.error());
 		// Выполняем проверку вида записи перечня
@@ -2823,7 +2780,7 @@ TEST(CodecYamlReader, FlowPair) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("{ ? имя: значение }\n")) << yaml::message(doc.error());
 		// Выполняем проверку собранного значения пары
@@ -2837,7 +2794,7 @@ TEST(CodecYamlReader, FlowPair) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("[ ? имя ]\n")) << yaml::message(doc.error());
 		// Выполняем проверку вида записи перечня
@@ -2853,7 +2810,7 @@ TEST(CodecYamlReader, FlowPair) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("- [ [ вложенный ], имя: значение ]\n")) << yaml::message(doc.error());
 		// Выполняем проверку вида первой записи перечня
@@ -2909,7 +2866,7 @@ TEST(CodecYamlReader, FlowStretchedPlain) {
 	 */
 	for(auto & sample : samples){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse(sample.text)) << "текст [" << sample.text << "]: " << yaml::message(doc.error());
 		// Выполняем проверку собранного содержимого значения
@@ -2923,7 +2880,7 @@ TEST(CodecYamlReader, FlowStretchedPlain) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем разбор текста в дерево документа
 		ASSERT_TRUE(doc.parse("a: [\n  1,\n  2\n  ]\n")) << yaml::message(doc.error());
 		// Выполняем проверку количества записей перечня
@@ -2943,7 +2900,7 @@ TEST(CodecYamlReader, FlowStretchedPlain) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку отказа имени, в несколько строк стоящего, внутри перечня
 		ASSERT_FALSE(doc.parse("---\n[ имя\n  : значение ]\n"));
 		/**
@@ -2951,7 +2908,7 @@ TEST(CodecYamlReader, FlowStretchedPlain) {
 		 */
 		{
 			// Объект дерева документа
-			yaml::document_t other(::framework(), ::logger());
+			yaml::document_t other;
 			// Выполняем разбор текста в дерево документа
 			ASSERT_TRUE(other.parse("{имя\n: значение}\n")) << yaml::message(other.error());
 			// Выполняем проверку собранного значения пары
@@ -2976,7 +2933,7 @@ TEST(CodecYamlReader, FlowStretchedPlain) {
  */
 TEST(CodecYamlReader, DelayedAnchor) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Получаем настройки разбора документа
 	yaml::document_t::settings_t settings = doc.settings();
 	// Устанавливаем удержание всех пар отображения
@@ -3023,7 +2980,7 @@ TEST(CodecYamlReader, DelayedAnchor) {
  */
 TEST(CodecYamlReader, BlockHeaderIndent) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Выполняем проверку разбора заголовка, строкою ниже пары стоящего
 	ASSERT_TRUE(doc.parse("a:\n  >1\n значение\n"));
 	// Выполняем проверку собранного содержимого блочного значения
@@ -3078,7 +3035,7 @@ TEST(CodecYamlReader, CompositeKey) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора текста с именем, перечнем являющимся
 		ASSERT_TRUE(reader.feed("[поток]: значение\n"));
 		// Перечень выданных событий разбора
@@ -3101,7 +3058,7 @@ TEST(CodecYamlReader, CompositeKey) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора текста с именем, ссылкою являющимся
 		ASSERT_TRUE(reader.feed("&м имя: один\n*м : два\n"));
 	}
@@ -3113,7 +3070,7 @@ TEST(CodecYamlReader, CompositeKey) {
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку отказа дерева на имя, перечнем являющееся
 		ASSERT_FALSE(doc.parse("[поток]: значение\n"));
 		// Выполняем проверку причины отказа разбора
@@ -3146,7 +3103,7 @@ TEST(CodecYamlReader, CompositeKey) {
  */
 TEST(CodecYamlReader, NeighbourIndicators) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку записи перечня, одним примечанием заполненной
 	 *
@@ -3197,7 +3154,7 @@ TEST(CodecYamlReader, FlowEmptyValues) {
 	// Количество событий, чтением выданных
 	const auto counting = [](const string & text) noexcept -> size_t {
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		/**
 		 * Если разобрать текст не удалось
 		 */
@@ -3233,7 +3190,7 @@ TEST(CodecYamlReader, FlowEmptyValues) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора двух разделителей подряд
 		ASSERT_FALSE(reader.feed("[ a, , b ]\n"));
 		// Выполняем проверку причины отказа разбора
@@ -3255,7 +3212,7 @@ TEST(CodecYamlReader, FlowEmptyValues) {
  */
 TEST(CodecYamlReader, PendingValueProperties) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Выполняем проверку перечня, вровень с именем пары стоящего
 	ASSERT_TRUE(doc.parse("seq:\n- a\n- b\n"));
 	// Выполняем проверку количества записей перечня
@@ -3271,7 +3228,7 @@ TEST(CodecYamlReader, PendingValueProperties) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора метки типа у имени пустого
 		ASSERT_TRUE(reader.feed("!!null : a\n"));
 	}
@@ -3303,7 +3260,7 @@ TEST(CodecYamlReader, PendingValueProperties) {
  */
 TEST(CodecYamlReader, BlockBlankIndent) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку строки, отступ содержимого пробелами превысившей
 	 *
@@ -3341,7 +3298,7 @@ TEST(CodecYamlReader, BlockBlankIndent) {
  */
 TEST(CodecYamlReader, PlainContinuationTab) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Выполняем проверку подачи, продолжение значения открывающей
 	ASSERT_TRUE(doc.parse("ключ:\n  первая\n  \tвторая\n"));
 	// Выполняем проверку собранного значения
@@ -3376,7 +3333,7 @@ TEST(CodecYamlReader, FlowMissingPairs) {
 	// Количество событий, чтением выданных
 	const auto counting = [](const string & text) noexcept -> size_t {
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		/**
 		 * Если разобрать текст не удалось
 		 */
@@ -3411,7 +3368,7 @@ TEST(CodecYamlReader, FlowMissingPairs) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора двоеточия без значения перед скобкой
 		ASSERT_TRUE(reader.feed("{\n\"a\":значение,\n\"пусто\":\n}\n"));
 		// Перечень записей выданных значений
@@ -3449,7 +3406,7 @@ TEST(CodecYamlReader, FlowMissingPairs) {
  */
 TEST(CodecYamlReader, ScalarTabHandling) {
 	// Объект дерева документа
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	/**
 	 * Выполняем проверку строки свёрнутого значения, подачей открытой
 	 *
@@ -3500,7 +3457,7 @@ TEST(CodecYamlReader, ScalarTabHandling) {
  */
 TEST(CodecYamlReader, QuestionedKeyLevels) {
 	// Объект потокового чтения
-	yaml::reader_t reader(::logger());
+	yaml::reader_t reader;
 	// Выполняем проверку разбора имени и значения, перечнями являющихся
 	ASSERT_TRUE(reader.feed("---\n?\n- a\n- b\n:\n- c\n- d\n"));
 	// Перечень выданных событий разбора
@@ -3548,7 +3505,7 @@ TEST(CodecYamlReader, QuestionedPairEnding) {
 	// Перечень записей значений, чтением выданных
 	const auto records = [](const string & text) noexcept -> vector <string> {
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Собираемый перечень записей значений
 		vector <string> result;
 		/**
@@ -3616,7 +3573,7 @@ TEST(CodecYamlReader, BarePropertiesDocument) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора метки типа одинокой
 		ASSERT_TRUE(reader.feed("!\n"));
 		// Признак того, что пустой узел с меткою типа выдан
@@ -3645,7 +3602,7 @@ TEST(CodecYamlReader, BarePropertiesDocument) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора метки узла одинокой
 		ASSERT_TRUE(reader.feed("&метка\n"));
 		// Количество выданных скалярных значений
@@ -3671,7 +3628,7 @@ TEST(CodecYamlReader, BarePropertiesDocument) {
 	 */
 	{
 		// Объект потокового чтения
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора текста из одного примечания
 		ASSERT_TRUE(reader.feed("# одно примечание\n"));
 		// Количество выданных скалярных значений
@@ -3877,7 +3834,7 @@ TEST(CodecYamlReader, UnclosedQuoteWithBrokenEncoding) {
 	// Настройки потокового чтения текста
 	yaml::reader_t::settings_t settings;
 	// Объект потокового чтения текста
-	yaml::reader_t reader(::logger(), settings);
+	yaml::reader_t reader(settings);
 	/**
 	 * Текст с незакрытою оградой и битою последовательностью UTF-8
 	 *
@@ -3895,7 +3852,7 @@ TEST(CodecYamlReader, UnclosedQuoteWithBrokenEncoding) {
 	// Выполняем проверку того, что отказ подачи объявлен
 	ASSERT_NE(reader.error(), yaml::error_t::NONE);
 	// Объект потокового чтения текста, тот же текст кусками принимающего
-	yaml::reader_t chunked(::logger(), settings);
+	yaml::reader_t chunked(settings);
 	// Признак успешной подачи текста кусками
 	bool fed = true;
 	/**
@@ -4017,25 +3974,21 @@ TEST(CodecYamlReader, VerboseTagRejectsBlanks) {
  *
  */
 TEST(CodecYamlReader, FailureReachesTheLog) {
-	// Объект фреймворка
-	awh::fmk_t fmk;
-	// Объект журнала с перехватом сообщений
-	awh::log_t log(&fmk);
 	// Перехваченное сообщение об отказе
 	string caught;
 	// Перехваченный вид сообщения
-	awh::log_t::flag_t flag = awh::log_t::flag_t::NONE;
+	awh::log::flag_t flag = awh::log::flag_t::NONE;
 	// Выполняем разрешение выдачи логов в функцию обратного вызова
-	log.mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем установку функции перехвата сообщений журнала
-	log.subscribe([&caught, &flag](const awh::log_t::flag_t received, string_view text) noexcept -> void {
+	awh::log::subscribe([&caught, &flag](const awh::log::flag_t received, string_view text) noexcept -> void {
 		// Запоминаем вид полученного сообщения
 		flag = received;
 		// Запоминаем полученное сообщение
 		caught.assign(text.begin(), text.end());
 	});
 	// Объект потокового чтения текста
-	yaml::reader_t reader(&log);
+	yaml::reader_t reader;
 	// Выполняем разбор заведомо неверного текста
 	reader.feed("!<tag:x,2000:m ine> v\n");
 	// Выполняем проверку того, что отказ разбора выдан кодом
@@ -4043,7 +3996,7 @@ TEST(CodecYamlReader, FailureReachesTheLog) {
 	// Выполняем проверку того, что отказ разбора дошёл до журнала
 	ASSERT_FALSE(caught.empty());
 	// Выполняем проверку того, что отказ выдан сообщением критическим
-	ASSERT_EQ(flag, awh::log_t::flag_t::CRITICAL);
+	ASSERT_EQ(flag, awh::log::flag_t::CRITICAL);
 	// Выполняем проверку того, что сообщение несёт место отказа
 	ASSERT_NE(caught.find("line"), string::npos);
 }
@@ -4074,7 +4027,7 @@ TEST(CodecYamlReader, BlanksAfterPlainScalar) {
 	 */
 	const auto collect = [&settings](const string & text) noexcept -> string {
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Собираемый ряд событий разбора
 		string result;
 		// Выполняем подачу разбираемого текста
@@ -4177,20 +4130,20 @@ TEST(CodecYamlReader, QuotedEscapeTable) {
 		// Собираем текст документа с проверяемой последовательностью
 		const string text = string("ключ: \"") + escape.record + "\"\n";
 		// Дерево документа, текст разбирающее
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку успешности разбора собранного текста
 		ASSERT_TRUE(document.parse(text)) << escape.record << ": " << yaml::message(document.error());
 		// Выполняем проверку байтов, последовательностью заданных
 		ASSERT_EQ(string(document.root().at("/ключ").text()), escape.expected) << escape.record;
 		// Дерево документа, перезапись разбирающее
-		yaml::document_t back(::framework(), ::logger());
+		yaml::document_t back;
 		// Выполняем проверку успешности разбора перезаписи
 		ASSERT_TRUE(back.parse(document.dump())) << escape.record << ": " << yaml::message(back.error());
 		// Выполняем проверку того, что байты круговой ход пережили
 		ASSERT_EQ(string(back.root().at("/ключ").text()), escape.expected) << escape.record << ": " << document.dump();
 	}
 	// Дерево документа, негодную последовательность разбирающее
-	yaml::document_t refused(::framework(), ::logger());
+	yaml::document_t refused;
 	/**
 	 * Выполняем проверку отказа разбора последовательности неопознанной
 	 *
@@ -4227,7 +4180,7 @@ TEST(CodecYamlReader, QuoteInsidePlainScalar) {
 		// Собираем очередное написание разбираемого текста
 		const string record = (i > 0 ? (text + "\n") : text);
 		// Дерево документа, текст разбирающее
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку успешности разбора собранного написания
 		ASSERT_TRUE(document.parse(record)) << static_cast <uint32_t> (i) << ": " << yaml::message(document.error());
 		// Выполняем проверку количества полей разобранного отображения
@@ -4246,7 +4199,7 @@ TEST(CodecYamlReader, QuoteInsidePlainScalar) {
 	 */
 	{
 		// Дерево документа, значение огранённое разбирающее
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку успешности разбора текста со значением огранённым
 		ASSERT_TRUE(document.parse("a: 1\nb: \"х\n у\"\nc: 2\n")) << yaml::message(document.error());
 		// Выполняем проверку того, что значение огранённое собрано целиком
@@ -4308,7 +4261,7 @@ TEST(CodecYamlReader, ValuePlaceForQuoting) {
 			// Собираем очередное написание разбираемого текста
 			const string record = (i > 0 ? (string(place.record) + "\n") : string(place.record));
 			// Дерево документа, написание разбирающее
-			yaml::document_t document(::framework(), ::logger());
+			yaml::document_t document;
 			// Выполняем проверку успешности разбора собранного написания
 			ASSERT_TRUE(document.parse(record)) << place.record << " [" << static_cast <uint32_t> (i) << "]: "
 			 << yaml::message(document.error());
@@ -4343,7 +4296,7 @@ TEST(CodecYamlReader, TagsAndHeaderRefusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку успешности разбора отметки времени под меткою своею
 		ASSERT_TRUE(reader.feed("a: !!timestamp 2026-08-29\n"));
 		// Выполняем перебор событий разбора до значения пары
@@ -4356,7 +4309,7 @@ TEST(CodecYamlReader, TagsAndHeaderRefusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку успешности разбора целого под меткою дробного
 		ASSERT_TRUE(reader.feed("a: !!float 1\n"));
 		// Выполняем перебор событий разбора до значения пары
@@ -4369,7 +4322,7 @@ TEST(CodecYamlReader, TagsAndHeaderRefusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора числа под меткою пустого значения
 		ASSERT_FALSE(reader.feed("a: !!null 5\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -4386,7 +4339,7 @@ TEST(CodecYamlReader, TagsAndHeaderRefusals) {
 		 */
 		{
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger());
+			yaml::reader_t reader;
 			// Выполняем проверку успешности разбора метки длиною в предел
 			ASSERT_TRUE(reader.feed("a: &" + anchor + " 1\n"));
 		}
@@ -4395,7 +4348,7 @@ TEST(CodecYamlReader, TagsAndHeaderRefusals) {
 		 */
 		{
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger());
+			yaml::reader_t reader;
 			// Выполняем проверку отказа разбора метки длиною сверх предела
 			ASSERT_FALSE(reader.feed("a: &" + anchor + "a 1\n"));
 			// Выполняем проверку кода ошибки разбора
@@ -4412,7 +4365,7 @@ TEST(CodecYamlReader, TagsAndHeaderRefusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора директивы без начала метки типа
 		ASSERT_FALSE(reader.feed("%TAG !e! \n---\na: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -4423,7 +4376,7 @@ TEST(CodecYamlReader, TagsAndHeaderRefusals) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора заголовка о двух указателях отступа
 		ASSERT_FALSE(reader.feed("a: |23\n  x\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -4455,7 +4408,7 @@ TEST(CodecYamlReader, MixedCollectionRefusal) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора имени пары на отступе перечня
 		ASSERT_FALSE(reader.feed("- a\nb: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -4466,7 +4419,7 @@ TEST(CodecYamlReader, MixedCollectionRefusal) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора имени составного на отступе перечня
 		ASSERT_FALSE(reader.feed("- a\n? b\n: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -4481,7 +4434,7 @@ TEST(CodecYamlReader, MixedCollectionRefusal) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора пары с именем пустым на отступе перечня
 		ASSERT_FALSE(reader.feed("- a\n: 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -4532,7 +4485,7 @@ TEST(CodecYamlReader, TagKindRefusalsAndSettings) {
 	 */
 	for(auto & sample : samples){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора написания
 		ASSERT_FALSE(reader.feed(sample.first)) << sample.first;
 		// Выполняем проверку кода ошибки разбора
@@ -4550,7 +4503,7 @@ TEST(CodecYamlReader, TagKindRefusalsAndSettings) {
 		// Устанавливаем схему наречия 1.1 разбору
 		settings.schema = yaml::schema_t::LEGACY;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Выполняем проверку того, что выданные настройки поставленным отвечают
 		ASSERT_EQ(reader.settings().schema, yaml::schema_t::LEGACY);
 	}
@@ -4595,7 +4548,7 @@ TEST(CodecYamlReader, EmptyValueUnderTagRefused) {
 	 */
 	for(const char * const sample : samples){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора пустоты под меткой типа
 		ASSERT_FALSE(reader.feed(sample)) << sample;
 		// Выполняем проверку кода ошибки разбора
@@ -4609,7 +4562,7 @@ TEST(CodecYamlReader, EmptyValueUnderTagRefused) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку успешности разбора пустоты под меткой пустого значения
 		ASSERT_TRUE(reader.feed("a: !!null\n"));
 	}
@@ -4646,7 +4599,7 @@ TEST(CodecYamlReader, ConsumerLimits) {
 		 */
 		{
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger(), settings);
+			yaml::reader_t reader(settings);
 			// Выполняем проверку успешности разбора трёх уровней вложенности
 			ASSERT_TRUE(reader.feed("a:\n  b:\n    c: 1\n"));
 		}
@@ -4655,7 +4608,7 @@ TEST(CodecYamlReader, ConsumerLimits) {
 		 */
 		{
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger(), settings);
+			yaml::reader_t reader(settings);
 			// Выполняем проверку отказа разбора четырёх уровней вложенности
 			ASSERT_FALSE(reader.feed("a:\n  b:\n    c:\n      d: 1\n"));
 			// Выполняем проверку кода ошибки разбора
@@ -4671,7 +4624,7 @@ TEST(CodecYamlReader, ConsumerLimits) {
 		// Устанавливаем предел вложенности в два уровня
 		settings.maxDepth = 2;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Выполняем проверку отказа разбора трёх уровней перечней
 		ASSERT_FALSE(reader.feed("- - - 1\n"));
 		// Выполняем проверку кода ошибки разбора
@@ -4690,7 +4643,7 @@ TEST(CodecYamlReader, ConsumerLimits) {
 		 */
 		{
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger(), settings);
+			yaml::reader_t reader(settings);
 			// Выполняем проверку успешности разбора значения длиною в предел
 			ASSERT_TRUE(reader.feed("a: 12345\n"));
 		}
@@ -4699,7 +4652,7 @@ TEST(CodecYamlReader, ConsumerLimits) {
 		 */
 		{
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger(), settings);
+			yaml::reader_t reader(settings);
 			// Выполняем проверку отказа разбора значения длиннее предела
 			ASSERT_FALSE(reader.feed("a: 123456\n"));
 			// Выполняем проверку кода ошибки разбора
@@ -4725,7 +4678,7 @@ TEST(CodecYamlReader, DialectExposure) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку успешности разбора текста с директивой наречия 1.1
 		ASSERT_TRUE(reader.feed("%YAML 1.1\n---\na: 1\n"));
 		// Выполняем проверку признака объявления наречия директивой
@@ -4738,7 +4691,7 @@ TEST(CodecYamlReader, DialectExposure) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку успешности разбора текста с директивой наречия 1.2
 		ASSERT_TRUE(reader.feed("%YAML 1.2\n---\na: 1\n"));
 		// Выполняем проверку признака объявления наречия директивой
@@ -4754,7 +4707,7 @@ TEST(CodecYamlReader, DialectExposure) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку успешности разбора текста без директивы наречия
 		ASSERT_TRUE(reader.feed("a: 1\n"));
 		// Выполняем проверку того, что наречие директивой не объявлялось
@@ -4793,7 +4746,7 @@ TEST(CodecYamlReader, RemarkAfterQuestionColonAndAlias) {
 		// Задаём выдачу примечаний отдельным событием
 		settings.emitComments = true;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Выполняем проверку успешности разбора текста
 		ASSERT_TRUE(reader.feed(sample.first.data(), sample.first.size(), true)) << sample.second;
 		// Собираемое содержимое примечаний разбора
@@ -4825,7 +4778,7 @@ TEST(CodecYamlReader, RemarkAfterQuestionColonAndAlias) {
  */
 TEST(CodecYamlReader, SettingsRefusedWhileParsing) {
 	// Объект чтения текста документа
-	yaml::reader_t reader(::logger());
+	yaml::reader_t reader;
 	// Настройки разбора текста
 	yaml::reader_t::settings_t settings;
 	// Выполняем проверку принятия настроек до подачи текста
@@ -4875,7 +4828,7 @@ TEST(CodecYamlReader, FlowEmptiesMatchTag) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора очередной записи
 		EXPECT_FALSE(reader.feed(probe)) << probe;
 		// Выполняем проверку кода отказа разбора очередной записи
@@ -4902,7 +4855,7 @@ TEST(CodecYamlReader, FlowEmptiesMatchTag) {
 	 */
 	for(auto & probe : BROKEN){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора очередной записи
 		EXPECT_FALSE(reader.feed(probe)) << probe;
 		// Выполняем проверку кода отказа разбора очередной записи
@@ -4918,7 +4871,7 @@ TEST(CodecYamlReader, FlowEmptiesMatchTag) {
 	 */
 	for(auto & probe : SOUND){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора очередной записи
 		EXPECT_TRUE(reader.feed(probe)) << probe;
 		// Выполняем проверку того, что отказа разбор не дал
@@ -4958,7 +4911,7 @@ TEST(CodecYamlReader, DepthLimitAtEveryExpand) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем установку настроек разбора
 		reader.settings(settings);
 		// Выполняем проверку отказа разбора очередной записи
@@ -4974,7 +4927,7 @@ TEST(CodecYamlReader, DepthLimitAtEveryExpand) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора очередной записи пределом умолчания
 		EXPECT_TRUE(reader.feed(probe)) << probe;
 		// Выполняем проверку того, что отказа разбор не дал
@@ -5015,7 +4968,7 @@ TEST(CodecYamlReader, TrailingEscapeLeavesScalarUnterminated) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора очередной записи
 		EXPECT_EQ(reader.feed(probe.text), probe.parsed) << probe.text;
 		/**
@@ -5086,7 +5039,7 @@ TEST(CodecYamlReader, ShapesNeverTakenBefore) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора очередной записи
 		EXPECT_EQ(reader.feed(probe.text), probe.parsed) << probe.text;
 		// Выполняем проверку кода отказа разбора очередной записи
@@ -5113,7 +5066,7 @@ TEST(CodecYamlReader, ShapesNeverTakenBefore) {
 		 */
 		for(auto & probe : LIMITED){
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger());
+			yaml::reader_t reader;
 			// Выполняем установку настроек разбора
 			reader.settings(settings);
 			// Выполняем проверку отказа разбора очередной записи
@@ -5140,7 +5093,7 @@ TEST(CodecYamlReader, FeedRefusedAfterFailureAndEnd) {
 		// Разбираемая запись текста, ссылку нераскрытую несущая
 		const string first("a: *m\n");
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку отказа разбора записи со ссылкой нераскрытой
 		ASSERT_FALSE(reader.feed(first.data(), first.size(), false));
 		// Выполняем проверку выданного кода отказа разбора
@@ -5164,7 +5117,7 @@ TEST(CodecYamlReader, FeedRefusedAfterFailureAndEnd) {
 		// Разбираемая запись текста
 		const string first("a: 1\n");
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку разбора записи текста целиком
 		ASSERT_TRUE(reader.feed(first.data(), first.size(), true));
 		// Продолжение текста, за окончанием поданное
@@ -5193,7 +5146,7 @@ TEST(CodecYamlReader, FeedRefusedAfterFailureAndEnd) {
  */
 TEST(CodecYamlReader, EmptyContentUnderTag) {
 	// Объект дерева документа
-	yaml::document_t standard(::framework(), ::logger());
+	yaml::document_t standard;
 	// Выполняем проверку разбора пустоты под стандартной меткой строки
 	ASSERT_TRUE(standard.parse("foo: !!str\n"));
 	// Выполняем проверку того, что значение строкою является
@@ -5201,13 +5154,13 @@ TEST(CodecYamlReader, EmptyContentUnderTag) {
 	// Выполняем проверку того, что значение пустым не является
 	ASSERT_FALSE(yaml::value_t(standard.root())["foo"].is(yaml::type_t::NUL));
 	// Объект дерева документа поточного построения
-	yaml::document_t flowing(::framework(), ::logger());
+	yaml::document_t flowing;
 	// Выполняем проверку разбора пустоты под меткой внутри поточного построения
 	ASSERT_TRUE(flowing.parse("{ foo : !!str, bar: 1 }\n"));
 	// Выполняем проверку того, что значение строкою является
 	ASSERT_TRUE(yaml::value_t(flowing.root())["foo"].is(yaml::type_t::STRING));
 	// Объект дерева документа со своей меткой типа
-	yaml::document_t custom(::framework(), ::logger());
+	yaml::document_t custom;
 	// Выполняем проверку разбора пустоты под своей меткой типа
 	ASSERT_TRUE(custom.parse("foo: !<tag:x,2000:mine>\n"));
 	/**
@@ -5252,7 +5205,7 @@ TEST(CodecYamlReader, AliasAsMappingKey) {
 		// Устанавливаем предел глубины вложенности
 		settings.maxDepth = 1;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Разбираемая запись текста
 		const string text("a: &я 1\nb:\n  *я : 2\n");
 		// Выполняем проверку отказа разбора записи текста
@@ -5263,7 +5216,7 @@ TEST(CodecYamlReader, AliasAsMappingKey) {
 	// Выполняем проверку ссылки на метку с двоеточием, пробелом не отделённым
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Разбираемая запись текста
 		const string text("a: &я 1\n*я: 2\n");
 		// Выполняем проверку отказа разбора записи текста
@@ -5303,7 +5256,7 @@ TEST(CodecYamlReader, LonelyCarriageReturnBreaksLine) {
 		// Перечень событий, поданных текстом целиком
 		vector <yaml::event_t> whole;
 		// Объект потокового чтения текста, поданного целиком
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем подачу текста целиком
 		reader.feed(text.data(), text.size(), true);
 		/**
@@ -5319,7 +5272,7 @@ TEST(CodecYamlReader, LonelyCarriageReturnBreaksLine) {
 			// Перечень событий, поданных текстом по кускам
 			vector <yaml::event_t> parted;
 			// Объект потокового чтения текста, поданного кусками
-			yaml::reader_t divided(::logger());
+			yaml::reader_t divided;
 			/**
 			 * Выполняем подачу текста кусками заданного размера
 			 */
@@ -5344,7 +5297,7 @@ TEST(CodecYamlReader, LonelyCarriageReturnBreaksLine) {
 	 */
 	{
 		// Объект дерева документа, текст разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем разбор текста с возвратом каретки одиноким
 		ASSERT_TRUE(document.parse("a: 1\rb: 2\n"));
 		// Выполняем проверку количества пар отображения
@@ -5382,9 +5335,9 @@ TEST(CodecYamlReader, TrailingBreakDoesNotChangePlainScalar) {
 	 */
 	for(const string & text : texts){
 		// Объект дерева документа, написание без хвостового перевода разбирающего
-		yaml::document_t bare(::framework(), ::logger());
+		yaml::document_t bare;
 		// Объект дерева документа, написание с хвостовым переводом разбирающего
-		yaml::document_t tailed(::framework(), ::logger());
+		yaml::document_t tailed;
 		// Признак успешного разбора написания без хвостового перевода
 		const bool first = bare.parse(text);
 		// Признак успешного разбора написания с хвостовым переводом
@@ -5431,7 +5384,7 @@ TEST(CodecYamlReader, BlockScalarIsNotAnImplicitKey){
 	 */
 	for(const string & text : refused){
 		// Объект дерева документа, написание разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку отказа разбора написания
 		ASSERT_FALSE(document.parse(text)) << text << " -> " << document.dump();
 		// Выполняем проверку названной причины отказа
@@ -5456,7 +5409,7 @@ TEST(CodecYamlReader, BlockScalarIsNotAnImplicitKey){
 	 */
 	for(const string & text : shallow){
 		// Объект дерева документа, написание разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку отказа разбора написания
 		ASSERT_FALSE(document.parse(text)) << text << " -> " << document.dump();
 		// Выполняем проверку названной причины отказа
@@ -5467,7 +5420,7 @@ TEST(CodecYamlReader, BlockScalarIsNotAnImplicitKey){
 	 */
 	{
 		// Объект дерева документа, написание с именем явным разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем разбор написания с блочным значением именем явным
 		ASSERT_TRUE(document.parse("? |\n  block key\n: value\n")) << yaml::message(document.error());
 		// Выполняем проверку количества пар отображения
@@ -5504,7 +5457,7 @@ TEST(CodecYamlReader, TagOnlyKeyKeepsPairing){
 	 */
 	{
 		// Объект дерева документа, написание разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем разбор написания с именем пустым, меткою помеченным
 		ASSERT_TRUE(document.parse("port:\n!t: |-\n  a\nz: 1\n")) << yaml::message(document.error());
 		// Выполняем проверку количества пар отображения
@@ -5535,7 +5488,7 @@ TEST(CodecYamlReader, TagOnlyKeyKeepsPairing){
 	 */
 	{
 		// Объект дерева документа, написание разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем разбор написания с меткою, двоеточие внутри несущей
 		ASSERT_TRUE(document.parse("k: !t:x значение\n")) << yaml::message(document.error());
 		// Выполняем проверку количества пар отображения
@@ -5572,7 +5525,7 @@ TEST(CodecYamlReader, EmptyKeyClosesIndentlessSequence){
 	 */
 	for(const auto & probe : texts){
 		// Объект дерева документа, написание разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем разбор проверяемого написания текста
 		ASSERT_TRUE(document.parse(probe.first)) << probe.first << ": " << yaml::message(document.error());
 		// Выполняем проверку количества пар отображения
@@ -5617,7 +5570,7 @@ TEST(CodecYamlReader, ResetClearsEveryTraceOfPreviousText){
 		"? |\n  block key\n: value\n", "!t: v\n", "a:\n- x\n: 1\n"
 	};
 	// Объект потокового чтения, всеми прежними текстами занятого
-	yaml::reader_t reused(::logger());
+	yaml::reader_t reused;
 	/**
 	 * Выполняем перебор всех проверяемых написаний текста
 	 */
@@ -5627,7 +5580,7 @@ TEST(CodecYamlReader, ResetClearsEveryTraceOfPreviousText){
 		// Перечень событий, чтением сброшенным выданных
 		vector <yaml::event_t> second;
 		// Объект потокового чтения свежего
-		yaml::reader_t fresh(::logger());
+		yaml::reader_t fresh;
 		// Выполняем подачу текста свежему чтению
 		const bool passed = fresh.feed(text.data(), text.size(), true);
 		/**
@@ -5681,9 +5634,9 @@ TEST(CodecYamlReader, RootPlainScalarContinuesAtZeroIndent){
 	 */
 	for(const string & text : texts){
 		// Объект дерева документа, написание без хвостового перевода разбирающего
-		yaml::document_t bare(::framework(), ::logger());
+		yaml::document_t bare;
 		// Объект дерева документа, написание с хвостовым переводом разбирающего
-		yaml::document_t tailed(::framework(), ::logger());
+		yaml::document_t tailed;
 		// Признак успешного разбора написания без хвостового перевода
 		const bool first = bare.parse(text);
 		// Признак успешного разбора написания с хвостовым переводом
@@ -5724,9 +5677,9 @@ TEST(CodecYamlReader, FoldedLogicalLineMatchesContinuousPath){
 	 */
 	for(const string & text : texts){
 		// Объект дерева документа, написание без хвостового перевода разбирающего
-		yaml::document_t bare(::framework(), ::logger());
+		yaml::document_t bare;
 		// Объект дерева документа, написание с хвостовым переводом разбирающего
-		yaml::document_t tailed(::framework(), ::logger());
+		yaml::document_t tailed;
 		// Признак успешного разбора написания без хвостового перевода
 		const bool first = bare.parse(text);
 		// Признак успешного разбора написания с хвостовым переводом
@@ -5768,7 +5721,7 @@ TEST(CodecYamlReader, FoldedLogicalLineMatchesContinuousPath){
  */
 TEST(CodecYamlReader, FlowOpenedOnEarlierLineKeepsCommaAValuePlace){
 	// Объект дерева документа, текст разбирающего
-	yaml::document_t document(::framework(), ::logger());
+	yaml::document_t document;
 	// Выполняем разбор поточного перечня, скобкою на своей строке открытого
 	ASSERT_TRUE(document.parse("[\nx, \"a\nb\"\n]\n")) << yaml::message(document.error());
 	// Значение, склейкою собранное
@@ -5789,7 +5742,7 @@ TEST(CodecYamlReader, FlowOpenedOnEarlierLineKeepsCommaAValuePlace){
  */
 TEST(CodecYamlReader, PropertiesWithoutNodeYieldEmptyValue){
 	// Объект дерева документа, текст разбирающего
-	yaml::document_t document(::framework(), ::logger());
+	yaml::document_t document;
 	// Выполняем разбор отображения, где свойства узла своего не дождались
 	ASSERT_TRUE(document.parse("k:\n  !!str\nj: v\n")) << yaml::message(document.error());
 	// Выполняем проверку количества пар отображения
@@ -5816,13 +5769,13 @@ TEST(CodecYamlReader, PropertiesWithoutNodeYieldEmptyValue){
  */
 TEST(CodecYamlReader, NodePropertiesDeeperThanSequenceBelongToTheItem){
 	// Объект дерева документа, текст разбирающего
-	yaml::document_t document(::framework(), ::logger());
+	yaml::document_t document;
 	// Выполняем разбор перечня, где свойства узла стоят глубже отступа его
 	ASSERT_TRUE(document.parse("- item1\n  &node\n- item2\n")) << yaml::message(document.error());
 	// Выполняем проверку количества членов перечня
 	ASSERT_EQ(document.root().size(), 2u);
 	// Объект дерева документа, узел одними свойствами несущего
-	yaml::document_t empty(::framework(), ::logger());
+	yaml::document_t empty;
 	/**
 	 * Выполняем разбор перечня, где член первый одними свойствами исчерпан
 	 *
@@ -5833,7 +5786,7 @@ TEST(CodecYamlReader, NodePropertiesDeeperThanSequenceBelongToTheItem){
 	// Выполняем проверку количества членов перечня
 	ASSERT_EQ(empty.root().size(), 2u);
 	// Объект дерева документа, свойства на отступе перечня несущего
-	yaml::document_t refused(::framework(), ::logger());
+	yaml::document_t refused;
 	/**
 	 * Выполняем проверку отказа разбора свойств, строку перечня занявших
 	 *
@@ -5855,7 +5808,7 @@ TEST(CodecYamlReader, NodePropertiesDeeperThanSequenceBelongToTheItem){
  */
 TEST(CodecYamlReader, IndentedDirectiveIsNotDirective){
 	// Объект дерева документа, текст разбирающего
-	yaml::document_t document(::framework(), ::logger());
+	yaml::document_t document;
 	// Выполняем разбор потока, где директива предварена пробелом
 	ASSERT_TRUE(document.parse(" %YAML 1.2\n---\na: 1\n")) << yaml::message(document.error());
 	/**
@@ -5873,13 +5826,13 @@ TEST(CodecYamlReader, IndentedDirectiveIsNotDirective){
 	// Выполняем проверку того, что запись директивы стала содержимым
 	ASSERT_EQ(value, string("%YAML 1.2"));
 	// Объект дерева документа, директиву с подачей разбирающего
-	yaml::document_t tabbed(::framework(), ::logger());
+	yaml::document_t tabbed;
 	// Выполняем разбор потока, где директива предварена подачей
 	ASSERT_TRUE(tabbed.parse("\t%YAML 1.2\n---\na: 1\n")) << yaml::message(tabbed.error());
 	// Выполняем проверку количества документов потока
 	ASSERT_EQ(tabbed.documents(), static_cast <size_t> (2));
 	// Объект дерева документа, директиву с начала строки разбирающего
-	yaml::document_t plain(::framework(), ::logger());
+	yaml::document_t plain;
 	/**
 	 * Выполняем разбор потока, где директива стоит с начала строки
 	 *
@@ -5892,7 +5845,7 @@ TEST(CodecYamlReader, IndentedDirectiveIsNotDirective){
 }
 TEST(CodecYamlReader, CommaOutsideFlowIsNotValuePlace){
 	// Объект дерева документа, текст разбирающего
-	yaml::document_t document(::framework(), ::logger());
+	yaml::document_t document;
 	/**
 	 * Выполняем проверку отказа разбора текста с хвостовым переводом строки
 	 *
@@ -5901,7 +5854,7 @@ TEST(CodecYamlReader, CommaOutsideFlowIsNotValuePlace){
 	 */
 	ASSERT_FALSE(document.parse("a: ,\"\nb\n"));
 	// Объект дерева документа, текст без хвостового перевода разбирающего
-	yaml::document_t tailless(::framework(), ::logger());
+	yaml::document_t tailless;
 	// Выполняем проверку того, что исход не зависит от хвостового перевода строки
 	ASSERT_FALSE(tailless.parse("a: ,\"\nb"));
 	/**
@@ -5912,7 +5865,7 @@ TEST(CodecYamlReader, CommaOutsideFlowIsNotValuePlace){
 	 */
 	{
 		// Объект дерева документа, поточное построение разбирающего
-		yaml::document_t flowing(::framework(), ::logger());
+		yaml::document_t flowing;
 		// Выполняем разбор поточного перечня с огранённым значением в две строки
 		ASSERT_TRUE(flowing.parse("a: [1, \"x\ny\"]\n")) << yaml::message(flowing.error());
 		// Значение, склейкою собранное
@@ -5948,7 +5901,7 @@ TEST(CodecYamlReader, BlockHeaderAtCollectionIndentIsRefused){
 	 */
 	for(const string & text : refused){
 		// Объект дерева документа, написание разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку отказа разбора написания
 		ASSERT_FALSE(document.parse(text)) << text << " -> " << document.dump();
 		// Выполняем проверку названной причины отказа
@@ -5967,7 +5920,7 @@ TEST(CodecYamlReader, BlockHeaderAtCollectionIndentIsRefused){
 	 */
 	for(const string & text : taken){
 		// Объект дерева документа, написание разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку успешного разбора написания
 		ASSERT_TRUE(document.parse(text)) << text << ": " << yaml::message(document.error());
 	}
@@ -6080,7 +6033,7 @@ TEST(CodecYamlReader, RefusalsNameTheirOwnCause) {
 	 */
 	for(auto & probe : probes){
 		// Объект потокового чтения текста документа
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Разбираемая запись текста документа
 		const string source(probe.source);
 		// Выполняем подачу разбираемой записи текста документа
@@ -6105,7 +6058,7 @@ TEST(CodecYamlReader, RefusalsNameTheirOwnCause) {
 		// Устанавливаем предел вложенности в два уровня
 		settings.maxDepth = 2;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Выполняем проверку отказа разбора трёх уровней блочных перечней
 		ASSERT_FALSE(reader.feed("- a\n- - b\n  - - c\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -6123,7 +6076,7 @@ TEST(CodecYamlReader, RefusalsNameTheirOwnCause) {
 		// Устанавливаем предел вложенности в один уровень
 		settings.maxDepth = 1;
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger(), settings);
+		yaml::reader_t reader(settings);
 		// Выполняем проверку отказа разбора перечня значением пары
 		ASSERT_FALSE(reader.feed("a: [1]\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -6153,11 +6106,11 @@ TEST(CodecYamlReader, TaillessLastLineJoinsToOpenQuote){
 	 */
 	for(const string & text : texts){
 		// Объект дерева документа, написание без хвостового перевода разбирающего
-		yaml::document_t tailless(::framework(), ::logger());
+		yaml::document_t tailless;
 		// Выполняем проверку успешного разбора написания без хвостового перевода
 		ASSERT_TRUE(tailless.parse(text)) << text << ": " << yaml::message(tailless.error());
 		// Объект дерева документа, написание с хвостовым переводом разбирающего
-		yaml::document_t tailed(::framework(), ::logger());
+		yaml::document_t tailed;
 		// Выполняем проверку успешного разбора написания с хвостовым переводом
 		ASSERT_TRUE(tailed.parse(text + "\n")) << text << ": " << yaml::message(tailed.error());
 		/**
@@ -6175,7 +6128,7 @@ TEST(CodecYamlReader, TaillessLastLineJoinsToOpenQuote){
 	 */
 	{
 		// Объект дерева документа, написание с незакрытой оградою разбирающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку отказа разбора написания с незакрытой оградою
 		ASSERT_FALSE(document.parse("a: \"x\ny")) << document.dump();
 	}
@@ -6201,7 +6154,7 @@ TEST(CodecYamlReader, CommentBreaksThePlainValueInsideBrackets){
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Разбираемая запись текста документа
 		const string source = "[a\n# c\nb]\n";
 		// Выполняем подачу разбираемой записи текста документа
@@ -6218,7 +6171,7 @@ TEST(CodecYamlReader, CommentBreaksThePlainValueInsideBrackets){
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Разбираемая запись текста документа
 		const string source = "[a # c\nb]\n";
 		// Выполняем подачу разбираемой записи текста документа
@@ -6251,7 +6204,7 @@ TEST(CodecYamlReader, CommentBreaksThePlainValueInsideBrackets){
 		 */
 		for(auto & probe : probes){
 			// Объект дерева документа
-			yaml::document_t doc(::framework(), ::logger());
+			yaml::document_t doc;
 			// Выполняем проверку успешности разбора написания
 			ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
 			// Выполняем проверку перезаписи разобранного написания
@@ -6295,7 +6248,7 @@ TEST(CodecYamlReader, PlainValueContinuationCarriesNoIndicators){
 	 */
 	for(auto & probe : probes){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку успешности разбора написания
 		ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
 		// Выполняем проверку перезаписи разобранного написания
@@ -6321,7 +6274,7 @@ TEST(CodecYamlReader, PlainValueContinuationCarriesNoIndicators){
 		 */
 		for(auto & block : blocks){
 			// Объект дерева документа
-			yaml::document_t doc(::framework(), ::logger());
+			yaml::document_t doc;
 			// Выполняем проверку успешности разбора написания
 			ASSERT_TRUE(doc.parse(block.first)) << block.first;
 			// Выполняем проверку перезаписи разобранного написания
@@ -6340,7 +6293,7 @@ TEST(CodecYamlReader, PlainValueContinuationCarriesNoIndicators){
 		 */
 		for(auto & source : {string("[a\n[b]]\n"), string("[a\n{b: 1}]\n")}){
 			// Объект потокового чтения текста
-			yaml::reader_t reader(::logger());
+			yaml::reader_t reader;
 			// Выполняем подачу разбираемой записи текста документа
 			reader.feed(source.data(), source.size(), true);
 			/**
@@ -6390,7 +6343,7 @@ TEST(CodecYamlReader, BlockValueTakesItsKindFromTheTag){
 	 */
 	for(auto & probe : probes){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку успешности разбора записи
 		ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
 		// Получаем владеющее значение дерева документа
@@ -6404,7 +6357,7 @@ TEST(CodecYamlReader, BlockValueTakesItsKindFromTheTag){
 	for(auto & source : {string("a: !!int |\n  5\n"), string("a: !!bool |\n  true\n"),
 	                     string("a: !!null |\n  x\n"), string("a: !!float |\n  1.5\n")}){
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем подачу разбираемой записи текста документа
 		reader.feed(source.data(), source.size(), true);
 		/**
@@ -6422,7 +6375,7 @@ TEST(CodecYamlReader, BlockValueTakesItsKindFromTheTag){
 	 */
 	{
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку успешности разбора записи
 		ASSERT_TRUE(doc.parse("a: !!null |\nb: 1\n"));
 		// Настройки записи текста поточным построением
@@ -6432,7 +6385,7 @@ TEST(CodecYamlReader, BlockValueTakesItsKindFromTheTag){
 		// Получаем перезапись дерева поточным построением
 		const string restyled = doc.dump(writing);
 		// Объект дерева перезаписанного документа
-		yaml::document_t back(::framework(), ::logger());
+		yaml::document_t back;
 		// Выполняем проверку читаемости перезаписи
 		ASSERT_TRUE(back.parse(restyled)) << restyled;
 		// Выполняем проверку совпадения деревьев перезаписи и исходного
@@ -6468,7 +6421,7 @@ TEST(CodecYamlReader, GluedLineFoldsItsBlanksLikeAnyOther){
 	 */
 	for(auto & probe : probes){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку успешности разбора написания
 		ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
 		// Выполняем проверку перезаписи разобранного написания
@@ -6499,7 +6452,7 @@ TEST(CodecYamlReader, DirectiveDropsTheRemarkBehindIt){
 	 */
 	for(auto & probe : probes){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку успешности разбора написания
 		ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
 		// Выполняем проверку перезаписи разобранного написания
@@ -6536,7 +6489,7 @@ TEST(CodecYamlReader, AskedKeyClosesItsLevelsBeforeTheEmptyValue){
 	 */
 	for(auto & probe : probes){
 		// Объект потокового чтения текста документа
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Собираемое описание череды событий разбора
 		string collected;
 		// Выполняем подачу разбираемой записи текста документа
@@ -6593,7 +6546,7 @@ TEST(CodecYamlReader, LastLineDropsItsCarriageReturn){
 	 */
 	for(auto & probe : probes){
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку успешности разбора написания
 		ASSERT_TRUE(doc.parse(probe.first)) << probe.first;
 		// Выполняем проверку перезаписи разобранного написания
@@ -6639,7 +6592,7 @@ TEST(CodecYamlReader, FlowRefusesTheMalformedProperties){
 	 */
 	for(auto & probe : probes){
 		// Объект потокового чтения текста документа
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Разбираемая запись текста документа
 		const string source(probe.source);
 		// Выполняем проверку отказа разбора написания
@@ -6660,7 +6613,7 @@ TEST(CodecYamlReader, FlowRefusesTheMalformedProperties){
  */
 TEST(CodecYamlReader, FeedAfterTheDeclaredEndIsRefused) {
 	// Объект потокового чтения текста
-	yaml::reader_t reader(::logger());
+	yaml::reader_t reader;
 	// Собираемая подача исходного текста
 	const string first = "k: 1\n";
 	// Выполняем проверку того, что первая подача с признаком конца принимается
@@ -6696,7 +6649,7 @@ TEST(CodecYamlReader, TaggedContentIsVerifiedAgainstItsTag) {
 		// Устанавливаем схему разрешения видов наречия 1.1
 		settings.schema = yaml::schema_t::LEGACY;
 		// Дерево документа, куда ведётся разбор
-		yaml::document_t document(::framework(), ::logger(), settings);
+		yaml::document_t document(settings);
 		// Выполняем проверку исхода разбора текста документа
 		ASSERT_EQ(document.parse(text), (code == yaml::error_t::NONE)) << text;
 		// Выполняем проверку выданного кода отказа разбора
@@ -6757,7 +6710,7 @@ TEST(CodecYamlReader, TaggedContentIsVerifiedAgainstItsTag) {
  */
 TEST(CodecYamlReader, FinishedStateFollowsTheDrainedQueue) {
 	// Объект потокового чтения текста документа
-	yaml::reader_t reader(::logger());
+	yaml::reader_t reader;
 	// Разбираемый текст документа
 	const string text = "ключ: значение\nиное: 2\n";
 	// Выполняем подачу текста документа целиком
@@ -6782,7 +6735,7 @@ TEST(CodecYamlReader, FinishedStateFollowsTheDrainedQueue) {
 	 *       снова стала бы приниматься
 	 */
 	// Объект потокового чтения текста документа для поверки заслона
-	yaml::reader_t guarded(::logger());
+	yaml::reader_t guarded;
 	// Выполняем подачу текста документа целиком
 	ASSERT_TRUE(guarded.feed(text.data(), text.size(), true)) << yaml::message(guarded.error());
 	// Выполняем проверку отказа подачи следом, очереди не вычерпав

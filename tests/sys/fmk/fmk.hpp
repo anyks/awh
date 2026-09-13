@@ -26,16 +26,13 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/fmk.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * @brief Класс фикстуры для тестов фреймворка
  *
  */
 class FmkFixture : public testing::Test {
-	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды

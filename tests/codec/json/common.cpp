@@ -29,6 +29,7 @@
  */
 #include <gtest/gtest.h>
 #include <codec/json/json.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -48,44 +49,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	[[maybe_unused]] const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -516,7 +487,7 @@ TEST(CodecJsonCommon, EscapableAgreesWithWriter){
 			 */
 			for(const string & text : corpus){
 				// Объект записи текста документа
-				json::writer_t writer(::logger());
+				json::writer_t writer;
 				// Получаем настройки записи текста
 				json::writer_t::settings_t settings = writer.settings();
 				// Устанавливаем правило экранирования
@@ -574,7 +545,7 @@ TEST(CodecJsonCommon, NumericAgreesWithTheParsing) {
 		// Приговор открытого посредника годности написания
 		const bool verdict = json::numeric(text);
 		// Чтение текста документа
-		json::reader_t reader(::logger());
+		json::reader_t reader;
 		// Выполняем подачу написания числа целиком
 		reader.feed(text, ::strlen(text), true);
 		// Выполняем перебор всех событий разбора
@@ -656,7 +627,7 @@ TEST(CodecJsonCommon, EscapableAgreesWithTheWriter) {
 			// Выполняем указание уклада экранирования
 			settings.escape = mode;
 			// Объект записи текста документа
-			json::writer_t writer(::logger());
+			json::writer_t writer;
 			// Выполняем установку настроек записи
 			writer.settings(settings);
 			// Выполняем запись строкового значения

@@ -58,9 +58,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <codec/bridge.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Устанавливаем пространство имён
@@ -69,60 +69,10 @@ using namespace std;
 using namespace awh;
 
 /**
- * @brief Средства заведения молчащего журнала работы (внутренняя компоновка)
+ * @brief Внутренние вспомогательные средства ворошителя (внутренняя компоновка)
  *
  */
 namespace {
-	/**
-	 * @brief Объект молчащего журнала работы
-	 *
-	 */
-	struct Silent {
-		/**
-		 * @brief Функция получения объекта фреймворка
-		 *
-		 * @return объект фреймворка
-		 *
-		 */
-		static awh::fmk_t & framework() noexcept {
-			// Объект фреймворка
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка
-			return fmk;
-		}
-		// Объект журнала работы
-		awh::log_t log;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept : log(&Silent::framework()) {
-			// Выполняем отключение вывода журнала
-			this->log.mode({});
-		}
-	};
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала работы
-	 *
-	 * @return объект журнала работы
-	 *
-	 */
-	awh::log_t * logger() noexcept {
-		// Объект молчащего журнала работы
-		static Silent silent;
-		// Выводим объект журнала работы
-		return &silent.log;
-	}
 	/**
 	 * @brief Функция чтения записи из файла
 	 *
@@ -142,6 +92,8 @@ namespace {
 	}
 }
 
+
+
 /**
  * @brief Точка входа в приложение
  *
@@ -151,6 +103,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Если каталог образцов не подан
 	if(argc < 2){
 		// Выводим подсказку по запуску средства
@@ -159,7 +118,7 @@ int main(int argc, char * argv[]) noexcept {
 		return 2;
 	}
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	codec::bridge_t bridge(::framework(), ::logger());
+	codec::bridge_t bridge;
 	// Собираемый перечень образцов сличения
 	vector <std::filesystem::path> samples;
 	/**

@@ -87,7 +87,7 @@ TEST_F(NetFixture, ResetAndCreateNetTest){
 	// Проверяем что объект сброшен
 	ASSERT_TRUE(this->_addr == nullptr);
 	// Создаём объект сетевого адреса заново
-	this->_addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
+	this->_addr = std::make_unique <awh::net_addr_t> ();
 	// Проверяем что объект создан
 	ASSERT_TRUE(this->_addr != nullptr);
 }
@@ -100,7 +100,7 @@ TEST_F(NetFixture, ReCreateNetTest){
 	// Если объект сетевого адреса создан
 	ASSERT_TRUE(this->_addr != nullptr);
 	// Создаём объект сетевого адреса заново
-	this->_addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
+	this->_addr = std::make_unique <awh::net_addr_t> ();
 	// Проверяем что объект создан
 	ASSERT_TRUE(this->_addr != nullptr);
 }
@@ -113,7 +113,7 @@ TEST_F(NetFixture, ReCreateAndParseNetTest){
 	// Если объект сетевого адреса создан
 	ASSERT_TRUE(this->_addr != nullptr);
 	// Создаём объект сетевого адреса заново
-	this->_addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
+	this->_addr = std::make_unique <awh::net_addr_t> ();
 	// Проверяем что объект создан
 	ASSERT_TRUE(this->_addr != nullptr);
 	// Парсим IP-адрес
@@ -991,9 +991,9 @@ TEST_F(NetFixture, NetPrefixMaskRoundTripIPv6Test){
  */
 TEST_F(NetFixture, NetCompareIPv6OrderTest){
 	// Объект меньшего адреса
-	awh::net_addr_t lower(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t lower;
 	// Объект большего адреса
-	awh::net_addr_t upper(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t upper;
 	/**
 	 * Набор образцов: меньший адрес и больший адрес
 	 */
@@ -1255,7 +1255,7 @@ TEST_F(NetFixture, NetParseFailureClearsTypeTest){
  */
 TEST_F(NetFixture, NetZoneClearAndAssignTest){
 	// Объект-получатель для присваивания
-	awh::net_addr_t copy(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t copy;
 	// Выполняем разбор адреса с зоной
 	ASSERT_TRUE(this->_addr->parse("fe80::1%eth0"));
 	// Проверяем зону, извлечённую из адреса
@@ -1325,9 +1325,9 @@ TEST_F(NetFixture, NetArpaFailureResetsAddressTest){
  */
 TEST_F(NetFixture, NetCompareMacOrderTest){
 	// Заводим адрес, старший по коду изготовителя
-	awh::net_addr_t first(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t first;
 	// Заводим адрес, старший по номеру устройства
-	awh::net_addr_t second(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t second;
 	// Выполняем разбор старшего адреса
 	ASSERT_TRUE(first.parse("ff:00:00:00:00:00", awh::net_addr_t::type_t::MAC));
 	// Выполняем разбор младшего адреса
@@ -1360,9 +1360,9 @@ TEST_F(NetFixture, NetCompareMacOrderTest){
  */
 TEST_F(NetFixture, NetMappingTypeMismatchTest){
 	// Заводим начало диапазона адресов IPv4
-	awh::net_addr_t begin(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t begin;
 	// Заводим конец диапазона адресов IPv4
-	awh::net_addr_t end(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t end;
 	// Выполняем разбор начала диапазона
 	ASSERT_TRUE(begin.parse("10.0.0.0"));
 	// Выполняем разбор конца диапазона
@@ -1737,9 +1737,9 @@ TEST_F(NetFixture, NetDeliberateContractEdgesTest){
 	 * проверяет: адрес чужой сети с тем же остатком в диапазон проходит
 	 */
 	// Заводим начало диапазона адресов
-	awh::net_addr_t begin(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t begin;
 	// Заводим конец диапазона адресов
-	awh::net_addr_t end(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t end;
 	// Выполняем разбор начала диапазона
 	ASSERT_TRUE(begin.parse("192.168.3.100"));
 	// Выполняем разбор конца диапазона
@@ -1753,9 +1753,9 @@ TEST_F(NetFixture, NetDeliberateContractEdgesTest){
 	 * а сторону, с которой он достижим
 	 */
 	// Заводим адрес связи с одной областью действия
-	awh::net_addr_t first(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t first;
 	// Заводим адрес связи с другой областью действия
-	awh::net_addr_t second(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t second;
 	// Выполняем разбор адреса связи с одной областью
 	ASSERT_TRUE(first.parse("fe80::1%en0"));
 	// Выполняем разбор адреса связи с другой областью
@@ -2273,7 +2273,7 @@ TEST_F(NetFixture, NetAssignmentOperatorsTest){
 	// Проверяем разновидность установленного адреса
 	ASSERT_EQ(awh::net_addr_t::type_t::NONE, this->_addr->type());
 	// Создаём второй объект сетевого адреса
-	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr;
 	// Выполняем разбор адреса вторым объектом
 	ASSERT_TRUE(addr.parse("10.20.30.40"));
 	// Выполняем установку адреса присвоением объекта
@@ -2296,7 +2296,7 @@ TEST_F(NetFixture, NetCompareOperatorsAllTypesTest){
 		{"00:1B:44:11:3A:B7", "00:1B:44:11:3A:B8"}
 	};
 	// Создаём второй объект сетевого адреса
-	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr;
 	/**
 	 * Перебираем все пары адресов
 	 */
@@ -2430,9 +2430,9 @@ TEST_F(NetFixture, NetCheckRecordBoundsTest){
  */
 TEST_F(NetFixture, NetRangeObjectOverloadsTest){
 	// Объект начала диапазона адресов
-	awh::net_addr_t begin(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t begin;
 	// Объект конца диапазона адресов
-	awh::net_addr_t end(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t end;
 	// Выполняем разбор начала диапазона адресов
 	ASSERT_TRUE(begin.parse("192.168.31.1"));
 	// Выполняем разбор конца диапазона адресов
@@ -2904,7 +2904,7 @@ TEST_F(NetFixture, NetZoneSurvivesConversionTest){
 	// Зона обязана перенестись в структуру номером устройства
 	ASSERT_EQ(index, awh_cast <awh::net::addr_net_ipv6_t *> (value.get())->zone);
 	// Собираем запись адреса обратно из структуры
-	awh::net_addr_t back(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t back;
 	back.source(value.get(), awh::net_addr_t::endian_t::LITTLE);
 	// Зона обязана вернуться названием устройства
 	ASSERT_EQ(loopback, back.zone());

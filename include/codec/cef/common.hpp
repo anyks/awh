@@ -43,7 +43,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**
@@ -52,6 +51,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include "../../sys/macro/suppress.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * \~russian
@@ -132,7 +132,7 @@ namespace awh {
 		 * граница формата, а не недоделка кодека; при записи же дерева обратно
 		 * вложенное значение обращается по правилу, настройкой заданному, а не молча
 		 *
-		 * @li **Разбор пар «ключ=значение» ведётся ходом `fmk_t::kv`.** Устройство его
+		 * @li **Разбор пар «ключ=значение» ведётся ходом `awh::fmk::kv`.** Устройство его
 		 * рассчитано на записи вида CEF: значение может нести разделитель записей и
 		 * кончается перед разделителем ключа следующей записи, последняя запись
 		 * занимает весь остаток, знак считается отменённым при нечётном числе
@@ -195,7 +195,7 @@ namespace awh {
 		 * @li **A tree of an arbitrary depth does not exist in a CEF record.** The depth is limited by
 		 * the construction of the record itself: the prefix, the header, the extension — and that is all. This is
 		 * a boundary of the format rather than an incompleteness of the codec
-		 * @li **The parsing of the pairs «key=value» is conducted by the method `fmk_t::kv`.** Its construction
+		 * @li **The parsing of the pairs «key=value» is conducted by the method `awh::fmk::kv`.** Its construction
 		 * is designed for the records of the CEF kind, and to create a second parsing of the same thing in the codec
 		 * would mean to hold one contract in two places
 		 * @li **The recognition of the kind of a value is conducted by a dictionary rather than by a guessing.** The kind of a field

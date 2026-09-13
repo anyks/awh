@@ -87,7 +87,7 @@ namespace {
 	 */
 	static outcome_t parsing() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель полученного количества секунд
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -108,7 +108,7 @@ namespace {
 	 */
 	static outcome_t printing() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель длин сформированных обозначений продолжительности
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции

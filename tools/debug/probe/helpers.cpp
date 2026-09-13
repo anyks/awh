@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include <cstdio>
+#include <sys/fmk.hpp>
 
 using namespace std;
 
@@ -48,6 +49,13 @@ struct probe_t {
 };
 
 int main(){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	probe_t probe;
 	probe.guard_head = 0xAAAAAAAAAAAAAAAAull;
 	probe.small = "Юрий";

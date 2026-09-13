@@ -103,6 +103,7 @@
  * Подключаем модуль волокон
  */
 #include <sys/fiber.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Адреса концов испытуемого туннеля
@@ -618,7 +619,7 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 			// Название устройства обязано быть известно
 			ASSERT_FALSE(iface.empty()) << sign;
 			// Создаём объект работы с сетью
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			awh::eth_t eth;
 			/**
 			 * Спрашиваем, чьим стал НАШ адрес, а не какой адрес у устройства
 			 *
@@ -638,7 +639,7 @@ TEST_F(IoFixture, IoTunnelLifecycleTest){
 			 *       Лишние адреса на устройстве ответу не мешают
 			 */
 			// Объект разбора запрошенного адреса устройства
-			awh::net_addr_t expected(this->_fmk.get(), this->_log.get());
+			awh::net_addr_t expected;
 			// Разбираем запрошенный адрес устройства
 			ASSERT_TRUE(expected.parse(TUNNEL_LOCAL)) << sign;
 			// Объект запрошенного адреса устройства
@@ -762,9 +763,9 @@ TEST_F(IoFixture, IoTunnelDeinitializeReleasesAddressTest){
 			// Устройство обязано быть заведено
 			ASSERT_FALSE(iface.empty()) << sign << ": движок не назвал заведённое устройство";
 			// Объект работы с сетевыми устройствами
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			awh::eth_t eth;
 			// Объект разбора запрошенного адреса устройства
-			awh::net_addr_t expected(this->_fmk.get(), this->_log.get());
+			awh::net_addr_t expected;
 			// Разбираем запрошенный адрес устройства
 			ASSERT_TRUE(expected.parse(TUNNEL_LOCAL)) << sign;
 			// Объект запрошенного адреса устройства
@@ -914,7 +915,7 @@ TEST_F(IoFixture, IoTunnelCarriesPacketTest){
 		// Название устройства обязано быть известно
 		ASSERT_FALSE(iface.empty());
 		// Создаём объект работы с сетью
-		awh::eth_t eth(this->_fmk.get(), this->_log.get());
+		awh::eth_t eth;
 		// Поднимаем устройство туннеля
 		ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
 	}
@@ -1074,7 +1075,7 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 		// Название устройства обязано быть известно
 		ASSERT_FALSE(iface.empty());
 		// Создаём объект работы с сетью
-		awh::eth_t eth(this->_fmk.get(), this->_log.get());
+		awh::eth_t eth;
 		// Поднимаем устройство туннеля
 		ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
 	}
@@ -1352,7 +1353,7 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	// Название устройства обязано быть известно
 	ASSERT_FALSE(iface.empty());
 	// Создаём объект работы с сетью
-	awh::eth_t eth(this->_fmk.get(), this->_log.get());
+	awh::eth_t eth;
 	// Поднимаем устройство туннеля
 	ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
 	/**
@@ -1636,7 +1637,7 @@ TEST_F(IoFixture, IoTunnelIPv6HousekeepingTest){
 		ASSERT_FALSE(iface.empty()) << sign;
 		{
 			// Создаём объект работы с сетью
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			awh::eth_t eth;
 			// Поднимаем устройство туннеля
 			ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED)) << sign;
 		}
@@ -1777,7 +1778,7 @@ TEST_F(IoFixture, IoTunnelIPv4HousekeepingTest){
 		ASSERT_FALSE(iface.empty()) << sign;
 		{
 			// Создаём объект работы с сетью
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			awh::eth_t eth;
 			// Поднимаем устройство туннеля
 			ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED)) << sign;
 		}
@@ -2107,7 +2108,7 @@ TEST_F(IoFixture, IoTunnelCarriesOnEachDeviceTest){
 			// Название устройства обязано быть известно
 			ASSERT_FALSE(iface.empty()) << sign;
 			// Создаём объект работы с сетью
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			awh::eth_t eth;
 			// Поднимаем устройство туннеля
 			ASSERT_TRUE(eth.iface.flag(iface, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED)) << sign;
 		}
@@ -2626,17 +2627,15 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 	/**
 	 * @brief Кому принадлежит адрес IPv4, названный текстом
 	 *
-	 * @param fmk     объект фреймворка
-	 * @param log     объект ведения журнала
 	 * @param address адрес устройства, названный текстом
 	 * @return        уникальный номер устройства-владельца либо пустая строка
 	 *
 	 */
-	static std::string tunnelOwnerOf(const awh::fmk_t * fmk, const awh::log_t * log, const char * address) noexcept {
+	static std::string tunnelOwnerOf(const char * address) noexcept {
 		// Создаём объект работы с сетью
-		awh::eth_t eth(fmk, log);
+		awh::eth_t eth;
 		// Объект разбора запрошенного адреса устройства
-		awh::net_addr_t expected(fmk, log);
+		awh::net_addr_t expected;
 		// Если разобрать запрошенный адрес не удалось
 		if(!expected.parse(address))
 			// Выводим пустого владельца
@@ -2704,9 +2703,9 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 */
 		const auto critical = std::make_shared <std::vector <std::string>> ();
 		// Подписываемся на записи журнала
-		this->_log->subscribe([critical](const awh::log_t::flag_t flag, const std::string_view text) noexcept {
+		awh::log::subscribe([critical](const awh::log::flag_t flag, const std::string_view text) noexcept {
 			// Если запись сообщает о беде
-			if(flag == awh::log_t::flag_t::CRITICAL)
+			if(flag == awh::log::flag_t::CRITICAL)
 				// Запоминаем запись для разбора
 				critical->emplace_back(text);
 		});
@@ -2790,16 +2789,16 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 *
 		 * @note Стережёт первую половину дефекта: новое устройство оставалось без адреса
 		 */
-		ASSERT_EQ(tunnelOwnerOf(this->_fmk.get(), this->_log.get(), TUNNEL_LOCAL), second)
+		ASSERT_EQ(tunnelOwnerOf(TUNNEL_LOCAL), second)
 			<< "узел переехал на «" << second << "», а адрес " << TUNNEL_LOCAL << " числится за «"
-			<< tunnelOwnerOf(this->_fmk.get(), this->_log.get(), TUNNEL_LOCAL) << "»";
+			<< tunnelOwnerOf(TUNNEL_LOCAL) << "»";
 		/**
 		 * На ПРЕЖНЕМ устройстве адреса оставаться не должно
 		 *
 		 * @note Стережёт вторую половину: прежнее устройство держало адрес до перезагрузки,
 		 *       отравляя все последующие прогоны
 		 */
-		ASSERT_NE(tunnelOwnerOf(this->_fmk.get(), this->_log.get(), TUNNEL_LOCAL), first)
+		ASSERT_NE(tunnelOwnerOf(TUNNEL_LOCAL), first)
 			<< "узел переехал с «" << first << "», а адрес " << TUNNEL_LOCAL << " остался числиться за ним";
 		// Сворачиваем движок
 		ASSERT_TRUE(this->_io->deinitialize());
@@ -2890,9 +2889,9 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 			// Название устройства обязано быть известно
 			ASSERT_FALSE(iface.empty()) << "движок не назвал устройство туннеля";
 			// Создаём объект работы с сетью
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			awh::eth_t eth;
 			// Объект разбора запрошенного адреса устройства
-			awh::net_addr_t expected(this->_fmk.get(), this->_log.get());
+			awh::net_addr_t expected;
 			// Разбираем запрошенный адрес устройства
 			ASSERT_TRUE(expected.parse(TUNNEL_LOCAL));
 			// Объект запрошенного адреса устройства
@@ -3080,7 +3079,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 * @note Без этого работник, ничего не заведший, отдал бы родителю успех, а тот
 		 *       увидел бы отсутствие адреса и зазеленел бы на пустом месте
 		 */
-		if(tunnelOwnerOf(this->_fmk.get(), this->_log.get(), WORKER_LOCAL).empty())
+		if(tunnelOwnerOf(WORKER_LOCAL).empty())
 			// Выходим с меткой отступления
 			::_exit(3);
 		/**
@@ -3167,7 +3166,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		ASSERT_EQ(state, static_cast <DWORD> (0)) << "работник завершился с кодом " << state
 			<< ": при строгой проверке описателей так гибнут на закрытии уже закрытого";
 		// Устройство, за каким числится адрес работника после его ухода
-		const std::string owner = tunnelOwnerOf(this->_fmk.get(), this->_log.get(), WORKER_LOCAL);
+		const std::string owner = tunnelOwnerOf(WORKER_LOCAL);
 		/**
 		 * Адреса работника в системе оставаться не должно
 		 *
@@ -3176,9 +3175,9 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 		 */
 		if(!owner.empty()){
 			// Создаём объект работы с сетью
-			awh::eth_t eth(this->_fmk.get(), this->_log.get());
+			awh::eth_t eth;
 			// Объект разбора адреса, оставшегося на устройстве
-			awh::net_addr_t expected(this->_fmk.get(), this->_log.get());
+			awh::net_addr_t expected;
 			// Если разобрать оставшийся адрес удалось
 			if(expected.parse(WORKER_LOCAL)){
 				// Объект оставшегося адреса устройства
@@ -3231,8 +3230,10 @@ TEST_F(IoFixture, IoTunnelCommitFromCallbackTest){
 	 *
 	 */
 	const auto journal = std::make_shared <std::vector <std::string>> ();
+	// Разрешаем отложенный вывод: подписка кормится именно им
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Подписываемся на записи журнала: отказ обязан быть слышен
-	this->_log->subscribe([journal]([[maybe_unused]] const awh::log_t::flag_t flag, const std::string_view text) noexcept {
+	awh::log::subscribe([journal]([[maybe_unused]] const awh::log::flag_t flag, const std::string_view text) noexcept {
 		// Запоминаем запись для разбора
 		journal->emplace_back(text);
 	});

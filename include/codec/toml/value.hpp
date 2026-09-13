@@ -199,8 +199,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const fmk_t * _fmk = nullptr;
-					const log_t * _log = nullptr;
 				private:
 					// Тип хранимого значения
 					type_t _type;
@@ -1400,7 +1398,6 @@ namespace awh {
 					 */
 					bool implant(Document & document, const vector <string_view> & path) const noexcept;
 				public:
-				public:
 					/**
 					 * \~russian
 					 * @brief Оператор сличения значений
@@ -1476,41 +1473,6 @@ namespace awh {
 					 * \~
 					 */
 					Value & operator = (Value && value) noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта для работы с логами
-					 *
-					 * @param log объект для работы с логами
-					 *
-					 * @details Журнал перенимается всяким разбором и всякою записью, значением
-					 * заведёнными, и копией значения тоже: назначить его довольно единожды
-					 *
-					 * \~english
-					 * @brief Method of setting the logging object
-					 * @param log object for working with logs
-					 * @details The log is taken over by every parsing and every writing created by the value,
-					 * and by a copy of the value too: it is enough to assign it once
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта фреймворка
-					 *
-					 * @details Рамка перенимается всяким разбором и всякой записью, значением
-					 * заведёнными, и копией значения тоже: назначить её довольно однажды
-					 *
-					 * @param fmk объект фреймворка
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the framework
-					 * @param fmk object of the framework
-					 *
-					 * \~
-					 */
-					void setFramework(const fmk_t * fmk) noexcept;
 				public:
 					/**
 					 * \~russian

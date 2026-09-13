@@ -50,7 +50,7 @@ TEST_F(OSFixture, ResetAndCreateOSTest){
 	// Проверяем что объект сброшен
 	ASSERT_TRUE(this->_os == nullptr);
 	// Создаём объект работы с ОС
-	this->_os = std::make_unique <awh::os_t> (this->_log.get());
+	this->_os = std::make_unique <awh::os_t> ();
 	// Проверяем что объект создан
 	ASSERT_TRUE(this->_os != nullptr);
 }
@@ -63,7 +63,7 @@ TEST_F(OSFixture, ReCreateOSTest){
 	// Если объект работы с ОС создан
 	ASSERT_TRUE(this->_os != nullptr);
 	// Создаём объект работы с ОС
-	this->_os = std::make_unique <awh::os_t> (this->_log.get());
+	this->_os = std::make_unique <awh::os_t> ();
 	// Проверяем что объект создан
 	ASSERT_TRUE(this->_os != nullptr);
 }

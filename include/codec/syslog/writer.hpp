@@ -45,8 +45,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 #include "../../sys/chrono.hpp"
 #include "../abc/value.hpp"
 
@@ -215,11 +213,6 @@ namespace awh {
 				private:
 					// Объект работы с датой и временем
 					mutable chrono_t _chrono;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект для работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -488,17 +481,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Writer(const fmk_t * fmk, const log_t * log) noexcept;
+					Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -519,5 +507,6 @@ namespace awh {
  * Возвращаем имена, системными макросами занятые
  */
 #include "../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_CODEC_SYSLOG_WRITER__

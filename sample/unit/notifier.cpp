@@ -23,6 +23,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/notifier.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -41,25 +43,28 @@ using namespace placeholders;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект узла уведомителя
-	unit::notifier_t notifier(&fmk, &log);
+	unit::notifier_t notifier;
 	// Создаём новое событие уведомителя
 	event::id_t eid = notifier.create();
 	// Устанавливаем функцию обратного вызова на запись в событие
-	notifier.on <void (const event::id_t, const size_t)> ("trigger", [&log](const event::id_t eid, const size_t size) noexcept -> void {
+	notifier.on <void (const event::id_t, const size_t)> ("trigger", [](const event::id_t eid, const size_t size) noexcept -> void {
 		// Записываем в лог сообщение о записи данных в событие
-		log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
+		awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на чтение из события
-	notifier.on <void (const event::id_t, const uint8_t *, const size_t)> ("notify", [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	notifier.on <void (const event::id_t, const uint8_t *, const size_t)> ("notify", [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Записываем в лог сообщение о чтении из события
-		log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
+		awh::log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log::flag_t::INFO, eid, size, message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Запускаем дочерний поток для уведомления события
 	std::thread([&notifier](const event::id_t eid) noexcept -> void {

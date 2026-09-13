@@ -28,6 +28,7 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <args/lexer.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -93,7 +94,7 @@ bool awh::args::Lexer::numeric(const string_view word) const noexcept {
 		// Сообщаем, что слово числом не является
 		return false;
 	// Если первый знак остатка не цифра и не точка
-	if(!this->_fmk->is(rest.front(), fmk_t::check_t::NUMBER) && (rest.front() != '.'))
+	if(!awh::fmk::is(rest.front(), awh::fmk::check_t::NUMBER) && (rest.front() != '.'))
 		// Сообщаем, что слово числом не является
 		return false;
 	// Выполняем перебор остальных знаков остатка
@@ -101,7 +102,7 @@ bool awh::args::Lexer::numeric(const string_view word) const noexcept {
 		// Получаем знак остатка слова
 		const char letter = rest.at(i);
 		// Если знак цифрой не является
-		if(!this->_fmk->is(letter, fmk_t::check_t::NUMBER)){
+		if(!awh::fmk::is(letter, awh::fmk::check_t::NUMBER)){
 			// Пропускаем знаки, дозволенные записи числа
 			switch(letter){
 				// Разделитель целой и дробной части
@@ -177,7 +178,7 @@ bool awh::args::Lexer::split(const string_view text, vector <string> & result, c
 				continue;
 			}
 			// Если знаком является разделитель слов
-			if(this->_fmk->is(letter, fmk_t::check_t::SPACE)){
+			if(awh::fmk::is(letter, awh::fmk::check_t::SPACE)){
 				// Если слово текста начато
 				if(started)
 					// Добавляем собранное слово в контейнер
@@ -418,14 +419,9 @@ void awh::args::Lexer::settings(const settings_t & settings) noexcept {
  * \~russian
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  * \~english
  * @brief Constructor
- * @param fmk object of the framework
- * @param log object for working with the logs
  *
  * \~
  */
-awh::args::Lexer::Lexer(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::args::Lexer::Lexer() noexcept {}

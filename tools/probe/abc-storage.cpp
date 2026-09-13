@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <codec/abc/storage.hpp>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
@@ -83,6 +84,8 @@ static void check(const char * name, const bool result) noexcept {
  *
  */
 int main() noexcept {
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	// Название файла хранилища
 	const string filename = "abc-storage-probe.bin";
 	// Образец записываемых октетов

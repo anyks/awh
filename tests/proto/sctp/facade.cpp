@@ -50,6 +50,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
+#include <sys/log.hpp>
 
 /**
  * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
@@ -179,11 +180,6 @@ namespace {
 				 broken(false), sent(0), overflows(0),
 				 progress(0), assembled(0), partial(false) {}
 			};
-		private:
-			// Объект фреймворка
-			fmk_t * _fmk;
-			// Объект работы с логами
-			log_t * _log;
 		private:
 			// Настройки прогона
 			config_t _config;
@@ -378,9 +374,9 @@ namespace {
 			 */
 			result_t run(const uint32_t timeout = WATCHDOG_TIMEOUT) noexcept {
 				// Создаём объект асинхронного движка ввода-вывода
-				this->_io = std::make_unique <engine::io_t> (this->_fmk, this->_log);
+				this->_io = std::make_unique <engine::io_t> ();
 				// Создаём объект управления протоколом SCTP
-				this->_sctp = std::make_unique <engine::sctp_t> (this->_fmk, this->_log);
+				this->_sctp = std::make_unique <engine::sctp_t> ();
 				// Создаём событие сервера SCTP
 				this->_sid = this->_io->event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 				// Устанавливаем порт прослушивания сервера
@@ -631,12 +627,10 @@ namespace {
 			 *
 			 * @param config настройки прогона
 			 * @param port   порт прослушивания сервера на локальной петле
-			 * @param fmk    объект фреймворка
-			 * @param log    объект работы с логами
 			 *
 			 */
-			Harness(const config_t & config, const uint16_t port, fmk_t * fmk, log_t * log) noexcept :
-			 _fmk(fmk), _log(log), _config(config), _port(port),
+			Harness(const config_t & config, const uint16_t port) noexcept :
+			 _config(config), _port(port),
 			 _sid(0), _cid(0), _pid(0), _index(0), _offset(0), _done(false), _pieces(0), _received(0) {}
 	};
 };
@@ -646,11 +640,6 @@ namespace {
  *
  */
 class SctpFacadeTest : public testing::Test {
-	protected:
-		// Объект фреймворка
-		std::unique_ptr <fmk_t> _fmk;
-		// Объект работы с логами
-		std::unique_ptr <log_t> _log;
 	protected:
 		/**
 		 * @brief Метод подбора порта прослушивания на локальной петле
@@ -674,12 +663,8 @@ class SctpFacadeTest : public testing::Test {
 		 *
 		 */
 		void SetUp() override {
-			// Заводим объект фреймворка
-			this->_fmk = std::make_unique <fmk_t> ();
-			// Заводим объект работы с логами
-			this->_log = std::make_unique <log_t> (this->_fmk.get());
 			// Отключаем вывод логов в тестовом окружении
-			this->_log->level(log_t::level_t::NONE);
+			awh::log::level(awh::log::level_t::NONE);
 		}
 		/**
 		 * @brief Метод очистки тестового окружения
@@ -702,7 +687,7 @@ TEST_F(SctpFacadeTest, MessagesArriveByteExact){
 	// Устанавливаем размеры отправляемых сообщений
 	config.sizes = {1, 2, 15, 127, 128, 129, 1023, 1024, 1025, 4095, 4096, 8191, 16384, 65535};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get());
+	Harness harness(config, this->pickPort());
 	// Выполняем прогон обмена
 	const Harness::result_t result = harness.run();
 	// Проверяем, что стенд завёлся
@@ -755,7 +740,7 @@ TEST_F(SctpFacadeTest, LargeMessageKeepsBoundary){
 	 */
 	config.sizes = {(1024 * 1024)};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get());
+	Harness harness(config, this->pickPort());
 	// Выполняем прогон обмена
 	const Harness::result_t result = harness.run();
 	// Проверяем, что стенд завёлся
@@ -801,7 +786,7 @@ TEST_F(SctpFacadeTest, MessageInfoArrivesWithData){
 	// Устанавливаем размеры отправляемых сообщений
 	config.sizes = {64, 4096, 65535};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get());
+	Harness harness(config, this->pickPort());
 	// Выполняем прогон обмена
 	const Harness::result_t result = harness.run();
 	// Проверяем, что стенд завёлся
@@ -855,7 +840,7 @@ TEST_F(SctpFacadeTest, PartialMessageAssemblesIntoOne){
 	// Устанавливаем размеры отправляемых сообщений
 	config.sizes = {40000};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get());
+	Harness harness(config, this->pickPort());
 	// Выполняем прогон обмена
 	const Harness::result_t result = harness.run();
 	/**
@@ -919,7 +904,7 @@ TEST_F(SctpFacadeTest, HugeMessageViaPartialSending){
 	// Устанавливаем размер отправляемого сообщения
 	config.sizes = {(4 * 1024 * 1024)};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get());
+	Harness harness(config, this->pickPort());
 	// Выполняем прогон обмена
 	const Harness::result_t result = harness.run();
 	/**
@@ -976,7 +961,7 @@ TEST_F(SctpFacadeTest, StreamSendAcceptsPartiallyWithoutStall){
 	// Устанавливаем размер отправляемого объёма
 	config.sizes = {(4 * 1024 * 1024)};
 	// Заводим стенд сквозного обмена
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get());
+	Harness harness(config, this->pickPort());
 	// Выполняем прогон обмена
 	const Harness::result_t result = harness.run();
 	// Проверяем, что стенд завёлся

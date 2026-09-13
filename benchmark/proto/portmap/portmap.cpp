@@ -32,8 +32,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <proto/portmap/pcp.hpp>
 #include <proto/portmap/natpmp.hpp>
 #include <proto/portmap/ssdp.hpp>
@@ -199,30 +197,6 @@ namespace {
 		static uint64_t result = 0;
 		// Выводим ссылку на накопитель итогов
 		return result;
-	}
-	/**
-	 * @brief Функция получения объекта фреймворка сценариев
-	 *
-	 * @return объект фреймворка сценариев
-	 *
-	 */
-	static const fmk_t * framework() noexcept {
-		// Объект фреймворка сценариев
-		static fmk_t result;
-		// Выводим объект фреймворка сценариев
-		return &result;
-	}
-	/**
-	 * @brief Функция получения объекта логирования сценариев
-	 *
-	 * @return объект логирования сценариев
-	 *
-	 */
-	static const log_t * logger() noexcept {
-		// Объект логирования сценариев
-		static log_t result(framework());
-		// Выводим объект логирования сценариев
-		return &result;
 	}
 	/**
 	 * @brief Шаблон типа измеряемого сценария
@@ -456,7 +430,7 @@ namespace {
 	 */
 	static awh::benchmark::result_t pcpBuild(const bool counting) noexcept {
 		// Объект кодека договора PCP
-		static proto::portmap::pcp_t pcp(framework(), logger());
+		static proto::portmap::pcp_t pcp;
 		// Буфер собираемой просьбы о перенаправлении порта
 		static uint8_t buffer[1500];
 		// Выполняем прогон измеряемой операции
@@ -499,7 +473,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект кодека договора PCP
-		static proto::portmap::pcp_t pcp(framework(), logger());
+		static proto::portmap::pcp_t pcp;
 		// Буфер разбираемого ответа маршрутизатора
 		static uint8_t answer[1500];
 		// Код ошибки сборки просьбы
@@ -560,7 +534,7 @@ namespace {
 	 */
 	static awh::benchmark::result_t natpmpBuild(const bool counting) noexcept {
 		// Объект кодека договора NAT-PMP
-		static proto::portmap::natpmp_t natpmp(framework(), logger());
+		static proto::portmap::natpmp_t natpmp;
 		// Буфер собираемой просьбы о перенаправлении порта
 		static uint8_t buffer[1500];
 		// Выполняем прогон измеряемой операции
@@ -603,7 +577,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект кодека договора NAT-PMP
-		static proto::portmap::natpmp_t natpmp(framework(), logger());
+		static proto::portmap::natpmp_t natpmp;
 		/**
 		 * Разбираемый ответ маршрутизатора о перенаправлении порта
 		 *
@@ -654,7 +628,7 @@ namespace {
 	 */
 	static awh::benchmark::result_t ssdpBuild() noexcept {
 		// Объект кодека договора SSDP
-		static proto::portmap::ssdp_t ssdp(framework(), logger());
+		static proto::portmap::ssdp_t ssdp;
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(TEXT_ROUNDS, false, [](const size_t) noexcept -> uint64_t {
 			// Выводим размер собранной просьбы обнаружения устройства
@@ -673,7 +647,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект кодека договора SSDP
-		static proto::portmap::ssdp_t ssdp(framework(), logger());
+		static proto::portmap::ssdp_t ssdp;
 		/**
 		 * Если разбор образца ответа отказывает
 		 */
@@ -714,7 +688,7 @@ namespace {
 	 */
 	static awh::benchmark::result_t soapBuild() noexcept {
 		// Объект кодека договора SOAP
-		static proto::portmap::soap_t soap(framework(), logger());
+		static proto::portmap::soap_t soap;
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(TEXT_ROUNDS, false, [](const size_t) noexcept -> uint64_t {
 			// Выводим размер собранного вызова службы устройства
@@ -735,7 +709,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект кодека договора SOAP
-		static proto::portmap::soap_t soap(framework(), logger());
+		static proto::portmap::soap_t soap;
 		// Разбираемый ответ службы устройства
 		static const string answer = soap.request(
 			"urn:schemas-upnp-org:service:WANIPConnection:1", "AddPortMappingResponse", soapArguments()
@@ -782,7 +756,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект кодека описания устройства
-		static proto::portmap::device_t device(framework(), logger());
+		static proto::portmap::device_t device;
 		/**
 		 * Если разбор образца описания отказывает
 		 */

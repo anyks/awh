@@ -31,8 +31,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <sys/chrono.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -2204,13 +2205,13 @@ void awh::Chrono::clear() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2887,13 +2888,13 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 		// Выполняем сброс результата
 		result = 0;
@@ -2984,13 +2985,13 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3164,7 +3165,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер дня недели %w
 									case static_cast <uint8_t> (format_t::w): {
 										// Получаем номер дня недели, записью заданный
-										const uint8_t day = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										const uint8_t day = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 										/**
 										 * Переменная %w счёт ведёт от нуля до шести, воскресенье обозначая
 										 * нулём: седьмой день недели ей не принадлежит, и запись «7»
@@ -3179,7 +3180,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер недели в году %W
 									case static_cast <uint8_t> (format_t::W):
 										// Устанавливаем количество недель прошедших с начала года
-										dt.weeks = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.weeks = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если мы определяем год недельного счёта %G либо номер недели %V
 									case static_cast <uint8_t> (format_t::G):
@@ -3195,7 +3196,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем порядковый номер дня в году %j
 									case static_cast <uint8_t> (format_t::j): {
 										// Получаем порядковый номер дня в году
-										const uint16_t number = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										const uint16_t number = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 										/**
 										 * Номер дня в году отсчитывается от единицы, а поле - от нуля,
 										 * и вычитание единицы из нуля обращало беззнаковое поле в 65535:
@@ -3210,7 +3211,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер дня недели %u
 									case static_cast <uint8_t> (format_t::u):
 										// Устанавливаем номер дня недели
-										dt.day = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.day = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %C
 									case static_cast <uint8_t> (format_t::C):
@@ -3221,12 +3222,12 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * записи произволен и век может встретиться первым
 										 */
 										// Устанавливаем номер века
-										dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %y
 									case static_cast <uint8_t> (format_t::y): {
 										// Получаем значение указанного года
-										const uint16_t num = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										const uint16_t num = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 										// Устанавливаем год, раскрыв двузначное обозначение в полное
 										dt.year = this->makeFullYear(num);
 										// Устанавливаем флаг високосного года
@@ -3235,34 +3236,34 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %Y
 									case static_cast <uint8_t> (format_t::Y): {
 										// Устанавливаем год
-										dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+										dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 										// Устанавливаем флаг високосного года
 										dt.leap = this->leap(dt.year);
 									} break;
 									// Если формат получен как %d
 									case static_cast <uint8_t> (format_t::d):
 										// Устанавливаем число месяца
-										dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %m
 									case static_cast <uint8_t> (format_t::m):
 										// Получаем значение номера месяца
-										dt.month = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.month = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %I
 									case static_cast <uint8_t> (format_t::I):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %H
 									case static_cast <uint8_t> (format_t::H):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %M
 									case static_cast <uint8_t> (format_t::M):
 										// Устанавливаем значение указанного количества минут
-										dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %s
 									case static_cast <uint8_t> (format_t::s):
@@ -3272,7 +3273,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %S
 									case static_cast <uint8_t> (format_t::S):
 										// Устанавливаем значение указанного количества секунд
-										dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+										dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 									break;
 									// Если формат получен как %a
 									case static_cast <uint8_t> (format_t::a): {
@@ -3291,8 +3292,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 											 * разбор проходила, но месяц оставался неустановленным
 											 */
 											// Если мы нашли нужное нам название
-											if(this->_fmk->compare(day, params.nameDays[i].first) ||
-											   this->_fmk->compare(day, params.nameDays[i].second)){
+											if(awh::fmk::compare(day, params.nameDays[i].first) ||
+											   awh::fmk::compare(day, params.nameDays[i].second)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3317,8 +3318,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 											 * разбор проходила, но месяц оставался неустановленным
 											 */
 											// Если мы нашли нужное нам название
-											if(this->_fmk->compare(day, params.nameDays[i].first) ||
-											   this->_fmk->compare(day, params.nameDays[i].second)){
+											if(awh::fmk::compare(day, params.nameDays[i].first) ||
+											   awh::fmk::compare(day, params.nameDays[i].second)){
 												// Устанавливаем день недели
 												dt.day = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3343,8 +3344,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 											 * разбор проходила, но месяц оставался неустановленным
 											 */
 											// Если мы нашли нужное нам название
-											if(this->_fmk->compare(month, params.nameMonths[i].first) ||
-											   this->_fmk->compare(month, params.nameMonths[i].second)){
+											if(awh::fmk::compare(month, params.nameMonths[i].first) ||
+											   awh::fmk::compare(month, params.nameMonths[i].second)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3369,8 +3370,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 											 * разбор проходила, но месяц оставался неустановленным
 											 */
 											// Если мы нашли нужное нам название
-											if(this->_fmk->compare(month, params.nameMonths[i].first) ||
-											   this->_fmk->compare(month, params.nameMonths[i].second)){
+											if(awh::fmk::compare(month, params.nameMonths[i].first) ||
+											   awh::fmk::compare(month, params.nameMonths[i].second)){
 												// Устанавливаем месяц
 												dt.month = static_cast <uint8_t> (i + 1);
 												// Выходим из цикла
@@ -3388,7 +3389,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 										 * Приведение к суточному счёту выполняется после разбора
 										 * всей записи целиком
 										 */
-										dt.h12 = (this->_fmk->compare("pm", name) ? h12_t::PM : h12_t::AM);
+										dt.h12 = (awh::fmk::compare("pm", name) ? h12_t::PM : h12_t::AM);
 									} break;
 								}
 							}
@@ -3513,11 +3514,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3536,15 +3537,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили номер месяца
 								else if(j == 1)
 									// Устанавливаем полученный номер месяца
-									dt.month = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.month = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили число месяца
 								else if(j == 2)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили год
 								else if(j == 3) {
 									// Получаем значение указанного года
-									const uint16_t num = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+									const uint16_t num = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									// Устанавливаем год, раскрыв двузначное обозначение в полное
 									dt.year = this->makeFullYear(num);
 									// Устанавливаем флаг високосного года
@@ -3568,17 +3569,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили год
 								else if(j == 1) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+									dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								// Если мы получили номер месяца
 								} else if(j == 2)
 									// Получаем значение номера месяца
-									dt.month = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.month = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили число месяца
 								else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3597,15 +3598,15 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 							}
 						}
 					} break;
@@ -3624,21 +3625,21 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили метку времени
 								else if(j == 4) {
 									// Получаем название времени суток
 									const string name(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 									// Определяем 12-и часовой формат времени
-									dt.h12 = (this->_fmk->compare("pm", name) ? h12_t::PM : h12_t::AM);
+									dt.h12 = (awh::fmk::compare("pm", name) ? h12_t::PM : h12_t::AM);
 									// Если мы получили вечернее время
 									if((dt.h12 == h12_t::PM) && (dt.hour < 12))
 										// Увеличиваем полученный час времени
@@ -3672,8 +3673,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									 */
 									for(size_t i = 0; i < params.nameDays.size(); i++){
 										// Если мы нашли нужное нам название
-										if(this->_fmk->compare(day, params.nameDays[i].first) ||
-										   this->_fmk->compare(day, params.nameDays[i].second)){
+										if(awh::fmk::compare(day, params.nameDays[i].first) ||
+										   awh::fmk::compare(day, params.nameDays[i].second)){
 											// Устанавливаем день недели
 											dt.day = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -3689,8 +3690,8 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									 */
 									for(size_t i = 0; i < params.nameMonths.size(); i++){
 										// Если мы нашли нужное нам название
-										if(this->_fmk->compare(month, params.nameMonths[i].first) ||
-										   this->_fmk->compare(month, params.nameMonths[i].second)){
+										if(awh::fmk::compare(month, params.nameMonths[i].first) ||
+										   awh::fmk::compare(month, params.nameMonths[i].second)){
 											// Устанавливаем месяц
 											dt.month = static_cast <uint8_t> (i + 1);
 											// Выходим из цикла
@@ -3700,23 +3701,23 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили число месяца
 								} else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.date = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили час
 								else if(j == 4)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.hour = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили минуты
 								else if(j == 5)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.minutes = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили секунды
 								else if(j == 6)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
+									dt.seconds = awh::fmk::atoi <uint8_t> (::fragment(text.data() + pos, match[j]));
 								// Если мы получили год
 								else if(j == 7) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
+									dt.year = awh::fmk::atoi <uint16_t> (::fragment(text.data() + pos, match[j]));
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								}
@@ -3785,13 +3786,13 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3912,13 +3913,13 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4068,13 +4069,13 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5367,13 +5368,13 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5877,13 +5878,13 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5963,43 +5964,43 @@ string awh::Chrono::seconds(const double duration) const noexcept {
 			// Если переданное значение соответствует году
 			if(seconds >= year){
 				// Выполняем преобразование в количество лет
-				result = this->_fmk->noexp(::roundDuration(seconds / year), true);
+				result = awh::fmk::noexp(::roundDuration(seconds / year), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'y');
 			// Если переданное значение соответствует месяцу
 			} else if((seconds >= month) && (seconds < year)) {
 				// Выполняем преобразование в количество месяцев
-				result = this->_fmk->noexp(::roundDuration(seconds / month), true);
+				result = awh::fmk::noexp(::roundDuration(seconds / month), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'M');
 			// Если переданное значение соответствует недели
 			} else if((seconds >= week) && (seconds < month)) {
 				// Выполняем преобразование в количество недель
-				result = this->_fmk->noexp(::roundDuration(seconds / week), true);
+				result = awh::fmk::noexp(::roundDuration(seconds / week), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'w');
 			// Если переданное значение соответствует дням
 			} else if((seconds >= day) && (seconds < week)) {
 				// Выполняем преобразование в количество дней
-				result = this->_fmk->noexp(::roundDuration(seconds / day), true);
+				result = awh::fmk::noexp(::roundDuration(seconds / day), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'd');
 			// Если переданное значение соответствует часам
 			} else if((seconds >= hour) && (seconds < day)) {
 				// Выполняем преобразование в количество часов
-				result = this->_fmk->noexp(::roundDuration(seconds / hour), true);
+				result = awh::fmk::noexp(::roundDuration(seconds / hour), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'h');
 			// Если переданное значение соответствует минут
 			} else if((seconds >= minute) && (seconds < hour)) {
 				// Выполняем преобразование в количество минут
-				result = this->_fmk->noexp(::roundDuration(seconds / minute), true);
+				result = awh::fmk::noexp(::roundDuration(seconds / minute), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 'm');
 			// Если переданное значение соответствует секундам
 			} else {
 				// Выполняем преобразование в количество секунд
-				result = this->_fmk->noexp(::roundDuration(seconds), true);
+				result = awh::fmk::noexp(::roundDuration(seconds), true);
 				// Добавляем наименование единицы измерения
 				result.append(1, 's');
 			}
@@ -6016,13 +6017,13 @@ string awh::Chrono::seconds(const double duration) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(duration), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {duration}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6068,7 +6069,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 								// Если мы получили само число
 								case 1:
 									// Получаем значение числа
-									seconds = this->_fmk->atoi <double> (::fragment(value.data(), match[j]));
+									seconds = awh::fmk::atoi <double> (::fragment(value.data(), match[j]));
 								break;
 								// Если мы получили размерность числа
 								case 2: {
@@ -6119,13 +6120,13 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {value}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6160,13 +6161,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6211,13 +6212,13 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -6311,13 +6312,13 @@ uint16_t awh::Chrono::year(const uint64_t stamp, uint64_t & begin) const noexcep
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -6361,13 +6362,13 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -6402,13 +6403,13 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6462,13 +6463,13 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(year), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {year}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6500,13 +6501,13 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6620,9 +6621,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Если номер дня недели передан
 						if(!day->empty()){
 							// Если день передан в виде числа
-							if(this->_fmk->is(* day, fmk_t::check_t::NUMBER)){
+							if(awh::fmk::is(* day, awh::fmk::check_t::NUMBER)){
 								// День для установки
-								const uint8_t num = this->_fmk->atoi <uint8_t> (string_view{day->c_str(), day->size()});
+								const uint8_t num = awh::fmk::atoi <uint8_t> (string_view{day->c_str(), day->size()});
 								// Если номер дня недели передан
 								if((num > 0) && (num < 8))
 									// Устанавливаем номер дня недели
@@ -6636,7 +6637,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									// Получаем название дня
 									const auto & name = params.nameDays[i];
 									// Если мы нашли нужный нам день недели
-									if(this->_fmk->compare(* day, name.first) || this->_fmk->compare(* day, name.second)){
+									if(awh::fmk::compare(* day, name.first) || awh::fmk::compare(* day, name.second)){
 										// Выполняем установку номера дня недели
 										this->_dt.day = static_cast <uint8_t> (i + 1);
 										// Выходим из цикла
@@ -6709,7 +6710,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Дата для установки
-						const uint8_t date = this->_fmk->atoi <uint8_t> (string_view{
+						const uint8_t date = awh::fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -6766,7 +6767,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Год для установки
-						const uint16_t year = this->_fmk->atoi <uint16_t> (string_view{
+						const uint16_t year = awh::fmk::atoi <uint16_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -6832,7 +6833,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Час времени для установки
-						const uint8_t hour = this->_fmk->atoi <uint8_t> (string_view{
+						const uint8_t hour = awh::fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -6880,7 +6881,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество прошедших дней для установки
-						const uint16_t days = this->_fmk->atoi <uint16_t> (string_view{
+						const uint16_t days = awh::fmk::atoi <uint16_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -6961,9 +6962,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Если месяц передан
 						if(!month->empty()){
 							// Если месяц передан в виде числа
-							if(this->_fmk->is(* month, fmk_t::check_t::NUMBER)){
+							if(awh::fmk::is(* month, awh::fmk::check_t::NUMBER)){
 								// Месяц для установки
-								const uint8_t num = this->_fmk->atoi <uint8_t> (string_view{month->c_str(), month->length()});
+								const uint8_t num = awh::fmk::atoi <uint8_t> (string_view{month->c_str(), month->length()});
 								// Если месяц передан
 								if((num > 0) && (num < 13))
 									// Устанавливаем месяц
@@ -6977,7 +6978,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									// Получаем название месяца
 									const auto & name = params.nameMonths[i];
 									// Если мы нашли нужный нам месяц
-									if(this->_fmk->compare(* month, name.first) || this->_fmk->compare(* month, name.second)){
+									if(awh::fmk::compare(* month, name.first) || awh::fmk::compare(* month, name.second)){
 										// Устанавливаем месяц
 										this->_dt.month = static_cast <uint8_t> (i + 1);
 										// Выходим из цикла
@@ -7036,7 +7037,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество недель для установки
-						const uint8_t weeks = this->_fmk->atoi <uint8_t> (string_view{
+						const uint8_t weeks = awh::fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7127,9 +7128,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 						// Получаем текст, содержащий смещение временной зоны
 						const string * value = reinterpret_cast <const string *> (buffer);
 						// Если текст содержит число
-						if((accepted = this->_fmk->is(* value, fmk_t::check_t::NUMBER)))
+						if((accepted = awh::fmk::is(* value, awh::fmk::check_t::NUMBER)))
 							// Получаем смещение временной зоны в секундах относительно UTC
-							offset = this->_fmk->atoi <int32_t> (string_view{value->c_str(), value->length()});
+							offset = awh::fmk::atoi <int32_t> (string_view{value->c_str(), value->length()});
 					// Если данные переданы в виде числа
 					} else {
 						// Если устанавливаемые данные достаточны
@@ -7175,7 +7176,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество минут для установки
-						const uint8_t minutes = this->_fmk->atoi <uint8_t> (string_view{
+						const uint8_t minutes = awh::fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7223,7 +7224,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество секунд для установки
-						const uint8_t seconds = this->_fmk->atoi <uint8_t> (string_view{
+						const uint8_t seconds = awh::fmk::atoi <uint8_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7284,7 +7285,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество наносекунд для установки
-						const uint64_t nanoseconds = this->_fmk->atoi <uint64_t> (string_view{
+						const uint64_t nanoseconds = awh::fmk::atoi <uint64_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7350,7 +7351,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество микросекунд для установки
-						const uint64_t microseconds = this->_fmk->atoi <uint64_t> (string_view{
+						const uint64_t microseconds = awh::fmk::atoi <uint64_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7422,7 +7423,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 					// Если данные переданы в виде текста
 					if(text){
 						// Количество миллисекунд для установки
-						const uint32_t milliseconds = this->_fmk->atoi <uint32_t> (string_view{
+						const uint32_t milliseconds = awh::fmk::atoi <uint32_t> (string_view{
 							reinterpret_cast <const string *> (buffer)->c_str(),
 							reinterpret_cast <const string *> (buffer)->length()
 						});
@@ -7486,13 +7487,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -7995,13 +7996,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, date, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, date, static_cast <uint16_t> (unit), text}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -8726,13 +8727,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -9051,13 +9052,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 			// Переменная результата
 			result = zone_t::NONE;
@@ -9104,13 +9105,13 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9660,9 +9661,9 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				// Если временная зона не найдена и название временной зоны получено
 				} else if(!name.empty()) {
 					// Если название временной зоны является числом
-					if(this->_fmk->is(name, fmk_t::check_t::NUMBER)){
+					if(awh::fmk::is(name, awh::fmk::check_t::NUMBER)){
 						// Получаем количество часов смещения, заданное самим названием зоны
-						const int64_t hours = this->_fmk->atoi <int64_t> (name);
+						const int64_t hours = awh::fmk::atoi <int64_t> (name);
 						/**
 						 * Название зоны числом означает целое количество часов смещения, и
 						 * ограничивать его необходимо: произведение считалось в разрядности
@@ -9725,13 +9726,13 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 			// Переменная результата
 			result = this->_dt.offset;
@@ -9776,13 +9777,13 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (std), static_cast <uint16_t> (sum)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (std), static_cast <uint16_t> (sum)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9961,13 +9962,13 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9995,13 +9996,13 @@ void awh::Chrono::clearTimeZones() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -10038,13 +10039,13 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, offset), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {name, offset}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -10177,13 +10178,13 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -10417,13 +10418,13 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (type), static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -11759,7 +11760,7 @@ bool awh::Chrono::validateTimeZone(string_view zone) const noexcept {
 			// Обозначение пригодно
 			return true;
 		// Если название временной зоны является числом
-		if(this->_fmk->is(name, fmk_t::check_t::NUMBER))
+		if(awh::fmk::is(name, awh::fmk::check_t::NUMBER))
 			// Обозначение пригодно
 			return true;
 		// Обозначение пригодно, если название соответствует известной временной зоне
@@ -11862,13 +11863,13 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -12736,13 +12737,13 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (zone)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (zone)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -13768,13 +13769,13 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, format1, format2, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, format1, format2, static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -13784,16 +13785,13 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept :
+awh::Chrono::Chrono() noexcept :
  _zoneOffset(0), _zoneName(zone_t::NONE),
  _leapSecond(true),
  _century(century_t::WINDOW),
  _yearWindow(DEFAULT_YEAR_WINDOW),
- _yearRollback(DEFAULT_YEAR_ROLLBACK), _fmk(fmk), _log(log) {
+ _yearRollback(DEFAULT_YEAR_ROLLBACK) {
 	// Выполняем инициализацию локального объекта даты и времени
 	this->clear();
 }

@@ -26,8 +26,6 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/fmk.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/sys/callback.hpp"
 
 /**
@@ -36,10 +34,6 @@
  */
 class CallbackFixture : public testing::Test {
 	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 		// Объект модуля обратного вызова
 		std::unique_ptr <awh::callback_t> _callback;
 	public:

@@ -18,16 +18,17 @@
  * @copyright Copyright © 2025
  *
  */
+#include "fmk.hpp"
 
 /**
  * Подключаем заголовочный файл проекта
  */
-#include "fmk.hpp"
 
 /**
  * Стандартные модули
  */
 #include <cmath>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Структура параметров тестирования метода поиска в отображении
@@ -52,32 +53,6 @@ class FmkFindInMapParameterizedFixture : public FmkFixture, public ::testing::Wi
 };
 
 /**
- * @brief Метод тестирования метода поиска в отображении
- *
- */
-TEST_P(FmkFindInMapParameterizedFixture, FmkFindInMapTest){
-	// Выполняем поиск значения в отображении
-	auto i = this->_fmk->findInMap(this->_parameter.val, this->_parameter.map);
-	// Проверяем что значение найдено
-	ASSERT_TRUE(i != this->_parameter.map.end());
-	// Проверяем что ключ и значение совпадают с ожидаемыми
-	ASSERT_EQ(this->_parameter.key, i->first);
-}
-
-/**
- * @brief Инициализация параметров тестирования метода поиска в отображении
- *
- */
-INSTANTIATE_TEST_SUITE_P(TestParameters, FmkFindInMapParameterizedFixture,
-	::testing::Values(
-		FmkFindInMapTestParameter({1,15}),
-		FmkFindInMapTestParameter({22,45}),
-		FmkFindInMapTestParameter({32,88}),
-		FmkFindInMapTestParameter({84,95})
-	)
-);
-
-/**
  * @brief Структура параметров тестирования метода проверки символов и строк
  *
  */
@@ -91,7 +66,7 @@ struct FmkIsTestParameter {
 	// Строка для проверки в многобайтовой кодировке
 	std::wstring text2 = L"";
 	// Флаг проверки
-	awh::fmk_t::check_t flag = awh::fmk_t::check_t::NONE;
+	awh::fmk::check_t flag = awh::fmk::check_t::NONE;
 };
 
 /**
@@ -113,22 +88,22 @@ TEST_P(FmkIsParameterizedFixture, FmkIsLetter1Test){
 	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
 		// Особый случай для URL-адресов
-		case static_cast <uint8_t> (awh::fmk_t::check_t::URL):
+		case static_cast <uint8_t> (awh::fmk::check_t::URL):
 			ASSERT_TRUE(true);
 		break;
 		// Особый случай для чисел с плавающей точкой и псевдо-чисел
-		case static_cast <uint8_t> (awh::fmk_t::check_t::DECIMAL):
+		case static_cast <uint8_t> (awh::fmk::check_t::DECIMAL):
 		// Особый случай для чисел с плавающей точкой и псевдо-чисел
-		case static_cast <uint8_t> (awh::fmk_t::check_t::PSEUDO_NUMBER):
-			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter1, awh::fmk_t::check_t::NUMBER));
+		case static_cast <uint8_t> (awh::fmk::check_t::PSEUDO_NUMBER):
+			ASSERT_TRUE(awh::fmk::is(this->_parameter.letter1, awh::fmk::check_t::NUMBER));
 		break;
 		// Особый случай для проверки наличия латинских символов в строке
-		case static_cast <uint8_t> (awh::fmk_t::check_t::PRESENCE_LATIAN):
-			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter1, awh::fmk_t::check_t::LATIAN));
+		case static_cast <uint8_t> (awh::fmk::check_t::PRESENCE_LATIAN):
+			ASSERT_TRUE(awh::fmk::is(this->_parameter.letter1, awh::fmk::check_t::LATIAN));
 		break;
 		// Общий случай для всех остальных флагов
 		default:
-			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter1, this->_parameter.flag));
+			ASSERT_TRUE(awh::fmk::is(this->_parameter.letter1, this->_parameter.flag));
 	}
 }
 
@@ -142,21 +117,21 @@ TEST_P(FmkIsParameterizedFixture, FmkIsLetter2Test){
 	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
 		// Особый случай для URL-адресов
-		case static_cast <uint8_t> (awh::fmk_t::check_t::URL):
+		case static_cast <uint8_t> (awh::fmk::check_t::URL):
 			ASSERT_TRUE(true);
 		break;
 		// Особый случай для чисел с плавающей точкой и псевдо-чисел
-		case static_cast <uint8_t> (awh::fmk_t::check_t::DECIMAL):
-		case static_cast <uint8_t> (awh::fmk_t::check_t::PSEUDO_NUMBER):
-			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter2, awh::fmk_t::check_t::NUMBER));
+		case static_cast <uint8_t> (awh::fmk::check_t::DECIMAL):
+		case static_cast <uint8_t> (awh::fmk::check_t::PSEUDO_NUMBER):
+			ASSERT_TRUE(awh::fmk::is(this->_parameter.letter2, awh::fmk::check_t::NUMBER));
 		break;
 		// Особый случай для проверки наличия латинских символов в строке
-		case static_cast <uint8_t> (awh::fmk_t::check_t::PRESENCE_LATIAN):
-			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter2, awh::fmk_t::check_t::LATIAN));
+		case static_cast <uint8_t> (awh::fmk::check_t::PRESENCE_LATIAN):
+			ASSERT_TRUE(awh::fmk::is(this->_parameter.letter2, awh::fmk::check_t::LATIAN));
 		break;
 		// Общий случай для всех остальных флагов
 		default:
-			ASSERT_TRUE(this->_fmk->is(this->_parameter.letter2, this->_parameter.flag));
+			ASSERT_TRUE(awh::fmk::is(this->_parameter.letter2, this->_parameter.flag));
 	}
 }
 
@@ -166,7 +141,7 @@ TEST_P(FmkIsParameterizedFixture, FmkIsLetter2Test){
  */
 TEST_P(FmkIsParameterizedFixture, FmkIsText1Test){
 	// Тестируем проверку строки
-	ASSERT_TRUE(this->_fmk->is(this->_parameter.text1, this->_parameter.flag));
+	ASSERT_TRUE(awh::fmk::is(this->_parameter.text1, this->_parameter.flag));
 }
 
 /**
@@ -175,7 +150,7 @@ TEST_P(FmkIsParameterizedFixture, FmkIsText1Test){
  */
 TEST_P(FmkIsParameterizedFixture, FmkIsText2Test){
 	// Тестируем проверку строки
-	ASSERT_TRUE(this->_fmk->is(this->_parameter.text2, this->_parameter.flag));
+	ASSERT_TRUE(awh::fmk::is(this->_parameter.text2, this->_parameter.flag));
 }
 
 /**
@@ -189,77 +164,77 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkIsParameterizedFixture,
 			L'Ф',
 			"AFGHANISTAN",
 			L"ФРАНЦИЯ",
-			awh::fmk_t::check_t::UPPER
+			awh::fmk::check_t::UPPER
 		}),
 		FmkIsTestParameter({
 			'a',
 			L'а',
 			"afghanistan",
 			L"франиция",
-			awh::fmk_t::check_t::LOWER
+			awh::fmk::check_t::LOWER
 		}),
 		FmkIsTestParameter({
 			'a',
 			L'a',
 			"afghanistan",
 			L"france",
-			awh::fmk_t::check_t::LATIAN
+			awh::fmk::check_t::LATIAN
 		}),
 		FmkIsTestParameter({
 			'a',
 			L'a',
 			"afghanistan",
 			L"france",
-			awh::fmk_t::check_t::UTF8
+			awh::fmk::check_t::UTF8
 		}),
 		FmkIsTestParameter({
 			0,
 			0,
 			"https://pangeoradar.ru/host/data?id=15&post=get#stop",
 			L"https://пангеорадар.рф/host/data?id=15&post=get#stop",
-			awh::fmk_t::check_t::URL
+			awh::fmk::check_t::URL
 		}),
 		FmkIsTestParameter({
 			'a',
 			L'a',
 			"afghanistan",
 			L"france",
-			awh::fmk_t::check_t::PRINT
+			awh::fmk::check_t::PRINT
 		}),
 		FmkIsTestParameter({
 			' ',
 			L' ',
 			"Hello World!!!",
 			L"Привет Мир!!!",
-			awh::fmk_t::check_t::SPACE
+			awh::fmk::check_t::SPACE
 		}),
 		FmkIsTestParameter({
 			'5',
 			L'8',
 			"-802843",
 			L"+18842",
-			awh::fmk_t::check_t::NUMBER
+			awh::fmk::check_t::NUMBER
 		}),
 		FmkIsTestParameter({
 			'5',
 			L'8',
 			"-802843.3882",
 			L"+18842.8892",
-			awh::fmk_t::check_t::DECIMAL
+			awh::fmk::check_t::DECIMAL
 		}),
 		FmkIsTestParameter({
 			'5',
 			L'8',
 			"53ABC-32",
 			L"84MB15",
-			awh::fmk_t::check_t::PSEUDO_NUMBER
+			awh::fmk::check_t::PSEUDO_NUMBER
 		}),
 		FmkIsTestParameter({
 			'A',
 			L'b',
 			"53ABC-32",
 			L"Ваш номер AB-332 до 2-х часов",
-			awh::fmk_t::check_t::PRESENCE_LATIAN
+			awh::fmk::check_t::PRESENCE_LATIAN
 		})
 	)
 );
@@ -294,7 +269,7 @@ class FmkCompareParameterizedFixture : public FmkFixture, public ::testing::With
  */
 TEST_P(FmkCompareParameterizedFixture, FmkCompare1Test){
 	// Тестируем сравнение строк
-	ASSERT_TRUE(this->_fmk->compare(this->_parameter.forst1, this->_parameter.second1));
+	ASSERT_TRUE(awh::fmk::compare(this->_parameter.forst1, this->_parameter.second1));
 }
 
 /**
@@ -303,7 +278,7 @@ TEST_P(FmkCompareParameterizedFixture, FmkCompare1Test){
  */
 TEST_P(FmkCompareParameterizedFixture, FmkCompare2Test){
 	// Тестируем сравнение строк
-	ASSERT_TRUE(this->_fmk->compare(this->_parameter.forst2, this->_parameter.second2));
+	ASSERT_TRUE(awh::fmk::compare(this->_parameter.forst2, this->_parameter.second2));
 }
 
 /**
@@ -333,7 +308,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkCompareParameterizedFixture,
  */
 struct FmkTimestampTestParameter {
 	// Тип временной метки
-	awh::fmk_t::chrono_t stamp = awh::fmk_t::chrono_t::NONE;
+	awh::fmk::chrono_t stamp = awh::fmk::chrono_t::NONE;
 };
 
 /**
@@ -351,13 +326,13 @@ class FmkTimestampParameterizedFixture : public FmkFixture, public ::testing::Wi
  */
 TEST_P(FmkTimestampParameterizedFixture, FmkTimestampTest){
 	// Тестируем получение временной метки
-	ASSERT_TRUE(this->_fmk->timestamp <uint8_t> (this->_parameter.stamp) > 0);
-	ASSERT_TRUE(this->_fmk->timestamp <uint16_t> (this->_parameter.stamp) > 0);
-	ASSERT_TRUE(this->_fmk->timestamp <uint32_t> (this->_parameter.stamp) > 0);
-	ASSERT_TRUE(this->_fmk->timestamp <uint64_t> (this->_parameter.stamp) > 0);
-	ASSERT_TRUE(this->_fmk->timestamp <float> (this->_parameter.stamp) > .0f);
-	ASSERT_TRUE(this->_fmk->timestamp <double> (this->_parameter.stamp) > .0);
-	ASSERT_FALSE(this->_fmk->timestamp <std::string> (this->_parameter.stamp).empty());
+	ASSERT_TRUE(awh::fmk::timestamp <uint8_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(awh::fmk::timestamp <uint16_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(awh::fmk::timestamp <uint32_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(awh::fmk::timestamp <uint64_t> (this->_parameter.stamp) > 0);
+	ASSERT_TRUE(awh::fmk::timestamp <float> (this->_parameter.stamp) > .0f);
+	ASSERT_TRUE(awh::fmk::timestamp <double> (this->_parameter.stamp) > .0);
+	ASSERT_FALSE(awh::fmk::timestamp <std::string> (this->_parameter.stamp).empty());
 }
 
 /**
@@ -375,12 +350,12 @@ TEST_P(FmkTimestampParameterizedFixture, FmkTimestampTest){
  */
 TEST_P(FmkTimestampParameterizedFixture, FmkTimestampRealMatchesIntegerTest){
 	// Получаем временную метку целым числом, принимаемым за образец
-	const uint64_t expected = this->_fmk->timestamp <uint64_t> (this->_parameter.stamp);
+	const uint64_t expected = awh::fmk::timestamp <uint64_t> (this->_parameter.stamp);
 	// Проверяем, что образец получен
 	ASSERT_GT(expected, static_cast <uint64_t> (0));
 	// Получаем ту же временную метку дробными видами
-	const float first = this->_fmk->timestamp <float> (this->_parameter.stamp);
-	const double second = this->_fmk->timestamp <double> (this->_parameter.stamp);
+	const float first = awh::fmk::timestamp <float> (this->_parameter.stamp);
+	const double second = awh::fmk::timestamp <double> (this->_parameter.stamp);
 	// Выполняем расчёт расхождения по доле для каждого из дробных видов
 	const double difference1 = (::fabs(static_cast <double> (first) - static_cast <double> (expected)) / static_cast <double> (expected));
 	const double difference2 = (::fabs(second - static_cast <double> (expected)) / static_cast <double> (expected));
@@ -396,16 +371,16 @@ TEST_P(FmkTimestampParameterizedFixture, FmkTimestampRealMatchesIntegerTest){
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTimestampParameterizedFixture,
 	::testing::Values(
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::YEAR}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MONTH}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::WEEK}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::DAY}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::HOUR}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MINUTES}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::SECONDS}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MILLISECONDS}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::MICROSECONDS}),
-		FmkTimestampTestParameter({awh::fmk_t::chrono_t::NANOSECONDS})
+		FmkTimestampTestParameter({awh::fmk::chrono_t::YEAR}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::MONTH}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::WEEK}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::DAY}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::HOUR}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::MINUTES}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::SECONDS}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::MILLISECONDS}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::MICROSECONDS}),
+		FmkTimestampTestParameter({awh::fmk::chrono_t::NANOSECONDS})
 	)
 );
 
@@ -438,13 +413,13 @@ TEST_P(FmkIconvParameterizedFixture, FmkIconvTest){
 	 *          операционных системах одинаково.
 	 */
 	// Конвертируем из UTF-8 в CP1251
-	const auto & result1 = this->_fmk->transcode(this->_parameter.text, awh::fmk_t::codepage_t::UTF8, awh::fmk_t::codepage_t::CP1251);
+	const auto & result1 = awh::fmk::transcode(this->_parameter.text, awh::fmk::codepage_t::UTF8, awh::fmk::codepage_t::CP1251);
 	// Проверяем что результат не в UTF-8
-	ASSERT_FALSE(this->_fmk->is(result1, awh::fmk_t::check_t::UTF8));
+	ASSERT_FALSE(awh::fmk::is(result1, awh::fmk::check_t::UTF8));
 	// Конвертируем из CP1251 в UTF-8
-	const auto & result2 = this->_fmk->transcode(result1, awh::fmk_t::codepage_t::CP1251, awh::fmk_t::codepage_t::UTF8);
+	const auto & result2 = awh::fmk::transcode(result1, awh::fmk::codepage_t::CP1251, awh::fmk::codepage_t::UTF8);
 	// Проверяем что результат в UTF-8
-	ASSERT_TRUE(this->_fmk->is(result2, awh::fmk_t::check_t::UTF8));
+	ASSERT_TRUE(awh::fmk::is(result2, awh::fmk::check_t::UTF8));
 	// Сравниваем что исходный текст и результат совпадают
 	ASSERT_EQ(this->_parameter.text, result2);
 }
@@ -478,7 +453,7 @@ struct FmkTransformTestParameter {
 	// Результат в многобайтовой кодировке
 	std::wstring result2 = L"";
 	// Флаг трансформации
-	awh::fmk_t::transform_t flag = awh::fmk_t::transform_t::NONE;
+	awh::fmk::transform_t flag = awh::fmk::transform_t::NONE;
 };
 
 /**
@@ -500,16 +475,16 @@ TEST_P(FmkTransformParameterizedFixture, FmkTransformLetter1Test){
 	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
 		// Особый случай для обрезки пробелов
-		case static_cast <uint8_t> (awh::fmk_t::transform_t::TRIM):
+		case static_cast <uint8_t> (awh::fmk::transform_t::TRIM):
 			ASSERT_EQ(this->_parameter.result1.front(), this->_parameter.letter1);
 		break;
 		// Особый случай для преобразования в верхний регистр
-		case static_cast <uint8_t> (awh::fmk_t::transform_t::SMART_CASE):
-			ASSERT_EQ(this->_parameter.result1.front(), this->_fmk->transform(this->_parameter.letter1, awh::fmk_t::transform_t::UPPER_CASE));
+		case static_cast <uint8_t> (awh::fmk::transform_t::SMART_CASE):
+			ASSERT_EQ(this->_parameter.result1.front(), awh::fmk::transform(this->_parameter.letter1, awh::fmk::transform_t::UPPER_CASE));
 		break;
 		// Общий случай для всех остальных флагов
 		default:
-			ASSERT_EQ(this->_parameter.result1.front(), this->_fmk->transform(this->_parameter.letter1, this->_parameter.flag));
+			ASSERT_EQ(this->_parameter.result1.front(), awh::fmk::transform(this->_parameter.letter1, this->_parameter.flag));
 	}
 }
 
@@ -523,16 +498,16 @@ TEST_P(FmkTransformParameterizedFixture, FmkTransformLetter2Test){
 	 */
 	switch(static_cast <uint8_t> (this->_parameter.flag)){
 		// Особый случай для обрезки пробелов
-		case static_cast <uint8_t> (awh::fmk_t::transform_t::TRIM):
+		case static_cast <uint8_t> (awh::fmk::transform_t::TRIM):
 			ASSERT_EQ(this->_parameter.result2.front(), this->_parameter.letter2);
 		break;
 		// Особый случай для преобразования в верхний регистр
-		case static_cast <uint8_t> (awh::fmk_t::transform_t::SMART_CASE):
-			ASSERT_EQ(this->_parameter.result2.front(), this->_fmk->transform(this->_parameter.letter2, awh::fmk_t::transform_t::UPPER_CASE));
+		case static_cast <uint8_t> (awh::fmk::transform_t::SMART_CASE):
+			ASSERT_EQ(this->_parameter.result2.front(), awh::fmk::transform(this->_parameter.letter2, awh::fmk::transform_t::UPPER_CASE));
 		break;
 		// Общий случай для всех остальных флагов
 		default:
-			ASSERT_EQ(this->_parameter.result2.front(), this->_fmk->transform(this->_parameter.letter2, this->_parameter.flag));
+			ASSERT_EQ(this->_parameter.result2.front(), awh::fmk::transform(this->_parameter.letter2, this->_parameter.flag));
 	}
 }
 
@@ -542,7 +517,7 @@ TEST_P(FmkTransformParameterizedFixture, FmkTransformLetter2Test){
  */
 TEST_P(FmkTransformParameterizedFixture, FmkTransformText1Test){
 	// Тестируем метод трансформации строки
-	ASSERT_EQ(this->_parameter.result1, this->_fmk->transform(this->_parameter.text1, this->_parameter.flag));
+	ASSERT_EQ(this->_parameter.result1, awh::fmk::transform(this->_parameter.text1, this->_parameter.flag));
 }
 
 /**
@@ -551,7 +526,7 @@ TEST_P(FmkTransformParameterizedFixture, FmkTransformText1Test){
  */
 TEST_P(FmkTransformParameterizedFixture, FmkTransformText2Test){
 	// Тестируем метод трансформации строки
-	ASSERT_EQ(this->_parameter.result2, this->_fmk->transform(this->_parameter.text2, this->_parameter.flag));
+	ASSERT_EQ(this->_parameter.result2, awh::fmk::transform(this->_parameter.text2, this->_parameter.flag));
 }
 
 /**
@@ -567,7 +542,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 			L"    Привет Мир!!! ",
 			"Hello World!!!",
 			L"Привет Мир!!!",
-			awh::fmk_t::transform_t::TRIM
+			awh::fmk::transform_t::TRIM
 		}),
 		FmkTransformTestParameter({
 			'h',
@@ -576,7 +551,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 			L"Привет Мир!!!",
 			"HELLO WORLD!!!",
 			L"ПРИВЕТ МИР!!!",
-			awh::fmk_t::transform_t::UPPER_CASE
+			awh::fmk::transform_t::UPPER_CASE
 		}),
 		FmkTransformTestParameter({
 			'H',
@@ -585,7 +560,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 			L"Привет Мир!!!",
 			"hello world!!!",
 			L"привет мир!!!",
-			awh::fmk_t::transform_t::LOWER_CASE
+			awh::fmk::transform_t::LOWER_CASE
 		}),
 		FmkTransformTestParameter({
 			'H',
@@ -594,7 +569,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, FmkTransformParameterizedFixture,
 			L"ПРИВЕТ МИР!!!",
 			"Hello World!!!",
 			L"Привет Мир!!!",
-			awh::fmk_t::transform_t::SMART_CASE
+			awh::fmk::transform_t::SMART_CASE
 		})
 	)
 );
@@ -632,7 +607,7 @@ class FmkJoinParameterizedFixture : public FmkFixture, public ::testing::WithPar
  *
  */
 TEST_P(FmkJoinParameterizedFixture, FmkJoin1Test){
-	ASSERT_EQ(this->_parameter.result1, this->_fmk->join(this->_parameter.items1, this->_parameter.delim1));
+	ASSERT_EQ(this->_parameter.result1, awh::fmk::join(this->_parameter.items1, this->_parameter.delim1));
 }
 
 /**
@@ -640,7 +615,7 @@ TEST_P(FmkJoinParameterizedFixture, FmkJoin1Test){
  *
  */
 TEST_P(FmkJoinParameterizedFixture, FmkJoin2Test){
-	ASSERT_EQ(this->_parameter.result2, this->_fmk->join(this->_parameter.items2, this->_parameter.delim2));
+	ASSERT_EQ(this->_parameter.result2, awh::fmk::join(this->_parameter.items2, this->_parameter.delim2));
 }
 
 /**
@@ -704,7 +679,7 @@ TEST_P(FmkSplitParameterizedFixture, FmkSplit1Test){
 	// Создаем контейнер для хранения результата разделения
 	std::vector <std::string> container;
 	// Выполняем разделение строки
-	ASSERT_EQ(this->_parameter.result1, this->_fmk->split(this->_parameter.text1, this->_parameter.delim1, container));
+	ASSERT_EQ(this->_parameter.result1, awh::fmk::split(this->_parameter.text1, this->_parameter.delim1, container));
 }
 
 /**
@@ -715,7 +690,7 @@ TEST_P(FmkSplitParameterizedFixture, FmkSplit2Test){
 	// Создаем контейнер для хранения результата разделения
 	std::vector <std::wstring> container;
 	// Выполняем разделение строки
-	ASSERT_EQ(this->_parameter.result2, this->_fmk->split(this->_parameter.text2, this->_parameter.delim2, container));
+	ASSERT_EQ(this->_parameter.result2, awh::fmk::split(this->_parameter.text2, this->_parameter.delim2, container));
 }
 
 /**
@@ -769,13 +744,13 @@ class FmkConvertParameterizedFixture : public FmkFixture, public ::testing::With
  */
 TEST_P(FmkConvertParameterizedFixture, FmkConvertTest){
 	// Тестируем конвертацию из однобайтовой кодировки в многобайтовую
-	ASSERT_EQ(this->_parameter.text2, this->_fmk->convert(this->_parameter.text1));
+	ASSERT_EQ(this->_parameter.text2, awh::fmk::convert(this->_parameter.text1));
 	// Тестируем конвертацию из однобайтовой кодировки в многобайтовую
-	ASSERT_EQ(this->_parameter.text2.c_str(), this->_fmk->convert(this->_parameter.text1.c_str()));
+	ASSERT_EQ(this->_parameter.text2.c_str(), awh::fmk::convert(this->_parameter.text1.c_str()));
 	// Тестируем конвертацию из многобайтовой кодировки в однобайтовую
-	ASSERT_EQ(this->_parameter.text1, this->_fmk->convert(this->_parameter.text2));
+	ASSERT_EQ(this->_parameter.text1, awh::fmk::convert(this->_parameter.text2));
 	// Тестируем конвертацию из многобайтовой кодировки в однобайтовую
-	ASSERT_EQ(this->_parameter.text1.c_str(), this->_fmk->convert(this->_parameter.text2.c_str()));
+	ASSERT_EQ(this->_parameter.text1.c_str(), awh::fmk::convert(this->_parameter.text2.c_str()));
 }
 
 /**
@@ -825,9 +800,9 @@ TEST_P(FmkSizeParameterizedFixture, FmkSizeTest){
 	// Проверяем что размер данных соответствует ожидаемому
 	if(this->_parameter.data == nullptr)
 		// Если данные не указаны, то проверяем размер по номеру элемента
-		ASSERT_EQ(this->_parameter.size, this->_fmk->size(this->_parameter.num));
+		ASSERT_EQ(this->_parameter.size, awh::fmk::size(this->_parameter.num));
 	// Если данные указаны, то проверяем размер по данным и размеру
-	else ASSERT_EQ(static_cast <size_t> (this->_parameter.num), this->_fmk->size(this->_parameter.data, this->_parameter.size));
+	else ASSERT_EQ(static_cast <size_t> (this->_parameter.num), awh::fmk::size(this->_parameter.data, this->_parameter.size));
 }
 
 /**
@@ -876,9 +851,9 @@ TEST_P(FmkGreaterParameterizedFixture, FmkGreaterTest){
 	// Проверяем что первое число больше второго
 	if(this->_parameter.data1.empty() && this->_parameter.data2.empty())
 		// Если данные не указаны, то проверяем числа
-		ASSERT_TRUE(this->_fmk->isGreater(this->_parameter.num1, this->_parameter.num2));
+		ASSERT_TRUE(awh::fmk::isGreater(this->_parameter.num1, this->_parameter.num2));
 	// Если данные указаны, то проверяем данные
-	else ASSERT_TRUE(this->_fmk->isGreater(this->_parameter.data1.data(), this->_parameter.data2.data(), this->_parameter.data2.size() * sizeof(uint64_t)));
+	else ASSERT_TRUE(awh::fmk::isGreater(this->_parameter.data1.data(), this->_parameter.data2.data(), this->_parameter.data2.size() * sizeof(uint64_t)));
 }
 
 /**
@@ -931,9 +906,9 @@ TEST_P(FmkItoaParameterizedFixture, FmkItoaTest){
 	// Проверяем что текст для преобразования пустой
 	if(this->_parameter.text.empty())
 		// Если текст не указан, то проверяем число
-		ASSERT_EQ(this->_parameter.result, this->_fmk->itoa(this->_parameter.value, this->_parameter.radix));
+		ASSERT_EQ(this->_parameter.result, awh::fmk::itoa(this->_parameter.value, this->_parameter.radix));
 	// Если текст указан, то проверяем текст
-	else ASSERT_EQ(this->_parameter.result, this->_fmk->itoa(this->_parameter.text.c_str(), this->_parameter.text.length(), 2));
+	else ASSERT_EQ(this->_parameter.result, awh::fmk::itoa(this->_parameter.text.c_str(), this->_parameter.text.length(), 2));
 }
 
 /**
@@ -984,7 +959,7 @@ TEST_P(FmkAtoiParameterizedFixture, FmkAtoiTest){
 	// Если текст для преобразования пустой
 	if(this->_parameter.text.empty())
 		// Проверяем что результат преобразования строки в число совпадает с ожидаемым
-		ASSERT_EQ(this->_parameter.result, this->_fmk->atoi <uint32_t> (this->_parameter.value, this->_parameter.radix));
+		ASSERT_EQ(this->_parameter.result, awh::fmk::atoi <uint32_t> (this->_parameter.value, this->_parameter.radix));
 	// Если текст для преобразования не пустой
 	else {
 		// Вычисляем размер результата
@@ -1000,7 +975,7 @@ TEST_P(FmkAtoiParameterizedFixture, FmkAtoiTest){
 		// Результат преобразования
 		std::string result(size, 0);
 		// Выполняем преобразование
-		this->_fmk->atoi(this->_parameter.value, 2, result.data(), result.size());
+		awh::fmk::atoi(this->_parameter.value, 2, result.data(), result.size());
 		// Проверяем что результат преобразования совпадает с ожидаемым
 		ASSERT_EQ(result, this->_parameter.text);
 	}
@@ -1052,13 +1027,13 @@ class FmkNoexpParameterizedFixture : public FmkFixture, public ::testing::WithPa
  */
 TEST_P(FmkNoexpParameterizedFixture, FmkNoexpTest){
 	// Устанавливаем локаль для корректного отображения чисел
-	this->_fmk->setLocale();
+	awh::fmk::setLocale();
 	// Проверяем, что количество знаков после запятой больше нуля
 	if(this->_parameter.step > 0)
 		// Если количество знаков после запятой больше нуля, то проверяем результат с учетом шага
-		ASSERT_EQ(this->_parameter.result, this->_fmk->noexp(this->_parameter.value, this->_parameter.step));
+		ASSERT_EQ(this->_parameter.result, awh::fmk::noexp(this->_parameter.value, this->_parameter.step));
 	// Если количество знаков после запятой равно нулю
-	else ASSERT_EQ(this->_parameter.result, this->_fmk->noexp(this->_parameter.value, this->_parameter.onlyNum));
+	else ASSERT_EQ(this->_parameter.result, awh::fmk::noexp(this->_parameter.value, this->_parameter.onlyNum));
 }
 
 /**
@@ -1118,7 +1093,7 @@ class FmkRateParameterizedFixture : public FmkFixture, public ::testing::WithPar
  */
 TEST_P(FmkRateParameterizedFixture, FmkRateTest){
 	// Проверяем, что результат расчета совпадает с ожидаемым
-	ASSERT_EQ(static_cast <int32_t> (this->_parameter.result), static_cast <int32_t> (this->_fmk->rate(this->_parameter.num1, this->_parameter.num2)));
+	ASSERT_EQ(static_cast <int32_t> (this->_parameter.result), static_cast <int32_t> (awh::fmk::rate(this->_parameter.num1, this->_parameter.num2)));
 }
 
 /**
@@ -1165,7 +1140,7 @@ class FmkFloorParameterizedFixture : public FmkFixture, public ::testing::WithPa
  */
 TEST_P(FmkFloorParameterizedFixture, FmkFloorTest){
 	// Проверяем, что результат округления совпадает с ожидаемым
-	ASSERT_EQ(this->_parameter.result, this->_fmk->floor(this->_parameter.num, this->_parameter.count));
+	ASSERT_EQ(this->_parameter.result, awh::fmk::floor(this->_parameter.num, this->_parameter.count));
 }
 
 /**
@@ -1211,11 +1186,11 @@ TEST_P(FmkRome2arabicParameterizedFixture, FmkRome2arabicTest){
 	// Если римское число представлено в виде строки
 	if(!this->_parameter.num1.empty())
 		// Выполняем проверку конвертации римского числа в арабское число из строки
-		ASSERT_EQ(this->_parameter.result, this->_fmk->rome2arabic(this->_parameter.num1));
+		ASSERT_EQ(this->_parameter.result, awh::fmk::rome2arabic(this->_parameter.num1));
 	// Если римское число представлено в виде широкой строки
 	else if(!this->_parameter.num2.empty())
 		// Выполняем проверку конвертации римского числа в арабское число из широкой строки
-		ASSERT_EQ(this->_parameter.result, this->_fmk->rome2arabic(this->_parameter.num2));
+		ASSERT_EQ(this->_parameter.result, awh::fmk::rome2arabic(this->_parameter.num2));
 	// Если римское число не представлено ни в одной из форм
 	else ASSERT_TRUE(false);
 }
@@ -1267,15 +1242,15 @@ TEST_P(FmkArabic2romeParameterizedFixture, FmkArabic2romeTest){
 	// Если число для конвертации больше нуля
 	if(this->_parameter.number > 0)
 		// Выполняем проверку конвертации арабского числа в римское число из числа
-		ASSERT_EQ(this->_parameter.result2, this->_fmk->arabic2rome(this->_parameter.number));
+		ASSERT_EQ(this->_parameter.result2, awh::fmk::arabic2rome(this->_parameter.number));
 	// Если число для конвертации представлено в виде строки
 	else if(!this->_parameter.word1.empty())
 		// Выполняем проверку конвертации арабского числа в римское число из строки
-		ASSERT_EQ(this->_parameter.result1, this->_fmk->arabic2rome(this->_parameter.word1));
+		ASSERT_EQ(this->_parameter.result1, awh::fmk::arabic2rome(this->_parameter.word1));
 	// Если число для конвертации представлено в виде широкой строки
 	else if(!this->_parameter.word2.empty())
 		// Выполняем проверку конвертации арабского числа в римское число из широкой строки
-		ASSERT_EQ(this->_parameter.result2, this->_fmk->arabic2rome(this->_parameter.word2));
+		ASSERT_EQ(this->_parameter.result2, awh::fmk::arabic2rome(this->_parameter.word2));
 	// Если римское число не представлено ни в одной из форм
 	else ASSERT_TRUE(false);
 }
@@ -1320,7 +1295,7 @@ class FmkCountLetterParameterizedFixture : public FmkFixture, public ::testing::
  */
 TEST_P(FmkCountLetterParameterizedFixture, FmkCountLetterTest){
 	// Выполняем подсчёт количества вхождений буквы в строку
-	ASSERT_EQ(this->_parameter.result, this->_fmk->countLetter(this->_parameter.word, this->_parameter.letter));
+	ASSERT_EQ(this->_parameter.result, awh::fmk::countLetter(this->_parameter.word, this->_parameter.letter));
 }
 
 /**
@@ -1363,8 +1338,8 @@ class FmkFormatParameterizedFixture : public FmkFixture, public ::testing::WithP
  */
 TEST_P(FmkFormatParameterizedFixture, FmkFormatTest){
 	// Выполняем форматирование строки и проверяем результат
-	ASSERT_EQ(this->_parameter.result, this->_fmk->format("%s", this->_parameter.result.c_str()));
-	ASSERT_EQ(this->_parameter.result, this->_fmk->format(this->_parameter.format, this->_parameter.items));
+	ASSERT_EQ(this->_parameter.result, awh::fmk::format("%s", this->_parameter.result.c_str()));
+	ASSERT_EQ(this->_parameter.result, awh::fmk::format(this->_parameter.format, this->_parameter.items));
 }
 
 /**
@@ -1410,9 +1385,9 @@ TEST_P(FmkExistsParameterizedFixture, FmkExistsTest){
 	// Проверяем, что слово существует в тексте
 	if(!this->_parameter.word1.empty() && !this->_parameter.text1.empty())
 		// Если слово и текст указаны, то проверяем существование слова в тексте
-		ASSERT_TRUE(this->_fmk->exists(this->_parameter.word1, this->_parameter.text1));
+		ASSERT_TRUE(awh::fmk::exists(this->_parameter.word1, this->_parameter.text1));
 	// Если слово и текст не указаны, то проверяем существование слова в тексте (широкая строка)
-	else ASSERT_TRUE(this->_fmk->exists(this->_parameter.word2, this->_parameter.text2));
+	else ASSERT_TRUE(awh::fmk::exists(this->_parameter.word2, this->_parameter.text2));
 }
 
 /**
@@ -1466,9 +1441,9 @@ TEST_P(FmkReplaceParameterizedFixture, FmkReplaceTest){
 	// Если текстовые параметры для замены заданы и не пустые
 	if(!this->_parameter.text1.empty() && !this->_parameter.word1.empty() && !this->_parameter.result1.empty())
 		// Проверяем, что результат замены слова в тексте совпадает с ожидаемым
-		ASSERT_EQ(this->_parameter.result1, this->_fmk->replace(this->_parameter.text1, this->_parameter.word1, this->_parameter.alt1));
+		ASSERT_EQ(this->_parameter.result1, awh::fmk::replace(this->_parameter.text1, this->_parameter.word1, this->_parameter.alt1));
 	// Если широкие текстовые параметры для замены заданы и не пустые, то проверяем результат замены слова в тексте (широкая строка)
-	else ASSERT_EQ(this->_fmk->convert(this->_parameter.result2), this->_fmk->convert(this->_fmk->replace(this->_parameter.text2, this->_parameter.word2, this->_parameter.alt2)));
+	else ASSERT_EQ(awh::fmk::convert(this->_parameter.result2), awh::fmk::convert(awh::fmk::replace(this->_parameter.text2, this->_parameter.word2, this->_parameter.alt2)));
 }
 
 /**
@@ -1518,9 +1493,9 @@ TEST_P(FmkKVParameterizedFixture, FmkKVTest){
 	// Если текстовые параметры для замены заданы и не пустые
 	if(!this->_parameter.text1.empty() && !this->_parameter.delim1.empty()){
 		// Проверяем результат разбора ключ-значение
-		ASSERT_EQ(this->_parameter.result1, this->_fmk->kv(this->_parameter.text1, this->_parameter.delim1));
+		ASSERT_EQ(this->_parameter.result1, awh::fmk::kv(this->_parameter.text1, this->_parameter.delim1));
 	// Если широкие текстовые параметры для замены заданы и не пустые, то проверяем результат разбора ключ-значение (широкая строка)
-	} else ASSERT_EQ(this->_parameter.result2, this->_fmk->kv(this->_parameter.text2, this->_parameter.delim2));
+	} else ASSERT_EQ(this->_parameter.result2, awh::fmk::kv(this->_parameter.text2, this->_parameter.delim2));
 }
 
 /**
@@ -1538,7 +1513,7 @@ TEST_P(FmkKVParameterizedFixture, FmkKVCallbackTest){
 		// Результат потокового разбора
 		std::unordered_multimap <std::string, std::string> result;
 		// Выполняем потоковый разбор строки ключ-значение
-		this->_fmk->kv(sid, this->_parameter.text1, this->_parameter.delim1, [&result, sid](const uint64_t id, const std::string_view key, const std::string_view value) noexcept -> void {
+		awh::fmk::kv(sid, this->_parameter.text1, this->_parameter.delim1, [&result, sid](const uint64_t id, const std::string_view key, const std::string_view value) noexcept -> void {
 			// Проверяем, что идентификатор потока разбора проброшен без изменений
 			ASSERT_EQ(sid, id);
 			// Выполняем формирование записи результата
@@ -1551,7 +1526,7 @@ TEST_P(FmkKVParameterizedFixture, FmkKVCallbackTest){
 		// Результат потокового разбора (широкая строка)
 		std::unordered_multimap <std::wstring, std::wstring> result;
 		// Выполняем потоковый разбор строки ключ-значение (широкая строка)
-		this->_fmk->kv(sid, this->_parameter.text2, this->_parameter.delim2, [&result, sid](const uint64_t id, const std::wstring_view key, const std::wstring_view value) noexcept -> void {
+		awh::fmk::kv(sid, this->_parameter.text2, this->_parameter.delim2, [&result, sid](const uint64_t id, const std::wstring_view key, const std::wstring_view value) noexcept -> void {
 			// Проверяем, что идентификатор потока разбора проброшен без изменений
 			ASSERT_EQ(sid, id);
 			// Выполняем формирование записи результата
@@ -1692,7 +1667,7 @@ class FmkUrlsParameterizedFixture : public FmkFixture, public ::testing::WithPar
  */
 TEST_P(FmkUrlsParameterizedFixture, FmkUrlsTest){
 	// Проверяем, что результат извлечения URL совпадает с ожидаемым
-	ASSERT_EQ(this->_parameter.map, this->_fmk->urls(this->_parameter.text));
+	ASSERT_EQ(this->_parameter.map, awh::fmk::urls(this->_parameter.text));
 }
 
 /**
@@ -1733,9 +1708,9 @@ class FmkBytesParameterizedFixture : public FmkFixture, public ::testing::WithPa
  */
 TEST_P(FmkBytesParameterizedFixture, FmkBytesTest){
 	// Проверяем, что результат преобразования байт в человекочитаемый формат и обратно совпадает с ожидаемым
-	ASSERT_EQ(this->_parameter.number, this->_fmk->bytes(this->_parameter.word));
+	ASSERT_EQ(this->_parameter.number, awh::fmk::bytes(this->_parameter.word));
 	// Проверяем обратное преобразование человекочитаемого формата в байты
-	ASSERT_EQ(this->_parameter.word, this->_fmk->bytes(this->_parameter.number));
+	ASSERT_EQ(this->_parameter.word, awh::fmk::bytes(this->_parameter.number));
 }
 
 /**
@@ -1780,7 +1755,7 @@ class FmkSizeBufferParameterizedFixture : public FmkFixture, public ::testing::W
  */
 TEST_P(FmkSizeBufferParameterizedFixture, FmkSizeBufferTest){
 	// Проверяем, что результат преобразования человекочитаемого формата в байты совпадает с ожидаемым
-	ASSERT_EQ(this->_parameter.result1, this->_fmk->bpsBuffer(this->_parameter.str));
+	ASSERT_EQ(this->_parameter.result1, awh::fmk::bpsBuffer(this->_parameter.str));
 }
 
 /**
@@ -1789,7 +1764,7 @@ TEST_P(FmkSizeBufferParameterizedFixture, FmkSizeBufferTest){
  */
 TEST_P(FmkSizeBufferParameterizedFixture, FmkBytesPerSecondTest){
 	// Проверяем, что результат преобразования человекочитаемого формата в байты совпадает с ожидаемым
-	ASSERT_EQ(this->_parameter.result2, this->_fmk->bpsSize(this->_parameter.str));
+	ASSERT_EQ(this->_parameter.result2, awh::fmk::bpsSize(this->_parameter.str));
 }
 
 /**

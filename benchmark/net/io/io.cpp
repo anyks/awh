@@ -28,16 +28,27 @@
  * Подключаем заголовочный файл бенчмарков сетевого движка
  */
 #include "io.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем системные заголовочные файлы
+ *
+ * @note У MS Windows заголовков этих нет вовсе, а средства сокетов приходят единой
+ *       точкой входа: порядок включения у них свой, и нарушение его даёт отказы о
+ *       переопределении, далёкие от места причины
  */
-#include <unistd.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/resource.h>
-#include <netinet/in.h>
+#if defined(_WIN32) || defined(_WIN64)
+	#include <sys/macro/win32.hpp>
+	// Сведения о памяти процесса берутся отдельной библиотекой системы
+	#include <psapi.h>
+#else
+	#include <unistd.h>
+	#include <sys/time.h>
+	#include <sys/types.h>
+	#include <sys/socket.h>
+	#include <sys/resource.h>
+	#include <netinet/in.h>
+#endif
 
 /**
  * Если сборка производится под операционную систему macOS
@@ -277,6 +288,22 @@ void awh::benchmark::io::collect(outcome_t & output) noexcept {
  *
  */
 size_t awh::benchmark::io::footprint() noexcept {
+	/**
+	 * Если операционной системой является MS Windows
+	 *
+	 * @note Учёта ресурсов в понятиях POSIX у этой системы нет вовсе, а пиковый объём
+	 *       она сообщает своим приёмом сведений о памяти процесса
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Объект сведений о памяти процесса
+		PROCESS_MEMORY_COUNTERS counters{};
+		// Если сведения о памяти процесса не получены
+		if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &counters, sizeof(counters)))
+			// Выводим нулевой объём занятой памяти
+			return 0;
+		// Выводим пиковый объём рабочего набора процесса
+		return static_cast <size_t> (counters.PeakWorkingSetSize);
+	#else
 	// Объект сведений о потреблении ресурсов процессом
 	struct rusage usage{};
 	// Если сведения о потреблении ресурсов не получены
@@ -296,6 +323,7 @@ size_t awh::benchmark::io::footprint() noexcept {
 		// Выводим пиковый объём занятой памяти: остальные системы сообщают его в кибибайтах
 		return (static_cast <size_t> (usage.ru_maxrss) * 1024);
 	#endif
+	#endif
 }
 /**
  * @brief Функция получения пикового собственного объёма памяти процесса
@@ -305,9 +333,25 @@ size_t awh::benchmark::io::footprint() noexcept {
  */
 size_t awh::benchmark::io::occupancy() noexcept {
 	/**
+	 * Если операционной системой является MS Windows
+	 *
+	 * @note Собственным объёмом здесь считается закрытый объём процесса - то, что не
+	 *       делится с прочими. Он и есть ближайшее соответствие тому, что прочие системы
+	 *       сообщают отдельной величиной
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Объект расширенных сведений о памяти процесса
+		PROCESS_MEMORY_COUNTERS_EX counters{};
+		// Если сведения о памяти процесса не получены
+		if(!::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast <PROCESS_MEMORY_COUNTERS *> (&counters), sizeof(counters)))
+			// Выводим нулевой объём занятой памяти
+			return 0;
+		// Выводим закрытый объём памяти процесса
+		return static_cast <size_t> (counters.PrivateUsage);
+	/**
 	 * Если сборка производится под операционную систему macOS
 	 */
-	#if __APPLE__
+	#elif __APPLE__
 		// Объект сведений о виртуальной памяти задачи
 		task_vm_info_data_t info{};
 		// Размер объекта сведений в машинных словах
@@ -368,10 +412,29 @@ size_t awh::benchmark::io::occupancy() noexcept {
  *
  */
 uint16_t awh::benchmark::io::port() noexcept {
+	/**
+	 * Если операционной системой является MS Windows
+	 *
+	 * @note Средства сокетов у этой системы требуют подъёма прежде первого же обращения,
+	 *       и без него создание сокета отвечает отказом. Порт тогда взялся бы запасной -
+	 *       один и тот же у всех сценариев разом, - и сценарии столкнулись бы на нём,
+	 *       меряя не движок, а занятость порта. Подъём ведётся единожды за работу
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Признак поднятых средств сокетов
+		static const bool winsock = []() noexcept -> bool {
+			// Сведения о поднятых средствах сокетов
+			WSADATA data;
+			// Выводим признак успешного подъёма средств сокетов
+			return (::WSAStartup(MAKEWORD(2, 2), &data) == 0);
+		}();
+		// Отмечаем признак поднятых средств использованным
+		static_cast <void> (winsock);
+	#endif
 	// Выполняем создание временного сокета
-	const int32_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
+	const awh::net::socket_t fd = ::socket(AF_INET, SOCK_STREAM, 0);
 	// Если временный сокет не создан
-	if(fd < 0)
+	if(fd == awh::net::invalid_socket_t)
 		// Выводим порт из динамического диапазона
 		return 45000;
 	// Параметры привязки временного сокета
@@ -393,8 +456,17 @@ uint16_t awh::benchmark::io::port() noexcept {
 			// Извлекаем номер выделенного системой порта
 			result = ntohs(addr.sin_port);
 	}
-	// Выполняем закрытие временного сокета
-	::close(fd);
+	/**
+	 * Выполняем закрытие временного сокета
+	 *
+	 * @note У MS Windows сокет закрывается СВОИМ приёмом: общий приём описателей сокету
+	 *       отвечает отказом и оставляет его живым, а занятый им порт - занятым
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		::closesocket(fd);
+	#else
+		::close(fd);
+	#endif
 	// Выводим номер выделенного порта
 	return result;
 }
@@ -414,30 +486,4 @@ uint16_t awh::benchmark::io::options() noexcept {
 		awh::event::options::CLOSE_ON_EXEC |
 		awh::event::options::TCP_NO_DELAY
 	);
-}
-/**
- * @brief Функция получения объекта фреймворка сценариев
- *
- * @return объект фреймворка
- *
- */
-const awh::fmk_t * awh::benchmark::io::framework() noexcept {
-	// Объект фреймворка сценариев
-	static awh::fmk_t result;
-	// Выводим объект фреймворка
-	return &result;
-}
-/**
- * @brief Функция получения объекта логирования сценариев
- *
- * @return объект логирования
- *
- */
-const awh::log_t * awh::benchmark::io::logger() noexcept {
-	// Объект логирования сценариев
-	static awh::log_t result(framework());
-	// Отключаем логирование на время прогона сценариев
-	const_cast <awh::log_t &> (result).level(awh::log_t::level_t::NONE);
-	// Выводим объект логирования
-	return &result;
 }

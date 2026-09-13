@@ -29,6 +29,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1156,28 +1157,14 @@ void awh::codec::csv::Decoder::report() const noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
-		// Выполняем вывод сообщения об отказе
-		this->_log->print("CSV encoding failed: %s", log_t::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
-}
-/**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::csv::Decoder::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
+	// Выполняем вывод сообщения об отказе
+	awh::log::print("CSV encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 }
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::csv::Decoder::Decoder(const log_t * log) noexcept :
- _log(log),
+awh::codec::csv::Decoder::Decoder() noexcept :
  _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
  _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

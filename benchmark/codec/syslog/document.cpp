@@ -18,16 +18,16 @@
  * @copyright Copyright © 2026
  *
  */
+#include "syslog.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы бенчмарков
  */
-#include "syslog.hpp"
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён сценариев этого файла
@@ -43,41 +43,15 @@ namespace {
 	 */
 	struct SilentSysLogDocument {
 		/**
-		 * @brief Функция получения объекта фреймворка сценариев
-		 *
-		 * @return объект фреймворка сценариев
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка сценариев
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка сценариев
-			return fmk;
-		}
-		// Объект журнала сценариев
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentSysLogDocument() noexcept : log(&SilentSysLogDocument::framework()) {
+		SilentSysLogDocument() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 
-	/**
-	 * @brief Функция получения объекта журнала сценариев
-	 *
-	 * @return объект журнала сценариев
-	 *
-	 */
-	const awh::log_t * documentLogger() noexcept {
-		// Объект журнала сценариев
-		static SilentSysLogDocument silent;
-		// Выводим объект журнала сценариев
-		return &silent.log;
-	}
 
 	/**
 	 * @brief Порог пропускной способности разбора записи в дерево
@@ -128,7 +102,7 @@ namespace {
 	 */
 	size_t digest(const std::string & text) noexcept {
 		// Объект события, удерживаемого целиком
-		awh::codec::syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+		awh::codec::syslog::document_t document;
 		// Если разбор записи отказом завершился
 		if(!document.parse(text))
 			// Выводим отсутствие полей дерева события
@@ -146,7 +120,7 @@ namespace {
 	 */
 	size_t roundtrip(const std::string & text) noexcept {
 		// Объект события, удерживаемого целиком
-		awh::codec::syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+		awh::codec::syslog::document_t document;
 		// Если разбор записи отказом завершился
 		if(!document.parse(text))
 			// Выводим отсутствие собранной записи
@@ -270,7 +244,7 @@ namespace {
 			// Выводим результат измерения
 			return result;
 		// Объект события, удерживаемого целиком
-		awh::codec::syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+		awh::codec::syslog::document_t document;
 		// Если разбор эталонной записи отказом завершился
 		if(!document.parse(text)){
 			// Помечаем измерение недействительным

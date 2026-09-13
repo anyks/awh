@@ -101,6 +101,8 @@
  *
  */
 #include <afunix.h>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -409,7 +411,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 	// Если код ошибки сокета получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, SO_ERROR, reinterpret_cast <char *> (&result), &size) != 0)
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	// Возвращаем результат
 	return result;
 }
@@ -436,7 +438,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 	// Если срок ожидания получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, option, reinterpret_cast <char *> (&msec), &size) != 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем пустой срок ожидания
 		return 0;
 	}
@@ -482,7 +484,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 	// Если срок ожидания установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, option, reinterpret_cast <const char *> (&timeout), static_cast <int32_t> (sizeof(timeout))) != 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
@@ -603,7 +605,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 		return 0;
 	}
 	// Записываем ошибку в лог
-	this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	// Возвращаем пустой размер накопителя
 	return 0;
 }
@@ -644,7 +646,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 			// Выводим действительный размер накопителя канала
 			return this->getBufferSize(sock, event);
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем пустой размер накопителя
 		return 0;
 	}
@@ -712,7 +714,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 	// Если число переходов установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
@@ -781,7 +783,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 	// Если число переходов получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <char *> (&value), &size) != 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем пустое число переходов
 		return 0;
 	}
@@ -810,7 +812,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	// Если признак поддержания подключения установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), SOL_SOCKET, SO_KEEPALIVE, reinterpret_cast <const char *> (&mode), static_cast <int32_t> (sizeof(mode))) != 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
@@ -866,7 +868,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		// Если число попыток наложить не удалось
 		if(::setsockopt(static_cast <SOCKET> (sock), IPPROTO_TCP, TCP_KEEPCNT, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 			// Заносим в журнал предупреждение о неприменимости числа попыток
-			this->_log->print("%s: keepalive probe count is not settable on this edition of MS Windows, the value %d is ignored", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, cnt);
+			awh::log::print("%s: keepalive probe count is not settable on this edition of MS Windows, the value %d is ignored", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, cnt);
 			// Отмечаем неприменимость поимённых настроек
 			named = false;
 		}
@@ -892,7 +894,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	// Если настройки поддержания подключения применить не удалось
 	if(::WSAIoctl(static_cast <SOCKET> (sock), SIO_KEEPALIVE_VALS, &settings, static_cast <DWORD> (sizeof(settings)), nullptr, 0, &returned, nullptr, nullptr) == SOCKET_ERROR){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
@@ -1019,7 +1021,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 	// Если номер сетевого устройства получить не удалось
 	if(index == 0){
 		// Заносим в журнал предупреждение об отсутствии сетевого устройства
-		this->_log->print("%s: network interface \"%s\" could not be found", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, string(ifname).c_str());
+		awh::log::print("%s: network interface \"%s\" could not be found", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, string(ifname).c_str());
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
@@ -1043,7 +1045,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 			// Если сетевое устройство установить не удалось
 			if(::setsockopt(static_cast <SOCKET> (sock), IPPROTO_IP, IP_MULTICAST_IF, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 				// Записываем ошибку в лог
-				this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 				// Возвращаем отрицательный результат установки
 				return false;
 			}
@@ -1055,7 +1057,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 			// Если сетевое устройство установить не удалось
 			if(::setsockopt(static_cast <SOCKET> (sock), IPPROTO_IPV6, IPV6_MULTICAST_IF, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 				// Записываем ошибку в лог
-				this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 				// Возвращаем отрицательный результат установки
 				return false;
 			}
@@ -1110,7 +1112,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 	// Если способ обнаружения MTU получить не удалось
 	if(::getsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <char *> (&value), &size) != 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем неопределённый способ обнаружения MTU
 		return event::mtu_discover_t::NONE;
 	}
@@ -1174,7 +1176,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 		// Если способ обнаружения MTU ответа у системы не имеет
 		default: {
 			// Заносим в журнал предупреждение об отсутствии ответа у системы
-			this->_log->print("%s: MTU discover mode %u has no counterpart on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (mode));
+			awh::log::print("%s: MTU discover mode %u has no counterpart on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (mode));
 			// Возвращаем отрицательный результат установки
 			return false;
 		}
@@ -1186,7 +1188,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	// Если способ обнаружения MTU установить не удалось
 	if(::setsockopt(static_cast <SOCKET> (sock), level, option, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем отрицательный результат установки
 		return false;
 	}
@@ -1211,7 +1213,7 @@ bool awh::eth::Socket::ready() const noexcept {
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
 		// Заносим отказ подъёма средств сокетов в журнал
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
 		// Выводим результат с ошибкой
 		return false;
 	}
@@ -1243,7 +1245,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
 		// Заносим отказ подъёма средств сокетов в журнал
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
 		// Возвращаем признак отсутствия заведённого сокета
 		return static_cast <net::socket_t> (INVALID_SOCKET);
 	}
@@ -1294,7 +1296,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		// Если семейство адресов неизвестно
 		default: {
 			// Заносим в журнал предупреждение о неподдерживаемом семействе адресов
-			this->_log->print("%s: address family %u is not supported", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (family));
+			awh::log::print("%s: address family %u is not supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (family));
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
@@ -1327,14 +1329,14 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 */
 		case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 			// Заносим в журнал предупреждение об отсутствии типа сокета у системы
-			this->_log->print("%s: sequenced packet sockets are not available on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			awh::log::print("%s: sequenced packet sockets are not available on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
 		// Если тип сокета неизвестен
 		default: {
 			// Заносим в журнал предупреждение о неподдерживаемом типе сокета
-			this->_log->print("%s: socket type %u is not supported", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
+			awh::log::print("%s: socket type %u is not supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
@@ -1362,7 +1364,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		// Если сокет не потоковый
 		if(kind != SOCK_STREAM){
 			// Заносим в журнал предупреждение об отсутствии такого сокета у системы
-			this->_log->print("%s: only stream UNIX-domain sockets are available on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			awh::log::print("%s: only stream UNIX-domain sockets are available on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
 			// Возвращаем признак отсутствия заведённого сокета
 			return static_cast <net::socket_t> (INVALID_SOCKET);
 		}
@@ -1371,7 +1373,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		// Если сокет завести не удалось
 		if(single == INVALID_SOCKET)
 			// Записываем ошибку в лог
-			this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+			awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Выводим заведённый сокет
 		return static_cast <net::socket_t> (single);
 	}
@@ -1440,7 +1442,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 	// Если сокет завести не удалось
 	if(result == INVALID_SOCKET)
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	/**
 	 * Если сокет заведён дейтаграммным - отключаем отчёт о недоступности получателя
 	 *
@@ -1468,7 +1470,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		// Выполняем отключение отчёта о недоступности получателя
 		if(::WSAIoctl(result, SIO_UDP_CONNRESET, &report, sizeof(report), nullptr, 0, &bytes, nullptr, nullptr) != 0)
 			// Записываем ошибку в лог
-			this->_log->print("%s: cannot disable datagram connection reset reporting: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+			awh::log::print("%s: cannot disable datagram connection reset reporting: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	}
 	// Возвращаем заведённый сокет
 	return static_cast <net::socket_t> (result);
@@ -1582,12 +1584,12 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	// Если имя канала не передано
 	if(name.empty()){
 		// Заносим отсутствие имени канала в журнал
-		this->_log->print("%s: named pipe cannot be opened without a name", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		awh::log::print("%s: named pipe cannot be opened without a name", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
 		// Выводим незаведённый описатель
 		return net::invalid_socket_t;
 	}
 	// Получаем имя канала в понимании системы
-	const std::wstring pipe = this->_fmk->convert(name);
+	const std::wstring pipe = awh::fmk::convert(name);
 	/**
 	 * Срок ожидания освобождения экземпляра канала в миллисекундах
 	 *
@@ -1641,7 +1643,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 			// Если заходы на открытие экземпляра канала исчерпаны
 			if(++rounds > ROUNDS){
 				// Заносим исчерпание заходов на открытие канала в журнал
-				this->_log->print("%s: named pipe [%s] did not appear after %u rounds", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
+				awh::log::print("%s: named pipe [%s] did not appear after %u rounds", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
 				// Выводим незаведённый описатель
 				return net::invalid_socket_t;
 			}
@@ -1653,14 +1655,14 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 		// Если заходы на открытие экземпляра канала исчерпаны
 		if(++rounds > ROUNDS){
 			// Заносим исчерпание заходов на открытие канала в журнал
-			this->_log->print("%s: named pipe [%s] remained busy after %u rounds", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
+			awh::log::print("%s: named pipe [%s] remained busy after %u rounds", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ROUNDS);
 			// Выводим незаведённый описатель
 			return net::invalid_socket_t;
 		}
 		// Если экземпляр канала за отведённый срок не освободился
 		if(!::WaitNamedPipeW(pipe.c_str(), static_cast <DWORD> (TIMEOUT))){
 			// Заносим истечение срока ожидания в журнал
-			this->_log->print("%s: named pipe [%s] is busy, error %lu", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+			awh::log::print("%s: named pipe [%s] is busy, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
 			// Выводим незаведённый описатель
 			return net::invalid_socket_t;
 		}
@@ -1668,7 +1670,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	// Если открыть свой конец канала не удалось
 	if(result == INVALID_HANDLE_VALUE){
 		// Заносим отказ открытия канала в журнал
-		this->_log->print("%s: named pipe [%s] could not be opened, error %lu", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+		awh::log::print("%s: named pipe [%s] could not be opened, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
 		// Выводим незаведённый описатель
 		return net::invalid_socket_t;
 	}
@@ -1684,7 +1686,7 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
 	 */
 	if(!::SetNamedPipeHandleState(result, &mode, nullptr, nullptr))
 		// Заносим отказ перевода канала в строй сообщений в журнал
-		this->_log->print("%s: named pipe [%s] could not be switched to the message mode, error %lu", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
+		awh::log::print("%s: named pipe [%s] could not be switched to the message mode, error %lu", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, name.c_str(), ::GetLastError());
 	// Выводим описатель открытого конца канала
 	return reinterpret_cast <net::socket_t> (result);
 }
@@ -1709,14 +1711,12 @@ awh::net::socket_t awh::eth::Socket::channel(const string & name) const noexcept
  * @note Строй канала выбирается доводом: сохраняющему границы виду он сообщений, потоковому
  *       - октетов. Строй этот и есть та разница, ради какой виды заводятся порознь
  *
- * @param log     объект работы с логами
- * @param fmk     объект фреймворка
  * @param name    имя заведённого канала
  * @param message признак строя сообщений
  * @return        пара связанных концов канала
  *
  */
-static array <awh::net::socket_t, 2> __awh_channel_pair__(const awh::log_t * log, const awh::fmk_t * fmk, string & name, const bool message) noexcept {
+static array <awh::net::socket_t, 2> __awh_channel_pair__(string & name, const bool message) noexcept {
 	// Переменная результата
 	array <awh::net::socket_t, 2> result = {
 		awh::net::invalid_socket_t,
@@ -1783,7 +1783,7 @@ static array <awh::net::socket_t, 2> __awh_channel_pair__(const awh::log_t * log
 	// Если сторону канала завести не удалось
 	if(server == INVALID_HANDLE_VALUE){
 		// Записываем ошибку в лог
-		log->print("%s: named pipe could not be created, error %lu", awh::log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+		awh::log::print("%s: named pipe could not be created, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
 		// Возвращаем пустую пару
 		return result;
 	}
@@ -1792,7 +1792,7 @@ static array <awh::net::socket_t, 2> __awh_channel_pair__(const awh::log_t * log
 	// Если встречный конец канала открыть не удалось
 	if(client == INVALID_HANDLE_VALUE){
 		// Записываем ошибку в лог
-		log->print("%s: named pipe could not be opened, error %lu", awh::log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+		awh::log::print("%s: named pipe could not be opened, error %lu", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
 		// Закрываем заведённую сторону канала
 		::CloseHandle(server);
 		// Возвращаем пустую пару
@@ -1819,9 +1819,9 @@ static array <awh::net::socket_t, 2> __awh_channel_pair__(const awh::log_t * log
 	 */
 	if(!::SetNamedPipeHandleState(client, &mode, nullptr, nullptr))
 		// Записываем ошибку в лог
-		log->print("%s: named pipe could not be switched to message mode, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+		awh::log::print("%s: named pipe could not be switched to message mode, error %lu", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
 	// Выдаём имя заведённого канала вызывающей стороне
-	name = fmk->convert(pipe);
+	name = awh::fmk::convert(pipe);
 	// Запоминаем сторону канала, ожидающую подключения
 	result[0] = reinterpret_cast <awh::net::socket_t> (server);
 	// Запоминаем встречный конец канала
@@ -1841,7 +1841,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	// Если поднять средства сокетов системы не удалось
 	if(!::__awh_winsock__()){
 		// Заносим отказ подъёма средств сокетов в журнал
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_winsock_failure__.c_str());
 		// Возвращаем пару незаведённых сокетов
 		return result;
 	}
@@ -1893,7 +1893,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	 */
 	if((family == event::family_t::UDS) || (family == event::family_t::PIPE))
 		// Выполняем заведение пары связанных концов именованного канала
-		return ::__awh_channel_pair__(this->_log, this->_fmk, name, ((type != event::type_t::NONE) && (type != event::type_t::STREAM)));
+		return ::__awh_channel_pair__(name, ((type != event::type_t::NONE) && (type != event::type_t::STREAM)));
 	// Тип сокетов пары в понимании системы
 	int32_t kind = 0;
 	// Протокол сокетов пары в понимании системы
@@ -1930,11 +1930,11 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 */
 		case static_cast <uint8_t> (event::type_t::SEQPACKET):
 			// Выполняем заведение пары связанных концов именованного канала строем сообщений
-			return ::__awh_channel_pair__(this->_log, this->_fmk, name, true);
+			return ::__awh_channel_pair__(name, true);
 		// Если пара запрошена типом, какого у системы нет вовсе
 		default: {
 			// Заносим в журнал предупреждение об отсутствии типа пары у системы
-			this->_log->print("%s: socket pair of type %u is not available on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
+			awh::log::print("%s: socket pair of type %u is not available on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint16_t> (type));
 			// Возвращаем пустую пару сокетов
 			return result;
 		}
@@ -2048,7 +2048,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			return result;
 		} while(false);
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Если первая сторона пары заведена - закрываем её
 		if(one != INVALID_SOCKET)
 			// Закрываем первую сторону пары
@@ -2080,7 +2080,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 	// Если сокет слушателя завести не удалось
 	if(listener == INVALID_SOCKET){
 		// Записываем ошибку в лог
-		this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Возвращаем пустую пару сокетов
 		return result;
 	}
@@ -2211,7 +2211,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			   (peer.inaddr.sin_port == mine.inaddr.sin_port) &&
 			   (peer.inaddr.sin_addr.s_addr == mine.inaddr.sin_addr.s_addr))){
 				// Записываем предупреждение о постороннем подключении
-				this->_log->print("%s: a foreign local connection has been accepted on the socket pair listener, the pair is not created", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+				awh::log::print("%s: a foreign local connection has been accepted on the socket pair listener, the pair is not created", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
 				// Закрываем постороннее подключение
 				::closesocket(second);
 				// Отмечаем вторую сторону пары незаведённой
@@ -2232,7 +2232,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		return result;
 	} while(false);
 	// Записываем ошибку в лог
-	this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+	awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	// Закрываем сокет слушателя
 	::closesocket(listener);
 	// Если первая сторона пары заведена - закрываем её
@@ -2283,7 +2283,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
  */
 bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, [[maybe_unused]] const event::family_t family, const event::dscp_t dscp) const noexcept {
 	// Выводим результат установки класса обслуживания сокету
-	return win::qos::mark(sock, dscp, this->_log);
+	return win::qos::mark(sock, dscp);
 }
 
 /**
@@ -2337,7 +2337,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 	// Если считать признак перегрузки не удалось
 	if(::getsockopt(sock, level, option, reinterpret_cast <char *> (&value), &length) != 0){
 		// Выводим в журнал сообщение о невозможности чтения признака перегрузки
-		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Выводим отсутствие признака перегрузки
 		return event::ecn_t::NOT_ECT;
 	}
@@ -2623,7 +2623,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 	// Если установить признак перегрузки не удалось
 	if(::setsockopt(sock, level, option, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 		// Выводим в журнал сообщение о невозможности установки признака перегрузки
-		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Выводим отрицательный результат установки
 		return false;
 	}
@@ -2685,13 +2685,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	// Если выставить настройку выдачи числа переходов не удалось
 	if(!first)
 		// Выводим в журнал сообщение о невозможности выставления настройки
-		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	// Результат выставления настройки выдачи сведений об устройстве
 	const bool second = (::setsockopt(sock, level, info, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) == 0);
 	// Если выставить настройку выдачи сведений об устройстве не удалось
 	if(!second)
 		// Выводим в журнал сообщение о невозможности выставления настройки
-		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	/**
 	 * Выставляем настройку выдачи класса обслуживания
 	 *
@@ -2700,7 +2700,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 	 */
 	if(::setsockopt(sock, level, service, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0)
 		// Выводим в журнал сообщение о невозможности выставления настройки
-		this->_log->print("%s: traffic class of received packets is not reported: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: traffic class of received packets is not reported: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 	// Выводим общий результат переключения
 	return (first && second);
 }
@@ -2915,7 +2915,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			// Если сокет является UNIX-доменным
 			if(family == event::family_t::UDS){
 				// Выводим в журнал сообщение об оставленной без внимания настройке
-				this->_log->print("%s: address reuse is not applicable to UNIX-domain sockets on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+				awh::log::print("%s: address reuse is not applicable to UNIX-domain sockets on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
 				/**
 				 * Выводим положительный результат переключения
 				 *
@@ -2954,7 +2954,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			// Если выставить выдержку закрытия не удалось
 			if(::setsockopt(sock, SOL_SOCKET, SO_LINGER, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 				// Выводим в журнал сообщение о невозможности выставления настройки
-				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -2977,7 +2977,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			// Если выставить настройку не удалось
 			if(::ioctlsocket(sock, FIONBIO, &value) != 0){
 				// Выводим в журнал сообщение о невозможности выставления настройки
-				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -3006,7 +3006,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			// Если снять либо поставить пометку наследования не удалось
 			if(!::SetHandleInformation(reinterpret_cast <HANDLE> (sock), HANDLE_FLAG_INHERIT, (mode == net::socket_mode_t::ENABLED ? 0 : HANDLE_FLAG_INHERIT))){
 				// Выводим в журнал сообщение о невозможности выставления настройки
-				this->_log->print("%s: handle inheritance could not be changed, error %lu", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
+				awh::log::print("%s: handle inheritance could not be changed, error %lu", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::GetLastError());
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -3053,7 +3053,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			// Включаем либо отключаем алгоритм Нейгла вместо придержки отправки
 			if(::setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&nodelay), static_cast <int32_t> (sizeof(nodelay))) != 0){
 				// Выводим в журнал сообщение об ошибке
-				this->_log->print("%s: TCP output corking could not be emulated by the Nagle algorithm, %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				awh::log::print("%s: TCP output corking could not be emulated by the Nagle algorithm, %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 				// Выводим отрицательный результат переключения
 				return false;
 			}
@@ -3085,14 +3085,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 		 */
 		case event::options::REUSE_PORT: {
 			// Выводим в журнал сообщение об отсутствии соответствия
-			this->_log->print("%s: port reuse has no counterpart on MS Windows", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+			awh::log::print("%s: port reuse has no counterpart on MS Windows", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
 			// Выводим успешный результат, не обращаясь к ядру
 			return true;
 		}
 		// Если настройка модулю неизвестна
 		default: {
 			// Выводим в журнал сообщение о неизвестной настройке
-			this->_log->print("%s: socket option %u is not supported", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint32_t> (option));
+			awh::log::print("%s: socket option %u is not supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, static_cast <uint32_t> (option));
 			// Выводим отрицательный результат переключения
 			return false;
 		}
@@ -3100,7 +3100,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 	// Если выставить настройку сокета не удалось
 	if(::setsockopt(sock, level, name, reinterpret_cast <const char *> (&value), static_cast <int32_t> (sizeof(value))) != 0){
 		// Выводим в журнал сообщение о невозможности выставления настройки
-		this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+		awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 		// Выводим отрицательный результат переключения
 		return false;
 	}
@@ -3234,14 +3234,14 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 	// Если сокет либо адреса не переданы
 	if((sock == net::invalid_socket_t) || (group == nullptr) || (source == nullptr)){
 		// Выводим в журнал сообщение о непереданных адресах
-		this->_log->print("%s: multicast group or source address is not initialized", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		awh::log::print("%s: multicast group or source address is not initialized", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
 		// Выводим отрицательный результат выполнения
 		return false;
 	}
 	// Если виды переданных адресов не совпали
 	if(group->size != source->size){
 		// Выводим в журнал сообщение о несовпадении видов адресов
-		this->_log->print("%s: multicast group and source addresses belong to different families", log_t::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
+		awh::log::print("%s: multicast group and source addresses belong to different families", awh::log::flag_t::CRITICAL, ::__AWH_SOCKET_BACKEND__);
 		// Выводим отрицательный результат выполнения
 		return false;
 	}
@@ -3262,7 +3262,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			// Если выполнить вход в группу рассылки либо выход из неё не удалось
 			if(::setsockopt(sock, IPPROTO_IP, (join ? IP_ADD_MEMBERSHIP : IP_DROP_MEMBERSHIP), reinterpret_cast <const char *> (&request), static_cast <int32_t> (sizeof(request))) != 0){
 				// Выводим в журнал сообщение о невозможности выполнения
-				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 				// Выводим отрицательный результат выполнения
 				return false;
 			}
@@ -3282,7 +3282,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			// Если выполнить вход в группу рассылки либо выход из неё не удалось
 			if(::setsockopt(sock, IPPROTO_IPV6, (join ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP), reinterpret_cast <const char *> (&request), static_cast <int32_t> (sizeof(request))) != 0){
 				// Выводим в журнал сообщение о невозможности выполнения
-				this->_log->print("%s: %s", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
+				awh::log::print("%s: %s", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__, ::__awh_socket_error__().c_str());
 				// Выводим отрицательный результат выполнения
 				return false;
 			}
@@ -3291,7 +3291,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		}
 	}
 	// Выводим в журнал сообщение о неподдерживаемом виде адресов
-	this->_log->print("%s: only IPv4 and IPv6 multicast groups are supported", log_t::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
+	awh::log::print("%s: only IPv4 and IPv6 multicast groups are supported", awh::log::flag_t::WARNING, ::__AWH_SOCKET_BACKEND__);
 	// Выводим отрицательный результат выполнения
 	return false;
 }

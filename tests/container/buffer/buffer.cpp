@@ -29,12 +29,8 @@
  *
  */
 void BufferFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект смартбуфера
-	this->_buffer = std::make_unique <awh::buffer_t> (this->_fmk.get(), this->_log.get());
+	this->_buffer = std::make_unique <awh::buffer_t> ();
 }
 
 /**

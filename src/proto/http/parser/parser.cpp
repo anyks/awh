@@ -79,12 +79,10 @@ void awh::http::Parser::reset() noexcept {
  * @brief Конструктор
  *
  * @param direct направление потока данных
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
  *
  */
-awh::http::Parser::Parser(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
- _status(status_t::NONE), _direct(direct), _fmk(fmk), _log(log) {}
+awh::http::Parser::Parser(const direct_t direct) noexcept :
+ _status(status_t::NONE), _direct(direct) {}
 /**
  * @brief Деструктор
  *

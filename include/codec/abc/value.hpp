@@ -44,17 +44,16 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include "../../sys/fmk.hpp"
 
 #include "common.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
 #include "document.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 
 /**
  * \~russian
@@ -150,55 +149,6 @@ namespace awh {
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Value {
-				public:
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта логирования
-					 *
-					 * @details Значение есть данные, а не работающий модуль: пара доставляется
-					 * ему вызовом, а не конструктором, иначе неявное приведение вида
-					 * `value_t v = "текст"` стало бы невозможным. Устройство это взято у
-					 * `awh::Buffer`, где решён тот же вопрос
-					 *
-					 * @param log объект работы с логами
-					 *
-					 * \~english
-					 * @brief Method setting the logging object
-					 *
-					 * @param log object for working with logs
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта фреймворка
-					 *
-					 * @details Доставляется он вызовом, а не конструктором, по той же причине, что
-					 * и журнал: значение есть данные, а не работающий модуль, и приведи мы пару
-					 * указателей в конструктор, неявное приведение вида `value_t v = "текст"`
-					 * стало бы невозможным
-					 *
-					 * @note Значению самому объект фреймворка не нужен - он нужен дереву документа,
-					 * какое значение заводит при разборе записи. Не установи его потребитель,
-					 * дерево получит пустой указатель, и разбор пойдёт как прежде
-					 *
-					 * @param fmk объект фреймворка
-					 *
-					 * \~english
-					 * @brief Method setting the object of the framework
-					 *
-					 * @param fmk object of the framework
-					 *
-					 * \~
-					 */
-					void setFramework(const fmk_t * fmk) noexcept;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk = nullptr;
-				private:
-					// Объект работы с логами
-					const log_t * _log = nullptr;
 				private:
 					/**
 					 * \~russian
@@ -1508,7 +1458,7 @@ namespace awh {
 					 * @details Конструктор от истинности неявен намеренно - `insert("к", true)`
 					 * без него не собрать, - и всякий указатель проходил бы в него стандартным
 					 * преобразованием, молча обращаясь в ИСТИНУ. Ловушка эта тем острее, что
-					 * всякий иной разряд кодека берёт журнал конструктором, и `value_t v(log)`
+					 * всякий иной разряд кодека берёт журнал конструктором, и `value_t v()`
 					 * собиралось бы молча. Строковый литерал сюда не попадает: `Value(const char *)`
 					 * стоит рядом и как не шаблонный предпочитается. Запрет закреплён
 					 * проверкой `CodecAbcValue.PointerConstructionForbidden`: утверждение
@@ -1661,9 +1611,6 @@ namespace awh {
 				private:
 					// Имя поля отображения, сборкой назначенное
 					Value _key;
-				private:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					// Признак назначенного имени поля отображения
 					bool _keyed;
@@ -1976,16 +1923,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
-					 * @param log object for working with logs
-					 *
 					 * \~
 					 */
-					explicit Builder(const log_t * log) noexcept;
+					explicit Builder() noexcept;
 			} builder_t;
 		};
 	};

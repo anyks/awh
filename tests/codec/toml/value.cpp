@@ -40,6 +40,7 @@
 #include "../temporary.hpp"
 #include <codec/toml/toml.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -68,49 +69,17 @@ namespace {
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		static ::std::wstring address(const ::std::string & path) noexcept {
-			// Собираемая широкая запись пути файловой системы
-			::std::wstring result;
-			// Выполняем резервирование памяти под собираемый путь
-			result.reserve(path.size());
-			// Кодовое значение очередного знака пути
-			uint32_t code = 0;
 			/**
-			 * Выполняем перебор всех знаков обращаемого пути
+			 * Обращение ведётся ходом рамки, а не своим перебором знаков
+			 *
+			 * @warning Прежде здесь лежал собственный обращатель через `utf8::decode` со
+			 *          сборкою суррогатной пары - дословный двойник `Framework::convert`.
+			 *          Двойник этот снят из кодеков 11.09.2026, а здесь уцелел и прожил
+			 *          лишним ещё двое суток. Свой ход опасен не работою, а расхождением:
+			 *          починка рамки его не достигает, и проверка начинает мерить не тот
+			 *          путь, каким ходит кодек
 			 */
-			for(::std::size_t i = 0; i < path.size();){
-				// Выполняем разбор записи очередного знака пути
-				const ::std::size_t length = awh::utf8::decode(path, i, code);
-				/**
-				 * Если запись знака разбору не поддалась
-				 */
-				if(length == 0)
-					// Выводим пустой путь, обращению не поддавшийся
-					return ::std::wstring();
-				// Выполняем перемещение за разобранную запись знака
-				i += length;
-				/**
-				 * Если знак широкий вмещает лишь два октета
-				 */
-				if constexpr(sizeof(wchar_t) < 4){
-					/**
-					 * Если код знака вне основной плоскости лежит
-					 */
-					if(code > 0xFFFF){
-						// Выполняем приведение кода к записи парою суррогатов
-						code -= 0x10000;
-						// Выполняем добавление старшего суррогата пары
-						result.push_back(static_cast <wchar_t> (0xD800 + (code >> 10)));
-						// Выполняем добавление младшего суррогата пары
-						result.push_back(static_cast <wchar_t> (0xDC00 + (code & 0x3FF)));
-						// Выполняем переход к следующему знаку пути
-						continue;
-					}
-				}
-				// Выполняем добавление знака к собираемому пути
-				result.push_back(static_cast <wchar_t> (code));
-			}
-			// Выводим собранный путь файловой системы
-			return result;
+			return awh::fmk::convert(path);
 		}
 	/**
 	 * Для операционной системы, MS Windows не являющейся
@@ -185,57 +154,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Способ выдачи объекта фреймворка проверок
-	 *
-	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
-	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -691,7 +617,7 @@ TEST(CodecTomlValue, Outliving) {
 	 */
 	{
 		// Дерево настроек, живущее одной областью видимости
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse("[server]\nhost = \"localhost\"\nport = 8080\n"));
 		// Выполняем снятие значения с дерева настроек
@@ -717,7 +643,7 @@ TEST(CodecTomlValue, Outliving) {
  */
 TEST(CodecTomlValue, Reborning) {
 	// Дерево настроек
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек
 	ASSERT_TRUE(document.parse("[server]\nhost = \"localhost\"\nport = 8080\n"));
 	// Выполняем снятие значения ветви дерева настроек
@@ -812,7 +738,7 @@ TEST(CodecTomlValue, GraftingRefusesTheMalformedEncoding) {
 	 *       уходит в текст молча - при умолчании оно заменяется знаком `U+FFFD`, при
 	 *       правиле `REFUSE` запись отвергается с кодом. Утверждаются оба исхода
 	 */
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	/**
@@ -857,7 +783,7 @@ TEST(CodecTomlValue, GraftingRefusesTheMalformedEncoding) {
  */
 TEST(CodecTomlValue, GraftingRefusesTheValueDeeperThanAllowed) {
 	// Дерево настроек, куда переносится значение
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	/**
@@ -910,7 +836,7 @@ TEST(CodecTomlValue, Grafting) {
 	// Выполняем установку строкового значения вложенной таблицы
 	value.place("/server/host") = toml::value_t("localhost");
 	// Дерево настроек, куда переносится значение
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -943,7 +869,7 @@ TEST(CodecTomlValue, GraftingArray) {
 	// Выполняем добавление второго значения перечня вложенной таблицы
 	value.place("/server/tags/1") = toml::value_t("two");
 	// Дерево настроек, куда переносится значение
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -995,7 +921,7 @@ TEST(CodecTomlValue, GraftingNested) {
 	// Выполняем заведение перечня внутри встроенной таблицы перечня
 	value.place("/points/0/axis/0") = toml::value_t(static_cast <int64_t> (7));
 	// Дерево настроек, куда переносится значение
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1296,7 +1222,7 @@ TEST(CodecTomlValue, GraftRoundTrip) {
 	// Выполняем установку строкового значения таблицы
 	value.place("/server/host") = toml::value_t("localhost");
 	// Дерево настроек, куда переносится значение
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(document.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1417,7 +1343,7 @@ TEST(CodecTomlValue, GraftRoundTripScattered) {
 			// Выполняем заведение очередной пары корня
 			value.place("/имя" + std::to_string(j)) = whatever(state, 3);
 		// Дерево настроек, куда переносится значение
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем разбор пустого текста настроек
 		ASSERT_TRUE(document.parse(""));
 		// Выполняем перенос собранного значения в дерево настроек
@@ -1432,7 +1358,7 @@ TEST(CodecTomlValue, GraftRoundTripScattered) {
 		 * @note Сличение значений записи не проверяет: дерево, вид значения потерявшее,
 		 *       отдало бы то же самое, а в текст ушло бы значение иное
 		 */
-		toml::document_t reparsed(::framework(), ::logger());
+		toml::document_t reparsed;
 		// Выполняем разбор записанного текста настроек
 		ASSERT_TRUE(reparsed.parse(document.text())) << "заход " << i;
 		// Выполняем снятие владеющего значения с разобранного заново дерева
@@ -1587,7 +1513,7 @@ TEST(CodecTomlValue, BuilderRepeatedKey) {
  */
 TEST(CodecTomlValue, EmptyName) {
 	// Дерево настроек с парою, пустое имя несущей
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек с пустым именем пары
 	ASSERT_TRUE(document.parse("\"\" = 5\n"));
 	// Выполняем проверку наличия пары с пустым именем
@@ -1599,7 +1525,7 @@ TEST(CodecTomlValue, EmptyName) {
 	// Выполняем проверку того, что пара с пустым именем записывается
 	ASSERT_EQ(lifted.dump(), "\"\" = 5\n");
 	// Дерево настроек, куда переносится значение
-	toml::document_t target(::framework(), ::logger());
+	toml::document_t target;
 	// Выполняем разбор пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем перенос владеющего значения в дерево настроек
@@ -1703,7 +1629,7 @@ TEST(CodecTomlValue, GraftSurvivesRewrite) {
 	 */
 	for(const auto & probe : PROBES){
 		// Дерево настроек, куда переносится значение
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем разбор исходного текста дерева
 		ASSERT_TRUE(document.parse(probe.base)) << probe.title;
 		// Переносимое владеющее значение
@@ -1724,7 +1650,7 @@ TEST(CodecTomlValue, GraftSurvivesRewrite) {
 		 */
 		ASSERT_EQ((text.find("старое") != string::npos), probe.kept) << probe.title;
 		// Дерево настроек, перезаписью полученное
-		toml::document_t again(::framework(), ::logger());
+		toml::document_t again;
 		// Выполняем обратный разбор перезаписи дерева
 		ASSERT_TRUE(again.parse(text)) << probe.title;
 		// Составное имя перенесённой строковой пары
@@ -1764,7 +1690,7 @@ TEST(CodecTomlValue, GraftSurvivesRewrite) {
  */
 TEST(CodecTomlValue, GraftRefusesOverExistingValue) {
 	// Дерево настроек, куда переносится значение
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек со скалярной парой
 	ASSERT_TRUE(document.parse("field = \"старое\"\n"));
 	// Переносимое владеющее значение
@@ -1821,7 +1747,7 @@ TEST(CodecTomlValue, AbsorbsImplicitTables) {
 	 */
 	for(const auto & probe : PROBES){
 		// Дерево настроек разбираемого текста
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем разбор текста настроек
 		ASSERT_TRUE(document.parse(probe.text)) << probe.title;
 		// Выполняем снятие владеющего значения с дерева настроек
@@ -1838,7 +1764,7 @@ TEST(CodecTomlValue, AbsorbsImplicitTables) {
 		 * @note Сличать дерево с собою здесь было бы напрасно: снятие теряло поддерево
 		 *       молча, и сличение такое потери этой не замечало
 		 */
-		toml::document_t again(::framework(), ::logger());
+		toml::document_t again;
 		// Выполняем обратный разбор перезаписи снятого значения
 		ASSERT_TRUE(again.parse(value.dump())) << probe.title;
 		// Содержимое перенесённого значения
@@ -1859,7 +1785,7 @@ TEST(CodecTomlValue, AbsorbsImplicitTables) {
  */
 TEST(CodecTomlValue, AbsorbsArrayOfTables) {
 	// Дерево настроек разбираемого текста
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек с набором таблиц
 	ASSERT_TRUE(document.parse("[[a]]\nx = 1\n[[a]]\nx = 2\n"));
 	// Выполняем снятие владеющего значения с дерева настроек
@@ -1893,7 +1819,7 @@ TEST(CodecTomlValue, AbsorbsArrayOfTables) {
  */
 TEST(CodecTomlDocument, KeysOfImplicitLink) {
 	// Дерево настроек разбираемого текста
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек с составным именем внутри встроенной таблицы
 	ASSERT_TRUE(document.parse("a = {b.c = 1, b.d = 2, e = 3}\n"));
 	// Выполняем проверку того, что значение по составному имени читается
@@ -1935,7 +1861,7 @@ TEST(CodecTomlDocument, KeysOfImplicitLink) {
  */
 TEST(CodecTomlDocument, NestedArraysBelongToElement) {
 	// Дерево настроек разбираемого текста
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек с вложенными наборами таблиц
 	ASSERT_TRUE(document.parse("[[a]]\nx = 1\n[[a.b]]\ny = 2\n[[a]]\nx = 3\n[[a.b]]\ny = 4\n"));
 	// Содержимое искомой пары
@@ -1976,7 +1902,7 @@ TEST(CodecTomlDocument, NestedArraysBelongToElement) {
  */
 TEST(CodecTomlDocument, NestedArrayAccumulates) {
 	// Дерево настроек разбираемого текста
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек с накоплением вложенного набора
 	ASSERT_TRUE(document.parse("[[a]]\n[[a.b]]\n[a.b.c]\nd = \"первое\"\n[[a.b]]\n[a.b.c]\nd = \"второе\"\n"));
 	// Выполняем проверку количества таблиц вложенного набора
@@ -2002,7 +1928,7 @@ TEST(CodecTomlDocument, NestedArrayAccumulates) {
  */
 TEST(CodecTomlValue, AbsorbsNestedArrays) {
 	// Дерево настроек разбираемого текста
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек с вложенными наборами таблиц
 	ASSERT_TRUE(document.parse("[[a]]\nx = 1\n[[a.b]]\ny = 2\n[[a]]\nx = 3\n[[a.b]]\ny = 4\n"));
 	// Выполняем снятие владеющего значения с дерева настроек
@@ -2185,10 +2111,6 @@ TEST(CodecTomlValue, Storing) {
 		"port = 8080\n"
 	));
 	// Выполняем проверку успешности записи значения в файл
-	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-	value.setFramework(::framework());
-	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-	value.setLogger(::logger());
 	ASSERT_TRUE(value.save(::unique("./value.toml")));
 	/**
 	 * Выполняем проверку чтения значения из файла
@@ -2197,10 +2119,6 @@ TEST(CodecTomlValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		toml::value_t loaded;
 		// Выполняем проверку успешности чтения значения из файла
-		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-		loaded.setFramework(::framework());
-		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-		loaded.setLogger(::logger());
 		ASSERT_TRUE(loaded.load(::unique("./value.toml")));
 		// Выполняем проверку совпадения записанного и прочитанного
 		ASSERT_TRUE(loaded == value);
@@ -2214,10 +2132,6 @@ TEST(CodecTomlValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		toml::value_t loaded;
 		// Выполняем проверку успешности чтения значения из файла настройками разбора
-		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-		loaded.setFramework(::framework());
-		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-		loaded.setLogger(::logger());
 		ASSERT_TRUE(loaded.load(::unique("./value.toml"), settings));
 		// Выполняем проверку совпадения записанного и прочитанного
 		ASSERT_TRUE(loaded == value);
@@ -2235,10 +2149,6 @@ TEST(CodecTomlValue, Storing) {
 		// Прочитанное обратно владеющее значение настроек
 		toml::value_t loaded;
 		// Выполняем проверку отказа чтения отсутствующего файла
-		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-		loaded.setFramework(::framework());
-		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-		loaded.setLogger(::logger());
 		ASSERT_FALSE(loaded.load("./несуществующий-каталог/value.toml"));
 	}
 }
@@ -2371,7 +2281,7 @@ TEST(CodecTomlValue, LiftedKeepsFormatting) {
 		"bin = 0b101\n"
 		"multi = [\n\t1,\n\t2\n]\n";
 	// Собираемое дерево настроек
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем проверку успешности разбора текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Собираемое владеющее значение
@@ -2407,7 +2317,7 @@ TEST(CodecTomlValue, EmptyNameSurvives) {
 	// Разбираемый текст настроек с объявлением, пустое имя несущим
 	const string text = "[name.\"\".c]\nk = 1\n";
 	// Собираемое дерево настроек
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем проверку успешности разбора текста настроек
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем проверку дословности перезаписи дерева настроек
@@ -2419,7 +2329,7 @@ TEST(CodecTomlValue, EmptyNameSurvives) {
 	// Выполняем проверку того, что перезапись пару с пустым именем сохранила
 	ASSERT_NE(written.find("\"\""), string::npos) << written;
 	// Собираемое дерево настроек перезаписи снятого значения
-	toml::document_t rebuilt(::framework(), ::logger());
+	toml::document_t rebuilt;
 	// Выполняем проверку успешности разбора перезаписи снятого значения
 	ASSERT_TRUE(rebuilt.parse(written)) << written;
 	// Выполняем проверку сохранности значения по составному имени
@@ -2523,7 +2433,7 @@ TEST(CodecTomlValue, GraftLeavesTreeIntact) {
 	// Выполняем установку пары с именем, дереву не принимаемым
 	ASSERT_TRUE(value.insert("с\nпереводом", toml::value_t(static_cast <int64_t> (2))));
 	// Дерево настроек, куда переносится значение
-	toml::document_t target(::framework(), ::logger());
+	toml::document_t target;
 	// Выполняем проверку успешности разбора пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем проверку отказа переноса владеющего значения
@@ -2544,7 +2454,7 @@ TEST(CodecTomlValue, GraftLeavesTreeIntact) {
 		// Выполняем установку пары с годным именем
 		ASSERT_TRUE(sound.insert("годное", toml::value_t(static_cast <int64_t> (1))));
 		// Дерево настроек, куда переносится значение
-		toml::document_t clean(::framework(), ::logger());
+		toml::document_t clean;
 		// Выполняем проверку успешности разбора пустого текста настроек
 		ASSERT_TRUE(clean.parse(""));
 		// Выполняем проверку успешности переноса владеющего значения
@@ -2577,7 +2487,7 @@ TEST(CodecTomlValue, GraftRefusesArrayHole) {
 	// Выполняем проверку того, что перечень дыры собою несёт
 	ASSERT_EQ(value["list"].size(), 4u);
 	// Дерево настроек, куда переносится значение
-	toml::document_t target(::framework(), ::logger());
+	toml::document_t target;
 	// Выполняем проверку успешности разбора текста настроек
 	ASSERT_TRUE(target.parse("guard = 1\n"));
 	// Выполняем проверку отказа переноса значения с дырою
@@ -2600,7 +2510,7 @@ TEST(CodecTomlValue, GraftRefusesArrayHole) {
 		// Выполняем заведение второго значения перечня
 		sound["list"][1] = toml::value_t(static_cast <int64_t> (8));
 		// Дерево настроек, куда переносится значение
-		toml::document_t clean(::framework(), ::logger());
+		toml::document_t clean;
 		// Выполняем проверку успешности разбора пустого текста настроек
 		ASSERT_TRUE(clean.parse(""));
 		// Выполняем проверку успешности переноса значения сплошного
@@ -2657,8 +2567,6 @@ TEST(CodecTomlValue, SearchAndLogger) {
 		ASSERT_TRUE(value.append("занято", toml::value_t(static_cast <int64_t> (1))));
 		// Выполняем проверку отказа занятого имени до назначения журнала
 		ASSERT_FALSE(value.append("занято", toml::value_t(static_cast <int64_t> (1))));
-		// Выполняем назначение журнала владеющему значению
-		value.setLogger(::logger());
 		// Выполняем проверку того, что отказ остался отказом и по назначении журнала
 		ASSERT_FALSE(value.append("занято", toml::value_t(static_cast <int64_t> (1))));
 		// Выполняем проверку того, что содержимое значения назначением не тронуто
@@ -2833,10 +2741,6 @@ TEST(CodecTomlValue, ParseLoadSaveRefusals) {
 		// Собираемое владеющее значение
 		toml::value_t value;
 		// Выполняем проверку отказа чтения файла несуществующего
-		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-		value.setFramework(::framework());
-		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-		value.setLogger(::logger());
 		ASSERT_FALSE(value.load("/несуществующий-каталог-awh/значение"));
 	}
 	/**
@@ -2859,10 +2763,6 @@ TEST(CodecTomlValue, ParseLoadSaveRefusals) {
 		// Собираемое владеющее значение
 		toml::value_t value;
 		// Выполняем проверку отказа чтения файла с содержимым негодным
-		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-		value.setFramework(::framework());
-		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-		value.setLogger(::logger());
 		ASSERT_FALSE(value.load(filename));
 		// Выполняем снятие временного файла
 		dropFile(filename);
@@ -2876,10 +2776,6 @@ TEST(CodecTomlValue, ParseLoadSaveRefusals) {
 		// Выполняем занесение пары, дабы записывалось не пустое значение
 		ASSERT_TRUE(value.append("a", toml::value_t(static_cast <int64_t> (1))));
 		// Выполняем проверку отказа записи в файл, открыть какой нельзя
-		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-		value.setFramework(::framework());
-		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-		value.setLogger(::logger());
 		ASSERT_FALSE(value.save("/несуществующий-каталог-awh/значение"));
 	}
 }
@@ -2971,101 +2867,45 @@ TEST(CodecTomlValue, BuilderRefusals) {
 	}
 }
 /**
- * @brief Проверка перенятия журнала присваиванием значения
+ * @brief Проверка единственности журнала на процесс
  *
- * @details Значение, журнала за собою не имеющее, перенимает его у значения
- *          присваиваемого - и копированием, и переносом: журнал этот достаётся дереву,
- *          разбором собираемому, и без перенятия причина отказа разбора уходила бы в
- *          пустоту. Обе строки перенятия пересечение трёх прогонов числило слепыми
- *
- * @note Назначенный журнал при этом не перезаписывается: присваивание меняет значение,
- *       а не приёмник вывода, и это проверяется рядом вторым журналом
+ * @details Прежде эта проверка испытывала перенятие ОБЪЕКТА журнала между значениями:
+ *          у каждого значения был свой указатель, и назначенный журнал присваиванием
+ *          не перезаписывался. Объектов журнала не стало - он единственный на процесс,
+ *          и перенимать нечего. Закрепляем то, что теперь верно: отказ разбора у
+ *          ЛЮБОГО значения доходит до общего журнала, как бы значение ни было заведено
  *
  */
-TEST(CodecTomlValue, LoggerAdoptedOnAssignment) {
-	// Собираемые сообщения первого журнала
+TEST(CodecTomlValue, RefusalReachesTheSingleLog) {
+	// Собираемые сообщения журнала
 	vector <string> messages;
-	// Объект журнала с перехватом вывода
-	awh::log_t log(&Silent::framework());
 	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	log.mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем назначение перехвата сообщений журнала
-	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем сбор очередного сообщения журнала
 		messages.push_back(string(text));
 	});
 	// Текст настроек, разбору не поддающийся
 	const string broken = "[раздел\n";
-	/**
-	 * Выполняем проверку перенятия журнала копированием
-	 */
-	{
-		// Значение, журнал за собою несущее
-		toml::value_t source;
-		// Выполняем назначение приёмника вывода журнала значению
-		source.setLogger(&log);
-		// Значение, журнала за собою не имеющее
-		toml::value_t target;
-		// Выполняем присваивание значения копированием
-		target = source;
-		// Выполняем проверку отказа разбора негодного текста
-		ASSERT_FALSE(target.parse(broken));
-		// Выполняем проверку того, что отказ разбора в перенятый журнал ушёл
-		ASSERT_FALSE(messages.empty());
-	}
-	// Запоминаем счёт сообщений, копированием собранный
-	const size_t copied = messages.size();
-	/**
-	 * Выполняем проверку перенятия журнала переносом
-	 */
-	{
-		// Значение, журнал за собою несущее
-		toml::value_t source;
-		// Выполняем назначение приёмника вывода журнала значению
-		source.setLogger(&log);
-		// Значение, журнала за собою не имеющее
-		toml::value_t target;
-		// Выполняем присваивание значения переносом
-		target = std::move(source);
-		// Выполняем проверку отказа разбора негодного текста
-		ASSERT_FALSE(target.parse(broken));
-		// Выполняем проверку того, что отказ разбора в перенятый журнал ушёл
-		ASSERT_GT(messages.size(), copied);
-	}
-	// Запоминаем счёт сообщений, переносом собранный
-	const size_t moved = messages.size();
-	/**
-	 * Выполняем проверку того, что назначенный журнал присваиванием не перезаписывается
-	 */
-	{
-		// Собираемые сообщения второго журнала
-		vector <string> own;
-		// Объект второго журнала с перехватом вывода
-		awh::log_t other(&Silent::framework());
-		// Выполняем назначение приёмника вывода в функцию обратного вызова
-		other.mode({awh::log_t::mode_t::DEFERRED});
-		// Выполняем назначение перехвата сообщений второго журнала
-		other.subscribe([&own](const awh::log_t::flag_t, string_view text) noexcept -> void {
-			// Выполняем сбор очередного сообщения второго журнала
-			own.push_back(string(text));
-		});
-		// Значение, первый журнал за собою несущее
-		toml::value_t source;
-		// Выполняем назначение приёмника вывода первого журнала значению
-		source.setLogger(&log);
-		// Значение, второй журнал за собою несущее
-		toml::value_t target;
-		// Выполняем назначение приёмника вывода второго журнала значению
-		target.setLogger(&other);
-		// Выполняем присваивание значения копированием
-		target = source;
-		// Выполняем проверку отказа разбора негодного текста
-		ASSERT_FALSE(target.parse(broken));
-		// Выполняем проверку того, что отказ ушёл в свой журнал, а не в перенятый
-		ASSERT_FALSE(own.empty());
-		// Выполняем проверку того, что первый журнал отказа не получил
-		ASSERT_EQ(messages.size(), moved);
-	}
+	// Значение, заведённое построением по умолчанию
+	toml::value_t value;
+	// Выполняем разбор заведомо негодного текста
+	static_cast <void> (value.parse(broken));
+	// Утверждаем, что отказ дошёл до общего журнала
+	ASSERT_FALSE(messages.empty())
+	 << "отказ разбора не дошёл до журнала, единственного на процесс";
+	// Запоминаем счёт собранных сообщений
+	const size_t reported = messages.size();
+	// Значение, заведённое копированием
+	auto copied = value;
+	// Выполняем разбор заведомо негодного текста копией
+	static_cast <void> (copied.parse(broken));
+	// Утверждаем, что отказ копии дошёл до того же журнала
+	ASSERT_GT(messages.size(), reported)
+	 << "отказ разбора у копии значения до журнала не дошёл";
+	// Снимаем перехват сообщений журнала
+	awh::log::subscribe(nullptr);
 }
 /**
  * @brief Проверка выдачи пустого имени пары по номеру за пределом
@@ -3545,10 +3385,6 @@ TEST(CodecTomlValue, ParseLoadRefusalsWithSettings) {
 	// Выполняем проверку отказа разбора текста настроек негодного настройками
 	ASSERT_FALSE(value.parse("key without separator\n", settings));
 	// Выполняем проверку отказа чтения несуществующего файла настройками
-	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-	value.setFramework(::framework());
-	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-	value.setLogger(::logger());
 	ASSERT_FALSE(value.load("./нет-такого-файла-настроек-toml.toml", settings));
 	/**
 	 * Выполняем проверку того, что текст годный разбирается настройками по-прежнему
@@ -3653,10 +3489,6 @@ TEST(CodecTomlValue, DumpSkipsHolesAndRefusesUndefined) {
 		// Выполняем проверку того, что снятое значение пусто
 		ASSERT_TRUE(value.dump().empty());
 		// Выполняем проверку отказа записи такого значения в файл
-		// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-		value.setFramework(::framework());
-		// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-		value.setLogger(::logger());
 		ASSERT_FALSE(value.save(temporary(::unique("awh-toml-value-undefined.toml"))));
 	}
 	/**
@@ -3686,7 +3518,7 @@ TEST(CodecTomlValue, DumpSkipsHolesAndRefusesUndefined) {
 		 */
 		ASSERT_EQ(value.dump(), string("[\"таблица\"]\n\"пара\" = 1\n"));
 		// Выполняем проверку того, что дыра не помешала и переносу в дерево
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем перенос значения в дерево настроек
 		ASSERT_TRUE(value.graft(document, {}));
 		// Выполняем проверку перенесённой пары вложенной таблицы
@@ -3762,7 +3594,7 @@ TEST(CodecTomlValue, CharNameIsText) {
  */
 TEST(CodecTomlValue, ImplantRefusesForeignPlace) {
 	// Объект дерева настроек
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор текста настроек с значением простым
 	ASSERT_TRUE(document.parse("plain = 1\n"));
 	/**
@@ -3931,7 +3763,7 @@ TEST(CodecTomlValue, HolesInsideComposite) {
 		// Выполняем проверку того, что дыра снятию не помешала
 		ASSERT_EQ(root.dump(), string("\"перечень\" = [{ \"пара\" = 1 }]\n"));
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку того, что дыра не помешала и переносу в дерево
 		ASSERT_TRUE(root.graft(document, {}));
 		// Выполняем проверку перенесённого содержимого
@@ -3954,7 +3786,7 @@ TEST(CodecTomlValue, HolesInsideComposite) {
 		// Запоминаем перечень с дырою парой значения
 		root["дырявый"] = list;
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку отказа переноса перечня с дырою
 		ASSERT_FALSE(root.graft(document, {}));
 		// Выполняем проверку выданного кода отказа дерева настроек
@@ -3971,7 +3803,7 @@ TEST(CodecTomlValue, AbsorbSkipsTypelessNodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Нагрузка события, типа не несущая вовсе
 		toml::content_t content;
 		// Выполняем объявление перечня значений дерева настроек
@@ -3990,7 +3822,7 @@ TEST(CodecTomlValue, AbsorbSkipsTypelessNodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Нагрузка события, типа не несущая вовсе
 		toml::content_t content;
 		// Выполняем объявление встроенной таблицы дерева настроек
@@ -4046,7 +3878,7 @@ TEST(CodecTomlValue, InflateRefusalRisesFromDepth) {
 	// Запоминаем внешний перечень парой значения
 	root["списки"] = outer;
 	// Объект дерева настроек
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	/**
 	 * Выполняем проверку отказа переноса значения, дыру в глубине несущего
 	 *
@@ -4078,7 +3910,7 @@ TEST(CodecTomlValue, InflateRefusalRisesFromDepth) {
 		// Запоминаем перечень парой значения
 		owner["таблицы"] = holder;
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку отказа переноса значения, дыру во встроенной таблице несущего
 		ASSERT_FALSE(owner.graft(document, {}));
 		// Выполняем проверку выданного кода отказа дерева настроек
@@ -4126,7 +3958,7 @@ TEST(CodecTomlValue, BothSpellingsOfANumberExtractAlike) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем разбор текста настроек с очередной записью числа
 		ASSERT_TRUE(document.parse(string("a = ") + probe.text + "\n")) << probe.text;
 		// Выполняем снятие значения с дерева настроек
@@ -4172,13 +4004,13 @@ TEST(CodecTomlValue, NumberSpellingsAgreeUpToDoublePrecision) {
 		// Извлекаемое число записи дробной
 		uint64_t fractional = 0;
 		// Объект дерева настроек записи целой
-		toml::document_t first(::framework(), ::logger());
+		toml::document_t first;
 		// Выполняем разбор текста настроек с записью целой
 		ASSERT_TRUE(first.parse(string("a = ") + "9007199254740992" + "\n"));
 		// Выполняем извлечение числа записи целой
 		ASSERT_TRUE(toml::value_t(first, vector <string_view> {"a"}).value(whole));
 		// Объект дерева настроек записи дробной
-		toml::document_t second(::framework(), ::logger());
+		toml::document_t second;
 		// Выполняем разбор текста настроек с записью дробной
 		ASSERT_TRUE(second.parse(string("a = ") + "9007199254740992.0" + "\n"));
 		// Выполняем извлечение числа записи дробной
@@ -4197,13 +4029,13 @@ TEST(CodecTomlValue, NumberSpellingsAgreeUpToDoublePrecision) {
 		// Извлекаемое число записи дробной
 		uint64_t fractional = 0;
 		// Объект дерева настроек записи целой
-		toml::document_t first(::framework(), ::logger());
+		toml::document_t first;
 		// Выполняем разбор текста настроек с записью целой
 		ASSERT_TRUE(first.parse(string("a = ") + "9007199254740993" + "\n"));
 		// Выполняем извлечение числа записи целой
 		ASSERT_TRUE(toml::value_t(first, vector <string_view> {"a"}).value(whole));
 		// Объект дерева настроек записи дробной
-		toml::document_t second(::framework(), ::logger());
+		toml::document_t second;
 		// Выполняем разбор текста настроек с записью дробной
 		ASSERT_TRUE(second.parse(string("a = ") + "9007199254740993.0" + "\n"));
 		// Выполняем извлечение числа записи дробной
@@ -4243,7 +4075,7 @@ TEST(CodecTomlValue, NumberSpellingsAgreeUpToDoublePrecision) {
  */
 TEST(CodecTomlValue, PathIndexRejectsLeadingZero) {
 	// Объект дерева документа, текст разбирающий
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем разбор перечня из двух значений
 	ASSERT_TRUE(document.parse("a = [10, 20]\n")) << toml::message(document.error());
 	// Получаем владеющее значение дерева документа
@@ -4260,7 +4092,7 @@ TEST(CodecTomlValue, PathIndexRejectsLeadingZero) {
 	 *       распространившая, сделала бы поле недостижимым МОЛЧА
 	 */
 	// Объект дерева настроек, таблицу разбирающий
-	toml::document_t mapping(::framework(), ::logger());
+	toml::document_t mapping;
 	// Выполняем разбор таблицы с именами из цифр
 	ASSERT_TRUE(mapping.parse("[m]\n'01' = 'first'\n'1' = 'second'\n")) << toml::message(mapping.error());
 	// Получаем владеющее значение настроек
@@ -4294,7 +4126,7 @@ TEST(CodecTomlValue, LayersExtractNumberAlike) {
 		// Извлекаемое деревом число
 		uint8_t second = 0;
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем разбор текста настроек деревом
 		ASSERT_TRUE(document.parse(string("a = ") + probe.text + "\n")) << probe.text;
 		// Выполняем извлечение числа владеющим значением
@@ -4329,7 +4161,7 @@ TEST(CodecTomlValue, GraftRefusalOfUndefinedNamesItsCause) {
 	// Владеющее значение, вида не имеющее
 	const toml::value_t undefined;
 	// Дерево настроек, куда переносится значение
-	toml::document_t target(::framework(), ::logger());
+	toml::document_t target;
 	// Выполняем проверку успешности разбора пустого текста настроек
 	ASSERT_TRUE(target.parse(""));
 	// Выполняем проверку отказа переноса неопределённого значения
@@ -4609,10 +4441,6 @@ TEST(CodecTomlValue, RefusedSaveLeavesNoTemporaryFile){
 	toml::value_t value(toml::type_t::TABLE);
 	value["ключ"] = toml::value_t("значение");
 	// Выполняем проверку отказа записи значения в каталог
-	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-	value.setFramework(::framework());
-	// Выполняем установку журнала: ход `fs_t` пустого журнала не терпит
-	value.setLogger(::logger());
 	ASSERT_FALSE(value.save(folder));
 	/**
 	 * Выполняем проверку того, что временного файла рядом с целью не осталось
@@ -4640,10 +4468,6 @@ TEST(CodecTomlValue, RefusedSaveLeavesNoTemporaryFile){
  *
  */
 TEST(CodecTomlValue, RefusedSaveIsAnnouncedWhenTheLoggerIsSet) {
-	// Объект ведения журнала работы проверки со своим каркасом
-	awh::fmk_t fmk;
-	// Объект ведения журнала работы
-	awh::log_t log(& fmk);
 	// Число сообщений, журналом принятых
 	size_t announced = 0;
 	/**
@@ -4652,21 +4476,19 @@ TEST(CodecTomlValue, RefusedSaveIsAnnouncedWhenTheLoggerIsSet) {
 	 * @note Подписка нужна затем, чтобы проверка ловила МОЛЧАНИЕ: утверждение об отказе
 	 *       записи снятия оглашения не замечает вовсе - отказ выдаётся и без него
 	 */
-	log.subscribe([&announced](const awh::log_t::flag_t, const string_view) noexcept -> void {
+	// Разрешаем отложенный вывод: подписка кормится именно им
+	awh::log::mode({awh::log::mode_t::DEFERRED});
+	awh::log::subscribe([&announced](const awh::log::flag_t, const string_view) noexcept -> void {
 		// Выполняем счёт принятых сообщений
 		announced++;
 	});
 	// Значение с парою таблицы
 	toml::value_t value(toml::type_t::TABLE);
-	// Выполняем установку объекта ведения журнала работы
-	value.setLogger(& log);
 	// Выполняем обращение к паре таблицы, места под неё заводящее
 	value["пустая"];
 	// Выполняем проверку того, что снятое значение пусто
 	ASSERT_TRUE(value.dump().empty());
 	// Выполняем проверку отказа записи такого значения в файл
-	// Выполняем установку объекта фреймворка, работам с файловой системой нужного
-	value.setFramework(::framework());
 	ASSERT_FALSE(value.save(temporary(::unique("awh-toml-value-announced.toml"))));
 	// Выполняем проверку того, что отказ ОГЛАШЁН, а не проглочен молча
 	ASSERT_EQ(announced, static_cast <size_t> (1));

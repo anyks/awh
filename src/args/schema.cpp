@@ -28,6 +28,8 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <args/schema.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -63,7 +65,7 @@ bool awh::args::Schema::add(const param_t & param) noexcept {
 	// Если длинное имя параметра не подано вовсе
 	if(param.name.empty()){
 		// Выводим в лог сообщение об отсутствии имени параметра
-		this->_log->print("Schema: parameter name is empty", log_t::flag_t::WARNING);
+		awh::log::print("Schema: parameter name is empty", awh::log::flag_t::WARNING);
 		// Выходим из метода, заводить нечего
 		return false;
 	}
@@ -85,7 +87,7 @@ bool awh::args::Schema::add(const param_t & param) noexcept {
 		// Если короткое имя занято описанием под ИНЫМ длинным именем
 		if((param.letter != 0) && (letter != this->_letters.end()) && (letter->second != i->second)){
 			// Выводим в лог сообщение о занятости короткого имени
-			this->_log->print("Schema: short name '%c' is already taken", log_t::flag_t::WARNING, param.letter);
+			awh::log::print("Schema: short name '%c' is already taken", awh::log::flag_t::WARNING, param.letter);
 			// Выходим из метода, заведение отвечено отказом
 			return false;
 		}
@@ -107,7 +109,7 @@ bool awh::args::Schema::add(const param_t & param) noexcept {
 	// Если короткое имя параметра уже занято иным описанием
 	if((param.letter != 0) && (this->_letters.count(param.letter) > 0)){
 		// Выводим в лог сообщение о занятости короткого имени
-		this->_log->print("Schema: short name '%c' is already taken", log_t::flag_t::WARNING, param.letter);
+		awh::log::print("Schema: short name '%c' is already taken", awh::log::flag_t::WARNING, param.letter);
 		// Выходим из метода, заведение отвечено отказом
 		return false;
 	}
@@ -268,7 +270,7 @@ string awh::args::Schema::usage() const noexcept {
 	// Если название приложения установлено
 	if(!this->_application.empty()){
 		// Добавляем в справку строку применения приложения
-		result.append(this->_fmk->format("Usage: %s [OPTIONS]", this->_application.c_str()));
+		result.append(awh::fmk::format("Usage: %s [OPTIONS]", this->_application.c_str()));
 		// Добавляем в справку перевод строки
 		result.append(1, '\n');
 		// Если описание назначения приложения установлено
@@ -298,7 +300,7 @@ string awh::args::Schema::usage() const noexcept {
 		// Если описание несёт короткое имя параметра
 		if(param.letter != 0)
 			// Добавляем в строку короткое имя параметра
-			name.append(this->_fmk->format("-%c, ", param.letter));
+			name.append(awh::fmk::format("-%c, ", param.letter));
 		// Добавляем в строку длинное имя параметра
 		name.append("--").append(param.name);
 		// Определяем потребность параметра в значении
@@ -344,7 +346,7 @@ string awh::args::Schema::usage() const noexcept {
 		// Если параметр несёт значение по умолчанию
 		if(param.preset)
 			// Добавляем в справку значение параметра по умолчанию
-			result.append(this->_fmk->format(" (default: %s)", param.fallback.c_str()));
+			result.append(awh::fmk::format(" (default: %s)", param.fallback.c_str()));
 		// Если параметр дозволено подавать повторно
 		if(param.multiple)
 			// Добавляем в справку признак дозволенности повтора
@@ -373,15 +375,10 @@ void awh::args::Schema::application(const string_view application, const string_
  * \~russian
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  * \~english
  * @brief Constructor
- * @param fmk object of the framework
- * @param log object for working with the logs
  *
  * \~
  */
-awh::args::Schema::Schema(const fmk_t * fmk, const log_t * log) noexcept :
- _application{""}, _description{""}, _fmk(fmk), _log(log) {}
+awh::args::Schema::Schema() noexcept :
+ _application{""}, _description{""} {}

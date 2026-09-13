@@ -35,6 +35,7 @@
  */
 #include <cstring>
 #include <limits>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -305,20 +306,20 @@ bool awh::codec::abc::Fetcher::fail(const error_t error) noexcept {
 	 *       журнала не спрашивал никто. Близнец её у правщика молчал тем же молчанием и
 	 *       закреплён порознь: воронки РАЗНЫЕ, и закрепление одной другую не стережёт
 	 */
-	if((error != error_t::NONE) && (this->_log != nullptr)){
+	if(error != error_t::NONE){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
-			 log_t::flag_t::WARNING, abc::message(error));
+			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
+			 awh::log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -761,8 +762,6 @@ awh::codec::abc::packer_t & awh::codec::abc::Fetcher::packer() noexcept {
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::abc::Fetcher::Fetcher(const log_t * log) noexcept :
- _index(log), _packer(log), _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr), _log(log) {}
+awh::codec::abc::Fetcher::Fetcher() noexcept :
+ _index(), _packer(), _error(error_t::NONE), _opened(false), _cached(false), _origin(0), _source(nullptr) {}

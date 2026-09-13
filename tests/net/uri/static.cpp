@@ -31,6 +31,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "uri.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * @brief Тест создания объекта работы с URI
@@ -57,7 +58,7 @@ TEST_F(UriFixture, ResetAndCreateUriTest){
 	// Проверяем, что объект работы с URI сброшен
 	ASSERT_TRUE(this->_uri == nullptr);
 	// Создаём объект работы с URI заново
-	this->_uri = std::make_unique <awh::uri_t> (this->_fmk.get(), this->_log.get());
+	this->_uri = std::make_unique <awh::uri_t> ();
 	// Проверяем, что объект работы с URI создан
 	ASSERT_TRUE(this->_uri != nullptr);
 }
@@ -70,7 +71,7 @@ TEST_F(UriFixture, ReCreateUriTest){
 	// Проверяем, что объект работы с URI создан
 	ASSERT_TRUE(this->_uri != nullptr);
 	// Создаём объект работы с URI заново
-	this->_uri = std::make_unique <awh::uri_t> (this->_fmk.get(), this->_log.get());
+	this->_uri = std::make_unique <awh::uri_t> ();
 	// Проверяем, что объект работы с URI создан
 	ASSERT_TRUE(this->_uri != nullptr);
 }
@@ -171,8 +172,8 @@ TEST_F(UriFixture, EmailRequestNoHostNoCrashTest){
  */
 TEST_F(UriFixture, CaseSensitiveComparisonTest){
 	// Создаём два объекта работы с URI
-	awh::uri_t a(this->_fmk.get(), this->_log.get());
-	awh::uri_t b(this->_fmk.get(), this->_log.get());
+	awh::uri_t a;
+	awh::uri_t b;
 	// Схема и хост различаются только регистром — URI должны считаться равными
 	a.parse("HTTP://WWW.EXAMPLE.COM/path");
 	b.parse("http://www.example.com/path");
@@ -181,8 +182,8 @@ TEST_F(UriFixture, CaseSensitiveComparisonTest){
 	// Проверяем отсутствие неравенства
 	ASSERT_FALSE(a != b);
 	// Создаём ещё два объекта работы с URI
-	awh::uri_t c(this->_fmk.get(), this->_log.get());
-	awh::uri_t d(this->_fmk.get(), this->_log.get());
+	awh::uri_t c;
+	awh::uri_t d;
 	// Пути различаются только регистром — URI должны считаться разными (путь регистрозависим)
 	c.parse("http://example.com/Path");
 	d.parse("http://example.com/path");
@@ -191,8 +192,8 @@ TEST_F(UriFixture, CaseSensitiveComparisonTest){
 	// Проверяем наличие неравенства
 	ASSERT_TRUE(c != d);
 	// Создаём ещё два объекта работы с URI
-	awh::uri_t e(this->_fmk.get(), this->_log.get());
-	awh::uri_t f(this->_fmk.get(), this->_log.get());
+	awh::uri_t e;
+	awh::uri_t f;
 	// Якоря различаются только регистром — URI должны считаться разными (якорь регистрозависим)
 	e.parse("http://example.com/path#Frag");
 	f.parse("http://example.com/path#frag");
@@ -330,7 +331,7 @@ TEST_F(UriFixture, HostKindMatchesFullScanTest){
 		}
 	}
 	// Объект работы с сетевыми адресами для полного перебора разновидностей
-	awh::net_addr_t reference(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t reference;
 	/**
 	 * Перебираем все образцы строк хоста
 	 */
@@ -378,7 +379,7 @@ TEST_F(UriFixture, HostKindMatchesFullScanTest){
 			// Ожидаем атрибуты доменного сокета
 			expected = awh::net::type_t::FS;
 		// Создаём отдельный объект работы с URI под каждый образец
-		awh::uri_t uri(this->_fmk.get(), this->_log.get());
+		awh::uri_t uri;
 		// Устанавливаем хост URI
 		uri.host(sample);
 		// Проверяем, что атрибуты URI заведены
@@ -596,7 +597,7 @@ TEST_F(UriFixture, SchemeTypeTest){
 	 */
 	for(const auto & item : schemes){
 		// Создаём отдельный объект работы с URI под каждую схему
-		awh::uri_t uri(this->_fmk.get(), this->_log.get());
+		awh::uri_t uri;
 		// Устанавливаем схему URI
 		uri.scheme(item.first);
 		// Проверяем определённый тип URI
@@ -604,9 +605,9 @@ TEST_F(UriFixture, SchemeTypeTest){
 		// Проверяем сохранённую схему URI
 		ASSERT_EQ(item.first, uri.scheme()) << "схема: " << item.first;
 		// Создаём объект работы с URI под ту же схему в верхнем регистре
-		awh::uri_t upper(this->_fmk.get(), this->_log.get());
+		awh::uri_t upper;
 		// Устанавливаем схему URI в верхнем регистре
-		upper.scheme(this->_fmk->transform(item.first, awh::fmk_t::transform_t::UPPER_CASE));
+		upper.scheme(awh::fmk::transform(item.first, awh::fmk::transform_t::UPPER_CASE));
 		// Проверяем, что тип URI определён без учёта регистра схемы
 		ASSERT_EQ(item.second, upper.type()) << "схема: " << item.first;
 	}
@@ -654,7 +655,7 @@ TEST_F(UriFixture, HostRepeatedSetKeepsKindTest){
 	 */
 	for(uint8_t round = 0; round < 2; round++){
 		// Создаём объект работы с URI, общий на весь проход
-		awh::uri_t uri(this->_fmk.get(), this->_log.get());
+		awh::uri_t uri;
 		/**
 		 * Перебираем все образцы хоста
 		 */
@@ -757,7 +758,7 @@ TEST_F(UriFixture, PrintUserinfoIsEncodedTest){
 		// Выполняем сборку строки URI
 		const std::string text = this->_uri->print(awh::uri_t::item_t::URI);
 		// Объект работы с URI для повторного разбора
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем повторный разбор собранной строки URI
 		again.parse(text);
 		// Хост обязан остаться прежним
@@ -809,9 +810,9 @@ TEST_F(UriFixture, PrintKeepsObjectUnchangedTest){
 		 */
 		for(auto & item : items){
 			// Объект работы с URI для сборки
-			awh::uri_t one(this->_fmk.get(), this->_log.get());
+			awh::uri_t one;
 			// Объект работы с URI для сличения
-			awh::uri_t two(this->_fmk.get(), this->_log.get());
+			awh::uri_t two;
 			// Устанавливаем схему URI напрямую, чтобы порт остался незаданным
 			one.scheme("mailto");
 			// Устанавливаем схему URI напрямую и для объекта сличения
@@ -884,7 +885,7 @@ TEST_F(UriFixture, PrintIPv6ZoneIsPercentEncodedTest){
 	// Одиночного знака процента в строке быть не должно
 	ASSERT_EQ(std::string::npos, text.find("%en0")) << "собрано: " << text;
 	// Объект работы с URI для повторного разбора
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	// Выполняем повторный разбор собранной строки URI
 	again.parse(text);
 	// Хост обязан совпасть с исходным
@@ -958,9 +959,9 @@ TEST_F(UriFixture, SchemeAndHostAreLowerCasedTest){
 	// Проверяем приведение цифр процент-последовательности к верхнему регистру
 	ASSERT_EQ("%D0%B8%D0%BC%D1%8F.example", this->_uri->host());
 	// Объекты, различающиеся только регистром схемы и хоста, дают одну строку
-	awh::uri_t upper(this->_fmk.get(), this->_log.get());
+	awh::uri_t upper;
 	// Объект работы с URI для сличения
-	awh::uri_t lower(this->_fmk.get(), this->_log.get());
+	awh::uri_t lower;
 	// Разбираем строку URI в верхнем регистре
 	upper.parse("HTTP://WWW.EXAMPLE.COM/path");
 	// Разбираем ту же строку URI в нижнем регистре
@@ -1175,7 +1176,7 @@ TEST_F(UriFixture, QueryKeepsRepeatedKeysTest){
 	 */
 	ASSERT_EQ("https://example.com/x?tag=one&tag=three&tag=two", this->_uri->print(awh::uri_t::item_t::URI));
 	// Объекты с разным числом одинаковых ключей равными не считаются
-	awh::uri_t other(this->_fmk.get(), this->_log.get());
+	awh::uri_t other;
 	// Выполняем разбор адреса с меньшим числом повторов ключа
 	other.parse("https://example.com/x?tag=one&tag=two");
 	// Объекты обязаны различаться
@@ -1264,7 +1265,7 @@ TEST_F(UriFixture, AttributesOfUnknownKindAreIgnoredTest){
  */
 TEST_F(UriFixture, AssignmentDropsStaleAttributesTest){
 	// Объект-источник с адресом доменного сокета
-	awh::uri_t source(this->_fmk.get(), this->_log.get());
+	awh::uri_t source;
 	// Выполняем разбор адреса доменного сокета
 	source.parse("unix:///var/run/x.sock");
 	// Путь к сокету адресу принадлежит хостом, и атрибуты его файловой системы
@@ -1282,7 +1283,7 @@ TEST_F(UriFixture, AssignmentDropsStaleAttributesTest){
 	// Собранный адрес обязан совпасть с адресом источника
 	ASSERT_EQ("unix:///var/run/x.sock", this->_uri->print(awh::uri_t::item_t::URI));
 	// Объект-источник с атрибутами имени
-	awh::uri_t named(this->_fmk.get(), this->_log.get());
+	awh::uri_t named;
 	// Выполняем разбор адреса с доменным именем
 	named.parse("http://example.com/a");
 	// Заводим получателю атрибуты сетевого адреса заново
@@ -1311,7 +1312,7 @@ TEST_F(UriFixture, CallbackSurvivesCopyTest){
 	// Проверяем адрес, собранный копией объекта
 	ASSERT_EQ(expected, copy.print(awh::uri_t::item_t::URI));
 	// Объект, полученный присваиванием, обязан дать тот же адрес
-	awh::uri_t assigned(this->_fmk.get(), this->_log.get());
+	awh::uri_t assigned;
 	// Выполняем присваивание объекта URI
 	assigned = (* this->_uri);
 	// Проверяем адрес, собранный полученным объектом
@@ -1442,7 +1443,7 @@ TEST_F(UriFixture, ConstantObjectsAreComparableTest){
 	// Выполняем разбор образца адреса
 	this->_uri->parse("http://example.com/x?a=1");
 	// Объект URI для сравнения
-	awh::uri_t other(this->_fmk.get(), this->_log.get());
+	awh::uri_t other;
 	// Выполняем разбор того же образца адреса
 	other.parse("http://example.com/x?a=1");
 	/**
@@ -1534,7 +1535,7 @@ TEST_F(UriFixture, CallbackAppliesWithoutOwnQueryTest){
  */
 TEST_F(UriFixture, BuiltObjectAgreesWithItsRecordTest){
 	// Объект, собираемый разбором собственной строки
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	/**
 	 * Точечные сегменты снимаются и установщиком пути (RFC 3986 6.2.2.3)
 	 */
@@ -1611,7 +1612,7 @@ TEST_F(UriFixture, BuiltObjectAgreesWithItsRecordTest){
  */
 TEST_F(UriFixture, ImpliedPartsDoNotDivideTest){
 	// Второй объект работы с URI для сличения
-	awh::uri_t second(this->_fmk.get(), this->_log.get());
+	awh::uri_t second;
 	// Записи, различающиеся лишь подразумеваемым
 	const std::vector <std::pair <std::string, std::string>> samples = {
 		{"http://a.com", "http://a.com/"},
@@ -1977,7 +1978,7 @@ TEST_F(UriFixture, SocketPathMayBeAbsentTest){
 	// Хост у записи с незаведённым путём пустой
 	ASSERT_TRUE(this->_uri->host().empty());
 	// Второй объект работы с URI для копирования
-	awh::uri_t copy(this->_fmk.get(), this->_log.get());
+	awh::uri_t copy;
 	// Копирование такого объекта падать не должно
 	ASSERT_NO_THROW(copy = (* this->_uri));
 	// Хост у копии тоже пустой
@@ -1985,7 +1986,7 @@ TEST_F(UriFixture, SocketPathMayBeAbsentTest){
 	// Объекты обязаны быть равны
 	ASSERT_TRUE((* this->_uri) == copy);
 	// Перенос такого объекта падать не должен
-	awh::uri_t moved(this->_fmk.get(), this->_log.get());
+	awh::uri_t moved;
 	// Выполняем перенос объекта работы с URI
 	ASSERT_NO_THROW(moved = std::move(copy));
 	// Хост у перенесённого объекта тоже пустой
@@ -2071,7 +2072,7 @@ TEST_F(UriFixture, AuthoritySeparatorSurvivesWithoutSchemeTest){
 		// Собранная строка обязана нести разделитель авторити
 		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "ссылка: " << sample.first;
 		// Повторный разбор собранной строки обязан дать ту же строку
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(sample.second);
 		// Проверяем строку, собранную повторно
@@ -2104,7 +2105,7 @@ TEST_F(UriFixture, EquivalentUriCompareEqualTest){
 	// Объект, полученный разбором строки адреса
 	this->_uri->parse("http://example.com/x");
 	// Объект, собранный по частям
-	awh::uri_t built(this->_fmk.get(), this->_log.get());
+	awh::uri_t built;
 	// Устанавливаем схему URI
 	built.scheme("http");
 	// Устанавливаем хост URI
@@ -2118,7 +2119,7 @@ TEST_F(UriFixture, EquivalentUriCompareEqualTest){
 	// Неравенства между ними быть не должно
 	ASSERT_FALSE(built != (* this->_uri));
 	// Адрес со стандартным портом, заданным явно, равен адресу без него
-	awh::uri_t explicitPort(this->_fmk.get(), this->_log.get());
+	awh::uri_t explicitPort;
 	// Выполняем разбор адреса со стандартным портом
 	explicitPort.parse("http://example.com:80/x");
 	// Объекты обязаны считаться равными
@@ -2128,11 +2129,11 @@ TEST_F(UriFixture, EquivalentUriCompareEqualTest){
 	 * (RFC 3986 6.2.3), и сборка их обоих даёт одну и ту же строку
 	 */
 	// Объект с пустым путём и параметрами
-	awh::uri_t bare(this->_fmk.get(), this->_log.get());
+	awh::uri_t bare;
 	// Выполняем разбор адреса без пути
 	bare.parse("http://example.com?a=1");
 	// Объект с путём из одной косой черты
-	awh::uri_t rooted(this->_fmk.get(), this->_log.get());
+	awh::uri_t rooted;
 	// Выполняем разбор адреса с путём от корня
 	rooted.parse("http://example.com/?a=1");
 	// Строки обоих объектов обязаны совпасть
@@ -2142,7 +2143,7 @@ TEST_F(UriFixture, EquivalentUriCompareEqualTest){
 	// Неравенства между ними быть не должно
 	ASSERT_FALSE(bare != rooted);
 	// Адреса с разными путями равными считаться не должны
-	awh::uri_t other(this->_fmk.get(), this->_log.get());
+	awh::uri_t other;
 	// Выполняем разбор адреса с иным путём
 	other.parse("http://example.com/y?a=1");
 	// Объекты обязаны различаться
@@ -2182,7 +2183,7 @@ TEST_F(UriFixture, SshUriIsHierarchicalTest){
 		// Собранная строка обязана совпасть с ожидаемой
 		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "адрес: " << sample.first;
 		// Повторный разбор собранной строки обязан дать ту же строку
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(sample.second);
 		// Проверяем строку, собранную повторно
@@ -2258,7 +2259,7 @@ TEST_F(UriFixture, ConversionOperatorsTest){
 	// Проверяем разновидность атрибутов URI
 	ASSERT_EQ(awh::net::type_t::FQDN, attr->type);
 	// Приведение пустого объекта к признаку существования данных
-	awh::uri_t empty(this->_fmk.get(), this->_log.get());
+	awh::uri_t empty;
 	// Пустой объект обязан считаться пустым
 	ASSERT_FALSE(static_cast <bool> (empty));
 }
@@ -2271,7 +2272,7 @@ TEST_F(UriFixture, AssignmentOperatorsTest){
 	// Выполняем разбор образца адреса, служащего источником составляющих
 	this->_uri->parse("https://user:pass@example.com:8443/a/b?c=1#d");
 	// Объект, наполняемый через операторы установки
-	awh::uri_t target(this->_fmk.get(), this->_log.get());
+	awh::uri_t target;
 	// Устанавливаем схему URI
 	target.scheme("https");
 	// Устанавливаем атрибуты URI через оператор
@@ -2309,7 +2310,7 @@ TEST_F(UriFixture, AssignmentOperatorsTest){
 	// Проверяем логин пользователя URI
 	ASSERT_EQ("user", target.user().username);
 	// Перемещающее присваивание объекта URI
-	awh::uri_t moved(this->_fmk.get(), this->_log.get());
+	awh::uri_t moved;
 	// Выполняем разбор адреса, замещаемого перемещением
 	moved.parse("http://replaced.example.com/z");
 	// Выполняем перемещающее присваивание
@@ -2339,7 +2340,7 @@ TEST_F(UriFixture, CompareAllHostKindsTest){
 	 */
 	for(auto & sample : samples){
 		// Объекты сличаемых адресов
-		awh::uri_t first(this->_fmk.get(), this->_log.get()), second(this->_fmk.get(), this->_log.get());
+		awh::uri_t first, second;
 		// Выполняем разбор первого адреса пары
 		first.parse(std::get <0> (sample));
 		// Выполняем разбор второго адреса пары
@@ -2350,7 +2351,7 @@ TEST_F(UriFixture, CompareAllHostKindsTest){
 		ASSERT_EQ(!std::get <2> (sample), (first != second)) << std::get <0> (sample) << " и " << std::get <1> (sample);
 	}
 	// Адреса доменного сокета сличаются по пути к сокету
-	awh::uri_t one(this->_fmk.get(), this->_log.get()), two(this->_fmk.get(), this->_log.get());
+	awh::uri_t one, two;
 	// Устанавливаем путь к сокету первому адресу
 	one.host("/var/run/x.sock");
 	// Устанавливаем тот же путь к сокету второму адресу
@@ -2425,7 +2426,7 @@ TEST_F(UriFixture, LargeQueryGoesToHeapTest){
 		// Строка адреса, полученная первой сборкой
 		const std::string first = this->_uri->print(awh::uri_t::item_t::URI);
 		// Объект, разобранный из собранной строки
-		awh::uri_t back(this->_fmk.get(), this->_log.get());
+		awh::uri_t back;
 		// Выполняем разбор собранной строки
 		back.parse(first);
 		// Все пары параметров обязаны сохраниться
@@ -2460,7 +2461,7 @@ TEST_F(UriFixture, SchemeGuessedFromEveryKnownPortTest){
 		// Собранный адрес обязан пережить оборот
 		const std::string first = this->_uri->print(awh::uri_t::item_t::URI);
 		// Объект, разобранный из собранной строки
-		awh::uri_t back(this->_fmk.get(), this->_log.get());
+		awh::uri_t back;
 		// Выполняем разбор собранной строки
 		back.parse(first);
 		// Проверяем строку, собранную повторно
@@ -2513,7 +2514,7 @@ TEST_F(UriFixture, AttributesOfNetworkKindAreCopiedTest){
 		// Выполняем разбор образца адреса
 		this->_uri->parse(sample.first);
 		// Объект, принимающий атрибуты адреса
-		awh::uri_t target(this->_fmk.get(), this->_log.get());
+		awh::uri_t target;
 		// Выполняем установку атрибутов адреса
 		target.attr(this->_uri->attr());
 		// Хост обязан перенестись вместе с атрибутами
@@ -2537,7 +2538,7 @@ TEST_F(UriFixture, AttributesOfNetworkKindAreCopiedTest){
 	// Устанавливаем порт хоста
 	bare.port = 1234;
 	// Объект, принимающий атрибуты адреса
-	awh::uri_t target(this->_fmk.get(), this->_log.get());
+	awh::uri_t target;
 	// Выполняем установку атрибутов адреса
 	ASSERT_NO_THROW(target.attr(& bare));
 	// Хост обязан отдаться пустым
@@ -2582,7 +2583,7 @@ TEST_F(UriFixture, ParserCornerCasesTest){
 		// Собранная строка обязана совпасть с ожидаемой
 		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
 		// Повторный разбор собранной строки обязан дать ту же строку
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(sample.second);
 		// Проверяем строку, собранную повторно
@@ -2621,7 +2622,7 @@ TEST_F(UriFixture, CopyKeepsEveryHostKindTest){
 		 * заново: приведение атрибутов одной разновидности к другой разновидностей
 		 * не меняет, и запись пошла бы не в те поля
 		 */
-		awh::uri_t target(this->_fmk.get(), this->_log.get());
+		awh::uri_t target;
 		// Заводим получателю хост иной разновидности
 		target.parse("http://10.0.0.1:1234/y");
 		// Выполняем присваивание объекта URI
@@ -2655,7 +2656,7 @@ TEST_F(UriFixture, CopyKeepsEveryHostKindTest){
 	// Проверяем строку, собранную копией объекта
 	ASSERT_EQ(expected, copy.print(awh::uri_t::item_t::URI));
 	// Присваивание поверх объекта с сетевым хостом заводит атрибуты заново
-	awh::uri_t target(this->_fmk.get(), this->_log.get());
+	awh::uri_t target;
 	// Заводим получателю сетевой хост
 	target.parse("http://10.0.0.1:1234/y");
 	// Выполняем присваивание объекта URI
@@ -2690,7 +2691,7 @@ TEST_F(UriFixture, HostWithoutSchemeBeforeDelimiterTest){
 		// Собранная строка обязана совпасть с ожидаемой
 		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
 		// Повторный разбор собранной строки обязан дать ту же строку
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(sample.second);
 		// Проверяем строку, собранную повторно
@@ -2745,7 +2746,7 @@ TEST_F(UriFixture, BareAuthoritySchemesKeepFormTest){
 		// Хост обязан извлечься из записи
 		ASSERT_EQ("example.com", this->_uri->host()) << "строка: " << sample.first;
 		// Повторный разбор собранной строки обязан дать ту же строку
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(sample.second);
 		// Проверяем строку, собранную повторно
@@ -2997,7 +2998,7 @@ TEST_F(UriFixture, FormIsSetFromOutsideTest){
 		// Проверяем строку, собранную заданным видом записи
 		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI));
 		// Повторный разбор собранной строки обязан дать ту же строку
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(sample.second);
 		// Проверяем строку, собранную повторно
@@ -3025,7 +3026,7 @@ TEST_F(UriFixture, PasswordWithoutLoginIsKeptTest){
 	// Проверяем строку, собранную с одним паролем
 	ASSERT_EQ("http://:secret@example.com", this->_uri->print(awh::uri_t::item_t::URI));
 	// Повторный разбор собранной строки обязан вернуть пароль
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	// Выполняем разбор собранной строки
 	again.parse("http://:secret@example.com");
 	// Проверяем пароль, извлечённый из записи
@@ -3062,7 +3063,7 @@ TEST_F(UriFixture, ClosedIPv6BracketEndsAddressTest){
 	// Ожидаемая строка собранного адреса
 	const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
 	// Выполняем повторный разбор собранной строки
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	// Выполняем разбор собранной строки
 	again.parse(expected);
 	// Проверяем строку, собранную повторно
@@ -3106,7 +3107,7 @@ TEST_F(UriFixture, DefaultPortOfBareSchemesTest){
 		// Умный формат записи стандартный порт опускает
 		ASSERT_EQ(sample.first, this->_uri->print(awh::uri_t::item_t::URI)) << "строка: " << sample.first;
 		// Заданный явно стандартный порт из записи также опускается
-		awh::uri_t explicitly(this->_fmk.get(), this->_log.get());
+		awh::uri_t explicitly;
 		// Выполняем разбор записи с явно заданным стандартным портом
 		explicitly.parse(sample.first + ":" + std::to_string(sample.second));
 		// Проверяем строку, собранную из записи с явно заданным портом
@@ -3251,7 +3252,7 @@ TEST_F(UriFixture, BracketsOutsideOfAddressTest){
 	// Собранная строка обязана пережить оборот
 	const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
 	// Выполняем повторный разбор собранной строки
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	// Выполняем разбор собранной строки
 	again.parse(expected);
 	// Проверяем строку, собранную повторно
@@ -3315,11 +3316,11 @@ TEST_F(UriFixture, PathRootnessIsKeptTest){
 	 * Пути, отличающиеся одним лишь ведением от корня, равными не считаются
 	 */
 	// Адрес, путь которого ведёт от корня
-	awh::uri_t rooted(this->_fmk.get(), this->_log.get());
+	awh::uri_t rooted;
 	// Выполняем разбор адреса, путь которого ведёт от корня
 	rooted.parse("custom:/path");
 	// Адрес, путь которого от корня не ведёт
-	awh::uri_t relative(this->_fmk.get(), this->_log.get());
+	awh::uri_t relative;
 	// Выполняем разбор адреса, путь которого от корня не ведёт
 	relative.parse("custom:path");
 	// Адреса эти равными считаться не должны
@@ -3361,7 +3362,7 @@ TEST_F(UriFixture, RelativeReferenceWithColonTest){
 		// Проверяем строку собранной ссылки
 		ASSERT_EQ(sample.second, this->_uri->print(awh::uri_t::item_t::URI)) << "путь: " << sample.second;
 		// Повторный разбор собранной ссылки обязан вернуть тот же путь
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной ссылки
 		again.parse(sample.second);
 		// Схемы у относительной ссылки быть не должно
@@ -3417,9 +3418,9 @@ TEST_F(UriFixture, CopyInitializationTest){
 	 * не собиралась
 	 */
 	// Собираем объект URI и возвращаем его по значению
-	auto make = [this](const std::string & text) -> awh::uri_t {
+	auto make = [](const std::string & text) -> awh::uri_t {
 		// Заводим объект работы с URI
-		awh::uri_t uri(this->_fmk.get(), this->_log.get());
+		awh::uri_t uri;
 		// Выполняем разбор строки
 		uri.parse(text);
 		// Возвращаем собранный объект
@@ -3527,7 +3528,7 @@ TEST_F(UriFixture, CommandFormHasNoPortTest){
 	ASSERT_EQ("ssh:user@example.com:path/to/file",
 		this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL));
 	// Полный формат записи обязан пережить оборот
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	// Выполняем разбор строки полного формата
 	again.parse(this->_uri->print(awh::uri_t::item_t::URI, awh::uri_t::format_t::FULL));
 	// Проверяем строку, собранную повторно
@@ -3546,7 +3547,7 @@ TEST_F(UriFixture, CommandFormHasNoPortTest){
 	// Запись обязана стать иерархической, чтобы порт не потерялся
 	ASSERT_EQ("ssh://user@example.com:2222/path/to/file", this->_uri->print(awh::uri_t::item_t::URI));
 	// Собранная строка обязана пережить оборот
-	awh::uri_t back(this->_fmk.get(), this->_log.get());
+	awh::uri_t back;
 	// Выполняем разбор собранной строки
 	back.parse("ssh://user@example.com:2222/path/to/file");
 	// Проверяем порт, переживший оборот
@@ -3589,7 +3590,7 @@ TEST_F(UriFixture, BracketDepthDoesNotUnderflowTest){
 		// Собранная строка обязана пережить оборот
 		const std::string expected = this->_uri->print(awh::uri_t::item_t::URI);
 		// Выполняем повторный разбор собранной строки
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(expected);
 		// Проверяем строку, собранную повторно
@@ -3628,7 +3629,7 @@ TEST_F(UriFixture, PrintCornerCasesTest){
 	// Проверяем строку собранного адреса: адрес IPv6 записывается верхним регистром
 	ASSERT_EQ("http://[FE80::1%25eth0]:8080/x", this->_uri->print(awh::uri_t::item_t::URI));
 	// Собранная строка обязана пережить оборот
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	// Выполняем разбор собранной строки
 	again.parse("http://[FE80::1%25eth0]:8080/x");
 	// Проверяем строку, собранную повторно
@@ -3686,7 +3687,7 @@ TEST_F(UriFixture, SocketPathIsHostTest){
 	// Устанавливаем путь к сокету хостом URI
 	this->_uri->host("/var/run/x.sock");
 	// Разбор собранной строки обязан дать равный объект
-	awh::uri_t back(this->_fmk.get(), this->_log.get());
+	awh::uri_t back;
 	// Выполняем разбор собранной строки
 	back.parse(this->_uri->print(awh::uri_t::item_t::URI));
 	// Проверяем путь к сокету, переживший оборот
@@ -3750,7 +3751,7 @@ TEST_F(UriFixture, AuthorityIsReadableBackTest){
 		// Проверяем строку собранного адреса
 		ASSERT_EQ("https:login@example.com/x", this->_uri->print(awh::uri_t::item_t::URI));
 		// Разбор собранной строки обязан дать равный объект
-		awh::uri_t back(this->_fmk.get(), this->_log.get());
+		awh::uri_t back;
 		// Выполняем разбор собранной строки
 		back.parse("https:login@example.com/x");
 		// Проверяем хост, переживший оборот
@@ -3846,7 +3847,7 @@ TEST_F(UriFixture, SelfAssignmentIsSafeTest){
 	 * Объект, у которого забрали содержимое, обязан оставаться годным к работе
 	 */
 	// Объект-источник, содержимое которого забирают
-	awh::uri_t source(this->_fmk.get(), this->_log.get());
+	awh::uri_t source;
 	// Выполняем разбор адреса объектом-источником
 	source.parse("http://example.com/before");
 	// Забираем содержимое объекта-источника
@@ -3882,11 +3883,11 @@ TEST_F(UriFixture, EqualityAgreesWithInequalityTest){
 	 */
 	for(auto & sample : samples){
 		// Первый объект пары
-		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		awh::uri_t first;
 		// Выполняем разбор первой записи пары
 		first.parse(sample.first);
 		// Второй объект пары
-		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		awh::uri_t second;
 		// Выполняем разбор второй записи пары
 		second.parse(sample.second);
 		// Записи эти равными считаться не должны
@@ -3951,11 +3952,11 @@ TEST_F(UriFixture, ZoneBelongsToRecordTest){
 	// Проверяем хост, установленный извне
 	ASSERT_EQ("10.0.0.1", this->_uri->host());
 	// Записи с разными зонами равными считаться не должны
-	awh::uri_t first(this->_fmk.get(), this->_log.get());
+	awh::uri_t first;
 	// Выполняем разбор первой записи
 	first.parse("http://[fe80::1%25eth0]/a");
 	// Второй объект сличения
-	awh::uri_t second(this->_fmk.get(), this->_log.get());
+	awh::uri_t second;
 	// Выполняем разбор второй записи
 	second.parse("http://[fe80::1%25en0]/a");
 	// Записи эти равными считаться не должны
@@ -4307,11 +4308,11 @@ TEST_F(UriFixture, SameOriginTest){
 	 */
 	for(auto & sample : same){
 		// Первый объект пары
-		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		awh::uri_t first;
 		// Выполняем разбор первой записи пары
 		first.parse(sample.first);
 		// Второй объект пары
-		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		awh::uri_t second;
 		// Выполняем разбор второй записи пары
 		second.parse(sample.second);
 		// Записи эти обязаны происходить из одного места
@@ -4336,11 +4337,11 @@ TEST_F(UriFixture, SameOriginTest){
 	 */
 	for(auto & sample : other){
 		// Первый объект пары
-		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		awh::uri_t first;
 		// Выполняем разбор первой записи пары
 		first.parse(sample.first);
 		// Второй объект пары
-		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		awh::uri_t second;
 		// Выполняем разбор второй записи пары
 		second.parse(sample.second);
 		// Записи эти обязаны происходить из разных мест
@@ -4359,11 +4360,11 @@ TEST_F(UriFixture, SameOriginTest){
 	 */
 	for(auto & sample : none){
 		// Первый объект сличения
-		awh::uri_t first(this->_fmk.get(), this->_log.get());
+		awh::uri_t first;
 		// Выполняем разбор записи
 		first.parse(sample);
 		// Второй объект сличения
-		awh::uri_t second(this->_fmk.get(), this->_log.get());
+		awh::uri_t second;
 		// Выполняем разбор той же записи
 		second.parse(sample);
 		// Происхождения у таких записей нет, и совпасть оно не может
@@ -4399,7 +4400,7 @@ TEST_F(UriFixture, EmptyQueryPairSurvivesTest){
 	// Собранная запись обязана нести разделитель
 	ASSERT_EQ("http://example.com/?=", this->_uri->print(awh::uri_t::item_t::URI));
 	// Повторный оборот записи обязан дать ту же строку
-	awh::uri_t again(this->_fmk.get(), this->_log.get());
+	awh::uri_t again;
 	// Выполняем разбор собранной записи
 	again.parse(this->_uri->print(awh::uri_t::item_t::URI));
 	// Проверяем набор параметров, полученный повторным разбором
@@ -4457,7 +4458,7 @@ TEST_F(UriFixture, FormSurvivesRoundTripTest){
 		// Авторити у такой записи нет
 		ASSERT_EQ(awh::uri_t::form_t::NONE, this->_uri->form()) << "запись: " << sample;
 		// Собранная строка обязана дать тот же вид записи
-		awh::uri_t again(this->_fmk.get(), this->_log.get());
+		awh::uri_t again;
 		// Выполняем разбор собранной строки
 		again.parse(this->_uri->print(awh::uri_t::item_t::URI));
 		// Вид записи обязан пережить оборот
@@ -4492,7 +4493,7 @@ TEST_F(UriFixture, FormSurvivesRoundTripTest){
  */
 TEST_F(UriFixture, FormDistinguishesRecordsTest){
 	// Второй объект работы с URI для сличения
-	awh::uri_t second(this->_fmk.get(), this->_log.get());
+	awh::uri_t second;
 	/**
 	 * Записи, у которых один набор составляющих даёт разные строки
 	 */
@@ -4555,13 +4556,13 @@ TEST_F(UriFixture, ZoneIsDroppedWithAuthorityTest){
 	 */
 	for(auto & sample : samples){
 		// Объект, полученный разрешением ссылки относительно основы с зоной
-		awh::uri_t resolved(this->_fmk.get(), this->_log.get());
+		awh::uri_t resolved;
 		// Выполняем разбор основы с зоной IPv6-адреса
 		resolved.parse("http://[fe80::1%25eth0]/a");
 		// Выполняем разрешение ссылки относительно основы
 		resolved.parse(sample.first);
 		// Объект, полученный прямым разбором той же записи
-		awh::uri_t direct(this->_fmk.get(), this->_log.get());
+		awh::uri_t direct;
 		// Выполняем разбор записи напрямую
 		direct.parse(sample.second);
 		// Строки записей обязаны совпадать

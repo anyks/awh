@@ -108,7 +108,7 @@ namespace awh {
 	 * @par Пример: самостоятельный разбор нескольких адресов
 	 *
 	 * @code{.cpp}
-	 * awh::uri_t uri(&fmk, &log);
+	 * awh::uri_t uri;
 	 * // Разбираем исходный адрес
 	 * uri.parse("https://anyks.com/api/v1/users?page=1");
 	 * // Разрешаем перенаправление относительно него: выйдет https://anyks.com/api/v2/users
@@ -155,7 +155,7 @@ namespace awh {
 	 * @par Example: the independent parsing of several addresses
 	 *
 	 * @code{.cpp}
-	 * awh::uri_t uri(&fmk, &log);
+	 * awh::uri_t uri;
 	 * // Parsing the original address
 	 * uri.parse("https://anyks.com/api/v1/users?page=1");
 	 * // Resolving the redirection relative to it: https://anyks.com/api/v2/users will come out
@@ -550,11 +550,6 @@ namespace awh {
 			 * \~
 			 */
 			function <string (const Uniform_Resource_Identifier *)> _callback;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект для работы с логами
-			const log_t * _log;
 		private:
 			/**
 			 * \~russian
@@ -1527,7 +1522,6 @@ namespace awh {
 			 */
 			operator const unordered_multimap <string, string> & () const noexcept;
 		public:
-		public:
 			/**
 			 * \~russian
 			 * @brief Метод сличения происхождений URI
@@ -1769,17 +1763,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Uniform_Resource_Identifier() noexcept;
 		public:
 			/**
 			 * \~russian

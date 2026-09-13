@@ -18,6 +18,7 @@
  * @copyright Copyright © 2026
  *
  */
+#include <codec/syslog/syslog.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -31,7 +32,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/syslog/syslog.hpp>
 #include <num/lexical/lexical.hpp>
 
 /**
@@ -43,6 +43,8 @@
  * Подавляем системные макросы, занявшие имена членов перечислений AWH
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Внутренние служебные объекты
@@ -59,41 +61,15 @@ namespace {
 	 */
 	struct SilentSysLogWriter {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentSysLogWriter() noexcept : log(&SilentSysLogWriter::framework()) {
+		SilentSysLogWriter() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * writerLogger() noexcept {
-		// Объект журнала проверок
-		static SilentSysLogWriter silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -142,7 +118,7 @@ struct LocaleGuard {
  */
 static bool build(const abc::value_t & value, const syslog::writer_t::settings_t & settings, string & result) noexcept {
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Устанавливаем настройки записи событий
 	writer.settings(settings);
 	// Выводим признак успешности сборки записи
@@ -449,7 +425,7 @@ TEST(CodecSysLogWriter, Detection) {
 	// Выключаем запись знака конца строки
 	settings.terminate = false;
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Устанавливаем настройки записи событий
 	writer.settings(settings);
 	// Дерево собираемого события
@@ -492,7 +468,7 @@ TEST(CodecSysLogWriter, Failures) {
 	// Выключаем запись знака конца строки
 	settings.terminate = false;
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Устанавливаем настройки записи событий
 	writer.settings(settings);
 	// Собранная запись системного журнала
@@ -636,7 +612,7 @@ TEST(CodecSysLogWriter, LocaleNumbers) {
 	 *          вовсе. Замерено 08.09.2026: до заведения оснастки `de_DE.UTF-8` даёт «,»,
 	 *          после - «.»
 	 */
-	(void) SilentSysLogWriter::framework();
+	awh::fmk::initialize();
 	// Страж возврата локали записи чисел
 	const LocaleGuard guard;
 	// Количество проверенных локалей с иным десятичным знаком
@@ -800,7 +776,7 @@ TEST(CodecSysLogWriter, ValueKinds) {
 	 */
 	{
 		// Объект события, собранную запись читающий
-		syslog::document_t document(&SilentSysLogWriter::framework(), ::writerLogger());
+		syslog::document_t document;
 		// Выполняем проверку успешности обратного разбора собранной записи
 		ASSERT_TRUE(document.parse(result)) << result;
 		// Значение, по пути извлекаемое
@@ -851,7 +827,7 @@ TEST(CodecSysLogWriter, UnrepresentableParams) {
 		// Устанавливаем описание записи современным
 		settings.standard = syslog::standard_t::RFC5424;
 		// Объект записи событий
-		syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+		syslog::writer_t writer;
 		// Устанавливаем настройки записи событий
 		writer.settings(settings);
 		// Собранная запись системного журнала
@@ -888,7 +864,7 @@ TEST(CodecSysLogWriter, UnrepresentableParams) {
 		// Устанавливаем описание записи современным
 		settings.standard = syslog::standard_t::RFC5424;
 		// Объект записи событий
-		syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+		syslog::writer_t writer;
 		// Устанавливаем настройки записи событий
 		writer.settings(settings);
 		// Собранная запись системного журнала
@@ -965,7 +941,7 @@ TEST(CodecSysLogWriter, UnsupportedValueKinds) {
 	 */
 	tree.place("/structures/id@1/time") = abc::value_t(abc::kind_t::TIME);
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	/**
 	 * Выполняем перебор всех настроек обращения вложенных значений
 	 *
@@ -1008,7 +984,7 @@ TEST(CodecSysLogWriter, LegacyFailures) {
 	// Устанавливаем сборку записи устаревшим описанием
 	settings.standard = syslog::standard_t::RFC3164;
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Устанавливаем настройки записи событий
 	writer.settings(settings);
 	// Собранная запись системного журнала
@@ -1080,7 +1056,7 @@ TEST(CodecSysLogWriter, PriorityFailures) {
 	// Выключаем запись знака конца строки
 	settings.terminate = false;
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Устанавливаем настройки записи событий
 	writer.settings(settings);
 	// Собранная запись системного журнала
@@ -1195,7 +1171,7 @@ TEST(CodecSysLogWriter, NestedHeaderFields) {
 	// Выключаем запись знака конца строки
 	settings.terminate = false;
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Собранная запись системного журнала
 	string result = "";
 	/**
@@ -1278,7 +1254,7 @@ TEST(CodecSysLogWriter, MessageAndStructures) {
 	// Устанавливаем сборку записи нынешним описанием
 	settings.standard = syslog::standard_t::RFC5424;
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Устанавливаем настройки записи событий
 	writer.settings(settings);
 	// Собранная запись системного журнала
@@ -1347,7 +1323,7 @@ TEST(CodecSysLogWriter, ModernVersionAndEmptyStructures) {
 	// Устанавливаем сборку записи нынешним описанием
 	settings.standard = syslog::standard_t::RFC5424;
 	// Объект записи событий
-	syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+	syslog::writer_t writer;
 	// Устанавливаем настройки записи событий
 	writer.settings(settings);
 	// Собранная запись системного журнала

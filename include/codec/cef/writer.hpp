@@ -45,9 +45,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 #include "../abc/value.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -168,11 +167,6 @@ namespace awh {
 				private:
 					// Код ошибки последней операции записи
 					error_t _error;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект для работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -300,17 +294,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Writer(const fmk_t * fmk, const log_t * log) noexcept;
+					Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

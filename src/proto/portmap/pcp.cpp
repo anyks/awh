@@ -28,6 +28,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <proto/portmap/pcp.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -204,13 +205,13 @@ size_t awh::proto::portmap::PCP::request(void * buffer, const size_t size, const
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (request.opcode)), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (request.opcode)}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим нулевой размер собранного сообщения
 		return 0;
@@ -237,13 +238,13 @@ size_t awh::proto::portmap::PCP::request(void * buffer, const size_t size, const
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(length), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {length}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим нулевой размер собранного сообщения
 		return 0;
@@ -259,13 +260,13 @@ size_t awh::proto::portmap::PCP::request(void * buffer, const size_t size, const
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size, length), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size, length}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим нулевой размер собранного сообщения
 		return 0;
@@ -371,7 +372,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -389,7 +390,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data[0]), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {data[0]}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -405,7 +406,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data[1]), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {data[1]}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -425,7 +426,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(opcode), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {opcode}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -441,7 +442,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size, payload), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size, payload}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -502,7 +503,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(offset, size), log_t::flag_t::WARNING, message(error));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {offset, size}, awh::log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;
@@ -525,7 +526,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(offset, length, size), log_t::flag_t::WARNING, message(error));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {offset, length, size}, awh::log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;

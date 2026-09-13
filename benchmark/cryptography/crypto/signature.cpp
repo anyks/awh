@@ -135,7 +135,7 @@ namespace {
 	 */
 	static awh::crypto_t & keyring() noexcept {
 		// Объект криптографии со связкой ключей подписи
-		static awh::crypto_t result(framework(), logger());
+		static awh::crypto_t result;
 		// Признак выполненного заведения связки ключей
 		static const bool ready = [&]() noexcept -> bool {
 			// Выполняем выработку ключа Ed25519

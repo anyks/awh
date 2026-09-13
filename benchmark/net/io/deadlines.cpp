@@ -124,7 +124,7 @@ namespace {
 		 *
 		 */
 		explicit Fleet(const awh::event::timer_t mode, const size_t count) noexcept :
-		 io(framework(), logger()) {
+		 io() {
 			// Устанавливаем тип внутренних таймеров движка
 			this->io.setInternalTimer(mode);
 			// Если инициализация движка не выполнена

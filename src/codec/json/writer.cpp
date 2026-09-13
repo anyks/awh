@@ -39,6 +39,7 @@
 #include <num/lexical/lexical.hpp>
 #include <codec/json/encoding.hpp>
 #include <codec/json/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -128,45 +129,28 @@ bool awh::codec::json::Writer::refuse(const error_t error) noexcept {
 	// Получаем описание кода отказа записи
 	const char * reason = awh::codec::json::message(error);
 	/**
-	 * Если объект ведения журнала работы установлен
+	 * Выполняем запись об отказе записи в журнал
+	 *
+	 * @note Отказ записи беда КРИТИЧЕСКАЯ: записывается то, что собрало само приложение,
+	 *       и негодное здесь означает дефект у потребителя, а не чужой негодный ввод
 	 */
-	if(this->_log != nullptr){
-		/**
-		 * Выполняем запись об отказе записи в журнал
-		 *
-		 * @note Отказ записи беда КРИТИЧЕСКАЯ: записывается то, что собрало само приложение,
-		 *       и негодное здесь означает дефект у потребителя, а не чужой негодный ввод
-		 */
-		#if DEBUG_MODE
-			// Записываем отказ записи в журнал работы
-			this->_log->debug("JSON writing refused: %s", __PRETTY_FUNCTION__, ::std::make_tuple(),
-			                  log_t::flag_t::CRITICAL, reason);
-		#else
-			// Записываем отказ записи в журнал работы
-			this->_log->print("JSON writing refused: %s", log_t::flag_t::CRITICAL, reason);
-		#endif
-	}
+	#if DEBUG_MODE
+		// Записываем отказ записи в журнал работы
+		awh::log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {},
+		                  awh::log::flag_t::CRITICAL, reason);
+	#else
+		// Записываем отказ записи в журнал работы
+		awh::log::print("JSON writing refused: %s", awh::log::flag_t::CRITICAL, reason);
+	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
 }
 /**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::json::Writer::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-}
-/**
  * @brief Конструктор
  *
- * @param log объект ведения журнала работы
- *
  */
-awh::codec::json::Writer::Writer(const log_t * log) noexcept :
- _empty(true), _keyed(false), _log(log),
+awh::codec::json::Writer::Writer() noexcept :
+ _empty(true), _keyed(false),
  _error(error_t::NONE), _started(false), _separated(false), _taken(0) {}
 /**
  * @brief Метод записи разделителя перед очередным значением

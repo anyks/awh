@@ -50,44 +50,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -110,7 +80,7 @@ static string convert(const string & text, const size_t chunk, csv::error_t & er
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder(::logger());
+	csv::decoder_t decoder;
 	/**
 	 * Выполняем подачу исходного текста кусками заданного размера
 	 */
@@ -231,7 +201,7 @@ TEST(CodecCsvEncoding, Bulk) {
 			// Устанавливаем проверяемый знак в заданное положение
 			text[offset] = static_cast <char> (letter);
 			// Объект приведения исходного текста
-			csv::decoder_t decoder(::logger());
+			csv::decoder_t decoder;
 			// Результат приведения исходного текста
 			string result = "";
 			// Выполняем проверку того, что проход отвечает проверке знака
@@ -261,7 +231,7 @@ TEST(CodecCsvEncoding, Bulk) {
 			// Устанавливаем второй знак пары
 			text[1] = static_cast <char> (second);
 			// Объект приведения исходного текста
-			csv::decoder_t decoder(::logger());
+			csv::decoder_t decoder;
 			// Результат приведения исходного текста
 			string result = "";
 			// Выполняем проверку того, что проход отвечает проверке знаков пары
@@ -300,7 +270,7 @@ TEST(CodecCsvEncoding, Signature) {
 	// Код ошибки приведения исходного текста
 	csv::error_t error = csv::error_t::NONE;
 	// Объект приведения исходного текста
-	csv::decoder_t decoder(::logger());
+	csv::decoder_t decoder;
 	// Результат приведения исходного текста
 	string result = "";
 	// Выполняем приведение текста с меткой порядка байтов
@@ -394,7 +364,7 @@ TEST(CodecCsvEncoding, Forced) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder(::logger());
+	csv::decoder_t decoder;
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(csv::encoding_t::LATIN1));
 	// Выполняем приведение текста в навязанной кодировке
@@ -415,7 +385,7 @@ TEST(CodecCsvEncoding, Cp1252) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder(::logger());
+	csv::decoder_t decoder;
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(csv::encoding_t::CP1252));
 	// Выполняем приведение текста в навязанной кодировке
@@ -451,7 +421,7 @@ TEST(CodecCsvEncoding, Reset) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	csv::decoder_t decoder(::logger());
+	csv::decoder_t decoder;
 	// Выполняем приведение текста с меткой порядка байтов
 	ASSERT_TRUE(decoder.convert(string("\xFF\xFE" "a\0", 4).data(), 4, true, result));
 	// Выполняем проверку определённой кодировки исходного текста
@@ -487,7 +457,7 @@ TEST(CodecCsvEncoding, Reset) {
 TEST(CodecCsvEncoding, RefusalsUncoveredBefore) {
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF8));
 		// Полученный приведением текст таблицы
@@ -505,7 +475,7 @@ TEST(CodecCsvEncoding, RefusalsUncoveredBefore) {
 	}
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF8));
 		// Полученный приведением текст таблицы
@@ -519,7 +489,7 @@ TEST(CodecCsvEncoding, RefusalsUncoveredBefore) {
 	}
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
 		// Полученный приведением текст таблицы
@@ -533,7 +503,7 @@ TEST(CodecCsvEncoding, RefusalsUncoveredBefore) {
 	}
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16BE));
 		// Полученный приведением текст таблицы
@@ -547,7 +517,7 @@ TEST(CodecCsvEncoding, RefusalsUncoveredBefore) {
 	}
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
 		// Полученный приведением текст таблицы
@@ -571,7 +541,7 @@ TEST(CodecCsvEncoding, RefusalsUncoveredBefore) {
  */
 TEST(CodecCsvEncoding, ForcedEncodingCleared) {
 	// Приведение текста таблицы
-	csv::decoder_t decoder(::logger());
+	csv::decoder_t decoder;
 	// Выполняем проверку навязывания кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(csv::encoding_t::LATIN1));
 	// Выполняем проверку навязанной кодировки исходного текста
@@ -602,7 +572,7 @@ TEST(CodecCsvEncoding, ForcedEncodingCleared) {
 TEST(CodecCsvEncoding, HeldSequenceRefusedAtTextEnd) {
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF8));
 		// Полученный приведением текст таблицы
@@ -618,7 +588,7 @@ TEST(CodecCsvEncoding, HeldSequenceRefusedAtTextEnd) {
 	}
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
 		// Полученный приведением текст таблицы
@@ -636,7 +606,7 @@ TEST(CodecCsvEncoding, HeldSequenceRefusedAtTextEnd) {
 	}
 	{
 		// Приведение текста таблицы
-		csv::decoder_t decoder(::logger());
+		csv::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(csv::encoding_t::UTF16LE));
 		// Полученный приведением текст таблицы

@@ -56,6 +56,7 @@
  */
 #include <sys/os.hpp>
 #include <sys/version.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -113,37 +114,19 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(octets), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {octets}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
@@ -221,49 +204,21 @@ void awh::Version::set(const string & version) noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(version), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {version}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
-}
-/**
- * @brief Метод установки объекта логирования
- *
- * @param log объект работы с логами
- *
- */
-void awh::Version::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект логирования
-	this->_log = log;
 }
 /**
  * @brief Оператор вывода версии в качестве числа
@@ -400,8 +355,6 @@ awh::Version & awh::Version::operator = (const uint32_t version) noexcept {
 awh::Version & awh::Version::operator = (const Version & version) noexcept {
 	// Устанавливаем версию
 	this->_version = version._version;
-	// Копируем объект логирования (для согласованности с конструктором копирования)
-	this->_log = version._log;
 	// Возвращаем результат
 	return (* this);
 }
@@ -409,19 +362,14 @@ awh::Version & awh::Version::operator = (const Version & version) noexcept {
  * @brief Конструктор
  *
  */
-awh::Version::Version() noexcept : _version(0), _log(nullptr) {}
-/**
- * @brief Конструктор
- *
- */
-awh::Version::Version(const log_t * log) noexcept : _version(0), _log(log) {}
+awh::Version::Version() noexcept : _version(0) {}
 /**
  * @brief Конструктор
  *
  * @param version устанавливаемая версия
  *
  */
-awh::Version::Version(const char * version) noexcept : _version(0), _log(nullptr) {
+awh::Version::Version(const char * version) noexcept : _version(0) {
 	// Устанавливаем версию
 	this->set(version);
 }
@@ -431,7 +379,7 @@ awh::Version::Version(const char * version) noexcept : _version(0), _log(nullptr
  * @param version устанавливаемая версия
  *
  */
-awh::Version::Version(const string & version) noexcept : _version(0), _log(nullptr) {
+awh::Version::Version(const string & version) noexcept : _version(0) {
 	// Устанавливаем версию
 	this->set(version);
 }
@@ -441,7 +389,7 @@ awh::Version::Version(const string & version) noexcept : _version(0), _log(nullp
  * @param version устанавливаемая версия
  *
  */
-awh::Version::Version(const uint32_t version) noexcept : _version(0), _log(nullptr) {
+awh::Version::Version(const uint32_t version) noexcept : _version(0) {
 	// Устанавливаем версию
 	this->set(version);
 }

@@ -13,7 +13,7 @@
  * @site https://anyks.com
  *
  * @brief Реализация потокового чтения записей CEF — сборка записей из кусков, отделение приставки syslog,
- *        разбор полей заголовка по прямой черте, разбор пар расширения ходом fmk_t::kv и снятие
+ *        разбор полей заголовка по прямой черте, разбор пар расширения ходом awh::fmk::kv и снятие
  *        отмены знаков порознь по областям записи
  *
  * @copyright Copyright © 2026
@@ -29,6 +29,8 @@
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -103,9 +105,9 @@ bool awh::codec::cef::Reader::fail(const error_t error, const size_t offset) noe
 	// Выполняем определение положения места ошибки в исходном тексте
 	this->place(offset, this->_errorPosition);
 	// Выводим в лог сообщение об ошибке разбора
-	this->_log->print(
+	awh::log::print(
 		"CEF parsing failed: %s at line %llu column %llu",
-		log_t::flag_t::CRITICAL,
+		awh::log::flag_t::CRITICAL,
 		awh::codec::cef::message(error),
 		static_cast <unsigned long long> (this->_errorPosition.line),
 		static_cast <unsigned long long> (this->_errorPosition.column)
@@ -176,6 +178,222 @@ bool awh::codec::cef::Reader::measure(size_t & length, size_t & next) const noex
 	}
 	// Выводим признак того, что запись целиком не найдена
 	return false;
+}
+
+/**
+ * @brief Метод разбора очередной записи целиком
+ *
+ * @param record текст записи целиком
+ * @return       признак успешности разбора записи
+ */
+bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
+	// Выполняем очистку полей заголовка текущей записи
+	this->_fields.clear();
+	// Выполняем очистку пар расширения текущей записи
+	this->_pairs.clear();
+	// Выполняем очистку приставки syslog текущей записи
+	this->_value.clear();
+	// Сбрасываем указатель выдачи полей и пар
+	this->_index = 0;
+	// Сбрасываем важность события записи
+	this->_severity = 0;
+	// Смещение слова «CEF:» от начала записи
+	size_t begin = 0;
+	// Если слово «CEF:» в записи не найдено
+	if(!this->signature(record, begin))
+		// Выводим отказ разбора отсутствием слова «CEF:»
+		return this->fail(error_t::MISSING_SIGNATURE, this->_offset);
+	// Если приставка syslog записи предшествует
+	if(begin > 0){
+		// Если признание приставки syslog выключено
+		if(!this->_settings.syslog)
+			// Выводим отказ разбора содержимым перед словом «CEF:»
+			return this->fail(error_t::MISSING_SIGNATURE, this->_offset);
+		// Запоминаем приставку syslog значением события
+		this->_value.assign(record.begin(), record.begin() + begin);
+		// Снимаем пробелы в конце приставки syslog
+		while(!this->_value.empty() && ((this->_value.back() == ' ') || (this->_value.back() == '\t')))
+			// Удаляем пробельный знак в конце приставки
+			this->_value.pop_back();
+		/**
+		 * Если приставка syslog одними пробельными знаками была
+		 *
+		 * @details Приставка, от пробелов очищенная и пустой оказавшаяся, событием НЕ
+		 * выдаётся вовсе: пустая приставка и отсутствие приставки в записи CEF
+		 * неразличимы, и выдача события заводила бы узел, какому в собранной записи
+		 * места нет - оборот терял бы его молча
+		 *
+		 * @note Найдено ворошителем 04.09.2026 расхождением деревьев после оборота
+		 */
+		if(this->_value.empty())
+			// Сбрасываем смещение начала приставки: приставки в записи нет
+			begin = 0;
+	}
+	// Получаем текст записи, приставкой не занятый
+	const string_view body(record.data() + begin, record.size() - begin);
+	// Смещение разбора полей заголовка от начала тела записи
+	size_t offset = SIGNATURE.size();
+	// Длина очередного поля заголовка до разделяющей черты
+	size_t size = 0;
+	/**
+	 * Выполняем перебор всех полей заголовка записи
+	 */
+	for(uint32_t i = 0; i < HEADER_FIELDS; i++){
+		// Получаем неразобранный остаток тела записи
+		const string_view rest(body.data() + offset, body.size() - offset);
+		// Если разделяющая черта за полем заголовка не найдена
+		if(!this->bounds(rest, size))
+			// Выводим отказ разбора неполнотой заголовка
+			return this->fail(error_t::INCOMPLETE_HEADER, this->_offset + begin + offset);
+		// Если длина поля заголовка превышает допустимую
+		if(size > MAX_HEADER_FIELD)
+			// Выводим отказ разбора превышением длины поля
+			return this->fail(error_t::FIELD_TOO_LONG, this->_offset + begin + offset);
+		// Создаём поле заголовка записи
+		this->_fields.emplace_back();
+		// Если снятие отмены знаков со значений включено
+		if(this->_settings.unescape)
+			// Выполняем снятие отмены знаков с поля заголовка
+			this->unescape(string_view(rest.data(), size), area_t::HEADER, this->_fields.back());
+		// Если снятие отмены знаков со значений выключено
+		else this->_fields.back().assign(rest.data(), size);
+		// Сдвигаем смещение разбора полей заголовка
+		offset += (size + 1);
+	}
+	// Получаем текст номера редакции записи
+	const string & version = this->_fields.front();
+	// Если номер редакции записи пуст
+	if(version.empty())
+		// Выводим отказ разбора ошибочным номером редакции
+		return this->fail(error_t::INVALID_VERSION, this->_offset + begin);
+	// Сбрасываем номер редакции записи
+	this->_version = 0;
+	/**
+	 * Выполняем перебор знаков номера редакции записи
+	 */
+	for(size_t i = 0; i < version.size(); i++){
+		// Если знак номера редакции цифрой не является
+		if((version[i] < '0') || (version[i] > '9'))
+			// Выводим отказ разбора ошибочным номером редакции
+			return this->fail(error_t::INVALID_VERSION, this->_offset + begin + SIGNATURE.size() + i);
+		// Наращиваем номер редакции записи очередной цифрой
+		this->_version = ((this->_version * 10) + static_cast <uint32_t> (version[i] - '0'));
+	}
+	/**
+	 * Если сличение ведётся и обязательное поле заголовка пусто
+	 *
+	 * @note Описание назначает все семь полей заголовка обязательными, но живые
+	 *       устройства пустое поле пишут, и при выключенном сличении запись такая
+	 *       принимается: настройка эта и назначена тому, чтобы брать журнал как есть
+	 */
+	if(this->_settings.mode != mode_t::NONE){
+		/**
+		 * Выполняем перебор полей заголовка, кроме важности события
+		 *
+		 * @note Важность проверяется ниже своим ходом: она бывает записана и словом,
+		 *       и пустой её случай к INVALID_SEVERITY относится, а не сюда
+		 */
+		for(size_t i = 1; (i + 1) < this->_fields.size(); i++){
+			// Если очередное поле заголовка пусто
+			if(this->_fields.at(i).empty())
+				// Выводим отказ разбора пустым полем заголовка
+				return this->fail(error_t::EMPTY_HEADER_FIELD, this->_offset + begin);
+		}
+	}
+	// Получаем текст важности события записи
+	const string & severity = this->_fields.back();
+	/**
+	 * Выполняем перебор знаков важности события записи
+	 */
+	for(size_t i = 0; i < severity.size(); i++){
+		// Если знак важности события цифрой не является
+		if((severity[i] < '0') || (severity[i] > '9')){
+			// Сбрасываем важность события записи
+			this->_severity = 0;
+			// Выходим из цикла перебора: важность бывает записана и словом
+			break;
+		}
+		// Наращиваем важность события очередной цифрой
+		this->_severity = ((this->_severity * 10) + static_cast <uint32_t> (severity[i] - '0'));
+	}
+	// Если важность события за допустимый предел выходит
+	if(this->_severity > MAX_SEVERITY){
+		// Сбрасываем важность события записи
+		this->_severity = 0;
+		// Если сличение со словарём ведётся строго
+		if(this->_settings.mode == mode_t::STRONG)
+			// Выводим отказ разбора ошибочной важностью события
+			return this->fail(error_t::INVALID_SEVERITY, this->_offset + begin);
+	}
+	// Получаем текст расширения записи
+	const string_view extension(body.data() + offset, body.size() - offset);
+	// Если расширение записи не пусто
+	if(!extension.empty()){
+		// Выполняем разбор пар расширения ходом фреймворка
+		awh::fmk::kv(0, extension, " ", [this](const uint64_t sid, const string_view key, const string_view value) noexcept -> void {
+			// Помечаем опознаватель разбора неиспользуемым
+			(void) sid;
+			/**
+			 * Если количество пар расширения предел превысило
+			 *
+			 * @warning Сличение здесь строгое, а не «больше либо равно»: предел назван
+			 *          НАИБОЛЬШИМ ДОПУСТИМЫМ количеством, и запись ровно с таким числом
+			 *          пар годна. Одна пара сверх предела набирается намеренно - ею
+			 *          заслон за разбором и опознаёт превышение, - а прочие отбрасываются
+			 *
+			 * @note Найдено 09.09.2026 картой покрытия: ветвь предела стояла непроверенной
+			 *       вовсе, а поверка её вскрыла отклонение записи ровно на пределе
+			 */
+			if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
+				// Выходим из функции обратного вызова
+				return;
+			// Создаём пару расширения записи
+			this->_pairs.emplace_back();
+			/**
+			 * Если снятие отмены знаков со значений включено
+			 *
+			 * @details Отмена снимается и с ИМЕНИ ключа, а не с одного лишь значения:
+			 * писатель имя ключа отменою знаков ограждает, и снятие её лишь со значения
+			 * давало бы разбор, обратный записи не равный - имя росло бы косыми при
+			 * всяком обороте. Найдено ворошителем 04.09.2026 расхождением деревьев:
+			 * ключ «\,|rt\» после оборота обращался в «\\,|rt\\»
+			 */
+			if(this->_settings.unescape)
+				// Выполняем снятие отмены знаков с имени ключа расширения
+				this->unescape(key, area_t::EXTENSION, this->_pairs.back().first);
+			// Если снятие отмены знаков со значений выключено
+			else this->_pairs.back().first.assign(key.begin(), key.end());
+			// Если снятие отмены знаков со значений включено
+			if(this->_settings.unescape)
+				// Выполняем снятие отмены знаков со значения расширения
+				this->unescape(value, area_t::EXTENSION, this->_pairs.back().second);
+			// Если снятие отмены знаков со значений выключено
+			else this->_pairs.back().second.assign(value.begin(), value.end());
+		});
+		// Если количество пар расширения предел превысило
+		if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
+			// Выводим отказ разбора превышением количества пар
+			return this->fail(error_t::OVERFLOW_LIMIT, this->_offset + begin + offset);
+		/**
+		 * Выполняем перебор всех разобранных пар расширения
+		 */
+		for(auto & pair : this->_pairs){
+			// Если имя ключа расширения пусто
+			if(pair.first.empty())
+				// Выводим отказ разбора пустым именем ключа
+				return this->fail(error_t::EMPTY_KEY, this->_offset + begin + offset);
+			// Если длина имени ключа превышает допустимую
+			if(pair.first.size() > MAX_NAME)
+				// Выводим отказ разбора превышением длины имени
+				return this->fail(error_t::NAME_TOO_LONG, this->_offset + begin + offset);
+		}
+	}
+	// Устанавливаем этап выдачи приставки syslog, если она записи предшествует
+	this->_stage = (begin > 0 ? stage_t::SYSLOG : stage_t::HEADER);
+	// Выполняем определение положения начала записи
+	this->place(this->_offset, this->_position);
+	// Выводим признак успешности разбора записи
+	return true;
 }
 
 /**
@@ -333,7 +551,7 @@ bool awh::codec::cef::Reader::settings(const settings_t & settings) noexcept {
 	// Если разбор текста уже начат
 	if(!this->_buffer.empty()){
 		// Выводим в лог сообщение о невозможности смены настроек
-		this->_log->print("CEF settings cannot be changed in the middle of a parsing", log_t::flag_t::WARNING);
+		awh::log::print("CEF settings cannot be changed in the middle of a parsing", awh::log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -402,7 +620,7 @@ bool awh::codec::cef::Reader::feed(const void * buffer, const size_t size, const
 	// Если текст уже подан последним куском
 	if(this->_end){
 		// Выводим в лог сообщение о подаче текста после последнего куска
-		this->_log->print("CEF text is fed after the last chunk", log_t::flag_t::WARNING);
+		awh::log::print("CEF text is fed after the last chunk", awh::log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -435,222 +653,6 @@ bool awh::codec::cef::Reader::feed(const void * buffer, const size_t size, const
 bool awh::codec::cef::Reader::feed(const string_view text) noexcept {
 	// Выполняем передачу текста единственным и последним куском
 	return this->feed(text.data(), text.size(), true);
-}
-
-/**
- * @brief Метод разбора очередной записи целиком
- *
- * @param record текст записи целиком
- * @return       признак успешности разбора записи
- */
-bool awh::codec::cef::Reader::prepare(const string_view record) noexcept {
-	// Выполняем очистку полей заголовка текущей записи
-	this->_fields.clear();
-	// Выполняем очистку пар расширения текущей записи
-	this->_pairs.clear();
-	// Выполняем очистку приставки syslog текущей записи
-	this->_value.clear();
-	// Сбрасываем указатель выдачи полей и пар
-	this->_index = 0;
-	// Сбрасываем важность события записи
-	this->_severity = 0;
-	// Смещение слова «CEF:» от начала записи
-	size_t begin = 0;
-	// Если слово «CEF:» в записи не найдено
-	if(!this->signature(record, begin))
-		// Выводим отказ разбора отсутствием слова «CEF:»
-		return this->fail(error_t::MISSING_SIGNATURE, this->_offset);
-	// Если приставка syslog записи предшествует
-	if(begin > 0){
-		// Если признание приставки syslog выключено
-		if(!this->_settings.syslog)
-			// Выводим отказ разбора содержимым перед словом «CEF:»
-			return this->fail(error_t::MISSING_SIGNATURE, this->_offset);
-		// Запоминаем приставку syslog значением события
-		this->_value.assign(record.begin(), record.begin() + begin);
-		// Снимаем пробелы в конце приставки syslog
-		while(!this->_value.empty() && ((this->_value.back() == ' ') || (this->_value.back() == '\t')))
-			// Удаляем пробельный знак в конце приставки
-			this->_value.pop_back();
-		/**
-		 * Если приставка syslog одними пробельными знаками была
-		 *
-		 * @details Приставка, от пробелов очищенная и пустой оказавшаяся, событием НЕ
-		 * выдаётся вовсе: пустая приставка и отсутствие приставки в записи CEF
-		 * неразличимы, и выдача события заводила бы узел, какому в собранной записи
-		 * места нет - оборот терял бы его молча
-		 *
-		 * @note Найдено ворошителем 04.09.2026 расхождением деревьев после оборота
-		 */
-		if(this->_value.empty())
-			// Сбрасываем смещение начала приставки: приставки в записи нет
-			begin = 0;
-	}
-	// Получаем текст записи, приставкой не занятый
-	const string_view body(record.data() + begin, record.size() - begin);
-	// Смещение разбора полей заголовка от начала тела записи
-	size_t offset = SIGNATURE.size();
-	// Длина очередного поля заголовка до разделяющей черты
-	size_t size = 0;
-	/**
-	 * Выполняем перебор всех полей заголовка записи
-	 */
-	for(uint32_t i = 0; i < HEADER_FIELDS; i++){
-		// Получаем неразобранный остаток тела записи
-		const string_view rest(body.data() + offset, body.size() - offset);
-		// Если разделяющая черта за полем заголовка не найдена
-		if(!this->bounds(rest, size))
-			// Выводим отказ разбора неполнотой заголовка
-			return this->fail(error_t::INCOMPLETE_HEADER, this->_offset + begin + offset);
-		// Если длина поля заголовка превышает допустимую
-		if(size > MAX_HEADER_FIELD)
-			// Выводим отказ разбора превышением длины поля
-			return this->fail(error_t::FIELD_TOO_LONG, this->_offset + begin + offset);
-		// Создаём поле заголовка записи
-		this->_fields.emplace_back();
-		// Если снятие отмены знаков со значений включено
-		if(this->_settings.unescape)
-			// Выполняем снятие отмены знаков с поля заголовка
-			this->unescape(string_view(rest.data(), size), area_t::HEADER, this->_fields.back());
-		// Если снятие отмены знаков со значений выключено
-		else this->_fields.back().assign(rest.data(), size);
-		// Сдвигаем смещение разбора полей заголовка
-		offset += (size + 1);
-	}
-	// Получаем текст номера редакции записи
-	const string & version = this->_fields.front();
-	// Если номер редакции записи пуст
-	if(version.empty())
-		// Выводим отказ разбора ошибочным номером редакции
-		return this->fail(error_t::INVALID_VERSION, this->_offset + begin);
-	// Сбрасываем номер редакции записи
-	this->_version = 0;
-	/**
-	 * Выполняем перебор знаков номера редакции записи
-	 */
-	for(size_t i = 0; i < version.size(); i++){
-		// Если знак номера редакции цифрой не является
-		if((version[i] < '0') || (version[i] > '9'))
-			// Выводим отказ разбора ошибочным номером редакции
-			return this->fail(error_t::INVALID_VERSION, this->_offset + begin + SIGNATURE.size() + i);
-		// Наращиваем номер редакции записи очередной цифрой
-		this->_version = ((this->_version * 10) + static_cast <uint32_t> (version[i] - '0'));
-	}
-	/**
-	 * Если сличение ведётся и обязательное поле заголовка пусто
-	 *
-	 * @note Описание назначает все семь полей заголовка обязательными, но живые
-	 *       устройства пустое поле пишут, и при выключенном сличении запись такая
-	 *       принимается: настройка эта и назначена тому, чтобы брать журнал как есть
-	 */
-	if(this->_settings.mode != mode_t::NONE){
-		/**
-		 * Выполняем перебор полей заголовка, кроме важности события
-		 *
-		 * @note Важность проверяется ниже своим ходом: она бывает записана и словом,
-		 *       и пустой её случай к INVALID_SEVERITY относится, а не сюда
-		 */
-		for(size_t i = 1; (i + 1) < this->_fields.size(); i++){
-			// Если очередное поле заголовка пусто
-			if(this->_fields.at(i).empty())
-				// Выводим отказ разбора пустым полем заголовка
-				return this->fail(error_t::EMPTY_HEADER_FIELD, this->_offset + begin);
-		}
-	}
-	// Получаем текст важности события записи
-	const string & severity = this->_fields.back();
-	/**
-	 * Выполняем перебор знаков важности события записи
-	 */
-	for(size_t i = 0; i < severity.size(); i++){
-		// Если знак важности события цифрой не является
-		if((severity[i] < '0') || (severity[i] > '9')){
-			// Сбрасываем важность события записи
-			this->_severity = 0;
-			// Выходим из цикла перебора: важность бывает записана и словом
-			break;
-		}
-		// Наращиваем важность события очередной цифрой
-		this->_severity = ((this->_severity * 10) + static_cast <uint32_t> (severity[i] - '0'));
-	}
-	// Если важность события за допустимый предел выходит
-	if(this->_severity > MAX_SEVERITY){
-		// Сбрасываем важность события записи
-		this->_severity = 0;
-		// Если сличение со словарём ведётся строго
-		if(this->_settings.mode == mode_t::STRONG)
-			// Выводим отказ разбора ошибочной важностью события
-			return this->fail(error_t::INVALID_SEVERITY, this->_offset + begin);
-	}
-	// Получаем текст расширения записи
-	const string_view extension(body.data() + offset, body.size() - offset);
-	// Если расширение записи не пусто
-	if(!extension.empty()){
-		// Выполняем разбор пар расширения ходом фреймворка
-		this->_fmk->kv(0, extension, " ", [this](const uint64_t sid, const string_view key, const string_view value) noexcept -> void {
-			// Помечаем опознаватель разбора неиспользуемым
-			(void) sid;
-			/**
-			 * Если количество пар расширения предел превысило
-			 *
-			 * @warning Сличение здесь строгое, а не «больше либо равно»: предел назван
-			 *          НАИБОЛЬШИМ ДОПУСТИМЫМ количеством, и запись ровно с таким числом
-			 *          пар годна. Одна пара сверх предела набирается намеренно - ею
-			 *          заслон за разбором и опознаёт превышение, - а прочие отбрасываются
-			 *
-			 * @note Найдено 09.09.2026 картой покрытия: ветвь предела стояла непроверенной
-			 *       вовсе, а поверка её вскрыла отклонение записи ровно на пределе
-			 */
-			if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
-				// Выходим из функции обратного вызова
-				return;
-			// Создаём пару расширения записи
-			this->_pairs.emplace_back();
-			/**
-			 * Если снятие отмены знаков со значений включено
-			 *
-			 * @details Отмена снимается и с ИМЕНИ ключа, а не с одного лишь значения:
-			 * писатель имя ключа отменою знаков ограждает, и снятие её лишь со значения
-			 * давало бы разбор, обратный записи не равный - имя росло бы косыми при
-			 * всяком обороте. Найдено ворошителем 04.09.2026 расхождением деревьев:
-			 * ключ «\,|rt\» после оборота обращался в «\\,|rt\\»
-			 */
-			if(this->_settings.unescape)
-				// Выполняем снятие отмены знаков с имени ключа расширения
-				this->unescape(key, area_t::EXTENSION, this->_pairs.back().first);
-			// Если снятие отмены знаков со значений выключено
-			else this->_pairs.back().first.assign(key.begin(), key.end());
-			// Если снятие отмены знаков со значений включено
-			if(this->_settings.unescape)
-				// Выполняем снятие отмены знаков со значения расширения
-				this->unescape(value, area_t::EXTENSION, this->_pairs.back().second);
-			// Если снятие отмены знаков со значений выключено
-			else this->_pairs.back().second.assign(value.begin(), value.end());
-		});
-		// Если количество пар расширения предел превысило
-		if(this->_pairs.size() > static_cast <size_t> (this->_settings.maxExtensions))
-			// Выводим отказ разбора превышением количества пар
-			return this->fail(error_t::OVERFLOW_LIMIT, this->_offset + begin + offset);
-		/**
-		 * Выполняем перебор всех разобранных пар расширения
-		 */
-		for(auto & pair : this->_pairs){
-			// Если имя ключа расширения пусто
-			if(pair.first.empty())
-				// Выводим отказ разбора пустым именем ключа
-				return this->fail(error_t::EMPTY_KEY, this->_offset + begin + offset);
-			// Если длина имени ключа превышает допустимую
-			if(pair.first.size() > MAX_NAME)
-				// Выводим отказ разбора превышением длины имени
-				return this->fail(error_t::NAME_TOO_LONG, this->_offset + begin + offset);
-		}
-	}
-	// Устанавливаем этап выдачи приставки syslog, если она записи предшествует
-	this->_stage = (begin > 0 ? stage_t::SYSLOG : stage_t::HEADER);
-	// Выполняем определение положения начала записи
-	this->place(this->_offset, this->_position);
-	// Выводим признак успешности разбора записи
-	return true;
 }
 
 /**
@@ -923,13 +925,10 @@ uint32_t awh::codec::cef::Reader::severity() const noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  */
-awh::codec::cef::Reader::Reader(const fmk_t * fmk, const log_t * log) noexcept :
+awh::codec::cef::Reader::Reader() noexcept :
  _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE), _offset(0), _record(0),
- _end(false), _stage(stage_t::RECORD), _field(field_t::VERSION), _index(0), _version(0), _severity(0),
- _fmk(fmk), _log(log) {}
+ _end(false), _stage(stage_t::RECORD), _field(field_t::VERSION), _index(0), _version(0), _severity(0) {}
 
 /**
  * Возвращаем имена, системными макросами занятые

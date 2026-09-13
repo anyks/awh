@@ -43,7 +43,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 #include "../../sys/macro/global.hpp"
 
 /**

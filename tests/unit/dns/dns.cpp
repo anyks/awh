@@ -55,6 +55,7 @@
  * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
  */
 #include "../../posix.hpp"
+#include <sys/fmk.hpp>
 
 
 /**
@@ -356,12 +357,6 @@ void DNSStubServer::run() noexcept {
  *
  */
 void DNSUnitFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
-	// Устанавливаем объект работы с логами
-	this->_fmk->setLogger(this->_log.get());
 }
 
 /**

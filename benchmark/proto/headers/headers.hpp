@@ -32,8 +32,6 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/fmk.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/proto/http/headers.hpp"
 
 /**
@@ -101,20 +99,6 @@ namespace awh {
 			 */
 			static constexpr size_t FIELDS = 10;
 
-			/**
-			 * @brief Функция получения объекта фреймворка сценариев
-			 *
-			 * @return объект фреймворка сценариев
-			 *
-			 */
-			const fmk_t * framework() noexcept;
-			/**
-			 * @brief Функция получения объекта логирования сценариев
-			 *
-			 * @return объект логирования сценариев
-			 *
-			 */
-			const log_t * logger() noexcept;
 			/**
 			 * @brief Функция получения накопителя итогов работы сценариев
 			 *

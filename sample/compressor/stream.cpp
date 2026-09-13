@@ -30,8 +30,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <compressor/block.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -45,12 +45,16 @@ using namespace awh;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Создаём объект компрессии данных (используется как фабрика потоковых сессий)
-	awh::compressor::block_t compressor(&log);
+	awh::compressor::block_t compressor;
 	// Строка для компрессии данных
 	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
 	// Методы компрессии, поддерживающие потоковый режим

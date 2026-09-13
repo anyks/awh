@@ -59,44 +59,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -111,7 +81,7 @@ using namespace awh;
  */
 TEST(Regex, Interface) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(\\w+)@(\\w+)\\.([a-z]{2,})");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -144,7 +114,7 @@ TEST(Regex, Interface) {
  */
 TEST(Regex, InterfaceBounds) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("a(b)?(c)");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -187,7 +157,7 @@ TEST(Regex, InterfaceBounds) {
  */
 TEST(Regex, InterfaceNames) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -225,7 +195,7 @@ TEST(Regex, InterfaceNames) {
  */
 TEST(Regex, InterfaceControlBacktracking) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -466,7 +436,7 @@ TEST(Regex, InterfaceControlBacktracking) {
  */
 TEST(Regex, InterfaceNamedControlVerbs) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -586,7 +556,7 @@ TEST(Regex, InterfaceNamedControlVerbs) {
  */
 TEST(Regex, InterfaceSubroutineCalls) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -739,7 +709,7 @@ TEST(Regex, InterfaceSubroutineCalls) {
  */
 TEST(Regex, InterfaceCommentConvention) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -806,7 +776,7 @@ TEST(Regex, InterfaceCommentConvention) {
 }
 TEST(Regex, InterfaceStartOptions) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -893,7 +863,7 @@ TEST(Regex, InterfaceStartOptions) {
 }
 TEST(Regex, InterfaceScriptRuns) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -1020,7 +990,7 @@ TEST(Regex, InterfaceScriptRuns) {
 }
 TEST(Regex, InterfaceNonAtomicLookarounds) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -1169,7 +1139,7 @@ TEST(Regex, InterfaceNonAtomicLookarounds) {
 }
 TEST(Regex, InterfaceVariableLookbehind) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	/**
@@ -1257,7 +1227,7 @@ TEST(Regex, InterfaceVariableLookbehind) {
  */
 TEST(Regex, InterfaceNewlineConventions) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Получаем признак сборки выражения с разбором последовательностей UTF-8
 	const uint32_t wide = static_cast <uint32_t> (regex::flag_t::UTF);
 	// Набор границ совпадения и захваченных групп
@@ -1369,7 +1339,7 @@ TEST(Regex, InterfaceNewlineConventions) {
  */
 TEST(Regex, InterfaceExpressionLimits) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	// Получаем текст сопоставления, возврат нагружающий
@@ -1476,7 +1446,7 @@ TEST(Regex, InterfaceExpressionLimits) {
  */
 TEST(Regex, InterfaceControlVerbs) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	// Выполняем сборку выражения с глаголом отказа в ветви первой
@@ -1579,7 +1549,7 @@ TEST(Regex, InterfaceControlVerbs) {
  */
 TEST(Regex, InterfaceNamedCodepoint) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Получаем признаки сборки выражения с разбором последовательностей UTF-8
 	const uint32_t wide = (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP));
 	// Набор границ совпадения и захваченных групп
@@ -1645,7 +1615,7 @@ TEST(Regex, InterfaceNamedCodepoint) {
  */
 TEST(Regex, InterfaceRepeatBraces) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Набор границ совпадения и захваченных групп
 	vector <pair <size_t, size_t>> bounds;
 	// Выполняем сборку выражения с пробелами внутри квантора повторения
@@ -1712,7 +1682,7 @@ TEST(Regex, InterfaceRepeatBraces) {
  */
 TEST(Regex, InterfaceClassRules) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Получаем признаки сборки выражения с разбором последовательностей UTF-8
 	const uint32_t wide = (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP));
 	/**
@@ -1806,7 +1776,7 @@ TEST(Regex, InterfaceClassRules) {
  */
 TEST(Regex, InterfaceInlineReset) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку выражения с обратной жадностью и сбросом признаков
 	const auto ungreedy = regexp.build("(?U)(?^)a*?");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -1854,7 +1824,7 @@ TEST(Regex, InterfaceInlineReset) {
  */
 TEST(Regex, InterfaceDuplicateReference) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	/**
 	 * Выполняем проверку обоих способов сопоставления
 	 */
@@ -1907,7 +1877,7 @@ TEST(Regex, InterfaceDuplicateReference) {
  */
 TEST(Regex, InterfaceCapture) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(?P<host>[\\w.]+):(?P<port>\\d+)(?<tail>/\\w+)?");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -1940,7 +1910,7 @@ TEST(Regex, InterfaceCapture) {
  */
 TEST(Regex, InterfaceNamed) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(?<method>[A-Z]+) (?<path>\\S+) HTTP/(?<version>\\d\\.\\d)");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -1969,7 +1939,7 @@ TEST(Regex, InterfaceNamed) {
  */
 TEST(Regex, InterfaceDuplicates) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения с одноимёнными группами
 	const auto expression = regexp.build("(?J)(?<n>a)|(?<n>b)");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -2002,7 +1972,7 @@ TEST(Regex, InterfaceDuplicates) {
  */
 TEST(Regex, InterfaceFlags) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения с учётом регистра символов
 	const auto sensitive = regexp.build("ПРИВЕТ", static_cast <uint32_t> (regex::flag_t::UTF));
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -2029,7 +1999,7 @@ TEST(Regex, InterfaceFlags) {
  */
 TEST(Regex, InterfaceFailure) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку ошибочного регулярного выражения
 	const auto expression = regexp.build("a(b");
 	// Выполняем проверку отказа сборки регулярного выражения
@@ -2057,7 +2027,7 @@ TEST(Regex, InterfaceFailure) {
  */
 TEST(Regex, InterfaceCache) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto first = regexp.build("[a-z]+\\d+");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -2138,7 +2108,7 @@ TEST(Regex, InterfaceCache) {
  */
 TEST(Regex, InterfaceThreads) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("(\\w+)=(\\d+)");
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -2208,7 +2178,7 @@ TEST(Regex, InterfaceThreads) {
  */
 TEST(Regex, InterfaceThreadsCodegen) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения в режиме порождения машинного кода
 	const auto expression = regexp.build("(\\w+)=(\\d+)", static_cast <uint32_t> (regex::flag_t::JIT));
 	// Выполняем проверку выполнения сборки регулярного выражения
@@ -2272,7 +2242,7 @@ TEST(Regex, InterfaceThreadsCodegen) {
  */
 TEST(Regex, InterfacePosixUnicode) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * @brief Образец проверки класса символов POSIX
 	 *
@@ -2354,7 +2324,7 @@ TEST(Regex, InterfacePosixUnicode) {
  */
 TEST(Regex, InterfaceBadUtf8Subject) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	// Выполняем сборку выражения под режимом разбора текста посимвольно
 	const auto unicode = regexp.build("\\w+|.", {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP});
 	// Выполняем проверку сборки выражения
@@ -2415,7 +2385,7 @@ TEST(Regex, InterfaceBadUtf8Subject) {
  */
 TEST(Regex, InterfaceMalformedUTF) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	/**
 	 * @brief Набор выражений с записью UTF-8 неправильной
 	 *
@@ -2472,7 +2442,7 @@ TEST(Regex, InterfaceMalformedUTF) {
  */
 TEST(Regex, InterfaceMalformedSyntax) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	/**
 	 * @brief Набор выражений с записью неверной
 	 *
@@ -2527,7 +2497,7 @@ TEST(Regex, InterfaceMalformedSyntax) {
  */
 TEST(Regex, InterfaceMalformedTokens) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	/**
 	 * @brief Набор выражений, разбором отвергаемых
 	 *
@@ -2586,7 +2556,7 @@ TEST(Regex, InterfaceMalformedTokens) {
  */
 TEST(Regex, InterfaceProgramLimit) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	/**
 	 * @brief Набор выражений, размах программы превышающих
 	 *
@@ -2668,7 +2638,7 @@ TEST(Regex, InterfaceProgramLimit) {
  */
 TEST(Regex, InterfaceLookbehindBounds) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	/**
 	 * @brief Набор выражений с ретроспективой длины беспредельной
 	 *
@@ -2725,7 +2695,7 @@ TEST(Regex, InterfaceLookbehindBounds) {
  */
 TEST(Regex, InterfaceNestingAndError) {
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем сборку регулярного выражения с рекурсивным вызовом
 	const auto expression = regexp.build("^(?<r>a(?&r)?b)$");
 	// Выполняем проверку сборки регулярного выражения
@@ -3011,7 +2981,7 @@ TEST(Regex, InterfaceMalformedCorpus) {
 		{"(?i-i-m)", regex::error_t::BAD_OPTIONS}
 	};
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * Выполняем обход набора образцов выражений негодных
 	 */
@@ -3051,7 +3021,7 @@ TEST(Regex, InterfaceMalformedPattern) {
 		string("\xFF"), string("\xC3"), (string("[\xC3") + "]")
 	};
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * Выполняем обход набора выражений с ломаной последовательностью
 	 */
@@ -3070,7 +3040,7 @@ TEST(Regex, InterfaceMalformedPattern) {
  */
 TEST(Regex, InterfaceNestingDepth) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	// Собираемое выражение с вложенностью сверх допустимой
 	string deep;
 	/**
@@ -3104,7 +3074,7 @@ TEST(Regex, InterfaceNestingDepth) {
  */
 TEST(Regex, InterfaceConditionForward) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * Выполняем проверку отказа при группе, вперёд указанной и не объявленной
 	 *
@@ -3163,7 +3133,7 @@ TEST(Regex, InterfaceConditionForward) {
  */
 TEST(Regex, InterfaceQuantifierBinding) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * @brief Набор выражений с квантором в начале ветви
 	 *
@@ -3222,7 +3192,7 @@ TEST(Regex, InterfaceQuantifierBinding) {
  */
 TEST(Regex, InterfaceClassTransparent) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * @brief Набор классов символов незавершённых
 	 *
@@ -3318,7 +3288,7 @@ TEST(Regex, InterfaceDollarEnd) {
 		{"a$", "a", true, 0}
 	};
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * Выполняем обход набора образцов проверки привязки
 	 *
@@ -3429,7 +3399,7 @@ TEST(Regex, InterfaceCaselessProperty) {
 		{"\\p{L}", "а", true, true}
 	};
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * Выполняем обход набора образцов проверки разряда свойства
 	 *
@@ -3510,7 +3480,7 @@ TEST(Regex, InterfaceLineBreakAtomic) {
 		{"\\R\\R", "\n\r", true, 2}
 	};
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * Выполняем обход набора образцов проверки последовательности
 	 *
@@ -3559,7 +3529,7 @@ TEST(Regex, InterfaceLineBreakAtomic) {
  */
 TEST(Regex, InterfaceGraphemeConjunct) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	// Выполняем сборку регулярного выражения
 	const auto expression = regexp.build("^\\X",
 	 {regexp_t::flag_t::UTF, regexp_t::flag_t::UCP});
@@ -3597,7 +3567,7 @@ TEST(Regex, InterfaceGraphemeConjunct) {
  */
 TEST(Regex, InterfaceLiteralAstral) {
 	// Создаём объект работы с регулярными выражениями
-	const regexp_t regexp(::logger());
+	const regexp_t regexp;
 	/**
 	 * @brief Образец сопоставления литералом
 	 *

@@ -28,6 +28,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -741,9 +742,8 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 		/**
 		 * Если объект для работы с логами установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("JSON parsing failed: %s", log_t::flag_t::CRITICAL, awh::codec::json::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("JSON parsing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -1410,12 +1410,12 @@ void awh::codec::json::Reader::settings(const settings_t & settings) noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::json::Reader::Reader(const log_t * log) noexcept :
- _phase(phase_t::DOCUMENT_START), _error(error_t::NONE), _log(log),
+awh::codec::json::Reader::Reader() noexcept :
+ _phase(phase_t::DOCUMENT_START), _error(error_t::NONE),
  _last(false), _keyed(false), _modified(false), _empty(true), _comma(false),
  _origin(0), _head(0), _handler(nullptr), _context(nullptr), _stopped(false), _keeping(false),
  _offset(0), _line(1), _column(1), _length(0),
- _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _decoder(log) {
+ _unicode(0), _surrogate(0), _matched(0), _literal(nullptr), _decoder() {
 	// Выполняем заполнение разметки знаков, прерывающих быстрый проход
 	this->marking();
 }
@@ -1456,19 +1456,6 @@ void awh::codec::json::Reader::abort() noexcept {
 	this->_position.depth = static_cast <uint32_t> (this->_nesting.size());
 }
 /**
- * @brief Метод прекращения разбора отказом
- *
- * @param error код отказа разбора
- * @return      признак успешности разбора, всегда ложь
- *
- */
-void awh::codec::json::Reader::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-	// Выполняем установку объекта ведения журнала разбору кодировок
-	this->_decoder.setLogger(log);
-}
-/**
  * @brief Метод отказа разбора с сообщением о нём в журнал
  *
  * @param error код ошибки разбора
@@ -1499,36 +1486,28 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	 */
 	this->_failure = this->_position;
 	/**
-	 * Если объект ведения журнала работы установлен
+	 * Выполняем запись об отказе разбора в журнал
 	 *
-	 * @note Сличение стоит здесь одно на весь разбор: разнеси его по местам отказа - и
-	 *       часть их разошлась бы с ним при первой же правке
+	 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
+	 *       приложения он не рушит. Оттого запись идёт предупреждением
 	 */
-	if(this->_log != nullptr){
-		/**
-		 * Выполняем запись об отказе разбора в журнал
-		 *
-		 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
-		 *       приложения он не рушит. Оттого запись идёт предупреждением
-		 */
-		/**
-		 * @warning Место отказа кладётся в ТЕКСТ записи обеими ветвями, а не одним лишь
-		 *          доводом отладочной: иначе запись выходит разною по виду сборки, а
-		 *          читающему журнал до вида сборки дела нет
-		 */
-		#if DEBUG_MODE
-			// Записываем отказ разбора в журнал работы
-			this->_log->debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
-			                  ::std::make_tuple(this->_position.line, this->_position.column), log_t::flag_t::WARNING,
-			                  static_cast <unsigned long long> (this->_position.line),
-			                  static_cast <unsigned long long> (this->_position.column), message(error));
-		#else
-			// Записываем отказ разбора в журнал работы
-			this->_log->print("JSON parsing failed at line %llu column %llu: %s", log_t::flag_t::WARNING,
-			                  static_cast <unsigned long long> (this->_position.line),
-			                  static_cast <unsigned long long> (this->_position.column), message(error));
-		#endif
-	}
+	/**
+	 * @warning Место отказа кладётся в ТЕКСТ записи обеими ветвями, а не одним лишь
+	 *          доводом отладочной: иначе запись выходит разною по виду сборки, а
+	 *          читающему журнал до вида сборки дела нет
+	 */
+	#if DEBUG_MODE
+		// Записываем отказ разбора в журнал работы
+		awh::log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
+		                  {this->_position.line, this->_position.column}, awh::log::flag_t::WARNING,
+		                  static_cast <unsigned long long> (this->_position.line),
+		                  static_cast <unsigned long long> (this->_position.column), message(error));
+	#else
+		// Записываем отказ разбора в журнал работы
+		awh::log::print("JSON parsing failed at line %llu column %llu: %s", awh::log::flag_t::WARNING,
+		                  static_cast <unsigned long long> (this->_position.line),
+		                  static_cast <unsigned long long> (this->_position.column), message(error));
+	#endif
 	// Выводим признак неудачного разбора
 	return false;
 }

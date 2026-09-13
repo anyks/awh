@@ -87,6 +87,8 @@
  *
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Параметры теста выполнения пингования
@@ -200,9 +202,9 @@ class IoPingParameterizedFixture : public IoFixture, public ::testing::WithParam
 		IoPingTestParameter _parameter = GetParam();
 	public:
 		// Создаём объект работы с датами
-		std::unique_ptr <awh::chrono_t> chrono = std::make_unique <awh::chrono_t> (this->_fmk.get(), this->_log.get());
+		std::unique_ptr <awh::chrono_t> chrono = std::make_unique <awh::chrono_t> ();
 		// Создаём объект работы с IP-адресами
-		std::unique_ptr <awh::net_addr_t> addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
+		std::unique_ptr <awh::net_addr_t> addr = std::make_unique <awh::net_addr_t> ();
 };
 
 /**
@@ -299,9 +301,9 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	// Устанавливаем адрес сервера назначения
 	ASSERT_TRUE(this->_io->setTarget(eid, this->_parameter.target));
 	// Устанавливаем функцию обратного вызова на запись в событие
-	this->_io->on(eid, static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+	this->_io->on(eid, static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 		// Записываем в лог сообщение о переподключении события
-		this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+		awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 	}));
 	// Устанавливаем функцию обратного вызова на чтение из события
 	/**
@@ -311,7 +313,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 *       постоянности признака перенесён к самому его объявлению - лечится
 	 *       предупреждение там, а не здесь
 	 */
-	this->_io->on(eid, [this, &raw, identifier, &expected, &replies](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+	this->_io->on(eid, [&raw, identifier, &expected, &replies](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Если принятого не хватает даже на заголовок
 		if((data == nullptr) || (size == 0))
 			// Выходим из разбора отклика
@@ -363,9 +365,9 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		// Получаем заголовок ICMP принятого отклика
 		const struct IoPingParameterizedFixture::IcmpHeader * icmp = &header;
 		// Записываем в лог сведения о принятом отклике
-		this->_log->print(
+		awh::log::print(
 			"Прочитано: ID=%u, %zu байт, заголовок IP %zu байт, тип %u, код %u",
-			awh::log_t::flag_t::INFO, eid, size, offset,
+			awh::log::flag_t::INFO, eid, size, offset,
 			static_cast <uint32_t> (icmp->type), static_cast <uint32_t> (icmp->code)
 		);
 		/**
@@ -399,7 +401,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 		replies++;
 	});
 	// Устанавливаем функцию обратного вызова на ошибку события
-	this->_io->on(eid, [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+	this->_io->on(eid, [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 		/**
 		 * Обрабатываем статус события
 		 */
@@ -407,57 +409,57 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 			// Если ошибка неизвестного события
 			case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
 				// Записываем ошибку в лог неизвестного события
-				this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка недопустимой операции
 			case static_cast <uint8_t> (awh::event::error_t::INVALID):
 				// Записываем ошибку в лог недопустимой операции
-				this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Недопустимая операция события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка доступа запрещёния
 			case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
 				// Записываем ошибку в лог доступа запрещёния
-				this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка уже существующего объекта
 			case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
 				// Записываем ошибку в лог уже существующего объекта
-				this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Объект события уже существует: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка доступа к сокету
 			case static_cast <uint8_t> (awh::event::error_t::INVALID_SOCKET):
 				// Записываем ошибку в лог доступа к сокету
-				this->_log->print("Ошибка доступа к сокету события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Ошибка доступа к сокету события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка некорректного адреса
 			case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
 				// Записываем ошибку в лог некорректного адреса
-				this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Некорректный адрес события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка ошибки подключения
 			case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
 				// Записываем ошибку в лог подключения
-				this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Ошибка подключения события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка недостаточно ресурсов
 			case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
 				// Записываем ошибку в лог недостаточно ресурсов
-				this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если ошибка события
 			case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
 				// Записываем ошибку в лог события
-				this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 			// Если объект не найден
 			case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
 				// Записываем ошибку в лог события
-				this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+				awh::log::print("Объект события не найден: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 			break;
 		}
 	});
 	// Устанавливаем функцию обратного вызова на общее событие
-	this->_io->on(eid, [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+	this->_io->on(eid, [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 		/**
 		 * Обрабатываем действие события
 		 */
@@ -465,62 +467,62 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 			// Если действие является чтением
 			case static_cast <uint8_t> (awh::event::action_t::READ):
 				// Записываем в лог сообщение о чтении события
-				this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на чтение: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является записью
 			case static_cast <uint8_t> (awh::event::action_t::WRITE):
 				// Записываем в лог сообщение о записи события
-				this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на запись: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является подключением
 			case static_cast <uint8_t> (awh::event::action_t::CONNECT):
 				// Записываем в лог сообщение о подключении события
-				this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на подключение: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является отключением
 			case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
 				// Записываем в лог сообщение об отключении события
-				this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на отключение: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является переподключением
 			case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
 				// Записываем в лог сообщение о переподключении события
-				this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на переподключение: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является закрытием
 			case static_cast <uint8_t> (awh::event::action_t::CLOSE):
 				// Записываем в лог сообщение о закрытии события
-				this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на закрытие подключения: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является изменением
 			case static_cast <uint8_t> (awh::event::action_t::CHANGE):
 				// Записываем в лог сообщение об изменении события
-				this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на изменение: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является удалением
 			case static_cast <uint8_t> (awh::event::action_t::DELETE):
 				// Записываем в лог сообщение об удалении события
-				this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на удаление: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является переименованием
 			case static_cast <uint8_t> (awh::event::action_t::RENAME):
 				// Записываем в лог сообщение о переименовании события
-				this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на переименование: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является изменением атрибутов
 			case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
 				// Записываем в лог сообщение об изменении атрибутов события
-				this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на изменение атрибутов: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является отзывом доступа
 			case static_cast <uint8_t> (awh::event::action_t::REVOKE):
 				// Записываем в лог сообщение об отзыве доступа события
-				this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на отзыв доступа: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 			// Если действие является изменением счётчика жёстких ссылок
 			case static_cast <uint8_t> (awh::event::action_t::HDLINK):
 				// Записываем в лог сообщение о изменении счётчика жёстких ссылок события
-				this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+				awh::log::print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log::flag_t::INFO, eid);
 			break;
 		}
 	});
@@ -744,7 +746,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 			// Если статус события успешен
 			if(status == awh::event::status_t::SUCCESS){
 				// Записываем в лог сообщение о срабатывании интервала
-				this->_log->print("Интервал сработал: ID=%u, %u seconds", awh::log_t::flag_t::INFO, eid, std::chrono::duration_cast <std::chrono::seconds> (shift - ts).count());
+				awh::log::print("Интервал сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, std::chrono::duration_cast <std::chrono::seconds> (shift - ts).count());
 				// Замеряем время начала работы для интервала времени
 				this->ts = std::move(shift);
 				// Если таймер отработал 10 раз, выходим
@@ -769,7 +771,7 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 			// Если статус события успешен
 			if(status == awh::event::status_t::SUCCESS){
 				// Записываем в лог сообщение о срабатывании таймера
-				this->_log->print("Таймер сработал: ID=%u, %u seconds", awh::log_t::flag_t::INFO, eid, std::chrono::duration_cast <std::chrono::seconds> (shift - this->ts).count());
+				awh::log::print("Таймер сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, std::chrono::duration_cast <std::chrono::seconds> (shift - this->ts).count());
 				// Увеличиваем количество срабатываний таймаута
 				count++;
 				// Останавливаем тест
@@ -942,7 +944,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 			// Получаем путь к своему двоичному файлу: работник это тот же файл
 			ASSERT_GT(::GetModuleFileNameW(nullptr, executable, static_cast <DWORD> (sizeof(executable) / sizeof(executable[0]))), 0u);
 			// Передаём имя канала обмена порождаемому процессу через окружение
-			ASSERT_TRUE(::SetEnvironmentVariableW(L"AWH_IO_IPC_PIPE", this->_fmk->convert(pipe).c_str()));
+			ASSERT_TRUE(::SetEnvironmentVariableW(L"AWH_IO_IPC_PIPE", awh::fmk::convert(pipe).c_str()));
 			/**
 			 * Передаём работнику семейство и вид узла обмена
 			 *
@@ -1024,7 +1026,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 				// Если поток не создан
 				case -1: {
 					// Записываем в лог сообщение
-					this->_log->print("Child process could not be created", awh::log_t::flag_t::CRITICAL);
+					awh::log::print("Child process could not be created", awh::log::flag_t::CRITICAL);
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				} break;
@@ -1074,7 +1076,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Устананавливаем опции события
 					ASSERT_TRUE(this->_io->setOptions(mfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					this->_io->on(cfds[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					this->_io->on(cfds[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1082,86 +1084,86 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если статус принятия
 							case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
 								// Записываем в лог сообщение о принятии события
-								this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие принято: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус уничтожения
 							case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
 								// Записываем в лог сообщение об уничтожении события
-								this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подлежит уничтожению: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус инициализации
 							case static_cast <uint8_t> (awh::event::status_t::INITIAL):
 								// Записываем в лог сообщение об инициализации события
-								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие инициализировано: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
 							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Записываем в лог сообщение о запуске события
-								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие запущено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
 								// Записываем в лог сообщение о паузе события
-								this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на паузе: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус возобновления события
 							case static_cast <uint8_t> (awh::event::status_t::RESUMED):
 								// Записываем в лог сообщение о возобновлении события
-								this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие возобновлено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус успешного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
 								// Записываем в лог сообщение о успешном выполнении события
-								this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие успешно выполнено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус неудачного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::FAILURE):
 								// Записываем в лог сообщение о неудачном выполнении события
-								this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+								awh::log::print("Событие выполнено с ошибкой: ID=%u", awh::log::flag_t::CRITICAL, eid);
 							break;
 							// Если статус выполнения события в ожидании
 							case static_cast <uint8_t> (awh::event::status_t::PENDING):
 								// Записываем в лог сообщение о выполнении события в ожидании
-								this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие в ожидании: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус подключения события
 							case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус отмены события
 							case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
 								// Записываем в лог сообщение об отмене события
-								this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие отменено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус переподключения события
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие переподключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус прослушивания события
 							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
 								// Записываем в лог сообщение о прослушивании события
-								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие прослушивается: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(mfds[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(mfds[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(cfds[0], [mpid, &stop, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					this->_io->on(cfds[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
+						awh::log::print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 						// Останавливаем тест
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(cfds[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					this->_io->on(cfds[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1169,52 +1171,52 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если ошибка неизвестного события
 							case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
 								// Записываем ошибку в лог неизвестного события
-								this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недопустимой операции
 							case static_cast <uint8_t> (awh::event::error_t::INVALID):
 								// Записываем ошибку в лог недопустимой операции
-								this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недопустимая операция события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка доступа запрещёния
 							case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
 								// Записываем ошибку в лог доступа запрещёния
-								this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка уже существующего объекта
 							case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
 								// Записываем ошибку в лог уже существующего объекта
-								this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события уже существует: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка некорректного адреса
 							case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
 								// Записываем ошибку в лог некорректного адреса
-								this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Некорректный адрес события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка ошибки подключения
 							case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
 								// Записываем ошибку в лог подключения
-								this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка подключения события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недостаточно ресурсов
 							case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
 								// Записываем ошибку в лог недостаточно ресурсов
-								this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка события
 							case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
 								// Записываем ошибку в лог события
-								this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если объект не найден
 							case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
 								// Записываем ошибку в лог события
-								this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события не найден: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(cfds[0], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					this->_io->on(cfds[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -1222,62 +1224,62 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если действие является чтением
 							case static_cast <uint8_t> (awh::event::action_t::READ):
 								// Записываем в лог сообщение о чтении события
-								this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на чтение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является записью
 							case static_cast <uint8_t> (awh::event::action_t::WRITE):
 								// Записываем в лог сообщение о записи события
-								this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на запись: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является подключением
 							case static_cast <uint8_t> (awh::event::action_t::CONNECT):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на подключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отключением
 							case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
 								// Записываем в лог сообщение об отключении события
-								this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переподключением
 							case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переподключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является закрытием
 							case static_cast <uint8_t> (awh::event::action_t::CLOSE):
 								// Записываем в лог сообщение о закрытии события
-								this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на закрытие подключения: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением
 							case static_cast <uint8_t> (awh::event::action_t::CHANGE):
 								// Записываем в лог сообщение об изменении события
-								this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является удалением
 							case static_cast <uint8_t> (awh::event::action_t::DELETE):
 								// Записываем в лог сообщение об удалении события
-								this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на удаление: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переименованием
 							case static_cast <uint8_t> (awh::event::action_t::RENAME):
 								// Записываем в лог сообщение о переименовании события
-								this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переименование: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением атрибутов
 							case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
 								// Записываем в лог сообщение об изменении атрибутов события
-								this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение атрибутов: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отзывом доступа
 							case static_cast <uint8_t> (awh::event::action_t::REVOKE):
 								// Записываем в лог сообщение об отзыве доступа события
-								this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отзыв доступа: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением счётчика жёстких ссылок
 							case static_cast <uint8_t> (awh::event::action_t::HDLINK):
 								// Записываем в лог сообщение о изменении счётчика жёстких ссылок события
-								this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
@@ -1320,7 +1322,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Устананавливаем опции события
 					ASSERT_TRUE(this->_io->setOptions(cfds[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на получение статуса события
-					this->_io->on(mfds[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					this->_io->on(mfds[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1328,86 +1330,86 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если статус принятия
 							case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
 								// Записываем в лог сообщение о принятии события
-								this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие принято: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус уничтожения
 							case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
 								// Записываем в лог сообщение об уничтожении события
-								this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подлежит уничтожению: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус инициализации
 							case static_cast <uint8_t> (awh::event::status_t::INITIAL):
 								// Записываем в лог сообщение об инициализации события
-								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие инициализировано: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
 							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Записываем в лог сообщение о запуске события
-								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие запущено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
 								// Записываем в лог сообщение о паузе события
-								this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на паузе: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус возобновления события
 							case static_cast <uint8_t> (awh::event::status_t::RESUMED):
 								// Записываем в лог сообщение о возобновлении события
-								this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие возобновлено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус успешного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
 								// Записываем в лог сообщение о успешном выполнении события
-								this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие успешно выполнено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус неудачного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::FAILURE):
 								// Записываем в лог сообщение о неудачном выполнении события
-								this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+								awh::log::print("Событие выполнено с ошибкой: ID=%u", awh::log::flag_t::CRITICAL, eid);
 							break;
 							// Если статус выполнения события в ожидании
 							case static_cast <uint8_t> (awh::event::status_t::PENDING):
 								// Записываем в лог сообщение о выполнении события в ожидании
-								this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие в ожидании: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус подключения события
 							case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус отмены события
 							case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
 								// Записываем в лог сообщение об отмене события
-								this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие отменено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус переподключения события
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие переподключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус прослушивания события
 							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
 								// Записываем в лог сообщение о прослушивании события
-								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие прослушивается: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(cfds[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(cfds[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(mfds[0], [mpid, &stop, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					this->_io->on(mfds[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
+						awh::log::print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 						// Останавливаем тест
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(mfds[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					this->_io->on(mfds[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1415,52 +1417,52 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если ошибка неизвестного события
 							case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
 								// Записываем ошибку в лог неизвестного события
-								this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недопустимой операции
 							case static_cast <uint8_t> (awh::event::error_t::INVALID):
 								// Записываем ошибку в лог недопустимой операции
-								this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недопустимая операция события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка доступа запрещёния
 							case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
 								// Записываем ошибку в лог доступа запрещёния
-								this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка уже существующего объекта
 							case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
 								// Записываем ошибку в лог уже существующего объекта
-								this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события уже существует: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка некорректного адреса
 							case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
 								// Записываем ошибку в лог некорректного адреса
-								this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Некорректный адрес события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка ошибки подключения
 							case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
 								// Записываем ошибку в лог подключения
-								this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка подключения события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недостаточно ресурсов
 							case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
 								// Записываем ошибку в лог недостаточно ресурсов
-								this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка события
 							case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
 								// Записываем ошибку в лог события
-								this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если объект не найден
 							case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
 								// Записываем ошибку в лог события
-								this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события не найден: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(mfds[0], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					this->_io->on(mfds[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -1468,62 +1470,62 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если действие является чтением
 							case static_cast <uint8_t> (awh::event::action_t::READ):
 								// Записываем в лог сообщение о чтении события
-								this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на чтение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является записью
 							case static_cast <uint8_t> (awh::event::action_t::WRITE):
 								// Записываем в лог сообщение о записи события
-								this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на запись: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является подключением
 							case static_cast <uint8_t> (awh::event::action_t::CONNECT):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на подключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отключением
 							case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
 								// Записываем в лог сообщение об отключении события
-								this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переподключением
 							case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переподключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является закрытием
 							case static_cast <uint8_t> (awh::event::action_t::CLOSE):
 								// Записываем в лог сообщение о закрытии события
-								this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на закрытие подключения: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением
 							case static_cast <uint8_t> (awh::event::action_t::CHANGE):
 								// Записываем в лог сообщение об изменении события
-								this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является удалением
 							case static_cast <uint8_t> (awh::event::action_t::DELETE):
 								// Записываем в лог сообщение об удалении события
-								this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на удаление: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переименованием
 							case static_cast <uint8_t> (awh::event::action_t::RENAME):
 								// Записываем в лог сообщение о переименовании события
-								this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переименование: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением атрибутов
 							case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
 								// Записываем в лог сообщение об изменении атрибутов события
-								this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение атрибутов: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отзывом доступа
 							case static_cast <uint8_t> (awh::event::action_t::REVOKE):
 								// Записываем в лог сообщение об отзыве доступа события
-								this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отзыв доступа: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением счётчика жёстких ссылок
 							case static_cast <uint8_t> (awh::event::action_t::HDLINK):
 								// Записываем в лог сообщение о изменении счётчика жёстких ссылок события
-								this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
@@ -1596,7 +1598,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 				// Если поток не создан
 				case -1: {
 					// Записываем в лог сообщение
-					this->_log->print("Child process could not be created", awh::log_t::flag_t::CRITICAL);
+					awh::log::print("Child process could not be created", awh::log::flag_t::CRITICAL);
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
 				} break;
@@ -1642,7 +1644,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Устананавливаем опции события
 					ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
-					this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					this->_io->on(events[1], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1650,86 +1652,86 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если статус принятия
 							case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
 								// Записываем в лог сообщение о принятии события
-								this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие принято: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус уничтожения
 							case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
 								// Записываем в лог сообщение об уничтожении события
-								this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подлежит уничтожению: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус инициализации
 							case static_cast <uint8_t> (awh::event::status_t::INITIAL):
 								// Записываем в лог сообщение об инициализации события
-								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие инициализировано: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
 							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Записываем в лог сообщение о запуске события
-								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие запущено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
 								// Записываем в лог сообщение о паузе события
-								this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на паузе: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус возобновления события
 							case static_cast <uint8_t> (awh::event::status_t::RESUMED):
 								// Записываем в лог сообщение о возобновлении события
-								this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие возобновлено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус успешного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
 								// Записываем в лог сообщение о успешном выполнении события
-								this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие успешно выполнено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус неудачного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::FAILURE):
 								// Записываем в лог сообщение о неудачном выполнении события
-								this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+								awh::log::print("Событие выполнено с ошибкой: ID=%u", awh::log::flag_t::CRITICAL, eid);
 							break;
 							// Если статус выполнения события в ожидании
 							case static_cast <uint8_t> (awh::event::status_t::PENDING):
 								// Записываем в лог сообщение о выполнении события в ожидании
-								this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие в ожидании: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус подключения события
 							case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус отмены события
 							case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
 								// Записываем в лог сообщение об отмене события
-								this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие отменено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус переподключения события
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие переподключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус прослушивания события
 							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
 								// Записываем в лог сообщение о прослушивании события
-								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие прослушивается: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(events[1], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(events[1], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(events[1], [mpid, &stop, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					this->_io->on(events[1], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
+						awh::log::print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 						// Останавливаем тест
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					this->_io->on(events[1], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1737,52 +1739,52 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если ошибка неизвестного события
 							case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
 								// Записываем ошибку в лог неизвестного события
-								this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недопустимой операции
 							case static_cast <uint8_t> (awh::event::error_t::INVALID):
 								// Записываем ошибку в лог недопустимой операции
-								this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недопустимая операция события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка доступа запрещёния
 							case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
 								// Записываем ошибку в лог доступа запрещёния
-								this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка уже существующего объекта
 							case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
 								// Записываем ошибку в лог уже существующего объекта
-								this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события уже существует: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка некорректного адреса
 							case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
 								// Записываем ошибку в лог некорректного адреса
-								this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Некорректный адрес события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка ошибки подключения
 							case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
 								// Записываем ошибку в лог подключения
-								this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка подключения события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недостаточно ресурсов
 							case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
 								// Записываем ошибку в лог недостаточно ресурсов
-								this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка события
 							case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
 								// Записываем ошибку в лог события
-								this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если объект не найден
 							case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
 								// Записываем ошибку в лог события
-								this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события не найден: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(events[1], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					this->_io->on(events[1], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -1790,62 +1792,62 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если действие является чтением
 							case static_cast <uint8_t> (awh::event::action_t::READ):
 								// Записываем в лог сообщение о чтении события
-								this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на чтение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является записью
 							case static_cast <uint8_t> (awh::event::action_t::WRITE):
 								// Записываем в лог сообщение о записи события
-								this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на запись: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является подключением
 							case static_cast <uint8_t> (awh::event::action_t::CONNECT):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на подключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отключением
 							case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
 								// Записываем в лог сообщение об отключении события
-								this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переподключением
 							case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переподключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является закрытием
 							case static_cast <uint8_t> (awh::event::action_t::CLOSE):
 								// Записываем в лог сообщение о закрытии события
-								this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на закрытие подключения: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением
 							case static_cast <uint8_t> (awh::event::action_t::CHANGE):
 								// Записываем в лог сообщение об изменении события
-								this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является удалением
 							case static_cast <uint8_t> (awh::event::action_t::DELETE):
 								// Записываем в лог сообщение об удалении события
-								this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на удаление: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переименованием
 							case static_cast <uint8_t> (awh::event::action_t::RENAME):
 								// Записываем в лог сообщение о переименовании события
-								this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переименование: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением атрибутов
 							case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
 								// Записываем в лог сообщение об изменении атрибутов события
-								this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение атрибутов: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отзывом доступа
 							case static_cast <uint8_t> (awh::event::action_t::REVOKE):
 								// Записываем в лог сообщение об отзыве доступа события
-								this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отзыв доступа: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением счётчика жёстких ссылок
 							case static_cast <uint8_t> (awh::event::action_t::HDLINK):
 								// Записываем в лог сообщение о изменении счётчика жёстких ссылок события
-								this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
@@ -1883,7 +1885,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 					// Устананавливаем опции события
 					ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
 					// Устанавливаем функцию обратного вызова на событие таймера
-					this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+					this->_io->on(events[0], [](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1891,86 +1893,86 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если статус принятия
 							case static_cast <uint8_t> (awh::event::status_t::ACCEPTED):
 								// Записываем в лог сообщение о принятии события
-								this->_log->print("Событие принято: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие принято: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус уничтожения
 							case static_cast <uint8_t> (awh::event::status_t::DESTROYED):
 								// Записываем в лог сообщение об уничтожении события
-								this->_log->print("Событие подлежит уничтожению: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подлежит уничтожению: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус инициализации
 							case static_cast <uint8_t> (awh::event::status_t::INITIAL):
 								// Записываем в лог сообщение об инициализации события
-								this->_log->print("Событие инициализировано: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие инициализировано: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус запуска события
 							case static_cast <uint8_t> (awh::event::status_t::LAUNCHED):
 								// Записываем в лог сообщение о запуске события
-								this->_log->print("Событие запущено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие запущено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус паузы события
 							case static_cast <uint8_t> (awh::event::status_t::PAUSED):
 								// Записываем в лог сообщение о паузе события
-								this->_log->print("Событие на паузе: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на паузе: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус возобновления события
 							case static_cast <uint8_t> (awh::event::status_t::RESUMED):
 								// Записываем в лог сообщение о возобновлении события
-								this->_log->print("Событие возобновлено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие возобновлено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус успешного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::SUCCESS):
 								// Записываем в лог сообщение о успешном выполнении события
-								this->_log->print("Событие успешно выполнено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие успешно выполнено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус неудачного выполнения события
 							case static_cast <uint8_t> (awh::event::status_t::FAILURE):
 								// Записываем в лог сообщение о неудачном выполнении события
-								this->_log->print("Событие выполнено с ошибкой: ID=%u", awh::log_t::flag_t::CRITICAL, eid);
+								awh::log::print("Событие выполнено с ошибкой: ID=%u", awh::log::flag_t::CRITICAL, eid);
 							break;
 							// Если статус выполнения события в ожидании
 							case static_cast <uint8_t> (awh::event::status_t::PENDING):
 								// Записываем в лог сообщение о выполнении события в ожидании
-								this->_log->print("Событие в ожидании: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие в ожидании: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус подключения события
 							case static_cast <uint8_t> (awh::event::status_t::CONNECTED):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие подключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие подключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус отмены события
 							case static_cast <uint8_t> (awh::event::status_t::CANCELLED):
 								// Записываем в лог сообщение об отмене события
-								this->_log->print("Событие отменено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие отменено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус переподключения события
 							case static_cast <uint8_t> (awh::event::status_t::RECONNECTED):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие переподключено: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие переподключено: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если статус прослушивания события
 							case static_cast <uint8_t> (awh::event::status_t::LISTENING):
 								// Записываем в лог сообщение о прослушивании события
-								this->_log->print("Событие прослушивается: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие прослушивается: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на запись в событие
-					this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([this](const awh::event::id_t eid, const size_t size) noexcept -> void {
+					this->_io->on(events[0], static_cast <awh::engine::callback::write_t> ([](const awh::event::id_t eid, const size_t size) noexcept -> void {
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
+						awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
 					}));
 					// Устанавливаем функцию обратного вызова на чтение из события
-					this->_io->on(events[0], [mpid, &stop, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+					this->_io->on(events[0], [mpid, &stop](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 						// Текст входящего сообщения
 						const std::string message(reinterpret_cast <const char *> (data), size);
 						// Записываем в лог сообщение о переподключении события
-						this->_log->print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log_t::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
+						awh::log::print("Прочитано: ID=%u, MPID=%u, PID=%u, %zu байт, сообщение: %s", awh::log::flag_t::INFO, eid, mpid, ::getpid(), size, message.c_str());
 						// Останавливаем тест
 						stop = true;
 					});
 					// Устанавливаем функцию обратного вызова на ошибку события
-					this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
+					this->_io->on(events[0], [](const awh::event::id_t eid, const awh::event::error_t error, const std::string & description) noexcept -> void {
 						/**
 						 * Обрабатываем статус события
 						 */
@@ -1978,52 +1980,52 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если ошибка неизвестного события
 							case static_cast <uint8_t> (awh::event::error_t::UNKNOWN):
 								// Записываем ошибку в лог неизвестного события
-								this->_log->print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Неизвестная ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недопустимой операции
 							case static_cast <uint8_t> (awh::event::error_t::INVALID):
 								// Записываем ошибку в лог недопустимой операции
-								this->_log->print("Недопустимая операция события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недопустимая операция события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка доступа запрещёния
 							case static_cast <uint8_t> (awh::event::error_t::ACCESS_DENIED):
 								// Записываем ошибку в лог доступа запрещёния
-								this->_log->print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Доступ к событию запрещён: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка уже существующего объекта
 							case static_cast <uint8_t> (awh::event::error_t::ALREADY_EXISTS):
 								// Записываем ошибку в лог уже существующего объекта
-								this->_log->print("Объект события уже существует: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события уже существует: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка некорректного адреса
 							case static_cast <uint8_t> (awh::event::error_t::INVALID_ADDRESS):
 								// Записываем ошибку в лог некорректного адреса
-								this->_log->print("Некорректный адрес события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Некорректный адрес события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка ошибки подключения
 							case static_cast <uint8_t> (awh::event::error_t::CONNECTION_FAIL):
 								// Записываем ошибку в лог подключения
-								this->_log->print("Ошибка подключения события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка подключения события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка недостаточно ресурсов
 							case static_cast <uint8_t> (awh::event::error_t::INSUFFICIENT_RES):
 								// Записываем ошибку в лог недостаточно ресурсов
-								this->_log->print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Недостаточно ресурсов для события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если ошибка события
 							case static_cast <uint8_t> (awh::event::error_t::EVENT_FAIL):
 								// Записываем ошибку в лог события
-								this->_log->print("Ошибка события: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Ошибка события: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 							// Если объект не найден
 							case static_cast <uint8_t> (awh::event::error_t::NOT_FOUND):
 								// Записываем ошибку в лог события
-								this->_log->print("Объект события не найден: ID=%u, Описание=%s", awh::log_t::flag_t::CRITICAL, eid, description.c_str());
+								awh::log::print("Объект события не найден: ID=%u, Описание=%s", awh::log::flag_t::CRITICAL, eid, description.c_str());
 							break;
 						}
 					});
 					// Устанавливаем функцию обратного вызова на общее событие
-					this->_io->on(events[0], [this](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
+					this->_io->on(events[0], [](const awh::event::id_t eid, const awh::event::action_t action) noexcept -> void {
 						/**
 						 * Обрабатываем действие события
 						 */
@@ -2031,62 +2033,62 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 							// Если действие является чтением
 							case static_cast <uint8_t> (awh::event::action_t::READ):
 								// Записываем в лог сообщение о чтении события
-								this->_log->print("Событие на чтение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на чтение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является записью
 							case static_cast <uint8_t> (awh::event::action_t::WRITE):
 								// Записываем в лог сообщение о записи события
-								this->_log->print("Событие на запись: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на запись: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является подключением
 							case static_cast <uint8_t> (awh::event::action_t::CONNECT):
 								// Записываем в лог сообщение о подключении события
-								this->_log->print("Событие на подключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на подключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отключением
 							case static_cast <uint8_t> (awh::event::action_t::DISCONNECT):
 								// Записываем в лог сообщение об отключении события
-								this->_log->print("Событие на отключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переподключением
 							case static_cast <uint8_t> (awh::event::action_t::RECONNECT):
 								// Записываем в лог сообщение о переподключении события
-								this->_log->print("Событие на переподключение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переподключение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является закрытием
 							case static_cast <uint8_t> (awh::event::action_t::CLOSE):
 								// Записываем в лог сообщение о закрытии события
-								this->_log->print("Событие на закрытие подключения: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на закрытие подключения: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением
 							case static_cast <uint8_t> (awh::event::action_t::CHANGE):
 								// Записываем в лог сообщение об изменении события
-								this->_log->print("Событие на изменение: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является удалением
 							case static_cast <uint8_t> (awh::event::action_t::DELETE):
 								// Записываем в лог сообщение об удалении события
-								this->_log->print("Событие на удаление: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на удаление: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является переименованием
 							case static_cast <uint8_t> (awh::event::action_t::RENAME):
 								// Записываем в лог сообщение о переименовании события
-								this->_log->print("Событие на переименование: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на переименование: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением атрибутов
 							case static_cast <uint8_t> (awh::event::action_t::ATTRIB):
 								// Записываем в лог сообщение об изменении атрибутов события
-								this->_log->print("Событие на изменение атрибутов: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение атрибутов: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является отзывом доступа
 							case static_cast <uint8_t> (awh::event::action_t::REVOKE):
 								// Записываем в лог сообщение об отзыве доступа события
-								this->_log->print("Событие на отзыв доступа: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на отзыв доступа: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 							// Если действие является изменением счётчика жёстких ссылок
 							case static_cast <uint8_t> (awh::event::action_t::HDLINK):
 								// Записываем в лог сообщение о изменении счётчика жёстких ссылок события
-								this->_log->print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log_t::flag_t::INFO, eid);
+								awh::log::print("Событие на изменение счётчика жёстких ссылок: ID=%u", awh::log::flag_t::INFO, eid);
 							break;
 						}
 					});
@@ -2205,7 +2207,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 		// Проверяем, что идентификатор события канала заведён
 		ASSERT_GT(channel, 0);
 		// Устанавливаем имя канала обмена, названное родителем
-		ASSERT_TRUE(this->_io->setTarget(channel, this->_fmk->convert(std::wstring(buffer))));
+		ASSERT_TRUE(this->_io->setTarget(channel, awh::fmk::convert(std::wstring(buffer))));
 		// Выполняем фиксацию настроек канала обмена
 		ASSERT_TRUE(this->_io->commit(channel));
 		// Выполняем подключение канала обмена к родителю

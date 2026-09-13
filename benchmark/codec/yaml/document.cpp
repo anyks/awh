@@ -44,44 +44,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -244,7 +214,7 @@ namespace {
 		// Устанавливаем признак удержания исходного текста
 		settings.retain = retain;
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(::logger(), settings);
+		awh::codec::yaml::document_t document(settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -319,7 +289,7 @@ namespace {
 		// Разбираемый текст настроек
 		const string & text = large();
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(::logger());
+		awh::codec::yaml::document_t document;
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -398,7 +368,7 @@ namespace {
 		// Устанавливаем удержание исходного текста
 		settings.retain = true;
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(::logger(), settings);
+		awh::codec::yaml::document_t document(settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -468,7 +438,7 @@ namespace {
 		// Устанавливаем удержание исходного текста
 		settings.retain = true;
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(::logger(), settings);
+		awh::codec::yaml::document_t document(settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -528,7 +498,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(text.size(), SMALL_ROUNDS, [&text, &settings]() noexcept {
 			// Объект дерева документа
-			awh::codec::yaml::document_t document(::logger(), settings);
+			awh::codec::yaml::document_t document(settings);
 			/**
 			 * Если разобрать текст настроек не удалось
 			 */
@@ -611,9 +581,9 @@ namespace {
 		 *       эталон сличения: перезапись правленого дерева обязана стоить заметно
 		 *       меньше него, ибо соседи правки переносятся исходными байтами
 		 */
-		awh::codec::yaml::document_t rebuilt(::logger());
+		awh::codec::yaml::document_t rebuilt;
 		// Объект дерева документа, правку принявшего
-		awh::codec::yaml::document_t edited(::logger(), settings);
+		awh::codec::yaml::document_t edited(settings);
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */
@@ -691,7 +661,7 @@ namespace {
 		// Разбираемый текст настроек
 		const string & text = service();
 		// Объект дерева документа
-		awh::codec::yaml::document_t document(::logger());
+		awh::codec::yaml::document_t document;
 		/**
 		 * Если разобрать текст настроек не удалось
 		 */

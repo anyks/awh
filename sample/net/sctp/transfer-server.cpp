@@ -44,6 +44,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Если операционная система несёт протокол SCTP
@@ -111,11 +113,10 @@ static uint64_t digest(uint64_t hash, const uint8_t * buffer, const size_t size)
 /**
  * @brief Функция вывода итога по подключению
  *
- * @param log объект работы с логами
  * @param eid идентификатор события
  *
  */
-static void report(const log_t & log, const event::id_t eid) noexcept {
+static void report(const event::id_t eid) noexcept {
 	// Выполняем поиск учёта по подключению
 	auto i = __counters__.find(eid);
 	// Если учёт по подключению не ведётся, выводить нечего
@@ -123,7 +124,7 @@ static void report(const log_t & log, const event::id_t eid) noexcept {
 		// Выходим из функции
 		return;
 	// Выводим итог приёма
-	log.print("ИТОГ: подключение=%u октетов=%zu записей=%zu сумма=%016llX", log_t::flag_t::INFO,
+	awh::log::print("ИТОГ: подключение=%u октетов=%zu записей=%zu сумма=%016llX", awh::log::flag_t::INFO,
 		eid, i->second.bytes, i->second.records, static_cast <unsigned long long> (i->second.hash));
 	// Снимаем учёт по завершённому подключению
 	__counters__.erase(i);
@@ -138,6 +139,13 @@ static void report(const log_t & log, const event::id_t eid) noexcept {
  *
  */
 int32_t main(int32_t argc, char * argv[]){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Если вид сокета не назван
 	if(argc < 2){
 		// Выводим порядок запуска
@@ -151,16 +159,10 @@ int32_t main(int32_t argc, char * argv[]){
 	const uint16_t port = static_cast <uint16_t> ((argc > 2) ? ::atoi(argv[2]) : 2222);
 	// Определяем адрес прослушивания
 	const string address = ((argc > 3) ? argv[3] : "0.0.0.0");
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект работы с логами
-	log_t log(&fmk);
-	// Устанавливаем объект работы с логами
-	fmk.setLogger(&log);
 	// Объект асинхронного движка ввода-вывода
-	engine::io_t io(&fmk, &log);
+	engine::io_t io;
 	// Объект работы с протоколом SCTP
-	engine::sctp_t sctp(&fmk, &log);
+	engine::sctp_t sctp;
 	// Создаём событие сервера
 	event::id_t eid = io.event(
 		event::node_t::SERVER, event::family_t::IPV4,
@@ -172,7 +174,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если завести движок не удалось
 	if(!io.initialize()){
 		// Выводим сообщение об ошибке
-		log.print("Движок завести не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Движок завести не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -196,14 +198,14 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если установить адрес прослушивания не удалось
 	if(!io.setAddress(eid, event::address_t::IPV4, address)){
 		// Выводим сообщение об ошибке
-		log.print("Адрес прослушивания установить не удалось: %s", log_t::flag_t::CRITICAL, address.c_str());
+		awh::log::print("Адрес прослушивания установить не удалось: %s", awh::log::flag_t::CRITICAL, address.c_str());
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем отклик принятия подключения
-	io.on(eid, static_cast <engine::callback::accept_t> ([&io, &sctp, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
+	io.on(eid, static_cast <engine::callback::accept_t> ([&io, &sctp](const event::id_t sid, const event::id_t cid) noexcept -> void {
 		// Выводим сообщение о принятом подключении
-		log.print("Принято подключение: %u", log_t::flag_t::INFO, cid);
+		awh::log::print("Принято подключение: %u", awh::log::flag_t::INFO, cid);
 		// Заводим учёт по принятому подключению
 		__counters__.emplace(cid, counter_t());
 		// Устанавливаем опции принятого подключения
@@ -217,7 +219,7 @@ int32_t main(int32_t argc, char * argv[]){
 		 * @note Отклик этот взят намеренно вместо общего: только он приносит признак
 		 *       границы записи, а без него число записей не сосчитать
 		 */
-		sctp.on(cid, static_cast <engine::callback::sctp::message_t> ([&log](const event::id_t eid, const uint8_t * data, const size_t size, const net::sctp::rinfo_t & info) noexcept -> void {
+		sctp.on(cid, static_cast <engine::callback::sctp::message_t> ([](const event::id_t eid, const uint8_t * data, const size_t size, const net::sctp::rinfo_t & info) noexcept -> void {
 			// Выполняем поиск учёта по подключению
 			auto i = __counters__.find(eid);
 			// Если учёт по подключению не ведётся
@@ -238,7 +240,7 @@ int32_t main(int32_t argc, char * argv[]){
 				i->second.records++;
 		}));
 		// Устанавливаем отклик состояния принятого подключения
-		io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
+		io.on(cid, [](const event::id_t eid, const event::status_t status) noexcept -> void {
 			/**
 			 * Определяем состояние события
 			 */
@@ -247,12 +249,12 @@ int32_t main(int32_t argc, char * argv[]){
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 				case static_cast <uint8_t> (event::status_t::GARBAGE):
 					// Выводим итог приёма
-					report(log, eid);
+					report(eid);
 				break;
 			}
 		});
 		// Устанавливаем отклик действий принятого подключения
-		io.on(cid, [&log](const event::id_t eid, const event::action_t action) noexcept -> void {
+		io.on(cid, [](const event::id_t eid, const event::action_t action) noexcept -> void {
 			/**
 			 * Определяем действие события
 			 */
@@ -261,7 +263,7 @@ int32_t main(int32_t argc, char * argv[]){
 				case static_cast <uint8_t> (event::action_t::CLOSE):
 				case static_cast <uint8_t> (event::action_t::DISCONNECT):
 					// Выводим итог приёма
-					report(log, eid);
+					report(eid);
 				break;
 			}
 		});
@@ -269,26 +271,26 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если зафиксировать настройки события не удалось
 	if(!io.commit(eid)){
 		// Выводим сообщение об ошибке
-		log.print("Настройки события зафиксировать не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Настройки события зафиксировать не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если включить прослушивание не удалось
 	if(!io.listen(eid, 64)){
 		// Выводим сообщение об ошибке
-		log.print("Прослушивание включить не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Прослушивание включить не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если запустить событие не удалось
 	if(!io.launch(eid)){
 		// Выводим сообщение об ошибке
-		log.print("Событие запустить не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Событие запустить не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Выводим сообщение о запуске
-	log.print("Сервер запущен: %s:%u вид сокета %s", log_t::flag_t::INFO,
+	awh::log::print("Сервер запущен: %s:%u вид сокета %s", awh::log::flag_t::INFO,
 		address.c_str(), port, (stream ? "STREAM" : "SEQPACKET"));
 	// Крутим цикл событий
 	while(io.poll());

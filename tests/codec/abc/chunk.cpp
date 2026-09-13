@@ -27,6 +27,7 @@
 #include <gtest/gtest.h>
 #include <codec/abc/abc.hpp>
 #include <cryptography/hash.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -49,10 +50,6 @@ namespace {
 	 */
 	class ChunkFixture : public testing::Test {
 		protected:
-			// Объект фреймворка
-			unique_ptr <fmk_t> _fmk;
-			// Объект журнала
-			unique_ptr <log_t> _log;
 			// Объект сжатия данных
 			unique_ptr <compressor::block_t> _compressor;
 			// Объект шифрования данных
@@ -63,14 +60,10 @@ namespace {
 			 *
 			 */
 			void SetUp() override {
-				// Выполняем заведение объекта фреймворка
-				this->_fmk = make_unique <fmk_t> ();
-				// Выполняем заведение объекта журнала
-				this->_log = make_unique <log_t> (this->_fmk.get());
 				// Выполняем заведение объекта сжатия данных
-				this->_compressor = make_unique <compressor::block_t> (this->_log.get());
+				this->_compressor = make_unique <compressor::block_t> ();
 				// Выполняем заведение объекта шифрования данных
-				this->_crypto = make_unique <crypto_t> (this->_fmk.get(), this->_log.get());
+				this->_crypto = make_unique <crypto_t> ();
 				// Выполняем установку соли шифрования
 				this->_crypto->salt("соль контейнера");
 				// Выполняем установку пароля шифрования
@@ -131,7 +124,7 @@ namespace {
  */
 TEST_F(ChunkFixture, PlainRoundtrip) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Укладываемое содержимое кадра
 	const string payload = "содержимое кадра";
 	// Буфер уложенного кадра
@@ -171,7 +164,7 @@ TEST_F(ChunkFixture, PlainRoundtrip) {
  */
 TEST_F(ChunkFixture, EmptyPayload) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Буфер уложенного кадра
 	vector <uint8_t> record;
 	// Выполняем укладку кадра с пустым содержимым
@@ -202,7 +195,7 @@ TEST_F(ChunkFixture, EmptyPayload) {
  */
 TEST_F(ChunkFixture, Compression) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Выполняем установку модуля сжатия
 	packer.compressor(this->_compressor.get());
 	// Укладываемое хорошо сжимаемое содержимое
@@ -339,7 +332,7 @@ TEST_F(ChunkFixture, Compression) {
  */
 TEST_F(ChunkFixture, Suggestion) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Настройки укладки кадра
 	abc::packer_t::settings_t settings;
 	// Выполняем установку метода сжатия знакового текста
@@ -372,7 +365,7 @@ TEST_F(ChunkFixture, Suggestion) {
  */
 TEST_F(ChunkFixture, Encryption) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Настройки укладки кадра
 	abc::packer_t::settings_t settings;
 	// Выполняем объявление шифрования содержимого кадра
@@ -418,7 +411,7 @@ TEST_F(ChunkFixture, Encryption) {
 	// Выполняем проверку отказа снятия кадра без модуля шифрования
 	{
 		// Укладчик кадров без модуля шифрования
-		abc::packer_t plain(this->_log.get());
+		abc::packer_t plain;
 		// Смещение снятия кадра
 		size_t offset = 0;
 		// Снятое содержимое кадра
@@ -437,7 +430,7 @@ TEST_F(ChunkFixture, Encryption) {
  */
 TEST_F(ChunkFixture, Sequence) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Буфер уложенных кадров
 	vector <uint8_t> record;
 	/**
@@ -503,7 +496,7 @@ TEST_F(ChunkFixture, Failures) {
 	};
 
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Укладываемое содержимое кадра
 	const string payload = "содержимое кадра";
 	// Буфер уложенного кадра
@@ -611,7 +604,7 @@ TEST_F(ChunkFixture, UnknownMethod) {
 	};
 
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Выполняем установку модуля сжатия
 	packer.compressor(this->_compressor.get());
 	// Укладываемое содержимое кадра
@@ -681,7 +674,7 @@ TEST_F(ChunkFixture, UnknownMethod) {
 	 * отказом сжатия, а не опознания, и разжимать мусор всеми движками подряд ради
 	 * одного этого различия ни к чему
 	 */
-	abc::packer_t plain(this->_log.get());
+	abc::packer_t plain;
 	/**
 	 * Выполняем перебор всех ведомых значений октета метода сжатия
 	 */
@@ -730,7 +723,7 @@ TEST_F(ChunkFixture, UnknownMethod) {
  */
 TEST_F(ChunkFixture, EnvelopeWraps) {
 	// Укладчик кадра
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Обёртываемая запись
 	const string payload(300, 'w');
 	// Буфер обёртываемой записи
@@ -776,7 +769,7 @@ TEST_F(ChunkFixture, EnvelopeWraps) {
 }
 TEST_F(ChunkFixture, ChecksumRefusal) {
 	// Укладчик кадра
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Укладываемое содержимое кадра
 	const string payload(512, 'z');
 	// Буфер уложенного кадра
@@ -899,7 +892,7 @@ TEST_F(ChunkFixture, ChecksumRefusal) {
  */
 TEST_F(ChunkFixture, HeaderLayout) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Укладываемое содержимое кадра
 	const string payload = "содержимое кадра";
 	// Буфер уложенного кадра
@@ -974,7 +967,7 @@ TEST_F(ChunkFixture, HeaderLayout) {
  */
 TEST_F(ChunkFixture, ReservedOctetsRefused) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Укладываемое содержимое кадра
 	const string payload = "содержимое кадра";
 	/**
@@ -1024,7 +1017,7 @@ TEST_F(ChunkFixture, ReservedOctetsRefused) {
  */
 TEST_F(ChunkFixture, PackingNamesItsRefusals) {
 	// Укладчик кадра
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Буфер собираемого кадра
 	vector <uint8_t> record;
 	// Укладываемое содержимое кадра
@@ -1073,7 +1066,7 @@ TEST_F(ChunkFixture, UnpackingCompressedWithoutTheCompressorIsRefused) {
 	const string payload = repeated(200);
 	{
 		// Укладчик кадров, сжатием оснащённый
-		abc::packer_t packer(this->_log.get());
+		abc::packer_t packer;
 		// Выполняем установку модуля сжатия
 		packer.compressor(this->_compressor.get());
 		// Выполняем укладку кадра
@@ -1097,7 +1090,7 @@ TEST_F(ChunkFixture, UnpackingCompressedWithoutTheCompressorIsRefused) {
 	}
 	{
 		// Укладчик кадров, сжатием НЕ оснащённый
-		abc::packer_t packer(this->_log.get());
+		abc::packer_t packer;
 		// Смещение снятия кадра
 		size_t offset = 0;
 		// Снятое содержимое кадра
@@ -1145,7 +1138,7 @@ TEST_F(ChunkFixture, DecryptionWithAForeignKeyIsRefused) {
 	vector <uint8_t> record;
 	{
 		// Укладчик кадров
-		abc::packer_t packer(this->_log.get());
+		abc::packer_t packer;
 		// Настройки укладки кадра
 		abc::packer_t::settings_t settings;
 		// Выполняем объявление шифрования содержимого кадра
@@ -1174,13 +1167,13 @@ TEST_F(ChunkFixture, DecryptionWithAForeignKeyIsRefused) {
 	}
 	{
 		// Модуль шифрования постороннего, паролем расходящийся с владельцем
-		crypto_t foreign(this->_fmk.get(), this->_log.get());
+		crypto_t foreign;
 		// Выполняем установку соли шифрования постороннего
 		foreign.salt("соль контейнера");
 		// Выполняем установку пароля шифрования постороннего
 		foreign.password("пароль постороннего");
 		// Укладчик кадров постороннего
-		abc::packer_t packer(this->_log.get());
+		abc::packer_t packer;
 		// Выполняем установку модуля шифрования постороннего
 		packer.crypto(&foreign);
 		// Смещение снятия кадра
@@ -1213,11 +1206,11 @@ TEST_F(ChunkFixture, EncryptionWithoutThePasswordIsRefused) {
 	const string payload = "тайное содержимое кадра";
 	{
 		// Модуль шифрования, пароля не получивший
-		crypto_t bare(this->_fmk.get(), this->_log.get());
+		crypto_t bare;
 		// Выполняем установку соли шифрования
 		bare.salt("соль контейнера");
 		// Укладчик кадров
-		abc::packer_t packer(this->_log.get());
+		abc::packer_t packer;
 		// Настройки укладки кадра
 		abc::packer_t::settings_t settings;
 		// Выполняем объявление шифрования содержимого кадра
@@ -1239,7 +1232,7 @@ TEST_F(ChunkFixture, EncryptionWithoutThePasswordIsRefused) {
 	 */
 	{
 		// Укладчик кадров
-		abc::packer_t packer(this->_log.get());
+		abc::packer_t packer;
 		// Настройки укладки кадра
 		abc::packer_t::settings_t settings;
 		// Выполняем объявление шифрования содержимого кадра
@@ -1279,7 +1272,7 @@ TEST_F(ChunkFixture, EncryptionWithoutThePasswordIsRefused) {
  */
 TEST_F(ChunkFixture, CorruptedCompressedContentIsRefused) {
 	// Укладчик кадров
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Выполняем установку модуля сжатия
 	packer.compressor(this->_compressor.get());
 	// Укладываемое хорошо сжимаемое содержимое
@@ -1356,13 +1349,15 @@ TEST_F(ChunkFixture, CorruptedCompressedContentIsRefused) {
 TEST_F(ChunkFixture, ThePackerFunnelReportsItsCauseToTheJournal) {
 	// Донесения, снятые с журнала подпискою
 	vector <string> journal;
+	// Разрешаем отложенный вывод: подписка кормится именно им
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на журнал ради разбора донесений об отказах
-	this->_log->subscribe([&journal](const log_t::flag_t, const string_view text) noexcept -> void {
+	awh::log::subscribe([&journal](const awh::log::flag_t, const string_view text) noexcept -> void {
 		// Выполняем накопление очередного донесения журнала
 		journal.emplace_back(text);
 	});
 	// Укладчик кадров контейнера
-	abc::packer_t packer(this->_log.get());
+	abc::packer_t packer;
 	// Смещение снятия кадра
 	size_t offset = 0;
 	// Содержимое снятого кадра
@@ -1396,7 +1391,7 @@ TEST_F(ChunkFixture, ThePackerFunnelReportsItsCauseToTheJournal) {
 	ASSERT_TRUE(named) << "донесение не несёт объявленной причины «" << abc::message(cause)
 		<< "», первое из принятых: " << journal.front();
 	// Выполняем снятие подписки на журнал
-	this->_log->subscribe(nullptr);
+	awh::log::subscribe(nullptr);
 }
 /**
  * @brief Проверка того, что сумма недостающих октетов кадра пуста

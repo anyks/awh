@@ -50,11 +50,11 @@
 #include "value.hpp"
 #include "common.hpp"
 #include "header.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 
 /**
  * \~russian
@@ -588,9 +588,6 @@ namespace awh {
 				private:
 					// Работа записи октетов контейнера
 					sink_t _sink;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -1089,14 +1086,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Editor(const log_t * log) noexcept;
+					explicit Editor() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

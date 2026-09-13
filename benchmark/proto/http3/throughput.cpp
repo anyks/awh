@@ -311,7 +311,7 @@ namespace {
 		// Идентификатор следующего однонаправленного потока сервера
 		uint64_t next = 3;
 		// Создаём объект парсера сервера
-		parser_http3_t server(direct_t::REQUEST, awh::benchmark::http3::fmk(), awh::benchmark::http3::log());
+		parser_http3_t server(direct_t::REQUEST);
 		// Подписываем сервер на функции обратного вызова транспорта
 		::attach(server, next, nullptr);
 		// Количество разобранных запросов
@@ -416,7 +416,7 @@ namespace {
 		// Идентификатор следующего однонаправленного потока сервера
 		uint64_t next = 3;
 		// Создаём объект парсера сервера
-		parser_http3_t server(direct_t::REQUEST, awh::benchmark::http3::fmk(), awh::benchmark::http3::log());
+		parser_http3_t server(direct_t::REQUEST);
 		// Подписываем сервер на функции обратного вызова транспорта
 		::attach(server, next, nullptr);
 		// Объём принятого тела
@@ -485,9 +485,9 @@ namespace {
 		// Идентификатор следующего однонаправленного потока сервера
 		uint64_t serverUni = 3;
 		// Создаём объект парсера клиента
-		parser_http3_t client(direct_t::RESPONSE, awh::benchmark::http3::fmk(), awh::benchmark::http3::log());
+		parser_http3_t client(direct_t::RESPONSE);
 		// Создаём объект парсера сервера
-		parser_http3_t server(direct_t::REQUEST, awh::benchmark::http3::fmk(), awh::benchmark::http3::log());
+		parser_http3_t server(direct_t::REQUEST);
 		// Подписываем клиента на функции обратного вызова транспорта
 		::attach(client, clientUni, &fromClient);
 		// Подписываем сервер на функции обратного вызова транспорта

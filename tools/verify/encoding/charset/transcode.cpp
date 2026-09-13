@@ -16,6 +16,7 @@
 #include <string>
 #include <encoding/charset/charset.hpp>
 #include <iconv/iconv.h>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
@@ -75,6 +76,13 @@ static bool reference(const char * from, const char * to, const string & text, s
 }
 
 int main(){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	size_t checked = 0, diverged = 0;
 	string ours, theirs;
 	for(auto & item : ORACLE){

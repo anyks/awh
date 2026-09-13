@@ -409,7 +409,7 @@ TEST_F(ChronoFixture, ExecutionRollbackReferenceChronoTest){
 	 */
 	for(const int64_t shift : {-10800000LL, -3600000LL, -600000LL, 600000LL, 3600000LL, 10800000LL}){
 		// Объект местного хранилища с выставленной временной зоной
-		awh::chrono_t local(this->_fmk.get(), this->_log.get());
+		awh::chrono_t local;
 		// Выполняем установку временной зоны, отличной от нулевой
 		local.setTimeZone("MSK");
 		// Получаем текущий момент времени
@@ -603,7 +603,7 @@ TEST_F(ChronoFixture, ExecutionLocalStorageDefaultZoneChronoTest){
 	 */
 	for(const char * zone : {"YEKT", "MSK", "EST"}){
 		// Объект местного хранилища
-		awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+		awh::chrono_t chrono;
 		// Выполняем установку временной зоны
 		chrono.setTimeZone(zone);
 		// Выполняем разбор записи, временной зоны не содержащей
@@ -619,7 +619,7 @@ TEST_F(ChronoFixture, ExecutionLocalStorageDefaultZoneChronoTest){
 	// Объект без выставленной временной зоны читает запись в зоне окружения
 	{
 		// Объект местного хранилища
-		awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+		awh::chrono_t chrono;
 		// Выполняем разбор записи, временной зоны не содержащей
 		chrono.parse("2025-04-06 12:00:00", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL);
 		// Временная зона объекта совпадает с зоной окружения
@@ -1085,7 +1085,7 @@ TEST_F(ChronoFixture, ExecutionZoneDesignationChronoTest){
 		// Выставляем временную зону окружения
 		::setenv("TZ", timezone, 1);
 		// Создаём объект работы с датой и временем
-		awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+		awh::chrono_t chrono;
 		// Выполняем разбор записи, временной зоны не содержащей
 		chrono.parse("2025-04-06 12:37:01", "%Y-%m-%d %H:%M:%S", awh::chrono_t::storage_t::LOCAL);
 		// Получаем смещение временной зоны, выставленной объекту разбором
@@ -1162,7 +1162,7 @@ TEST_F(ChronoFixture, ExecutionExplicitZeroZoneChronoTest){
 		::setenv("TZ", timezone, 1);
 		{
 			// Создаём объект работы с датой и временем
-			awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+			awh::chrono_t chrono;
 			// Выполняем разбор записи с явным нулевым смещением
 			chrono.parse("2025-04-06T12:37:01+0000", "%Y-%m-%dT%H:%M:%S%z", awh::chrono_t::storage_t::LOCAL);
 			// Выполняем проверку сохранения записи в её собственной временной зоне
@@ -1171,7 +1171,7 @@ TEST_F(ChronoFixture, ExecutionExplicitZeroZoneChronoTest){
 		}
 		{
 			// Создаём объект работы с датой и временем
-			awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+			awh::chrono_t chrono;
 			// Закрепляем момент времени в местном хранилище объекта
 			chrono.timestamp(1743943021000ULL, awh::chrono_t::type_t::MILLISECONDS);
 			// Выполняем установку нулевого смещения временной зоны

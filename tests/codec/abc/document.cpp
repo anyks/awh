@@ -35,6 +35,7 @@
 #include <codec/abc/document.hpp>
 #include <codec/abc/value.hpp>
 #include <codec/abc/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -49,47 +50,19 @@ using namespace awh::codec;
  */
 namespace {
 	/**
-	 * @brief Функция получения объекта фреймворка проверок
+	 * @brief Гашение вывода журнала на время проверок
 	 *
-	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самих
-	 * проверок: фреймворк и журнал передаются указателями от пользователя, как то
-	 * заведено во всём AWH, и заводить их порознь на каждое дерево незачем
-	 *
-	 * @return объект фреймворка проверок
+	 * @details Выполняется единожды на набор: проверки отказов выводили бы записью
+	 *          всякий свой отказ, а их тут большинство. Гашение это - настройка
+	 *          журнала, а не молчание модуля
 	 *
 	 */
-	const fmk_t * framework() noexcept {
-		// Объект фреймворка проверок
-		static fmk_t fmk;
-		// Выводим объект фреймворка проверок
-		return & fmk;
-	}
-	/**
-	 * @brief Функция извлечения объекта журнала проверок
-	 *
-	 * @details Журнал заводится единожды на весь набор и гасится: проверки отказов
-	 *          выводили бы записью всякий свой отказ, а их тут большинство. Гашение
-	 *          это - настройка журнала, а не молчание модуля: модуль доносит как
-	 *          обычно, а показывать ли - решает журнал
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const log_t * logger() noexcept {
-		// Объект журнала проверок
-		static log_t log(::framework());
-		// Признак выполненной настройки журнала
-		static const bool ready = [](){
-			// Выполняем гашение вывода журнала проверок
-			log.level(log_t::level_t::NONE);
-			// Выводим признак выполненной настройки
-			return true;
-		}();
-		// Снимаем неиспользуемый признак настройки
-		(void) ready;
-		// Выводим объект журнала проверок
-		return & log;
-	}
+	[[maybe_unused]] const bool __awh_quenched__ = [](){
+		// Выполняем гашение вывода журнала проверок
+		awh::log::level(awh::log::level_t::NONE);
+		// Выводим признак выполненного гашения
+		return true;
+	}();
 	/**
 	 * @brief Функция сборки записи для проверок
 	 *
@@ -142,13 +115,13 @@ namespace {
  */
 TEST(CodecAbcDocument, ParseAndNavigate) {
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку записи для проверок
 	assemble(writer);
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete()) << "код отказа: " << abc::message(writer.error());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -217,16 +190,16 @@ TEST(CodecAbcDocument, ParseAndNavigate) {
  */
 TEST(CodecAbcDocument, Roundtrip) {
 	// Сборщик исходной бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку записи для проверок
 	assemble(writer);
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
 	// Сборщик пересобираемой бинарной записи
-	abc::writer_t rebuild(::logger());
+	abc::writer_t rebuild;
 	// Выполняем сборку записи из дерева документа
 	ASSERT_TRUE(document.build(rebuild)) << "код отказа: " << abc::message(rebuild.error());
 	// Выполняем проверку завершённости пересобранной записи
@@ -245,7 +218,7 @@ TEST(CodecAbcDocument, Roundtrip) {
  */
 TEST(CodecAbcDocument, RealToIntegerEdges) {
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку массива дробных значений
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (5)));
 	// Выполняем укладку не-числа
@@ -261,7 +234,7 @@ TEST(CodecAbcDocument, RealToIntegerEdges) {
 	// Выполняем укладку конца массива значений
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -324,7 +297,7 @@ TEST(CodecAbcDocument, TypedRoundtrip) {
 		0xA7, 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00
 	};
 	// Сборщик исходной бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку массива значений разного вида
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (5)));
 	// Выполняем укладку двоичного значения записи
@@ -340,14 +313,14 @@ TEST(CodecAbcDocument, TypedRoundtrip) {
 	// Выполняем укладку конца массива значений
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
 	// Выполняем проверку количества значений разобранного массива
 	ASSERT_EQ(document.root().size(), 5u);
 	// Сборщик пересобираемой бинарной записи
-	abc::writer_t rebuild(::logger());
+	abc::writer_t rebuild;
 	// Выполняем сборку записи из дерева документа
 	ASSERT_TRUE(document.build(rebuild)) << "код отказа: " << abc::message(rebuild.error());
 	// Выполняем проверку завершённости пересобранной записи
@@ -368,7 +341,7 @@ TEST(CodecAbcDocument, TypedRoundtrip) {
  */
 TEST(CodecAbcDocument, IndefiniteBecomesDefinite) {
 	// Сборщик исходной бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку массива неопределённой длины
 	ASSERT_TRUE(writer.arrayBegin());
 	// Выполняем укладку первого значения массива
@@ -378,20 +351,20 @@ TEST(CodecAbcDocument, IndefiniteBecomesDefinite) {
 	// Выполняем укладку конца массива
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
 	// Выполняем проверку количества значений массива
 	ASSERT_EQ(document.root().size(), 2u);
 	// Сборщик пересобираемой бинарной записи
-	abc::writer_t rebuild(::logger());
+	abc::writer_t rebuild;
 	// Выполняем сборку записи из дерева документа
 	ASSERT_TRUE(document.build(rebuild)) << "код отказа: " << abc::message(rebuild.error());
 	// Выполняем проверку того, что пересобранная запись короче исходной
 	ASSERT_LT(rebuild.record().size(), writer.record().size());
 	// Дерево документа, собранного заново
-	abc::document_t again(::framework(), ::logger());
+	abc::document_t again;
 	// Выполняем разбор пересобранной записи в дерево документа
 	ASSERT_TRUE(again.parse(rebuild.record().data(), rebuild.record().size()))
 		<< "код отказа: " << abc::message(again.error());
@@ -412,7 +385,7 @@ TEST(CodecAbcDocument, IndefiniteBecomesDefinite) {
  */
 TEST(CodecAbcDocument, NumberLimits) {
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку массива из четырёх значений
 	ASSERT_TRUE(writer.arrayBegin(4));
 	// Выполняем укладку числа, меньшего нуля
@@ -426,7 +399,7 @@ TEST(CodecAbcDocument, NumberLimits) {
 	// Выполняем укладку конца массива
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -469,11 +442,11 @@ TEST(CodecAbcDocument, NumberLimits) {
 	// Выполняем проверку отказа извлечения строки видом числа
 	{
 		// Сборщик бинарной записи со строкой
-		abc::writer_t plain(::logger());
+		abc::writer_t plain;
 		// Выполняем укладку строки
 		ASSERT_TRUE(plain.text("не число"));
 		// Дерево документа со строкой
-		abc::document_t text(::framework(), ::logger());
+		abc::document_t text;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(text.parse(plain.record().data(), plain.record().size()));
 		// Выполняем проверку отказа извлечения строки видом числа
@@ -488,7 +461,7 @@ TEST(CodecAbcDocument, Extensions) {
 	// Октеты величины числа
 	const vector <uint8_t> magnitude = {0x39, 0x30, 0x01};
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку массива из двух значений
 	ASSERT_TRUE(writer.arrayBegin(2));
 	// Выполняем укладку целого числа неограниченной ширины
@@ -498,7 +471,7 @@ TEST(CodecAbcDocument, Extensions) {
 	// Выполняем укладку конца массива
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -536,7 +509,7 @@ TEST(CodecAbcDocument, Extensions) {
 	// Выполняем проверку десятичного порядка величины
 	ASSERT_EQ(root.at(1).exponent(), -4);
 	// Сборщик пересобираемой бинарной записи
-	abc::writer_t rebuild(::logger());
+	abc::writer_t rebuild;
 	// Выполняем сборку записи из дерева документа
 	ASSERT_TRUE(document.build(rebuild)) << "код отказа: " << abc::message(rebuild.error());
 	// Выполняем проверку совпадения пересобранной записи с исходной
@@ -551,7 +524,7 @@ TEST(CodecAbcDocument, Extensions) {
  */
 TEST(CodecAbcDocument, SubtreeSkipping) {
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку массива из трёх значений
 	ASSERT_TRUE(writer.arrayBegin(3));
 	/**
@@ -572,7 +545,7 @@ TEST(CodecAbcDocument, SubtreeSkipping) {
 	// Выполняем укладку конца массива
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -607,7 +580,7 @@ TEST(CodecAbcDocument, SubtreeSkipping) {
  */
 TEST(CodecAbcDocument, Failures) {
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Октеты записи, оборвавшейся посреди значения
 	const vector <uint8_t> data = {0x58, 0x04, 'a', 'b'};
 	// Выполняем проверку отказа разбора оборванной записи
@@ -631,7 +604,7 @@ TEST(CodecAbcDocument, Failures) {
  */
 TEST(CodecAbcDocument, SegmentedValue) {
 	// Сборщик бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку начала отображения из одного поля
 	ASSERT_TRUE(writer.mapBegin(1));
 	// Выполняем укладку имени поля отображения
@@ -649,7 +622,7 @@ TEST(CodecAbcDocument, SegmentedValue) {
 	// Выполняем проверку завершённости собранной записи
 	ASSERT_TRUE(writer.complete());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор собранной записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -684,7 +657,7 @@ TEST(CodecAbcDocument, SegmentedValue) {
  */
 TEST(CodecAbcDocument, CustomExtensionRoundtrip){
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Октеты расширения, заведённого потребителем
 	const string content = "\xDE\xAD\xBE\xEF";
 	// Выполняем укладку начала отображения
@@ -700,7 +673,7 @@ TEST(CodecAbcDocument, CustomExtensionRoundtrip){
 	// Выполняем получение собранной записи
 	const vector <uint8_t> record = writer.record();
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -715,7 +688,7 @@ TEST(CodecAbcDocument, CustomExtensionRoundtrip){
 	// Выполняем проверку содержимого расширения
 	ASSERT_EQ(string(value.data()), content);
 	// Сборка записи из дерева документа
-	abc::writer_t rebuild(::logger());
+	abc::writer_t rebuild;
 	/**
 	 * Выполняем перезапись дерева документа: путь этот свой, и расширение обязано
 	 * пережить и его
@@ -741,7 +714,7 @@ TEST(CodecAbcDocument, CustomExtensionRoundtrip){
  */
 TEST(CodecAbcDocument, SequentialTraversal){
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку начала массива
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
 	// Выполняем укладку первого значения массива
@@ -769,7 +742,7 @@ TEST(CodecAbcDocument, SequentialTraversal){
 	// Выполняем укладку конца массива
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -836,7 +809,7 @@ TEST(CodecAbcDocument, SequentialTraversal){
  */
 TEST(CodecAbcDocument, TraversalStopsAtBound){
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку начала внешнего массива
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (2)));
 	// Выполняем укладку начала вложенного массива
@@ -850,7 +823,7 @@ TEST(CodecAbcDocument, TraversalStopsAtBound){
 	// Выполняем укладку конца внешнего массива
 	ASSERT_TRUE(writer.arrayEnd());
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size()));
 	// Выполняем получение вложенного массива
@@ -920,7 +893,7 @@ TEST(CodecAbcDocument, DuplicateRules){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(record, abc::duplicate_t::FIRST, document))
 			<< "код отказа: " << abc::message(document.error());
@@ -946,7 +919,7 @@ TEST(CodecAbcDocument, DuplicateRules){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(record, abc::duplicate_t::LAST, document))
 			<< "код отказа: " << abc::message(document.error());
@@ -972,7 +945,7 @@ TEST(CodecAbcDocument, DuplicateRules){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(record, abc::duplicate_t::KEEP, document))
 			<< "код отказа: " << abc::message(document.error());
@@ -988,7 +961,7 @@ TEST(CodecAbcDocument, DuplicateRules){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем проверку того, что разбор записи отвечен отказом
 		ASSERT_FALSE(parse(record, abc::duplicate_t::REFUSE, document));
 		// Выполняем проверку того, что отказ объявлен повтором имени поля
@@ -1062,7 +1035,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(numbers, abc::duplicate_t::FIRST, document))
 			<< "код отказа: " << abc::message(document.error());
@@ -1074,7 +1047,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(numbers, abc::duplicate_t::KEEP, document))
 			<< "код отказа: " << abc::message(document.error());
@@ -1099,7 +1072,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(distinct, abc::duplicate_t::FIRST, document))
 			<< "код отказа: " << abc::message(document.error());
@@ -1128,7 +1101,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 	 */
 	{
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(words, abc::duplicate_t::FIRST, document))
 			<< "код отказа: " << abc::message(document.error());
@@ -1146,7 +1119,7 @@ TEST(CodecAbcDocument, DuplicateRulesByKeyKind){
 		// Отображение, где именем поля стоит перечень: {[1]: 10}
 		const vector <uint8_t> record = {0xA1, 0x81, 0x01, 0x0A};
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Разбор записи этой обязан ответить отказом при всяком правиле повтора
 		ASSERT_FALSE(parse(record, abc::duplicate_t::FIRST, document));
 		// Отказ обязан быть именно о вместимом, ставшем именем поля
@@ -1184,7 +1157,7 @@ TEST(CodecAbcDocument, KeyIdentityDivergesByLayer){
 	 */
 	{
 		// Разборщик бинарной записи
-		abc::reader_t reader(::logger());
+		abc::reader_t reader;
 		// Выполняем получение настроек разбора
 		abc::reader_t::settings_t settings = reader.settings();
 		// Выполняем установку отказа от повтора имени поля
@@ -1204,7 +1177,7 @@ TEST(CodecAbcDocument, KeyIdentityDivergesByLayer){
 		// Выполняем установку правила выбора первого встреченного значения
 		settings.duplicates = abc::duplicate_t::FIRST;
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(document.parse(record.data(), record.size(), settings))
 			<< "код отказа: " << abc::message(document.error());
@@ -1249,7 +1222,7 @@ TEST(CodecAbcDocument, WholeRealMatchesInteger){
 	auto extract = [](const vector <uint8_t> & record, const string & title,
 	 uint64_t & result) noexcept -> void {
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем сброс извлекаемого числа
 		result = 0;
 		// Выполняем разбор записи в дерево документа
@@ -1318,7 +1291,7 @@ TEST(CodecAbcDocument, WholeRealMatchesInteger){
 }
 TEST(CodecAbcDocument, DuplicateRulesNested){
 	// Сборщик исходной бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем получение настроек сборки записи
 	abc::writer_t::settings_t assembly = writer.settings();
 	/**
@@ -1368,7 +1341,7 @@ TEST(CodecAbcDocument, DuplicateRulesNested){
 	// Выполняем установку правила оставления последнего значения
 	settings.duplicates = abc::duplicate_t::LAST;
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(writer.record().data(), writer.record().size(), settings))
 		<< "код отказа: " << abc::message(document.error());
@@ -1405,13 +1378,13 @@ TEST(CodecAbcDocument, DuplicateRulesNested){
 	 * размахам их и объявленным длинам, и всякое расхождение между количеством детей
 	 * и настоящим числом узлов оборачивается незавершённой записью
 	 */
-	abc::writer_t rebuild(::logger());
+	abc::writer_t rebuild;
 	// Выполняем сборку записи из дерева документа
 	ASSERT_TRUE(document.build(rebuild)) << "код отказа: " << abc::message(rebuild.error());
 	// Выполняем проверку завершённости пересобранной записи
 	ASSERT_TRUE(rebuild.complete()) << "код отказа: " << abc::message(rebuild.error());
 	// Дерево документа, собранное из пересобранной записи
-	abc::document_t repeated(::framework(), ::logger());
+	abc::document_t repeated;
 	// Выполняем разбор пересобранной записи в дерево документа
 	ASSERT_TRUE(repeated.parse(rebuild.record().data(), rebuild.record().size()))
 		<< "код отказа: " << abc::message(repeated.error());
@@ -1463,7 +1436,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
 		// Запись, собранная из поданного числа
 		const vector <uint8_t> & record = source.record;
 		// Дерево документа, снятое с поданной записи
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Запись обязана сняться деревом
 		ASSERT_TRUE(document.parse(record.data(), record.size())) << title;
 		// Владеющее значение, собранное из того же дерева
@@ -1620,7 +1593,7 @@ TEST(CodecAbcDocument, LayersAgreeOnNumberEdges){
  */
 TEST(CodecAbcDocument, ErrorLocationReachesTheConsumer){
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку начала массива из трёх значений
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
 	// Выполняем укладку первого значения массива
@@ -1634,7 +1607,7 @@ TEST(CodecAbcDocument, ErrorLocationReachesTheConsumer){
 	// Собранная запись
 	const vector <uint8_t> record = writer.record();
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Место отказа у свежего дерева обязано быть пустым
 	ASSERT_EQ(document.errorLocation().offset, abc::NO_OFFSET);
 	// Оборванная запись обязана быть отвергнута разбором
@@ -1664,7 +1637,7 @@ TEST(CodecAbcDocument, ErrorLocationReachesTheConsumer){
  */
 TEST(CodecAbcDocument, ContractAgreesWithTheOtherCodecs){
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку начала массива из трёх значений
 	ASSERT_TRUE(writer.arrayBegin(static_cast <uint64_t> (3)));
 	/**
@@ -1678,7 +1651,7 @@ TEST(CodecAbcDocument, ContractAgreesWithTheOtherCodecs){
 	// Собранная запись
 	const vector <uint8_t> record = writer.record();
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Свежее дерево обязано быть пустым
 	ASSERT_TRUE(document.empty());
 	// Узлов у свежего дерева быть не должно
@@ -1737,20 +1710,18 @@ TEST(CodecAbcDocument, TimestampExtractsByBothIntegerKinds){
 	// Отметка времени, укладываемая в запись
 	const int64_t stamp = static_cast <int64_t> (1756800000);
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Отметка времени обязана укладываться сборкою
 	ASSERT_TRUE(writer.timestamp(stamp));
 	// Собранная запись
 	const vector <uint8_t> record = writer.record();
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Запись обязана разбираться в дерево документа
 	ASSERT_TRUE(document.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(document.error());
 	// Владеющее значение
 	abc::value_t owned;
-	// Выполняем установку объекта логирования
-	owned.setLogger(::logger());
 	// Запись обязана разбираться во владеющее значение
 	ASSERT_TRUE(owned.parse(record.data(), record.size()));
 	// Указание на корень дерева разбора
@@ -1806,7 +1777,7 @@ TEST(CodecAbcDocument, TimestampExtractsByBothIntegerKinds){
  */
 TEST(CodecAbcDocument, StoredCountsAgreeWithTheWalk){
 	// Сборка бинарной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем укладку начала отображения из двух пар
 	ASSERT_TRUE(writer.mapBegin(static_cast <uint64_t> (2)));
 	// Выполняем укладку имени первой пары
@@ -1836,7 +1807,7 @@ TEST(CodecAbcDocument, StoredCountsAgreeWithTheWalk){
 	// Собранная запись
 	const vector <uint8_t> record = writer.record();
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Запись обязана разбираться в дерево документа
 	ASSERT_TRUE(document.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -1939,7 +1910,7 @@ TEST(CodecAbcDocument, BothViewsAgreeOnEveryPath) {
 	// Выполняем выдачу собранной записи
 	const vector <uint8_t> record = root.dump();
 	// Объект дерева разбора документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор собранной записи деревом
 	ASSERT_TRUE(document.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -2020,7 +1991,7 @@ TEST(CodecAbcDocument, RepeatedParsingDoesNotGrowTheStorage){
 	// Запись, отказ на которой настигает разбор на середине
 	const uint8_t corrupted = 0xA1;
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Счёт узлов арены, снятый первым кругом
 	size_t nodes = 0;
 	/**
@@ -2100,7 +2071,7 @@ TEST(CodecAbcDocument, LookupAgreesOnBothSidesOfTheIndexThreshold){
 		// Выполняем сборку двоичной записи
 		const vector <uint8_t> record = root.dump();
 		// Объект документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор двоичной записи документа
 		ASSERT_TRUE(document.parse(record.data(), record.size())) << abc::message(document.error());
 		// Выполняем проверку числа детей корня
@@ -2151,7 +2122,7 @@ TEST(CodecAbcDocument, LookupAgreesOnBothSidesOfTheIndexThreshold){
 		// Выполняем сборку двоичной записи
 		const vector <uint8_t> record = root.dump();
 		// Объект документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор двоичной записи документа
 		ASSERT_TRUE(document.parse(record.data(), record.size())) << abc::message(document.error());
 		// Получаем значение поля, названного пустой строкой
@@ -2198,7 +2169,7 @@ TEST(CodecAbcDocument, EscapedNamesAreReachableByPath) {
 	// Выполняем сборку двоичной записи дерева
 	ASSERT_TRUE(root.dump(record, error)) << abc::message(error);
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор собранной двоичной записи
 	ASSERT_TRUE(document.parse(record.data(), record.size())) << abc::message(document.error());
 	/**
@@ -2286,7 +2257,7 @@ TEST(CodecAbcDocument, EscapedNamesAreReachableByPath) {
  */
 TEST(CodecAbcDocument, EmptyRecordParsingNamesItsCause) {
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Пустая двоичная запись
 	const vector <uint8_t> record;
 	// Выполняем проверку отказа разбора пустой записи
@@ -2346,7 +2317,7 @@ TEST(CodecAbcDocument, EqualityIsAskedByDifferentWordsInTwoViews) {
 	// Выполняем проверку того, что у владеющего значения равенство ЕСТЬ
 	ASSERT_TRUE(comparable(owning));
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Собранная двоичная запись значения
 	const vector <uint8_t> record = owning.dump();
 	// Выполняем разбор собранной записи
@@ -2383,9 +2354,9 @@ TEST(CodecAbcDocument, EqualityIsAskedByDifferentWordsInTwoViews) {
  */
 TEST(CodecAbcDocument, InvalidCursorsAreNotIdentical) {
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Двоичная запись отображения с одним полем
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку записи отображения
 	ASSERT_TRUE(writer.mapBegin(1));
 	// Выполняем укладку имени поля отображения
@@ -2436,11 +2407,11 @@ TEST(CodecAbcDocument, InvalidCursorsAreNotIdentical) {
  */
 TEST(CodecAbcDocument, EmptinessIsTheAbsenceOfTheParsed) {
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Документ, разбора не видавший, пуст
 	ASSERT_TRUE(document.empty());
 	// Объект сборки двоичной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку записи пустого отображения
 	ASSERT_TRUE(writer.mapBegin(0));
 	// Выполняем закрытие отображения
@@ -2481,9 +2452,9 @@ TEST(CodecAbcDocument, EmptinessIsTheAbsenceOfTheParsed) {
  */
 TEST(CodecAbcDocument, TheInvalidCursorAnswersEmptinessToEverything) {
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Сборщик двоичной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку записи отображения об одном поле
 	ASSERT_TRUE(writer.mapBegin(1));
 	// Выполняем укладку имени поля отображения
@@ -2568,9 +2539,9 @@ TEST(CodecAbcDocument, TheInvalidCursorAnswersEmptinessToEverything) {
  */
 TEST(CodecAbcDocument, TheDemandAgainstTheKindIsAnsweredWithEmptiness) {
 	// Объект документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Сборщик двоичной записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку записи отображения
 	ASSERT_TRUE(writer.mapBegin(2));
 	// Выполняем укладку имени поля массива
@@ -2668,19 +2639,17 @@ TEST(CodecAbcDocument, TheDemandAgainstTheKindIsAnsweredWithEmptiness) {
  *
  */
 TEST(CodecAbcDocument, TheRefusedParseReachesTheJournal) {
-	// Объект фреймворка проверки
-	fmk_t fmk;
-	// Объект журнала проверки, вывод какого не гасится
-	log_t log(& fmk);
 	// Донесения, снятые с журнала подпискою
 	vector <string> journal;
+	// Разрешаем отложенный вывод: подписка кормится именно им
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на журнал ради разбора донесений об отказах
-	log.subscribe([&journal](const log_t::flag_t, const string_view text) noexcept -> void {
+	awh::log::subscribe([&journal](const awh::log::flag_t, const string_view text) noexcept -> void {
 		// Выполняем накопление очередного донесения журнала
 		journal.emplace_back(text);
 	});
 	// Объект документа со своим журналом
-	abc::document_t document(::framework(), & log);
+	abc::document_t document;
 	// Октеты записи, разбору не поддающиеся
 	const vector <uint8_t> broken = {0xFF, 0xFF, 0xFF, 0xFF};
 	// Выполняем проверку того, что разбор негодной записи отвечен отказом
@@ -2705,7 +2674,7 @@ TEST(CodecAbcDocument, TheRefusedParseReachesTheJournal) {
 	ASSERT_TRUE(named) << "донесение не несёт объявленной причины «" << abc::message(cause)
 		<< "», первое из принятых: " << journal.front();
 	// Выполняем снятие подписки на журнал
-	log.subscribe(nullptr);
+	awh::log::subscribe(nullptr);
 }
 /**
  * @brief Проверка того, что имена полей разного ВИДА повтором не считаются
@@ -2748,7 +2717,7 @@ TEST(CodecAbcDocument, KeysOfDifferentKindsAreNotDuplicates){
 		// Разбираемая запись
 		const vector <uint8_t> record = {0xA2, 0x40, 0x01, 0x60, 0x02};
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(record, document)) << "код отказа: " << abc::message(document.error());
 		/**
@@ -2764,7 +2733,7 @@ TEST(CodecAbcDocument, KeysOfDifferentKindsAreNotDuplicates){
 		// Разбираемая запись
 		const vector <uint8_t> record = {0xA2, 0x40, 0x01, 0x40, 0x02};
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(parse(record, document)) << "код отказа: " << abc::message(document.error());
 		// Отображение обязано потерять ровно одну пару
@@ -2790,7 +2759,7 @@ TEST(CodecAbcDocument, TheRefusedBuildingYieldsAnEmptyRecord){
 	 */
 	const vector <uint8_t> record = {0xA2, 0x41, 'b', 0x01, 0x41, 'a', 0x02};
 	// Дерево документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	ASSERT_TRUE(document.parse(record.data(), record.size()))
 		<< "код отказа: " << abc::message(document.error());
@@ -2828,7 +2797,7 @@ TEST(CodecAbcDocument, TheRefusedBuildingYieldsAnEmptyRecord){
  */
 TEST(CodecAbcDocument, TheEmptyTreeAnswersEmptinessToEveryDemand){
 	// Дерево документа, разбора ещё не видавшее
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Корень пустого дерева обязан быть недействителен
 	ASSERT_FALSE(document.root().valid()) << "пустое дерево отдало действительный корень";
 	// Обход по пути обязан отдать недействительное значение
@@ -2873,7 +2842,7 @@ TEST(CodecAbcDocument, TheDemandBeyondTheContainerDoesNotYieldTheNeighbour){
 		// Разбираемая запись
 		const vector <uint8_t> record = {0x82, 0xA1, 0x41, 'a', 0x01, 0x18, 0x2A};
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(document.parse(record.data(), record.size()))
 			<< "код отказа: " << abc::message(document.error());
@@ -2897,7 +2866,7 @@ TEST(CodecAbcDocument, TheDemandBeyondTheContainerDoesNotYieldTheNeighbour){
 		// Разбираемая запись
 		const vector <uint8_t> record = {0x82, 0x80, 0x18, 0x2A};
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(document.parse(record.data(), record.size()))
 			<< "код отказа: " << abc::message(document.error());
@@ -2923,7 +2892,7 @@ TEST(CodecAbcDocument, TheDemandBeyondTheContainerDoesNotYieldTheNeighbour){
 		// Разбираемая запись
 		const vector <uint8_t> record = {0x82, 0x41, 'a', 0x41, 'b'};
 		// Дерево документа
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор записи в дерево документа
 		ASSERT_TRUE(document.parse(record.data(), record.size()))
 			<< "код отказа: " << abc::message(document.error());

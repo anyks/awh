@@ -133,16 +133,12 @@ namespace {
 	 *
 	 */
 	static bool transfer(const size_t streams, transfer_t & output, const size_t sendHigh = 0) noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Объект логирования
-		static awh::log_t log(&fmk);
 		// Получаем окружение транспортной безопасности бенчмарка
 		auto & security = awh::benchmark::quic::security();
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT), security.coder(), &log);
+		connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT), security.coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder(), &log);
+		connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder());
 		// Выполняем подготовку соединения клиента
 		awh::benchmark::quic::configure(client);
 		// Выполняем подготовку соединения сервера

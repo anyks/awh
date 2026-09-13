@@ -131,7 +131,7 @@ namespace {
 	 */
 	static outcome_t parsing(const char * sample, const size_t rounds) noexcept {
 		// Объект работы с идентификаторами ресурсов
-		awh::uri_t object(framework(), logger());
+		awh::uri_t object;
 		// Накопитель результатов разбора строки URI
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции

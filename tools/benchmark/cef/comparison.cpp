@@ -6,8 +6,8 @@
 
 #include <codec/cef/document.hpp>
 #include <codec/cef/reader.hpp>
-#include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace std;
 
@@ -31,9 +31,8 @@ static double measure(const size_t rounds, F run){
 static void proof(){
 	anyks::cef_t old;
 	old.mode(anyks::cef_t::mode_t::STRONG);
-	old.parse(RECORD);
-	awh::fmk_t fmk; awh::log_t log(&fmk); log.mode({});
-	awh::codec::cef::document_t doc(&fmk, &log);
+	old.parse(RECORD); awh::log::mode({});
+	awh::codec::cef::document_t doc;
 	awh::codec::cef::reader_t::settings_t st; st.mode = awh::codec::cef::mode_t::STRONG;
 	doc.settings(st);
 	const bool ok = doc.parse(RECORD);
@@ -58,6 +57,13 @@ static void proof(){
 }
 
 int main(int argc, char * argv[]){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	proof();
 	const size_t rounds = ((argc > 1) ? strtoul(argv[1], nullptr, 10) : 20000);
 	const double bytes = static_cast <double> (RECORD.size() * rounds) / 1048576.0;
@@ -73,11 +79,9 @@ int main(int argc, char * argv[]){
 		cef.mode(anyks::cef_t::mode_t::STRONG);
 		const double seconds = measure(rounds, [&]{ cef.clear(); cef.parse(RECORD); });
 		printf("старый ANYKS cef (STRONG): %8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / rounds);
-	}
-	// Кодек AWH
-	awh::fmk_t fmk; awh::log_t log(&fmk); log.mode({});
+	} awh::log::mode({});
 	{
-		awh::codec::cef::reader_t reader(&fmk, &log);
+		awh::codec::cef::reader_t reader;
 		const double seconds = measure(rounds, [&]{
 			reader.reset();
 			reader.feed(RECORD);
@@ -86,12 +90,12 @@ int main(int argc, char * argv[]){
 		printf("AWH codec::cef (поток):    %8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / rounds);
 	}
 	{
-		awh::codec::cef::document_t doc(&fmk, &log);
+		awh::codec::cef::document_t doc;
 		const double seconds = measure(rounds, [&]{ doc.parse(RECORD); });
 		printf("AWH codec::cef (дерево):   %8.2f МБ/с  %8.2f мкс/запись\n", bytes / seconds, seconds * 1e6 / rounds);
 	}
 	{
-		awh::codec::cef::document_t doc(&fmk, &log);
+		awh::codec::cef::document_t doc;
 		awh::codec::cef::reader_t::settings_t st; st.mode = awh::codec::cef::mode_t::STRONG;
 		doc.settings(st);
 		const double seconds = measure(rounds, [&]{ doc.parse(RECORD); });

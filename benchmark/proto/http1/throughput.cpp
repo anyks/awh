@@ -187,7 +187,7 @@ namespace {
 	 */
 	static bool parsing(const string & message, const size_t rounds, const size_t fragment, const bool consume, outcome_t & output) noexcept {
 		// Создаём объект парсера запросов клиента
-		parser_http_t parser(direct_t::REQUEST, awh::benchmark::http1::fmk(), awh::benchmark::http1::log());
+		parser_http_t parser(direct_t::REQUEST);
 		// Контрольная сумма принятых данных
 		static volatile size_t checksum = 0;
 		// Если потребитель читает тело сообщения
@@ -286,7 +286,7 @@ namespace {
 	 */
 	static bool sending(const size_t rounds, outcome_t & output) noexcept {
 		// Создаём объект парсера-отправителя ответа
-		parser_http_t sender(direct_t::RESPONSE, awh::benchmark::http1::fmk(), awh::benchmark::http1::log());
+		parser_http_t sender(direct_t::RESPONSE);
 		// Количество отданных сетевому слою октетов
 		size_t written = 0;
 		// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть

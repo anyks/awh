@@ -16,6 +16,7 @@
 #include <vector>
 #include <string>
 #include <encoding/unicode/normalize.hpp>
+#include <sys/fmk.hpp>
 
 extern "C" {
 	struct unicode_normalization_form;
@@ -141,6 +142,13 @@ static void dump(){
 }
 
 int main(int argc, char ** argv){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Выполняем выгрузку набора сверки для стороннего эталона
 	if((argc > 1) && (::strcmp(argv[1], "--dump") == 0)){
 		dump();

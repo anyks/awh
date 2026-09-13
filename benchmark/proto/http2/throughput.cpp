@@ -209,7 +209,7 @@ namespace {
 			output.frames++;
 		}
 		// Создаём объект парсера сервера
-		parser_http2_t server(direct_t::REQUEST, awh::benchmark::http2::fmk(), awh::benchmark::http2::log());
+		parser_http2_t server(direct_t::REQUEST);
 		// Количество разобранных запросов
 		size_t parsed = 0;
 		// Устанавливаем функцию обратного вызова записи исходящих байт
@@ -313,7 +313,7 @@ namespace {
 			output.frames++;
 		}
 		// Создаём объект парсера сервера
-		parser_http2_t server(direct_t::REQUEST, awh::benchmark::http2::fmk(), awh::benchmark::http2::log());
+		parser_http2_t server(direct_t::REQUEST);
 		// Объём принятого тела
 		size_t accepted = 0;
 		// Устанавливаем функцию обратного вызова записи исходящих байт
@@ -380,9 +380,9 @@ namespace {
 	 */
 	static bool roundtrip(const size_t streams, transfer_t & output) noexcept {
 		// Создаём объект парсера клиента
-		parser_http2_t client(direct_t::RESPONSE, awh::benchmark::http2::fmk(), awh::benchmark::http2::log());
+		parser_http2_t client(direct_t::RESPONSE);
 		// Создаём объект парсера сервера
-		parser_http2_t server(direct_t::REQUEST, awh::benchmark::http2::fmk(), awh::benchmark::http2::log());
+		parser_http2_t server(direct_t::REQUEST);
 		// Заголовки ответа сервера, подготовленные заранее
 		const vector <h2::hpack::field_t> answer = awh::benchmark::http2::response(0);
 		// Количество принятых сервером запросов

@@ -39,6 +39,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/auth/hmac.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -83,10 +85,9 @@ namespace {
 	 * @brief Функция приведения ключей параметров Signature-Input к нижнему регистру
 	 *
 	 * @param params значение параметров подписи (@signature-params)
-	 * @param fmk    объект фреймворка
 	 *
 	 */
-	void normalizeSignatureParamKeys(string & params, const fmk_t * fmk) noexcept {
+	void normalizeSignatureParamKeys(string & params) noexcept {
 		// Выполняем поиск конца списка покрываемых компонентов
 		const size_t rp = params.find(')');
 		// Если список компонентов не найден
@@ -100,13 +101,13 @@ namespace {
 		// Список параметров подписи
 		vector <string> parts;
 		// Выполняем разделение параметров подписи
-		fmk->split(tail, ";", parts);
+		awh::fmk::split(tail, ";", parts);
 		/**
 		 * Выполняем перебор всех параметров подписи
 		 */
 		for(auto & part : parts){
 			// Удаляем крайние пробелы у параметра
-			fmk->transform(part, fmk_t::transform_t::TRIM);
+			awh::fmk::transform(part, awh::fmk::transform_t::TRIM);
 			// Если параметр пустой - пропускаем его
 			if(part.empty())
 				// Переходим к следующему параметру
@@ -120,9 +121,9 @@ namespace {
 			// Извлекаем ключ параметра
 			string key = part.substr(0, sep);
 			// Удаляем крайние пробелы у ключа
-			fmk->transform(key, fmk_t::transform_t::TRIM);
+			awh::fmk::transform(key, awh::fmk::transform_t::TRIM);
 			// Приводим ключ параметра к нижнему регистру
-			fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
+			awh::fmk::transform(key, awh::fmk::transform_t::LOWER_CASE);
 			// Добавляем разделитель «;» и ключ параметра в нижнем регистре
 			result.append(1, ';');
 			// Добавляем ключ параметра в нижнем регистре
@@ -185,7 +186,7 @@ string awh::http::Hmac::value(string_view name) const noexcept {
 	// Формируем ключ компонента в нижнем регистре
 	string search(name);
 	// Приводим ключ компонента к нижнему регистру
-	this->_fmk->transform(search, fmk_t::transform_t::LOWER_CASE);
+	awh::fmk::transform(search, awh::fmk::transform_t::LOWER_CASE);
 	// Если компонент найден в индексе
 	if(const auto it = this->_params.sign.componentIndex.find(search); it != this->_params.sign.componentIndex.end())
 		// Выводим значение компонента
@@ -211,7 +212,7 @@ string awh::http::Hmac::params() noexcept {
 		// Если штамп времени создания подписи не установлен
 		if(sign.date.created == 0)
 			// Устанавливаем текущий штамп времени в секундах
-			sign.date.created = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+			sign.date.created = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 		// Формируем список покрываемых компонентов из порядка их добавления
 		sign.covered.clear();
 		// Строка списка покрываемых компонентов
@@ -229,30 +230,30 @@ string awh::http::Hmac::params() noexcept {
 			// Формируем копию имени компонента в нижнем регистре
 			string cname(component.first);
 			// Приводим имя компонента к нижнему регистру
-			this->_fmk->transform(cname, fmk_t::transform_t::LOWER_CASE);
+			awh::fmk::transform(cname, awh::fmk::transform_t::LOWER_CASE);
 			// Добавляем имя компонента в список (в нижнем регистре, в кавычках)
-			list.append(this->_fmk->format("\"%s\"", cname.c_str()));
+			list.append(awh::fmk::format("\"%s\"", cname.c_str()));
 		}
 		// Закрываем список покрываемых компонентов
 		list.append(1, ')');
 		// Формируем параметры подписи: обязательные created и alg
-		result = this->_fmk->format("%s;created=%s;alg=\"%s\"", list.c_str(), std::to_string(sign.date.created).c_str(), this->algName().c_str());
+		result = awh::fmk::format("%s;created=%s;alg=\"%s\"", list.c_str(), std::to_string(sign.date.created).c_str(), this->algName().c_str());
 		// Если идентификатор ключа установлен
 		if(!sign.keyId.empty())
 			// Добавляем идентификатор ключа
-			result.append(this->_fmk->format(";keyid=\"%s\"", sign.keyId.c_str()));
+			result.append(awh::fmk::format(";keyid=\"%s\"", sign.keyId.c_str()));
 		// Если штамп времени истечения подписи установлен
 		if(sign.date.expires > 0)
 			// Добавляем штамп времени истечения подписи
-			result.append(this->_fmk->format(";expires=%s", std::to_string(sign.date.expires).c_str()));
+			result.append(awh::fmk::format(";expires=%s", std::to_string(sign.date.expires).c_str()));
 		// Если одноразовое значение подписи установлено
 		if(!sign.nonce.empty())
 			// Добавляем одноразовое значение подписи
-			result.append(this->_fmk->format(";nonce=\"%s\"", sign.nonce.c_str()));
+			result.append(awh::fmk::format(";nonce=\"%s\"", sign.nonce.c_str()));
 		// Если тег приложения установлен
 		if(!sign.tag.empty())
 			// Добавляем тег приложения
-			result.append(this->_fmk->format(";tag=\"%s\"", sign.tag.c_str()));
+			result.append(awh::fmk::format(";tag=\"%s\"", sign.tag.c_str()));
 		// Сохраняем сырое значение параметров подписи
 		sign.params = result;
 	/**
@@ -264,13 +265,13 @@ string awh::http::Hmac::params() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим в лог сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -297,12 +298,12 @@ string awh::http::Hmac::base(const string & params) const noexcept {
 			// Формируем копию имени компонента в нижнем регистре
 			string component(name);
 			// Приводим имя компонента к нижнему регистру
-			this->_fmk->transform(component, fmk_t::transform_t::LOWER_CASE);
+			awh::fmk::transform(component, awh::fmk::transform_t::LOWER_CASE);
 			// Формируем строку компонента канонической базы
-			result.append(this->_fmk->format("\"%s\": %s\n", component.c_str(), this->value(component).c_str()));
+			result.append(awh::fmk::format("\"%s\": %s\n", component.c_str(), this->value(component).c_str()));
 		}
 		// Добавляем завершающую строку с параметрами подписи (без переноса строки)
-		result.append(this->_fmk->format("\"@signature-params\": %s", params.c_str()));
+		result.append(awh::fmk::format("\"@signature-params\": %s", params.c_str()));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -312,13 +313,13 @@ string awh::http::Hmac::base(const string & params) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(params), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {params}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим в лог сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -366,13 +367,13 @@ string awh::http::Hmac::sign(const string & base, const string & key) const noex
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(base, key), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {base, key}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим в лог сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -405,9 +406,9 @@ bool awh::http::Hmac::build(string & input, string & signature) noexcept {
 		// Сообщаем о неудачном формировании
 		return false;
 	// Формируем значение заголовка Signature-Input
-	input = this->_fmk->format("%s=%s", sign.label.c_str(), params.c_str());
+	input = awh::fmk::format("%s=%s", sign.label.c_str(), params.c_str());
 	// Формируем значение заголовка Signature
-	signature = this->_fmk->format("%s=:%s:", sign.label.c_str(), sig.c_str());
+	signature = awh::fmk::format("%s=:%s:", sign.label.c_str(), sig.c_str());
 	// Сообщаем об успешном формировании
 	return true;
 }
@@ -446,7 +447,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 			// Приводим имя заголовка к нижнему регистру
 			string field(name);
 			// Выполняем перевод имени заголовка в нижний регистр
-			this->_fmk->transform(field, fmk_t::transform_t::LOWER_CASE);
+			awh::fmk::transform(field, awh::fmk::transform_t::LOWER_CASE);
 			// Получаем ссылку на параметры подписи
 			auth_t::sign_t & sign = this->_params.sign;
 			// Если разбирается заголовок Signature-Input
@@ -462,7 +463,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				// Извлекаем и очищаем метку подписи
 				string label = value.substr(0, eq);
 				// Удаляем крайние пробелы у метки подписи
-				this->_fmk->transform(label, fmk_t::transform_t::TRIM);
+				awh::fmk::transform(label, awh::fmk::transform_t::TRIM);
 				// Устанавливаем метку подписи
 				sign.label = ::move(label);
 				// Запоминаем метку из Signature-Input для сверки с Signature
@@ -470,7 +471,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				// Извлекаем сырое значение параметров подписи
 				string rest = value.substr(eq + 1);
 				// Удаляем крайние пробелы у параметров подписи
-				this->_fmk->transform(rest, fmk_t::transform_t::TRIM);
+				awh::fmk::transform(rest, awh::fmk::transform_t::TRIM);
 				// Выполняем поиск границ списка покрываемых компонентов
 				const size_t lp = rest.find('('), rp = rest.find(')');
 				// Если список покрываемых компонентов найден
@@ -482,7 +483,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 					// Список покрываемых компонентов
 					vector <string> items;
 					// Выполняем разделение списка покрываемых компонентов
-					this->_fmk->split(inner, " ", items);
+					awh::fmk::split(inner, " ", items);
 					// Очищаем текущий список покрываемых компонентов
 					sign.covered.clear();
 					/**
@@ -490,7 +491,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 					 */
 					for(auto & item : items){
 						// Удаляем крайние пробелы у компонента
-						this->_fmk->transform(item, fmk_t::transform_t::TRIM);
+						awh::fmk::transform(item, awh::fmk::transform_t::TRIM);
 						// Если компонент обёрнут в кавычки - удаляем их
 						if((item.length() > 1) && (item.front() == '"') && (item.back() == '"'))
 							// Снимаем обрамляющие кавычки
@@ -505,13 +506,13 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 					// Список параметров подписи
 					vector <string> parts;
 					// Выполняем разделение параметров подписи
-					this->_fmk->split(tail, ";", parts);
+					awh::fmk::split(tail, ";", parts);
 					/**
 					 * Выполняем перебор всех параметров подписи
 					 */
 					for(auto & part : parts){
 						// Удаляем крайние пробелы у параметра
-						this->_fmk->transform(part, fmk_t::transform_t::TRIM);
+						awh::fmk::transform(part, awh::fmk::transform_t::TRIM);
 						// Если параметр пустой - пропускаем его
 						if(part.empty())
 							// Переходим к следующему параметру
@@ -527,11 +528,11 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 						// Извлекаем значение параметра
 						string value = part.substr(sep + 1);
 						// Удаляем крайние пробелы у ключа
-						this->_fmk->transform(key, fmk_t::transform_t::TRIM);
+						awh::fmk::transform(key, awh::fmk::transform_t::TRIM);
 						// Удаляем крайние пробелы у значения
-						this->_fmk->transform(value, fmk_t::transform_t::TRIM);
+						awh::fmk::transform(value, awh::fmk::transform_t::TRIM);
 						// Приводим ключ параметра к нижнему регистру
-						this->_fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
+						awh::fmk::transform(key, awh::fmk::transform_t::LOWER_CASE);
 						// Если значение обёрнуто в кавычки - удаляем их
 						if((value.length() > 1) && (value.front() == '"') && (value.back() == '"'))
 							// Снимаем обрамляющие кавычки
@@ -543,7 +544,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 						// Если параметр является алгоритмом подписи
 						else if(key.compare("alg") == 0) {
 							// Приводим название алгоритма к нижнему регистру
-							this->_fmk->transform(value, fmk_t::transform_t::LOWER_CASE);
+							awh::fmk::transform(value, awh::fmk::transform_t::LOWER_CASE);
 							// Если алгоритм является HMAC-MD5
 							if(value.compare("hmac-md5") == 0)
 								// Устанавливаем алгоритм MD5
@@ -591,7 +592,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 					 */
 					if(this->_params.mode.validation != auth_t::mode_t::STRICT)
 						// Приводим ключи параметров к нижнему регистру для канонической сверки
-						::normalizeSignatureParamKeys(sign.params, this->_fmk);
+						::normalizeSignatureParamKeys(sign.params);
 				}
 			// Если разбирается заголовок Signature
 			} else if(field.compare("signature") == 0) {
@@ -606,7 +607,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				// Извлекаем и очищаем метку подписи
 				string label = value.substr(0, eq);
 				// Удаляем крайние пробелы у метки подписи
-				this->_fmk->transform(label, fmk_t::transform_t::TRIM);
+				awh::fmk::transform(label, awh::fmk::transform_t::TRIM);
 				// Если метка не совпадает с Signature-Input — отклоняем разбор
 				if(!sign.inputLabel.empty() && !secureCompare(label, sign.inputLabel))
 					// Сообщаем о неудачном разборе
@@ -616,7 +617,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				// Извлекаем значение подписи
 				string rest = value.substr(eq + 1);
 				// Удаляем крайние пробелы у значения подписи
-				this->_fmk->transform(rest, fmk_t::transform_t::TRIM);
+				awh::fmk::transform(rest, awh::fmk::transform_t::TRIM);
 				// Выполняем поиск границ значения подписи
 				const size_t c1 = rest.find(':'), c2 = rest.rfind(':');
 				// Если границы значения подписи найдены
@@ -633,13 +634,13 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, header), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, header}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим в лог сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -676,7 +677,7 @@ bool awh::http::Hmac::check() noexcept {
 		// Сообщаем о неудачной проверке
 		return false;
 	// Получаем текущий штамп времени в секундах
-	const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+	const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 	// Допустимое расхождение локальных часов
 	const uint64_t skew = this->_params.mode.clockSkew;
 	// Если подпись создана слишком далеко в будущем
@@ -747,7 +748,7 @@ string awh::http::Hmac::header(const bool full) noexcept {
 			// Если требуется вывести заголовки вместе с их именами
 			if(full)
 				// Формируем оба заголовка подписи
-				result = this->_fmk->format("Signature-Input: %s\r\nSignature: %s\r\n", input.c_str(), signature.c_str());
+				result = awh::fmk::format("Signature-Input: %s\r\nSignature: %s\r\n", input.c_str(), signature.c_str());
 			// Иначе возвращаем только значение заголовка Signature
 			else result = signature;
 		}
@@ -781,12 +782,10 @@ void awh::http::Hmac::headers(vector <pair <string, string>> & result) noexcept 
  * @param owner  сторона работы (клиент/сервер)
  * @param params общие параметры авторизации
  * @param crypto объект криптографии
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
  *
  */
-awh::http::Hmac::Hmac(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
- auth_t::scheme_t(owner, params, crypto, fmk, log) {}
+awh::http::Hmac::Hmac(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto) noexcept :
+ auth_t::scheme_t(owner, params, crypto) {}
 /**
  * @brief Деструктор
  *

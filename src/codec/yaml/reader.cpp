@@ -23,6 +23,7 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/reader.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1104,12 +1105,9 @@ namespace {
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::yaml::Reader::Reader(const log_t * log) noexcept :
- _log(log),
- _decoder(log),
+awh::codec::yaml::Reader::Reader() noexcept :
+ _decoder(),
  _state(state_t::READY),
  _error(error_t::NONE),
  _offset(0),
@@ -1163,14 +1161,12 @@ awh::codec::yaml::Reader::Reader(const log_t * log) noexcept :
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки разбора текста
  *
  */
-awh::codec::yaml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
- _log(log),
+awh::codec::yaml::Reader::Reader(const settings_t & settings) noexcept :
  _settings(settings),
- _decoder(log),
+ _decoder(),
  _state(state_t::READY),
  _error(error_t::NONE),
  _offset(0),
@@ -1563,9 +1559,8 @@ bool awh::codec::yaml::Reader::fail(const error_t error, const size_t column) no
 	 * @note Код отказа остаётся доступен через error(), а место его - через location():
 	 *       журнал есть оповещение, а не единственный способ узнать о случившемся
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе разбора текста
-		this->_log->print("YAML parsing failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::yaml::message(error), this->_location.line, this->_location.column);
+		awh::log::print("YAML parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error), this->_location.line, this->_location.column);
 	// Выводим признак прекращения разбора
 	return false;
 }

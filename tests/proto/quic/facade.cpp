@@ -47,6 +47,7 @@
  */
 #include "../../../include/client/client.hpp"
 #include "../../../include/server/server.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -172,10 +173,6 @@ namespace {
 	 */
 	class Harness {
 		private:
-			// Объект фреймворка
-			awh::fmk_t * _fmk;
-			// Объект для работы с логами
-			awh::log_t * _log;
 			// Тестовое окружение транспортной безопасности (общий самоподписанный сертификат)
 			QuicSecurity * _security;
 		private:
@@ -602,7 +599,7 @@ namespace {
 				// Локальные транспортные параметры соединения
 				const awh::quic::params::params_t params = this->makeParams();
 				// Создаём фасад сервера QUIC на серверном шаблоне контекста безопасности
-				this->_server = std::make_unique <awh::server_t> (this->_security->context(awh::quic::endpoint_t::SERVER), &this->_security->coder(), this->_fmk, this->_log);
+				this->_server = std::make_unique <awh::server_t> (this->_security->context(awh::quic::endpoint_t::SERVER), &this->_security->coder());
 				// Создаём событие сервера транспорта QUIC поверх UDP
 				this->_server->init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::QUIC);
 				// Устанавливаем локальные транспортные параметры соединений сервера
@@ -622,7 +619,7 @@ namespace {
 				// Регистрируем коллбэк завершения соединения на стороне сервера
 				this->_server->on <void (const event::id_t, const quic::error_t)> ("disconnect", &Harness::serverDisconnect, this, _1, _2);
 				// Создаём фасад клиента QUIC на транспорте клиентского шаблона контекста безопасности
-				this->_client = std::make_unique <awh::client_t> (this->_security->coder().transport(this->_security->context(awh::quic::endpoint_t::CLIENT)), &this->_security->coder(), this->_fmk, this->_log);
+				this->_client = std::make_unique <awh::client_t> (this->_security->coder().transport(this->_security->context(awh::quic::endpoint_t::CLIENT)), &this->_security->coder());
 				// Создаём событие клиента транспорта QUIC поверх UDP
 				this->_client->init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::QUIC);
 				// Устанавливаем локальные транспортные параметры соединения клиента
@@ -696,13 +693,11 @@ namespace {
 			 *
 			 * @param config   конфигурация прогона
 			 * @param port     порт прослушивания сервера на локальной петле
-			 * @param fmk      объект фреймворка
-			 * @param log      объект для работы с логами
 			 * @param security тестовое окружение транспортной безопасности
 			 *
 			 */
-			Harness(const config_t & config, const uint16_t port, awh::fmk_t * fmk, awh::log_t * log, QuicSecurity * security) noexcept :
-			 _fmk(fmk), _log(log), _security(security), _config(config), _port(port),
+			Harness(const config_t & config, const uint16_t port, QuicSecurity * security) noexcept :
+			 _security(security), _config(config), _port(port),
 			 _sid(awh::quic::connection_t::INVALID_STREAM), _offset(0), _recvOffset(0),
 			 _streamDone(false), _datagramDone(false), _finishing(false) {}
 	};
@@ -714,10 +709,6 @@ namespace {
  */
 class QuicFacadeTest : public testing::Test {
 	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект для работы с логами
-		std::unique_ptr <awh::log_t> _log;
 		// Тестовое окружение транспортной безопасности
 		std::unique_ptr <QuicSecurity> _security;
 	protected:
@@ -740,14 +731,10 @@ class QuicFacadeTest : public testing::Test {
 		 *
 		 */
 		void SetUp() override {
-			// Инициализируем объект фреймворка
-			this->_fmk = std::make_unique <awh::fmk_t> ();
-			// Инициализируем объект логирования
-			this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 			// Отключаем вывод логов в тестовом окружении
-			this->_log->level(awh::log_t::level_t::NONE);
+			awh::log::level(awh::log::level_t::NONE);
 			// Инициализируем тестовое окружение транспортной безопасности
-			this->_security = std::make_unique <QuicSecurity> (this->_fmk.get(), this->_log.get());
+			this->_security = std::make_unique <QuicSecurity> ();
 		}
 		/**
 		 * @brief Метод очистки тестового окружения
@@ -768,7 +755,7 @@ TEST_F(QuicFacadeTest, ConnectAndStreamEcho){
 	// Устанавливаем размер нагрузки потока
 	config.payload = 256;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(15000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом
@@ -803,7 +790,7 @@ TEST_F(QuicFacadeTest, BackpressurePartialSendAndWritable){
 	// Устанавливаем нижнюю водяную метку буфера отправки
 	config.sendLow = 4096;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(20000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом
@@ -833,7 +820,7 @@ TEST_F(QuicFacadeTest, StreamDataSourcePull){
 	// Устанавливаем объём тела потока источника
 	config.payload = 50000;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(20000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом
@@ -862,7 +849,7 @@ TEST_F(QuicFacadeTest, DatagramEcho){
 	// Устанавливаем размер нагрузки потока
 	config.payload = 128;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(15000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом
@@ -891,7 +878,7 @@ TEST_F(QuicFacadeTest, ClientCloseFiresServerDisconnect){
 	// Устанавливаем размер нагрузки потока
 	config.payload = 256;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(15000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом
@@ -920,7 +907,7 @@ TEST_F(QuicFacadeTest, ServerCloseFiresClientDisconnect){
 	// Устанавливаем размер нагрузки потока
 	config.payload = 256;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(15000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом
@@ -949,7 +936,7 @@ TEST_F(QuicFacadeTest, ConnectFailureNoServer){
 	// Устанавливаем низкий таймаут простоя, чтобы неудачное подключение завершилось быстро
 	config.idleTimeout = 3000;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(15000);
 	// Проверяем, что соединение НЕ установлено (рукопожатие не с кем выполнить)
@@ -982,7 +969,7 @@ TEST_F(QuicFacadeTest, EchoWithCongestionMarking){
 	// Включаем уведомление о перегрузке пути
 	config.ecn = true;
 	// Создаём интеграционное окружение фасадов
-	Harness harness(config, this->pickPort(), this->_fmk.get(), this->_log.get(), this->_security.get());
+	Harness harness(config, this->pickPort(), this->_security.get());
 	// Выполняем прогон сквозного обмена
 	const result_t result = harness.execute(15000);
 	// Проверяем, что прогон не прерван сторожевым таймаутом

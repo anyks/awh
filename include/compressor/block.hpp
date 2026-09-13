@@ -44,7 +44,7 @@
  */
 #include "types.hpp"
 #include "stream.hpp"
-#include "../sys/log.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -351,9 +351,6 @@ namespace awh {
 				mutable window_t _zlib;
 				// Параметры движка Deflate
 				mutable deflate_t _deflate;
-			private:
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -778,16 +775,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param log object for working with logs
-				 *
 				 * \~
 				 */
-				explicit Block(const log_t * log) noexcept;
+				explicit Block() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

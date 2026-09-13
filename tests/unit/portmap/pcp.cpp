@@ -408,7 +408,7 @@ TEST_F(PortmapUnitFixture, PortmapPcpMapping) {
 	// Выполняем запуск поддельного маршрутизатора
 	router.start();
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный маршрутизатор
 	::setup(portmap);
 	// Выполняем ожидание итога обращения к маршрутизатору
@@ -480,7 +480,7 @@ TEST_F(PortmapUnitFixture, PortmapPcpRefusal) {
 		// Выполняем запуск поддельного маршрутизатора
 		router.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный маршрутизатор
 		::setup(portmap);
 		// Выполняем ожидание итога обращения к маршрутизатору
@@ -575,7 +575,7 @@ TEST_F(PortmapUnitFixture, PortmapPcpDamagedAnswer) {
 		// Выполняем запуск поддельного маршрутизатора
 		router.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный маршрутизатор
 		::setup(portmap);
 		// Выполняем ожидание итога обращения к маршрутизатору
@@ -665,7 +665,7 @@ TEST_F(PortmapUnitFixture, PortmapPcpCloseAndRenew) {
 		// Выполняем запуск поддельного маршрутизатора
 		router.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный маршрутизатор
 		::setup(portmap);
 		// Выполняем ожидание итога обращения к маршрутизатору
@@ -781,7 +781,7 @@ TEST_F(PortmapUnitFixture, PortmapPcpEpochRollback) {
 	// Выполняем запуск поддельного маршрутизатора
 	router.start();
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный маршрутизатор
 	::setup(portmap);
 	// Количество объявлений об утрате состояния маршрутизатором
@@ -826,7 +826,7 @@ TEST_F(PortmapUnitFixture, PortmapPcpEpochRollback) {
  */
 TEST_F(PortmapUnitFixture, PortmapPcpAnnouncement) {
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный маршрутизатор
 	::setup(portmap);
 	// Если приём объявлений завести не удалось, испытание не проводится
@@ -965,7 +965,7 @@ static bool proclaimPcp6(const uint32_t epoch) noexcept {
  */
 TEST_F(PortmapUnitFixture, PortmapPcpAnnouncementIPv6) {
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Устанавливаем вид опроса маршрутизатора
 	portmap.setType(awh::unit::portmap_t::type_t::PCP);
 	// Устанавливаем разновидность сети, в которой ведётся обмен

@@ -26,7 +26,6 @@
 /**
  * Подключаем наши модули
  */
-#include <sys/log.hpp>
 
 /**
  * @brief Метод печати сообщения журнала
@@ -41,6 +40,7 @@ void awh::Logging::print(std::string_view, flag_t, ...) const noexcept {}
  * Подключаем заголовочный файл главного модуля тестов
  */
 #include "../main.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * @brief Главная функция стенда
@@ -56,6 +56,13 @@ void awh::Logging::print(std::string_view, flag_t, ...) const noexcept {}
  *
  */
 int32_t main(int32_t argc, char ** argv){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Заводим Google Test
 	::testing::InitGoogleTest(&argc, argv);
 	// Запускаем все проверки

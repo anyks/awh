@@ -76,6 +76,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/portmap.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -130,19 +132,20 @@ static constexpr uint32_t LIFE_TIME = 3600;
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Отключаем неиспользуемые переменные
 	(void) argc;
 	(void) argv;
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект работы с логами
-	log_t log(&fmk);
-	// Устанавливаем объект работы с логами
-	fmk.setLogger(&log);
 	// Устанавливаем название сервиса
-	log.name("Watchdog");
+	awh::log::name("Watchdog");
 	// Создаём объект модуля перенаправления портов
-	unit::portmap_t portmap(&fmk, &log);
+	unit::portmap_t portmap;
 	/**
 	 * Устанавливаем вид опроса маршрутизатора
 	 *
@@ -185,7 +188,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	if(!portmap.announce(true))
 		// Записываем в лог сообщение о недоступности приёма объявлений
-		log.print("Router announcements are unavailable: falling back to epoch checks only", log_t::flag_t::WARNING);
+		awh::log::print("Router announcements are unavailable: falling back to epoch checks only", awh::log::flag_t::WARNING);
 	/**
 	 * Устанавливаем функцию обратного вызова на утрату состояния маршрутизатором
 	 *
@@ -203,9 +206,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @param type договор, по которому замечена утрата состояния
 	 *
 	 */
-	portmap.on <void (const unit::portmap_t::type_t)> ("reset", [&portmap, &mapping, &log](const unit::portmap_t::type_t type) noexcept -> void {
+	portmap.on <void (const unit::portmap_t::type_t)> ("reset", [&portmap, &mapping](const unit::portmap_t::type_t type) noexcept -> void {
 		// Записываем в лог сообщение об утрате состояния маршрутизатором
-		log.print("Router has lost its state (protocol %u): re-creating port mappings", log_t::flag_t::WARNING, static_cast <uint16_t> (type));
+		awh::log::print("Router has lost its state (protocol %u): re-creating port mappings", awh::log::flag_t::WARNING, static_cast <uint16_t> (type));
 		// Выполняем заведение перенаправления порта заново
 		portmap.open(mapping);
 	}, _1);
@@ -251,9 +254,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @param type  договор, по которому вёлся обмен
 	 *
 	 */
-	portmap.on <void (const unit::portmap_t::error_t, const unit::portmap_t::type_t)> ("failure", [&log](const unit::portmap_t::error_t error, const unit::portmap_t::type_t type) noexcept -> void {
+	portmap.on <void (const unit::portmap_t::error_t, const unit::portmap_t::type_t)> ("failure", [](const unit::portmap_t::error_t error, const unit::portmap_t::type_t type) noexcept -> void {
 		// Записываем в лог сообщение об отказе перенаправления
-		log.print("Portmapping failed: code %u (protocol %u)", log_t::flag_t::WARNING, static_cast <uint16_t> (error), static_cast <uint16_t> (type));
+		awh::log::print("Portmapping failed: code %u (protocol %u)", awh::log::flag_t::WARNING, static_cast <uint16_t> (error), static_cast <uint16_t> (type));
 	}, _1, _2);
 	/**
 	 * Устанавливаем функцию обратного вызова на получение ошибок событий обмена
@@ -263,9 +266,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @param description описание ошибки события обмена
 	 *
 	 */
-	portmap.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+	portmap.on <void (const event::id_t, const event::error_t, const string &)> ("error", [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 		// Записываем в лог сообщение об ошибке события обмена
-		log.print("Event %u error: %s (code %u)", log_t::flag_t::CRITICAL, eid, description.c_str(), static_cast <uint16_t> (error));
+		awh::log::print("Event %u error: %s (code %u)", awh::log::flag_t::CRITICAL, eid, description.c_str(), static_cast <uint16_t> (error));
 	}, _1, _2, _3);
 	/**
 	 * Выполняем заведение перенаправления порта

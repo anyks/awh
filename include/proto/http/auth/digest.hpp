@@ -160,8 +160,6 @@ namespace awh {
 				 * @param owner  сторона работы (клиент/сервер)
 				 * @param params общие параметры авторизации
 				 * @param crypto объект криптографии
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
 				 *
 				 *
 				 * \~english
@@ -169,12 +167,10 @@ namespace awh {
 				 * @param owner  side of the work (client/server)
 				 * @param params common parameters of the authorization
 				 * @param crypto cryptography object
-				 * @param fmk    framework object
-				 * @param log    object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Digest(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Digest(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

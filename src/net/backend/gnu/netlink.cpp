@@ -36,6 +36,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <net/backend/gnu/netlink.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -85,13 +86,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(type, family), log_t::flag_t::WARNING, ::strerror(errno));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Выходим из функции
 			return result;
@@ -127,13 +128,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(type, family), log_t::flag_t::WARNING, ::strerror(errno));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Закрываем сокет к ядру
 			::close(fd);
@@ -168,13 +169,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(type, family), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 				// Выходим из цикла
 				break;
@@ -204,13 +205,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(type, family), log_t::flag_t::WARNING, ::strerror(-error->error));
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(-error->error));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(-error->error));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(-error->error));
 					#endif
 					// Выходим из цикла
 					break;
@@ -248,13 +249,13 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(type, family), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -269,8 +270,6 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
  *
  */
 bool awh::gnu::Netlink::commit(const void * message, const size_t size) const noexcept {
-	// Получаем объект работы с логами
-	const awh::log_t * log = this->_log;
 	// Переменная результата
 	bool result = false;
 	// Создаём сокет к ядру
@@ -282,13 +281,13 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return result;
@@ -300,13 +299,13 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), awh::log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Закрываем сокет к ядру
 		::close(fd);
@@ -332,13 +331,13 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), awh::log_t::flag_t::WARNING, ::strerror(-error->error));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(-error->error));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(-error->error));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(-error->error));
 				#endif
 			}
 		}
@@ -450,13 +449,13 @@ bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(string(name)), log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(name)}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return false;
@@ -514,13 +513,13 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return result;
@@ -532,13 +531,13 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Закрываем сокет к ядру
 		::close(fd);
@@ -570,13 +569,13 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING, ::strerror(-error->error));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(-error->error));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(-error->error));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(-error->error));
 				#endif
 				// Выходим из цикла
 				break;

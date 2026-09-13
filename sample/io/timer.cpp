@@ -30,6 +30,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -48,12 +50,15 @@ using namespace placeholders;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io(&fmk, &log);
+	engine::io_t io;
 	// Устанавливаем тип таймера как простой
 	io.setInternalTimer(event::timer_t::SIMPLE);
 	// Устанавливаем тип таймера как сложный
@@ -77,24 +82,24 @@ int32_t main(){
 		// Замеряем время начала работы для интервала времени
 		chrono::time_point <chrono::system_clock> is = chrono::system_clock::now();
 		// Устанавливаем функцию обратного вызова на событие таймера
-		io.on(eid1, [&ts, &log](const event::id_t eid, const event::status_t status) noexcept -> void {
+		io.on(eid1, [&ts](const event::id_t eid, const event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
 			if(status == event::status_t::SUCCESS)
 				// Записываем в лог сообщение о срабатывании таймера
-				log.print("Таймер сработал: ID=%u, %u seconds", log_t::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
+				awh::log::print("Таймер сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
 		});
 		// Количество срабатываний интервала
 		uint8_t count = 0;
 		// Устанавливаем функцию обратного вызова на событие интервала
-		io.on(eid2, [&count, &is, &log](const event::id_t eid, const event::status_t status) noexcept -> void {
+		io.on(eid2, [&count, &is](const event::id_t eid, const event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
 			if(status == event::status_t::SUCCESS){
 				// Записываем в лог сообщение о срабатывании интервала
-				log.print("Интервал сработал: ID=%u, %u seconds", log_t::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
+				awh::log::print("Интервал сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
 				// Замеряем время начала работы для интервала времени
 				is = ::move(shift);
 				// Если таймер отработал 10 раз, выходим

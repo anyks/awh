@@ -228,7 +228,7 @@ namespace {
 	 */
 	static outcome_t deriving() noexcept {
 		// Объект криптографии сценария вывода ключа
-		awh::crypto_t crypto(framework(), logger());
+		awh::crypto_t crypto;
 		// Устанавливаем пароль шифрования
 		crypto.password("benchmark password");
 		// Устанавливаем режим блочного шифрования с проверкой подлинности

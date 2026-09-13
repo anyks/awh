@@ -546,56 +546,42 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param fmk framework object
-				 * @param log object for working with logs
-				 *
 				 * \~
 				 */
-				explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param dns объект DNS-резолвера
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * @param dns DNS resolver object
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(unit::dns_t * dns) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param ctl   идентификатор контекста безопасности
 				 * @param coder объект транспортного уровня безопасности
-				 * @param fmk   объект фреймворка
-				 * @param log   объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * @param ctl   security context identifier
 				 * @param coder transport layer security object
-				 * @param fmk   framework object
-				 * @param log   object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
@@ -603,8 +589,6 @@ namespace awh {
 				 * @param ctl   идентификатор контекста безопасности
 				 * @param coder объект транспортного уровня безопасности
 				 * @param dns   объект DNS-резолвера
-				 * @param fmk   объект фреймворка
-				 * @param log   объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -612,12 +596,10 @@ namespace awh {
 				 * @param ctl   security context identifier
 				 * @param coder transport layer security object
 				 * @param dns   DNS resolver object
-				 * @param fmk   framework object
-				 * @param log   object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns) noexcept;
 			public:
 				/**
 				 * \~russian

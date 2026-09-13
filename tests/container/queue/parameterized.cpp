@@ -55,8 +55,6 @@ TEST_P(QueueParameterizedFixture, QueueTest){
 	this->_queue->setMaxMemory(1024);
 	// Устанавливаем максимальное количество записей очереди
 	this->_queue->setMaxRecords(1024);
-	// Устанавливаем объект логов
-	this->_queue->setLogger(this->_log.get());
 	/**
 	 * Переход по всем числам для добавления в очередь
 	 */
@@ -89,7 +87,7 @@ TEST_P(QueueParameterizedFixture, QueueTest){
 		index++;
 	}
 	// Инициализируем ещё одну очередь
-	awh::queue_t queue(this->_fmk.get(), this->_log.get());
+	awh::queue_t queue;
 	// Переход по всем числам для добавления в очередь
 	queue.swap(* this->_queue.get());
 	// Выполняем сброс очереди

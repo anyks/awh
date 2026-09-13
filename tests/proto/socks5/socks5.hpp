@@ -34,11 +34,6 @@
  *
  */
 class Socks5Fixture : public testing::Test {
-	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения

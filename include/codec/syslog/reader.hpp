@@ -43,7 +43,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "common.hpp"
-#include "../../sys/fmk.hpp"
 #include "../../sys/chrono.hpp"
 
 /**
@@ -292,7 +291,6 @@ namespace awh {
 					 *       конструктором. Держать ссылку без потребителя значило бы
 					 *       заводить поле, о каком собиратель справедливо предупреждает
 					 */
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -802,17 +800,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Reader(const fmk_t * fmk, const log_t * log) noexcept;
+					Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -833,5 +826,6 @@ namespace awh {
  * Возвращаем имена, системными макросами занятые
  */
 #include "../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_CODEC_SYSLOG_READER__

@@ -39,6 +39,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -250,9 +251,8 @@ bool awh::codec::toml::Reader::failure(const error_t error, const size_t offset)
 		 *       location(): журнал есть оповещение, а не единственный способ узнать
 		 *       о случившемся
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе разбора текста
-			this->_log->print("TOML parsing failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
+			awh::log::print("TOML parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
 	}
 	// Запоминаем состояние прекращения разбора ошибкой
 	this->_state = state_t::FAILED;
@@ -4155,23 +4155,18 @@ void awh::codec::toml::Reader::clear() noexcept {
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::toml::Reader::Reader(const log_t * log) noexcept :
- _log(log),
- _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(log),
+awh::codec::toml::Reader::Reader() noexcept :
+ _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(),
  _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0), _staging(0), _declaring(false), _appending(false) {}
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки разбора текста настроек
  *
  */
-awh::codec::toml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
- _log(log),
- _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(log),
+awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
+ _state(state_t::READY), _error(error_t::NONE), _hungry(false), _final(false), _decoding(error_t::NONE), _decoder(),
  _settings(settings), _offset(0), _start(0), _probed(0), _anonymous(0), _base(0), _line(1), _bol(0), _current(0),
  _staging(0), _declaring(false), _appending(false) {
 	// Выполняем установку навязанной извне кодировки исходного текста

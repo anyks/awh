@@ -49,9 +49,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <codec/abc/abc.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -101,18 +101,6 @@ namespace {
 	};
 
 	/**
-	 * @brief Объект фреймворка
-	 *
-	 */
-	unique_ptr <fmk_t> Fmk;
-
-	/**
-	 * @brief Объект журнала
-	 *
-	 */
-	unique_ptr <log_t> Journal;
-
-	/**
 	 * @brief Объект сжатия данных
 	 *
 	 */
@@ -147,7 +135,7 @@ namespace {
 	 */
 	bool assemble(const bool sign, vector <uint8_t> & buffer, vector <uint8_t> & original) noexcept {
 		// Сборщик контейнера
-		abc::assembler_t assembler(Journal.get());
+		abc::assembler_t assembler;
 		// Выполняем установку модуля сжатия сборщику контейнера
 		assembler.compressor(Squeezer.get());
 		/**
@@ -193,7 +181,7 @@ namespace {
 	 */
 	bool drain(const vector <uint8_t> & buffer, vector <uint8_t> & records) noexcept {
 		// Загрузчик контейнера
-		abc::loader_t loader(Journal.get());
+		abc::loader_t loader;
 		// Выполняем установку модуля сжатия загрузчику контейнера
 		loader.compressor(Squeezer.get());
 		// Выполняем очистку собираемого содержимого кадров
@@ -242,7 +230,7 @@ namespace {
 		 */
 		if(taken){
 			// Укладчик кадров контейнера
-			abc::packer_t packer(Journal.get());
+			abc::packer_t packer;
 			// Выполняем установку модуля сжатия укладчику кадров
 			packer.compressor(Squeezer.get());
 			// Смещение снятия кадра
@@ -263,7 +251,7 @@ namespace {
 			if((header.index >= static_cast <uint64_t> (abc::HEADER_LENGTH)) &&
 			 (header.index < static_cast <uint64_t> (buffer.size()))){
 				// Оглавление контейнера
-				abc::index_t index(Journal.get());
+				abc::index_t index;
 				// Смещение снятия кадра оглавления
 				size_t place = static_cast <size_t> (header.index);
 				// Снятое содержимое кадра оглавления
@@ -364,6 +352,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество прогонов порчи
 	uint64_t count = 20000;
 	/**
@@ -380,16 +375,12 @@ int main(int argc, char * argv[]) noexcept {
 	if(argc > 2)
 		// Выполняем снятие зерна источника случайных чисел
 		seed = static_cast <uint64_t> (::strtoull(argv[2], nullptr, 0));
-	// Выполняем заведение объекта фреймворка
-	Fmk = make_unique <fmk_t> ();
-	// Выполняем заведение объекта журнала
-	Journal = make_unique <log_t> (Fmk.get());
 	// Выполняем отключение вывода журнала: отказы здесь ожидаемы и часты
-	Journal->mode({});
+	awh::log::mode({});
 	// Выполняем заведение объекта сжатия данных
-	Squeezer = make_unique <compressor::block_t> (Journal.get());
+	Squeezer = make_unique <compressor::block_t> ();
 	// Выполняем заведение объекта шифрования данных
-	Cipher = make_unique <crypto_t> (Fmk.get(), Journal.get());
+	Cipher = make_unique <crypto_t> ();
 	// Выполняем установку соли шифрования
 	Cipher->salt("соль ворошителя");
 	// Выполняем установку пароля шифрования

@@ -176,7 +176,7 @@ namespace awh {
 			 * при записи в выдачу не идёт
 			 *
 			 *  @code{.cpp}
-			 *  document_t document(log);
+			 *  document_t document();
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");
@@ -226,7 +226,7 @@ namespace awh {
 			 * does not go into the output at the writing
 			 *
 			 *  @code{.cpp}
-			 *  document_t document(log);
+			 *  document_t document();
 			 *
 			 *  if(document.parse(text)){
 			 *    const string_view host = document.get("host", "server");
@@ -319,14 +319,13 @@ namespace awh {
 					bool fault(const error_t error) const noexcept;
 					/**
 					 * \~russian
-					 * Объект для работы с логами
+					 * Кодировка, какою текст настроек прочитан
 					 *
 					 * \~english
-					 * Object for working with logs
+					 * Encoding by which the text of the settings has been read
 					 *
 					 * \~
 					 */
-					// Кодировка, какою текст настроек прочитан
 					encoding_t _encoding;
 					/**
 					 * \~russian
@@ -341,20 +340,25 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const fmk_t * _fmk;
-					const log_t * _log;
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
 					/**
 					 * \~russian
 					 * Объект работы с файловой системой
-					 *
-					 * @note Держится изменяемым: запись ведётся из связки постоянной
 					 *
 					 * \~english
 					 * Object of the work with the filesystem
 					 *
 					 * \~
 					 */
-					mutable fs_t _fs;
+					fs_t _fs;
 				public:
 					/**
 					 * \~russian
@@ -2036,50 +2040,27 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним
-					 *          лишь доводом построения, но и после него - потребитель, дерево
-					 *          получивший готовым, иначе не имел бы способа направить его отчёты
-					 *          в свой журнал вовсе
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of setting the object of the keeping of the log of the work
-					 * @param log object of the keeping of the log of the work
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
 					 * @brief Конструктор
-					 *
-					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log) noexcept;
+					Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log      объект для работы с логами
 					 * @param settings настройки дерева настроек
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the settings tree
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept;
+					Document(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

@@ -40,6 +40,8 @@
 #include <nghttp2/nghttp2.h>
 
 #include <proto/http/parser/http2/http.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh;
 using namespace awh::http;
@@ -219,17 +221,14 @@ static void exchange(parser_http2_t & parser, nghttp2_session * session, std::st
 /**
  * @brief Функция проверки расширенного CONNECT нашим клиентом (RFC 8441)
  *
- * @param fmk объект фреймворка
- * @param log объект логов
- *
  */
-static void checkConnect(const fmk_t * fmk, const log_t * log) noexcept {
+static void checkConnect() noexcept {
 	// Печатаем название проверки
 	std::cout << "расширенный CONNECT: наш клиент против сервера nghttp2" << std::endl;
 	// Объект состояния проверки
 	tunnel_t state;
 	// Создаём объект парсера нашего клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Устанавливаем функцию обратного вызова записи исходящих байт
 	client.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
 		// Накапливаем байты для сессии nghttp2
@@ -332,11 +331,8 @@ static void checkConnect(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Функция проверки реакции нашего клиента на GOAWAY эталона
  *
- * @param fmk объект фреймворка
- * @param log объект логов
- *
  */
-static void checkGoaway(const fmk_t * fmk, const log_t * log) noexcept {
+static void checkGoaway() noexcept {
 	// Печатаем название проверки
 	std::cout << "GOAWAY: наш клиент против сервера nghttp2" << std::endl;
 	// Объект состояния проверки
@@ -344,7 +340,7 @@ static void checkGoaway(const fmk_t * fmk, const log_t * log) noexcept {
 	// События закрытия потоков нашего клиента
 	std::map <uint32_t, uint32_t> closes;
 	// Создаём объект парсера нашего клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Устанавливаем функцию обратного вызова записи исходящих байт
 	client.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
 		// Накапливаем байты для сессии nghttp2
@@ -417,11 +413,8 @@ static void checkGoaway(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Функция проверки кадра PRIORITY_UPDATE (RFC 9218)
  *
- * @param fmk объект фреймворка
- * @param log объект логов
- *
  */
-static void checkPriority(const fmk_t * fmk, const log_t * log) noexcept {
+static void checkPriority() noexcept {
 	// Печатаем название проверки
 	std::cout << "PRIORITY_UPDATE: клиент nghttp2 против нашего сервера" << std::endl;
 	// Объект состояния проверки
@@ -431,7 +424,7 @@ static void checkPriority(const fmk_t * fmk, const log_t * log) noexcept {
 	// Признак ошибки уровня соединения нашего сервера
 	bool failed = false;
 	// Создаём объект парсера нашего сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Устанавливаем функцию обратного вызова записи исходящих байт
 	server.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
 		// Накапливаем байты для сессии nghttp2
@@ -506,11 +499,8 @@ static void checkPriority(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Функция проверки расширенного CONNECT нашим сервером (RFC 8441)
  *
- * @param fmk объект фреймворка
- * @param log объект логов
- *
  */
-static void checkConnectServer(const fmk_t * fmk, const log_t * log) noexcept {
+static void checkConnectServer() noexcept {
 	// Печатаем название проверки
 	std::cout << "расширенный CONNECT: клиент nghttp2 против нашего сервера" << std::endl;
 	// Объект состояния проверки
@@ -522,7 +512,7 @@ static void checkConnectServer(const fmk_t * fmk, const log_t * log) noexcept {
 	// Метод запроса, принятый нашим сервером
 	method_t method = method_t::NONE;
 	// Создаём объект парсера нашего сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Получаем параметры SETTINGS нашего сервера
 	auto settings = server.settings();
 	// Разрешаем расширенный метод CONNECT
@@ -708,17 +698,14 @@ static void compare(const std::string & title, const std::vector <std::string> &
 /**
  * @brief Функция проверки анонсов ALTSVC и ORIGIN нашим клиентом
  *
- * @param fmk объект фреймворка
- * @param log объект логов
- *
  */
-static void checkAnnounceClient(const fmk_t * fmk, const log_t * log) noexcept {
+static void checkAnnounceClient() noexcept {
 	// Печатаем название проверки
 	std::cout << "ALTSVC и ORIGIN: сервер nghttp2 против нашего клиента" << std::endl;
 	// Объект состояния проверки
 	announce_t state;
 	// Создаём объект парсера нашего клиента
-	parser_http2_t client(direct_t::RESPONSE, fmk, log);
+	parser_http2_t client(direct_t::RESPONSE);
 	// Устанавливаем функцию обратного вызова записи исходящих байт
 	client.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
 		// Накапливаем байты для сессии nghttp2
@@ -804,11 +791,8 @@ static void checkAnnounceClient(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Функция проверки анонсов ALTSVC и ORIGIN нашим сервером
  *
- * @param fmk объект фреймворка
- * @param log объект логов
- *
  */
-static void checkAnnounceServer(const fmk_t * fmk, const log_t * log) noexcept {
+static void checkAnnounceServer() noexcept {
 	// Печатаем название проверки
 	std::cout << "ALTSVC и ORIGIN: наш сервер против клиента nghttp2" << std::endl;
 	// Объект состояния проверки
@@ -822,7 +806,7 @@ static void checkAnnounceServer(const fmk_t * fmk, const log_t * log) noexcept {
 	// Значение поля Alt-Svc анонса для потока
 	const std::string second = "h2=\"alt.example.com:443\"";
 	// Создаём объект парсера нашего сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Устанавливаем функцию обратного вызова записи исходящих байт
 	server.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
 		// Накапливаем байты для сессии nghttp2
@@ -915,24 +899,28 @@ static void checkAnnounceServer(const fmk_t * fmk, const log_t * log) noexcept {
 }
 
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод логов
-	log.level(log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Выполняем проверку расширенного CONNECT нашим клиентом
-	::checkConnect(&fmk, &log);
+	::checkConnect();
 	// Выполняем проверку расширенного CONNECT нашим сервером
-	::checkConnectServer(&fmk, &log);
+	::checkConnectServer();
 	// Выполняем проверку реакции на GOAWAY
-	::checkGoaway(&fmk, &log);
+	::checkGoaway();
 	// Выполняем проверку кадра обновления приоритета
-	::checkPriority(&fmk, &log);
+	::checkPriority();
 	// Выполняем проверку анонсов ALTSVC и ORIGIN нашим клиентом
-	::checkAnnounceClient(&fmk, &log);
+	::checkAnnounceClient();
 	// Выполняем проверку анонсов ALTSVC и ORIGIN нашим сервером
-	::checkAnnounceServer(&fmk, &log);
+	::checkAnnounceServer();
 	// Печатаем итог сверки
 	std::cout << "расхождений: " << ::failures << std::endl;
 	// Выводим результат

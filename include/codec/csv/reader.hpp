@@ -134,7 +134,7 @@ namespace awh {
 			 * через него, не оседая в памяти
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(log);
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -162,7 +162,7 @@ namespace awh {
 			 * through it without settling in the memory
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(log);
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -187,7 +187,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -1329,46 +1328,26 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log) noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
+					Reader() noexcept;
 				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора текста
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a text
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log, const settings_t & settings) noexcept;
+					Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

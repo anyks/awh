@@ -374,10 +374,6 @@ static inline void __awh_test_port_range__(uint16_t & begin, uint16_t & end) noe
 class IoFixture : public testing::Test {
 	protected:
 		
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 		// Объект асинхронного движка ввода-вывода
 		std::unique_ptr <awh::engine::io_t> _io;
 		// Объект транспортного уровня безопасности

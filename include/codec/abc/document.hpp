@@ -43,17 +43,16 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include "../../sys/fmk.hpp"
 
 #include "common.hpp"
 #include "encoding.hpp"
 #include "reader.hpp"
 #include "writer.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 
 /**
  * \~russian
@@ -90,6 +89,20 @@ namespace awh {
 		 * \~
 		 */
 		namespace abc {
+			/**
+			 * \~russian
+			 * @brief Владеющее значение кодека ABC
+			 *
+			 * @note Объявлено оно здесь ради дружества: значение перенимает у дерева объект
+			 *       фреймворка и объект журнала, взять их иначе ему НЕГДЕ - конструктор их
+			 *       не принимает. Само оно живёт в `codec/abc/value.hpp`
+			 *
+			 * \~english
+			 * @brief Owning value of the ABC codec
+			 *
+			 * \~
+			 */
+			class Value;
 			/**
 			 * \~russian
 			 * @brief Класс дерева документа
@@ -460,6 +473,17 @@ namespace awh {
 					 * \~
 					 */
 					typedef class __AWH_SHARED_EXPORT__ Value {
+						public:
+							/**
+							 * \~russian
+							 * Владеющее значение перенимает у дерева объект фреймворка и объект журнала
+							 *
+							 * \~english
+							 * An owning value takes over the object of the framework and the object of the logging from the tree
+							 *
+							 * \~
+							 */
+							friend class awh::codec::abc::Value;
 						private:
 							// Документ, которому значение принадлежит
 							const Document * _doc;
@@ -887,6 +911,21 @@ namespace awh {
 							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
 							 _doc(doc), _index(index), _bound(bound) {}
 					} value_t;
+				public:
+					/**
+					 * \~russian
+					 * Владеющее значение перенимает у дерева объект фреймворка и объект журнала
+					 *
+					 * @note Имя ЗДЕСЬ пишется полным намеренно: без пространства имён оно легло бы
+					 *       на вложенную ссылку `Document::Value`, а той дружество не нужно вовсе -
+					 *       вложенный класс достаёт до закрытого у окружающего и без него
+					 *
+					 * \~english
+					 * An owning value takes over the object of the framework and the object of the logging from the tree
+					 *
+					 * \~
+					 */
+					friend class awh::codec::abc::Value;
 				private:
 					// Вместилище узлов дерева документа
 					vector <node_t> _nodes;
@@ -927,6 +966,28 @@ namespace awh {
 				private:
 					// Указатели имён полей отображений, заводимые по требованию
 					mutable unordered_map <uint32_t, unordered_map <string_view, uint32_t>> _index;
+				protected:
+					/**
+					 * \~russian
+					 * @brief Объект фреймворка
+					 *
+					 * @note Дерево само по себе им не пользуется: оно держит его затем, чтобы
+					 *       отдать тем, кому он нужен, - и затем, что пара указателей `fmk` и
+					 *       `log` есть общий договор заведения у всех кодеков дерева. Расхождение
+					 *       в одном лишь ABC уже дважды приводило к правкам его потребителей
+					 *       вместо правки его самого
+					 *
+					 * \~english
+					 * @brief Object of the framework
+					 *
+					 * @note The tree itself does not use it: it holds it in order to give it away
+					 *       to those who need it - and because the pair of the pointers `fmk` and
+					 *       `log` is the common contract of the creation at all the codecs of the tree.
+					 *       A divergence at ABC alone has already twice led to the fixes of its consumers
+					 *       instead of the fix of itself
+					 *
+					 * \~
+					 */
 				private:
 					/**
 					 * \~russian
@@ -1002,6 +1063,94 @@ namespace awh {
 					 * \~
 					 */
 					void resolve(const uint32_t index, const duplicate_t rule) noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод объявления отказа разбора документа
+					 *
+					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
+					 * работа отвечает отказом множеством путей, и запись в каждом из них
+					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
+					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
+					 *
+					 * @param error объявляемый код отказа
+					 * @return      признак успешности, всегда ложь
+					 *
+					 * \~english
+					 * @brief Method of the declaration of a failure
+					 *
+					 * @param error code of the failure being declared
+					 * @return      flag of the success, always false
+					 *
+					 * \~
+					 */
+					bool fail(const error_t error) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод снятия собранного содержимого документа
+					 *
+					 * @details Снятие это отличается от очистки одним, и различие это существенно:
+					 * код отказа и место его здесь СОХРАНЯЮТСЯ. Зовётся оно с путей отказа, где
+					 * содержимое обязано уйти, а причина - остаться; очистка же, сбрасывающая и
+					 * причину, зовётся с путей, где документ снимается по заказу потребителя
+					 *
+					 * @note Дороги эти близнецы, и разошлись бы они молча, зови отказ очистку:
+					 *       потребитель, спросивший причину после отказа, получил бы «нет ошибки»
+					 *
+					 * @note Разобрано подменами 04.09.2026, и разбор уточняет довод: на самом
+					 *       месте вызова замена `discard` очисткою БЕЗВРЕДНА, ибо причина пишется
+					 *       ПОСЛЕ снятия. Опасность живёт не в выборе работы, а в ПОРЯДКЕ - и вот
+					 *       она стережётся: очистка, поставленная после записи причины, краснит
+					 *       пять проверок (`CodecAbcDocument.Failures`, `.ErrorLocationReachesTheConsumer`,
+					 *       `.EmptyRecordParsingNamesItsCause`, `.DuplicateRules`, `.DuplicateRulesByKeyKind`)
+					 *
+					 * \~english
+					 * @brief Method of the dropping of the assembled content of a document
+					 *
+					 * @details Unlike the reset, the code of the failure and its location are KEPT here
+					 *
+					 * \~
+					 */
+					void discard() noexcept;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод приёма события разбора, выданного прямо из чтения
+					 *
+					 * @param context указание на состояние сборки дерева документа
+					 * @param reader  разбиратель бинарной записи
+					 * @param event   вид принимаемого события разбора
+					 *
+					 * \~english
+					 * @brief Method of the reception of an event of the parsing issued directly from the reading
+					 * @param context pointer to the state of the assembling of the tree of the document
+					 * @param reader parser of a binary record
+					 * @param event kind of the received event of the parsing
+					 *
+					 * \~
+					 */
+					static void assemble(void * context, reader_t & reader, const event_t event) noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод сборки дерева документа по событию разбора
+					 *
+					 * @param context указание на состояние сборки дерева документа
+					 * @param self    документ, чьё дерево собирается
+					 * @param reader  разбиратель бинарной записи
+					 * @param event   вид принимаемого события разбора
+					 * @return        признак успешности сборки дерева
+					 *
+					 * \~english
+					 * @brief Method of the assembling of the tree of a document by an event of the parsing
+					 * @param context pointer to the state of the assembling of the tree of the document
+					 * @param self document whose tree is being assembled
+					 * @param reader parser of a binary record
+					 * @param event kind of the received event of the parsing
+					 * @return sign of the success of the assembling of the tree
+					 *
+					 * \~
+					 */
+					[[nodiscard]] static bool digest(void * context, Document * self, const reader_t & reader, const event_t event) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1153,120 +1302,6 @@ namespace awh {
 					 * \~
 					 */
 					void settings(const reader_t::settings_t & settings) noexcept;
-				protected:
-					/**
-					 * \~russian
-					 * @brief Объект фреймворка
-					 *
-					 * @note Дерево само по себе им не пользуется: оно держит его затем, чтобы
-					 *       отдать тем, кому он нужен, - и затем, что пара указателей `fmk` и
-					 *       `log` есть общий договор заведения у всех кодеков дерева. Расхождение
-					 *       в одном лишь ABC уже дважды приводило к правкам его потребителей
-					 *       вместо правки его самого
-					 *
-					 * \~english
-					 * @brief Object of the framework
-					 *
-					 * @note The tree itself does not use it: it holds it in order to give it away
-					 *       to those who need it - and because the pair of the pointers `fmk` and
-					 *       `log` is the common contract of the creation at all the codecs of the tree.
-					 *       A divergence at ABC alone has already twice led to the fixes of its consumers
-					 *       instead of the fix of itself
-					 *
-					 * \~
-					 */
-					const fmk_t * _fmk;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод объявления отказа разбора документа
-					 *
-					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
-					 * работа отвечает отказом множеством путей, и запись в каждом из них
-					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
-					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
-					 *
-					 * @param error объявляемый код отказа
-					 * @return      признак успешности, всегда ложь
-					 *
-					 * \~english
-					 * @brief Method of the declaration of a failure
-					 *
-					 * @param error code of the failure being declared
-					 * @return      flag of the success, always false
-					 *
-					 * \~
-					 */
-					bool fail(const error_t error) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод снятия собранного содержимого документа
-					 *
-					 * @details Снятие это отличается от очистки одним, и различие это существенно:
-					 * код отказа и место его здесь СОХРАНЯЮТСЯ. Зовётся оно с путей отказа, где
-					 * содержимое обязано уйти, а причина - остаться; очистка же, сбрасывающая и
-					 * причину, зовётся с путей, где документ снимается по заказу потребителя
-					 *
-					 * @note Дороги эти близнецы, и разошлись бы они молча, зови отказ очистку:
-					 *       потребитель, спросивший причину после отказа, получил бы «нет ошибки»
-					 *
-					 * @note Разобрано подменами 04.09.2026, и разбор уточняет довод: на самом
-					 *       месте вызова замена `discard` очисткою БЕЗВРЕДНА, ибо причина пишется
-					 *       ПОСЛЕ снятия. Опасность живёт не в выборе работы, а в ПОРЯДКЕ - и вот
-					 *       она стережётся: очистка, поставленная после записи причины, краснит
-					 *       пять проверок (`CodecAbcDocument.Failures`, `.ErrorLocationReachesTheConsumer`,
-					 *       `.EmptyRecordParsingNamesItsCause`, `.DuplicateRules`, `.DuplicateRulesByKeyKind`)
-					 *
-					 * \~english
-					 * @brief Method of the dropping of the assembled content of a document
-					 *
-					 * @details Unlike the reset, the code of the failure and its location are KEPT here
-					 *
-					 * \~
-					 */
-					void discard() noexcept;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод приёма события разбора, выданного прямо из чтения
-					 *
-					 * @param context указание на состояние сборки дерева документа
-					 * @param reader  разбиратель бинарной записи
-					 * @param event   вид принимаемого события разбора
-					 *
-					 * \~english
-					 * @brief Method of the reception of an event of the parsing issued directly from the reading
-					 * @param context pointer to the state of the assembling of the tree of the document
-					 * @param reader parser of a binary record
-					 * @param event kind of the received event of the parsing
-					 *
-					 * \~
-					 */
-					static void assemble(void * context, reader_t & reader, const event_t event) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод сборки дерева документа по событию разбора
-					 *
-					 * @param context указание на состояние сборки дерева документа
-					 * @param self    документ, чьё дерево собирается
-					 * @param reader  разбиратель бинарной записи
-					 * @param event   вид принимаемого события разбора
-					 * @return        признак успешности сборки дерева
-					 *
-					 * \~english
-					 * @brief Method of the assembling of the tree of a document by an event of the parsing
-					 * @param context pointer to the state of the assembling of the tree of the document
-					 * @param self document whose tree is being assembled
-					 * @param reader parser of a binary record
-					 * @param event kind of the received event of the parsing
-					 * @return sign of the success of the assembling of the tree
-					 *
-					 * \~
-					 */
-					[[nodiscard]] static bool digest(void * context, Document * self, const reader_t & reader, const event_t event) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -1425,60 +1460,17 @@ namespace awh {
 					 * \~
 					 */
 					const location_t & errorLocation() const noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта логирования
-					 *
-					 * @details Работа эта заведена ради согласия договоров кодеков: журнал у
-					 * прочих кодеков заводится ею же. У ABC журнал принимается и конструктором,
-					 * и работа эта его не заменяет, а дополняет - дерево бывает заведено прежде,
-					 * чем журнал у потребителя готов
-					 *
-					 * @param log объект работы с логами
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the logging
-					 * @param log object for working with logs
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта фреймворка
-					 *
-					 * @details Работа эта заведена ради согласия договоров кодеков, как и работа
-					 * установки журнала. У ABC объект фреймворка принимается и конструктором,
-					 * и работа эта его не заменяет, а дополняет - дерево бывает заведено прежде,
-					 * чем объект фреймворка у потребителя готов
-					 *
-					 * @param fmk объект фреймворка
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the framework
-					 * @param fmk object of the framework
-					 *
-					 * \~
-					 */
-					void setFramework(const fmk_t * fmk) noexcept;
 				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
-					 * @param fmk object of the framework
-					 * @param log object for working with logs
-					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log) noexcept :
-					 _error(error_t::NONE), _fmk(fmk), _log(log) {}
+					Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1490,17 +1482,6 @@ namespace awh {
 					 * \~
 					 */
 					~Document() noexcept {}
-				public:
-					/**
-					 * \~russian
-					 * Ссылка на значение обходит дерево документа напрямую
-					 *
-					 * \~english
-					 * A reference to a value traverses the tree of the document directly
-					 *
-					 * \~
-					 */
-					friend class Value;
 			} document_t;
 		};
 	};

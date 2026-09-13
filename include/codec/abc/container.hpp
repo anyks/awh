@@ -48,11 +48,11 @@
 #include "common.hpp"
 #include "header.hpp"
 #include "writer.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 
 /**
  * \~russian
@@ -330,9 +330,6 @@ namespace awh {
 				private:
 					// Желаемый вид хэш-суммы подписи владельца
 					crypto_t::hash_t _hash;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -627,14 +624,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Assembler(const log_t * log) noexcept;
+					explicit Assembler() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -720,9 +715,6 @@ namespace awh {
 				private:
 					// Буфер поданных октетов
 					vector <uint8_t> _buffer;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -914,14 +906,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Loader(const log_t * log) noexcept;
+					explicit Loader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -977,7 +967,6 @@ namespace awh {
 			 * @param buffer буфер поданных октетов контейнера
 			 * @param size   размер поданных октетов контейнера
 			 * @param error  код отказа, если поверка не удалась
-			 * @param log    объект для работы с логами
 			 * @return       признак сошедшейся подписи владельца
 			 *
 			 * \~english
@@ -996,7 +985,7 @@ namespace awh {
 			 * \~
 			 */
 			[[nodiscard]] __AWH_SHARED_EXPORT__ bool verify(const crypto_t & crypto, const string & name,
-			 const void * buffer, const size_t size, error_t & error, const log_t * log) noexcept;
+			 const void * buffer, const size_t size, error_t & error) noexcept;
 		};
 	};
 };

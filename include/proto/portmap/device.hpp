@@ -44,9 +44,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../net/uri.hpp"
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 #include "../../codec/xml/document.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -306,11 +305,6 @@ namespace awh {
 				private:
 					// Объект работы с адресами ресурсов
 					mutable uri_t _uri;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект работы с логами
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -388,18 +382,13 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект работы с логами
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Device(const fmk_t * fmk, const log_t * log) noexcept : _uri(fmk, log), _fmk(fmk), _log(log) {}
+					Device() noexcept : _uri() {}
 			} device_t;
 
 			/**

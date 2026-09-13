@@ -49,6 +49,7 @@
  * Подключаем заголовочный файл тестов кодера
  */
 #include "tls.hpp"
+#include <sys/log.hpp>
 
 /**
  * @brief Внутренние вспомогательные средства тестов кодера
@@ -127,17 +128,13 @@ namespace {
  *
  */
 void TlsFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект для работы с логами
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	/**
 	 * Отключаем вывод логов в тестах: часть проверок намеренно подаёт кодеру
 	 * некорректные данные, и его диагностика забивала бы вывод теста
 	 */
-	this->_log->level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Создаём объект кодера транспортной безопасности
-	this->_coder = std::make_unique <awh::tls::Coder> (this->_fmk.get(), this->_log.get());
+	this->_coder = std::make_unique <awh::tls::Coder> ();
 	// Выполняем генерацию самоподписанного сертификата тестового узла
 	this->makeCertificate(this->_certificate, this->_privateKey);
 }
@@ -157,9 +154,7 @@ void TlsFixture::TearDown(){
 	// Освобождаем объект кодера транспортной безопасности
 	this->_coder.reset(nullptr);
 	// Освобождаем объект для работы с логами
-	this->_log.reset(nullptr);
 	// Освобождаем объект фреймворка
-	this->_fmk.reset(nullptr);
 }
 /**
  * @brief Метод генерации самоподписанного сертификата во временных файлах

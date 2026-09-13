@@ -190,18 +190,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param fmk framework object
-				 * @param log object for working with logs
-				 *
 				 * \~
 				 */
-				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Unit() noexcept;
 			} unit_t;
 		protected:
 			// Идентификатор клиента
@@ -265,11 +259,6 @@ namespace awh {
 			 * \~
 			 */
 			string _residue;
-		protected:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		protected:
 			/**
 			 * \~russian
@@ -2054,56 +2043,42 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param fmk framework object
-			 * @param log object for working with logs
-			 *
 			 * \~
 			 */
-			explicit Client(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client() noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param dns объект DNS-резолвера
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * @param dns DNS resolver object
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(unit::dns_t * dns) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
 			 * @param ctl   идентификатор контекста безопасности
 			 * @param coder объект транспортного уровня безопасности
-			 * @param fmk   объект фреймворка
-			 * @param log   объект для работы с логами
 			 *
 			 * \~english
 			 * @brief Constructor
 			 *
 			 * @param ctl   security context identifier
 			 * @param coder transport layer security object
-			 * @param fmk   framework object
-			 * @param log   object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор
@@ -2111,8 +2086,6 @@ namespace awh {
 			 * @param ctl   идентификатор контекста безопасности
 			 * @param coder объект транспортного уровня безопасности
 			 * @param dns   объект DNS-резолвера
-			 * @param fmk   объект фреймворка
-			 * @param log   объект для работы с логами
 			 *
 			 * \~english
 			 * @brief Constructor
@@ -2120,12 +2093,10 @@ namespace awh {
 			 * @param ctl   security context identifier
 			 * @param coder transport layer security object
 			 * @param dns   DNS resolver object
-			 * @param fmk   framework object
-			 * @param log   object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns) noexcept;
 		public:
 			/**
 			 * \~russian

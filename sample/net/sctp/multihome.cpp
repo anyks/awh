@@ -60,6 +60,7 @@
 #include <iostream>
 
 #include <net/io.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh;
 using namespace std;
@@ -82,6 +83,13 @@ static const string __word__ = "MULTIHOME";
  *
  */
 int32_t main(int32_t argc, char * argv[]){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Если адреса и порт не переданы
 	if(argc < 5){
 		// Выводим напоминание о порядке вызова
@@ -129,14 +137,8 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::address_t kind = (v6 ? event::address_t::IPV6 : event::address_t::IPV4);
 	// Адрес, на котором событие принимает и отправляет
 	const string any = (v6 ? "::" : "0.0.0.0");
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
-	// Устанавливаем логгер
-	fmk.setLogger(&log);
 	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io(&fmk, &log);
+	engine::io_t io;
 	// Выполняем инициализацию движка
 	if(!io.initialize()){
 		// Выводим сообщение об ошибке

@@ -26,41 +26,15 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <proto/http/headers.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Инкапсулируем сценарии стенда в пространство имён
  *
  */
 namespace {
-	/**
-	 * @brief Функция получения объекта фреймворка стенда
-	 *
-	 * @return объект фреймворка стенда
-	 *
-	 */
-	static awh::fmk_t * framework() noexcept {
-		// Объект фреймворка стенда
-		static awh::fmk_t result;
-		// Выводим объект фреймворка стенда
-		return &result;
-	}
-	/**
-	 * @brief Функция получения объекта логирования стенда
-	 *
-	 * @return объект логирования стенда
-	 *
-	 */
-	static awh::log_t * logger() noexcept {
-		// Объект логирования стенда
-		static awh::log_t result(framework());
-		// Отключаем вывод логов: стенд выводит только показатели
-		result.level(awh::log_t::level_t::NONE);
-		// Выводим объект логирования стенда
-		return &result;
-	}
 	/**
 	 * @brief Функция наполнения контейнера полями образца
 	 *
@@ -86,12 +60,19 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char ** argv) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Получаем фильтр названий выполняемых сценариев
 	const char * mask = rival::filter(argc, argv);
 	// Выполняем сценарий наполнения контейнера полями запроса
 	driver::execute("headers/build/request", "наборов/с", scenarios::ROUNDS, mask, []([[maybe_unused]] const size_t index) noexcept -> uint64_t {
 		// Создаём контейнер заголовков
-		awh::http::headers_t headers(awh::http::proto_t::HTTP1, framework(), logger());
+		awh::http::headers_t headers(awh::http::proto_t::HTTP1);
 		// Наполняем контейнер полями образца
 		::fill(headers);
 		// Выводим итог наполнения контейнера
@@ -102,7 +83,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 */
 	{
 		// Создаём контейнер заголовков сценария
-		static awh::http::headers_t headers(awh::http::proto_t::HTTP1, framework(), logger());
+		static awh::http::headers_t headers(awh::http::proto_t::HTTP1);
 		// Наполняем контейнер полями образца
 		::fill(headers);
 		// Выполняем сценарий поиска поля по названию
@@ -116,7 +97,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 */
 	{
 		// Создаём контейнер заголовков сценария
-		static awh::http::headers_t headers(awh::http::proto_t::HTTP1, framework(), logger());
+		static awh::http::headers_t headers(awh::http::proto_t::HTTP1);
 		// Создаём объект запроса клиента
 		static awh::http::request_t request(awh::http::version_t::HTTP1_1, awh::http::method_t::GET, std::string("/index.html"));
 		// Устанавливаем провайдер запроса
@@ -134,7 +115,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	 */
 	{
 		// Создаём контейнер заголовков сценария
-		static awh::http::headers_t headers(awh::http::proto_t::HTTP1, framework(), logger());
+		static awh::http::headers_t headers(awh::http::proto_t::HTTP1);
 		// Наполняем контейнер полями образца
 		::fill(headers);
 		// Выполняем сценарий замены значения поля

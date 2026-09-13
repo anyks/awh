@@ -29,12 +29,8 @@
  *
  */
 void CallbackFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логов
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект модуля обратного вызова
-	this->_callback = std::make_unique <awh::callback_t> (this->_fmk.get(), this->_log.get());
+	this->_callback = std::make_unique <awh::callback_t> ();
 }
 
 /**

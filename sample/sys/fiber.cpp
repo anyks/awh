@@ -25,6 +25,8 @@
  */
 #include <sys/fiber.hpp>
 #include <net/io.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -37,8 +39,6 @@ using namespace awh;
  */
 class Executor {
 	private:
-		// Объект работы с логами
-		const log_t * _log;
 		// Объект асинхронного движка ввода-вывода
 		engine::io_t * _io;
 		// Идентификатор события клиента
@@ -79,7 +79,7 @@ class Executor {
 			// Отправляем запрос серверу
 			if(this->_io->send(this->_client, message.data(), message.size()) == 0){
 				// Записываем ошибку в лог
-				this->_log->print("Запрос отправить не удалось", log_t::flag_t::CRITICAL);
+				awh::log::print("Запрос отправить не удалось", awh::log::flag_t::CRITICAL);
 				// Выводим пустой ответ
 				return "";
 			}
@@ -122,7 +122,7 @@ class Executor {
 			// Если подключение не выполнено
 			if(!ok){
 				// Записываем ошибку в лог
-				this->_log->print("Подключиться к серверу не удалось", log_t::flag_t::CRITICAL);
+				awh::log::print("Подключиться к серверу не удалось", awh::log::flag_t::CRITICAL);
 				// Выходим из функции обработки
 				return;
 			}
@@ -136,16 +136,16 @@ class Executor {
 				// Выполняем первый обмен
 				const std::string first = this->request("SELECT 1");
 				// Записываем ответ в лог
-				this->_log->print("Первый ответ: %s", log_t::flag_t::INFO, first.c_str());
+				awh::log::print("Первый ответ: %s", awh::log::flag_t::INFO, first.c_str());
 				// Выполняем второй обмен, опираясь на итог первого
 				const std::string second = this->request("SELECT " + std::to_string(first.size()));
 				// Записываем ответ в лог
-				this->_log->print("Второй ответ: %s", log_t::flag_t::INFO, second.c_str());
+				awh::log::print("Второй ответ: %s", awh::log::flag_t::INFO, second.c_str());
 				// Записываем в лог сообщение о завершении обменов
-				this->_log->print("Оба обмена выполнены последовательно, цикл при этом не стоял", log_t::flag_t::INFO);
+				awh::log::print("Оба обмена выполнены последовательно, цикл при этом не стоял", awh::log::flag_t::INFO);
 				// Отмечаем работу выполненной
 				this->_done = true;
-			}, this->_log);
+			});
 			// Запускаем волокно
 			fiber::resume(this->_fiber);
 		}
@@ -155,11 +155,10 @@ class Executor {
 		 *
 		 * @param io     объект асинхронного движка ввода-вывода
 		 * @param client идентификатор события клиента
-		 * @param log    объект работы с логами
 		 *
 		 */
-		Executor(engine::io_t * io, const event::id_t client, const log_t * log) noexcept :
-		 _log(log), _io(io), _client(client), _fiber(nullptr), _answer{""}, _done(false) {}
+		Executor(engine::io_t * io, const event::id_t client) noexcept :
+		 _io(io), _client(client), _fiber(nullptr), _answer{""}, _done(false) {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -177,12 +176,15 @@ class Executor {
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io(&fmk, &log);
+	engine::io_t io;
 	// Порт, на котором работает встроенный эхо-сервер образца
 	constexpr uint16_t PORT = 12345;
 	// Набор опций событий
@@ -201,7 +203,7 @@ int32_t main(){
 	// Инициализируем движок
 	if(!io.initialize()){
 		// Записываем ошибку в лог
-		log.print("Движок инициализировать не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Движок инициализировать не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим из приложения
 		return EXIT_FAILURE;
 	}
@@ -217,9 +219,9 @@ int32_t main(){
 	 * @note Сервер нужен образцу лишь затем, чтобы обмен был настоящим. Всё
 	 *       существенное происходит на стороне клиента, в волокне
 	 */
-	io.on(server, static_cast <engine::callback::accept_t> ([&io, &log]([[maybe_unused]] const event::id_t sid, const event::id_t cid) noexcept -> void {
+	io.on(server, static_cast <engine::callback::accept_t> ([&io]([[maybe_unused]] const event::id_t sid, const event::id_t cid) noexcept -> void {
 		// Записываем в лог сообщение о принятом подключении
-		log.print("Сервер принял подключение", log_t::flag_t::INFO);
+		awh::log::print("Сервер принял подключение", awh::log::flag_t::INFO);
 		// Устанавливаем функцию обратного вызова на чтение данных сервером
 		io.on(cid, [&io](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Возвращаем принятое обратно отправителю
@@ -233,7 +235,7 @@ int32_t main(){
 	// Запускаем событие сервера
 	io.launch(server);
 	// Создаём объект исполнителя
-	Executor executor(&io, client, &log);
+	Executor executor(&io, client);
 	// Устанавливаем адрес назначения события клиента
 	io.setTarget(client, "127.0.0.1");
 	// Устанавливаем функцию обратного вызова на чтение данных клиентом

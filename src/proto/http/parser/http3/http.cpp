@@ -29,6 +29,8 @@
  */
 #include <array>
 #include <algorithm>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -3559,9 +3561,9 @@ void awh::http::Parser_HTTP3::checkFieldSectionLimits() const noexcept {
 	 */
 	if((this->_limits.maxHeadersTotal == 0) && (this->_settings.maxFieldSectionSize == 0))
 		// Записываем сообщение о снятом лимите в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 decoded field section is unlimited: both maxHeadersTotal and SETTINGS_MAX_FIELD_SECTION_SIZE are 0",
-			log_t::flag_t::WARNING
+			awh::log::flag_t::WARNING
 		);
 }
 /**
@@ -3753,7 +3755,7 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		 * намеренно: §4.2 запрещает в поле любое значение, кроме одного лишь
 		 * [trailers], а сообщение с запрещённым значением объявляет некорректным
 		 */
-		if((field.name == header::TE) && !this->_fmk->compare(value::TRAILERS, field.value))
+		if((field.name == header::TE) && !awh::fmk::compare(value::TRAILERS, field.value))
 			// Выводим отрицательный результат
 			return false;
 		// Если поле недопустимо в секции трейлеров (RFC 9110 §6.5.1)
@@ -3902,7 +3904,7 @@ bool awh::http::Parser_HTTP3::validateSection(const uint64_t sid, const bool tra
 		 * соединении расширенный CONNECT поднимает туннель любого зарегистрированного
 		 * протокола, и правила WebSocket к нему не относятся
 		 */
-		if(websocket && hasProtocol && this->_fmk->compare("websocket", protocol) && !::httpScheme(scheme))
+		if(websocket && hasProtocol && awh::fmk::compare("websocket", protocol) && !::httpScheme(scheme))
 			// Выводим отрицательный результат
 			return false;
 		/**
@@ -4395,7 +4397,7 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP3::clone() const noexcept
 	 */
 	try {
 		// Создаём копию парсера с теми же направлением и настройками
-		unique_ptr <Parser_HTTP3> result(new Parser_HTTP3(this->_direct, this->_fmk, this->_log));
+		unique_ptr <Parser_HTTP3> result(new Parser_HTTP3(this->_direct));
 		// Переносим протокол работы парсера: роль узла на соединении - такая же настройка, как лимиты
 		result->_proto = this->_proto;
 		// Переносим лимиты безопасности
@@ -4518,9 +4520,9 @@ void awh::http::Parser_HTTP3::proto(const proto_t proto) noexcept {
 		 * указание молча означало бы оставить вызывающую сторону в уверенности, что
 		 * оно учтено
 		 */
-		default: this->_log->print(
+		default: awh::log::print(
 			"HTTP/3 parser speaks HTTP/3 only: the protocol has not been changed",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 	}
 }
@@ -4685,9 +4687,9 @@ void awh::http::Parser_HTTP3::sendSettings() noexcept {
 		// Если анонс пришлось урезать до соблюдаемого лимита
 		if(item.value != this->_settings.maxFieldSectionSize)
 			// Записываем сообщение об урезании анонса в лог
-			this->_log->print(
+			awh::log::print(
 				"HTTP/3 announced SETTINGS_MAX_FIELD_SECTION_SIZE is capped to enforced header list limit of %llu octets",
-				log_t::flag_t::WARNING, static_cast <unsigned long long> (item.value)
+				awh::log::flag_t::WARNING, static_cast <unsigned long long> (item.value)
 			);
 		// Дописываем параметр в набор
 		items.push_back(item);
@@ -4752,9 +4754,9 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 	 */
 	if((target != nullptr) && target->localFin){
 		// Записываем сообщение об отказе в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 stream %llu is already finished in the local direction",
-			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 		);
 		// Выходим из метода
 		return;
@@ -4762,9 +4764,9 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 	// Если по потоку уже отправлен ответ, трейлеров не допускающий
 	if((target != nullptr) && target->trailerlessSend){
 		// Записываем сообщение об отказе в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 response on stream %llu cannot carry trailers",
-			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 		);
 		// Выходим из метода
 		return;
@@ -4786,9 +4788,9 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 	 */
 	if((this->_endpoint == h3::endpoint_t::CLIENT) && (sid >= this->_goawayRemote) && (this->findStream(sid) == nullptr)){
 		// Записываем сообщение об отказе в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 peer sent GOAWAY, request for stream %llu is not sent",
-			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 		);
 		// Выходим из метода
 		return;
@@ -4815,9 +4817,9 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const vector <h3::
 		// Откатываем ровно ту секцию, которая не ушла в сеть
 		this->_encoder.rollback(sid);
 		// Записываем сообщение об отказе в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 field section for stream %llu exceeds peer SETTINGS_MAX_FIELD_SECTION_SIZE, not sent",
-			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 		);
 		// Выходим из метода
 		return;
@@ -4905,9 +4907,9 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
 				 */
 				if(extended && !this->_remote.enableConnectProtocol){
 					// Записываем сообщение об отказе в лог
-					this->_log->print(
+					awh::log::print(
 						"HTTP/3 peer does not support extended CONNECT (RFC 9220), request for stream %llu is not sent",
-						log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+						awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 					);
 					// Выходим из метода
 					return;
@@ -4920,11 +4922,11 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
 				 * приложение парсер не вправе - оно адресовало запрос осознанно
 				 */
 				if((this->_proto == proto_t::WEBSOCKET3) && extended &&
-				   this->_fmk->compare("websocket", request->protocol) && !::httpScheme(scheme)){
+				   awh::fmk::compare("websocket", request->protocol) && !::httpScheme(scheme)){
 					// Записываем сообщение об отказе в лог
-					this->_log->print(
+					awh::log::print(
 						"HTTP/3 WebSocket target URI requires http or https scheme (RFC 8441), request for stream %llu is not sent",
-						log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+						awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 					);
 					// Выходим из метода
 					return;
@@ -5026,7 +5028,7 @@ void awh::http::Parser_HTTP3::sendHeaders(const uint64_t sid, const headers_t & 
 			 * не различают (RFC 9110 §10.1.4), и строгое сравнение отбрасывало бы
 			 * законное [TE: Trailers], которое пир обязан принять
 			 */
-			if((buffer == header::TE) && !this->_fmk->compare(value::TRAILERS, item.value))
+			if((buffer == header::TE) && !awh::fmk::compare(value::TRAILERS, item.value))
 				// Переходим к следующему заголовку
 				continue;
 			// Дописываем поле в список секции
@@ -5078,9 +5080,9 @@ size_t awh::http::Parser_HTTP3::sendData(const uint64_t sid, const void * buffer
 	 */
 	if(stream->source != nullptr){
 		// Записываем сообщение об ошибке в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 stream %llu is fed by a data source, direct body is not accepted",
-			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 		);
 		// Выводим число принятых байт
 		return result;
@@ -5220,9 +5222,9 @@ bool awh::http::Parser_HTTP3::deferTrailers(const uint64_t sid, const vector <h3
 	// Повторная секция трейлеров недопустима
 	if(stream->trailersPending){
 		// Записываем сообщение об ошибке в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 trailers for stream %llu are already pending",
-			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 		);
 		// Отправка отложена (повторную секцию отбрасываем)
 		return true;
@@ -5240,9 +5242,9 @@ bool awh::http::Parser_HTTP3::deferTrailers(const uint64_t sid, const vector <h3
 		// Если трейлеры не завершают поток - это нарушение порядка частей сообщения
 		if(!endStream)
 			// Записываем сообщение об ошибке в лог
-			this->_log->print(
+			awh::log::print(
 				"HTTP/3 trailers for stream %llu must finish the stream",
-				log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+				awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 			);
 	/**
 	 * Если возникает ошибка
@@ -5591,9 +5593,9 @@ uint64_t awh::http::Parser_HTTP3::sendPushPromise(const uint64_t sid, const vect
 		// Откатываем ровно ту секцию, которая не ушла в сеть
 		this->_encoder.rollback(sid);
 		// Записываем сообщение об отказе в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/3 push promise field section for stream %llu exceeds peer SETTINGS_MAX_FIELD_SECTION_SIZE, not sent",
-			log_t::flag_t::WARNING, static_cast <unsigned long long> (sid)
+			awh::log::flag_t::WARNING, static_cast <unsigned long long> (sid)
 		);
 		// Выводим признак отказа
 		return UINT64_MAX;
@@ -5757,7 +5759,7 @@ void awh::http::Parser_HTTP3::sendPriority(const uint64_t sid, const uint8_t urg
 	 */
 	if(this->_endpoint == h3::endpoint_t::SERVER){
 		// Записываем сообщение об ошибке в лог
-		this->_log->print("HTTP/3 server is not allowed to send PRIORITY_UPDATE", log_t::flag_t::WARNING);
+		awh::log::print("HTTP/3 server is not allowed to send PRIORITY_UPDATE", awh::log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -5805,7 +5807,7 @@ void awh::http::Parser_HTTP3::sendPushPriority(const uint64_t pushId, const uint
 	 */
 	if(this->_endpoint == h3::endpoint_t::SERVER){
 		// Записываем сообщение об ошибке в лог
-		this->_log->print("HTTP/3 server is not allowed to send PRIORITY_UPDATE", log_t::flag_t::WARNING);
+		awh::log::print("HTTP/3 server is not allowed to send PRIORITY_UPDATE", awh::log::flag_t::WARNING);
 		// Выходим из метода
 		return;
 	}
@@ -6145,12 +6147,10 @@ void awh::http::Parser_HTTP3::on(writable_callback_t callback) noexcept {
  * @brief Конструктор
  *
  * @param direct направление разбора сообщений
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
  *
  */
-awh::http::Parser_HTTP3::Parser_HTTP3(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
- parser_t(direct, fmk, log),
+awh::http::Parser_HTTP3::Parser_HTTP3(const direct_t direct) noexcept :
+ parser_t(direct),
  _endpoint((direct == direct_t::REQUEST) ? h3::endpoint_t::SERVER : h3::endpoint_t::CLIENT),
  _encoder(0, 0), _decoder(h3::proto::QPACK_TABLE_CAPACITY, h3::proto::QPACK_BLOCKED_STREAMS),
  _proto(proto_t::HTTP3),

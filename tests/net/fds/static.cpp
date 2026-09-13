@@ -49,7 +49,7 @@ TEST_F(FdsFixture, ResetAndCreateFdsTest){
 	// Проверяем, что объект работы с файловыми дескрипторами сброшен
 	ASSERT_TRUE(this->_fds == nullptr);
 	// Создаём объект работы с файловыми дескрипторами заново
-	this->_fds = std::make_unique <awh::fds_t> (this->_log.get());
+	this->_fds = std::make_unique <awh::fds_t> ();
 	// Проверяем, что объект работы с файловыми дескрипторами создан
 	ASSERT_TRUE(this->_fds != nullptr);
 }
@@ -62,7 +62,7 @@ TEST_F(FdsFixture, ReCreateFdsTest){
 	// Проверяем, что объект работы с файловыми дескрипторами создан
 	ASSERT_TRUE(this->_fds != nullptr);
 	// Создаём объект работы с файловыми дескрипторами заново
-	this->_fds = std::make_unique <awh::fds_t> (this->_log.get());
+	this->_fds = std::make_unique <awh::fds_t> ();
 	// Проверяем, что объект работы с файловыми дескрипторами создан
 	ASSERT_TRUE(this->_fds != nullptr);
 }

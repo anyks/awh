@@ -42,8 +42,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../sys/fmk.hpp"
-#include "../sys/log.hpp"
 #include "hash.hpp"
 
 /**
@@ -447,9 +445,6 @@ namespace awh {
 			keyring_t * _keyring;
 		private:
 			// Объект фреймворка
-			[[maybe_unused]] const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		private:
 			/**
 			 * \~russian
@@ -2695,18 +2690,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param fmk framework object
-			 * @param log object for working with logs
-			 *
 			 * \~
 			 */
-			explicit Crypto(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Crypto() noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор
@@ -2725,5 +2714,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_CRYPTO__

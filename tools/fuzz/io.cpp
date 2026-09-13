@@ -107,45 +107,15 @@ static uint32_t __awh_poll_limit__ = __AWH_FUZZ_POLL_LIMIT__;
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <net/io.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
-#include <net/io.hpp>
 
 /**
  * Подключаем пространство имён
  */
 using namespace std;
 
-/**
- * @brief Функция получения объекта фреймворка
- *
- * @note Объект заводится функционально-статическим намеренно, а не на уровне файла:
- *       порядок построения статических объектов между единицами трансляции не задан
- *
- * @return объект фреймворка
- *
- */
-static const awh::fmk_t * framework() noexcept {
-	// Объект фреймворка
-	static awh::fmk_t result;
-	// Выводим объект фреймворка
-	return &result;
-}
-/**
- * @brief Функция получения объекта работы с логами
- *
- * @return объект работы с логами
- *
- */
-static const awh::log_t * logger() noexcept {
-	// Объект работы с логами
-	static awh::log_t result(::framework());
-	// Снимаем вывод журнала: ворошитель делает десятки тысяч заведомо отказных вызовов,
-	// и журнал их обращает в гигабайты шума, за каким находки не видно
-	const_cast <awh::log_t *> (&result)->level(awh::log_t::level_t::NONE);
-	// Выводим объект работы с логами
-	return &result;
-}
 /**
  * @brief Функция снятия случайного числа из промежутка
  *
@@ -1011,6 +981,13 @@ static void turns(awh::engine::io_t & io, mt19937_64 & engine) noexcept {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество проходов ворошителя
 	const uint64_t count = ((argc > 1) ? static_cast <uint64_t> (::atoll(argv[1])) : 3000);
 	// Зерно источника случайных чисел
@@ -1047,7 +1024,7 @@ int main(int argc, char * argv[]) noexcept {
 		std::thread(__awh_poll_watcher__).detach();
 	#endif
 	// Объект сетевого движка
-	awh::engine::io_t io(::framework(), ::logger());
+	awh::engine::io_t io;
 	// Выполняем заведение сетевого движка
 	if(!io.initialize()){
 		// Сообщаем, что движок завести не удалось

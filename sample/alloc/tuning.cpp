@@ -34,6 +34,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -328,9 +329,16 @@ namespace {
  */
 int32_t main() noexcept {
 	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	/**
 	 * Захватываем выдачу памяти процесса
 	 */
-	if(!alloc::Allocator::capture(alloc::Allocator::options(), nullptr)){
+	if(!alloc::Allocator::capture(alloc::Allocator::options())){
 		// Сообщаем об отказе захвата
 		::printf("Захватить выдачу памяти не удалось\n");
 		// Выводим неуспешный код выхода

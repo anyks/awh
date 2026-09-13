@@ -27,6 +27,7 @@
 #include <gtest/gtest.h>
 #include <codec/abc/abc.hpp>
 #include <cryptography/hash.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -51,23 +52,6 @@ namespace {
 	 * @return объект журнала проверок
 	 *
 	 */
-	[[maybe_unused]] const log_t * logger() noexcept {
-		// Объект фреймворка проверок
-		static fmk_t fmk;
-		// Объект журнала проверок
-		static log_t log(& fmk);
-		// Признак выполненной настройки журнала
-		static const bool ready = [](){
-			// Выполняем гашение вывода журнала проверок
-			log.level(log_t::level_t::NONE);
-			// Выводим признак выполненной настройки
-			return true;
-		}();
-		// Снимаем неиспользуемый признак настройки
-		(void) ready;
-		// Выводим объект журнала проверок
-		return & log;
-	}
 	/**
 	 * @brief Функция сборки заголовка для проверок
 	 *

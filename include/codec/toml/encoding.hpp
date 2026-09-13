@@ -198,7 +198,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				private:
 					// Определённая кодировка исходного текста
 					encoding_t _encoding;
@@ -355,15 +354,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Decoder(const log_t * log) noexcept;
+					Decoder() noexcept;
 			} decoder_t;
 		};
 	};

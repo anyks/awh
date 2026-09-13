@@ -45,57 +45,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Способ выдачи объекта фреймворка проверок
-	 *
-	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
-	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -127,7 +84,7 @@ namespace {
 	 */
 	string roundtrip(const string & text) noexcept {
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Собираемый ряд событий чтения
 		string result;
 		/**
@@ -174,7 +131,7 @@ namespace {
  */
 TEST(CodecYamlWriter, Mapping) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени пары строкового значения
@@ -208,7 +165,7 @@ TEST(CodecYamlWriter, Nesting) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары вложенного отображения
@@ -238,7 +195,7 @@ TEST(CodecYamlWriter, Nesting) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары перечня
@@ -269,7 +226,7 @@ TEST(CodecYamlWriter, Nesting) {
 		// Устанавливаем признак отступа перечня, значением пары стоящего
 		settings.sequenceIndent = true;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары перечня
@@ -291,7 +248,7 @@ TEST(CodecYamlWriter, Nesting) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие перечня значений
 		writer.sequence();
 		// Выполняем открытие первого отображения перечня
@@ -327,7 +284,7 @@ TEST(CodecYamlWriter, Nesting) {
  */
 TEST(CodecYamlWriter, Empty) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	writer.mapping();
 	// Выполняем запись имени пары пустого отображения
@@ -368,7 +325,7 @@ TEST(CodecYamlWriter, Empty) {
  */
 TEST(CodecYamlWriter, Quoting) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	writer.mapping();
 	// Выполняем запись имени пары числа, записанного строкой
@@ -416,7 +373,7 @@ TEST(CodecYamlWriter, Quoting) {
  */
 TEST(CodecYamlWriter, Blocks) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	writer.mapping();
 	// Выполняем запись имени пары дословного блочного значения
@@ -465,7 +422,7 @@ TEST(CodecYamlWriter, Blocks) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t other(::logger());
+		yaml::writer_t other;
 		// Выполняем открытие поточного отображения
 		other.mapping(yaml::layout_t::FLOW);
 		// Выполняем запись имени пары блочного значения
@@ -488,7 +445,7 @@ TEST(CodecYamlWriter, Flow) {
 		// Устанавливаем поточное построение вместилищ
 		settings.layout = yaml::layout_t::FLOW;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие поточного отображения
 		writer.mapping();
 		// Выполняем запись имени первой пары
@@ -519,7 +476,7 @@ TEST(CodecYamlWriter, Flow) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары поточного построения
@@ -548,7 +505,7 @@ TEST(CodecYamlWriter, Flow) {
  */
 TEST(CodecYamlWriter, Anchors) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	writer.mapping();
 	// Выполняем запись имени пары помеченного значения
@@ -602,7 +559,7 @@ TEST(CodecYamlWriter, Anchors) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t other(::logger());
+		yaml::writer_t other;
 		// Выполняем открытие перечня значений
 		other.sequence();
 		// Выполняем запись метки, узлу предпосылаемой
@@ -617,7 +574,7 @@ TEST(CodecYamlWriter, Anchors) {
  */
 TEST(CodecYamlWriter, Comments) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем запись примечания собственной строкой прежде содержимого
 	ASSERT_TRUE(writer.comment("текст настроек"));
 	// Выполняем открытие отображения пар
@@ -651,7 +608,7 @@ TEST(CodecYamlWriter, Documents) {
 	// Устанавливаем признак записи черты конца документа
 	settings.explicitEnd = true;
 	// Объект записи текста
-	yaml::writer_t writer(::logger(), settings);
+	yaml::writer_t writer(settings);
 	// Выполняем открытие отображения первого документа
 	writer.mapping();
 	// Выполняем запись имени пары первого документа
@@ -683,7 +640,7 @@ TEST(CodecYamlWriter, Documents) {
  */
 TEST(CodecYamlWriter, Numbers) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	writer.mapping();
 	// Выполняем запись имени пары целого числа со знаком
@@ -725,7 +682,7 @@ TEST(CodecYamlWriter, Numbers) {
 	 */
 	{
 		// Объект потокового чтения текста
-		yaml::reader_t reader(::logger());
+		yaml::reader_t reader;
 		// Выполняем проверку чтения записанного текста
 		ASSERT_TRUE(reader.feed(writer.text()));
 		/**
@@ -746,7 +703,7 @@ TEST(CodecYamlWriter, Refusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие перечня значений
 		writer.sequence();
 		// Выполняем проверку отказа записи имени пары внутри перечня
@@ -757,7 +714,7 @@ TEST(CodecYamlWriter, Refusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -770,7 +727,7 @@ TEST(CodecYamlWriter, Refusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку отказа закрытия неоткрытого вместилища
 		ASSERT_FALSE(writer.close());
 	}
@@ -779,7 +736,7 @@ TEST(CodecYamlWriter, Refusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку отказа записи пустого имени метки
 		ASSERT_FALSE(writer.anchor(""));
 		// Выполняем проверку отказа записи имени метки со знаком построения
@@ -790,7 +747,7 @@ TEST(CodecYamlWriter, Refusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем проверку отказа открытия документа
@@ -811,7 +768,7 @@ TEST(CodecYamlWriter, Indentation) {
 	// Устанавливаем нулевую ширину отступа
 	settings.indent = 0;
 	// Объект записи текста
-	yaml::writer_t writer(::logger(), settings);
+	yaml::writer_t writer(settings);
 	// Выполняем проверку правки нулевой ширины отступа
 	ASSERT_EQ(writer.settings().indent, 2);
 	// Выполняем открытие отображения пар
@@ -838,7 +795,7 @@ TEST(CodecYamlWriter, Indentation) {
  */
 TEST(CodecYamlWriter, Raw) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	writer.mapping();
 	// Выполняем запись имени пары дословного содержимого
@@ -876,7 +833,7 @@ TEST(CodecYamlWriter, RootNodes) {
 	// Выполняем проверку закрытия строки корневым значением перед чертою документа
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись корневого значения
 		ASSERT_TRUE(writer.raw("-3.14159"));
 		// Выполняем открытие следующего документа
@@ -891,7 +848,7 @@ TEST(CodecYamlWriter, RootNodes) {
 	// Выполняем проверку закрытия строки заголовком корневого блочного значения
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись корневого блочного значения
 		ASSERT_TRUE(writer.block("-1250\n", yaml::style_t::LITERAL, yaml::chomp_t::KEEP));
 		// Выполняем завершение записи текста
@@ -902,7 +859,7 @@ TEST(CodecYamlWriter, RootNodes) {
 	// Выполняем проверку закрытия строки меткой, корневому перечню предпосланной
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись метки, узлу предпосылаемой
 		ASSERT_TRUE(writer.anchor("метка"));
 		// Выполняем открытие перечня значений
@@ -927,7 +884,7 @@ TEST(CodecYamlWriter, RootNodes) {
  */
 TEST(CodecYamlWriter, BlockCarriage) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем проверку отказа блочного значения со знаком возврата каретки
 	ASSERT_FALSE(writer.block("a\rb", yaml::style_t::LITERAL, yaml::chomp_t::KEEP));
 	// Выполняем проверку принятия блочного значения без знака возврата каретки
@@ -952,7 +909,7 @@ TEST(CodecYamlWriter, FoldedRewrite) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись блочного значения со свёрткой
 		ASSERT_TRUE(writer.block("одна\nдве\n", yaml::style_t::FOLDED, yaml::chomp_t::CLIP));
 		// Выполняем завершение записи текста
@@ -968,7 +925,7 @@ TEST(CodecYamlWriter, FoldedRewrite) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись блочного значения со свёрткой
 		ASSERT_TRUE(writer.block("одна\n\nдве\n", yaml::style_t::FOLDED, yaml::chomp_t::CLIP));
 		// Выполняем завершение записи текста
@@ -988,7 +945,7 @@ TEST(CodecYamlWriter, FoldedRewrite) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись блочного значения со свёрткой
 		ASSERT_TRUE(writer.block("одна\n  две\n", yaml::style_t::FOLDED, yaml::chomp_t::CLIP));
 		// Выполняем завершение записи текста
@@ -1007,7 +964,7 @@ TEST(CodecYamlWriter, FoldedRewrite) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись блочного значения со свёрткой
 		ASSERT_TRUE(writer.block("одна\n\n", yaml::style_t::FOLDED, yaml::chomp_t::KEEP));
 		// Выполняем завершение записи текста
@@ -1032,7 +989,7 @@ TEST(CodecYamlWriter, FoldedRewrite) {
  */
 TEST(CodecYamlWriter, Unprintable) {
 	// Объект записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем запись значения со знаком области управления C1
 	ASSERT_TRUE(writer.value(string("a\xC2\x81") + "b", yaml::style_t::DOUBLE));
 	// Выполняем завершение записи текста
@@ -1074,7 +1031,7 @@ TEST(CodecYamlWriter, Malformed) {
 		 */
 		for(auto & record : records){
 			// Поток записи текста
-			yaml::writer_t writer(::logger());
+			yaml::writer_t writer;
 			// Выполняем открытие записываемого документа
 			ASSERT_TRUE(writer.document());
 			// Выполняем открытие отображения пар
@@ -1088,7 +1045,7 @@ TEST(CodecYamlWriter, Malformed) {
 			// Выполняем завершение записи документа
 			ASSERT_TRUE(writer.finish());
 			// Дерево документа, записанный текст читающее
-			yaml::document_t doc(::framework(), ::logger());
+			yaml::document_t doc;
 			// Выполняем проверку того, что записанное читается обратно
 			ASSERT_TRUE(doc.parse(writer.take()))
 			 << "оформление " << static_cast <uint16_t> (style)
@@ -1096,7 +1053,7 @@ TEST(CodecYamlWriter, Malformed) {
 		}
 	}
 	// Поток записи текста правилом отказа
-	yaml::writer_t refusing(::logger());
+	yaml::writer_t refusing;
 	// Настройки записи текста правилом отказа
 	yaml::writer_t::settings_t settings;
 	// Выполняем установку правила отказа записи
@@ -1124,7 +1081,7 @@ TEST(CodecYamlWriter, Malformed) {
 	// Выполняем проверку того, что знака замены отказ не записал
 	ASSERT_EQ(left.find("\uFFFD"), string::npos);
 	// Поток записи текста правилом пропуска
-	yaml::writer_t passing(::logger());
+	yaml::writer_t passing;
 	// Настройки записи текста правилом пропуска
 	yaml::writer_t::settings_t through;
 	// Выполняем установку правила пропуска байтов
@@ -1142,7 +1099,7 @@ TEST(CodecYamlWriter, Malformed) {
 	// Выполняем проверку того, что байты пропущены как есть
 	ASSERT_NE(text.find(string("\xFF\xFE", 2)), string::npos);
 	// Дерево документа, записанный текст читающее
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Выполняем проверку того, что пропущенные байты чтением отвергаются
 	ASSERT_FALSE(doc.parse(text));
 }
@@ -1158,7 +1115,7 @@ TEST(CodecYamlWriter, MalformedNames) {
 	// Негодная последовательность, записью подаваемая
 	const string broken("\xED\xA0\x80", 3);
 	// Поток записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие записываемого документа
 	ASSERT_TRUE(writer.document());
 	// Выполняем открытие отображения пар
@@ -1184,7 +1141,7 @@ TEST(CodecYamlWriter, MalformedNames) {
 	// Выполняем проверку того, что негодных байтов текст не несёт
 	ASSERT_EQ(text.find('\xED'), string::npos);
 	// Дерево документа, записанный текст читающее
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Выполняем проверку того, что записанное читается обратно
 	ASSERT_TRUE(doc.parse(text)) << yaml::message(doc.error());
 }
@@ -1250,7 +1207,7 @@ TEST(CodecYamlWriter, MalformedEntries) {
 		 */
 		for(size_t entry = 0; entry < entries.size(); entry++){
 			// Поток записи текста
-			yaml::writer_t writer(::logger());
+			yaml::writer_t writer;
 			// Выполняем открытие записываемого документа
 			ASSERT_TRUE(writer.document());
 			// Выполняем открытие отображения пар
@@ -1332,7 +1289,7 @@ TEST(CodecYamlWriter, MalformedEntries) {
  */
 TEST(CodecYamlWriter, CommentedPair) {
 	// Поток записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени пары отображения
@@ -1350,7 +1307,7 @@ TEST(CodecYamlWriter, CommentedPair) {
 	// Выполняем проверку того, что значение стоит глубже имени своего
 	ASSERT_EQ(text, "second:\n# замечание\n  иное\n");
 	// Дерево документа, записанный текст читающее
-	yaml::document_t doc(::framework(), ::logger());
+	yaml::document_t doc;
 	// Выполняем проверку того, что записанное читается обратно
 	ASSERT_TRUE(doc.parse(text)) << yaml::message(doc.error());
 	// Выполняем проверку собранного значения пары
@@ -1370,7 +1327,7 @@ TEST(CodecYamlWriter, CommentedPair) {
  */
 TEST(CodecYamlWriter, TagPercentEscapes) {
 	// Объект потоковой записи
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем постановку метки типа со знаком, указателю не принадлежащим
 	ASSERT_TRUE(writer.tag("tag:example.com,2000:app/tag!"));
 	// Выполняем запись значения, меткою помеченного
@@ -1451,7 +1408,7 @@ TEST(CodecYamlWriter, TagPercentEscapes) {
  */
 TEST(CodecYamlWriter, RefusalReportsReason) {
 	// Объект потоковой записи
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем проверку чистоты кода ошибки до первого отказа
 	ASSERT_EQ(writer.error(), yaml::error_t::NONE);
 	// Выполняем открытие перечня, именам пар неподвластного
@@ -1490,7 +1447,7 @@ TEST(CodecYamlWriter, RefusalReportsReason) {
  */
 TEST(CodecYamlWriter, BlockRetreatLeavesNoReason) {
 	// Объект потоковой записи
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие поточного отображения, блочному значению неподвластного
 	ASSERT_TRUE(writer.mapping(yaml::layout_t::FLOW));
 	// Выполняем постановку имени пары
@@ -1518,7 +1475,7 @@ TEST(CodecYamlWriter, BlockRetreatLeavesNoReason) {
  */
 TEST(CodecYamlWriter, FlowKeepsEmptyValue) {
 	// Объект дерева документа
-	yaml::document_t document(::framework(), ::logger());
+	yaml::document_t document;
 	// Выполняем разбор перечня с пустым значением
 	ASSERT_TRUE(document.parse("- yes\n-\n"));
 	// Настройки записи поточным построением
@@ -1530,7 +1487,7 @@ TEST(CodecYamlWriter, FlowKeepsEmptyValue) {
 	// Выполняем проверку записи пустоты словом описания
 	ASSERT_NE(written.find("null"), string::npos);
 	// Объект дерева перезаписанного документа
-	yaml::document_t back(::framework(), ::logger());
+	yaml::document_t back;
 	// Выполняем разбор перезаписи
 	ASSERT_TRUE(back.parse(written));
 	// Выполняем проверку сохранности обоих значений перечня
@@ -1546,7 +1503,7 @@ TEST(CodecYamlWriter, FlowKeepsEmptyValue) {
  */
 TEST(CodecYamlWriter, QuotingRisesWhereContentDemands) {
 	// Объект дерева документа
-	yaml::document_t document(::framework(), ::logger());
+	yaml::document_t document;
 	// Выполняем разбор пары со значением о двух строках
 	ASSERT_TRUE(document.parse("key: \"первая\\nвторая\"\n"));
 	// Настройки записи оградою одинарной
@@ -1556,7 +1513,7 @@ TEST(CodecYamlWriter, QuotingRisesWhereContentDemands) {
 	// Выполняем перезапись дерева оградою одинарной
 	const string written = document.dump(writing);
 	// Объект дерева перезаписанного документа
-	yaml::document_t back(::framework(), ::logger());
+	yaml::document_t back;
 	// Выполняем разбор перезаписи
 	ASSERT_TRUE(back.parse(written));
 	// Выполняем проверку сохранности перевода строки в значении
@@ -1627,7 +1584,7 @@ TEST(CodecYamlWriter, RefusalNeverYieldsTornText) {
 	 */
 	for(const probe_t & probe : PROBES){
 		// Объект потоковой записи
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping()) << probe.name;
 		// Выполняем постановку имени пары
@@ -1678,7 +1635,7 @@ TEST(CodecYamlWriter, QuotingRisesForLineBreak) {
 	 */
 	for(const yaml::style_t style : {yaml::style_t::PLAIN, yaml::style_t::SINGLE}){
 		// Поток записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись значения с переводом строки назначенною оградою
 		ASSERT_TRUE(writer.value(string("первая\nвторая"), style));
 		// Выполняем завершение записи документа
@@ -1690,7 +1647,7 @@ TEST(CodecYamlWriter, QuotingRisesForLineBreak) {
 		// Выполняем проверку того, что перевод строки записан отменяющей последовательностью
 		ASSERT_NE(text.find("\\n"), string::npos) << static_cast <uint32_t> (style);
 		// Дерево документа, записанный текст читающее
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку успешности разбора записанного текста
 		ASSERT_TRUE(document.parse(text)) << static_cast <uint32_t> (style);
 		// Извлекаемая запись прочитанного значения
@@ -1708,7 +1665,7 @@ TEST(CodecYamlWriter, QuotingRisesForLineBreak) {
 	 */
 	{
 		// Поток записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись значения без перевода строки одинарною оградою
 		ASSERT_TRUE(writer.value(string("одна строка"), yaml::style_t::SINGLE));
 		// Выполняем завершение записи документа
@@ -1747,7 +1704,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем проверку успеха переноса строк пустых
@@ -1766,7 +1723,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары без значения её
@@ -1779,7 +1736,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие поточного отображения пар
 		writer.mapping(yaml::layout_t::FLOW);
 		// Выполняем проверку отказа переноса внутри поточного построения
@@ -1793,7 +1750,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем проверку отказа переноса строк, отступа своего не имеющих
@@ -1807,7 +1764,7 @@ TEST(CodecYamlWriter, VerbatimRefusals) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем проверку успеха переноса строк, знаком конца строки не закрытых
@@ -1856,7 +1813,7 @@ TEST(CodecYamlWriter, MalformedNamesAndEscapes) {
 		 */
 		{
 			// Объект записи текста
-			yaml::writer_t writer(::logger(), settings);
+			yaml::writer_t writer(settings);
 			// Выполняем открытие отображения пар
 			writer.mapping();
 			// Выполняем запись имени пары
@@ -1871,7 +1828,7 @@ TEST(CodecYamlWriter, MalformedNamesAndEscapes) {
 		 */
 		{
 			// Объект записи текста
-			yaml::writer_t writer(::logger(), settings);
+			yaml::writer_t writer(settings);
 			// Выполняем открытие отображения пар
 			writer.mapping();
 			// Выполняем запись имени пары
@@ -1886,7 +1843,7 @@ TEST(CodecYamlWriter, MalformedNamesAndEscapes) {
 		 */
 		{
 			// Объект записи текста
-			yaml::writer_t writer(::logger(), settings);
+			yaml::writer_t writer(settings);
 			// Выполняем открытие отображения пар
 			writer.mapping();
 			// Выполняем запись имени пары
@@ -1909,7 +1866,7 @@ TEST(CodecYamlWriter, MalformedNamesAndEscapes) {
 		// Устанавливаем уклад пропуска негодной последовательности
 		settings.malformed = yaml::malformed_t::PASS;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -1960,7 +1917,7 @@ TEST(CodecYamlWriter, VersionDirective) {
 		// Устанавливаем требование директивы наречия текста
 		settings.version = true;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -1988,7 +1945,7 @@ TEST(CodecYamlWriter, VersionDirective) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -2026,7 +1983,7 @@ TEST(CodecYamlWriter, BlankAndState) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -2054,7 +2011,7 @@ TEST(CodecYamlWriter, BlankAndState) {
 		// Устанавливаем поточное построение вместилищ
 		settings.layout = yaml::layout_t::FLOW;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие поточного отображения
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -2080,7 +2037,7 @@ TEST(CodecYamlWriter, BlankAndState) {
 		// Устанавливаем схему защитную
 		settings.schema = yaml::schema_t::FAILSAFE;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие поточного отображения
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -2097,7 +2054,7 @@ TEST(CodecYamlWriter, BlankAndState) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку того, что до записи вложенности нет
 		ASSERT_EQ(writer.depth(), static_cast <uint32_t> (0));
 		// Выполняем открытие отображения пар
@@ -2126,7 +2083,7 @@ TEST(CodecYamlWriter, BlankAndState) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		writer.mapping();
 		// Выполняем запись имени пары
@@ -2169,7 +2126,7 @@ TEST(CodecYamlWriter, MalformedRefusedInKey) {
 	// Задаём обхождение с негодной последовательностью отказом
 	settings.malformed = yaml::malformed_t::REFUSE;
 	// Объект записи текста документа
-	yaml::writer_t writer(::logger(), settings);
+	yaml::writer_t writer(settings);
 	// Собираемая запись с байтом, знака Юникода не составляющим
 	const string broken = string("имя\xFF");
 	// Выполняем открытие отображения пар
@@ -2179,7 +2136,7 @@ TEST(CodecYamlWriter, MalformedRefusedInKey) {
 	// Выполняем проверку того, что отказ помечен кодом своим
 	ASSERT_NE(writer.error(), yaml::error_t::NONE);
 	// Выполняем проверку того, что имя годное записывается
-	yaml::writer_t годный(::logger(), settings);
+	yaml::writer_t годный(settings);
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(годный.mapping());
 	// Выполняем проверку записи имени годного
@@ -2204,7 +2161,7 @@ TEST(CodecYamlWriter, TrailingNeedsLineAndSizeCounts) {
 	 */
 	{
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку того, что счёт пустой записи равен нулю
 		ASSERT_EQ(writer.size(), static_cast <size_t> (0));
 		// Выполняем проверку отказа дописки примечания к записи пустой
@@ -2215,7 +2172,7 @@ TEST(CodecYamlWriter, TrailingNeedsLineAndSizeCounts) {
 		ASSERT_FALSE(writer.mapping());
 	}
 	// Объект записи текста документа
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени пары отображения
@@ -2244,7 +2201,7 @@ TEST(CodecYamlWriter, BlockAndCommentRefusals) {
 	 */
 	{
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары отображения
@@ -2259,7 +2216,7 @@ TEST(CodecYamlWriter, BlockAndCommentRefusals) {
 	 */
 	{
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары отображения
@@ -2276,7 +2233,7 @@ TEST(CodecYamlWriter, BlockAndCommentRefusals) {
 		// Задаём обхождение с негодной последовательностью отказом
 		settings.malformed = yaml::malformed_t::REFUSE;
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Собираемая запись с байтом, знака Юникода не составляющим
 		const string broken = string("текст\xFF");
 		// Выполняем открытие отображения пар
@@ -2297,7 +2254,7 @@ TEST(CodecYamlWriter, BlockAndCommentRefusals) {
 		// Задаём обхождение с негодной последовательностью отказом
 		settings.malformed = yaml::malformed_t::REFUSE;
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Собираемая запись с байтом, знака Юникода не составляющим
 		const string broken = string("текст\xFF");
 		// Выполняем открытие отображения пар
@@ -2314,7 +2271,7 @@ TEST(CodecYamlWriter, BlockAndCommentRefusals) {
 	 */
 	{
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары отображения
@@ -2350,7 +2307,7 @@ TEST(CodecYamlWriter, RefusalLocksWriter) {
 	// Собираемая запись с байтом, знака Юникода не составляющим
 	const string broken = string("текст\xFF");
 	// Объект записи текста документа
-	yaml::writer_t writer(::logger(), settings);
+	yaml::writer_t writer(settings);
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени первой пары отображения
@@ -2419,7 +2376,7 @@ TEST(CodecYamlWriter, RefusalLocksWriter) {
  */
 TEST(CodecYamlWriter, EscapedUnicodeCharacter) {
 	// Объект потоковой записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени пары строкового значения
@@ -2451,7 +2408,7 @@ TEST(CodecYamlWriter, TrailingRefusedByMalformedEncoding) {
 	 */
 	settings.malformed = yaml::malformed_t::REFUSE;
 	// Объект потоковой записи текста
-	yaml::writer_t writer(::logger(), settings);
+	yaml::writer_t writer(settings);
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени пары строкового значения
@@ -2490,7 +2447,7 @@ TEST(CodecYamlWriter, ReservedIndicatorsAreAlwaysQuoted) {
 	 */
 	for(auto & content : {string("@"), string("`"), string("@значение"), string("`значение")}){
 		// Объект потоковой записи текста документа
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары
@@ -2508,7 +2465,7 @@ TEST(CodecYamlWriter, ReservedIndicatorsAreAlwaysQuoted) {
 		ASSERT_TRUE((written.find("'" + content + "'") != string::npos) ||
 		            (written.find("\"" + content + "\"") != string::npos)) << written;
 		// Объект дерева документа, запись обратно читающего
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем проверку обратного чтения собранного текста
 		ASSERT_TRUE(document.parse(written)) << written;
 		// Выполняем проверку сохранности содержимого надписи
@@ -2526,7 +2483,7 @@ TEST(CodecYamlWriter, TrailingAcceptedWhenEncodingSound) {
 	// Устанавливаем отказ записи на негодную последовательность байтов
 	settings.malformed = yaml::malformed_t::REFUSE;
 	// Объект потоковой записи текста
-	yaml::writer_t writer(::logger(), settings);
+	yaml::writer_t writer(settings);
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	// Выполняем запись имени пары строкового значения
@@ -2557,7 +2514,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие перечня значений
 		ASSERT_TRUE(writer.sequence());
 		// Выполняем проверку отказа записи имени пары внутри перечня
@@ -2570,7 +2527,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку отказа записи имени пары вне вместилища
 		ASSERT_FALSE(writer.key("a"));
 		// Выполняем проверку выданного кода отказа записи
@@ -2581,7 +2538,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары
@@ -2599,7 +2556,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку отказа записи пустого имени метки
 		ASSERT_FALSE(writer.anchor(""));
 		// Выполняем проверку выданного кода отказа записи
@@ -2607,7 +2564,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	}
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку отказа записи имени метки со знаком построения
 		ASSERT_FALSE(writer.anchor("имя,ещё"));
 		// Выполняем проверку выданного кода отказа записи
@@ -2618,7 +2575,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку отказа записи пустого имени ссылки
 		ASSERT_FALSE(writer.alias(""));
 		// Выполняем проверку выданного кода отказа записи
@@ -2626,7 +2583,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	}
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем проверку отказа записи имени ссылки со знаком построения
 		ASSERT_FALSE(writer.alias("имя,ещё"));
 		// Выполняем проверку выданного кода отказа записи
@@ -2640,7 +2597,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие перечня значений
 		ASSERT_TRUE(writer.sequence());
 		// Выполняем запись имени метки
@@ -2652,7 +2609,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	}
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие перечня значений
 		ASSERT_TRUE(writer.sequence());
 		// Выполняем запись рода узла
@@ -2670,7 +2627,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар поточным построением
 		ASSERT_TRUE(writer.mapping(yaml::layout_t::FLOW));
 		// Выполняем проверку отказа записи примечания внутри поточного построения
@@ -2683,7 +2640,7 @@ TEST(CodecYamlWriter, RefusalsNameTheirOwnCause) {
 	 */
 	{
 		// Объект записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем проверку отказа открытия документа
@@ -2714,7 +2671,7 @@ TEST(CodecYamlWriter, ExplicitEndIsWrittenForTheEmptyText){
 		// Устанавливаем запись черты конца документа
 		settings.explicitEnd = true;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем завершение записи текста
 		ASSERT_TRUE(writer.finish());
 		// Выполняем проверку собранного текста
@@ -2729,7 +2686,7 @@ TEST(CodecYamlWriter, ExplicitEndIsWrittenForTheEmptyText){
 		// Устанавливаем запись черты конца документа
 		settings.explicitEnd = true;
 		// Объект записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		/**
 		 * Выполняем дословный перенос одного перевода строки
 		 *
@@ -2751,7 +2708,7 @@ TEST(CodecYamlWriter, ExplicitEndIsWrittenForTheEmptyText){
 		 */
 		ASSERT_NE(text.find("..."), string::npos) << text;
 		// Объект дерева документа
-		yaml::document_t doc(::framework(), ::logger());
+		yaml::document_t doc;
 		// Выполняем проверку того, что собранный текст читается
 		ASSERT_TRUE(doc.parse(text)) << text;
 	}
@@ -2775,7 +2732,7 @@ TEST(CodecYamlWriter, KeyPropertiesAreWrittenByEveryForm) {
 	 */
 	{
 		// Объект потоковой записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары с меткою узла
@@ -2794,7 +2751,7 @@ TEST(CodecYamlWriter, KeyPropertiesAreWrittenByEveryForm) {
 	 */
 	{
 		// Объект потоковой записи текста
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары с меткою узла и меткою типа
@@ -2822,7 +2779,7 @@ TEST(CodecYamlWriter, KeyPropertiesAreWrittenByEveryForm) {
 		// Устанавливаем отказ записи на негодную последовательность байтов
 		settings.malformed = yaml::malformed_t::REFUSE;
 		// Объект потоковой записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем проверку отказа записи имени пары с негодною меткою типа
@@ -2877,7 +2834,7 @@ TEST(CodecYamlWriter, QuotingSettingIsObeyed) {
 		// Устанавливаем ограду, какою обносятся строковые значения
 		settings.quoting = item.first;
 		// Объект потоковой записи текста
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем открытие отображения пар
 		ASSERT_TRUE(writer.mapping());
 		// Выполняем запись имени пары простого значения
@@ -2937,7 +2894,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 			// Выполняем переход к следующей локали
 			continue;
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger());
+		yaml::writer_t writer;
 		// Выполняем запись числа с плавающей точкой
 		ASSERT_TRUE(writer.value(0.1)) << name;
 		// Выполняем завершение записи текста документа
@@ -2968,7 +2925,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 		 *       обращалось в СТРОКУ, и круг рвался молча
 		 */
 		// Дерево документа, куда ведётся правка
-		yaml::document_t document(::framework(), ::logger());
+		yaml::document_t document;
 		// Выполняем разбор текста документа с числовым значением
 		ASSERT_TRUE(document.parse("k: 1\n")) << name;
 		// Выполняем правку значения числом с плавающей точкой
@@ -3020,7 +2977,7 @@ TEST(CodecYamlWriter, LocaleNumbers) {
 
 TEST(CodecYamlWriter, EveryIntegerRecordIsWritten) {
 	// Объект потоковой записи текста
-	yaml::writer_t writer(::logger());
+	yaml::writer_t writer;
 	// Выполняем открытие отображения пар
 	ASSERT_TRUE(writer.mapping());
 	/**
@@ -3116,7 +3073,7 @@ TEST(CodecYamlWriter, RefusalOfTheMalformedEncodingOutlivesTheTake) {
 		// Устанавливаем правило замены негодной последовательности
 		settings.malformed = yaml::malformed_t::REPLACE;
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем проверку того, что запись негодной последовательности принимается
 		ASSERT_TRUE(writer.value(string("\x80", 1)));
 		// Выполняем завершение записи текста документа
@@ -3130,7 +3087,7 @@ TEST(CodecYamlWriter, RefusalOfTheMalformedEncodingOutlivesTheTake) {
 		// Устанавливаем правило отказа на негодной последовательности
 		settings.malformed = yaml::malformed_t::REFUSE;
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем проверку отказа записи негодной последовательности
 		ASSERT_FALSE(writer.value(string("\x80", 1)));
 		// Выполняем проверку того, что отказ назван поимённо сразу же
@@ -3148,7 +3105,7 @@ TEST(CodecYamlWriter, RefusalOfTheMalformedEncodingOutlivesTheTake) {
 		// Устанавливаем правило пропуска негодной последовательности
 		settings.malformed = yaml::malformed_t::PASS;
 		// Объект записи текста документа
-		yaml::writer_t writer(::logger(), settings);
+		yaml::writer_t writer(settings);
 		// Выполняем проверку того, что запись негодной последовательности принимается
 		ASSERT_TRUE(writer.value(string("\x80", 1)));
 		// Выполняем завершение записи текста документа

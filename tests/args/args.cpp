@@ -51,6 +51,7 @@
  * Стандартные заголовочные файлы записи в файл
  */
 #include <fstream>
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -126,12 +127,9 @@ namespace {
  *
  */
 TEST(ArgsArgs, Laying) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска
 	ASSERT_TRUE(args.parse({"--name=value", "--count", "17", "--rate=1.5", "--verbose"}));
 	// Выполняем проверку извлечения последовательности знаков
@@ -156,12 +154,9 @@ TEST(ArgsArgs, Laying) {
  *
  */
 TEST(ArgsArgs, NestedPath) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска со вложенными путями
 	ASSERT_TRUE(args.parse({"--net.port=8080", "--net.host=localhost"}));
 	// Выполняем проверку извлечения значения по вложенному пути
@@ -179,12 +174,9 @@ TEST(ArgsArgs, NestedPath) {
  *
  */
 TEST(ArgsArgs, Derivation) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска записями всех видов
 	ASSERT_TRUE(args.parse({"--flag=true", "--number=17", "--real=1.5", "--text=value", "--zero=007", "--empty=null"}));
 	// Выполняем проверку выведения логического значения
@@ -211,12 +203,9 @@ TEST(ArgsArgs, Derivation) {
  *
  */
 TEST(ArgsArgs, UntypedLaying) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Создаём настройки сбора параметров запуска
 	args_t::settings_t settings;
 	// Снимаем признак выведения вида значения из его записи
@@ -241,12 +230,9 @@ TEST(ArgsArgs, UntypedLaying) {
  *
  */
 TEST(ArgsArgs, Multiple) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска с повторами параметра
 	ASSERT_TRUE(args.parse({"--host=first", "--host=second", "--host=third"}));
 	// Выполняем проверку укладки повторов вместимым
@@ -270,12 +256,9 @@ TEST(ArgsArgs, Multiple) {
  *
  */
 TEST(ArgsArgs, SingleAsContainer) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска с одиночным параметром
 	ASSERT_TRUE(args.parse({"--host=first"}));
 	// Извлекаем значения вместимого параметра
@@ -294,12 +277,9 @@ TEST(ArgsArgs, SingleAsContainer) {
  *
  */
 TEST(ArgsArgs, Seniority) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем установку значения по умолчанию
 	ASSERT_TRUE(args.fallback("port", "80"));
 	// Выполняем проверку укладки значения по умолчанию
@@ -331,12 +311,9 @@ TEST(ArgsArgs, Seniority) {
  *
  */
 TEST(ArgsArgs, Operands) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска с позиционными доводами
 	ASSERT_TRUE(args.parse({"first", "--name=value", "second"}));
 	// Выполняем проверку числа собранных позиционных доводов
@@ -354,12 +331,9 @@ TEST(ArgsArgs, Operands) {
  *
  */
 TEST(ArgsArgs, ExecutablePath) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Создаём набор доводов запуска видом системы
 	const char * items[] = {"/usr/local/bin/application", "--name=value"};
 	// Выполняем разбор набора доводов запуска
@@ -378,12 +352,9 @@ TEST(ArgsArgs, ExecutablePath) {
  *
  */
 TEST(ArgsArgs, WideArguments) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Создаём набор доводов запуска широкими знаками
 	const wchar_t * items[] = {L"application", L"--name=value", L"--count=17"};
 	// Выполняем разбор набора доводов запуска
@@ -399,12 +370,9 @@ TEST(ArgsArgs, WideArguments) {
  *
  */
 TEST(ArgsArgs, TextStream) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор поданного текстового потока
 	ASSERT_TRUE(args.text("--name=\"first second\" --count 17 operand"));
 	// Выполняем проверку укладки значения, объединённого кавычками
@@ -428,12 +396,9 @@ TEST(ArgsArgs, TextStream) {
  *
  */
 TEST(ArgsArgs, Environment) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем установку переменной окружения приложения
 	ASSERT_TRUE(setupEnv("AWHTEST_NET_PORT", "8080"));
 	// Выполняем установку второй переменной окружения приложения
@@ -474,12 +439,9 @@ TEST(ArgsArgs, Environment) {
  *
  */
 TEST(ArgsArgs, EnvironmentWithoutPrefix) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	/**
 	 * Выполняем проверку отказа сбора переменных окружения: без отведённого начала
 	 * имён отбор вёлся бы по всему окружению целиком
@@ -494,12 +456,9 @@ TEST(ArgsArgs, EnvironmentWithoutPrefix) {
  *
  */
 TEST(ArgsArgs, Clearing) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска
 	ASSERT_TRUE(args.parse({"--name=value", "operand"}));
 	// Выполняем очистку собранных параметров запуска
@@ -521,12 +480,9 @@ TEST(ArgsArgs, Clearing) {
  *
  */
 TEST(ArgsArgs, Config) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор записи настроек кодеком
 	ASSERT_TRUE(args.config("{\"name\":\"value\",\"net\":{\"port\":8080,\"host\":\"localhost\"},\"list\":[1,2,3]}", codec::Bridge::format_t::JSON));
 	// Выполняем проверку укладки значения записи настроек
@@ -553,12 +509,9 @@ TEST(ArgsArgs, Config) {
  *
  */
 TEST(ArgsArgs, ConfigSeniority) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска
 	ASSERT_TRUE(args.parse({"--port=443"}));
 	// Выполняем установку значения по умолчанию
@@ -581,12 +534,9 @@ TEST(ArgsArgs, ConfigSeniority) {
  *
  */
 TEST(ArgsArgs, ConfigFailure) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор негодной записи настроек кодеком
 	ASSERT_FALSE(args.config("{\"name\":", codec::Bridge::format_t::JSON));
 	// Выполняем проверку числа отказов разбора
@@ -602,12 +552,9 @@ TEST(ArgsArgs, ConfigFailure) {
  *
  */
 TEST(ArgsArgs, Dump) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Получаем настройки перевода дерева настроек
 	codec::bridge_t::settings_t settings = args.bridge().settings();
 	// Устанавливаем вид оформления собираемой записи без отступов
@@ -623,7 +570,7 @@ TEST(ArgsArgs, Dump) {
 	// Выполняем проверку собранной записи настроек
 	ASSERT_EQ(text, "{\"name\":\"value\",\"net\":{\"port\":8080},\"verbose\":true}");
 	// Создаём второй объект сбора параметров запуска
-	args_t second(&fmk, &log);
+	args_t second;
 	// Выполняем разбор выданной записи настроек
 	ASSERT_TRUE(second.config(text, codec::Bridge::format_t::JSON));
 	/**
@@ -642,12 +589,9 @@ TEST(ArgsArgs, Dump) {
  *
  */
 TEST(ArgsArgs, Filesystem) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска
 	ASSERT_TRUE(args.parse({"--name=value", "--net.port=8080"}));
 	// Получаем путь к файлу настроек
@@ -655,7 +599,7 @@ TEST(ArgsArgs, Filesystem) {
 	// Выполняем запись дерева настроек в файл
 	ASSERT_TRUE(args.save(filename, codec::Bridge::format_t::JSON));
 	// Создаём второй объект сбора параметров запуска
-	args_t second(&fmk, &log);
+	args_t second;
 	// Выполняем чтение записанного файла настроек
 	ASSERT_TRUE(second.filename(filename, codec::Bridge::format_t::JSON));
 	// Выполняем проверку прочитанного значения настроек
@@ -667,7 +611,7 @@ TEST(ArgsArgs, Filesystem) {
 	// Выполняем снятие записанного файла настроек
 	ASSERT_EQ(::remove(filename.c_str()), 0);
 	// Создаём третий объект сбора параметров запуска
-	args_t third(&fmk, &log);
+	args_t third;
 	// Выполняем проверку отказа чтения снесённого файла настроек
 	ASSERT_FALSE(third.filename(filename, codec::Bridge::format_t::JSON));
 	// Выполняем проверку кода отказа чтения файла настроек
@@ -685,10 +629,7 @@ TEST(ArgsArgs, Filesystem) {
  *
  */
 TEST(ArgsArgs, ConfigEveryFormat){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Перечень видов записи и записей настроек, им отвечающих
 	const vector <pair <codec::Bridge::format_t, string>> samples = {
 		{codec::Bridge::format_t::JSON, "{\"name\":\"значение\",\"net\":{\"port\":8080}}"},
@@ -700,7 +641,7 @@ TEST(ArgsArgs, ConfigEveryFormat){
 	// Выполняем перебор всех видов записи настроек
 	for(auto & sample : samples){
 		// Создаём объект сбора параметров запуска
-		args_t args(&fmk, &log);
+		args_t args;
 		// Выполняем разбор записи настроек кодеком
 		ASSERT_TRUE(args.config(sample.second, sample.first)) << "вид записи " << static_cast <uint16_t> (sample.first);
 		/**
@@ -736,10 +677,7 @@ TEST(ArgsArgs, ConfigEveryFormat){
  *
  */
 TEST(ArgsArgs, DumpEveryFormat){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Перечень видов записи, круг через которые замкнут
 	const vector <codec::Bridge::format_t> formats = {
 		codec::Bridge::format_t::JSON,
@@ -750,7 +688,7 @@ TEST(ArgsArgs, DumpEveryFormat){
 	// Выполняем перебор всех видов записи настроек
 	for(auto & format : formats){
 		// Создаём объект сбора параметров запуска
-		args_t args(&fmk, &log);
+		args_t args;
 		// Разбираемые доводы запуска приложения
 		const char * argv[] = {"app", "--net.port=8080", "--name=значение"};
 		// Выполняем разбор доводов запуска приложения
@@ -760,7 +698,7 @@ TEST(ArgsArgs, DumpEveryFormat){
 		// Выполняем выдачу дерева настроек записью кодека
 		ASSERT_TRUE(args.dump(text, format)) << "вид записи " << static_cast <uint16_t> (format);
 		// Создаём объект сбора параметров запуска для обратного приёма
-		args_t second(&fmk, &log);
+		args_t second;
 		// Выполняем разбор собранной записи настроек
 		ASSERT_TRUE(second.config(text, format)) << "вид записи " << static_cast <uint16_t> (format) << ", собрано: " << text;
 		// Выполняем проверку сохранности значения по вложенному пути
@@ -780,10 +718,7 @@ TEST(ArgsArgs, DumpEveryFormat){
  *
  */
 TEST(ArgsConfig, FormatComesFromTheFileName){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Перечень образцов записи настроек, расширением заданных
 	const vector <pair <string, string>> samples = {
 		{"ini",  "port = 7070\n"},
@@ -805,7 +740,7 @@ TEST(ArgsConfig, FormatComesFromTheFileName){
 			file << sample.second;
 		}
 		// Создаём объект разбора доводов запуска
-		args_t args(&fmk, &log);
+		args_t args;
 		/**
 		 * Выполняем чтение файла настроек без указания вида записи
 		 *
@@ -819,7 +754,7 @@ TEST(ArgsConfig, FormatComesFromTheFileName){
 		expected++;
 	}
 	// Создаём объект разбора доводов запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	/**
 	 * Выполняем проверку отказа на расширении неведомом
 	 *
@@ -833,7 +768,7 @@ TEST(ArgsConfig, FormatComesFromTheFileName){
 /**
  * @brief Проверка сохранности величины при выводе вида значения довода
  *
- * @warning Вывод вида шёл ходами `fmk_t::is` и `fmk_t::atoi`, и оба виною порознь:
+ * @warning Вывод вида шёл ходами `awh::fmk::is` и `awh::fmk::atoi`, и оба виною порознь:
  *          проверка признаёт `1e-9`, но отвергает `-2.5e3` и `1E5` - одна и та же
  *          запись выходила то числом, то строкою; приведение же записи, разрядность
  *          превысившей, отвечает НУЛЁМ - `18446744073709551616` и
@@ -845,12 +780,9 @@ TEST(ArgsConfig, FormatComesFromTheFileName){
  *
  */
 TEST(Args, TypeInferenceKeepsMagnitude){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект разбора доводов запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов с сторожкими записями чисел
 	ASSERT_TRUE(args.parse(vector <string> {"--big=18446744073709551616", "--neg=-9223372036854775809", "--exp=-2.5e3", "--small=1e-9", "--code=007"}));
 	// Выполняем проверку того, что запись сверх разрядности осталась знаками
@@ -876,12 +808,9 @@ TEST(Args, TypeInferenceKeepsMagnitude){
  *
  */
 TEST(Args, SaveReportsFailureHonestly){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект разбора доводов запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем разбор набора доводов запуска
 	ASSERT_TRUE(args.parse(vector <string> {"--host=localhost"}));
 	// Выполняем проверку того, что запись в негодный путь отвечена отказом
@@ -917,12 +846,9 @@ TEST(Args, SaveReportsFailureHonestly){
  *
  */
 TEST(Args, EmptyPathRefusalIsVisible){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект разбора доводов запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем проверку того, что укладка по пустому имени отвечена отказом
 	ASSERT_FALSE(args.fallback("", "значение")) << "укладка по пустому имени принята";
 	// Выполняем проверку того, что отказ этот записан
@@ -945,12 +871,9 @@ TEST(Args, EmptyPathRefusalIsVisible){
  *
  */
 TEST(Args, EnvKeepsPrefixIntact){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект разбора доводов запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Устанавливаем начало имён переменных окружения в нижнем регистре
 	args.prefix("awh");
 	/**
@@ -982,12 +905,9 @@ TEST(Args, EnvKeepsPrefixIntact){
  *
  */
 TEST(ArgsSchema, DescriptionAloneDoesNotImplyStrictness){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект разбора доводов запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем заведение описания одного ожидаемого параметра
 	ASSERT_TRUE(args.schema().add("host", 'h', schema_t::value_t::REQUIRED, "адрес узла")) << "заведение описания отвечено отказом";
 	// Собираемый набор доводов запуска с именем, описанию неизвестным
@@ -999,7 +919,7 @@ TEST(ArgsSchema, DescriptionAloneDoesNotImplyStrictness){
 	// Выполняем проверку того, что значение его уложено верно
 	ASSERT_EQ(args.get <string> ("secret"), string("значение")) << "значение имени, описанию неизвестного, уложено неверно";
 	// Создаём второй объект разбора доводов запуска
-	args_t strict(&fmk, &log);
+	args_t strict;
 	// Получаем настройки сбора параметров запуска
 	args_t::settings_t settings = strict.settings();
 	// Взводим строгость настройкою
@@ -1043,12 +963,9 @@ TEST(ArgsSchema, DescriptionAloneDoesNotImplyStrictness){
  *
  */
 TEST(Args, SavingIsIndivisibleAndLeavesNoLeftovers){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект работы с файловой системой
-	fs_t fs(&fmk, &log);
+	fs_t fs;
 	// Получаем путь к файлу настроек
 	const string filename = ::temporary("args-atomic.json");
 	// Получаем путь к временному файлу сохранения
@@ -1071,7 +988,7 @@ TEST(Args, SavingIsIndivisibleAndLeavesNoLeftovers){
 	// Выполняем проверку того, что остаток на месте
 	ASSERT_EQ(fs.type(leftover), fs_t::type_t::FILE) << "остаток прежнего сохранения не заведён";
 	// Создаём объект разбора доводов запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем укладку значения настроек
 	ASSERT_TRUE(args.fallback("host", "localhost")) << "укладка значения настроек отвечена отказом";
 	// Выполняем сохранение настроек записью JSON

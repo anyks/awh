@@ -77,45 +77,15 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <net/eth/eth.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Подключаем пространство имён
  */
 using namespace std;
 
-/**
- * @brief Функция получения объекта фреймворка
- *
- * @note Объект заводится функционально-статическим намеренно, а не на уровне файла:
- *       порядок построения статических объектов между единицами трансляции не задан
- *
- * @return объект фреймворка
- *
- */
-static const awh::fmk_t * framework() noexcept {
-	// Объект фреймворка
-	static awh::fmk_t result;
-	// Выводим объект фреймворка
-	return &result;
-}
-/**
- * @brief Функция получения объекта работы с логами
- *
- * @return объект работы с логами
- *
- */
-static const awh::log_t * logger() noexcept {
-	// Объект работы с логами
-	static awh::log_t result(::framework());
-	// Снимаем вывод журнала: ворошитель делает десятки тысяч заведомо отказных вызовов,
-	// и журнал их обращает в гигабайты шума, за каким находки не видно
-	const_cast <awh::log_t *> (&result)->level(awh::log_t::level_t::NONE);
-	// Выводим объект работы с логами
-	return &result;
-}
 /**
  * @brief Функция снятия случайного числа из промежутка
  *
@@ -845,6 +815,13 @@ static vector <int32_t> descriptorList() noexcept {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Число проходов ворошителя
 	uint64_t rounds = 1000;
 	// Зерно источника случайных чисел
@@ -860,7 +837,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Заводим источник случайных чисел
 	mt19937_64 engine(seed);
 	// Заводим объект работы с сетевыми устройствами
-	const awh::eth_t eth(::framework(), ::logger());
+	const awh::eth_t eth;
 	/**
 	 * Число проходов разогрева
 	 *

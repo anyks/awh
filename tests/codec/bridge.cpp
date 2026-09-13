@@ -34,6 +34,7 @@
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -47,12 +48,9 @@ using namespace awh::codec;
  *
  */
 TEST(CodecBridge, DecodeJSON) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод записи JSON в дерево значений
@@ -102,12 +100,9 @@ TEST(CodecBridge, DecodeJSON) {
  *
  */
 TEST(CodecBridge, DecodeFailure) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод негодной записи JSON в дерево значений
@@ -121,12 +116,9 @@ TEST(CodecBridge, DecodeFailure) {
  *
  */
 TEST(CodecBridge, RoundTripValues) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Получаем настройки перевода
 	bridge_t::settings_t settings = bridge.settings();
 	// Устанавливаем вид оформления собираемой записи без отступов
@@ -191,12 +183,9 @@ TEST(CodecBridge, RoundTripValues) {
  *
  */
 TEST(CodecBridge, ExtendedNumber) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод записи JSON с числом сверх родных видов
@@ -221,12 +210,9 @@ TEST(CodecBridge, ExtendedNumber) {
  *
  */
 TEST(CodecBridge, Normalisation) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Получаем настройки перевода
 	bridge_t::settings_t settings = bridge.settings();
 	// Устанавливаем вид оформления собираемой записи без отступов
@@ -294,12 +280,9 @@ TEST(CodecBridge, Normalisation) {
  *
  */
 TEST(CodecBridge, EncodeBuilt) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Получаем настройки перевода
 	bridge_t::settings_t settings = bridge.settings();
 	// Устанавливаем вид оформления собираемой записи без отступов
@@ -327,12 +310,9 @@ TEST(CodecBridge, EncodeBuilt) {
  *
  */
 TEST(CodecBridge, NarrowingRules) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value(abc::kind_t::MAP);
 	// Выполняем заведение значения вида, записи JSON неведомого
@@ -369,12 +349,9 @@ TEST(CodecBridge, NarrowingRules) {
  *
  */
 TEST(CodecBridge, DecodeFailureClearsResult) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем перевод годной записи JSON в дерево значений
@@ -408,12 +385,9 @@ TEST(CodecBridge, DecodeFailureClearsResult) {
  *
  */
 TEST(CodecBridge, DecodeYAML){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Разбираемая запись настроек
@@ -465,12 +439,9 @@ TEST(CodecBridge, DecodeYAML){
  *
  */
 TEST(CodecBridge, DecodeXML){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Разбираемая запись настроек
@@ -562,12 +533,9 @@ TEST(CodecBridge, DecodeXML){
  *
  */
 TEST(CodecBridge, DecodeTOML){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	/**
@@ -636,12 +604,9 @@ TEST(CodecBridge, DecodeTOML){
  *
  */
 TEST(CodecBridge, DecodeINI){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	/**
@@ -708,12 +673,9 @@ TEST(CodecBridge, DecodeINI){
  *
  */
 TEST(CodecBridge, RoundTripYAML){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t first;
 	/**
@@ -780,12 +742,9 @@ TEST(CodecBridge, RoundTripYAML){
  *
  */
 TEST(CodecBridge, RoundTripTOML){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t first;
 	/**
@@ -851,12 +810,9 @@ TEST(CodecBridge, RoundTripTOML){
  *
  */
 TEST(CodecBridge, RoundTripXML){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t first;
 	// Разбираемая запись настроек
@@ -933,12 +889,9 @@ TEST(CodecBridge, RoundTripXML){
  *
  */
 TEST(CodecBridge, RoundTripINI){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t first;
 	// Разбираемая запись настроек
@@ -1007,12 +960,9 @@ TEST(CodecBridge, RoundTripINI){
  *
  */
 TEST(CodecBridge, MarkupJoint){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Разбираемая запись разметки
@@ -1095,7 +1045,7 @@ TEST(CodecBridge, MarkupJoint){
  * @brief Проверка вывода вида у записей пограничных
  *
  * @warning Опознание вида и извлечение числа идут из РАЗНЫХ модулей:
- *          опознаёт `fmk_t::is`, извлекает `codec::numeric` поверх
+ *          опознаёт `awh::fmk::is`, извлекает `codec::numeric` поверх
  *          `num/lexical`. Разойтись они могут лишь у самой границы
  *          разрядности, и утверждения эти закрепляют, что расхождение
  *          выходит потерею ВИДА, а не потерею ЗНАЧЕНИЯ: запись,
@@ -1104,12 +1054,9 @@ TEST(CodecBridge, MarkupJoint){
  *
  */
 TEST(CodecBridge, NumberEdges){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Разбираемая запись разметки
@@ -1164,12 +1111,9 @@ TEST(CodecBridge, NumberEdges){
  *
  */
 TEST(CodecBridge, MarkupContainers){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Собираемый перечень вложенный
@@ -1258,12 +1202,9 @@ TEST(CodecBridge, MarkupContainers){
  *
  */
 TEST(CodecBridge, MarkupRootAttributes){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем разбор записи с корневым узлом, свойства несущим
@@ -1309,12 +1250,9 @@ TEST(CodecBridge, MarkupRootAttributes){
  *
  */
 TEST(CodecBridge, MarkupJointEdges){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	/**
 	 * Выполняем проверку укладки пустого узла разметки
 	 *
@@ -1473,12 +1411,9 @@ TEST(CodecBridge, MarkupJointEdges){
  *
  */
 TEST(CodecBridge, UnsignedLimitSurvivesEveryFormat){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	/**
 	 * Перечень видов записи, целое без знака несущих
 	 *
@@ -1568,12 +1503,9 @@ TEST(CodecBridge, UnsignedLimitSurvivesEveryFormat){
  *
  */
 TEST(CodecBridge, RefusalCarriesItsReason){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	/**
@@ -1607,12 +1539,9 @@ TEST(CodecBridge, RefusalCarriesItsReason){
  *
  */
 TEST(CodecBridge, EveryRoadAgreesOnUnknownKinds){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Перечень видов записи, мостом переводимых
 	const bridge_t::format_t formats[] = {
 		bridge_t::format_t::JSON, bridge_t::format_t::YAML,
@@ -1660,12 +1589,9 @@ TEST(CodecBridge, EveryRoadAgreesOnUnknownKinds){
  *
  */
 TEST(CodecBridge, SpecialNamesSurviveTheCircle){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Перечень записей, круг которых обязан быть неподвижен
 	const string samples[] = {
 		// Поле текста, стоящее в одиночку
@@ -1720,12 +1646,9 @@ TEST(CodecBridge, SpecialNamesSurviveTheCircle){
  *
  */
 TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Перечень образцов сличения, парою записей заданных
 	const vector <pair <string, string>> samples = {
 		// Образец 1
@@ -2142,12 +2065,9 @@ TEST(CodecBridge, OwnerSamplesMatchAcrossFormats){
  *          лишь разницу корня и молчало бы о потере звеньев внутри
  */
 TEST(CodecBridge, AnonymousArraysCloseFromSecondPass){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект моста
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Запись JSON образца владельца
 	const string sample = R"AWH([
     [
@@ -2483,12 +2403,9 @@ TEST(CodecBridge, AnonymousArraysCloseFromSecondPass){
  *       `<Correlation/>` истиной, а перечень восьмого образца — пустою строкою
  */
 TEST(CodecBridge, EmptyArraySlotIsEmptyString){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём объект моста
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Выполняем разбор записи с пустым звеном перечня и пустым полем отображения
@@ -2540,7 +2457,7 @@ TEST(CodecBridge, EmptyArraySlotIsEmptyString){
  *             числом `3`, а `1e-9` НУЛЁМ - величина пропадала целиком, а не в
  *             разрядах
  *
- *          2. ЧТЕНИЕ привратником имело проверку каркаса `fmk_t::is(DECIMAL)`, а
+ *          2. ЧТЕНИЕ привратником имело проверку каркаса `awh::fmk::is(DECIMAL)`, а
  *             она признаёт `1e-9`, но отвергает `-2.5e3`, `1E5` и предел
  *             разрядности: запись с указателем степени выходила мостом
  *             последовательностью знаков
@@ -2550,12 +2467,9 @@ TEST(CodecBridge, EmptyArraySlotIsEmptyString){
  *
  */
 TEST(CodecBridge, RealSurvivesTypelessRoundTrip){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём мост между контейнером и кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Выполняем перебор всех сторожких величин
 	for(const double number : {0.1234567890123, 1e-9, 3.0000001, 1.7976931348623157e308, 5e-324}){
 		// Собираемое дерево значений
@@ -2593,12 +2507,9 @@ TEST(CodecBridge, RealSurvivesTypelessRoundTrip){
  *
  */
 TEST(CodecBridge, NumericPropertyNameKeepsSection){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём мост между контейнером и кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Собираемое дерево значений
 	abc::value_t tree;
 	// Выполняем разбор записи настроек с числовым именем свойства
@@ -2633,12 +2544,9 @@ TEST(CodecBridge, NumericPropertyNameKeepsSection){
  *
  */
 TEST(CodecBridge, EmptyContainerSurvivesOrRefusesHonestly){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём мост между контейнером и кодеками
-	bridge_t bridge(&fmk, &log);
+	bridge_t bridge;
 	// Получаем настройки перевода моста
 	bridge_t::settings_t settings = bridge.settings();
 	// Снимаем пометку перечня, разметке перечень выразить нечем
@@ -2649,14 +2557,10 @@ TEST(CodecBridge, EmptyContainerSurvivesOrRefusesHonestly){
 	bridge.settings(settings);
 	// Собираемое дерево значений
 	abc::value_t tree(abc::kind_t::MAP);
-	// Устанавливаем объект работы с логами дереву значений
-	tree.setLogger(&log);
 	// Выполняем заведение поля с пустым перечнем
 	ASSERT_TRUE(tree.insert(string("e"), abc::value_t(abc::kind_t::ARRAY))) << "заведение поля с пустым перечнем отвечено отказом";
 	// Собираемое поле-вместилище, признак вложенности взводящее
 	abc::value_t nested(abc::kind_t::MAP);
-	// Устанавливаем объект работы с логами полю-вместилищу
-	nested.setLogger(&log);
 	// Выполняем заведение поля вложенного вместилища
 	ASSERT_TRUE(nested.insert(string("x"), abc::value_t(static_cast <int64_t> (1)))) << "заведение поля вложенного вместилища отвечено отказом";
 	// Выполняем заведение вложенного вместилища полем дерева

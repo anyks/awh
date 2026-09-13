@@ -23,6 +23,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1933,53 +1934,36 @@ bool awh::codec::xml::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
 	/**
-	 * Если объект ведения журнала работы установлен
+	 * Выполняем запись об отказе записи разметки в журнал
+	 *
+	 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: разбор получает
+	 *       текст извне и негодности его не виноват, тогда как записывается то, что
+	 *       собрало само приложение. Негодное здесь означает дефект у потребителя
 	 */
-	if(this->_log != nullptr){
-		/**
-		 * Выполняем запись об отказе записи разметки в журнал
-		 *
-		 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: разбор получает
-		 *       текст извне и негодности его не виноват, тогда как записывается то, что
-		 *       собрало само приложение. Негодное здесь означает дефект у потребителя
-		 */
-		#if DEBUG_MODE
-			// Записываем отказ записи в журнал работы
-			this->_log->debug("XML writing failed: %s", __PRETTY_FUNCTION__, ::std::make_tuple(),
-			                  log_t::flag_t::CRITICAL, message(error));
-		#else
-			// Записываем отказ записи в журнал работы
-			this->_log->print("XML writing failed: %s", log_t::flag_t::CRITICAL, message(error));
-		#endif
-	}
+	#if DEBUG_MODE
+		// Записываем отказ записи в журнал работы
+		awh::log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {},
+		                  awh::log::flag_t::CRITICAL, message(error));
+	#else
+		// Записываем отказ записи в журнал работы
+		awh::log::print("XML writing failed: %s", awh::log::flag_t::CRITICAL, message(error));
+	#endif
 	// Выводим отрицательный результат выполнения операции
 	return false;
 }
 /**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::xml::Writer::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-}
-/**
  * @brief Конструктор
  *
- * @param log объект ведения журнала работы
- *
  */
-awh::codec::xml::Writer::Writer(const log_t * log) noexcept : _error(error_t::NONE), _log(log), _root(false), _depth(0), _bindings(0), _counter(0) {}
+awh::codec::xml::Writer::Writer() noexcept : _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Конструктор
  *
  * @param settings настройки записи текста разметки
  *
  */
-awh::codec::xml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
- _settings(settings), _error(error_t::NONE), _log(log), _root(false), _depth(0), _bindings(0), _counter(0) {}
+awh::codec::xml::Writer::Writer(const settings_t & settings) noexcept :
+ _settings(settings), _error(error_t::NONE), _root(false), _depth(0), _bindings(0), _counter(0) {}
 /**
  * @brief Деструктор
  *

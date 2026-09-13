@@ -29,14 +29,12 @@
  */
 #include <atomic>
 #include <limits>
-#include <cstdio>
-#include <fstream>
-#include <sys/stat.h>
 
 /**
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/ini/value.hpp>
+#include <sys/log.hpp>
 /**
  * Подключаем переносимую подмену целевого файла временным
  *
@@ -1220,18 +1218,6 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (const Value & value
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	/**
-	 * Если журнал присваиваемого значения назначен, а своего у нас нет
-	 *
-	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
-	 *       содержимое, а не место, куда сообщения этого значения уходят
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем перенятие объекта фреймворка
-		this->_fmk = value._fmk;
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем копирование объекта для работы с логами
-		this->_log = value._log;
 	// Выполняем копирование типа хранимого значения
 	this->_type = value._type;
 	// Выполняем копирование признака значения, записанного в кавычках
@@ -1261,18 +1247,6 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	/**
-	 * Если журнал присваиваемого значения назначен, а своего у нас нет
-	 *
-	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
-	 *       содержимое, а не место, куда сообщения этого значения уходят
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем перенятие объекта фреймворка
-		this->_fmk = value._fmk;
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем перенос объекта для работы с логами
-		this->_log = value._log;
 	// Выполняем перенос типа хранимого значения
 	this->_type = value._type;
 	// Выполняем перенос признака значения, записанного в кавычках
@@ -1296,37 +1270,17 @@ awh::codec::ini::Value & awh::codec::ini::Value::operator = (Value && value) noe
 	return (* this);
 }
 /**
- * @brief Метод установки объекта для работы с логами
- *
- * @param log объект для работы с логами
- *
- */
-void awh::codec::ini::Value::setLogger(const log_t * log) noexcept {
-	// Выполняем установку объекта для работы с логами
-	this->_log = log;
-}
-/**
- * @brief Метод установки объекта фреймворка
- *
- * @param fmk объект фреймворка
- *
- */
-void awh::codec::ini::Value::setFramework(const fmk_t * fmk) noexcept {
-	// Выполняем установку объекта фреймворка
-	this->_fmk = fmk;
-}
-/**
  * @brief Конструктор
  *
  */
-awh::codec::ini::Value::Value() noexcept : _log(nullptr), _type(type_t::NONE), _quoted(false) {}
+awh::codec::ini::Value::Value() noexcept : _type(type_t::NONE), _quoted(false) {}
 /**
  * @brief Конструктор вместилища затребованного типа
  *
  * @param type тип заводимого значения
  *
  */
-awh::codec::ini::Value::Value(const type_t type) noexcept : _log(nullptr), _type(type), _quoted(false) {}
+awh::codec::ini::Value::Value(const type_t type) noexcept : _type(type), _quoted(false) {}
 /**
  * @brief Конструктор простого значения
  *
@@ -1335,7 +1289,7 @@ awh::codec::ini::Value::Value(const type_t type) noexcept : _log(nullptr), _type
  *
  */
 awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept :
- _log(nullptr), _type(type_t::STRING), _quoted(quoted), _text(value) {}
+ _type(type_t::STRING), _quoted(quoted), _text(value) {}
 /**
  * @brief Конструктор простого значения из строки языка
  *
@@ -1344,7 +1298,7 @@ awh::codec::ini::Value::Value(const string & value, const bool quoted) noexcept 
  *
  */
 awh::codec::ini::Value::Value(const char * value, const bool quoted) noexcept :
- _log(nullptr), _type(type_t::STRING), _quoted(quoted), _text((value != nullptr) ? value : "") {}
+ _type(type_t::STRING), _quoted(quoted), _text((value != nullptr) ? value : "") {}
 /**
  * @brief Конструктор копирования
  *
@@ -1352,7 +1306,7 @@ awh::codec::ini::Value::Value(const char * value, const bool quoted) noexcept :
  *
  */
 awh::codec::ini::Value::Value(const Value & value) noexcept :
- _log(value._log), _type(value._type), _quoted(value._quoted), _text(value._text),
+ _type(value._type), _quoted(value._quoted), _text(value._text),
  _names(value._names), _items(value._items) {}
 /**
  * @brief Конструктор переноса
@@ -1361,7 +1315,7 @@ awh::codec::ini::Value::Value(const Value & value) noexcept :
  *
  */
 awh::codec::ini::Value::Value(Value && value) noexcept :
- _log(value._log), _type(value._type), _quoted(value._quoted), _text(::std::move(value._text)),
+ _type(value._type), _quoted(value._quoted), _text(::std::move(value._text)),
  _names(::std::move(value._names)), _items(::std::move(value._items)),
  _index(::std::move(value._index)) {
 	// Выполняем сброс перенесённого значения
@@ -1572,7 +1526,7 @@ void awh::codec::ini::Value::absorb(const Document & document) noexcept {
  * @param document дерево настроек, откуда снимается значение
  *
  */
-awh::codec::ini::Value::Value(const Document & document) noexcept : _log(nullptr), _type(type_t::NONE), _quoted(false) {
+awh::codec::ini::Value::Value(const Document & document) noexcept : _type(type_t::NONE), _quoted(false) {
 	// Выполняем снятие значения с дерева настроек
 	this->absorb(document);
 }
@@ -1585,7 +1539,7 @@ awh::codec::ini::Value::Value(const Document & document) noexcept : _log(nullptr
  */
 bool awh::codec::ini::Value::parse(const string & text) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document(this->_fmk, this->_log);
+	Document document;
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
@@ -1607,7 +1561,7 @@ bool awh::codec::ini::Value::parse(const string & text) noexcept {
  */
 bool awh::codec::ini::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document(this->_fmk, this->_log);
+	Document document;
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
@@ -1627,30 +1581,18 @@ bool awh::codec::ini::Value::parse(const string & text, const Document::settings
  *
  */
 bool awh::codec::ini::Value::load(const string & filename) noexcept {
-	/**
-	 * Если путь указывает на каталог
-	 *
-	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
-	 *       какими отзывается файл пустой. Без проверки этой чтение отвечало бы УСПЕХОМ,
-	 *       отдавая значение без содержимого. Замерено 07.09.2026 подачею пути `/tmp`
-	 */
-	/**
-	 * Если объект фреймворка не назначен вовсе
-	 *
-	 * @note Без рамки работа с файловой системой невозможна: пути обращаются её ходом
-	 *       `convert()`, и без него кириллический путь у MS Windows лёг бы мусором.
-	 *       Отказ здесь честнее молчаливой подмены узким ходом
-	 */
-	if((this->_fmk == nullptr) || (this->_log == nullptr)){
-		// Запоминаем код отказа чтения файла настроек
-		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим признак неудачного чтения файла
-		return false;
-	}
 	// Объект работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
+	 *
+	 * @note Спрос этот покрывает и каталог: каталог открывается успешно, а читается
+	 *       признаками конца и отказа - теми же, какими отзывается файл пустой. Без него
+	 *       чтение отвечало бы УСПЕХОМ, отдавая значение без содержимого. Замерено
+	 *       07.09.2026 подачею пути `/tmp`
+	 *
+	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
+	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
 	 */
 	if(fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
@@ -1671,9 +1613,6 @@ bool awh::codec::ini::Value::load(const string & filename) noexcept {
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
-	/**
-	 * Если файл настроек открыть не удалось
-	 */
 	// Выполняем разбор считанного текста настроек
 	return this->parse(text);
 }
@@ -1686,30 +1625,18 @@ bool awh::codec::ini::Value::load(const string & filename) noexcept {
  *
  */
 bool awh::codec::ini::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
-	/**
-	 * Если путь указывает на каталог
-	 *
-	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
-	 *       какими отзывается файл пустой. Без проверки этой чтение отвечало бы УСПЕХОМ,
-	 *       отдавая значение без содержимого. Замерено 07.09.2026 подачею пути `/tmp`
-	 */
-	/**
-	 * Если объект фреймворка не назначен вовсе
-	 *
-	 * @note Без рамки работа с файловой системой невозможна: пути обращаются её ходом
-	 *       `convert()`, и без него кириллический путь у MS Windows лёг бы мусором.
-	 *       Отказ здесь честнее молчаливой подмены узким ходом
-	 */
-	if((this->_fmk == nullptr) || (this->_log == nullptr)){
-		// Запоминаем код отказа чтения файла настроек
-		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим признак неудачного чтения файла
-		return false;
-	}
 	// Объект работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
+	 *
+	 * @note Спрос этот покрывает и каталог: каталог открывается успешно, а читается
+	 *       признаками конца и отказа - теми же, какими отзывается файл пустой. Без него
+	 *       чтение отвечало бы УСПЕХОМ, отдавая значение без содержимого. Замерено
+	 *       07.09.2026 подачею пути `/tmp`
+	 *
+	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
+	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
 	 */
 	if(fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
@@ -1730,9 +1657,6 @@ bool awh::codec::ini::Value::load(const string & filename, const Document::setti
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
-	/**
-	 * Если файл настроек открыть не удалось
-	 */
 	// Выполняем разбор считанного текста настроек
 	return this->parse(text, settings);
 }
@@ -1759,7 +1683,7 @@ string awh::codec::ini::Value::dump(const writer_t::settings_t & settings) const
 		return string();
 	}
 	// Объект записи текста настроек
-	writer_t writer(this->_log, settings);
+	writer_t writer(settings);
 	/**
 	 * @brief Функция записи свойств вместилища
 	 *
@@ -2046,9 +1970,8 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		 *
 		 * @note Нашло пробел объединённое покрытие набора с ворошителем
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::ini::message(error_t::FILE_NOT_WRITTEN));
 		// Выводим признак неудачной записи
 		return false;
@@ -2074,24 +1997,8 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 	 *       у него он был закрыт месяцем раньше
 	 */
 	const string temporary(filename + ".awh-tmp");
-	/**
-	 * Если объект фреймворка не назначен вовсе
-	 */
-	if((this->_fmk == nullptr) || (this->_log == nullptr)){
-		// Запоминаем код отказа записи файла настроек
-		this->_error = error_t::FILE_NOT_WRITTEN;
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI value failed: %s", log_t::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(this->_error));
-		// Выводим признак неудачной записи
-		return false;
-	}
 	// Объект работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
@@ -2112,9 +2019,8 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
@@ -2134,9 +2040,8 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
@@ -2152,9 +2057,8 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;

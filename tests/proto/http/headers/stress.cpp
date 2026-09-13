@@ -46,6 +46,7 @@
  */
 #include "headers.hpp"
 #include "../../../../include/proto/http/parser/http1/http.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на пространство имён HTTP-протокола
@@ -268,7 +269,7 @@ class HeadersStressFixture : public HeadersFixture {
 			 */
 			const headers_t::fields_t fields = static_cast <headers_t::fields_t> (headers);
 			// Создаём контейнер того же протокола для обратного присваивания
-			headers_t back(headers.proto(), this->_fmk.get(), this->_log.get());
+			headers_t back(headers.proto());
 			// Поднимаем ограничения, чтобы обратное присваивание не резалось ими
 			back.maxRecords(headers.maxRecords() + 8);
 			// Поднимаем ограничение по объёму полезной нагрузки
@@ -372,7 +373,7 @@ class HeadersStressFixture : public HeadersFixture {
 			 */
 			headers_t left = headers;
 			// Создаём пустой контейнер для обмена
-			headers_t right(this->_fmk.get(), this->_log.get());
+			headers_t right;
 			// Выполняем обмен содержимым
 			left.swap(right);
 			// Выполняем обмен содержимым повторно
@@ -448,7 +449,7 @@ class HeadersStressFixture : public HeadersFixture {
 			// Определяем направление трафика по объекту провайдера
 			const direct_t direct = headers.provider()->direct;
 			// Создаём объект разборщика HTTP/1 соответствующего направления
-			auto parser = std::make_unique <parser_http_t> (direct, this->_fmk.get(), this->_log.get());
+			auto parser = std::make_unique <parser_http_t> (direct);
 			// Собранный разборщиком набор заголовков
 			std::vector <std::pair <std::string, std::string>> parsed;
 			// Устанавливаем функцию обратного вызова, собирающую разобранные заголовки
@@ -515,7 +516,7 @@ TEST_F(HeadersStressFixture, RandomCallChainsTest){
 	 * записываются предупреждением, а прогон доводит контейнер до них тысячи раз -
 	 * поток предупреждений скрыл бы собственный вывод набора проверок
 	 */
-	this->_log->level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Создаём источник воспроизводимой последовательности чисел
 	Random random(0x12345678ABCDEFULL);
 	// Количество сообщений, доведённых до разборщика HTTP/1
@@ -525,9 +526,9 @@ TEST_F(HeadersStressFixture, RandomCallChainsTest){
 	 */
 	for(size_t chain = 0; chain < AWH_STRESS_CHAINS; chain++){
 		// Создаём первый контейнер заголовков цепочки
-		headers_t first(this->_fmk.get(), this->_log.get());
+		headers_t first;
 		// Создаём второй контейнер заголовков цепочки
-		headers_t second(this->_fmk.get(), this->_log.get());
+		headers_t second;
 		// Определяем длину очередной цепочки вызовов
 		const size_t length = (4 + random.next(14));
 		/**

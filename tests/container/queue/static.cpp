@@ -49,7 +49,7 @@ TEST_F(QueueFixture, ResetAndCreateQueueTest){
 	// Проверяем удаление объекта очереди
 	ASSERT_TRUE(this->_queue == nullptr);
 	// Создаём объект очереди
-	this->_queue = std::make_unique <awh::queue_t> (this->_fmk.get(), this->_log.get());
+	this->_queue = std::make_unique <awh::queue_t> ();
 	// Проверяем создание объекта очереди
 	ASSERT_TRUE(this->_queue != nullptr);
 }
@@ -62,7 +62,7 @@ TEST_F(QueueFixture, ReCreateQueueTest){
 	// Проверяем создание объекта очереди
 	ASSERT_TRUE(this->_queue != nullptr);
 	// Cоздаём объект очереди заново
-	this->_queue = std::make_unique <awh::queue_t> (this->_fmk.get(), this->_log.get());
+	this->_queue = std::make_unique <awh::queue_t> ();
 	// Проверяем создание объекта очереди
 	ASSERT_TRUE(this->_queue != nullptr);
 }

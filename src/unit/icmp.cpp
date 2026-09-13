@@ -68,6 +68,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/icmp.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -536,7 +538,7 @@ size_t awh::unit::ICMP::sendEcho(const event::id_t eid, const id_t id, const uin
 	// Запоминаем номер последовательности последнего отправленного запроса
 	this->_transfer.sequence = sequence;
 	// Запоминаем время отправки запроса
-	this->_transfer.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	this->_transfer.timestamp = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 	// Отправляем сообщение серверу
 	return this->_io->send(eid, &icmp, sizeof(icmp));
 }
@@ -577,18 +579,18 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"ICMP-client timeout (delay: %u)",
 				__PRETTY_FUNCTION__,
-				make_tuple(eid, static_cast <uint16_t> (action), delay),
-				log_t::flag_t::WARNING, delay
+				{eid, static_cast <uint16_t> (action), delay},
+				awh::log::flag_t::WARNING, delay
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("ICMP-client timeout (delay: %u)", log_t::flag_t::WARNING, delay);
+			awh::log::print("ICMP-client timeout (delay: %u)", awh::log::flag_t::WARNING, delay);
 		#endif
 	}
 	// Запрещаем завершение клиента после истечения таймаута
@@ -856,7 +858,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 				// Устанавливаем TTL/Hop Limit из метаданных пакета
 				timeToLive = static_cast <uint32_t> (info.hops);
 			// Получаем текущую метку времени
-			const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+			const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 			// Если адрес удалённого сервера получен
 			if(address != nullptr){
 				/**
@@ -919,13 +921,13 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (mode), data, size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (mode), data, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -981,13 +983,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
+					awh::log::debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("ICMP-client target address is not set", log_t::flag_t::CRITICAL);
+					awh::log::print("ICMP-client target address is not set", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 			// Возвращаем результат
@@ -1025,13 +1027,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
+					awh::log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
+					awh::log::print("Failed to set options for ICMP-client event", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 			// Возвращаем результат
@@ -1079,13 +1081,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
+				awh::log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Failed to launch ICMP-client", log_t::flag_t::CRITICAL);
+				awh::log::print("Failed to launch ICMP-client", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 		// Возвращаем результат
@@ -1101,13 +1103,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1252,13 +1254,13 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(target), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {target}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1311,13 +1313,13 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1375,13 +1377,13 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), target), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), target}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1436,13 +1438,13 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(source), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1501,13 +1503,13 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1566,13 +1568,13 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), source), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1671,13 +1673,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
+								awh::log::print("Failed to set options for ICMP-client event", awh::log::flag_t::CRITICAL);
 							#endif
 						}
 						// Снимаем флаг ожидания ответа от сервера
@@ -1724,13 +1726,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Failed to launch ICMP-client", log_t::flag_t::CRITICAL);
+									awh::log::print("Failed to launch ICMP-client", awh::log::flag_t::CRITICAL);
 								#endif
 							}
 						// Если фиксация параметров события прошла успешно
@@ -1769,13 +1771,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
 							#endif
 						}
 					}
@@ -1811,13 +1813,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1826,11 +1828,8 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::ICMP::ICMP(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log), _addr(fmk, log) {}
+awh::unit::ICMP::ICMP() noexcept : unit_t(), _addr() {}
 /**
  * @brief Деструктор
  *

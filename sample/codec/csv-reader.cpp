@@ -29,32 +29,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/csv/reader.hpp>
-#include <sys/log.hpp>
-
-/**
- * @brief Пространство имён образца
- *
- */
-namespace {
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
-	 *          main(): объект заводится статикою местною, дабы всякое построение
-	 *          образца писало сообщения в один и тот же журнал
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Объект для работы с логами
-		static awh::log_t log(&fmk);
-		// Выводим объект для работы с логами
-		return &log;
-	}
-}
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -89,6 +64,13 @@ static const char * TEXT =
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Блокируем неиспользуемую переменную
 	(void) argc;
 	// Блокируем неиспользуемую переменную
@@ -109,7 +91,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	settings.separator = 0;
 	// Создаём объект потокового чтения текста таблицы
-	codec::csv::reader_t reader(::logger(), settings);
+	codec::csv::reader_t reader(settings);
 	// Разбираемый текст таблицы
 	const string text = TEXT;
 	/**

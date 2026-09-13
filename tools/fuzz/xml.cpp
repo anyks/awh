@@ -36,8 +36,9 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <sys/log.hpp>
 #include <codec/xml/xml.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -57,44 +58,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -902,7 +873,7 @@ namespace {
 	 */
 	xml::state_t consume(const string & text, const xml::reader_t::settings_t & options, const size_t chunk, vector <Event> & events, Event * failure = nullptr) noexcept {
 		// Создаём объект чтения текста разметки
-		xml::reader_t reader(::logger(), options);
+		xml::reader_t reader(options);
 		// Размер куска подачи текста разметки
 		const size_t size = (chunk > 0 ? chunk : text.length());
 		// Смещение начала очередного куска подачи
@@ -1484,7 +1455,7 @@ namespace {
 	 */
 	bool rewrite(const xml::document_t & document, const xml::writer_t::settings_t & options, string & result) noexcept {
 		// Создаём объект записи текста разметки
-		xml::writer_t writer(::logger(), options);
+		xml::writer_t writer(options);
 		// Выполняем учёт перезаписи дерева разметки
 		totals.rewrites++;
 		/**
@@ -1640,7 +1611,7 @@ namespace {
 	 */
 	bool tree(const string & text, const xml::reader_t::settings_t & options, mt19937 & engine) noexcept {
 		// Создаём дерево разметки
-		xml::document_t document(::logger());
+		xml::document_t document;
 		// Выполняем учёт собранного дерева разметки
 		totals.trees++;
 		// Если разбор текста разметки не удался, то проверку прекращаем
@@ -1723,7 +1694,7 @@ namespace {
 			// Выводим результат проверки дерева разметки
 			return true;
 		// Создаём дерево разметки для повторного разбора
-		xml::document_t repeat(::logger());
+		xml::document_t repeat;
 		/**
 		 * Если повторный разбор перезаписанного текста не удался
 		 */
@@ -1826,7 +1797,7 @@ namespace {
 			// Выбираем узел разметки, записываемый поддеревом
 			const xml::node_t node = nodes.at(engine() % nodes.size());
 			// Создаём объект записи текста разметки поддерева
-			xml::writer_t writer(::logger(), settings);
+			xml::writer_t writer(settings);
 			// Выполняем учёт перезаписи поддерева разметки
 			totals.rewrites++;
 			/**
@@ -1849,7 +1820,7 @@ namespace {
 			 */
 			{
 				// Создаём дерево разметки для разбора записанного поддерева
-				xml::document_t subtree(::logger());
+				xml::document_t subtree;
 				/**
 				 * Если разбор записанного поддерева не удался
 				 */
@@ -1933,7 +1904,7 @@ namespace {
 				// Выполняем учёт снятого владеющего значения
 				totals.values++;
 				// Объект потокового сборщика владеющего значения
-				xml::builder_t builder(::logger());
+				xml::builder_t builder;
 				/**
 				 * Если пересборка значения потоковым сборщиком не удалась
 				 */
@@ -1967,7 +1938,7 @@ namespace {
 				 */
 				{
 					// Дерево разметки, принимающее прививку
-					xml::document_t host(::logger());
+					xml::document_t host;
 					/**
 					 * Если заведение принимающего прививку дерева удалось
 					 */
@@ -1999,7 +1970,7 @@ namespace {
 						 */
 						{
 							// Дерево разметки, строимое с нуля
-							xml::document_t scratch(::logger());
+							xml::document_t scratch;
 							/**
 							 * Если прививаемое значение узлом разметки является
 							 */
@@ -2018,7 +1989,7 @@ namespace {
 								// Получаем текст построенного с нуля дерева разметки
 								const string built = scratch.dump();
 								// Дерево разметки для обратного разбора построенного текста
-								xml::document_t back(::logger());
+								xml::document_t back;
 								/**
 								 * Если построенный текст разметки разбору не подлежит
 								 *
@@ -2152,7 +2123,7 @@ namespace {
 				 */
 				if(!record.empty() && !::adjacent(value)){
 					// Создаём дерево разметки для разбора записанного значения
-					xml::document_t reparsed(::logger());
+					xml::document_t reparsed;
 					/**
 					 * Если разбор записанного значения не удался
 					 */
@@ -2483,6 +2454,13 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество выполняемых проходов генератора
 	uint64_t count = 3000;
 	// Если количество проходов задано параметром командной строки

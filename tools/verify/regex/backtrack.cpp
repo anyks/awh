@@ -10,6 +10,7 @@
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
@@ -63,6 +64,8 @@ static bool same(const result_t & a, const result_t & b) {
 }
 
 int main(int argc, char * argv[]) {
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	const size_t total = ((argc > 1) ? (size_t) ::atoll(argv[1]) : 200000);
 	mt19937 engine(20260801);
 	// Фрагменты шаблонов регулярного подмножества

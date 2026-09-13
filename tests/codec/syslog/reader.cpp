@@ -19,6 +19,7 @@
  * @copyright Copyright © 2026
  *
  */
+#include <codec/syslog/syslog.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -32,7 +33,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/syslog/syslog.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -43,6 +43,7 @@
  * Подавляем системные макросы, занявшие имена членов перечислений AWH
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -68,41 +69,15 @@ namespace {
 	 */
 	struct SilentSysLog {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentSysLog() noexcept : log(&SilentSysLog::framework()) {
+		SilentSysLog() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static SilentSysLog silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 
 	/**
 	 * @brief Событие разбора, щупом собираемое
@@ -133,7 +108,7 @@ namespace {
 		// Выполняем очистку собранных событий разбора
 		events.clear();
 		// Выполняем создание объекта чтения записей
-		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		syslog::reader_t reader;
 		// Выполняем установку настроек разбора записей
 		reader.settings(settings);
 		// Если текст подаётся кусками заданного размера
@@ -275,7 +250,7 @@ TEST(CodecSysLogReader, DateBoundaries) {
  */
 TEST(CodecSysLogReader, Detection) {
 	// Выполняем создание объекта чтения записей
-	syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t reader;
 	// Выполняем подачу записи нынешнего описания
 	reader.feed("<165>1 2003-10-11T22:14:15.003Z host app 1234 ID47 - Message");
 	/**
@@ -309,7 +284,7 @@ TEST(CodecSysLogReader, Detection) {
  */
 TEST(CodecSysLogReader, Priority) {
 	// Выполняем создание объекта чтения записей
-	syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t reader;
 	// Выполняем подачу записи с приставкой приоритета
 	reader.feed("<165>Oct 22 10:52:01 host app: Message");
 	/**
@@ -336,7 +311,7 @@ TEST(CodecSysLogReader, Priority) {
  */
 TEST(CodecSysLogReader, MissingPriority) {
 	// Выполняем создание объекта чтения записей
-	syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t reader;
 	// Выполняем подачу записи без приставки приоритета
 	reader.feed("Oct 22 10:52:01 host app: Message");
 	/**
@@ -586,7 +561,7 @@ TEST(CodecSysLogReader, Failures) {
 	 */
 	for(auto & item : CASES){
 		// Выполняем создание объекта чтения записей
-		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		syslog::reader_t reader;
 		// Выполняем установку настроек разбора записей
 		reader.settings(settings);
 		// Выполняем подачу разбираемой записи
@@ -640,7 +615,7 @@ TEST(CodecSysLogReader, NilValues) {
  */
 TEST(CodecSysLogReader, Finish) {
 	// Выполняем создание объекта чтения записей
-	syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t reader;
 	// Выполняем подачу записи целиком
 	reader.feed("<165>Oct 22 10:52:01 host app: Message");
 	/**
@@ -711,7 +686,7 @@ TEST(CodecSysLogReader, LimitFailures) {
 	 */
 	for(const tuple <string, syslog::error_t, size_t> & sample : samples){
 		// Объект события, удерживаемого целиком
-		syslog::document_t document(&SilentSysLog::framework(), ::logger());
+		syslog::document_t document;
 		/**
 		 * Настройки разбора записей строгого сличения
 		 *
@@ -771,7 +746,7 @@ TEST(CodecSysLogReader, SettingsLimits) {
 	 */
 	{
 		// Объект события, удерживаемого целиком
-		syslog::document_t document(&SilentSysLog::framework(), ::logger());
+		syslog::document_t document;
 		// Настройки разбора записей
 		syslog::reader_t::settings_t settings;
 		// Устанавливаем предел числа блоков структурированных данных
@@ -794,7 +769,7 @@ TEST(CodecSysLogReader, SettingsLimits) {
 	 */
 	{
 		// Объект события, удерживаемого целиком
-		syslog::document_t document(&SilentSysLog::framework(), ::logger());
+		syslog::document_t document;
 		// Настройки разбора записей
 		syslog::reader_t::settings_t settings;
 		// Устанавливаем предел числа полей внутри блока
@@ -846,7 +821,7 @@ TEST(CodecSysLogReader, ModernFailures) {
 	 */
 	for(const pair <string, syslog::error_t> & sample : samples){
 		// Объект события, удерживаемого целиком
-		syslog::document_t document(&SilentSysLog::framework(), ::logger());
+		syslog::document_t document;
 		// Настройки разбора записей
 		syslog::reader_t::settings_t settings;
 		// Устанавливаем описание записи современным ЯВНО
@@ -878,7 +853,7 @@ TEST(CodecSysLogReader, ModernFailures) {
 	 */
 	{
 		// Объект события, удерживаемого целиком
-		syslog::document_t document(&SilentSysLog::framework(), ::logger());
+		syslog::document_t document;
 		// Выполняем проверку успешности чтения той же записи при опознании описания
 		EXPECT_TRUE(document.parse("<13>x 2023-04-11T23:29:33Z host app - - - Message"));
 		// Выполняем проверку того, что описание опознано устаревшим
@@ -909,7 +884,7 @@ TEST(CodecSysLogReader, FeedContract) {
 	// Годная запись системного журнала устаревшего описания
 	constexpr string_view RECORD = "<165>Oct 22 10:52:01 host app: Message";
 	// Выполняем создание объекта чтения записей
-	syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t reader;
 	// Настройки разбора записей
 	syslog::reader_t::settings_t settings;
 	// Выполняем проверку того, что настройки принимаются до начала разбора
@@ -947,7 +922,7 @@ TEST(CodecSysLogReader, FeedContract) {
 	 */
 	constexpr string_view BROKEN = "<999>Oct 22 10:52:01 host app: Message\n";
 	// Выполняем создание объекта чтения записей, отказом остановленного
-	syslog::reader_t failed(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t failed;
 	// Выполняем подачу записи с приставкой приоритета, за предел выходящей
 	ASSERT_TRUE(failed.feed(BROKEN.data(), BROKEN.size(), false));
 	/**
@@ -961,7 +936,7 @@ TEST(CodecSysLogReader, FeedContract) {
 	// Запись системного журнала со знаком конца строки за нею
 	constexpr string_view CHUNK = "<165>Oct 22 10:52:01 host app: Message\n";
 	// Выполняем создание объекта чтения записей для уплотнения хранилища
-	syslog::reader_t compact(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t compact;
 	/**
 	 * Выполняем подачу записей объёмом, порог уплотнения превышающим
 	 *
@@ -1010,7 +985,7 @@ TEST(CodecSysLogReader, NilModes) {
 	 */
 	for(const syslog::nil_t nil : {syslog::nil_t::OMIT, syslog::nil_t::EMPTY, syslog::nil_t::LITERAL}){
 		// Выполняем создание объекта чтения записей
-		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		syslog::reader_t reader;
 		// Настройки разбора записей
 		syslog::reader_t::settings_t settings;
 		// Устанавливаем очередной разряд обращения с отсутствующими полями
@@ -1103,7 +1078,7 @@ TEST(CodecSysLogReader, MalformedRecords) {
 	 */
 	for(const auto & sample : SAMPLES){
 		// Выполняем создание объекта чтения записей
-		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		syslog::reader_t reader;
 		// Настройки разбора записей
 		syslog::reader_t::settings_t settings;
 		// Устанавливаем чтение записей нынешним описанием
@@ -1124,7 +1099,7 @@ TEST(CodecSysLogReader, MalformedRecords) {
 		EXPECT_LT(reader.errorPosition().offset, static_cast <uint64_t> (::strlen(sample.record))) << sample.record;
 	}
 	// Выполняем создание объекта чтения записей для отказа по длине записи
-	syslog::reader_t oversized(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t oversized;
 	// Настройки разбора записей
 	syslog::reader_t::settings_t settings;
 	// Устанавливаем предел длины записи заведомо малым
@@ -1151,7 +1126,7 @@ TEST(CodecSysLogReader, MalformedRecords) {
 	// Запись системного журнала, длиною предел поверяющая
 	const string exact = "<165>Oct 22 10:52:01 host app: Message";
 	// Выполняем создание объекта чтения записей для записи длиною ровно в предел
-	syslog::reader_t sized(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t sized;
 	// Устанавливаем предел длины записи ровно по длине её самой
 	settings.maxRecord = static_cast <uint32_t> (exact.size());
 	// Устанавливаем настройки разбора записей
@@ -1167,7 +1142,7 @@ TEST(CodecSysLogReader, MalformedRecords) {
 	// Выполняем проверку того, что кода отказа чтение не выставило
 	EXPECT_EQ(sized.error(), syslog::error_t::NONE);
 	// Выполняем создание объекта чтения записей для пустых записей и возврата каретки
-	syslog::reader_t empty(&SilentSysLog::framework(), ::logger());
+	syslog::reader_t empty;
 	/**
 	 * Выполняем подачу записей, пустыми строками разделённых
 	 *
@@ -1236,7 +1211,7 @@ TEST(CodecSysLogReader, LimitBoundaries) {
 	 */
 	for(const string & sample : samples){
 		// Выполняем создание объекта чтения записей
-		syslog::reader_t reader(&SilentSysLog::framework(), ::logger());
+		syslog::reader_t reader;
 		// Настройки разбора записей
 		syslog::reader_t::settings_t settings;
 		// Устанавливаем чтение записей нынешним описанием

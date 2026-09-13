@@ -18,16 +18,16 @@
  * @copyright Copyright © 2026
  *
  */
+#include "syslog.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы бенчмарков
  */
-#include "syslog.hpp"
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён сценариев этого файла
@@ -43,41 +43,15 @@ namespace {
 	 */
 	struct SilentSysLogWriter {
 		/**
-		 * @brief Функция получения объекта фреймворка сценариев
-		 *
-		 * @return объект фреймворка сценариев
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка сценариев
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка сценариев
-			return fmk;
-		}
-		// Объект журнала сценариев
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentSysLogWriter() noexcept : log(&SilentSysLogWriter::framework()) {
+		SilentSysLogWriter() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 
-	/**
-	 * @brief Функция получения объекта журнала сценариев
-	 *
-	 * @return объект журнала сценариев
-	 *
-	 */
-	const awh::log_t * writerLogger() noexcept {
-		// Объект журнала сценариев
-		static SilentSysLogWriter silent;
-		// Выводим объект журнала сценариев
-		return &silent.log;
-	}
 
 	/**
 	 * @brief Порог пропускной способности сборки записи устаревшего описания
@@ -134,7 +108,7 @@ namespace {
 	 */
 	const awh::codec::abc::value_t & tree(const std::string & text) noexcept {
 		// Объект события, удерживаемого целиком
-		static awh::codec::syslog::document_t document(&SilentSysLogWriter::framework(), ::writerLogger());
+		static awh::codec::syslog::document_t document;
 		// Разобранная эталонная запись, деревом удерживаемая
 		static awh::codec::abc::value_t result;
 		// Выполняем разбор эталонной записи
@@ -154,7 +128,7 @@ namespace {
 	 */
 	size_t produce(const awh::codec::abc::value_t & value) noexcept {
 		// Объект записи событий
-		awh::codec::syslog::writer_t writer(&SilentSysLogWriter::framework(), ::writerLogger());
+		awh::codec::syslog::writer_t writer;
 		// Собранная запись системного журнала
 		std::string result;
 		// Если сборка записи отказом завершилась

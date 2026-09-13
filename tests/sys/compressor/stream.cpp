@@ -533,7 +533,7 @@ TEST_P(CompressorStreamParameterizedFixture, StreamLevelOutOfRangeTest){
 		// Устанавливаем негодный уровень компрессии
 		params.level = level;
 		// Создаём потоковую сессию компрессии
-		awh::compressor::stream_t encoder(this->_parameter.method, awh::compressor::event_t::ENCODE, params, nullptr);
+		awh::compressor::stream_t encoder(this->_parameter.method, awh::compressor::event_t::ENCODE, params);
 		/**
 		 * Отказ в заведении сессии — исход законный: движок негодное значение отверг
 		 */

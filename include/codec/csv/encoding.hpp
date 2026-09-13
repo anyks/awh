@@ -463,7 +463,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				private:
 					// Определённая кодировка исходного текста
 					encoding_t _encoding;
@@ -642,35 +641,16 @@ namespace awh {
 					 */
 					void reset() noexcept;
 				public:
-				public:
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Decoder(const log_t * log) noexcept;
+					Decoder() noexcept;
 			} decoder_t;
 		};
 	};

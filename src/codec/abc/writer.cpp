@@ -33,6 +33,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cstring>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -93,41 +94,6 @@ namespace {
 awh::codec::abc::Writer::Settings::Settings() noexcept :
  canonical(false), validate(true), duplicates(true), maxDepth(0), reference(0), spanned(0) {}
 /**
- * @brief Конструктор
- *
- * @param log объект для работы с логами
- *
- */
-awh::codec::abc::Writer::Writer(const log_t * log) noexcept :
- _error(error_t::NONE), _failed(false), _documents(0), _log(log) {}
-/**
- * @brief Метод сброса состояния сборки
- *
- */
-void awh::codec::abc::Writer::reset() noexcept {
-	// Выполняем сброс кода отказа сборки
-	this->_error = error_t::NONE;
-	// Выполняем очистку буфера собираемой записи
-	this->_record.clear();
-	// Выполняем очистку врезок чужого содержимого
-	this->_cuts.clear();
-	// Выполняем очистку стека вместимых
-	this->_stack.clear();
-	// Выполняем очистку отрезков записей имён полей вместимых
-	this->_keys.clear();
-	/**
-	 * Выполняем очистку указателей имён полей
-	 *
-	 * @note Сносятся они ЦЕЛИКОМ, а не обнуляются: сброс сборки означает новую запись, и
-	 *       запас указателей от прежней ей ни к чему
-	 */
-	this->_tables.clear();
-	// Выполняем сброс признака отказа сборки
-	this->_failed = false;
-	// Выполняем сброс количества собранных документов
-	this->_documents = 0;
-}
-/**
  * @brief Метод объявления отказа сборки
  *
  * @param error код отказа сборки
@@ -151,21 +117,21 @@ bool awh::codec::abc::Writer::fail(const error_t error) noexcept {
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
 	 */
-	if((error != error_t::NONE) && (this->_log != nullptr)){
+	if(error != error_t::NONE){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__,
-			 make_tuple(static_cast <uint16_t> (error), this->_record.size()),
-			 log_t::flag_t::WARNING, abc::message(error));
+			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__,
+			 {static_cast <uint16_t> (error), this->_record.size()},
+			 awh::log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что сборка отвечена отказом
@@ -219,149 +185,6 @@ bool awh::codec::abc::Writer::prepare(const bool container) noexcept {
 		return this->fail(error_t::CONTAINER_OVERFLOW);
 	// Сообщаем, что место укладки годно
 	return true;
-}
-/**
- * @brief Метод укладки октетов содержимого значения
- *
- * @details Содержимое, чей размер порог укладки ссылкой превысил, ложится врезкой,
- * а прочее копируется в буфер собираемой записи
- *
- * @param buffer буфер укладываемых октетов
- * @param size   размер укладываемых октетов
- * @param copy   признак того, что копировать содержимое обязательно
- *
- */
-void awh::codec::abc::Writer::content(const void * buffer, const size_t size, const bool copy) noexcept {
-	/**
-	 * Если укладываемое содержимое пусто
-	 *
-	 * @note Щуп нужности 09.09.2026 нашёл заслон МОЛЧАЩИМ, и проверкою он НЕ берётся:
-	 *       обесточенный, он ведёт к вставке пустого промежутка от нулевого указателя -
-	 *       к неопределённому поведению, какое на деле неотличимо от бездействия.
-	 *       Заслон стоит против самого неопределённого поведения, а не против видимого
-	 *       следствия его, и предмета проверки у него нет вовсе. Место его - у
-	 *       санитайзера, а не у набора
-	 */
-	if((buffer == nullptr) || (size == 0))
-		// Выходим из функции
-		return;
-	// Выполняем получение указателя на октеты содержимого
-	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
-	/**
-	 * Если содержимое следует уложить ссылкой. Порог, равный нулю, укладку ссылкой
-	 * снимает вовсе: настройка эта по умолчанию не впряжена
-	 */
-	if(!copy && (this->_settings.reference > 0) && (size >= this->_settings.reference)){
-		// Выполняем укладку врезки чужого содержимого
-		this->_cuts.push_back(cut_t(this->_record.size(), buffer, size));
-		// Выходим из функции
-		return;
-	}
-	// Выполняем укладку октетов содержимого в буфер собираемой записи
-	this->_record.insert(this->_record.end(), octets, octets + size);
-}
-/**
- * @brief Метод вклейки содержимого, уложенного ссылкой
- *
- */
-void awh::codec::abc::Writer::flatten() const noexcept {
-	// Если врезок чужого содержимого нет
-	if(this->_cuts.empty())
-		// Выходим из функции
-		return;
-	// Буфер цельной записи
-	vector <uint8_t> result;
-	// Выполняем резервирование памяти под цельную запись
-	result.reserve(this->length());
-	// Смещение вклеенной части буфера собираемой записи
-	size_t offset = 0;
-	// Выполняем перебор врезок чужого содержимого
-	for(auto & cut : this->_cuts){
-		// Выполняем вклейку части буфера, стоящей перед врезкой
-		result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset),
-		 this->_record.begin() + static_cast <ptrdiff_t> (cut.offset));
-		// Выполняем получение указателя на октеты врезки
-		const uint8_t * octets = reinterpret_cast <const uint8_t *> (cut.buffer);
-		// Выполняем вклейку октетов врезки
-		result.insert(result.end(), octets, octets + cut.size);
-		// Выполняем сдвиг смещения вклеенной части буфера
-		offset = cut.offset;
-	}
-	// Выполняем вклейку остатка буфера собираемой записи
-	result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset), this->_record.end());
-	/**
-	 * Выполняем сдвиг отрезков имён полей, уложенных прежде. Смещения их отсчитаны от
-	 * начала буфера, и вклейка сдвинула бы их молча, обратив сличение имён в ложь
-	 */
-	for(auto & frame : this->_stack){
-		/**
-		 * Если имени поля в этом вместимом ещё не было
-		 *
-		 * @note Щуп нужности 09.09.2026 нашёл заслон МОЛЧАЩИМ и при проверке
-		 *       `CodecAbcWriter.TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`,
-		 *       двух собратьев его закрывшей, и молчание это ЗАКОННО: у звена, имени ещё
-		 *       не имевшего, отрезок имени бессмыслен и переписывается ЦЕЛИКОМ при первой
-		 *       же укладке имени, - сдвиг его оттого безвреден. Заслон бережёт работу, а
-		 *       не правильность
-		 */
-		if(!frame.marked)
-			// Переходим к следующему звену стека
-			continue;
-		// Размер содержимого, вклеенного перед отрезком имени поля
-		size_t shift = 0;
-		// Выполняем перебор врезок чужого содержимого
-		for(auto & cut : this->_cuts){
-			/**
-			 * Если врезка стоит после отрезка имени поля
-			 *
-			 * @note Закреплено `CodecAbcWriter.TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`,
-			 *       половиною её о СТРОГОМ виде записи: имена там сличаются с ПРЕДЫДУЩИМ,
-			 *       отрезок какого хранится звеном стека, а не перечнем. Щуп нужности
-			 *       09.09.2026 нашёл место молчащим и при первой половине проверки -
-			 *       та ходила лишь путём перечня
-			 */
-			if(cut.offset > static_cast <size_t> (frame.key.offset))
-				// Выполняем прекращение перебора врезок
-				break;
-			// Выполняем учёт размера вклеенного содержимого
-			shift += cut.size;
-		}
-		// Выполняем сдвиг отрезка записи имени поля
-		frame.key.offset += static_cast <uint32_t> (shift);
-	}
-	/**
-	 * Выполняем сдвиг отрезков записей прежних имён полей всех вместимых стека
-	 *
-	 * @note Сдвиг у всякого имени свой: врезка, вставшая после имени, его не двигает
-	 */
-	for(auto & key : this->_keys){
-		// Размер содержимого, вклеенного перед отрезком имени поля
-		size_t own = 0;
-		/**
-		 * Выполняем перебор врезок чужого содержимого
-		 */
-		for(auto & cut : this->_cuts){
-			/**
-			 * Если врезка стоит после отрезка имени поля
-			 *
-			 * @note Закреплено `CodecAbcWriter.TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`:
-			 *       щуп нужности 09.09.2026 нашёл место МОЛЧАЩИМ. Содержимое ссылкой клали
-			 *       в наборе лишь в ПЕРЕЧЕНЬ, где имён полей нет вовсе, а извлечения записи
-			 *       посреди сборки - работы неразрушающей и потому законной - не делал никто
-			 */
-			if(cut.offset > static_cast <size_t> (key.offset))
-				// Выполняем прекращение перебора врезок
-				break;
-			// Выполняем учёт размера вклеенного содержимого
-			own += cut.size;
-		}
-		// Выполняем сдвиг отрезка записи имени поля
-		key.offset += static_cast <uint32_t> (own);
-	}
-	// Выполняем замену буфера собираемой записи цельным
-	this->_record.swap(result);
-	// Выполняем очистку врезок чужого содержимого
-	this->_cuts.clear();
 }
 /**
  * @brief Метод перестроения указателя имён полей вместимого
@@ -813,6 +636,247 @@ bool awh::codec::abc::Writer::close(const bool mapping) noexcept {
 	return this->account(start);
 }
 /**
+ * @brief Метод начала значения, собираемого кусками
+ *
+ * @param string признак того, что собирается строка, а не двоичные данные
+ * @return       признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::segment(const bool string) noexcept {
+	// Если место укладки значения негодно
+	if(!this->prepare(false))
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	/**
+	 * Если вид записи строгий, неопределённая длина отвергается: длина обязана быть
+	 * объявлена, иначе запись одного и того же значения выйдет разной
+	 */
+	if(this->_settings.canonical)
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::INDEFINITE_REFUSED);
+	/**
+	 * Если значение стоит именем поля отображения: имя обязано быть цельным, иначе
+	 * сличение имён по записи станет невозможным
+	 */
+	if(!this->_stack.empty()){
+		// Выполняем получение верхнего звена стека вместимых
+		const frame_t & frame = this->_stack.back();
+		// Если ожидается имя поля отображения
+		if(frame.mapping && frame.expectKey)
+			// Выполняем объявление отказа сборки
+			return this->fail(error_t::INVALID_KEY);
+	}
+	// Выполняем получение предела глубины вложенности
+	const uint32_t limit = ((this->_settings.maxDepth > 0) ?
+	 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
+	// Если глубина вложенности превышает допустимую
+	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::DEPTH_EXCEEDED);
+	// Выполняем укладку метки значения неопределённой длины
+	abc::mark(this->_record, (string ? group_t::STRING : group_t::BLOB),
+	 static_cast <uint8_t> (single_t::BREAK));
+	// Заводимое звено стека вместимых
+	frame_t frame;
+	// Выполняем установку вида значения, собираемого кусками
+	frame.segment = (string ? type_t::STRING : type_t::BLOB);
+	// Выполняем установку начала части перечня отрезков имён полей вместимого
+	frame.base = this->_keys.size();
+	// Выполняем установку признака неопределённой длины
+	frame.indefinite = true;
+	// Выполняем добавление звена в стек вместимых
+	this->_stack.push_back(frame);
+	// Сообщаем, что укладка успешна
+	return true;
+}
+/**
+ * @brief Метод конца значения, собираемого кусками
+ *
+ * @param string признак того, что собирается строка, а не двоичные данные
+ * @return       признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
+	/**
+	 * @note Закреплено `CodecAbcWriter.TheFailedBuildingDoesNotCloseASegment` ОТДЕЛЬНОЮ
+	 *       проверкою, и отделена она не порядка ради: у общей проверки отказа стек звена
+	 *       куска НЕ несёт, и конец куска отвергается СОСЕДНИМ заслоном - о несведённом
+	 *       вместимом, - оттого этого заслона она не стерегла бы вовсе. Щуп 08.09.2026
+	 *       это и показал: чтобы стеречь, отказ надобно навести ПОСРЕДИ сборки кусками
+	 */
+	// Если сборка уже отвечена отказом
+	if(this->_failed)
+		// Сообщаем, что сборка отвечена отказом
+		return false;
+	/**
+	 * Если стек вместимых пуст либо закрывается не значение, собираемое кусками
+	 */
+	if(this->_stack.empty() || (this->_stack.back().segment !=
+	 (string ? type_t::STRING : type_t::BLOB)))
+		// Выполняем объявление отказа сборки
+		return this->fail(error_t::UNBALANCED_CONTAINER);
+	/**
+	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
+	 *
+	 * @note Усечение вместимости не отнимает: перечень держит её до самой очистки сборки
+	 */
+	this->_keys.resize(this->_stack.back().base);
+	// Выполняем снятие звена со стека вместимых
+	this->_stack.pop_back();
+	// Выполняем получение смещения начала записи конца значения
+	const size_t start = this->_record.size();
+	// Выполняем укладку конца значения, собираемого кусками
+	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::BREAK));
+	/**
+	 * Выполняем учёт уложенного значения: значение, собранное кусками, есть одно
+	 * значение вместившего, а не череда их
+	 */
+	return this->account(start);
+}
+/**
+ * @brief Метод вклейки содержимого, уложенного ссылкой
+ *
+ */
+void awh::codec::abc::Writer::flatten() const noexcept {
+	// Если врезок чужого содержимого нет
+	if(this->_cuts.empty())
+		// Выходим из функции
+		return;
+	// Буфер цельной записи
+	vector <uint8_t> result;
+	// Выполняем резервирование памяти под цельную запись
+	result.reserve(this->length());
+	// Смещение вклеенной части буфера собираемой записи
+	size_t offset = 0;
+	// Выполняем перебор врезок чужого содержимого
+	for(auto & cut : this->_cuts){
+		// Выполняем вклейку части буфера, стоящей перед врезкой
+		result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset),
+		 this->_record.begin() + static_cast <ptrdiff_t> (cut.offset));
+		// Выполняем получение указателя на октеты врезки
+		const uint8_t * octets = reinterpret_cast <const uint8_t *> (cut.buffer);
+		// Выполняем вклейку октетов врезки
+		result.insert(result.end(), octets, octets + cut.size);
+		// Выполняем сдвиг смещения вклеенной части буфера
+		offset = cut.offset;
+	}
+	// Выполняем вклейку остатка буфера собираемой записи
+	result.insert(result.end(), this->_record.begin() + static_cast <ptrdiff_t> (offset), this->_record.end());
+	/**
+	 * Выполняем сдвиг отрезков имён полей, уложенных прежде. Смещения их отсчитаны от
+	 * начала буфера, и вклейка сдвинула бы их молча, обратив сличение имён в ложь
+	 */
+	for(auto & frame : this->_stack){
+		/**
+		 * Если имени поля в этом вместимом ещё не было
+		 *
+		 * @note Щуп нужности 09.09.2026 нашёл заслон МОЛЧАЩИМ и при проверке
+		 *       `CodecAbcWriter.TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`,
+		 *       двух собратьев его закрывшей, и молчание это ЗАКОННО: у звена, имени ещё
+		 *       не имевшего, отрезок имени бессмыслен и переписывается ЦЕЛИКОМ при первой
+		 *       же укладке имени, - сдвиг его оттого безвреден. Заслон бережёт работу, а
+		 *       не правильность
+		 */
+		if(!frame.marked)
+			// Переходим к следующему звену стека
+			continue;
+		// Размер содержимого, вклеенного перед отрезком имени поля
+		size_t shift = 0;
+		// Выполняем перебор врезок чужого содержимого
+		for(auto & cut : this->_cuts){
+			/**
+			 * Если врезка стоит после отрезка имени поля
+			 *
+			 * @note Закреплено `CodecAbcWriter.TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`,
+			 *       половиною её о СТРОГОМ виде записи: имена там сличаются с ПРЕДЫДУЩИМ,
+			 *       отрезок какого хранится звеном стека, а не перечнем. Щуп нужности
+			 *       09.09.2026 нашёл место молчащим и при первой половине проверки -
+			 *       та ходила лишь путём перечня
+			 */
+			if(cut.offset > static_cast <size_t> (frame.key.offset))
+				// Выполняем прекращение перебора врезок
+				break;
+			// Выполняем учёт размера вклеенного содержимого
+			shift += cut.size;
+		}
+		// Выполняем сдвиг отрезка записи имени поля
+		frame.key.offset += static_cast <uint32_t> (shift);
+	}
+	/**
+	 * Выполняем сдвиг отрезков записей прежних имён полей всех вместимых стека
+	 *
+	 * @note Сдвиг у всякого имени свой: врезка, вставшая после имени, его не двигает
+	 */
+	for(auto & key : this->_keys){
+		// Размер содержимого, вклеенного перед отрезком имени поля
+		size_t own = 0;
+		/**
+		 * Выполняем перебор врезок чужого содержимого
+		 */
+		for(auto & cut : this->_cuts){
+			/**
+			 * Если врезка стоит после отрезка имени поля
+			 *
+			 * @note Закреплено `CodecAbcWriter.TheKeySegmentsSurviveTheSpliceOfTheReferencedContent`:
+			 *       щуп нужности 09.09.2026 нашёл место МОЛЧАЩИМ. Содержимое ссылкой клали
+			 *       в наборе лишь в ПЕРЕЧЕНЬ, где имён полей нет вовсе, а извлечения записи
+			 *       посреди сборки - работы неразрушающей и потому законной - не делал никто
+			 */
+			if(cut.offset > static_cast <size_t> (key.offset))
+				// Выполняем прекращение перебора врезок
+				break;
+			// Выполняем учёт размера вклеенного содержимого
+			own += cut.size;
+		}
+		// Выполняем сдвиг отрезка записи имени поля
+		key.offset += static_cast <uint32_t> (own);
+	}
+	// Выполняем замену буфера собираемой записи цельным
+	this->_record.swap(result);
+	// Выполняем очистку врезок чужого содержимого
+	this->_cuts.clear();
+}
+/**
+ * @brief Метод укладки октетов содержимого значения
+ *
+ * @details Содержимое, чей размер порог укладки ссылкой превысил, ложится врезкой,
+ * а прочее копируется в буфер собираемой записи
+ *
+ * @param buffer буфер укладываемых октетов
+ * @param size   размер укладываемых октетов
+ * @param copy   признак того, что копировать содержимое обязательно
+ *
+ */
+void awh::codec::abc::Writer::content(const void * buffer, const size_t size, const bool copy) noexcept {
+	/**
+	 * Если укладываемое содержимое пусто
+	 *
+	 * @note Щуп нужности 09.09.2026 нашёл заслон МОЛЧАЩИМ, и проверкою он НЕ берётся:
+	 *       обесточенный, он ведёт к вставке пустого промежутка от нулевого указателя -
+	 *       к неопределённому поведению, какое на деле неотличимо от бездействия.
+	 *       Заслон стоит против самого неопределённого поведения, а не против видимого
+	 *       следствия его, и предмета проверки у него нет вовсе. Место его - у
+	 *       санитайзера, а не у набора
+	 */
+	if((buffer == nullptr) || (size == 0))
+		// Выходим из функции
+		return;
+	// Выполняем получение указателя на октеты содержимого
+	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+	/**
+	 * Если содержимое следует уложить ссылкой. Порог, равный нулю, укладку ссылкой
+	 * снимает вовсе: настройка эта по умолчанию не впряжена
+	 */
+	if(!copy && (this->_settings.reference > 0) && (size >= this->_settings.reference)){
+		// Выполняем укладку врезки чужого содержимого
+		this->_cuts.push_back(cut_t(this->_record.size(), buffer, size));
+		// Выходим из функции
+		return;
+	}
+	// Выполняем укладку октетов содержимого в буфер собираемой записи
+	this->_record.insert(this->_record.end(), octets, octets + size);
+}
+/**
  * @brief Метод укладки пустого значения
  *
  * @return признак успешности сборки
@@ -1186,104 +1250,6 @@ bool awh::codec::abc::Writer::custom(const uint64_t subtype, const void * buffer
 	return this->account(start);
 }
 /**
- * @brief Метод начала значения, собираемого кусками
- *
- * @param string признак того, что собирается строка, а не двоичные данные
- * @return       признак успешности укладки
- *
- */
-bool awh::codec::abc::Writer::segment(const bool string) noexcept {
-	// Если место укладки значения негодно
-	if(!this->prepare(false))
-		// Сообщаем, что сборка отвечена отказом
-		return false;
-	/**
-	 * Если вид записи строгий, неопределённая длина отвергается: длина обязана быть
-	 * объявлена, иначе запись одного и того же значения выйдет разной
-	 */
-	if(this->_settings.canonical)
-		// Выполняем объявление отказа сборки
-		return this->fail(error_t::INDEFINITE_REFUSED);
-	/**
-	 * Если значение стоит именем поля отображения: имя обязано быть цельным, иначе
-	 * сличение имён по записи станет невозможным
-	 */
-	if(!this->_stack.empty()){
-		// Выполняем получение верхнего звена стека вместимых
-		const frame_t & frame = this->_stack.back();
-		// Если ожидается имя поля отображения
-		if(frame.mapping && frame.expectKey)
-			// Выполняем объявление отказа сборки
-			return this->fail(error_t::INVALID_KEY);
-	}
-	// Выполняем получение предела глубины вложенности
-	const uint32_t limit = ((this->_settings.maxDepth > 0) ?
-	 ((this->_settings.maxDepth < MAX_DEPTH) ? this->_settings.maxDepth : MAX_DEPTH) : MAX_DEPTH);
-	// Если глубина вложенности превышает допустимую
-	if(static_cast <uint32_t> (this->_stack.size() + 1) > limit)
-		// Выполняем объявление отказа сборки
-		return this->fail(error_t::DEPTH_EXCEEDED);
-	// Выполняем укладку метки значения неопределённой длины
-	abc::mark(this->_record, (string ? group_t::STRING : group_t::BLOB),
-	 static_cast <uint8_t> (single_t::BREAK));
-	// Заводимое звено стека вместимых
-	frame_t frame;
-	// Выполняем установку вида значения, собираемого кусками
-	frame.segment = (string ? type_t::STRING : type_t::BLOB);
-	// Выполняем установку начала части перечня отрезков имён полей вместимого
-	frame.base = this->_keys.size();
-	// Выполняем установку признака неопределённой длины
-	frame.indefinite = true;
-	// Выполняем добавление звена в стек вместимых
-	this->_stack.push_back(frame);
-	// Сообщаем, что укладка успешна
-	return true;
-}
-/**
- * @brief Метод конца значения, собираемого кусками
- *
- * @param string признак того, что собирается строка, а не двоичные данные
- * @return       признак успешности укладки
- *
- */
-bool awh::codec::abc::Writer::segmentEnd(const bool string) noexcept {
-	/**
-	 * @note Закреплено `CodecAbcWriter.TheFailedBuildingDoesNotCloseASegment` ОТДЕЛЬНОЮ
-	 *       проверкою, и отделена она не порядка ради: у общей проверки отказа стек звена
-	 *       куска НЕ несёт, и конец куска отвергается СОСЕДНИМ заслоном - о несведённом
-	 *       вместимом, - оттого этого заслона она не стерегла бы вовсе. Щуп 08.09.2026
-	 *       это и показал: чтобы стеречь, отказ надобно навести ПОСРЕДИ сборки кусками
-	 */
-	// Если сборка уже отвечена отказом
-	if(this->_failed)
-		// Сообщаем, что сборка отвечена отказом
-		return false;
-	/**
-	 * Если стек вместимых пуст либо закрывается не значение, собираемое кусками
-	 */
-	if(this->_stack.empty() || (this->_stack.back().segment !=
-	 (string ? type_t::STRING : type_t::BLOB)))
-		// Выполняем объявление отказа сборки
-		return this->fail(error_t::UNBALANCED_CONTAINER);
-	/**
-	 * Выполняем усечение перечня отрезков имён полей до начала части снимаемого звена
-	 *
-	 * @note Усечение вместимости не отнимает: перечень держит её до самой очистки сборки
-	 */
-	this->_keys.resize(this->_stack.back().base);
-	// Выполняем снятие звена со стека вместимых
-	this->_stack.pop_back();
-	// Выполняем получение смещения начала записи конца значения
-	const size_t start = this->_record.size();
-	// Выполняем укладку конца значения, собираемого кусками
-	abc::mark(this->_record, group_t::SINGLE, static_cast <uint8_t> (single_t::BREAK));
-	/**
-	 * Выполняем учёт уложенного значения: значение, собранное кусками, есть одно
-	 * значение вместившего, а не череда их
-	 */
-	return this->account(start);
-}
-/**
  * @brief Метод начала строки, собираемой кусками
  *
  * @return признак успешности укладки
@@ -1384,6 +1350,33 @@ bool awh::codec::abc::Writer::mapBegin() noexcept {
 bool awh::codec::abc::Writer::mapEnd() noexcept {
 	// Выполняем укладку конца отображения
 	return this->close(true);
+}
+/**
+ * @brief Метод сброса состояния сборки
+ *
+ */
+void awh::codec::abc::Writer::reset() noexcept {
+	// Выполняем сброс кода отказа сборки
+	this->_error = error_t::NONE;
+	// Выполняем очистку буфера собираемой записи
+	this->_record.clear();
+	// Выполняем очистку врезок чужого содержимого
+	this->_cuts.clear();
+	// Выполняем очистку стека вместимых
+	this->_stack.clear();
+	// Выполняем очистку отрезков записей имён полей вместимых
+	this->_keys.clear();
+	/**
+	 * Выполняем очистку указателей имён полей
+	 *
+	 * @note Сносятся они ЦЕЛИКОМ, а не обнуляются: сброс сборки означает новую запись, и
+	 *       запас указателей от прежней ей ни к чему
+	 */
+	this->_tables.clear();
+	// Выполняем сброс признака отказа сборки
+	this->_failed = false;
+	// Выполняем сброс количества собранных документов
+	this->_documents = 0;
 }
 /**
  * @brief Метод проверки завершённости собранной записи
@@ -1494,3 +1487,9 @@ void awh::codec::abc::Writer::settings(const settings_t & settings) noexcept {
 	// Выполняем установку настроек сборки записи
 	this->_settings = settings;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Writer::Writer() noexcept :
+ _error(error_t::NONE), _failed(false), _documents(0) {}

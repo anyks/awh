@@ -28,38 +28,13 @@
  * Подключаем заголовочный файл бенчмарков протокола HTTP/3
  */
 #include "http3.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
 
-/**
- * @brief Функция получения объекта фреймворка окружения бенчмарка
- *
- * @return объект фреймворка
- *
- */
-const awh::fmk_t * awh::benchmark::http3::fmk() noexcept {
-	// Объект фреймворка окружения бенчмарка
-	static awh::fmk_t result;
-	// Выводим объект фреймворка
-	return &result;
-}
-/**
- * @brief Функция получения объекта логирования окружения бенчмарка
- *
- * @return объект логирования
- *
- */
-const awh::log_t * awh::benchmark::http3::log() noexcept {
-	// Объект логирования окружения бенчмарка
-	static awh::log_t result(awh::benchmark::http3::fmk());
-	// Отключаем вывод логов: часть сценариев намеренно упирается в лимиты
-	result.level(awh::log_t::level_t::NONE);
-	// Выводим объект логирования
-	return &result;
-}
 /**
  * @brief Функция получения эталонного набора полей запроса браузера
  *

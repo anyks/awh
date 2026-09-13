@@ -1,5 +1,5 @@
 /**
- * @file fmk.cpp
+ * @file framework.cpp
  * @date 2025-10-25
  *
  * @license{LicenseRef-AWH-1.0}
@@ -70,13 +70,14 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
+#include <net/nwt.hpp>
 #include <sys/macro/lib.hpp>
 #include <alloc/alloc.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
 #include <encoding/charset/charset.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -670,11 +671,10 @@ namespace {
 	 * @param str       строка для поиска
 	 * @param delim     разделитель
 	 * @param container контенер содержащий данные
-	 * @param log       объект работы с логами
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	T & split(string_view str, string_view delim, T & container, const awh::log_t * log) noexcept {
+	T & split(string_view str, string_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -701,37 +701,19 @@ namespace {
 			 * Если возникает ошибка
 			 */
 			} catch(const exception & error) {
-				// Если объект логирования установлен
-				if(log != nullptr){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str, delim, container.size()), awh::log_t::flag_t::CRITICAL, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-					#endif
-				// Если объект логирования не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! %s\n\n", error.what());
-					#endif
-				}
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, awh::log::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				#endif
 			}
 			// Возвращаем результат
 			return text;
@@ -777,37 +759,19 @@ namespace {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str, delim, container.size()), awh::log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 		// Возвращаем результат
 		return container;
@@ -825,11 +789,10 @@ namespace {
 	 * @param str       строка для поиска
 	 * @param delim     разделитель
 	 * @param container контенер содержащий данные
-	 * @param log       объект работы с логами
 	 * @return          контенер содержащий данные
 	 *
 	 */
-	T & split(wstring_view str, wstring_view delim, T & container, const awh::log_t * log) noexcept {
+	T & split(wstring_view str, wstring_view delim, T & container) noexcept {
 		/**
 		 * @brief Функция удаления пробелов вначале и конце текста
 		 *
@@ -856,37 +819,19 @@ namespace {
 			 * Если возникает ошибка
 			 */
 			} catch(const exception & error) {
-				// Если объект логирования установлен
-				if(log != nullptr){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str.size(), delim.size(), container.size()), awh::log_t::flag_t::CRITICAL, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-					#endif
-				// Если объект логирования не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! %s\n\n", error.what());
-					#endif
-				}
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, awh::log::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				#endif
 			}
 			// Возвращаем результат
 			return text;
@@ -932,37 +877,19 @@ namespace {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str.size(), delim.size(), container.size()), awh::log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 		// Возвращаем результат
 		return container;
@@ -1007,9 +934,9 @@ namespace {
 			 * @return    результат проверки
 			 *
 			 */
-			bool isRome(const char num) const noexcept {
+			bool isRome(const char num) noexcept {
 				// Выполняем проверку сущестования цифры
-				return (this->_romes.find(ascii::toUpper(num)) != this->_romes.end());
+				return (_romes.find(ascii::toUpper(num)) != _romes.end());
 			}
 			/**
 			 * @brief Метод проверки соответствия римской цифре
@@ -1018,9 +945,9 @@ namespace {
 			 * @return    результат проверки
 			 *
 			 */
-			bool isRome(const wchar_t num) const noexcept {
+			bool isRome(const wchar_t num) noexcept {
 				// Выполняем проверку сущестования цифры
-				return (this->_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num)))) != this->_wideRomes.end());
+				return (_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num)))) != _wideRomes.end());
 			}
 		public:
 			/**
@@ -1030,7 +957,7 @@ namespace {
 			 * @return    результат проверки
 			 *
 			 */
-			bool isArabic(const char num) const noexcept {
+			bool isArabic(const char num) noexcept {
 				// Выполняем проверку сущестования цифры
 				return ascii::isDigit(num);
 			}
@@ -1041,7 +968,7 @@ namespace {
 			 * @return    результат проверки
 			 *
 			 */
-			bool isArabic(const wchar_t num) const noexcept {
+			bool isArabic(const wchar_t num) noexcept {
 				// Выполняем проверку сущестования цифры
 				return static_cast <bool> (::iswdigit(static_cast <wint_t> (num)));
 			}
@@ -1053,9 +980,9 @@ namespace {
 			 * @return       результат проверки
 			 *
 			 */
-			bool isLetter(const char letter) const noexcept {
+			bool isLetter(const char letter) noexcept {
 				// Выполняем проверку сущестования латинской буквы
-				return (this->_letters.find(ascii::toLower(letter)) != this->_letters.end());
+				return (_letters.find(ascii::toLower(letter)) != _letters.end());
 			}
 			/**
 			 * @brief Метод проверки соответствия латинской букве
@@ -1064,9 +991,9 @@ namespace {
 			 * @return       результат проверки
 			 *
 			 */
-			bool isLetter(const wchar_t letter) const noexcept {
+			bool isLetter(const wchar_t letter) noexcept {
 				// Выполняем проверку сущестования латинской буквы
-				return (this->_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)))) != this->_wideLetters.end());
+				return (_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter)))) != _wideLetters.end());
 			}
 		public:
 			/**
@@ -1076,13 +1003,13 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint16_t getRome(const char num) const noexcept {
+			uint16_t getRome(const char num) noexcept {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
-				auto i = this->_romes.find(ascii::toUpper(num));
+				auto i = _romes.find(ascii::toUpper(num));
 				// Если римское число найдено
-				if(i != this->_romes.end())
+				if(i != _romes.end())
 					// Получаем римское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1095,13 +1022,13 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint16_t getRome(const wchar_t num) const noexcept {
+			uint16_t getRome(const wchar_t num) noexcept {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
-				auto i = this->_wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num))));
+				auto i = _wideRomes.find(static_cast <wchar_t> (wideUpper(static_cast <wint_t> (num))));
 				// Если римское число найдено
-				if(i != this->_wideRomes.end())
+				if(i != _wideRomes.end())
 					// Получаем римское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1115,13 +1042,13 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint8_t getArabic(const char num) const noexcept {
+			uint8_t getArabic(const char num) noexcept {
 				// Переменная результата
 				uint8_t result = 0;
 				// Выполняем поиск арабского числа
-				auto i = this->_arabics.find(num);
+				auto i = _arabics.find(num);
 				// Если арабское число найдено
-				if(i != this->_arabics.end())
+				if(i != _arabics.end())
 					// Получаем арабское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1134,13 +1061,13 @@ namespace {
 			 * @return    арабская цифрва в виде числа
 			 *
 			 */
-			uint8_t getArabic(const wchar_t num) const noexcept {
+			uint8_t getArabic(const wchar_t num) noexcept {
 				// Переменная результата
 				uint8_t result = 0;
 				// Выполняем поиск арабского числа
-				auto i = this->_wideArabics.find(num);
+				auto i = _wideArabics.find(num);
 				// Если арабское число найдено
-				if(i != this->_wideArabics.end())
+				if(i != _wideArabics.end())
 					// Получаем арабское число в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1154,13 +1081,13 @@ namespace {
 			 * @return       латинская буква в виде символа
 			 *
 			 */
-			wchar_t getLetter(const char letter) const noexcept {
+			wchar_t getLetter(const char letter) noexcept {
 				// Переменная результата
 				wchar_t result = 0;
 				// Выполняем поиск латинской буквы
-				auto i = this->_letters.find(ascii::toLower(letter));
+				auto i = _letters.find(ascii::toLower(letter));
 				// Если латинская буква найдена
-				if(i != this->_letters.end())
+				if(i != _letters.end())
 					// Получаем латинскую букву в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1173,13 +1100,13 @@ namespace {
 			 * @return       латинская буква в виде символа
 			 *
 			 */
-			char getLetter(const wchar_t letter) const noexcept {
+			char getLetter(const wchar_t letter) noexcept {
 				// Переменная результата
 				char result = 0;
 				// Выполняем поиск латинской буквы
-				auto i = this->_wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter))));
+				auto i = _wideLetters.find(static_cast <wchar_t> (wideLower(static_cast <wint_t> (letter))));
 				// Если латинская буква найдена
-				if(i != this->_wideLetters.end())
+				if(i != _wideLetters.end())
 					// Получаем латинскую букву в чистом виде
 					result = i->second;
 				// Возвращаем результат
@@ -1194,7 +1121,7 @@ namespace {
 				/**
 				 * Выполняем заполнение арабских чисел
 				 */
-				this->_arabics = {
+				_arabics = {
 					{'0', 0}, {'1', 1},
 					{'2', 2}, {'3', 3},
 					{'4', 4}, {'5', 5},
@@ -1204,7 +1131,7 @@ namespace {
 				/**
 				 * Выполняем заполнение арабских чисел для UTF-8
 				 */
-				this->_wideArabics = {
+				_wideArabics = {
 					{L'0',0}, {L'1',1},
 					{L'2',2}, {L'3',3},
 					{L'4',4}, {L'5',5},
@@ -1214,7 +1141,7 @@ namespace {
 				/**
 				 * Выполняем заполнение римских чисел
 				 */
-				this->_romes = {
+				_romes = {
 					{'I',1}, {'V',5},
 					{'X',10}, {'L',50},
 					{'C',100}, {'D',500},
@@ -1223,7 +1150,7 @@ namespace {
 				/**
 				 * Выполняем заполнение римских чисел для UTF-8
 				 */
-				this->_wideRomes = {
+				_wideRomes = {
 					{L'I',1}, {L'V',5},
 					{L'X',10}, {L'L',50},
 					{L'C',100}, {L'D',500},
@@ -1232,7 +1159,7 @@ namespace {
 				/**
 				 * Выполняем заполнение латинских символов
 				 */
-				this->_letters = {
+				_letters = {
 					{'a',L'a'}, {'b',L'b'},
 					{'c',L'c'}, {'d',L'd'},
 					{'e',L'e'}, {'f',L'f'},
@@ -1250,7 +1177,7 @@ namespace {
 				/**
 				 * Выполняем заполнение латинских символов для UTF-8
 				 */
-				this->_wideLetters = {
+				_wideLetters = {
 					{L'a','a'}, {L'b','b'},
 					{L'c','c'}, {L'd','d'},
 					{L'e','e'}, {L'f','f'},
@@ -1506,7 +1433,7 @@ namespace {
 		 */
 		void seize() noexcept {
 			// Заводим захват выдачи памяти процесса, оставив настройки как есть
-			alloc::allocator_t::capture(alloc::allocator_t::options(), nullptr);
+			alloc::allocator_t::capture(alloc::allocator_t::options());
 		}
 	#endif
 	/**
@@ -1580,26 +1507,81 @@ namespace {
 };
 
 /**
- * @brief Метод генерации уникального идентификатора
+ * @brief Инкапсулируем объект внутреннего состояния модуля в аннонимное пространство имён
+ *
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Класс состояния модуля
+	 *
+	 * @details Состояние заведено единственным на процесс и строится при первом
+	 *          обращении к модулю. Заведение распределителя памяти и установка
+	 *          локализации выполняются здесь же: прежде их выполнял конструктор
+	 *          фреймворка, и мгновение заведения сохранено прежним - первое
+	 *          обращение к модулю в приложении, ДО порождения потоков.
+	 *
+	 */
+	class State {
+		public:
+			// Объект парсинга nwt адреса
+			nwt_t _nwt;
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit State() noexcept {
+				// Заводим распределитель памяти и дамп ядра один раз на весь процесс
+				::seizeAllocator();
+				// Устанавливаем локализацию системы
+				fmk::setLocale();
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~State() noexcept = default;
+	};
+	/**
+	 * @brief Функция получения состояния модуля
+	 *
+	 * @return состояние модуля
+	 *
+	 */
+	State & state() noexcept {
+		// Выполняем создание состояния модуля
+		static State instance;
+		// Возвращаем созданное состояние
+		return instance;
+	}
+};
+
+/**
+ * @brief Функция генерации уникального идентификатора
  *
  * @return уникальный идентификатор
  *
  */
-uint32_t awh::Framework::identifier() const noexcept {
+uint32_t awh::fmk::identifier() noexcept {
 	// Начинаем с 1 (0 можно оставить как "invalid")
 	static std::atomic_uint32_t id{1};
 	// Получаем следующий идентификатор
 	return id.fetch_add(1, std::memory_order_relaxed);
 }
 /**
- * @brief Метод проверки текста на соответствие флагу
+ * @brief Функция проверки текста на соответствие флагу
  *
  * @param letter текст для проверки
  * @param flag   флаг проверки
  * @return       результат проверки
  *
  */
-bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
+bool awh::fmk::is(const char letter, const check_t flag) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если буква передана
@@ -1645,58 +1627,40 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8):
 					// Выполняем проверку симаола на соответствие UTF-8
-					result = this->is(string(1, letter), flag);
+					result = is(string(1, letter), flag);
 				break;
 			}
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(letter, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод проверки текста на соответствие флагу
+ * @brief Функция проверки текста на соответствие флагу
  *
  * @param letter текст для проверки
  * @param flag   флаг проверки
  * @return       результат проверки
  *
  */
-bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept {
+bool awh::fmk::is(const wchar_t letter, const check_t flag) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если буква передана
@@ -1742,58 +1706,40 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 				// Если установлен флаг проверки на соответствие кодировки UTF-8
 				case static_cast <uint8_t> (check_t::UTF8):
 					// Выполняем проверку симаола на соответствие UTF-8
-					result = this->is(wstring(1, letter), flag);
+					result = is(wstring(1, letter), flag);
 				break;
 			}
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(letter, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод проверки текста на соответствие флагу
+ * @brief Функция проверки текста на соответствие флагу
  *
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
  *
  */
-bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
+bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Выполняем удаление пробелов вокруг представления текста (без копирования)
@@ -1833,7 +1779,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = this->_nwt.parse(text);
+					const auto & url = state()._nwt.parse(text);
 					// Если ссылка найдена
 					result = (url.type != nwt_t::types_t::NONE);
 				} break;
@@ -1998,8 +1944,8 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 								if((letter == '.') || (letter == ',') || (letter == 'e')){
 									// Проверяем правые и левую части
 									result = (
-										this->is(text.substr(pos, i - pos), check_t::NUMBER) &&
-										this->is(text.substr(i + 1), check_t::NUMBER)
+										is(text.substr(pos, i - pos), check_t::NUMBER) &&
+										is(text.substr(i + 1), check_t::NUMBER)
 									);
 									// Выходим из цикла
 									break;
@@ -2035,7 +1981,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 				// Если установлен флаг проверки на псевдо-число
 				case static_cast <uint8_t> (check_t::PSEUDO_NUMBER): {
 					// Если не является то проверяем дальше
-					if(!(result = this->is(text, check_t::NUMBER))){
+					if(!(result = is(text, check_t::NUMBER))){
 						// Проверяем являются ли первая и последняя буква слова, числом
 						result = (symbols.isArabic(text.front()) || symbols.isArabic(text.back()));
 						// Если оба варианта не сработали
@@ -2064,51 +2010,33 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод проверки текста на соответствие флагу
+ * @brief Функция проверки текста на соответствие флагу
  *
  * @param text текст для проверки
  * @param flag флаг проверки
  * @return     результат проверки
  *
  */
-bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
+bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Выполняем удаление пробелов вокруг представления текста (без копирования)
@@ -2148,7 +2076,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = this->_nwt.parse(this->convert(text));
+					const auto & url = state()._nwt.parse(convert(text));
 					// Если ссылка найдена
 					result = (url.type != nwt_t::types_t::NONE);
 				} break;
@@ -2342,8 +2270,8 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 								if((letter == L'.') || (letter == L',') || (letter == L'e')){
 									// Проверяем правые и левую части
 									result = (
-										this->is(text.substr(pos, i - pos), check_t::NUMBER) &&
-										this->is(text.substr(i + 1), check_t::NUMBER)
+										is(text.substr(pos, i - pos), check_t::NUMBER) &&
+										is(text.substr(i + 1), check_t::NUMBER)
 									);
 									// Выходим из цикла
 									break;
@@ -2379,7 +2307,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 				// Если установлен флаг проверки на псевдо-число
 				case static_cast <uint8_t> (check_t::PSEUDO_NUMBER): {
 					// Если не является то проверяем дальше
-					if(!(result = this->is(text, check_t::NUMBER))){
+					if(!(result = is(text, check_t::NUMBER))){
 						// Проверяем являются ли первая и последняя буква слова, числом
 						result = (symbols.isArabic(text.front()) || symbols.isArabic(text.back()));
 						// Если оба варианта не сработали
@@ -2408,51 +2336,33 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(text), static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод сравнения двух строк без учёта регистра
+ * @brief Функция сравнения двух строк без учёта регистра
  *
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
  *
  */
-bool awh::Framework::compare(string_view first, string_view second) const noexcept {
+bool awh::fmk::compare(string_view first, string_view second) noexcept {
 	// Если строки пришли не пустыми
 	if(!first.empty() && !second.empty()){
 		// Если длины строк не совпадают, сравнивать их незачем
@@ -2475,30 +2385,30 @@ bool awh::Framework::compare(string_view first, string_view second) const noexce
 	return (first.size() == second.size());
 }
 /**
- * @brief Метод сравнения двух строк без учёта регистра
+ * @brief Функция сравнения двух строк без учёта регистра
  *
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
  *
  */
-bool awh::Framework::compare(const char * first, const char * second) const noexcept {
+bool awh::fmk::compare(const char * first, const char * second) noexcept {
 	// Если данные для сравнения не пришли пустыми
 	if((first != nullptr) && ((* first) != '\0') && (second != nullptr) && ((* second) != '\0'))
 		// Выполняем перебор обоих строк (через string_view - без выделения памяти под копии строк)
-		return this->compare(string_view{first}, string_view{second});
+		return compare(string_view{first}, string_view{second});
 	// Возвращаем значение по умолчанию
 	return (first == second);
 }
 /**
- * @brief Метод сравнения двух строк без учёта регистра
+ * @brief Функция сравнения двух строк без учёта регистра
  *
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
  *
  */
-bool awh::Framework::compare(wstring_view first, wstring_view second) const noexcept {
+bool awh::fmk::compare(wstring_view first, wstring_view second) noexcept {
 	// Если строки пришли не пустыми
 	if(!first.empty() && !second.empty()){
 		// Выполняем перебор обоих строк
@@ -2511,23 +2421,23 @@ bool awh::Framework::compare(wstring_view first, wstring_view second) const noex
 	return (first.size() == second.size());
 }
 /**
- * @brief Метод сравнения двух строк без учёта регистра
+ * @brief Функция сравнения двух строк без учёта регистра
  *
  * @param first  первое слово
  * @param second второе слово
  * @return       результат сравнения
  *
  */
-bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) const noexcept {
+bool awh::fmk::compare(const wchar_t * first, const wchar_t * second) noexcept {
 	// Если данные для сравшнения не пришли пустыми
 	if((first != nullptr) && ((* first) != L'\0') && (second != nullptr) && ((* second) != L'\0'))
 		// Выполняем перебор обоих строк (через wstring_view - без выделения памяти под копии строк)
-		return this->compare(wstring_view{first}, wstring_view{second});
+		return compare(wstring_view{first}, wstring_view{second});
 	// Возвращаем значение по умолчанию
 	return (first == second);
 }
 /**
- * @brief Метод получения штампа времени в указанных единицах измерения
+ * @brief Функция получения штампа времени в указанных единицах измерения
  *
  * @param buffer буфер бинарных данных для установки штампа времени
  * @param size   размер бинарных данных штампа времени
@@ -2535,7 +2445,7 @@ bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) cons
  * @param text   флаг извлечения данных в текстовом виде
  *
  */
-void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t type, const bool text) const noexcept {
+void awh::fmk::detail::timestamp(void * buffer, const size_t size, const chrono_t type, const bool text) noexcept {
 	// Если буфер данных передан правильно
 	if((buffer != nullptr) && (size > 0)){
 		/**
@@ -2776,55 +2686,37 @@ void awh::Framework::timestamp(void * buffer, const size_t size, const chrono_t 
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (type), text), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (type), text}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
 /**
- * @brief Шаблон метода получения штампа времени в указанных единицах измерения
+ * @brief Шаблон функции получения штампа времени в указанных единицах измерения
  *
  * @tparam T тип данных в котором извлекаются данные
  *
  */
 template <typename T>
 /**
- * @brief Метод получения штампа времени в указанных единицах измерения
+ * @brief Функция получения штампа времени в указанных единицах измерения
  *
  * @param type тип формируемого штампа времени
  * @return     сгенерированный штамп времени
  *
  */
-T awh::Framework::timestamp(const chrono_t type) const noexcept {
+T awh::fmk::timestamp(const chrono_t type) noexcept {
 	/**
 	 * Если штамп времени требуется извлечь дробным числом
 	 * @note Извлечение выполняется целым числом с последующим приведением, так как
@@ -2835,7 +2727,7 @@ T awh::Framework::timestamp(const chrono_t type) const noexcept {
 		// Буфер для извлечения штампа времени целым числом
 		uint64_t stamp = 0;
 		// Выполняем извлечение штампа времени целым числом
-		this->timestamp(&stamp, sizeof(stamp), type, false);
+		detail::timestamp(&stamp, sizeof(stamp), type, false);
 		// Выводим штамп времени, приведённый к дробному виду
 		return static_cast <T> (stamp);
 	}
@@ -2851,33 +2743,33 @@ T awh::Framework::timestamp(const chrono_t type) const noexcept {
 		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
 	}
 	// Выполняем извлечение данных
-	this->timestamp(&result, sizeof(result), type, is_class_v <T>);
+	detail::timestamp(&result, sizeof(result), type, is_class_v <T>);
 	// Возвращаем результат
 	return result;
 }
 /**
  * Объявляем прототипы для извлечения значений времени
  */
-template int8_t awh::Framework::timestamp <int8_t> (const chrono_t) const noexcept;
-template uint8_t awh::Framework::timestamp <uint8_t> (const chrono_t) const noexcept;
-template int16_t awh::Framework::timestamp <int16_t> (const chrono_t) const noexcept;
-template uint16_t awh::Framework::timestamp <uint16_t> (const chrono_t) const noexcept;
-template int32_t awh::Framework::timestamp <int32_t> (const chrono_t) const noexcept;
-template uint32_t awh::Framework::timestamp <uint32_t> (const chrono_t) const noexcept;
-template int64_t awh::Framework::timestamp <int64_t> (const chrono_t) const noexcept;
-template uint64_t awh::Framework::timestamp <uint64_t> (const chrono_t) const noexcept;
-template float awh::Framework::timestamp <float> (const chrono_t) const noexcept;
-template double awh::Framework::timestamp <double> (const chrono_t) const noexcept;
-template string awh::Framework::timestamp <string> (const chrono_t) const noexcept;
+template int8_t awh::fmk::timestamp <int8_t> (const chrono_t) noexcept;
+template uint8_t awh::fmk::timestamp <uint8_t> (const chrono_t) noexcept;
+template int16_t awh::fmk::timestamp <int16_t> (const chrono_t) noexcept;
+template uint16_t awh::fmk::timestamp <uint16_t> (const chrono_t) noexcept;
+template int32_t awh::fmk::timestamp <int32_t> (const chrono_t) noexcept;
+template uint32_t awh::fmk::timestamp <uint32_t> (const chrono_t) noexcept;
+template int64_t awh::fmk::timestamp <int64_t> (const chrono_t) noexcept;
+template uint64_t awh::fmk::timestamp <uint64_t> (const chrono_t) noexcept;
+template float awh::fmk::timestamp <float> (const chrono_t) noexcept;
+template double awh::fmk::timestamp <double> (const chrono_t) noexcept;
+template string awh::fmk::timestamp <string> (const chrono_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template size_t awh::Framework::timestamp <size_t> (const chrono_t) const noexcept;
-	template ssize_t awh::Framework::timestamp <ssize_t> (const chrono_t) const noexcept;
+	template size_t awh::fmk::timestamp <size_t> (const chrono_t) noexcept;
+	template ssize_t awh::fmk::timestamp <ssize_t> (const chrono_t) noexcept;
 #endif
 /**
- * @brief Метод конвертирования строки из одной кодировки в другую
+ * @brief Функция конвертирования строки из одной кодировки в другую
  *
  * @param text    текст для конвертирования
  * @param from    кодировка, в которой записан текст
@@ -2886,7 +2778,7 @@ template string awh::Framework::timestamp <string> (const chrono_t) const noexce
  * @return        сконвертированный текст в требуемой кодировке
  *
  */
-string awh::Framework::transcode(string_view text, const codepage_t from, const codepage_t to, const replace_t replace) const noexcept {
+string awh::fmk::transcode(string_view text, const codepage_t from, const codepage_t to, const replace_t replace) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если текст передан
@@ -2916,85 +2808,67 @@ string awh::Framework::transcode(string_view text, const codepage_t from, const 
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, static_cast <uint16_t> (from), static_cast <uint16_t> (to)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (from), static_cast <uint16_t> (to)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод разбора имени кодировки
+ * @brief Функция разбора имени кодировки
  *
  * @param name имя кодировки, заданное заголовком протокола
  * @return     обозначение кодировки либо признак нераспознанного имени
  *
  */
-awh::Framework::codepage_t awh::Framework::codepage(string_view name) const noexcept {
+awh::fmk::codepage_t awh::fmk::codepage(string_view name) noexcept {
 	// Выводим результат разбора имени кодировки
 	return charset::encoding(name);
 }
 /**
- * @brief Метод извлечения имени кодировки по её обозначению
+ * @brief Функция извлечения имени кодировки по её обозначению
  *
  * @param codepage обозначение кодировки текста
  * @return         каноническое имя кодировки
  *
  */
-string awh::Framework::codepage(const codepage_t codepage) const noexcept {
+string awh::fmk::codepage(const codepage_t codepage) noexcept {
 	// Выводим каноническое имя кодировки
 	return string{charset::label(codepage)};
 }
 /**
- * @brief Метод определения кодировки текста
+ * @brief Функция определения кодировки текста
  *
  * @param text     текст, кодировку которого требуется определить
  * @param fallback кодировка, предполагаемая для текста, записью UTF-8 не являющегося
  * @return         обозначение определённой кодировки текста
  *
  */
-awh::Framework::codepage_t awh::Framework::detect(string_view text, const codepage_t fallback) const noexcept {
+awh::fmk::codepage_t awh::fmk::detect(string_view text, const codepage_t fallback) noexcept {
 	// Выводим обозначение определённой кодировки текста
 	return charset::detect(text, fallback);
 }
 /**
- * @brief Метод трансформации одного символа
+ * @brief Функция трансформации одного символа
  *
  * @param letter символ для трансформации
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  *
  */
-char awh::Framework::transform(const char letter, const transform_t flag) const noexcept {
+char awh::fmk::transform(const char letter, const transform_t flag) noexcept {
 	/**
 	 * Определяем алгоритм трансформации
 	 */
@@ -3012,14 +2886,14 @@ char awh::Framework::transform(const char letter, const transform_t flag) const 
 	return letter;
 }
 /**
- * @brief Метод трансформации одного символа
+ * @brief Функция трансформации одного символа
  *
  * @param letter символ для трансформации
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  *
  */
-wchar_t awh::Framework::transform(const wchar_t letter, const transform_t flag) const noexcept {
+wchar_t awh::fmk::transform(const wchar_t letter, const transform_t flag) noexcept {
 	/**
 	 * Определяем алгоритм трансформации
 	 */
@@ -3037,14 +2911,14 @@ wchar_t awh::Framework::transform(const wchar_t letter, const transform_t flag) 
 	return letter;
 }
 /**
- * @brief Метод трансформации строки
+ * @brief Функция трансформации строки
  *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
  *
  */
-string & awh::Framework::transform(string & text, const transform_t flag) const noexcept {
+string & awh::fmk::transform(string & text, const transform_t flag) noexcept {
 	// Если текст для обработки передан
 	if(!text.empty()){
 		/**
@@ -3111,51 +2985,33 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return text;
 }
 /**
- * @brief Метод трансформации строки
+ * @brief Функция трансформации строки
  *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
  *
  */
-wstring & awh::Framework::transform(wstring & text, const transform_t flag) const noexcept {
+wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 	// Если текст для обработки передан
 	if(!text.empty()){
 		/**
@@ -3222,99 +3078,81 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(text), static_cast <uint16_t> (flag)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return text;
 }
 /**
- * @brief Метод трансформации строки
+ * @brief Функция трансформации строки
  *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
  *
  */
-const string & awh::Framework::transform(const string & text, const transform_t flag) const noexcept {
+const string & awh::fmk::transform(const string & text, const transform_t flag) noexcept {
 	// Выполняем трансформацию текста
-	return this->transform(* const_cast <string *> (&text), flag);
+	return transform(* const_cast <string *> (&text), flag);
 }
 /**
- * @brief Метод трансформации строки
+ * @brief Функция трансформации строки
  *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
  *
  */
-const wstring & awh::Framework::transform(const wstring & text, const transform_t flag) const noexcept {
+const wstring & awh::fmk::transform(const wstring & text, const transform_t flag) noexcept {
 	// Выполняем трансформацию текста
-	return this->transform(* const_cast <wstring *> (&text), flag);
+	return transform(* const_cast <wstring *> (&text), flag);
 }
 /**
- * @brief Метод трансформации строки
+ * @brief Функция трансформации строки
  *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
  *
  */
-string awh::Framework::transform(string_view text, const transform_t flag) const noexcept {
+string awh::fmk::transform(string_view text, const transform_t flag) noexcept {
 	// Выполняем трансформацию текста
-	return this->transform(string{text}, flag);
+	return transform(string{text}, flag);
 }
 /**
- * @brief Метод трансформации строки
+ * @brief Функция трансформации строки
  *
  * @param text текст для трансформации
  * @param flag флаг трансформации
  * @return     трансформированная строка
  *
  */
-wstring awh::Framework::transform(wstring_view text, const transform_t flag) const noexcept {
+wstring awh::fmk::transform(wstring_view text, const transform_t flag) noexcept {
 	// Выполняем трансформацию текста
-	return this->transform(wstring{text}, flag);
+	return transform(wstring{text}, flag);
 }
 /**
- * @brief Метод объединения списка строк в одну строку
+ * @brief Функция объединения списка строк в одну строку
  *
  * @param items список строк которые необходимо объединить
  * @param delim разделитель
  * @return      строка полученная после объединения
  *
  */
-string awh::Framework::join(const vector <string> & items, string_view delim) const noexcept {
+string awh::fmk::join(const vector <string> & items, string_view delim) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если список строк которые необходимо объединить переданы
@@ -3335,14 +3173,14 @@ string awh::Framework::join(const vector <string> & items, string_view delim) co
 	return result;
 }
 /**
- * @brief Метод объединения списка строк в одну строку
+ * @brief Функция объединения списка строк в одну строку
  *
  * @param items список строк которые необходимо объединить
  * @param delim разделитель
  * @return      строка полученная после объединения
  *
  */
-wstring awh::Framework::join(const vector <wstring> & items, wstring_view delim) const noexcept {
+wstring awh::fmk::join(const vector <wstring> & items, wstring_view delim) noexcept {
 	// Переменная результата
 	wstring result = L"";
 	// Если список строк которые необходимо объединить переданы
@@ -3363,37 +3201,37 @@ wstring awh::Framework::join(const vector <wstring> & items, wstring_view delim)
 	return result;
 }
 /**
- * @brief Метод разделения строк на токены
+ * @brief Функция разделения строк на токены
  *
  * @param text      строка для парсинга
  * @param delim     разделитель
  * @param container результирующий вектор
  *
  */
-vector <string> & awh::Framework::split(string_view text, string_view delim, vector <string> & container) const noexcept {
+vector <string> & awh::fmk::split(string_view text, string_view delim, vector <string> & container) noexcept {
 	// Выполняем сплит текста
-	return ::split(text, delim, container, this->_log);
+	return ::split(text, delim, container);
 }
 /**
- * @brief Метод разделения строк на токены
+ * @brief Функция разделения строк на токены
  *
  * @param text      строка для парсинга
  * @param delim     разделитель
  * @param container результирующий вектор
  *
  */
-vector <wstring> & awh::Framework::split(wstring_view text, wstring_view delim, vector <wstring> & container) const noexcept {
+vector <wstring> & awh::fmk::split(wstring_view text, wstring_view delim, vector <wstring> & container) noexcept {
 	// Выполняем сплит текста
-	return ::split(text, delim, container, this->_log);
+	return ::split(text, delim, container);
 }
 /**
- * @brief Метод конвертирования строки в строку utf-8
+ * @brief Функция конвертирования строки в строку utf-8
  *
  * @param str строка для конвертирования
  * @return    строка в utf-8
  *
  */
-wstring awh::Framework::convert(string_view str) const noexcept {
+wstring awh::fmk::convert(string_view str) noexcept {
 	// Переменная результата
 	wstring result = L"";
 	/**
@@ -3418,84 +3256,48 @@ wstring awh::Framework::convert(string_view str) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const range_error & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод конвертирования строки utf-8 в строку
+ * @brief Функция конвертирования строки utf-8 в строку
  *
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
  *
  */
-string awh::Framework::convert(wstring_view str) const noexcept {
+string awh::fmk::convert(wstring_view str) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -3520,84 +3322,48 @@ string awh::Framework::convert(wstring_view str) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const range_error & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод конвертирования строки в строку utf-8
+ * @brief Функция конвертирования строки в строку utf-8
  *
  * @param str строка для конвертирования
  * @return    строка в utf-8
  *
  */
-wstring awh::Framework::convert(const char * str) const noexcept {
+wstring awh::fmk::convert(const char * str) noexcept {
 	// Переменная результата
 	wstring result = L"";
 	/**
@@ -3622,84 +3388,48 @@ wstring awh::Framework::convert(const char * str) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const range_error & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод конвертирования строки utf-8 в строку
+ * @brief Функция конвертирования строки utf-8 в строку
  *
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
  *
  */
-string awh::Framework::convert(const wchar_t * str) const noexcept {
+string awh::fmk::convert(const wchar_t * str) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -3724,84 +3454,48 @@ string awh::Framework::convert(const wchar_t * str) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const range_error & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод конвертирования строки в строку utf-8
+ * @brief Функция конвертирования строки в строку utf-8
  *
  * @param str строка для конвертирования
  * @return    строка в utf-8
  *
  */
-wstring awh::Framework::convert(const string & str) const noexcept {
+wstring awh::fmk::convert(const string & str) noexcept {
 	// Переменная результата
 	wstring result = L"";
 	/**
@@ -3826,84 +3520,48 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const range_error & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод конвертирования строки utf-8 в строку
+ * @brief Функция конвертирования строки utf-8 в строку
  *
  * @param str строка utf-8 для конвертирования
  * @return    обычная строка
  *
  */
-string awh::Framework::convert(const wstring & str) const noexcept {
+string awh::fmk::convert(const wstring & str) noexcept {
 	// Переменная результата
 	string result = "";
 	/**
@@ -3928,72 +3586,36 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const range_error & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
@@ -4006,49 +3628,49 @@ string awh::Framework::convert(const wstring & str) const noexcept {
  */
 template <typename T>
 /**
- * @brief Метод определения точного размера, сколько занимает число байт
+ * @brief Функция определения точного размера, сколько занимает число байт
  *
  * @param num число для проверки
  * @return    фактический размер занимаемым числом байт
  *
  */
-size_t awh::Framework::size(const T num) const noexcept {
+size_t awh::fmk::size(const T num) noexcept {
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
 		// Выполняем подсчёт занимаемых числом данных
-		return this->size(&num, sizeof(num));
+		return size(&num, sizeof(num));
 	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
  * Объявляем прототипы для извлечения точного размера числа байт
  */
-template size_t awh::Framework::size <int8_t> (const int8_t) const noexcept;
-template size_t awh::Framework::size <uint8_t> (const uint8_t) const noexcept;
-template size_t awh::Framework::size <int16_t> (const int16_t) const noexcept;
-template size_t awh::Framework::size <uint16_t> (const uint16_t) const noexcept;
-template size_t awh::Framework::size <int32_t> (const int32_t) const noexcept;
-template size_t awh::Framework::size <uint32_t> (const uint32_t) const noexcept;
-template size_t awh::Framework::size <int64_t> (const int64_t) const noexcept;
-template size_t awh::Framework::size <uint64_t> (const uint64_t) const noexcept;
-template size_t awh::Framework::size <float> (const float) const noexcept;
-template size_t awh::Framework::size <double> (const double) const noexcept;
+template size_t awh::fmk::size <int8_t> (const int8_t) noexcept;
+template size_t awh::fmk::size <uint8_t> (const uint8_t) noexcept;
+template size_t awh::fmk::size <int16_t> (const int16_t) noexcept;
+template size_t awh::fmk::size <uint16_t> (const uint16_t) noexcept;
+template size_t awh::fmk::size <int32_t> (const int32_t) noexcept;
+template size_t awh::fmk::size <uint32_t> (const uint32_t) noexcept;
+template size_t awh::fmk::size <int64_t> (const int64_t) noexcept;
+template size_t awh::fmk::size <uint64_t> (const uint64_t) noexcept;
+template size_t awh::fmk::size <float> (const float) noexcept;
+template size_t awh::fmk::size <double> (const double) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template size_t awh::Framework::size <size_t> (const size_t) const noexcept;
-	template size_t awh::Framework::size <ssize_t> (const ssize_t) const noexcept;
+	template size_t awh::fmk::size <size_t> (const size_t) noexcept;
+	template size_t awh::fmk::size <ssize_t> (const ssize_t) noexcept;
 #endif
 /**
- * @brief Метод определения точного размера, сколько занимают данные (в байтах) в буфере
+ * @brief Функция определения точного размера, сколько занимают данные (в байтах) в буфере
  *
  * @param value значение бинарного буфера для проверки
  * @param size  общий размер бинарного буфера
  * @return      фактический размер буфера занимаемый данными
  *
  */
-size_t awh::Framework::size(const void * value, const size_t size) const noexcept {
+size_t awh::fmk::size(const void * value, const size_t size) noexcept {
 	// Переменная результата
 	size_t result = 0;
 	// Если значение бинарного буфера передано верное
@@ -4080,37 +3702,19 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value, size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, size}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
@@ -4124,43 +3728,43 @@ size_t awh::Framework::size(const void * value, const size_t size) const noexcep
  */
 template <typename T>
 /**
- * @brief Метод проверки больше первое число второго или нет (бинарным методом)
+ * @brief Функция проверки больше первое число второго или нет (бинарным методом)
  *
  * @param num1 значение первого числа в бинарном виде
  * @param num2 значение второго числа в бинарном виде
  * @return     результат проверки
  *
  */
-bool awh::Framework::isGreater(const T num1, const T num2) const noexcept {
+bool awh::fmk::isGreater(const T num1, const T num2) noexcept {
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
 		// Выполняем проверку
-		return this->isGreater(&num1, &num2, sizeof(num1));
+		return isGreater(&num1, &num2, sizeof(num1));
 	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
  * Объявляем прототипы для сравнения больших чисел без ограничения
  */
-template bool awh::Framework::isGreater <int8_t> (const int8_t, const int8_t) const noexcept;
-template bool awh::Framework::isGreater <uint8_t> (const uint8_t, const uint8_t) const noexcept;
-template bool awh::Framework::isGreater <int16_t> (const int16_t, const int16_t) const noexcept;
-template bool awh::Framework::isGreater <uint16_t> (const uint16_t, const uint16_t) const noexcept;
-template bool awh::Framework::isGreater <int32_t> (const int32_t, const int32_t) const noexcept;
-template bool awh::Framework::isGreater <uint32_t> (const uint32_t, const uint32_t) const noexcept;
-template bool awh::Framework::isGreater <int64_t> (const int64_t, const int64_t) const noexcept;
-template bool awh::Framework::isGreater <uint64_t> (const uint64_t, const uint64_t) const noexcept;
-template bool awh::Framework::isGreater <float> (const float, const float) const noexcept;
-template bool awh::Framework::isGreater <double> (const double, const double) const noexcept;
+template bool awh::fmk::isGreater <int8_t> (const int8_t, const int8_t) noexcept;
+template bool awh::fmk::isGreater <uint8_t> (const uint8_t, const uint8_t) noexcept;
+template bool awh::fmk::isGreater <int16_t> (const int16_t, const int16_t) noexcept;
+template bool awh::fmk::isGreater <uint16_t> (const uint16_t, const uint16_t) noexcept;
+template bool awh::fmk::isGreater <int32_t> (const int32_t, const int32_t) noexcept;
+template bool awh::fmk::isGreater <uint32_t> (const uint32_t, const uint32_t) noexcept;
+template bool awh::fmk::isGreater <int64_t> (const int64_t, const int64_t) noexcept;
+template bool awh::fmk::isGreater <uint64_t> (const uint64_t, const uint64_t) noexcept;
+template bool awh::fmk::isGreater <float> (const float, const float) noexcept;
+template bool awh::fmk::isGreater <double> (const double, const double) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template bool awh::Framework::isGreater <size_t> (const size_t, const size_t) const noexcept;
-	template bool awh::Framework::isGreater <ssize_t> (const ssize_t, const ssize_t) const noexcept;
+	template bool awh::fmk::isGreater <size_t> (const size_t, const size_t) noexcept;
+	template bool awh::fmk::isGreater <ssize_t> (const ssize_t, const ssize_t) noexcept;
 #endif
 /**
- * @brief Метод проверки больше первое число второго или нет (бинарным методом)
+ * @brief Функция проверки больше первое число второго или нет (бинарным методом)
  *
  * @param value1 значение первого числа в бинарном виде
  * @param value2 значение второго числа в бинарном виде
@@ -4168,7 +3772,7 @@ template bool awh::Framework::isGreater <double> (const double, const double) co
  * @return       результат проверки
  *
  */
-bool awh::Framework::isGreater(const void * value1, const void * value2, const size_t size) const noexcept {
+bool awh::fmk::isGreater(const void * value1, const void * value2, const size_t size) noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если данные переданы правильно
@@ -4205,37 +3809,19 @@ bool awh::Framework::isGreater(const void * value1, const void * value2, const s
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value1, value2, size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {value1, value2, size}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
@@ -4249,43 +3835,43 @@ bool awh::Framework::isGreater(const void * value1, const void * value2, const s
  */
 template <typename T>
 /**
- * @brief Метод конвертации чисел в указанную систему счисления
+ * @brief Функция конвертации чисел в указанную систему счисления
  *
  * @param value число для конвертации
  * @param radix система счисления
  * @return      полученная строка в указанной системе счисления
  *
  */
-string awh::Framework::itoa(const T value, const uint8_t radix) const noexcept {
+string awh::fmk::itoa(const T value, const uint8_t radix) noexcept {
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value)
 		// Выполняем конвертацию чисел в указанную систему счисления
-		return this->itoa(&value, sizeof(value), radix);
+		return itoa(&value, sizeof(value), radix);
 	// Возвращаем пустое значение
 	return "";
 }
 /**
  * Объявляем прототипы для метода конвертации чисел в указанную систему счисления
  */
-template string awh::Framework::itoa <int8_t> (const int8_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <uint8_t> (const uint8_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <int16_t> (const int16_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <uint16_t> (const uint16_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <int32_t> (const int32_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <uint32_t> (const uint32_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <int64_t> (const int64_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <uint64_t> (const uint64_t, const uint8_t) const noexcept;
-template string awh::Framework::itoa <float> (const float, const uint8_t) const noexcept;
-template string awh::Framework::itoa <double> (const double, const uint8_t) const noexcept;
+template string awh::fmk::itoa <int8_t> (const int8_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <uint8_t> (const uint8_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <int16_t> (const int16_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <uint16_t> (const uint16_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <int32_t> (const int32_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <uint32_t> (const uint32_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <int64_t> (const int64_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <uint64_t> (const uint64_t, const uint8_t) noexcept;
+template string awh::fmk::itoa <float> (const float, const uint8_t) noexcept;
+template string awh::fmk::itoa <double> (const double, const uint8_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template string awh::Framework::itoa <size_t> (const size_t, const uint8_t) const noexcept;
-	template string awh::Framework::itoa <ssize_t> (const ssize_t, const uint8_t) const noexcept;
+	template string awh::fmk::itoa <size_t> (const size_t, const uint8_t) noexcept;
+	template string awh::fmk::itoa <ssize_t> (const ssize_t, const uint8_t) noexcept;
 #endif
 /**
- * @brief Метод конвертации чисел в указанную систему счисления
+ * @brief Функция конвертации чисел в указанную систему счисления
  *
  * @param value бинарный буфер числа для конвертации
  * @param size  размер бинарного буфера
@@ -4293,7 +3879,7 @@ template string awh::Framework::itoa <double> (const double, const uint8_t) cons
  * @return      полученная строка в указанной системе счисления
  *
  */
-string awh::Framework::itoa(const void * value, const size_t size, const uint8_t radix) const noexcept {
+string awh::fmk::itoa(const void * value, const size_t size, const uint8_t radix) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если данные переданы
@@ -4440,37 +4026,19 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 		} catch(const exception & error) {
 			// Сбрасываем полученный результат
 			result.clear();
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value, size, static_cast <uint16_t> (radix)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, size, static_cast <uint16_t> (radix)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
@@ -4484,13 +4052,13 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
  */
 template <typename T>
 /**
- * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Функция конвертации строковых чисел в десятичную систему счисления
  *
  * @param value строковое представление числа
  * @return      числовое значение в десятичной системе счисления
  *
  */
-T awh::Framework::atoi(string_view value) const noexcept {
+T awh::fmk::atoi(string_view value) noexcept {
 	// Переменная результата
 	T result = T();
 	// Если мы получили на вход перечисление
@@ -4526,22 +4094,22 @@ T awh::Framework::atoi(string_view value) const noexcept {
 /**
  * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
  */
-template int8_t awh::Framework::atoi <int8_t> (string_view) const noexcept;
-template uint8_t awh::Framework::atoi <uint8_t> (string_view) const noexcept;
-template int16_t awh::Framework::atoi <int16_t> (string_view) const noexcept;
-template uint16_t awh::Framework::atoi <uint16_t> (string_view) const noexcept;
-template int32_t awh::Framework::atoi <int32_t> (string_view) const noexcept;
-template uint32_t awh::Framework::atoi <uint32_t> (string_view) const noexcept;
-template int64_t awh::Framework::atoi <int64_t> (string_view) const noexcept;
-template uint64_t awh::Framework::atoi <uint64_t> (string_view) const noexcept;
-template float awh::Framework::atoi <float> (string_view) const noexcept;
-template double awh::Framework::atoi <double> (string_view) const noexcept;
+template int8_t awh::fmk::atoi <int8_t> (string_view) noexcept;
+template uint8_t awh::fmk::atoi <uint8_t> (string_view) noexcept;
+template int16_t awh::fmk::atoi <int16_t> (string_view) noexcept;
+template uint16_t awh::fmk::atoi <uint16_t> (string_view) noexcept;
+template int32_t awh::fmk::atoi <int32_t> (string_view) noexcept;
+template uint32_t awh::fmk::atoi <uint32_t> (string_view) noexcept;
+template int64_t awh::fmk::atoi <int64_t> (string_view) noexcept;
+template uint64_t awh::fmk::atoi <uint64_t> (string_view) noexcept;
+template float awh::fmk::atoi <float> (string_view) noexcept;
+template double awh::fmk::atoi <double> (string_view) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template size_t awh::Framework::atoi <size_t> (string_view) const noexcept;
-	template ssize_t awh::Framework::atoi <ssize_t> (string_view) const noexcept;
+	template size_t awh::fmk::atoi <size_t> (string_view) noexcept;
+	template ssize_t awh::fmk::atoi <ssize_t> (string_view) noexcept;
 #endif
 /**
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
@@ -4551,14 +4119,14 @@ template double awh::Framework::atoi <double> (string_view) const noexcept;
  */
 template <typename T>
 /**
- * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Функция конвертации строковых чисел в десятичную систему счисления
  *
  * @param value число в бинарном виде для конвертации в 10-ю систему
  * @param radix система счисления
  * @return      полученное значение в десятичной системе счисления
  *
  */
-T awh::Framework::atoi(string_view value, const uint8_t radix) const noexcept {
+T awh::fmk::atoi(string_view value, const uint8_t radix) noexcept {
 	// Переменная результата
 	T result;
 	// Если данные являются основными
@@ -4571,32 +4139,32 @@ T awh::Framework::atoi(string_view value, const uint8_t radix) const noexcept {
 		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
 	}
 	// Выполняем извлечение данных
-	this->atoi(value, radix, &result, sizeof(result));
+	atoi(value, radix, &result, sizeof(result));
 	// Возвращаем результат
 	return result;
 }
 /**
  * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
  */
-template int8_t awh::Framework::atoi <int8_t> (string_view, const uint8_t) const noexcept;
-template uint8_t awh::Framework::atoi <uint8_t> (string_view, const uint8_t) const noexcept;
-template int16_t awh::Framework::atoi <int16_t> (string_view, const uint8_t) const noexcept;
-template uint16_t awh::Framework::atoi <uint16_t> (string_view, const uint8_t) const noexcept;
-template int32_t awh::Framework::atoi <int32_t> (string_view, const uint8_t) const noexcept;
-template uint32_t awh::Framework::atoi <uint32_t> (string_view, const uint8_t) const noexcept;
-template int64_t awh::Framework::atoi <int64_t> (string_view, const uint8_t) const noexcept;
-template uint64_t awh::Framework::atoi <uint64_t> (string_view, const uint8_t) const noexcept;
-template float awh::Framework::atoi <float> (string_view, const uint8_t) const noexcept;
-template double awh::Framework::atoi <double> (string_view, const uint8_t) const noexcept;
+template int8_t awh::fmk::atoi <int8_t> (string_view, const uint8_t) noexcept;
+template uint8_t awh::fmk::atoi <uint8_t> (string_view, const uint8_t) noexcept;
+template int16_t awh::fmk::atoi <int16_t> (string_view, const uint8_t) noexcept;
+template uint16_t awh::fmk::atoi <uint16_t> (string_view, const uint8_t) noexcept;
+template int32_t awh::fmk::atoi <int32_t> (string_view, const uint8_t) noexcept;
+template uint32_t awh::fmk::atoi <uint32_t> (string_view, const uint8_t) noexcept;
+template int64_t awh::fmk::atoi <int64_t> (string_view, const uint8_t) noexcept;
+template uint64_t awh::fmk::atoi <uint64_t> (string_view, const uint8_t) noexcept;
+template float awh::fmk::atoi <float> (string_view, const uint8_t) noexcept;
+template double awh::fmk::atoi <double> (string_view, const uint8_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template size_t awh::Framework::atoi <size_t> (string_view, const uint8_t) const noexcept;
-	template ssize_t awh::Framework::atoi <ssize_t> (string_view, const uint8_t) const noexcept;
+	template size_t awh::fmk::atoi <size_t> (string_view, const uint8_t) noexcept;
+	template ssize_t awh::fmk::atoi <ssize_t> (string_view, const uint8_t) noexcept;
 #endif
 /**
- * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Функция конвертации строковых чисел в десятичную систему счисления
  *
  * @param value  число в бинарном виде для конвертации в 10-ю систему
  * @param radix  система счисления
@@ -4604,7 +4172,7 @@ template double awh::Framework::atoi <double> (string_view, const uint8_t) const
  * @param size   размер бинарного буфера куда следует положить результат
  *
  */
-void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
+void awh::fmk::atoi(string_view value, const uint8_t radix, void * buffer, const size_t size) noexcept {
 	// Если данные для конвертации переданы
 	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0)){
 		/**
@@ -4625,7 +4193,7 @@ void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer,
 					number.erase(0, 2);
 			}
 			// Выполняем перевод число в верхний регистр
-			this->transform(number, transform_t::UPPER_CASE);
+			transform(number, transform_t::UPPER_CASE);
 			// Количество перебираемых элементов
 			const uint8_t count = static_cast <uint8_t> (number.length());
 			/**
@@ -4744,37 +4312,19 @@ void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer,
 					} else {
 						// Сбрасываем полученный результат
 						::memset(buffer, 0, size);
-						// Если объект логирования установлен
-						if(this->_log != nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value, static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
-							#endif
-						// Если объект логирования не установлен
-						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								::fprintf(stderr, "ERROR! %s\n\n", "Only binary number can be converted to binary buffer");
-							#endif
-						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+						#endif
 					}
 				}
 			}
@@ -4784,37 +4334,19 @@ void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer,
 		} catch(const exception & error) {
 			// Сбрасываем полученный результат
 			::memset(buffer, 0, size);
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value, static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
@@ -4826,13 +4358,13 @@ void awh::Framework::atoi(string_view value, const uint8_t radix, void * buffer,
  */
 template <typename T>
 /**
- * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Функция конвертации строковых чисел в десятичную систему счисления
  *
  * @param value строковое представление числа
  * @return      числовое значение в десятичной системе счисления
  *
  */
-T awh::Framework::atoi(wstring_view value) const noexcept {
+T awh::fmk::atoi(wstring_view value) noexcept {
 	// Переменная результата
 	T result = T();
 	// Если мы получили на вход перечисление
@@ -4868,22 +4400,22 @@ T awh::Framework::atoi(wstring_view value) const noexcept {
 /**
  * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
  */
-template int8_t awh::Framework::atoi <int8_t> (wstring_view) const noexcept;
-template uint8_t awh::Framework::atoi <uint8_t> (wstring_view) const noexcept;
-template int16_t awh::Framework::atoi <int16_t> (wstring_view) const noexcept;
-template uint16_t awh::Framework::atoi <uint16_t> (wstring_view) const noexcept;
-template int32_t awh::Framework::atoi <int32_t> (wstring_view) const noexcept;
-template uint32_t awh::Framework::atoi <uint32_t> (wstring_view) const noexcept;
-template int64_t awh::Framework::atoi <int64_t> (wstring_view) const noexcept;
-template uint64_t awh::Framework::atoi <uint64_t> (wstring_view) const noexcept;
-template float awh::Framework::atoi <float> (wstring_view) const noexcept;
-template double awh::Framework::atoi <double> (wstring_view) const noexcept;
+template int8_t awh::fmk::atoi <int8_t> (wstring_view) noexcept;
+template uint8_t awh::fmk::atoi <uint8_t> (wstring_view) noexcept;
+template int16_t awh::fmk::atoi <int16_t> (wstring_view) noexcept;
+template uint16_t awh::fmk::atoi <uint16_t> (wstring_view) noexcept;
+template int32_t awh::fmk::atoi <int32_t> (wstring_view) noexcept;
+template uint32_t awh::fmk::atoi <uint32_t> (wstring_view) noexcept;
+template int64_t awh::fmk::atoi <int64_t> (wstring_view) noexcept;
+template uint64_t awh::fmk::atoi <uint64_t> (wstring_view) noexcept;
+template float awh::fmk::atoi <float> (wstring_view) noexcept;
+template double awh::fmk::atoi <double> (wstring_view) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template size_t awh::Framework::atoi <size_t> (wstring_view) const noexcept;
-	template ssize_t awh::Framework::atoi <ssize_t> (wstring_view) const noexcept;
+	template size_t awh::fmk::atoi <size_t> (wstring_view) noexcept;
+	template ssize_t awh::fmk::atoi <ssize_t> (wstring_view) noexcept;
 #endif
 /**
  * @brief Шаблон функции конвертации строковых чисел в десятичную систему счисления
@@ -4893,14 +4425,14 @@ template double awh::Framework::atoi <double> (wstring_view) const noexcept;
  */
 template <typename T>
 /**
- * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Функция конвертации строковых чисел в десятичную систему счисления
  *
  * @param value число в бинарном виде для конвертации в 10-ю систему
  * @param radix система счисления
  * @return      полученное значение в десятичной системе счисления
  *
  */
-T awh::Framework::atoi(wstring_view value, const uint8_t radix) const noexcept {
+T awh::fmk::atoi(wstring_view value, const uint8_t radix) noexcept {
 	// Переменная результата
 	T result;
 	// Если данные являются основными
@@ -4913,32 +4445,32 @@ T awh::Framework::atoi(wstring_view value, const uint8_t radix) const noexcept {
 		::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
 	}
 	// Выполняем извлечение данных
-	this->atoi(value, radix, &result, sizeof(result));
+	atoi(value, radix, &result, sizeof(result));
 	// Возвращаем результат
 	return result;
 }
 /**
  * Объявляем прототипы для метода конвертации строковых чисел в десятичную систему счисления
  */
-template int8_t awh::Framework::atoi <int8_t> (wstring_view, const uint8_t) const noexcept;
-template uint8_t awh::Framework::atoi <uint8_t> (wstring_view, const uint8_t) const noexcept;
-template int16_t awh::Framework::atoi <int16_t> (wstring_view, const uint8_t) const noexcept;
-template uint16_t awh::Framework::atoi <uint16_t> (wstring_view, const uint8_t) const noexcept;
-template int32_t awh::Framework::atoi <int32_t> (wstring_view, const uint8_t) const noexcept;
-template uint32_t awh::Framework::atoi <uint32_t> (wstring_view, const uint8_t) const noexcept;
-template int64_t awh::Framework::atoi <int64_t> (wstring_view, const uint8_t) const noexcept;
-template uint64_t awh::Framework::atoi <uint64_t> (wstring_view, const uint8_t) const noexcept;
-template float awh::Framework::atoi <float> (wstring_view, const uint8_t) const noexcept;
-template double awh::Framework::atoi <double> (wstring_view, const uint8_t) const noexcept;
+template int8_t awh::fmk::atoi <int8_t> (wstring_view, const uint8_t) noexcept;
+template uint8_t awh::fmk::atoi <uint8_t> (wstring_view, const uint8_t) noexcept;
+template int16_t awh::fmk::atoi <int16_t> (wstring_view, const uint8_t) noexcept;
+template uint16_t awh::fmk::atoi <uint16_t> (wstring_view, const uint8_t) noexcept;
+template int32_t awh::fmk::atoi <int32_t> (wstring_view, const uint8_t) noexcept;
+template uint32_t awh::fmk::atoi <uint32_t> (wstring_view, const uint8_t) noexcept;
+template int64_t awh::fmk::atoi <int64_t> (wstring_view, const uint8_t) noexcept;
+template uint64_t awh::fmk::atoi <uint64_t> (wstring_view, const uint8_t) noexcept;
+template float awh::fmk::atoi <float> (wstring_view, const uint8_t) noexcept;
+template double awh::fmk::atoi <double> (wstring_view, const uint8_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template size_t awh::Framework::atoi <size_t> (wstring_view, const uint8_t) const noexcept;
-	template ssize_t awh::Framework::atoi <ssize_t> (wstring_view, const uint8_t) const noexcept;
+	template size_t awh::fmk::atoi <size_t> (wstring_view, const uint8_t) noexcept;
+	template ssize_t awh::fmk::atoi <ssize_t> (wstring_view, const uint8_t) noexcept;
 #endif
 /**
- * @brief Метод конвертации строковых чисел в десятичную систему счисления
+ * @brief Функция конвертации строковых чисел в десятичную систему счисления
  *
  * @param value  число в бинарном виде для конвертации в 10-ю систему
  * @param radix  система счисления
@@ -4946,7 +4478,7 @@ template double awh::Framework::atoi <double> (wstring_view, const uint8_t) cons
  * @param size   размер бинарного буфера куда следует положить результат
  *
  */
-void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer, const size_t size) const noexcept {
+void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, const size_t size) noexcept {
 	// Если данные для конвертации переданы
 	if(!value.empty() && (radix > 1) && (radix < 37) && (buffer != nullptr) && (size > 0)){
 		/**
@@ -4967,7 +4499,7 @@ void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer
 					number.erase(0, 2);
 			}
 			// Выполняем перевод число в верхний регистр
-			this->transform(number, transform_t::UPPER_CASE);
+			transform(number, transform_t::UPPER_CASE);
 			// Количество перебираемых элементов
 			const uint8_t count = static_cast <uint8_t> (number.length());
 			/**
@@ -5086,37 +4618,19 @@ void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer
 					} else {
 						// Сбрасываем полученный результат
 						::memset(buffer, 0, size);
-						// Если объект логирования установлен
-						if(this->_log != nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(value), static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
-							#endif
-						// Если объект логирования не установлен
-						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Only binary number can be converted to binary buffer");
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								::fprintf(stderr, "ERROR! %s\n\n", "Only binary number can be converted to binary buffer");
-							#endif
-						}
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
+						#endif
 					}
 				}
 			}
@@ -5126,49 +4640,31 @@ void awh::Framework::atoi(wstring_view value, const uint8_t radix, void * buffer
 		} catch(const exception & error) {
 			// Сбрасываем полученный результат
 			::memset(buffer, 0, size);
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(value), static_cast <uint16_t> (radix), buffer, size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
 /**
- * @brief Метод перевода числа в безэкспоненциальную форму
+ * @brief Функция перевода числа в безэкспоненциальную форму
  *
  * @param number число для перевода
  * @param step   размер шага после запятой
  * @return       число в безэкспоненциальной форме
  *
  */
-string awh::Framework::noexp(const double number, const uint8_t step) const noexcept {
+string awh::fmk::noexp(const double number, const uint8_t step) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если размер шага после запятой передан
@@ -5190,37 +4686,19 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 		} catch(const exception & error) {
 			// Сбрасываем полученный результат
 			result.clear();
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(number, static_cast <uint8_t> (step)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {number, static_cast <uint8_t> (step)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Если запись числа выполнить не удалось
@@ -5231,14 +4709,14 @@ string awh::Framework::noexp(const double number, const uint8_t step) const noex
 	return result;
 }
 /**
- * @brief Метод перевода числа в безэкспоненциальную форму
+ * @brief Функция перевода числа в безэкспоненциальную форму
  *
  * @param number  число для перевода
  * @param onlyNum выводить только числа
  * @return        число в безэкспоненциальной форме
  *
  */
-string awh::Framework::noexp(const double number, const bool onlyNum) const noexcept {
+string awh::fmk::noexp(const double number, const bool onlyNum) noexcept {
 	/**
 	 * Запись выполняется без обращения к локали и посторонних символов не содержит,
 	 * поэтому отбор одних лишь разрядов ничего в ней не меняет. Довод сохранён ради
@@ -5259,37 +4737,19 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	} catch(const exception & error) {
 		// Сбрасываем полученный результат
 		result.clear();
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(number, onlyNum), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {number, onlyNum}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Если запись числа выполнить не удалось
 	if(result.empty())
@@ -5299,7 +4759,7 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 	return result;
 }
 /**
- * @brief Метод расстановки разделителей разрядов в записи целой части
+ * @brief Функция расстановки разделителей разрядов в записи целой части
  *
  * @param text      запись числа, куда расставляются разделители
  * @param separator знак-разделитель разрядов
@@ -5359,7 +4819,7 @@ static string separated(const string & text, const char separator, const uint8_t
 	return result;
 }
 /**
- * @brief Метод записи числа с разделением разрядов
+ * @brief Функция записи числа с разделением разрядов
  *
  * @param number    записываемое число
  * @param precision количество знаков после запятой, отрицательное для подбора
@@ -5368,7 +4828,7 @@ static string separated(const string & text, const char separator, const uint8_t
  * @return          запись числа с разделёнными разрядами
  *
  */
-string awh::Framework::grouped(const double number, const int32_t precision, const char separator, const uint8_t size) const noexcept {
+string awh::fmk::grouped(const double number, const int32_t precision, const char separator, const uint8_t size) noexcept {
 	/**
 	 * Выполняем запись числа безэкспоненциальной формой
 	 *
@@ -5385,9 +4845,14 @@ string awh::Framework::grouped(const double number, const int32_t precision, con
 	return ::separated(text, separator, size);
 }
 /**
- * @brief Метод записи целого числа с разделением разрядов
+ * @brief Шаблон функции записи целого числа с разделением разрядов
  *
  * @tparam T тип записываемого целого числа
+ *
+ */
+template <typename T>
+/**
+ * @brief Функция записи целого числа с разделением разрядов
  *
  * @param number    записываемое число
  * @param separator знак-разделитель разрядов
@@ -5395,8 +4860,7 @@ string awh::Framework::grouped(const double number, const int32_t precision, con
  * @return          запись числа с разделёнными разрядами
  *
  */
-template <typename T>
-string awh::Framework::grouped(const T number, const char separator, const uint8_t size) const noexcept {
+string awh::fmk::grouped(const T number, const char separator, const uint8_t size) noexcept {
 	/**
 	 * Если тип записываемого числа целым не является
 	 */
@@ -5410,30 +4874,30 @@ string awh::Framework::grouped(const T number, const char separator, const uint8
 /**
  * Объявляем прототипы записи целых чисел с разделением разрядов
  */
-template string awh::Framework::grouped <int8_t> (const int8_t, const char, const uint8_t) const noexcept;
-template string awh::Framework::grouped <uint8_t> (const uint8_t, const char, const uint8_t) const noexcept;
-template string awh::Framework::grouped <int16_t> (const int16_t, const char, const uint8_t) const noexcept;
-template string awh::Framework::grouped <uint16_t> (const uint16_t, const char, const uint8_t) const noexcept;
-template string awh::Framework::grouped <int32_t> (const int32_t, const char, const uint8_t) const noexcept;
-template string awh::Framework::grouped <uint32_t> (const uint32_t, const char, const uint8_t) const noexcept;
-template string awh::Framework::grouped <int64_t> (const int64_t, const char, const uint8_t) const noexcept;
-template string awh::Framework::grouped <uint64_t> (const uint64_t, const char, const uint8_t) const noexcept;
+template string awh::fmk::grouped <int8_t> (const int8_t, const char, const uint8_t) noexcept;
+template string awh::fmk::grouped <uint8_t> (const uint8_t, const char, const uint8_t) noexcept;
+template string awh::fmk::grouped <int16_t> (const int16_t, const char, const uint8_t) noexcept;
+template string awh::fmk::grouped <uint16_t> (const uint16_t, const char, const uint8_t) noexcept;
+template string awh::fmk::grouped <int32_t> (const int32_t, const char, const uint8_t) noexcept;
+template string awh::fmk::grouped <uint32_t> (const uint32_t, const char, const uint8_t) noexcept;
+template string awh::fmk::grouped <int64_t> (const int64_t, const char, const uint8_t) noexcept;
+template string awh::fmk::grouped <uint64_t> (const uint64_t, const char, const uint8_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
 #if __AWH_DISTINCT_SIZE_TYPES__
-	template string awh::Framework::grouped <size_t> (const size_t, const char, const uint8_t) const noexcept;
-	template string awh::Framework::grouped <ssize_t> (const ssize_t, const char, const uint8_t) const noexcept;
+	template string awh::fmk::grouped <size_t> (const size_t, const char, const uint8_t) noexcept;
+	template string awh::fmk::grouped <ssize_t> (const ssize_t, const char, const uint8_t) noexcept;
 #endif
 /**
- * @brief Метод порверки на сколько процентов (A > B) или (A < B)
+ * @brief Функция порверки на сколько процентов (A > B) или (A < B)
  *
  * @param a первое число
  * @param b второе число
  * @return  результат расчёта
  *
  */
-float awh::Framework::rate(const float a, const float b) const noexcept {
+float awh::fmk::rate(const float a, const float b) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -5448,50 +4912,32 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(a, b), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {a, b}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 		// Возвращаем пустой результат
 		return .0f;
 	}
 }
 /**
- * @brief Метод приведения количества символов после запятой к указанному количества
+ * @brief Функция приведения количества символов после запятой к указанному количества
  *
  * @param x число для приведения
  * @param n количество символов после запятой
  * @return  сформированное число
  *
  */
-double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
+double awh::fmk::floor(const double x, const uint8_t n) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -5504,49 +4950,31 @@ double awh::Framework::floor(const double x, const uint8_t n) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(x, static_cast <uint8_t> (n)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {x, static_cast <uint8_t> (n)}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем пустой результат
 	return .0;
 }
 /**
- * @brief Метод перевода римских цифр в арабские
+ * @brief Функция перевода римских цифр в арабские
  *
  * @param word римское число
  * @return     арабское число
  *
  */
-uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
+uint16_t awh::fmk::rome2arabic(string_view word) noexcept {
 	// Переменная результата
 	uint16_t result = 0;
 	// Если слово передано
@@ -5768,50 +5196,32 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(word), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {word}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод перевода римских цифр в арабские
+ * @brief Функция перевода римских цифр в арабские
  *
  * @param word римское число
  * @return     арабское число
  *
  */
-uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
+uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 	// Переменная результата
 	uint16_t result = 0;
 	// Если слово передано
@@ -6033,50 +5443,32 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(word)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод перевода арабских чисел в римские
+ * @brief Функция перевода арабских чисел в римские
  *
  * @param number арабское число от 1 до 4999
  * @return       римское число
  *
  */
-wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
+wstring awh::fmk::arabic2rome(const uint32_t number) noexcept {
 	// Переменная результата
 	wstring result = L"";
 	// Если число передано верное
@@ -6105,50 +5497,32 @@ wstring awh::Framework::arabic2rome(const uint32_t number) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(number), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {number}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод перевода арабских чисел в римские
+ * @brief Функция перевода арабских чисел в римские
  *
  * @param word арабское число от 1 до 4999
  * @return     римское число
  *
  */
-string awh::Framework::arabic2rome(string_view word) const noexcept {
+string awh::fmk::arabic2rome(string_view word) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если слово передано
@@ -6158,57 +5532,39 @@ string awh::Framework::arabic2rome(string_view word) const noexcept {
 		 */
 		try {
 			// Преобразуем слово в число
-			const uint32_t number = this->atoi <uint32_t> (word);
+			const uint32_t number = atoi <uint32_t> (word);
 			// Выполняем расчет
-			result = this->convert(this->arabic2rome(number));
+			result = convert(arabic2rome(number));
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(word), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {word}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод перевода арабских чисел в римские
+ * @brief Функция перевода арабских чисел в римские
  *
  * @param word арабское число от 1 до 4999
  * @return     римское число
  *
  */
-wstring awh::Framework::arabic2rome(wstring_view word) const noexcept {
+wstring awh::fmk::arabic2rome(wstring_view word) noexcept {
 	// Переменная результата
 	wstring result = L"";
 	// Если слово передано
@@ -6220,56 +5576,38 @@ wstring awh::Framework::arabic2rome(wstring_view word) const noexcept {
 			// Преобразуем слово в число
 			const uint32_t number = ::stoi(wstring{word});
 			// Выполняем расчет
-			result = this->arabic2rome(number);
+			result = arabic2rome(number);
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(word)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод подсчёта количества указанной буквы в слове
+ * @brief Функция подсчёта количества указанной буквы в слове
  *
  * @param word   слово в котором нужно подсчитать букву
  * @param letter букву которую нужно подсчитать
  * @return       результат подсчёта
  *
  */
-size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const noexcept {
+size_t awh::fmk::countLetter(string_view word, const wchar_t letter) noexcept {
 	// Переменная результата
 	size_t result = 0;
 	// Если слово и буква переданы
@@ -6296,7 +5634,7 @@ size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const
 			// Если искомый символ является многобайтовым (UTF-8)
 			} else {
 				// Получаем искомый символ в виде UTF-8 последовательности
-				const string target = this->convert(wstring(1, letter));
+				const string target = convert(wstring(1, letter));
 				// Если последовательность получена
 				if(!target.empty()){
 					/**
@@ -6314,51 +5652,33 @@ size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(word, letter), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {word, letter}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод подсчёта количества указанной буквы в слове
+ * @brief Функция подсчёта количества указанной буквы в слове
  *
  * @param word   слово в котором нужно подсчитать букву
  * @param letter букву которую нужно подсчитать
  * @return       результат подсчёта
  *
  */
-size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) const noexcept {
+size_t awh::fmk::countLetter(wstring_view word, const wchar_t letter) noexcept {
 	// Переменная результата
 	size_t result = 0;
 	// Если слово и буква переданы
@@ -6382,37 +5702,19 @@ size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) cons
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(word), letter), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word), letter}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
@@ -6426,14 +5728,14 @@ size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) cons
  */
 template <typename T>
 /**
- * @brief Метод проверки установлен ли бит в указанной позиции
+ * @brief Функция проверки установлен ли бит в указанной позиции
  *
  * @param pos позиция для проверки
  * @param num число в бинарном виде для проверки бита
  * @return    результат проверки
  *
  */
-bool awh::Framework::isBit(const T pos, const T num) const noexcept {
+bool awh::fmk::isBit(const T pos, const T num) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -6477,37 +5779,19 @@ bool awh::Framework::isBit(const T pos, const T num) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -6515,10 +5799,10 @@ bool awh::Framework::isBit(const T pos, const T num) const noexcept {
 /**
  * Объявляем прототипы для метода проверки установлен ли бит в указанной позиции
  */
-template bool awh::Framework::isBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
-template bool awh::Framework::isBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
-template bool awh::Framework::isBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
-template bool awh::Framework::isBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+template bool awh::fmk::isBit <uint8_t> (const uint8_t, const uint8_t) noexcept;
+template bool awh::fmk::isBit <uint16_t> (const uint16_t, const uint16_t) noexcept;
+template bool awh::fmk::isBit <uint32_t> (const uint32_t, const uint32_t) noexcept;
+template bool awh::fmk::isBit <uint64_t> (const uint64_t, const uint64_t) noexcept;
 /**
  * @brief Шаблон функции инверсии бита в указанной позиции
  *
@@ -6527,14 +5811,14 @@ template bool awh::Framework::isBit <uint64_t> (const uint64_t, const uint64_t) 
  */
 template <typename T>
 /**
- * @brief Метод инверсии бита в указанной позиции
+ * @brief Функция инверсии бита в указанной позиции
  *
  * @param pos позиция для инверсии
  * @param num число в бинарном виде для инверсии бита
  * @return    итоговое значение числа после инверсии
  *
  */
-T awh::Framework::flipBit(const T pos, const T num) const noexcept {
+T awh::fmk::flipBit(const T pos, const T num) noexcept {
 	// Результат работы функции
 	T result = num;
 	/**
@@ -6578,37 +5862,19 @@ T awh::Framework::flipBit(const T pos, const T num) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -6616,10 +5882,10 @@ T awh::Framework::flipBit(const T pos, const T num) const noexcept {
 /**
  * Объявляем прототипы для метода инверсии бита в указанной позиции
  */
-template uint8_t awh::Framework::flipBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
-template uint16_t awh::Framework::flipBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
-template uint32_t awh::Framework::flipBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
-template uint64_t awh::Framework::flipBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+template uint8_t awh::fmk::flipBit <uint8_t> (const uint8_t, const uint8_t) noexcept;
+template uint16_t awh::fmk::flipBit <uint16_t> (const uint16_t, const uint16_t) noexcept;
+template uint32_t awh::fmk::flipBit <uint32_t> (const uint32_t, const uint32_t) noexcept;
+template uint64_t awh::fmk::flipBit <uint64_t> (const uint64_t, const uint64_t) noexcept;
 /**
  * @brief Шаблон функции сброса бита в указанной позиции
  *
@@ -6628,14 +5894,14 @@ template uint64_t awh::Framework::flipBit <uint64_t> (const uint64_t, const uint
  */
 template <typename T>
 /**
- * @brief Метод сброса бита в указанной позиции
+ * @brief Функция сброса бита в указанной позиции
  *
  * @param pos позиция для сброса
  * @param num число в бинарном виде для сброса бита
  * @return    итоговое значение числа после сброса бита
  *
  */
-T awh::Framework::resetBit(const T pos, const T num) const noexcept {
+T awh::fmk::resetBit(const T pos, const T num) noexcept {
 	// Результат работы функции
 	T result = num;
 	/**
@@ -6679,37 +5945,19 @@ T awh::Framework::resetBit(const T pos, const T num) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;
@@ -6717,10 +5965,10 @@ T awh::Framework::resetBit(const T pos, const T num) const noexcept {
 /**
  * Объявляем прототипы для метода сброса бита в указанной позиции
  */
-template uint8_t awh::Framework::resetBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
-template uint16_t awh::Framework::resetBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
-template uint32_t awh::Framework::resetBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
-template uint64_t awh::Framework::resetBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+template uint8_t awh::fmk::resetBit <uint8_t> (const uint8_t, const uint8_t) noexcept;
+template uint16_t awh::fmk::resetBit <uint16_t> (const uint16_t, const uint16_t) noexcept;
+template uint32_t awh::fmk::resetBit <uint32_t> (const uint32_t, const uint32_t) noexcept;
+template uint64_t awh::fmk::resetBit <uint64_t> (const uint64_t, const uint64_t) noexcept;
 /**
  * @brief Шаблон функции устанвки бита в указанную позицию
  *
@@ -6729,14 +5977,14 @@ template uint64_t awh::Framework::resetBit <uint64_t> (const uint64_t, const uin
  */
 template <typename T>
 /**
- * @brief Метод устанвки бита в указанную позицию
+ * @brief Функция устанвки бита в указанную позицию
  *
  * @param pos позиция для установки бита
  * @param num начальное значение бита
  * @return    итоговое значение числа после установки бита
  *
  */
-T awh::Framework::setBit(const T pos, const T num) const noexcept {
+T awh::fmk::setBit(const T pos, const T num) noexcept {
 	// Переменная результата
 	T result = num;
 	/**
@@ -6780,37 +6028,19 @@ T awh::Framework::setBit(const T pos, const T num) const noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return result;
@@ -6818,19 +6048,19 @@ T awh::Framework::setBit(const T pos, const T num) const noexcept {
 /**
  * Объявляем прототипы для метода установки бита в указанную позицию
  */
-template uint8_t awh::Framework::setBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
-template uint16_t awh::Framework::setBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
-template uint32_t awh::Framework::setBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
-template uint64_t awh::Framework::setBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+template uint8_t awh::fmk::setBit <uint8_t> (const uint8_t, const uint8_t) noexcept;
+template uint16_t awh::fmk::setBit <uint16_t> (const uint16_t, const uint16_t) noexcept;
+template uint32_t awh::fmk::setBit <uint32_t> (const uint32_t, const uint32_t) noexcept;
+template uint64_t awh::fmk::setBit <uint64_t> (const uint64_t, const uint64_t) noexcept;
 /**
- * @brief Метод реализации функции формирования форматированной строки
+ * @brief Функция реализации функции формирования форматированной строки
  *
  * @param format формат строки вывода
  * @param args   передаваемые аргументы
  * @return       сформированная строка
  *
  */
-string awh::Framework::formatted(const char * format, ...) const noexcept {
+string awh::fmk::detail::formatted(const char * format, ...) noexcept {
 	// Переменная результата
 	string result = "";
 	// Если формат передан
@@ -6901,37 +6131,19 @@ string awh::Framework::formatted(const char * format, ...) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(format), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {format}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 		// Завершаем список аргументов
 		va_end(args);
@@ -6940,14 +6152,14 @@ string awh::Framework::formatted(const char * format, ...) const noexcept {
 	return result;
 }
 /**
- * @brief Метод реализации функции формирования форматированной строки
+ * @brief Функция реализации функции формирования форматированной строки
  *
  * @param format формат строки вывода
  * @param args   передаваемые аргументы
  * @return       сформированная строка
  *
  */
-wstring awh::Framework::formatted(const wchar_t * format, ...) const noexcept {
+wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 	// Переменная результата
 	wstring result = L"";
 	// Если формат передан
@@ -7018,37 +6230,19 @@ wstring awh::Framework::formatted(const wchar_t * format, ...) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(format)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 		// Завершаем список аргументов
 		va_end(args);
@@ -7057,14 +6251,14 @@ wstring awh::Framework::formatted(const wchar_t * format, ...) const noexcept {
 	return result;
 }
 /**
- * @brief Метод реализации функции формирования форматированной строки
+ * @brief Функция реализации функции формирования форматированной строки
  *
  * @param format формат строки вывода
  * @param items  список аргументов строки
  * @return       сформированная строка
  *
  */
-string awh::Framework::format(string_view format, const vector <string> & items) const noexcept {
+string awh::fmk::format(string_view format, const vector <string> & items) noexcept {
 	// Переменная результата
 	string result(format);
 	// Если данные переданы
@@ -7077,7 +6271,7 @@ string awh::Framework::format(string_view format, const vector <string> & items)
 		 * @param to   строка на которую нужно заменить
 		 *
 		 */
-		auto replaceFn = [&format, &items, this](string & str, const string & from, const string & to) noexcept {
+		auto replaceFn = [&format, &items](string & str, const string & from, const string & to) noexcept {
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -7101,37 +6295,19 @@ string awh::Framework::format(string_view format, const vector <string> & items)
 			 * Если возникает ошибка
 			 */
 			} catch(const exception & error) {
-				// Если объект логирования установлен
-				if(this->_log != nullptr){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(format, items.size()), log_t::flag_t::CRITICAL, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-					#endif
-				// Если объект логирования не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! %s\n\n", error.what());
-					#endif
-				}
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {format, items.size()}, awh::log::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		};
 		/**
@@ -7156,51 +6332,33 @@ string awh::Framework::format(string_view format, const vector <string> & items)
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(format, items.size()), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {format, items.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод реализации функции формирования форматированной строки
+ * @brief Функция реализации функции формирования форматированной строки
  *
  * @param format формат строки вывода
  * @param items  список аргументов строки
  * @return       сформированная строка
  *
  */
-wstring awh::Framework::format(wstring_view format, const vector <wstring> & items) const noexcept {
+wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) noexcept {
 	// Переменная результата
 	wstring result(format);
 	// Если данные переданы
@@ -7213,7 +6371,7 @@ wstring awh::Framework::format(wstring_view format, const vector <wstring> & ite
 		 * @param to   строка на которую нужно заменить
 		 *
 		 */
-		auto replaceFn = [&format, &items, this](wstring & str, const wstring & from, const wstring & to) noexcept {
+		auto replaceFn = [&format, &items](wstring & str, const wstring & from, const wstring & to) noexcept {
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -7237,37 +6395,19 @@ wstring awh::Framework::format(wstring_view format, const vector <wstring> & ite
 			 * Если возникает ошибка
 			 */
 			} catch(const exception & error) {
-				// Если объект логирования установлен
-				if(this->_log != nullptr){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(format), items.size()), log_t::flag_t::CRITICAL, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-					#endif
-				// Если объект логирования не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! %s\n\n", error.what());
-					#endif
-				}
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format), items.size()}, awh::log::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+				#endif
 			}
 		};
 		/**
@@ -7292,51 +6432,33 @@ wstring awh::Framework::format(wstring_view format, const vector <wstring> & ite
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(format), items.size()), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format), items.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод проверки существования слова в тексте
+ * @brief Функция проверки существования слова в тексте
  *
  * @param word слово для проверки
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
  *
  */
-bool awh::Framework::exists(string_view word, string_view text) const noexcept {
+bool awh::fmk::exists(string_view word, string_view text) noexcept {
 	// Если данные переданы верные
 	if(!word.empty() && !text.empty()){
 		/**
@@ -7354,51 +6476,33 @@ bool awh::Framework::exists(string_view word, string_view text) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(word, text), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {word, text}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат проверки по умолчанию
 	return false;
 }
 /**
- * @brief Метод проверки существования слова в тексте
+ * @brief Функция проверки существования слова в тексте
  *
  * @param word слово для проверки
  * @param text текст в котором выполнения проверка
  * @return     результат выполнения проверки
  *
  */
-bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept {
+bool awh::fmk::exists(wstring_view word, wstring_view text) noexcept {
 	// Если данные переданы верные
 	if(!word.empty() && !text.empty()){
 		/**
@@ -7416,44 +6520,26 @@ bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(word), this->convert(text)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word), convert(text)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат проверки по умолчанию
 	return false;
 }
 /**
- * @brief Метод замены в тексте слово на другое слово
+ * @brief Функция замены в тексте слово на другое слово
  *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
@@ -7461,9 +6547,9 @@ bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept
  * @return     результирующий текст
  *
  */
-string & awh::Framework::replace(string & text, const string & word, const string & alt) const noexcept {
+string & awh::fmk::replace(string & text, const string & word, const string & alt) noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
-	if(!text.empty() && !word.empty() && !this->compare(word, alt)){
+	if(!text.empty() && !word.empty() && !compare(word, alt)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7485,44 +6571,26 @@ string & awh::Framework::replace(string & text, const string & word, const strin
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, word, alt), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, word, alt}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return text;
 }
 /**
- * @brief Метод замены в тексте слово на другое слово
+ * @brief Функция замены в тексте слово на другое слово
  *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
@@ -7530,9 +6598,9 @@ string & awh::Framework::replace(string & text, const string & word, const strin
  * @return     результирующий текст
  *
  */
-wstring & awh::Framework::replace(wstring & text, const wstring & word, const wstring & alt) const noexcept {
+wstring & awh::fmk::replace(wstring & text, const wstring & word, const wstring & alt) noexcept {
 	// Если текст передан и искомое слово не равно слову для замены
-	if(!text.empty() && !word.empty() && !this->compare(word, alt)){
+	if(!text.empty() && !word.empty() && !compare(word, alt)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -7554,44 +6622,26 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(text), this->convert(word), this->convert(alt)), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(word), convert(alt)}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return text;
 }
 /**
- * @brief Метод замены в тексте слово на другое слово
+ * @brief Функция замены в тексте слово на другое слово
  *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
@@ -7599,12 +6649,12 @@ wstring & awh::Framework::replace(wstring & text, const wstring & word, const ws
  * @return     результирующий текст
  *
  */
-const string & awh::Framework::replace(const string & text, const string & word, const string & alt) const noexcept {
+const string & awh::fmk::replace(const string & text, const string & word, const string & alt) noexcept {
 	// Выполняем замену в тексте слово на другое слово
-	return this->replace(* const_cast <string *> (&text), word, alt);
+	return replace(* const_cast <string *> (&text), word, alt);
 }
 /**
- * @brief Метод замены в тексте слово на другое слово
+ * @brief Функция замены в тексте слово на другое слово
  *
  * @param text текст в котором нужно произвести замену
  * @param word слово для поиска
@@ -7612,36 +6662,36 @@ const string & awh::Framework::replace(const string & text, const string & word,
  * @return     результирующий текст
  *
  */
-const wstring & awh::Framework::replace(const wstring & text, const wstring & word, const wstring & alt) const noexcept {
+const wstring & awh::fmk::replace(const wstring & text, const wstring & word, const wstring & alt) noexcept {
 	// Выполняем замену в тексте слово на другое слово
-	return this->replace(* const_cast <wstring *> (&text), word, alt);
+	return replace(* const_cast <wstring *> (&text), word, alt);
 }
 /**
- * @brief Метод извлечения списка символов экранирования по умолчанию
+ * @brief Функция извлечения списка символов экранирования по умолчанию
  *
  * @return список символов экранирования по умолчанию
  *
  */
-const vector <string> & awh::Framework::escapingText() noexcept {
+const vector <string> & awh::fmk::detail::escapingText() noexcept {
 	// Список символов экранирования по умолчанию
 	static const vector <string> result = {string{"\""}};
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод извлечения списка символов экранирования по умолчанию
+ * @brief Функция извлечения списка символов экранирования по умолчанию
  *
  * @return список символов экранирования по умолчанию
  *
  */
-const vector <wstring> & awh::Framework::escapingWide() noexcept {
+const vector <wstring> & awh::fmk::detail::escapingWide() noexcept {
 	// Список символов экранирования по умолчанию
 	static const vector <wstring> result = {wstring{L"\""}};
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод извлечения ключей и значений из текста
+ * @brief Функция извлечения ключей и значений из текста
  *
  * @param text      текст из которого извлекаются записи
  * @param delim     разделитель записей
@@ -7650,7 +6700,7 @@ const vector <wstring> & awh::Framework::escapingWide() noexcept {
  * @return          список найденных элементов
  *
  */
-unordered_multimap <string, string> awh::Framework::kv(string_view text, string_view delim, string_view separator, const vector <string> & escaping) const noexcept {
+unordered_multimap <string, string> awh::fmk::kv(string_view text, string_view delim, string_view separator, const vector <string> & escaping) noexcept {
 	// Переменная результата
 	unordered_multimap <string, string> result;
 	// Если данные для обработки текста передан
@@ -7668,44 +6718,26 @@ unordered_multimap <string, string> awh::Framework::kv(string_view text, string_
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, delim, separator, escaping.size()), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, delim, separator, escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод извлечения ключей и значений из текста
+ * @brief Функция извлечения ключей и значений из текста
  *
  * @param text      текст из которого извлекаются записи
  * @param delim     разделитель записей
@@ -7714,7 +6746,7 @@ unordered_multimap <string, string> awh::Framework::kv(string_view text, string_
  * @return          список найденных элементов
  *
  */
-unordered_multimap <wstring, wstring> awh::Framework::kv(wstring_view text, wstring_view delim, wstring_view separator, const vector <wstring> & escaping) const noexcept {
+unordered_multimap <wstring, wstring> awh::fmk::kv(wstring_view text, wstring_view delim, wstring_view separator, const vector <wstring> & escaping) noexcept {
 	// Переменная результата
 	unordered_multimap <wstring, wstring> result;
 	// Если данные для обработки текста передан
@@ -7732,44 +6764,26 @@ unordered_multimap <wstring, wstring> awh::Framework::kv(wstring_view text, wstr
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->convert(text), this->convert(delim), this->convert(separator), escaping.size()), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(delim), convert(separator), escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод потокового извлечения ключей и значений из текста
+ * @brief Функция потокового извлечения ключей и значений из текста
  *
  * @param sid       идентификатор потока разбора
  * @param text      текст из которого извлекаются записи
@@ -7779,7 +6793,7 @@ unordered_multimap <wstring, wstring> awh::Framework::kv(wstring_view text, wstr
  * @param escaping  символы экранирования
  *
  */
-void awh::Framework::kv(const uint64_t sid, string_view text, string_view delim, function <void (const uint64_t, const string_view, const string_view)> callback, string_view separator, const vector <string> & escaping) const noexcept {
+void awh::fmk::kv(const uint64_t sid, string_view text, string_view delim, function <void (const uint64_t, const string_view, const string_view)> callback, string_view separator, const vector <string> & escaping) noexcept {
 	// Если данные для обработки текста передан
 	if((callback != nullptr) && !text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
@@ -7795,42 +6809,24 @@ void awh::Framework::kv(const uint64_t sid, string_view text, string_view delim,
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, text, delim, separator, escaping.size()), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, text, delim, separator, escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
 /**
- * @brief Метод потокового извлечения ключей и значений из текста
+ * @brief Функция потокового извлечения ключей и значений из текста
  *
  * @param sid       идентификатор потока разбора
  * @param text      текст из которого извлекаются записи
@@ -7840,7 +6836,7 @@ void awh::Framework::kv(const uint64_t sid, string_view text, string_view delim,
  * @param escaping  символы экранирования
  *
  */
-void awh::Framework::kv(const uint64_t sid, wstring_view text, wstring_view delim, function <void (const uint64_t, const wstring_view, const wstring_view)> callback, wstring_view separator, const vector <wstring> & escaping) const noexcept {
+void awh::fmk::kv(const uint64_t sid, wstring_view text, wstring_view delim, function <void (const uint64_t, const wstring_view, const wstring_view)> callback, wstring_view separator, const vector <wstring> & escaping) noexcept {
 	// Если данные для обработки текста передан
 	if((callback != nullptr) && !text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
@@ -7856,81 +6852,63 @@ void awh::Framework::kv(const uint64_t sid, wstring_view text, wstring_view deli
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, this->convert(text), this->convert(delim), this->convert(separator), escaping.size()), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, convert(text), convert(delim), convert(separator), escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 }
 /**
- * @brief Метод установки пользовательской зоны
+ * @brief Функция установки пользовательской зоны
  *
  * @param zone пользовательская зона
  *
  */
-void awh::Framework::domainZone(string_view zone) noexcept {
+void awh::fmk::domainZone(string_view zone) noexcept {
 	// Если зона передана, устанавливаем её
 	if(!zone.empty())
 		// Устанавливаем пользовательскую зону
-		this->_nwt.zone(zone);
+		state()._nwt.zone(zone);
 }
 /**
- * @brief Метод установки списка пользовательских зон
+ * @brief Функция установки списка пользовательских зон
  *
  * @param zones список доменных зон интернета
  *
  */
-void awh::Framework::domainZones(const unordered_set <string> & zones) noexcept {
+void awh::fmk::domainZones(const unordered_set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty())
 		// Устанавливаем список пользовательских зон
-		this->_nwt.zones(zones);
+		state()._nwt.zones(zones);
 }
 /**
- * @brief Метод извлечения списка пользовательских зон интернета
+ * @brief Функция извлечения списка пользовательских зон интернета
  *
  * @return список доменных зон
  *
  */
-const unordered_set <string> & awh::Framework::domainZones() const noexcept {
+const unordered_set <string> & awh::fmk::domainZones() noexcept {
 	// Возвращаем список доменных зон интернета
-	return this->_nwt.zones();
+	return state()._nwt.zones();
 }
 /**
- * @brief Метод установки системной локали
+ * @brief Функция установки системной локали
  *
  * @param locale локализация приложения
  *
  */
-void awh::Framework::setLocale(string_view locale) noexcept {
+void awh::fmk::setLocale(string_view locale) noexcept {
 	// Устанавливаем локализацию приложения по умолчанию
 	string name = AWH_LOCALE;
 	// Если локализация приложения передана
@@ -7972,40 +6950,18 @@ void awh::Framework::setLocale(string_view locale) noexcept {
 			// Собираемое сообщение об ошибке установки локализации
 			const string message = ("Locale \"" + name + "\" is not supported by the system, the \"C\" locale is set instead");
 			/**
-			 * Если объект логирования установлен
+			 * Если включён режим отладки
 			 */
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING, message.c_str());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, message.c_str());
-				#endif
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING, message.c_str());
 			/**
-			 * Если объект логирования не установлен
+			 * Если режим отладки не включён
 			 */
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, message.c_str());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "WARNING! %s\n\n", message.c_str());
-				#endif
-			}
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::WARNING, message.c_str());
+			#endif
 		}
 		/**
 		 * Для операционной системы MS Windows
@@ -8034,13 +6990,13 @@ void awh::Framework::setLocale(string_view locale) noexcept {
 }
 
 /**
- * @brief Метод извлечения координат url адресов в строке
+ * @brief Функция извлечения координат url адресов в строке
  *
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  *
  */
-unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noexcept {
+unordered_map <size_t, size_t> awh::fmk::urls(string_view text) noexcept {
 	// Переменная результата
 	unordered_map <size_t, size_t> result;
 	// Если текст передан
@@ -8056,7 +7012,7 @@ unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noex
 			 */
 			while(pos < text.size()){
 				// Выполняем парсинг nwt адреса
-				auto resUri = this->_nwt.parse(text.substr(pos));
+				auto resUri = state()._nwt.parse(text.substr(pos));
 				// Если ссылка найдена
 				if(resUri.type != nwt_t::types_t::NONE){
 					// Получаем данные слова
@@ -8080,50 +7036,32 @@ unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noex
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод получения иконки
+ * @brief Функция получения иконки
  *
  * @param end флаг завершения работы
  * @return    иконка напутствия работы
  *
  */
-string awh::Framework::icon(const bool end) const noexcept {
+string awh::fmk::icon(const bool end) noexcept {
 	// Список иконок для начала работы
 	static const vector <string> iconBegin = {
 		"🎲","🎰","🏓","🎱","🥚","⚽️",
@@ -8165,7 +7103,7 @@ string awh::Framework::icon(const bool end) const noexcept {
 	 *       принимает вовсе - имени в этой точке она ещё не знает
 	 */
 	static thread_local std::mt19937_64 engine(
-		static_cast <uint64_t> (this->timestamp <uint64_t> (chrono_t::NANOSECONDS)) ^
+		static_cast <uint64_t> (timestamp <uint64_t> (chrono_t::NANOSECONDS)) ^
 		static_cast <uint64_t> (std::hash <std::thread::id> {}(std::this_thread::get_id()))
 	);
 	// Получаем список иконок в зависимости от флага завершения работы
@@ -8176,13 +7114,13 @@ string awh::Framework::icon(const bool end) const noexcept {
 	return icons[distribution(engine)];
 }
 /**
- * @brief Метод получения размера в байтах из строки
+ * @brief Функция получения размера в байтах из строки
  *
  * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
  * @return    размер в байтах
  *
  */
-double awh::Framework::bytes(const string_view str) const noexcept {
+double awh::fmk::bytes(const string_view str) noexcept {
 	// Размер количество байт
 	double result = 0.;
 	// Если строка передана и начинается с цифры
@@ -8227,9 +7165,9 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 					// Если установлена позиция конца значения
 					if(stop > 0)
 						// Получаем значение рзамерности данных
-						result = this->atoi <double> (str.substr(0, stop));
+						result = atoi <double> (str.substr(0, stop));
 					// Если позиция конца значения не установлена, извлекаем значение рзамерности данных до текущей позиции
-					else result = this->atoi <double> (str.substr(0, i));
+					else result = atoi <double> (str.substr(0, i));
 					// Обозначение рзамерности данных
 					string_view handle = "";
 					// Если позиция начала значения установлена
@@ -8241,23 +7179,23 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 					// Размерность объема данных
 					double dimension = 1.;
 					// Если это размерность в килобайтах
-					if(this->compare("Kb", handle))
+					if(compare("Kb", handle))
 						// Выполняем установку множителя
 						dimension = 1024.;
 					// Если это размерность в мегабайтах
-					else if(this->compare("Mb", handle))
+					else if(compare("Mb", handle))
 						// Выполняем установку множителя
 						dimension = 1048576.;
 					// Если это размерность в гигабайтах
-					else if(this->compare("Gb", handle))
+					else if(compare("Gb", handle))
 						// Выполняем установку множителя
 						dimension = 1073741824.;
 					// Если это размерность в терабайтах
-					else if(this->compare("Tb", handle))
+					else if(compare("Tb", handle))
 						// Выполняем установку множителя
 						dimension = 1099511627776.;
 					// Если это байты
-					else if(this->compare("b", handle) || this->compare("bytes", handle))
+					else if(compare("b", handle) || compare("bytes", handle))
 						// Выполняем установку множителя
 						dimension = 1.;
 					// Применяем множитель размерности к полученному значению
@@ -8270,51 +7208,33 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод конвертации байт в строку
+ * @brief Функция конвертации байт в строку
  *
  * @param value   количество байт
  * @param onlyNum выводить только числа
  * @return        полученная строка
  *
  */
-string awh::Framework::bytes(const double value, const bool onlyNum) const noexcept {
+string awh::fmk::bytes(const double value, const bool onlyNum) noexcept {
 	// Переменная результата
 	string result = "0 bytes";
 	// Если количество байт передано
@@ -8334,31 +7254,31 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 			// Если переданное значение соответствует терабайту
 			if(value >= tb){
 				// Выполняем копирование терабайта
-				result = this->noexp(value / tb, onlyNum);
+				result = noexp(value / tb, onlyNum);
 				// Добавляем наименование единицы измерения
 				result.append(" Tb");
 			// Если переданное значение соответствует гигабайту
 			} else if((value >= gb) && (value < tb)) {
 				// Выполняем копирование гигабайта
-				result = this->noexp(value / gb, onlyNum);
+				result = noexp(value / gb, onlyNum);
 				// Добавляем наименование единицы измерения
 				result.append(" Gb");
 			// Если переданное значение соответствует мегабайту
 			} else if((value >= mb) && (value < gb)) {
 				// Выполняем копирование мегабайта
-				result = this->noexp(value / mb, onlyNum);
+				result = noexp(value / mb, onlyNum);
 				// Добавляем наименование единицы измерения
 				result.append(" Mb");
 			// Если переданное значение соответствует киллобайту
 			} else if((value >= kb) && (value < mb)) {
 				// Выполняем копирование килобайта
-				result = this->noexp(value / kb, onlyNum);
+				result = noexp(value / kb, onlyNum);
 				// Добавляем наименование единицы измерения
 				result.append(" Kb");
 			// Если переданное значение соответствует байту
 			} else {
 				// Выполняем копирование байтов
-				result = this->noexp(value, onlyNum);
+				result = noexp(value, onlyNum);
 				// Добавляем наименование единицы измерения
 				result.append(" bytes");
 			}
@@ -8366,50 +7286,32 @@ string awh::Framework::bytes(const double value, const bool onlyNum) const noexc
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value, onlyNum), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, onlyNum}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод получения количества байт в секунду из строки
+ * @brief Функция получения количества байт в секунду из строки
  *
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    количество байт в секунду
  *
  */
-size_t awh::Framework::bpsSize(const string_view str) const noexcept {
+size_t awh::fmk::bpsSize(const string_view str) noexcept {
 	// Переменная результата
 	size_t result = 0;
 	// Если строка передана и начинается с цифры
@@ -8456,9 +7358,9 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 					// Если установлена позиция конца значения
 					if(stop > 0)
 						// Получаем значение скорости
-						speed = this->atoi <float> (str.substr(0, stop));
+						speed = atoi <float> (str.substr(0, stop));
 					// Если позиция конца значения не установлена, извлекаем значение скорости до текущей позиции
-					else speed = this->atoi <float> (str.substr(0, i));
+					else speed = atoi <float> (str.substr(0, i));
 					// Обозначение размерности скорости
 					string_view handle = "";
 					// Если позиция начала значения установлена
@@ -8470,19 +7372,19 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 					// Размерность скорости
 					float dimension = .0f;
 					// Если это биты
-					if(this->compare("bps", handle))
+					if(compare("bps", handle))
 						// Выполняем установку множителя
 						dimension = 1.f;
 					// Если это размерность в киллобитах
-					else if(this->compare("kbps", handle))
+					else if(compare("kbps", handle))
 						// Выполняем установку множителя
 						dimension = 1000.f;
 					// Если это размерность в мегабитах
-					else if(this->compare("Mbps", handle))
+					else if(compare("Mbps", handle))
 						// Выполняем установку множителя
 						dimension = 1000000.f;
 					// Если это размерность в гигабитах
-					else if(this->compare("Gbps", handle))
+					else if(compare("Gbps", handle))
 						// Выполняем установку множителя
 						dimension = 1000000000.f;
 					// Выполняем получение размера в байтах
@@ -8495,50 +7397,32 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод получения размера буфера в байтах
+ * @brief Функция получения размера буфера в байтах
  *
  * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
  * @return    размер буфера в байтах
  *
  */
-size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
+size_t awh::fmk::bpsBuffer(const string_view str) noexcept {
 	/**
 	 * Readme - http://www.securitylab.ru/analytics/243414.php
 	 *
@@ -8605,9 +7489,9 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 					// Если установлена позиция конца значения
 					if(stop > 0)
 						// Получаем значение скорости
-						speed = this->atoi <float> (str.substr(0, stop));
+						speed = atoi <float> (str.substr(0, stop));
 					// Если позиция конца значения не установлена, извлекаем значение скорости до текущей позиции
-					else speed = this->atoi <float> (str.substr(0, i));
+					else speed = atoi <float> (str.substr(0, i));
 					// Обозначение размерности скорости
 					string_view handle = "";
 					// Если позиция начала значения установлена
@@ -8621,19 +7505,19 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 					// Проверяем являются ли переданные данные байтами (8, 16, 32, 64, 128, 256, 512, 1024 ...)
 					const bool bytes = !::fmod(speed / 8.f, 2.f);
 					// Если это биты
-					if(this->compare("bps", handle))
+					if(compare("bps", handle))
 						// Выполняем установку множителя
 						dimension = 1.f;
 					// Если это размерность в киллобитах
-					else if(this->compare("kbps", handle))
+					else if(compare("kbps", handle))
 						// Выполняем установку множителя
 						dimension = (bytes ? 1000.f : 1024.f);
 					// Если это размерность в мегабитах
-					else if(this->compare("Mbps", handle))
+					else if(compare("Mbps", handle))
 						// Выполняем установку множителя
 						dimension = (bytes ? 1000000.f : 1024000.f);
 					// Если это размерность в гигабитах
-					else if(this->compare("Gbps", handle))
+					else if(compare("Gbps", handle))
 						// Выполняем установку множителя
 						dimension = (bytes ? 1000000000.f : 1024000000.f);
 					// Выполняем получение размера в байтах
@@ -8646,73 +7530,29 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод установки объекта логирования
- *
- * @param log объект работы с логами
+ * @brief Функция заведения модуля на весь процесс
  *
  */
-void awh::Framework::setLogger(const log_t * log) noexcept {
-	// Выполняем установку объекта логирования
-	this->_log = log;
-	// Выполняем установку логирования в nwt модуль
-	this->_nwt.setLogger(log);
-}
-/**
- * @brief Конструктор
- *
- */
-awh::Framework::Framework() noexcept : _nwt(nullptr), _log(nullptr) {
-	// Заводим распределитель памяти и дамп ядра один раз на весь процесс
-	::seizeAllocator();
-	// Устанавливаем локализацию системы
-	this->setLocale();
-}
-/**
- * @brief Конструктор
- *
- * @param locale локализация приложения
- *
- */
-awh::Framework::Framework(const string & locale) noexcept : _nwt(nullptr), _log(nullptr) {
-	// Заводим распределитель памяти и дамп ядра один раз на весь процесс
-	::seizeAllocator();
-	// Устанавливаем локализацию системы
-	this->setLocale(locale);
+void awh::fmk::initialize() noexcept {
+	// Выполняем заведение состояния модуля
+	static_cast <void> (::state());
 }

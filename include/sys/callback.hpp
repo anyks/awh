@@ -48,7 +48,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "fmk.hpp"
 #include "log.hpp"
 #include "locker.hpp"
 #include "../cryptography/crypto.hpp"
@@ -59,7 +58,6 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include "macro/suppress.hpp"
-
 
 /**
  * \~russian
@@ -234,9 +232,6 @@ namespace awh {
 				private:
 					// Текущее значение итератора
 					iterator _it;
-				private:
-					// Объект работы с логами
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -299,13 +294,13 @@ namespace awh {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+								awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+								awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 							#endif
 						}
 						// Возвращаем результат
@@ -374,16 +369,14 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param it  итератор для установки
-					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 * @param it  iterator to set
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					explicit Iterator(iterator it, const log_t * log) noexcept : _it(it), _log(log) {}
+					explicit Iterator(iterator it) noexcept : _it(it) {}
 			} iterator_t;
 		private:
 			// Объект работы с криптографией
@@ -412,9 +405,6 @@ namespace awh {
 			 * \~
 			 */
 			std::function <void (const event_t, const id_t, const fn_t &)> _callback;
-		private:
-			// Объект работы с логами
-			const log_t * _log;
 		private:
 			/**
 			 * \~russian
@@ -515,13 +505,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем результат
@@ -612,13 +602,13 @@ namespace awh {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 						#endif
 					}
 				}
@@ -651,13 +641,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -823,13 +813,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -965,13 +955,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -1023,13 +1013,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -1069,13 +1059,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -1343,13 +1333,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выводим результат установки функции обратного вызова
@@ -1430,13 +1420,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id1, id2}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выводим результат установки функции обратного вызова
@@ -1502,13 +1492,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выходим из функции
@@ -1889,13 +1879,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем пустое значение
@@ -2145,13 +2135,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, "Memory allocation error");
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, "Memory allocation error");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, "Memory allocation error");
 					#endif
 					// Выходим из приложения
 					::exit(EXIT_FAILURE);
@@ -2164,13 +2154,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Выходим из функции
@@ -2711,13 +2701,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 					// Если результат функции обратного вызова не возвращается
 					if constexpr (std::is_void_v <Result>)
@@ -2784,13 +2774,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 			}
@@ -3031,7 +3021,7 @@ namespace awh {
 			 */
 			iterator_t end() noexcept {
 				// Возвращаем результат
-				return iterator_t(this->_callbacks.end(), this->_log);
+				return iterator_t(this->_callbacks.end());
 			}
 			/**
 			 * \~russian
@@ -3047,7 +3037,7 @@ namespace awh {
 			 */
 			iterator_t begin() noexcept {
 				// Возвращаем результат
-				return iterator_t(this->_callbacks.begin(), this->_log);
+				return iterator_t(this->_callbacks.begin());
 			}
 		public:
 			/**
@@ -3087,13 +3077,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем значение текущего объекта
@@ -3136,13 +3126,13 @@ namespace awh {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 					#endif
 				}
 				// Возвращаем значение текущего объекта
@@ -3153,17 +3143,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Callback(const fmk_t * fmk, const log_t * log) noexcept : _crypto(fmk, log), _log(log) {
+			explicit Callback() noexcept : _crypto() {
 				// Деактивируем мьютекс на время инициализации
 				this->_mtx.enabled = false;
 			}

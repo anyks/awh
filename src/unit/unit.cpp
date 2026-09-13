@@ -30,6 +30,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/unit.hpp>
+#include <sys/log.hpp>
 
 /**
  * Если мы работаем с компилятором MinGW в MS Windows
@@ -269,34 +270,34 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
 				// Записываем в лог сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, ::getpid());
+				awh::log::print("Child process [%u] has been terminated, goodbye!", awh::log::flag_t::INFO, ::getpid());
 				// Выходим из приложения
 				::_exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
 				// Записываем в лог сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGFPE");
+				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
 				// Записываем в лог сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGILL");
+				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
 				// Записываем в лог сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGTERM");
+				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
 				// Записываем в лог сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGSEGV");
+				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
 				// Записываем в лог сообщение об завершении работы процесса
-				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGABRT");
+				awh::log::print("Child process [%u] was terminated by [%s] signal", awh::log::flag_t::WARNING, ::getpid(), "SIGABRT");
 			break;
 		}
 		// Выходим принудительно из приложения
@@ -363,13 +364,13 @@ void awh::unit::Unit::reinit() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Event database reinitialization failed: %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::debug("Event database reinitialization failed: %s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Event database reinitialization failed: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::print("Event database reinitialization failed: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 }
@@ -438,13 +439,13 @@ void awh::unit::Unit::stop() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -526,13 +527,13 @@ void awh::unit::Unit::start() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -693,19 +694,16 @@ void awh::unit::Unit::interception(const event::mode_t mode) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
+awh::unit::Unit::Unit() noexcept :
  _pid(::getpid()), _timeout(-1), _stopped(false),
  _intercep(event::mode_t::DISABLED),
- _status(event::status_t::NONE), _signals(fmk, log),
- _callback(fmk, log), _io(nullptr), _fmk(fmk), _log(log) {
+ _status(event::status_t::NONE), _signals(),
+ _callback(), _io(nullptr) {
 	// Если база событий не инициализированна
 	if(::__awh_event_base__ == nullptr){
 		// Выполняем создание базы событий
-		::__awh_event_base__ = make_unique <engine::io_t> (fmk, log);
+		::__awh_event_base__ = make_unique <engine::io_t> ();
 		// Инициализируем базу событий, если база событий не инициализированна
 		if(!::__awh_event_base__->initialize()){
 			/**
@@ -713,13 +711,13 @@ awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("Event database could not be initialized: %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+				awh::log::debug("Event database could not be initialized: %s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("Event database could not be initialized: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				awh::log::print("Event database could not be initialized: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);

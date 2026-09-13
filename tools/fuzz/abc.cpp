@@ -37,6 +37,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/abc/abc.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -55,32 +57,19 @@ using namespace awh::codec;
  */
 namespace {
 	/**
-	 * @brief Функция извлечения объекта журнала ворошителя
+	 * @brief Гашение вывода журнала на время проверок
 	 *
-	 * @details Журнал гасится: ворошитель нарочно кормит кодек негодным, и всякий
-	 *          отказ ложился бы записью - вывод стал бы нечитаем, а прогон медленнее
-	 *          во много раз. Гашение это настройка журнала, а не молчание модуля
-	 *
-	 * @return объект журнала ворошителя
+	 * @details Выполняется единожды на набор: проверки отказов выводили бы записью
+	 *          всякий свой отказ, а их тут большинство. Гашение это - настройка
+	 *          журнала, а не молчание модуля
 	 *
 	 */
-	const log_t * logger() noexcept {
-		// Объект фреймворка ворошителя
-		static fmk_t fmk;
-		// Объект журнала ворошителя
-		static log_t log(& fmk);
-		// Признак выполненной настройки журнала
-		static const bool ready = [](){
-			// Выполняем гашение вывода журнала ворошителя
-			log.level(log_t::level_t::NONE);
-			// Выводим признак выполненной настройки
-			return true;
-		}();
-		// Снимаем неиспользуемый признак настройки
-		(void) ready;
-		// Выводим объект журнала ворошителя
-		return & log;
-	}
+	[[maybe_unused]] const bool __awh_quenched__ = [](){
+		// Выполняем гашение вывода журнала проверок
+		awh::log::level(awh::log::level_t::NONE);
+		// Выводим признак выполненного гашения
+		return true;
+	}();
 	/**
 	 * @brief Учёт проделанной работы
 	 *
@@ -505,7 +494,7 @@ namespace {
 	 */
 	bool assemble(vector <uint8_t> & result) noexcept {
 		// Сборщик бинарной записи
-		abc::writer_t writer(::logger());
+		abc::writer_t writer;
 		// Получаем настройки сборки бинарной записи
 		abc::writer_t::settings_t settings = writer.settings();
 		// Выполняем установку строгого вида записи через раз
@@ -645,7 +634,7 @@ namespace {
 	 const bool direct = false, const bool canonical = false,
 	 const uint32_t depth = 0, const uint64_t content = 0) noexcept {
 		// Разбиратель бинарной записи
-		abc::reader_t reader(::logger());
+		abc::reader_t reader;
 		/**
 		 * Если разбору объявлены строгий вид либо пределы
 		 */
@@ -817,7 +806,7 @@ namespace {
 		// Выполняем установку вместилища запоминаемых событий разбора
 		sink.events = & events;
 		// Разбиратель бинарной записи
-		abc::reader_t reader(::logger());
+		abc::reader_t reader;
 		// Выполняем установку обработчика прямой выдачи событий разбора
 		reader.handler([](void * context, abc::reader_t & reader, const abc::event_t event) noexcept -> void {
 			// Выполняем получение опоры прямой выдачи событий
@@ -1212,7 +1201,7 @@ namespace {
 	 */
 	void encoding(const vector <uint8_t> & buffer) noexcept {
 		// Разбиратель бинарной записи
-		abc::reader_t reader(::logger());
+		abc::reader_t reader;
 		// Выполняем получение настроек разбора
 		abc::reader_t::settings_t settings = reader.settings();
 		// Выполняем установку правила подмены негодной последовательности
@@ -1296,7 +1285,7 @@ namespace {
 			// Выполняем установку поверяемого правила выбора значения
 			settings.duplicates = rules[i];
 			// Дерево документа
-			abc::document_t document(::logger());
+			abc::document_t document;
 			/**
 			 * Если сборка дерева документа отвечена отказом
 			 */
@@ -1326,7 +1315,7 @@ namespace {
 				::exit(1);
 			}
 			// Сборщик записи, пересобираемой из дерева документа
-			abc::writer_t rebuild(::logger());
+			abc::writer_t rebuild;
 			// Выполняем получение настроек сборки записи
 			abc::writer_t::settings_t assembly = rebuild.settings();
 			/**
@@ -1347,7 +1336,7 @@ namespace {
 				::exit(1);
 			}
 			// Дерево документа, собранное из пересобранной записи
-			abc::document_t repeated(::logger());
+			abc::document_t repeated;
 			/**
 			 * Если пересобранная запись более не разбирается
 			 */
@@ -1721,7 +1710,7 @@ namespace {
 	}
 	void tree(const vector <uint8_t> & buffer) noexcept {
 		// Дерево документа
-		abc::document_t document(::logger());
+		abc::document_t document;
 		/**
 		 * Если разобрать запись в дерево документа не вышло
 		 */
@@ -1892,7 +1881,7 @@ namespace {
 			::exit(1);
 		}
 		// Потоковая сборка владеющего значения
-		abc::builder_t builder(::logger());
+		abc::builder_t builder;
 		/**
 		 * Если значение потоковой сборке выразимо, сличаем собранное с разобранным
 		 */
@@ -1980,7 +1969,7 @@ namespace {
 	void container(crypto_t & crypto, compressor::block_t & compressor,
 	 const vector <vector <uint8_t>> & records) noexcept {
 		// Сборщик контейнера
-		abc::assembler_t assembler(::logger());
+		abc::assembler_t assembler;
 		// Выполняем установку модуля сжатия сборщику контейнера
 		assembler.compressor(& compressor);
 		// Выполняем получение признака шифрования содержимого кадров
@@ -2044,7 +2033,7 @@ namespace {
 			/**
 			 * Если подпись владельца не сошлась
 			 */
-			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error, ::logger())){
+			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error)){
 				// Выводим сообщение о несошедшейся подписи владельца
 				::fprintf(stderr, "abc fuzz: signature of the freshly built container does not agree: %s\n",
 				 abc::message(error));
@@ -2055,7 +2044,7 @@ namespace {
 			totals.verified++;
 		}
 		// Выборщик записей контейнера
-		abc::fetcher_t fetcher(::logger());
+		abc::fetcher_t fetcher;
 		// Выполняем установку модуля сжатия выборщику записей
 		fetcher.compressor(& compressor);
 		// Выполняем установку модуля шифрования выборщику записей
@@ -2096,7 +2085,7 @@ namespace {
 			}
 		}
 		// Правщик контейнера
-		abc::editor_t editor(::logger());
+		abc::editor_t editor;
 		// Выполняем установку модуля сжатия правщику контейнера
 		editor.compressor(& compressor);
 		// Выполняем установку модуля шифрования правщику контейнера
@@ -2264,7 +2253,7 @@ namespace {
 		 */
 		{
 			// Выборщик записей правленого контейнера
-			abc::fetcher_t rereader(::logger());
+			abc::fetcher_t rereader;
 			// Выполняем установку модуля сжатия выборщику
 			rereader.compressor(& compressor);
 			// Выполняем установку модуля шифрования выборщику
@@ -2333,7 +2322,7 @@ namespace {
 			/**
 			 * Если подпись владельца не сошлась
 			 */
-			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error, ::logger())){
+			if(!abc::verify(crypto, "владелец", medium.data.data(), medium.data.size(), error)){
 				// Выводим сообщение о несошедшейся подписи правленного контейнера
 				::fprintf(stderr, "abc fuzz: signature of the edited container does not agree: %s\n",
 				 abc::message(error));
@@ -2366,7 +2355,7 @@ namespace {
 				::exit(1);
 			}
 			// Выборщик записей убранного контейнера
-			abc::fetcher_t sweeper(::logger());
+			abc::fetcher_t sweeper;
 			// Выполняем установку модуля сжатия выборщику убранного контейнера
 			sweeper.compressor(& compressor);
 			// Выполняем установку модуля шифрования выборщику убранного контейнера
@@ -2502,7 +2491,7 @@ namespace {
 		// Выполняем перенесение порченых октетов носителю
 		medium.data = buffer;
 		// Сниматель контейнера
-		abc::loader_t loader(::logger());
+		abc::loader_t loader;
 		// Выполняем установку модуля сжатия снимателю контейнера
 		loader.compressor(& compressor);
 		// Выполняем установку модуля шифрования снимателю контейнера
@@ -2555,7 +2544,7 @@ namespace {
 			(void) value.parse(payload.data(), payload.size());
 		}
 		// Выборщик записей порченого контейнера
-		abc::fetcher_t fetcher(::logger());
+		abc::fetcher_t fetcher;
 		// Выполняем установку модуля сжатия выборщику записей
 		fetcher.compressor(& compressor);
 		// Выполняем установку модуля шифрования выборщику записей
@@ -2611,7 +2600,7 @@ namespace {
 		// Код отказа поверки подписи владельца
 		abc::error_t error = abc::error_t::NONE;
 		// Выполняем поверку подписи порченого контейнера
-		(void) abc::verify(crypto, "владелец", buffer.data(), buffer.size(), error, ::logger());
+		(void) abc::verify(crypto, "владелец", buffer.data(), buffer.size(), error);
 	}
 };
 
@@ -2624,6 +2613,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество выполняемых итераций
 	uint64_t count = 3000;
 	/**
@@ -2654,16 +2650,12 @@ int main(int argc, char * argv[]) noexcept {
 		// Выводим зерно источника случайных величин
 		::printf("abc fuzz: seed 0x%llx (not the default one)\n",
 		 static_cast <unsigned long long> (seed));
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект журнала
-	log_t log(& fmk);
 	// Выполняем снятие вывода журнала: ворошитель шумит и без него
-	log.level(log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Объект сжатия данных
-	compressor::block_t compressor(& log);
+	compressor::block_t compressor;
 	// Объект шифрования данных
-	crypto_t crypto(& fmk, & log);
+	crypto_t crypto;
 	// Выполняем установку соли шифрования
 	crypto.salt("соль ворошителя");
 	// Выполняем установку пароля шифрования
@@ -2742,7 +2734,7 @@ int main(int argc, char * argv[]) noexcept {
 			// Выполняем прогон контейнера целиком
 			container(crypto, compressor, records);
 			// Собираемый контейнер для порчи
-			abc::assembler_t assembler(::logger());
+			abc::assembler_t assembler;
 			// Выполняем объявление подписи собираемого контейнера
 			assembler.sign(& crypto, "владелец");
 			// Выполняем перебор всех записей итерации

@@ -49,6 +49,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/eth/eth.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -242,13 +243,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
+					awh::log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s: unsupported protocol for checksum calculation", log_t::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
+					awh::log::print("%s: unsupported protocol for checksum calculation", awh::log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
 				#endif
 				// Выводим пустой результат
 				return result;
@@ -330,13 +331,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
+				awh::log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s: unsupported address family for checksum calculation", log_t::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
+				awh::log::print("%s: unsupported address family for checksum calculation", awh::log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__);
 			#endif
 			// Выводим пустой результат
 			return result;
@@ -379,13 +380,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s: %s", log_t::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__, error.what());
+			awh::log::print("%s: %s", awh::log::flag_t::CRITICAL, ::__AWH_ETH_BACKEND__, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -462,12 +463,9 @@ void awh::eth::Network_Address::gateway(const Gateway * gateway) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
- _iface(fmk, log), _gateway(nullptr), _fmk(fmk), _log(log) {}
+awh::eth::Network_Address::Network_Address() noexcept :
+ _iface(), _gateway(nullptr) {}
 
 /**
  * @brief Деструктор
@@ -478,12 +476,9 @@ awh::eth::Network_Address::~Network_Address() noexcept {}
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Interface::Interface(const fmk_t * fmk, const log_t * log) noexcept :
- _fmk(fmk), _log(log), _driver(driver_t::AUTO) {}
+awh::eth::Interface::Interface() noexcept :
+ _driver(driver_t::AUTO) {}
 
 /**
  * @brief Деструктор
@@ -494,11 +489,8 @@ awh::eth::Interface::~Interface() noexcept {}
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Socket::Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Socket::Socket() noexcept {}
 
 /**
  * @brief Деструктор
@@ -521,11 +513,8 @@ awh::eth::Gateway::Route::Route() noexcept :
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Gateway::Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Gateway::Gateway() noexcept {}
 
 /**
  * @brief Деструктор
@@ -536,16 +525,13 @@ awh::eth::Gateway::~Gateway() noexcept {}
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  * @note Средств протокола с управлением потоком у MS Windows нет вовсе, поэтому
  *       объекта sctp здесь, в отличие от FreeBSD, не заводится
  *
  */
-awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
- addr(fmk, log), iface(fmk, log), socket(fmk, log),
- gateway(fmk, log), _fmk(fmk), _log(log) {
+awh::Ethernet::Ethernet() noexcept :
+ addr(), iface(), socket(),
+ gateway() {
 	/**
 	 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
 	 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов

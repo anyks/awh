@@ -81,6 +81,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <compressor/block.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -366,17 +367,16 @@ namespace driver {
 	 *
 	 * @param result контейнер с распакованными данными
 	 * @param tag    название движка для записи в лог
-	 * @param log    объект для работы с логами
 	 * @return       результат проверки
 	 *
 	 */
-	static bool overflowed(const T & result, const char * tag, const log_t * log) noexcept {
+	static bool overflowed(const T & result, const char * tag) noexcept {
 		// Если объём распакованных данных допустимого предела не превышает
 		if(static_cast <uint64_t> (result.size()) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
 			// Выводим отрицательный результат
 			return false;
 		// Записываем ошибку в лог
-		log->print("%s: %s", log_t::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
+		awh::log::print("%s: %s", awh::log::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
 		// Выводим положительный результат
 		return true;
 	}
@@ -389,17 +389,16 @@ namespace driver {
 	 *
 	 * @param produced объём распакованных данных
 	 * @param tag      название движка для записи в лог
-	 * @param log      объект для работы с логами
 	 * @return         результат проверки
 	 *
 	 */
-	static bool overflowed(const size_t produced, const char * tag, const log_t * log) noexcept {
+	static bool overflowed(const size_t produced, const char * tag) noexcept {
 		// Если объём распакованных данных допустимого предела не превышает
 		if(static_cast <uint64_t> (produced) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
 			// Выводим отрицательный результат
 			return false;
 		// Записываем ошибку в лог
-		log->print("%s: %s", log_t::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
+		awh::log::print("%s: %s", awh::log::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
 		// Выводим положительный результат
 		return true;
 	}
@@ -418,10 +417,9 @@ namespace driver {
 	 * @param level  пресет компрессии (0 - 9)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void lzma(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void lzma(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -447,13 +445,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("LZMA: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("LZMA: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("LZMA: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -480,13 +478,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("LZMA: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("LZMA: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("LZMA: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -584,13 +582,13 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+							awh::log::debug("LZMA: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог в лог
-							log->print("LZMA: %s", log_t::flag_t::WARNING, "Error during data decompression");
+							awh::log::print("LZMA: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 						#endif
 						// Выходим из функции
 						return;
@@ -607,13 +605,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("LZMA: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("LZMA: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("LZMA: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -647,10 +645,9 @@ namespace driver {
 	 * @param level  размер рабочего блока в единицах по 100 килобайт (1 - 9)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void bzip2(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void bzip2(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -680,13 +677,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -713,7 +710,7 @@ namespace driver {
 						// Если оценка выходит за разрядность памяти сборки
 						if(capacity > static_cast <uint64_t> (SIZE_MAX)){
 							// Записываем ошибку в лог
-							log->print("Bzip2: %s", log_t::flag_t::WARNING, "Invalid compression size");
+							awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Invalid compression size");
 							// Выходим из функции
 							return;
 						}
@@ -751,7 +748,7 @@ namespace driver {
 								// Выполняем очистку буфера данных
 								result.clear();
 								// Записываем ошибку в лог
-								log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								// Выходим из функции
 								return;
 							}
@@ -772,7 +769,7 @@ namespace driver {
 									// Выполняем очистку результата
 									result.clear();
 									// Записываем ошибку в лог
-									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data compression");
 									// Выходим из функции
 									return;
 								}
@@ -791,13 +788,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								#endif
 								// Выходим из функции
 								return;
@@ -818,13 +815,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 							#endif
 							// Выходим из функции
 							return;
@@ -868,7 +865,7 @@ namespace driver {
 								 * предела не дошедший
 								 */
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(collected, "Bzip2", log)){
+								if(driver::overflowed(collected, "Bzip2")){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -883,7 +880,7 @@ namespace driver {
 								// Если места под запись не прибавилось, предел исчерпан
 								if(collected >= result.size()){
 									// Записываем ошибку в лог
-									log->print("%s: %s", log_t::flag_t::WARNING, "Bzip2", "Decompressed data exceeds the allowed limit");
+									awh::log::print("%s: %s", awh::log::flag_t::WARNING, "Bzip2", "Decompressed data exceeds the allowed limit");
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -905,13 +902,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -925,13 +922,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Truncated or corrupted data");
+									awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Truncated or corrupted data");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Truncated or corrupted data");
+									awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Truncated or corrupted data");
 								#endif
 								// Выходим из функции
 								return;
@@ -949,13 +946,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("Bzip2: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -979,13 +976,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Bzip2: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Bzip2: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -1005,10 +1002,9 @@ namespace driver {
 	 * @param level  качество компрессии (0 - 11)
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void brotli(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void brotli(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1038,13 +1034,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -1079,13 +1075,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								#endif
 								// Выходим из функции
 								return;
@@ -1108,7 +1104,7 @@ namespace driver {
 								// Выполняем очистку результата
 								result.clear();
 								// Записываем ошибку в лог
-								log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								// Выходим из функции
 								return;
 							}
@@ -1129,13 +1125,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 							#endif
 							// Выходим из функции
 							return;
@@ -1166,13 +1162,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из цикла
 								break;
@@ -1186,7 +1182,7 @@ namespace driver {
 								// Формируем результирующий буфер бинарных данных
 								result.insert(result.end(), chunk, chunk + produced);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Brotli", log)){
+								if(driver::overflowed(result, "Brotli")){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -1205,13 +1201,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -1224,13 +1220,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Brotli: %s", log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 							#endif
 							// Выполняем очистку результата
 							result.clear();
@@ -1248,13 +1244,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Brotli: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Brotli: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -1273,10 +1269,9 @@ namespace driver {
 	 * @param size   размер данных для компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void snappy(const void * buffer, const size_t size, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void snappy(const void * buffer, const size_t size, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1298,12 +1293,12 @@ namespace driver {
 					// Если распакованный размер из кадра не извлекается, кадр повреждён
 					if(!snappy::GetUncompressedLength(reinterpret_cast <const char *> (buffer), size, &expected)){
 						// Записываем ошибку в лог
-						log->print("%s: %s", log_t::flag_t::WARNING, "Snappy", "Error during data decompression");
+						awh::log::print("%s: %s", awh::log::flag_t::WARNING, "Snappy", "Error during data decompression");
 						// Выходим из функции
 						return;
 					}
 					// Если распакованные данные превысят допустимый предел
-					if(driver::overflowed(expected, "Snappy", log))
+					if(driver::overflowed(expected, "Snappy"))
 						// Выходим из функции
 						return;
 				}
@@ -1363,13 +1358,13 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Snappy: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data processing");
+						awh::log::debug("Snappy: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data processing");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог в лог
-						log->print("Snappy: %s", log_t::flag_t::WARNING, "Error during data processing");
+						awh::log::print("Snappy: %s", awh::log::flag_t::WARNING, "Error during data processing");
 					#endif
 				}
 			/**
@@ -1383,13 +1378,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Snappy: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Snappy: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Snappy: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Snappy: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -1411,7 +1406,7 @@ namespace driver {
 	 * @param result строка куда следует положить результат
 	 *
 	 */
-	static void density(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void density(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1448,13 +1443,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Density: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Invalid compression size");
+								awh::log::debug("Density: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Invalid compression size");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Density: %s", log_t::flag_t::WARNING, "Invalid compression size");
+								awh::log::print("Density: %s", awh::log::flag_t::WARNING, "Invalid compression size");
 							#endif
 							// Выходим из функции
 							return;
@@ -1472,13 +1467,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Density: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("Density: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Density: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("Density: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -1523,13 +1518,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Density: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Invalid decompression size");
+									awh::log::debug("Density: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Invalid decompression size");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Density: %s", log_t::flag_t::WARNING, "Invalid decompression size");
+									awh::log::print("Density: %s", awh::log::flag_t::WARNING, "Invalid decompression size");
 								#endif
 								// Выходим из функции
 								return;
@@ -1554,13 +1549,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Density: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Density: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Density: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Density: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -1583,13 +1578,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Density: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Density: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Density: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Density: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -1611,7 +1606,7 @@ namespace driver {
 	 * @param result строка куда следует положить результат
 	 *
 	 */
-	static void lizard(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void lizard(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1640,13 +1635,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Lizard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Invalid input size");
+								awh::log::debug("Lizard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Invalid input size");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Lizard: %s", log_t::flag_t::WARNING, "Invalid input size");
+								awh::log::print("Lizard: %s", awh::log::flag_t::WARNING, "Invalid input size");
 							#endif
 							// Выходим из функции
 							return;
@@ -1664,13 +1659,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Lizard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("Lizard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Lizard: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("Lizard: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -1724,13 +1719,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Lizard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Lizard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Lizard: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Lizard: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -1752,13 +1747,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Lizard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Lizard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Lizard: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Lizard: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -1783,13 +1778,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Lizard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Lizard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Lizard: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Lizard: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -1809,10 +1804,9 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void lz4(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void lz4(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -1838,13 +1832,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("LZ4: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("LZ4: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("LZ4: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("LZ4: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -1871,13 +1865,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("LZ4: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("LZ4: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("LZ4: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("LZ4: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -1931,13 +1925,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("LZ4: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("LZ4: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("LZ4: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("LZ4: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -1959,13 +1953,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("LZ4: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("LZ4: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("LZ4: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("LZ4: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -1990,13 +1984,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("LZ4: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("LZ4: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("LZ4: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("LZ4: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -2016,10 +2010,9 @@ namespace driver {
 	 * @param level  уровень компрессии
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void zstd(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void zstd(const void * buffer, const size_t size, const int32_t level, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -2050,13 +2043,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zstandard: %s", log_t::flag_t::WARNING, "Error during data compression");
+								awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, "Error during data compression");
 							#endif
 							// Выходим из функции
 							return;
@@ -2081,13 +2074,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+								awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+								awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 							#endif
 							// Выходим из функции
 							return;
@@ -2107,13 +2100,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+								awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+								awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 							#endif
 							// Выходим из функции
 							return;
@@ -2138,13 +2131,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zstandard: %s", log_t::flag_t::WARNING, "Error during data decompression");
+								awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 							#endif
 							// Выходим из функции
 							return;
@@ -2171,13 +2164,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+								awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+								awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 							#endif
 							// Выходим из функции
 							return;
@@ -2217,13 +2210,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+										awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог в лог
-										log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+										awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 									#endif
 									// Выходим из функции
 									return;
@@ -2231,7 +2224,7 @@ namespace driver {
 								// Выполняем формирование полученных данных
 								result.insert(result.end(), data.get(), data.get() + output.pos);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Zstandard", log)){
+								if(driver::overflowed(result, "Zstandard")){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -2250,13 +2243,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+										awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог в лог
-										log->print("Zstandard: %s", log_t::flag_t::WARNING, "Error during data decompression");
+										awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 									#endif
 									// Выходим из функции
 									return;
@@ -2290,13 +2283,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+										awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог в лог
-										log->print("Zstandard: %s", log_t::flag_t::WARNING, ::ZSTD_getErrorName(status));
+										awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, ::ZSTD_getErrorName(status));
 									#endif
 									// Выходим из функции
 									return;
@@ -2304,7 +2297,7 @@ namespace driver {
 								// Выполняем формирование полученных данных
 								result.insert(result.end(), data.get(), data.get() + output.pos);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Zstandard", log)){
+								if(driver::overflowed(result, "Zstandard")){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -2327,13 +2320,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Truncated or corrupted data");
+								awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Truncated or corrupted data");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zstandard: %s", log_t::flag_t::WARNING, "Truncated or corrupted data");
+								awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, "Truncated or corrupted data");
 							#endif
 						// Если кадр разобран целиком
 						} else
@@ -2354,13 +2347,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, level, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Zstandard: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Zstandard: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -2381,10 +2374,9 @@ namespace driver {
 	 * @param wbits  размер скользящего окна
 	 * @param event  событие выполнения операции
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void gzip(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void gzip(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -2458,13 +2450,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("GZip: %s", log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								#endif
 							}
 						// Если поток инициализировать не удалось
@@ -2474,13 +2466,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error initializing compression stream");
+								awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error initializing compression stream");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("GZip: %s", log_t::flag_t::WARNING, "Error initializing compression stream");
+								awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Error initializing compression stream");
 							#endif
 						}
 					} break;
@@ -2533,13 +2525,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+										awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог в лог
-										log->print("GZip: %s", log_t::flag_t::WARNING, "Error during data decompression");
+										awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 									#endif
 									// Выходим из функции
 									return;
@@ -2551,7 +2543,7 @@ namespace driver {
 									// Формируем результирующий буфер бинарных данных
 									result.insert(result.end(), &output[0], &output[0] + produced);
 									// Если распакованные данные превысили допустимый предел
-									if(driver::overflowed(result, "GZip", log)){
+									if(driver::overflowed(result, "GZip")){
 										// Выполняем очистку результата
 										result.clear();
 										// Выходим из функции
@@ -2574,13 +2566,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Truncated or corrupted data");
+									awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Truncated or corrupted data");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("GZip: %s", log_t::flag_t::WARNING, "Truncated or corrupted data");
+									awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Truncated or corrupted data");
 								#endif
 							}
 						// Если поток инициализировать не удалось
@@ -2590,13 +2582,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error initializing decompression stream");
+								awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error initializing decompression stream");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("GZip: %s", log_t::flag_t::WARNING, "Error initializing decompression stream");
+								awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Error initializing decompression stream");
 							#endif
 						}
 					} break;
@@ -2612,13 +2604,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("GZip: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("GZip: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -2642,10 +2634,9 @@ namespace driver {
 	 * @param wbits  размер скользящего окна
 	 * @param event  событие выполнения операции
 	 * @param result выходной контейнер
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void zlib(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void zlib(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -2719,13 +2710,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Zlib: %s", log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::print("Zlib: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								#endif
 							}
 						/**
@@ -2737,13 +2728,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error initializing compression stream");
+								awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error initializing compression stream");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zlib: %s", log_t::flag_t::WARNING, "Error initializing compression stream");
+								awh::log::print("Zlib: %s", awh::log::flag_t::WARNING, "Error initializing compression stream");
 							#endif
 						}
 					} break;
@@ -2794,13 +2785,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+										awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог в лог
-										log->print("Zlib: %s", log_t::flag_t::WARNING, "Error during data decompression");
+										awh::log::print("Zlib: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 									#endif
 									// Выходим из функции
 									return;
@@ -2814,7 +2805,7 @@ namespace driver {
 									// Добавляем декомпрессированные данные в результат
 									result.insert(result.end(), chunk, chunk + produced);
 									// Если распакованные данные превысили допустимый предел
-									if(driver::overflowed(result, "Zlib", log)){
+									if(driver::overflowed(result, "Zlib")){
 										// Выполняем очистку результата
 										result.clear();
 										// Выходим из функции
@@ -2837,13 +2828,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Truncated or corrupted data");
+									awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Truncated or corrupted data");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Zlib: %s", log_t::flag_t::WARNING, "Truncated or corrupted data");
+									awh::log::print("Zlib: %s", awh::log::flag_t::WARNING, "Truncated or corrupted data");
 								#endif
 							}
 						/**
@@ -2855,13 +2846,13 @@ namespace driver {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error initializing decompression stream");
+								awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error initializing decompression stream");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог в лог
-								log->print("Zlib: %s", log_t::flag_t::WARNING, "Error initializing decompression stream");
+								awh::log::print("Zlib: %s", awh::log::flag_t::WARNING, "Error initializing decompression stream");
 							#endif
 						}
 					} break;
@@ -2877,13 +2868,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Zlib: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Zlib: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -2914,10 +2905,9 @@ namespace driver {
 	 * @param stream    объект потока zlib
 	 * @param event     событие выполнения операции
 	 * @param result    выходной контейнер
-	 * @param log       объект для работы с логами
 	 *
 	 */
-	static void deflate(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const bool streaming, z_stream & stream, const compressor::event_t event, T & result, const log_t * log) noexcept {
+	static void deflate(const void * buffer, const size_t size, const int32_t level, const int16_t wbits, const bool streaming, z_stream & stream, const compressor::event_t event, T & result) noexcept {
 		// Если буфер данных передан
 		if((buffer != nullptr) && (size > 0)){
 			/**
@@ -2961,13 +2951,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error initializing compression stream");
+									awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error initializing compression stream");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Error initializing compression stream");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Error initializing compression stream");
 								#endif
 								// Выходим из функции
 								return;
@@ -3015,13 +3005,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								#endif
 								// Выходим из функции
 								return;
@@ -3046,7 +3036,7 @@ namespace driver {
 									// Выполняем очистку блока с результатом
 									result.clear();
 									// Записываем ошибку в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Working buffer cannot be enlarged");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Working buffer cannot be enlarged");
 									// Выходим из функции
 									return;
 								}
@@ -3073,13 +3063,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data compression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Error during data compression");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Error during data compression");
 								#endif
 								// Выходим из функции
 								return;
@@ -3104,7 +3094,7 @@ namespace driver {
 									// Выполняем очистку блока с результатом
 									result.clear();
 									// Записываем ошибку в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Working buffer cannot be enlarged");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Working buffer cannot be enlarged");
 									// Выходим из функции
 									return;
 								}
@@ -3135,13 +3125,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error initializing decompression stream");
+									awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error initializing decompression stream");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Error initializing decompression stream");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Error initializing decompression stream");
 								#endif
 								// Выходим из функции
 								return;
@@ -3201,13 +3191,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)), log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING, "Error during data decompression");
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Error during data decompression");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Error during data decompression");
 								#endif
 								// Выходим из функции
 								return;
@@ -3219,7 +3209,7 @@ namespace driver {
 								// Добавляем декомпрессированные данные в результат
 								result.insert(result.end(), &output[0], &output[0] + produced);
 								// Если распакованные данные превысили допустимый предел
-								if(driver::overflowed(result, "Deflate", log)){
+								if(driver::overflowed(result, "Deflate")){
 									// Выполняем очистку результата
 									result.clear();
 									// Выходим из функции
@@ -3240,7 +3230,7 @@ namespace driver {
 									// Выполняем очистку блока с результатом
 									result.clear();
 									// Записываем ошибку в лог
-									log->print("Deflate: %s", log_t::flag_t::WARNING, "Working buffer cannot be enlarged");
+									awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Working buffer cannot be enlarged");
 									// Выходим из функции
 									return;
 								}
@@ -3270,13 +3260,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, level, wbits, streaming, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог в лог
-					log->print("Deflate: %s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("Deflate: %s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -3394,13 +3384,13 @@ void awh::compressor::Block::level(const level_t level) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Deflate stream parameters are not changed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (level)), log_t::flag_t::WARNING);
+				awh::log::debug("Deflate stream parameters are not changed", __PRETTY_FUNCTION__, {static_cast <uint16_t> (level)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Deflate stream parameters are not changed", log_t::flag_t::WARNING);
+				awh::log::print("Deflate stream parameters are not changed", awh::log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -3424,13 +3414,13 @@ void awh::compressor::Block::wbitsZlib(const int16_t wbits) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Zlib window bits are out of range", __PRETTY_FUNCTION__, make_tuple(wbits), log_t::flag_t::WARNING);
+			awh::log::debug("Zlib window bits are out of range", __PRETTY_FUNCTION__, {wbits}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Zlib window bits are out of range", log_t::flag_t::WARNING);
+			awh::log::print("Zlib window bits are out of range", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из функции, оставляя прежнее значение
 		return;
@@ -3458,13 +3448,13 @@ void awh::compressor::Block::wbitsGZip(const int16_t wbits) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("GZip window bits are out of range", __PRETTY_FUNCTION__, make_tuple(wbits), log_t::flag_t::WARNING);
+			awh::log::debug("GZip window bits are out of range", __PRETTY_FUNCTION__, {wbits}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("GZip window bits are out of range", log_t::flag_t::WARNING);
+			awh::log::print("GZip window bits are out of range", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из функции, оставляя прежнее значение
 		return;
@@ -3498,13 +3488,13 @@ bool awh::compressor::Block::wbitsDeflate(const int16_t wbits) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Deflate window bits are out of range", __PRETTY_FUNCTION__, make_tuple(wbits), log_t::flag_t::WARNING);
+			awh::log::debug("Deflate window bits are out of range", __PRETTY_FUNCTION__, {wbits}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Deflate window bits are out of range", log_t::flag_t::WARNING);
+			awh::log::print("Deflate window bits are out of range", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из функции, оставляя прежнее значение
 		return result;
@@ -3580,13 +3570,13 @@ bool awh::compressor::Block::takeoverDeflate(const event_t event, const bool fla
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Deflate stream is not create", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), flag), log_t::flag_t::CRITICAL);
+							awh::log::debug("Deflate stream is not create", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), flag}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Deflate stream is not create", log_t::flag_t::CRITICAL);
+							awh::log::print("Deflate stream is not create", awh::log::flag_t::CRITICAL);
 						#endif
 						// Сбрасываем флаг переиспользования контекста, так как рабочего потока больше нет
 						this->_deflate.takeover.compress.store(false, std::memory_order_release);
@@ -3623,13 +3613,13 @@ bool awh::compressor::Block::takeoverDeflate(const event_t event, const bool fla
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Inflate stream is not create", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), flag), log_t::flag_t::CRITICAL);
+							awh::log::debug("Inflate stream is not create", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), flag}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Inflate stream is not create", log_t::flag_t::CRITICAL);
+							awh::log::print("Inflate stream is not create", awh::log::flag_t::CRITICAL);
 						#endif
 						// Сбрасываем флаг переиспользования контекста, так как рабочего потока больше нет
 						this->_deflate.takeover.decompress.store(false, std::memory_order_release);
@@ -3650,13 +3640,13 @@ bool awh::compressor::Block::takeoverDeflate(const event_t event, const bool fla
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), flag), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), flag}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -3766,7 +3756,7 @@ awh::compressor::stream_t awh::compressor::Block::stream(const method_t method, 
 		break;
 	}
 	// Создаём и возвращаем потоковую сессию
-	return stream_t(method, event, params, this->_log);
+	return stream_t(method, event, params);
 }
 /**
  * @brief Шаблон метода компрессии данных
@@ -3953,13 +3943,13 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Buffer is not passed");
+			awh::log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Buffer is not passed");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Buffer is not passed");
+			awh::log::print("Compressor: %s", awh::log::flag_t::WARNING, "Buffer is not passed");
 		#endif
 		// Выходим из функции
 		return;
@@ -3973,13 +3963,13 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Input buffer is too large for the selected method");
+				awh::log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Input buffer is too large for the selected method");
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Input buffer is too large for the selected method");
+				awh::log::print("Compressor: %s", awh::log::flag_t::WARNING, "Input buffer is too large for the selected method");
 			#endif
 			// Выходим из функции
 			return;
@@ -3991,7 +3981,7 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 			// Если метод компрессии установлен Lz4
 			case static_cast <uint8_t> (method_t::LZ4): {
 				// Выполняем компрессию данных методом Lz4
-				driver::lz4(buffer, size, this->_level[0], event_t::ENCODE, result, this->_log);
+				driver::lz4(buffer, size, this->_level[0], event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -3999,20 +3989,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("LZ4: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("LZ4: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("LZ4: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("LZ4: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен LZMA
 			case static_cast <uint8_t> (method_t::LZMA): {
 				// Выполняем компрессию данных методом LZMA
-				driver::lzma(buffer, size, this->_level[6], event_t::ENCODE, result, this->_log);
+				driver::lzma(buffer, size, this->_level[6], event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4020,20 +4010,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("LZMA: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("LZMA: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("LZMA: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Zstandard
 			case static_cast <uint8_t> (method_t::ZSTD): {
 				// Выполняем компрессию данных методом Zstandard
-				driver::zstd(buffer, size, this->_level[2], event_t::ENCODE, result, this->_log);
+				driver::zstd(buffer, size, this->_level[2], event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4041,20 +4031,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен GZip
 			case static_cast <uint8_t> (method_t::GZIP): {
 				// Выполняем компрессию данных методом GZip
-				driver::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::ENCODE, result, this->_log);
+				driver::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4062,20 +4052,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("GZip: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Bzip2
 			case static_cast <uint8_t> (method_t::BZIP2): {
 				// Выполняем компрессию данных методом Bzip2
-				driver::bzip2(buffer, size, this->_level[7], event_t::ENCODE, result, this->_log);
+				driver::bzip2(buffer, size, this->_level[7], event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4083,20 +4073,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Bzip2: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Lizard
 			case static_cast <uint8_t> (method_t::LIZARD): {
 				// Выполняем компрессию данных методом Lizard
-				driver::lizard(buffer, size, this->_level[3], event_t::ENCODE, result, this->_log);
+				driver::lizard(buffer, size, this->_level[3], event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4104,20 +4094,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Lizard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Lizard: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Lizard: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Lizard: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Snappy
 			case static_cast <uint8_t> (method_t::SNAPPY): {
 				// Выполняем компрессию данных методом Snappy
-				driver::snappy(buffer, size, event_t::ENCODE, result, this->_log);
+				driver::snappy(buffer, size, event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4125,20 +4115,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Snappy: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Snappy: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Snappy: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Snappy: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Density
 			case static_cast <uint8_t> (method_t::DENSITY): {
 				// Выполняем компрессию данных методом Density
-				driver::density(buffer, size, this->_level[4], event_t::ENCODE, result, this->_log);
+				driver::density(buffer, size, this->_level[4], event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4146,20 +4136,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Density: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Density: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Density: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Density: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Brotli
 			case static_cast <uint8_t> (method_t::BROTLI): {
 				// Выполняем компрессию данных методом Brotli
-				driver::brotli(buffer, size, this->_level[5], event_t::ENCODE, result, this->_log);
+				driver::brotli(buffer, size, this->_level[5], event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4167,20 +4157,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Brotli: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем компрессию данных методом Deflate
-				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.compress.load(std::memory_order_acquire), this->_deflate.buffer.compress->stream, event_t::ENCODE, result, this->_log);
+				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.compress.load(std::memory_order_acquire), this->_deflate.buffer.compress->stream, event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4188,20 +4178,20 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Deflate: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
 			// Если метод компрессии установлен Zlib (RFC 1950)
 			case static_cast <uint8_t> (method_t::ZLIB): {
 				// Выполняем компрессию данных методом Zlib
-				driver::zlib(buffer, size, this->_level[1], this->_zlib.wbits, event_t::ENCODE, result, this->_log);
+				driver::zlib(buffer, size, this->_level[1], this->_zlib.wbits, event_t::ENCODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4209,13 +4199,13 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+						awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Compress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Zlib: %s", log_t::flag_t::WARNING, "Compress failed");
+						awh::log::print("Zlib: %s", awh::log::flag_t::WARNING, "Compress failed");
 					#endif
 				}
 			} break;
@@ -4234,13 +4224,13 @@ void awh::compressor::Block::compress(const void * buffer, const size_t size, co
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Unknown compression method");
+					awh::log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Unknown compression method");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Unknown compression method");
+					awh::log::print("Compressor: %s", awh::log::flag_t::WARNING, "Unknown compression method");
 				#endif
 			}
 		}
@@ -4446,13 +4436,13 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Buffer is not passed");
+			awh::log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Buffer is not passed");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Buffer is not passed");
+			awh::log::print("Compressor: %s", awh::log::flag_t::WARNING, "Buffer is not passed");
 		#endif
 		// Выходим из функции
 		return;
@@ -4466,13 +4456,13 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Input buffer is too large for the selected method");
+				awh::log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Input buffer is too large for the selected method");
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Input buffer is too large for the selected method");
+				awh::log::print("Compressor: %s", awh::log::flag_t::WARNING, "Input buffer is too large for the selected method");
 			#endif
 			// Выходим из функции
 			return;
@@ -4484,7 +4474,7 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 			// Если метод декомпрессии установлен LZ4
 			case static_cast <uint8_t> (method_t::LZ4): {
 				// Выполняем декомпрессию данных методом LZ4
-				driver::lz4(buffer, size, this->_level[0], event_t::DECODE, result, this->_log);
+				driver::lz4(buffer, size, this->_level[0], event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4492,20 +4482,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("LZ4: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("LZ4: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("LZ4: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("LZ4: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен LZMA
 			case static_cast <uint8_t> (method_t::LZMA): {
 				// Выполняем декомпрессию данных методом LZMA
-				driver::lzma(buffer, size, this->_level[6], event_t::DECODE, result, this->_log);
+				driver::lzma(buffer, size, this->_level[6], event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4513,20 +4503,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("LZMA: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("LZMA: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("LZMA: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("LZMA: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Zstandard
 			case static_cast <uint8_t> (method_t::ZSTD): {
 				// Выполняем декомпрессию данных методом Zstandard
-				driver::zstd(buffer, size, this->_level[2], event_t::DECODE, result, this->_log);
+				driver::zstd(buffer, size, this->_level[2], event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4534,20 +4524,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Zstandard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Zstandard: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Zstandard: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Zstandard: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен GZip
 			case static_cast <uint8_t> (method_t::GZIP): {
 				// Выполняем декомпрессию данных методом GZip
-				driver::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::DECODE, result, this->_log);
+				driver::gzip(buffer, size, this->_level[1], this->_gzip.wbits, event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4555,20 +4545,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("GZip: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("GZip: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("GZip: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("GZip: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Bzip2
 			case static_cast <uint8_t> (method_t::BZIP2): {
 				// Выполняем декомпрессию данных методом Bzip2
-				driver::bzip2(buffer, size, this->_level[7], event_t::DECODE, result, this->_log);
+				driver::bzip2(buffer, size, this->_level[7], event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4576,20 +4566,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Bzip2: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Bzip2: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Bzip2: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Bzip2: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Lizard
 			case static_cast <uint8_t> (method_t::LIZARD): {
 				// Выполняем декомпрессию данных методом Lizard
-				driver::lizard(buffer, size, this->_level[3], event_t::DECODE, result, this->_log);
+				driver::lizard(buffer, size, this->_level[3], event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4597,20 +4587,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Lizard: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Lizard: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Lizard: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Lizard: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Snappy
 			case static_cast <uint8_t> (method_t::SNAPPY): {
 				// Выполняем декомпрессию данных методом Snappy
-				driver::snappy(buffer, size, event_t::DECODE, result, this->_log);
+				driver::snappy(buffer, size, event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4618,20 +4608,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Snappy: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Snappy: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Snappy: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Snappy: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Density
 			case static_cast <uint8_t> (method_t::DENSITY): {
 				// Выполняем декомпрессию данных методом Density
-				driver::density(buffer, size, this->_level[4], event_t::DECODE, result, this->_log);
+				driver::density(buffer, size, this->_level[4], event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4639,20 +4629,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Density: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Density: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Density: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Density: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Brotli
 			case static_cast <uint8_t> (method_t::BROTLI): {
 				// Выполняем декомпрессию данных методом Brotli
-				driver::brotli(buffer, size, this->_level[5], event_t::DECODE, result, this->_log);
+				driver::brotli(buffer, size, this->_level[5], event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4660,20 +4650,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Brotli: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Brotli: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Brotli: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Brotli: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Deflate
 			case static_cast <uint8_t> (method_t::DEFLATE): {
 				// Выполняем декомпрессию данных методом Deflate
-				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.decompress.load(std::memory_order_acquire), this->_deflate.buffer.decompress->stream, event_t::DECODE, result, this->_log);
+				driver::deflate(buffer, size, this->_level[1], this->_deflate.wbits, this->_deflate.takeover.decompress.load(std::memory_order_acquire), this->_deflate.buffer.decompress->stream, event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4681,20 +4671,20 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Deflate: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Deflate: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Deflate: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Deflate: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
 			// Если метод декомпрессии установлен Zlib (RFC 1950)
 			case static_cast <uint8_t> (method_t::ZLIB): {
 				// Выполняем декомпрессию данных методом Zlib
-				driver::zlib(buffer, size, this->_level[1], this->_zlib.wbits, event_t::DECODE, result, this->_log);
+				driver::zlib(buffer, size, this->_level[1], this->_zlib.wbits, event_t::DECODE, result);
 				// Если результат операции пустой - значит произошла ошибка
 				if(result.empty()){
 					/**
@@ -4702,13 +4692,13 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Zlib: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::debug("Zlib: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Decompress failed");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Zlib: %s", log_t::flag_t::WARNING, "Decompress failed");
+						awh::log::print("Zlib: %s", awh::log::flag_t::WARNING, "Decompress failed");
 					#endif
 				}
 			} break;
@@ -4727,13 +4717,13 @@ void awh::compressor::Block::decompress(const void * buffer, const size_t size, 
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Unknown compression method");
+					awh::log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (method)}, awh::log::flag_t::WARNING, "Unknown compression method");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Unknown compression method");
+					awh::log::print("Compressor: %s", awh::log::flag_t::WARNING, "Unknown compression method");
 				#endif
 			}
 		}
@@ -4757,10 +4747,8 @@ template void awh::compressor::Block::decompress(const void *, const size_t, con
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::compressor::Block::Block(const log_t * log) noexcept :
+awh::compressor::Block::Block() noexcept :
  _level{
 	0,
 	Z_DEFAULT_COMPRESSION,
@@ -4770,7 +4758,7 @@ awh::compressor::Block::Block(const log_t * log) noexcept :
 	5,
 	LZMA_PRESET_DEFAULT,
 	5
-}, _log(log) {
+} {
 	// Выделяем память под переиспользуемый контекст компрессии Deflate
 	this->_deflate.buffer.compress = new deflate_stream_t();
 	// Выделяем память под переиспользуемый контекст декомпрессии Deflate

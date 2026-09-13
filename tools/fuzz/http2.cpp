@@ -37,6 +37,7 @@
  */
 #include <proto/http/parser/http2/http.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -131,14 +132,17 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество итераций генератора (по две сессии на итерацию - клиент и сервер)
 	const int32_t count = ((argc > 1) ? ::atoi(argv[1]) : 3000);
-	// Создаём объект фреймворка
-	unique_ptr <awh::fmk_t> fmk(new awh::fmk_t());
-	// Создаём объект для работы с логами
-	unique_ptr <awh::log_t> log(new awh::log_t(fmk.get()));
 	// Отключаем вывод логов: генератор намеренно создаёт ошибочный трафик
-	log->level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Инициализируем генератор псевдослучайных чисел фиксированным зерном (воспроизводимость)
 	mt19937 rng(20260726);
 	// Количество выполненных сессий
@@ -160,7 +164,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			// Определяем роль проверяемого эндпоинта
 			const bool server = (direct != 0);
 			// Создаём объект парсера проверяемой роли
-			unique_ptr <parser_http2_t> parser(new parser_http2_t(server ? direct_t::REQUEST : direct_t::RESPONSE, fmk.get(), log.get()));
+			unique_ptr <parser_http2_t> parser(new parser_http2_t(server ? direct_t::REQUEST : direct_t::RESPONSE));
 			// Устанавливаем функцию обратного вызова для обработки фрагмента тела потока
 			parser->on(parser_http2_t::data_callback_t([&](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 				// Контрольная сумма тела потока

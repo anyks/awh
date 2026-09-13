@@ -49,10 +49,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <proto/socks5/client.hpp>
 #include <proto/socks5/server.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -129,17 +128,14 @@ static string hostToString(const net::attr_t * host) noexcept {
 /**
  * @brief Демонстрация полного рукопожатия SOCKS5 без аутентификации
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleHandshake() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== HANDSHAKE (NO AUTH) ======== " << endl;
 	// Создаём объект клиента SOCKS5
-	client_socks5_t client(fmk, log);
+	client_socks5_t client;
 	// Создаём объект сервера SOCKS5
-	server_socks5_t server(fmk, log);
+	server_socks5_t server;
 	// Создаём контекст обмена данными клиента
 	socks5_t::ctx_t cctx;
 	// Создаём контекст обмена данными сервера
@@ -197,17 +193,14 @@ static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация аутентификации USER/PASS (RFC 1929)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleAuth(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleAuth() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== AUTH USER/PASS ======== " << endl;
 	// Создаём объект клиента SOCKS5
-	client_socks5_t client(fmk, log);
+	client_socks5_t client;
 	// Создаём объект сервера SOCKS5
-	server_socks5_t server(fmk, log);
+	server_socks5_t server;
 	// Устанавливаем параметры авторизации клиента на сервере
 	client.setUser("forman", "12345");
 	// Устанавливаем функцию обратного вызова для проверки авторизации на сервере
@@ -255,17 +248,14 @@ static void sampleAuth(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация отказа в авторизации и получения кода ошибки
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleAuthFailed(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleAuthFailed() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== AUTH FAILED ======== " << endl;
 	// Создаём объект клиента SOCKS5
-	client_socks5_t client(fmk, log);
+	client_socks5_t client;
 	// Создаём объект сервера SOCKS5
-	server_socks5_t server(fmk, log);
+	server_socks5_t server;
 	// Устанавливаем неверные параметры авторизации клиента на сервере
 	client.setUser("forman", "wrong-password");
 	// Устанавливаем функцию обратного вызова для проверки авторизации на сервере
@@ -307,13 +297,8 @@ static void sampleAuthFailed(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация кадрирования входящего потока данных
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleFraming(const fmk_t * fmk, const log_t * log) noexcept {
-	// Игнорируем неиспользуемые параметры
-	(void) fmk; (void) log;
+static void sampleFraming() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== FRAMING ======== " << endl;
 	// Формируем данные приветствия клиента с двумя методами аутентификации
@@ -346,17 +331,14 @@ static void sampleFraming(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация инкапсуляции UDP-датаграмм (UDP ASSOCIATE)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleUDP(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleUDP() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== UDP ASSOCIATE ======== " << endl;
 	// Создаём объект клиента SOCKS5
-	client_socks5_t client(fmk, log);
+	client_socks5_t client;
 	// Создаём объект сервера SOCKS5
-	server_socks5_t server(fmk, log);
+	server_socks5_t server;
 	// Создаём объект UDP заголовка исходящей датаграммы
 	socks5_t::udp_head_t udpOut;
 	// Устанавливаем хост конечного получателя датаграммы
@@ -397,20 +379,24 @@ static void sampleUDP(const fmk_t * fmk, const log_t * log) noexcept {
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Демонстрируем полное рукопожатие SOCKS5 без аутентификации
-	sampleHandshake(&fmk, &log);
+	sampleHandshake();
 	// Демонстрируем аутентификацию USER/PASS
-	sampleAuth(&fmk, &log);
+	sampleAuth();
 	// Демонстрируем отказ в авторизации
-	sampleAuthFailed(&fmk, &log);
+	sampleAuthFailed();
 	// Демонстрируем кадрирование входящего потока данных
-	sampleFraming(&fmk, &log);
+	sampleFraming();
 	// Демонстрируем инкапсуляцию UDP-датаграмм
-	sampleUDP(&fmk, &log);
+	sampleUDP();
 	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

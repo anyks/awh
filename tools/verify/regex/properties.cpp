@@ -7,6 +7,7 @@
 #include <encoding/unicode/unicode.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 using namespace std;
 using namespace awh;
 // Кодирование кодового значения последовательностью UTF-8
@@ -18,6 +19,8 @@ static size_t encode(uint32_t code, char * out){
 	out[2] = (char)(0x80 | ((code >> 6) & 0x3F)); out[3] = (char)(0x80 | (code & 0x3F)); return 4;
 }
 int main(int argc, char ** argv){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	// Путь набора имён свойств, принимаемых эталонной реализацией
 	const char * path = ((argc > 1) ? argv[1] : "sh/unicode.accepted");
 	// Выполняем открытие набора имён свойств

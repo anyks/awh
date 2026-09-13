@@ -92,6 +92,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Тест создания сокетов разных семейств и типов
@@ -432,9 +433,9 @@ TEST_F(EthFixture, SocketBufferAvailableTest){
 		// Собранные записи журнала
 		std::vector <std::string> records;
 		// Выполняем подписку на записи журнала
-		this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+		awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 			// Если запись журнала является предупреждением либо отказом
-			if((flag == awh::log_t::flag_t::WARNING) || (flag == awh::log_t::flag_t::CRITICAL))
+			if((flag == awh::log::flag_t::WARNING) || (flag == awh::log::flag_t::CRITICAL))
 				// Запоминаем запись журнала
 				records.emplace_back(text);
 		});
@@ -445,7 +446,7 @@ TEST_F(EthFixture, SocketBufferAvailableTest){
 		ASSERT_FALSE(this->_eth->socket.setExplicitCongestionNotification(pair[0], awh::event::family_t::PIPE, awh::event::ecn_t::ECT0))
 		 << "настройка уведомления о перегрузке принята у описателя, где IP нет";
 		// Снимаем подписку на записи журнала
-		this->_log->subscribe(nullptr);
+		awh::log::subscribe(nullptr);
 		// Обращения обязаны молчать: до системы они доходить не вправе
 		ASSERT_TRUE(records.empty()) << "отказ дан, но с " << records.size() << " записью(ями) в журнал: обращение к системе состоялось, первая: " << (records.empty() ? std::string() : records.front());
 		/**

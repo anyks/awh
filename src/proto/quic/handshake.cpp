@@ -37,6 +37,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <proto/quic/handshake.hpp>
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -521,8 +522,8 @@ awh::quic::status_t awh::quic::Handshake::process() noexcept {
 		// Извлекаем текст ошибки криптографической библиотеки
 		::ERR_error_string_n(reason, buffer, sizeof(buffer));
 	// Записываем ошибку в лог
-	this->_log->print(
-		"QUIC TLS handshake failed: code=%d%s%s", log_t::flag_t::CRITICAL,
+	awh::log::print(
+		"QUIC TLS handshake failed: code=%d%s%s", awh::log::flag_t::CRITICAL,
 		code, (buffer[0] != '\0' ? ", reason: " : ""), buffer
 	);
 	// Выводим отрицательный результат
@@ -716,7 +717,7 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 	// Если хендшейк уже начат либо не установлены транспортные параметры
 	if((this->_state != state_t::NONE) || this->_params.empty()){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC TLS start rejected: %s", log_t::flag_t::CRITICAL,
+		awh::log::print("QUIC TLS start rejected: %s", awh::log::flag_t::CRITICAL,
 		 (this->_state != state_t::NONE ? "handshake is already started" : "transport parameters are not set"));
 		// Выводим отрицательный результат
 		return status_t::ERROR;
@@ -726,7 +727,7 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
 		// Записываем ошибку в лог
-		this->_log->print("QUIC TLS context is not set", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC TLS context is not set", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
@@ -737,7 +738,7 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
 		// Записываем ошибку в лог
-		this->_log->print("QUIC TLS connection is not created", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC TLS connection is not created", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
@@ -748,7 +749,7 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
 		// Записываем ошибку в лог
-		this->_log->print("QUIC TLS method is not applied", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC TLS method is not applied", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
@@ -757,7 +758,7 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
 		// Записываем ошибку в лог
-		this->_log->print("QUIC transport parameters are not applied", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC transport parameters are not applied", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
@@ -779,7 +780,7 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
 		// Записываем ошибку в лог
-		this->_log->print("QUIC early data context is not applied", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC early data context is not applied", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
@@ -809,11 +810,11 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 			// Устанавливаем сессию возобновления соединению и проверяем результат установки
 			if(::SSL_set_session(this->_ssl, session) != 1)
 				// Записываем предупреждение в лог - сессия отклонена при установке, возобновление не состоится
-				this->_log->print("QUIC session is not applied", log_t::flag_t::WARNING);
+				awh::log::print("QUIC session is not applied", awh::log::flag_t::WARNING);
 			// Освобождаем восстановленную сессию возобновления
 			::SSL_SESSION_free(session);
 		// Записываем предупреждение в лог - возобновление не состоится
-		} else this->_log->print("QUIC session is not restored", log_t::flag_t::WARNING);
+		} else awh::log::print("QUIC session is not restored", awh::log::flag_t::WARNING);
 	}
 	// Устанавливаем состояние выполнения хендшейка
 	this->_state = state_t::PROCESS;
@@ -986,12 +987,11 @@ awh::quic::error_t awh::quic::Handshake::error() const noexcept {
  * @param endpoint роль локального эндпоинта на соединении
  * @param ctx      идентификатор шаблона контекста безопасности
  * @param coder    объект кодера транспортной безопасности
- * @param log      объект для работы с логами
  *
  */
-awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
+awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _alert(0), _hasAlert(false),
- _ctx(coder.native(ctx)), _ssl(nullptr), _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _protocols(coder.protocols(ctx)), _log(log) {
+ _ctx(coder.native(ctx)), _ssl(nullptr), _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _protocols(coder.protocols(ctx)) {
 	/**
 	 * Удерживаем ссылку на контекст на всё время жизни объекта хендшейка:
 	 * владение остаётся за кодером, а ссылка защищает от освобождения контекста

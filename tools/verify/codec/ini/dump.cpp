@@ -46,6 +46,7 @@
 #include <codec/ini/value.hpp>
 #include <codec/ini/reader.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Подключаем пространства имён
@@ -69,44 +70,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка щупа
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          работу, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка щупа
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка щупа
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка щупа
-			return fmk;
-		}
-		// Объект журнала щупа
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала щупа
-	 *
-	 * @return объект журнала щупа
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала щупа
-		static Silent silent;
-		// Выводим объект журнала щупа
-		return &silent.log;
-	}
 	/**
 	 * @brief Функция ограждения последовательности знаков для записи JSON
 	 *
@@ -175,6 +146,13 @@ namespace {
  */
 int32_t main(int32_t argc, char ** argv) noexcept {
 	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	/**
 	 * Если имя разбираемого файла не передано
 	 */
 	if(argc < 2){
@@ -215,7 +193,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	// Выполняем чтение содержимого разбираемого файла
 	buffer << file.rdbuf();
 	// Дерево настроек разбираемого текста
-	codec::ini::document_t document(::logger(), settings);
+	codec::ini::document_t document(settings);
 	/**
 	 * Если разобрать текст настроек не удалось
 	 */
@@ -254,7 +232,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		 */
 		if(!written.empty()){
 			// Дерево настроек перезаписи снятого значения
-			codec::ini::document_t rebuilt(::logger(), settings);
+			codec::ini::document_t rebuilt(settings);
 			/**
 			 * Если перезапись снятого значения разобрать не удалось
 			 */

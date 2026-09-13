@@ -28,6 +28,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <server/server.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -46,9 +48,6 @@ using namespace placeholders;
 class Executor {
 	private:
 		// Объект фреймворка
-		[[maybe_unused]] const fmk_t * _fmk;
-		// Объект работы с логами
-		const log_t * _log;
 	public:
 		/**
 		 * @brief Метод обработки событий изменения статуса сервера
@@ -67,14 +66,14 @@ class Executor {
 					// Переводим сервер в режим прослушивания входящих соединений
 					if(!server->listen(100))
 						// Записываем ошибку в лог
-						this->_log->print("Failed to listen on port %d", log_t::flag_t::WARNING, server->getPort());
+						awh::log::print("Failed to listen on port %d", awh::log::flag_t::WARNING, server->getPort());
 					// Если прослушивание успешно запущено
-					else this->_log->print("QUIC server is listening on port %d", log_t::flag_t::INFO, server->getPort());
+					else awh::log::print("QUIC server is listening on port %d", awh::log::flag_t::INFO, server->getPort());
 				} break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события сервера
-					this->_log->print("QUIC server destroyed", log_t::flag_t::INFO);
+					awh::log::print("QUIC server destroyed", awh::log::flag_t::INFO);
 				break;
 			}
 		}
@@ -89,7 +88,7 @@ class Executor {
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid, server_t * server) noexcept {
 			// Записываем в лог сообщение об установленном соединении
-			this->_log->print("QUIC connection established: ID=%u, Address=%s", log_t::flag_t::INFO, cid, server->getAddress(cid, event::address_t::IPV4).c_str());
+			awh::log::print("QUIC connection established: ID=%u, Address=%s", awh::log::flag_t::INFO, cid, server->getAddress(cid, event::address_t::IPV4).c_str());
 		}
 		/**
 		 * @brief Метод обработки собранных данных потока приложения QUIC
@@ -103,7 +102,7 @@ class Executor {
 		 */
 		void stream(const event::id_t cid, const uint64_t sid, const string & data, const bool fin, server_t * server) noexcept {
 			// Записываем в лог сведения о полученной части данных потока
-			this->_log->print("Read: ID=%u, Stream=%" PRIu64 ", %zu bytes, FIN=%s", log_t::flag_t::INFO, cid, sid, data.size(), (fin ? "yes" : "no"));
+			awh::log::print("Read: ID=%u, Stream=%" PRIu64 ", %zu bytes, FIN=%s", awh::log::flag_t::INFO, cid, sid, data.size(), (fin ? "yes" : "no"));
 			// Печатаем полученную от клиента полезную нагрузку, чтобы видеть её содержимое
 			cout << endl << "==== SERVER RECEIVED (" << data.size() << " bytes) ====" << endl
 			     << data
@@ -111,9 +110,9 @@ class Executor {
 			// Отправляем полученные данные обратно клиенту в тот же поток с сохранением флага завершения (эхо)
 			if(server->send(cid, sid, data.data(), data.size(), fin))
 				// Записываем в лог сообщение об отправке эхо-ответа
-				this->_log->print("Echo: ID=%u, Stream=%" PRIu64 ", %zu bytes returned to client", log_t::flag_t::INFO, cid, sid, data.size());
+				awh::log::print("Echo: ID=%u, Stream=%" PRIu64 ", %zu bytes returned to client", awh::log::flag_t::INFO, cid, sid, data.size());
 			// Если отправка эхо-ответа не выполнена
-			else this->_log->print("Failed to echo stream data to client", log_t::flag_t::WARNING);
+			else awh::log::print("Failed to echo stream data to client", awh::log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки принятой датаграммы приложения QUIC (RFC 9221)
@@ -125,7 +124,7 @@ class Executor {
 		 */
 		void datagram(const event::id_t cid, const string & data, server_t * server) noexcept {
 			// Записываем в лог сведения о принятой датаграмме приложения
-			this->_log->print("Datagram: ID=%u, %zu bytes", log_t::flag_t::INFO, cid, data.size());
+			awh::log::print("Datagram: ID=%u, %zu bytes", awh::log::flag_t::INFO, cid, data.size());
 			// Печатаем принятую от клиента датаграмму, чтобы видеть её содержимое
 			cout << endl << "==== SERVER RECEIVED DATAGRAM (" << data.size() << " bytes) ====" << endl
 			     << data << endl
@@ -133,7 +132,7 @@ class Executor {
 			// Отправляем датаграмму обратно клиенту (эхо)
 			if(server->datagram(cid, data.data(), data.size()))
 				// Записываем в лог сообщение об отправке эхо-датаграммы
-				this->_log->print("Echo datagram: ID=%u, %zu bytes returned to client", log_t::flag_t::INFO, cid, data.size());
+				awh::log::print("Echo datagram: ID=%u, %zu bytes returned to client", awh::log::flag_t::INFO, cid, data.size());
 		}
 		/**
 		 * @brief Метод обработки завершённого соединения QUIC
@@ -144,7 +143,7 @@ class Executor {
 		 */
 		void disconnect(const event::id_t cid, const quic::error_t error) noexcept {
 			// Записываем в лог сообщение о завершении соединения
-			this->_log->print("QUIC connection closed: ID=%u, Error=%s", log_t::flag_t::INFO, cid, quic::errorName(error).data());
+			awh::log::print("QUIC connection closed: ID=%u, Error=%s", awh::log::flag_t::INFO, cid, quic::errorName(error).data());
 		}
 		/**
 		 * @brief Метод обработки готовности сервера к работе
@@ -157,7 +156,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
-			this->_log->print("QUIC server is ready: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
+			awh::log::print("QUIC server is ready: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок сервера
@@ -169,17 +168,14 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
-			this->_log->print("QUIC server error: %s", log_t::flag_t::CRITICAL, message.c_str());
+			awh::log::print("QUIC server error: %s", awh::log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект логирования
-		 *
 		 */
-		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
+		Executor() {}
 };
 
 /**
@@ -191,22 +187,25 @@ class Executor {
  *
  */
 int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект исполнителя для обработки событий сервера
-	Executor executor(&fmk, &log);
+	Executor executor;
 	// Создаём объект отпечатка браузера
-	tls::fgp_t fgp(&fmk, &log);
+	tls::fgp_t fgp;
 	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls(&fgp, &fmk, &log);
+	tls::coder_t tls(&fgp);
 	// Регистрируем шаблон контекста безопасности для транспорта QUIC
 	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::QUIC);
 	// Если шаблон контекста безопасности не создан
 	if(cts == 0){
 		// Записываем в лог сообщение об ошибке
-		log.print("QUIC security context is not created", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC security context is not created", awh::log::flag_t::CRITICAL);
 		// Выходим из приложения с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -223,7 +222,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	 */
 	tls.validateServerNameIndication(cts, false);
 	// Создаём объект сервера QUIC на шаблоне контекста безопасности
-	server_t server(cts, &tls, &fmk, &log);
+	server_t server(cts, &tls);
 	// Создаём событие сервера транспорта QUIC поверх UDP
 	server.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::QUIC);
 	/**

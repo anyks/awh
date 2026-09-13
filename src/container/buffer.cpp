@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <utility>
 #include <algorithm>
+#include <sstream>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -35,6 +36,8 @@
 #include <sys/macro/lib.hpp>
 #include <sys/macro/global.hpp>
 #include <container/buffer.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -252,40 +255,20 @@ bool awh::Buffer::rss(const size_t size) noexcept {
  * @param flag    флаг важности сообщения
  *
  */
-void awh::Buffer::error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
-	// Если объект лога установлен
-	if(this->_log != nullptr){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", func, {}, flag, message);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", flag, message);
-		#endif
-	// Если объект логирования не установлен
-	} else {
-		// Определяем текстовый префикс важности сообщения
-		const char * prefix = ((flag == log_t::flag_t::WARNING) ? "WARNING" : "ERROR");
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в поток ошибок
-			::fprintf(stderr, "%s! Called function:\n%s\n\nMessage:\n%s\n\n", prefix, func, message);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в поток ошибок
-			::fprintf(stderr, "%s! %s\n\n", prefix, message);
-		#endif
-	}
+void awh::Buffer::error(const char * func, const char * message, const awh::log::flag_t flag) const noexcept {
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		awh::log::debug("%s", func, {}, flag, message);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		awh::log::print("%s", flag, message);
+	#endif
 }
 /**
  * @brief Метод очистки всех данных буфера
@@ -852,7 +835,7 @@ T awh::Buffer::at(const size_t index) const noexcept {
 			// Выполняем копирование данных контейнера
 			::memcpy(&result, &this->_buffer[0] + offset, size);
 		// Если данных нет в буфере
-		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), log_t::flag_t::WARNING);
+		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), awh::log::flag_t::WARNING);
 	}
 	// Возвращаем результат
 	return result;
@@ -909,7 +892,7 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 			// Выполняем установку значения
 			::memcpy(&this->_buffer[0] + offset, &value, size);
 		// Если данных нет в буфере
-		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), log_t::flag_t::WARNING);
+		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), awh::log::flag_t::WARNING);
 	}
 }
 /**
@@ -1001,11 +984,9 @@ void * awh::Buffer::prepare(const size_t size) noexcept {
 	if(!this->rss(size)){
 		// Формируем сообщение об ошибке
 		string message = "There is not enough memory in the reserved buffer to add a new portion of data";
-		// Если объект фреймворка установлен
-		if(this->_fmk != nullptr)
 			// Формируем подробное сообщение об ошибке
-			message = "You are trying to map " + this->_fmk->bytes(static_cast <double> (this->size() + size)) +
-			          " of data into a " + this->_fmk->bytes(static_cast <double> (this->_range.maxMemory)) + " data buffer, which is impossible";
+			message = "You are trying to map " + awh::fmk::bytes(static_cast <double> (this->size() + size)) +
+			          " of data into a " + awh::fmk::bytes(static_cast <double> (this->_range.maxMemory)) + " data buffer, which is impossible";
 		// Записываем ошибку в лог
 		this->error(__PRETTY_FUNCTION__, message.c_str());
 		// Возвращаем пустое значение
@@ -1302,22 +1283,6 @@ void awh::Buffer::setMaxMemory(const size_t size) noexcept {
  *
  */
 void awh::Buffer::swap(Buffer & buffer) noexcept {
-	// Если объект фреймворка установлен у стороннего буфера
-	if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
-		// Копируем объект фреймворка
-		this->_fmk = buffer._fmk;
-	// Если объект для работы с логами установлен у стороннего буфера
-	if((buffer._log != nullptr) && (this->_log == nullptr))
-		// Копируем объект для работы с логами
-		this->_log = buffer._log;
-	// Если объект фреймворка установлен у текущего буфера
-	if((this->_fmk != nullptr) && (buffer._fmk == nullptr))
-		// Копируем объект фреймворка
-		buffer._fmk = this->_fmk;
-	// Если объект для работы с логами установлен у текущего буфера
-	if((this->_log != nullptr) && (buffer._log == nullptr))
-		// Копируем объект для работы с логами
-		buffer._log = this->_log;
 	// Выполняем обмен буферами данных
 	this->_buffer.swap(buffer._buffer);
 	/**
@@ -1329,16 +1294,6 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 	 *       упакованной структуры взять не даёт компилятор
 	 */
 	::swap(this->_range, buffer._range);
-}
-/**
- * @brief Метод установки объекта логирования
- *
- * @param log объект работы с логами
- *
- */
-void awh::Buffer::setLogger(const log_t * log) noexcept {
-	// Выполняем установку объекта логирования
-	this->_log = log;
 }
 /**
  * @brief Получения размера данных в буфера
@@ -1543,14 +1498,6 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если объект фреймворка установлен
-		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = buffer._fmk;
-		// Если объект для работы с логами установлен
-		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами
-			this->_log = buffer._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Копируем последний итератор
@@ -1585,14 +1532,6 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если объект фреймворка установлен
-		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = buffer._fmk;
-		// Если объект для работы с логами установлен
-		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами
-			this->_log = buffer._log;
 		// Копируем последний итератор
 		this->_range.end = buffer._range.end;
 		// Копируем начальный итератор
@@ -1649,7 +1588,7 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
  * @brief Разрешаем пустое значение объекта
  *
  */
-awh::Buffer::Buffer() noexcept : _fmk(nullptr), _log(nullptr) {}
+awh::Buffer::Buffer() noexcept {}
 /**
  * @brief Конструктор перемещения
  *
@@ -1661,14 +1600,6 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если объект фреймворка установлен
-		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = buffer._fmk;
-		// Если объект для работы с логами установлен
-		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами
-			this->_log = buffer._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
 		// Копируем последний итератор
@@ -1700,14 +1631,6 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если объект фреймворка установлен
-		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = buffer._fmk;
-		// Если объект для работы с логами установлен
-		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами
-			this->_log = buffer._log;
 		// Копируем последний итератор
 		this->_range.end = buffer._range.end;
 		// Копируем начальный итератор
@@ -1724,14 +1647,6 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 }
-/**
- * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
- */
-awh::Buffer::Buffer(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *

@@ -7,6 +7,7 @@
 #include <regex/backtrack.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 using namespace std;
 using namespace awh;
 static size_t encode(uint32_t code, char * out){
@@ -17,6 +18,8 @@ static size_t encode(uint32_t code, char * out){
 	out[2] = (char)(0x80 | ((code >> 6) & 0x3F)); out[3] = (char)(0x80 | (code & 0x3F)); return 4;
 }
 int main(){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	const vector <string> classes = {"\\d", "\\D", "\\w", "\\W", "\\s", "\\S", "\\h", "\\H", "\\v", "\\V", "[\\w\\d]", "[^\\s]"};
 	size_t checked = 0, diverged = 0; string first;
 	for(const auto & item : classes){

@@ -64,6 +64,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "eth.hpp"
+#include <sys/log.hpp>
 
 /**
  * @brief Вспомогательная функция поиска петлевого (loopback) сетевого интерфейса
@@ -288,7 +289,7 @@ TEST_F(EthFixture, IfaceDriverStaysAutoAfterFailureTest){
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
 		// Заводим свой объект работы с сетевыми устройствами
-		awh::eth::Interface iface(this->_fmk.get(), this->_log.get());
+		awh::eth::Interface iface;
 		// Выбор драйвера у нового объекта обязан быть поручен модулю
 		ASSERT_EQ(iface.driver(), awh::eth::Interface::driver_t::AUTO)
 		 << "у нового объекта выбор драйвера не поручен модулю";
@@ -544,7 +545,7 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 	// Объект адреса устройства
 	std::unique_ptr <awh::net::addr_t> ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Выполняем парсинг адреса испытательной сети
-	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr;
 	// Устанавливаем адрес испытательной сети
 	addr = "192.0.2.17";
 	// Устанавливаем адрес устройства
@@ -1053,8 +1054,10 @@ TEST_F(EthFixture, IfaceThreadSafetyTest){
 TEST_F(EthFixture, IfaceOversizedPrefixTest){
 	// Признак того, что заслон назвал причину отказа
 	bool named = false;
+	// Разрешаем отложенный вывод: подписка кормится именно им
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Подписываемся на журнал ради разбора довода отказа
-	this->_log->subscribe([&named]([[maybe_unused]] const awh::log_t::flag_t flag, const std::string_view text) noexcept -> void {
+	awh::log::subscribe([&named]([[maybe_unused]] const awh::log::flag_t flag, const std::string_view text) noexcept -> void {
 		// Отмечаем, что довод отказа назвал длину префикса
 		named = (named || (text.find("Prefix length") != std::string_view::npos));
 	});
@@ -1097,7 +1100,7 @@ TEST_F(EthFixture, IfaceOversizedPrefixTest){
 		// Первый довод, попавший в журнал
 		std::string first;
 		// Подписываемся на журнал ради разбора первого довода
-		this->_log->subscribe([&first]([[maybe_unused]] const awh::log_t::flag_t flag, const std::string_view text) noexcept -> void {
+		awh::log::subscribe([&first]([[maybe_unused]] const awh::log::flag_t flag, const std::string_view text) noexcept -> void {
 			// Запоминаем первый довод и только его
 			if(first.empty())
 				// Выполняем сохранение первого довода
@@ -1108,10 +1111,10 @@ TEST_F(EthFixture, IfaceOversizedPrefixTest){
 		// Установка адреса на несуществующее устройство по негодной длине
 		ASSERT_FALSE(this->_eth->iface.setAddress("awh-no-such-device", ip.get(), static_cast <uint8_t> (200)));
 		// Снимаем подписку на журнал
-		this->_log->subscribe(nullptr);
+		awh::log::subscribe(nullptr);
 		// Первым доводом обязана быть длина префикса, а не отсутствие устройства
 		ASSERT_NE(std::string::npos, first.find("Prefix length")) << "Первым доводом отказа пришла не длина префикса, а: " << first;
 	}
 	// Снимаем подписку на журнал
-	this->_log->subscribe(nullptr);
+	awh::log::subscribe(nullptr);
 }

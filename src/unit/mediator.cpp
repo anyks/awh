@@ -23,6 +23,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/mediator.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -123,13 +124,13 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Failed to commit mediator", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
+					awh::log::debug("Failed to commit mediator", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Failed to commit mediator", log_t::flag_t::CRITICAL);
+					awh::log::print("Failed to commit mediator", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 		}
@@ -142,13 +143,13 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -341,13 +342,13 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -356,11 +357,8 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::Mediator::Mediator(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Mediator::Mediator() noexcept : unit_t() {}
 /**
  * @brief Деструктор
  *

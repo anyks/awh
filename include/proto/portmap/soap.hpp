@@ -43,10 +43,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 #include "../../codec/xml/writer.hpp"
 #include "../../codec/xml/document.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -270,11 +269,6 @@ namespace awh {
 						 */
 						Answer() noexcept : fault(false), code(0) {}
 					} answer_t;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект работы с логами
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -365,18 +359,13 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект работы с логами
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					SOAP(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+					SOAP() noexcept {}
 			} soap_t;
 
 			/**

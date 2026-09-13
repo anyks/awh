@@ -24,6 +24,7 @@
  */
 #include <encoding/ascii.hpp>
 #include <codec/csv/reader.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -151,16 +152,8 @@ bool awh::codec::csv::Reader::fail(const error_t error, const location_t & locat
 		this->_position.column = location.column;
 		// Запоминаем место обнаружения отказа отдельным полем
 		this->_errorLocation = location;
-		/**
-		 * Если объект для работы с логами установлен
-		 *
-		 * @note Код отказа остаётся доступен через error(), а место его - через
-		 *       position(): журнал есть оповещение, а не единственный способ узнать
-		 *       о случившемся
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе разбора текста
-			this->_log->print("CSV parsing failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::csv::message(error), this->_position.line, this->_position.column);
+		// Выполняем вывод сообщения об отказе разбора текста
+		awh::log::print("CSV parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::csv::message(error), this->_position.line, this->_position.column);
 	}
 	// Переводим разбор в состояние отказа
 	this->_phase = phase_t::FAILED;
@@ -2711,28 +2704,13 @@ void awh::codec::csv::Reader::settings(const settings_t & settings) noexcept {
 		this->_decoder.encoding(this->_settings.encoding);
 }
 /**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::csv::Reader::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-	// Выполняем установку объекта ведения журнала приведению исходного текста
-	this->_decoder.setLogger(log);
-}
-/**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::csv::Reader::Reader(const log_t * log) noexcept :
- _log(log),
+awh::codec::csv::Reader::Reader() noexcept :
  _phase(phase_t::RECORD_START), _error(error_t::NONE), _encoding(encoding_t::NONE),
  _separator(','), _expected(0), _marked(false), _last(false), _headed(false), _quoted(false),
- _modified(false), _started(false), _decoder(log), _head(0), _offset(0), _line(1), _column(1),
+ _modified(false), _started(false), _decoder(), _head(0), _offset(0), _line(1), _column(1),
  _record(0), _field(0), _count(0), _length(0), _begin(0), _from(0), _till(0), _detected(true) {
 	// Выполняем сброс состояния разбора
 	this->reset();
@@ -2740,12 +2718,11 @@ awh::codec::csv::Reader::Reader(const log_t * log) noexcept :
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки разбора текста
  *
  */
-awh::codec::csv::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
- Reader(log) {
+awh::codec::csv::Reader::Reader(const settings_t & settings) noexcept :
+ Reader() {
 	// Выполняем установку настроек разбора текста
 	this->settings(settings);
 }

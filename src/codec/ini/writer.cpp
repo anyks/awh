@@ -44,6 +44,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1803,28 +1804,23 @@ void awh::codec::ini::Writer::report() const noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе
-		this->_log->print("INI writing failed: %s", log_t::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
+		awh::log::print("INI writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
 }
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::ini::Writer::Writer(const log_t * log) noexcept :
- _log(log), _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false),
+awh::codec::ini::Writer::Writer() noexcept :
+ _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false),
  _written(newline_t::LF) {}
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки записи текста настроек
  *
  */
-awh::codec::ini::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
- _log(log),
+awh::codec::ini::Writer::Writer(const settings_t & settings) noexcept :
  _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _written(settings.newline),
  _settings(settings) {}
 /**

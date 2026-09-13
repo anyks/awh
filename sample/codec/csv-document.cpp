@@ -29,46 +29,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/csv/document.hpp>
-#include <sys/log.hpp>
-
-/**
- * @brief Пространство имён образца
- *
- */
-namespace {
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @details Объект нужен кодеку для работы с файловой системой: приведение пути к
-	 *          широкому виду живёт в нём, и без него кириллический адрес под MS Windows
-	 *          ложился бы на диск искажённым
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Выводим объект фреймворка
-		return &fmk;
-	}
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
-	 *          main(): объект заводится статикою местною, дабы всякое построение
-	 *          образца писало сообщения в один и тот же журнал
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект для работы с логами
-		static awh::log_t log(::framework());
-		// Выводим объект для работы с логами
-		return &log;
-	}
-}
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -99,6 +60,13 @@ static const char * TEXT =
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Блокируем неиспользуемую переменную
 	(void) argc;
 	// Блокируем неиспользуемую переменную
@@ -108,7 +76,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Признаём первую строку записью заголовка
 	settings.reader.header = codec::csv::header_t::PRESENT;
 	// Создаём объект дерева таблицы
-	codec::csv::document_t document(::framework(), ::logger(), settings);
+	codec::csv::document_t document(settings);
 	/**
 	 * Если разбор текста таблицы не удался
 	 */
@@ -151,7 +119,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим перезапись таблицы
 	cout << document.text();
 	// Объект дерева таблицы для потокового разбора
-	codec::csv::document_t stream(::framework(), ::logger(), settings);
+	codec::csv::document_t stream(settings);
 	// Выводим обозначение потокового разбора отбором записей
 	cout << endl << "== отбор записей потоковым разбором ==" << endl;
 	/**

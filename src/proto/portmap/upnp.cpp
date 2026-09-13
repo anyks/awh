@@ -24,6 +24,8 @@
  */
 #include <encoding/ascii.hpp>
 #include <proto/portmap/upnp.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -121,17 +123,17 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(mapping.externalPort, mapping.internalPort),
-				log_t::flag_t::WARNING, "port mapping parameters are incomplete"
+				{mapping.externalPort, mapping.internalPort},
+				awh::log::flag_t::WARNING, "port mapping parameters are incomplete"
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "port mapping parameters are incomplete");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "port mapping parameters are incomplete");
 		#endif
 		// Выводим пустой вызов действия службы
 		return result;
@@ -148,17 +150,17 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(mapping.externalPort, mapping.internalPort),
-				log_t::flag_t::WARNING, "internal client address is missing"
+				{mapping.externalPort, mapping.internalPort},
+				awh::log::flag_t::WARNING, "internal client address is missing"
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "internal client address is missing");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "internal client address is missing");
 		#endif
 		// Выводим пустой вызов действия службы
 		return result;
@@ -216,13 +218,13 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::remove(const str
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(externalPort), log_t::flag_t::WARNING, "port mapping parameters are incomplete");
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {externalPort}, awh::log::flag_t::WARNING, "port mapping parameters are incomplete");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "port mapping parameters are incomplete");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "port mapping parameters are incomplete");
 		#endif
 		// Выводим пустой вызов действия службы
 		return result;
@@ -307,13 +309,13 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::specific(const s
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(externalPort), log_t::flag_t::WARNING, "port mapping parameters are incomplete");
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {externalPort}, awh::log::flag_t::WARNING, "port mapping parameters are incomplete");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "port mapping parameters are incomplete");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "port mapping parameters are incomplete");
 		#endif
 		// Выводим пустой вызов действия службы
 		return result;
@@ -378,17 +380,17 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(pinhole.remotePort, pinhole.internalPort),
-				log_t::flag_t::WARNING, "firewall pinhole parameters are incomplete"
+				{pinhole.remotePort, pinhole.internalPort},
+				awh::log::flag_t::WARNING, "firewall pinhole parameters are incomplete"
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "firewall pinhole parameters are incomplete");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "firewall pinhole parameters are incomplete");
 		#endif
 		// Выводим пустой вызов действия службы
 		return result;
@@ -405,17 +407,17 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(pinhole.remotePort, pinhole.internalPort),
-				log_t::flag_t::WARNING, "internal client address is missing"
+				{pinhole.remotePort, pinhole.internalPort},
+				awh::log::flag_t::WARNING, "internal client address is missing"
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "internal client address is missing");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "internal client address is missing");
 		#endif
 		// Выводим пустой вызов действия службы
 		return result;
@@ -428,7 +430,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 	 */
 	if(pinhole.lifeTime == 0){
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::WARNING, "firewall pinhole lease time is missing");
+		awh::log::print("%s", awh::log::flag_t::WARNING, "firewall pinhole lease time is missing");
 		// Выводим пустой вызов действия службы
 		return result;
 	}
@@ -515,17 +517,17 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::repinhole(const 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(unique, lifeTime),
-				log_t::flag_t::WARNING, "firewall pinhole lease time is out of range"
+				{unique, lifeTime},
+				awh::log::flag_t::WARNING, "firewall pinhole lease time is out of range"
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "firewall pinhole lease time is out of range");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "firewall pinhole lease time is out of range");
 		#endif
 		// Выводим пустой вызов действия службы
 		return result;
@@ -728,11 +730,11 @@ bool awh::proto::portmap::UPnP::mapping(const soap_t::answer_t & answer, mapping
 	// Запоминаем описание перенаправления
 	mapping.description.assign(this->_soap.value(answer, "NewPortMappingDescription"));
 	// Запоминаем внешний порт перенаправления
-	mapping.externalPort = this->_fmk->atoi <uint16_t> (this->_soap.value(answer, "NewExternalPort"));
+	mapping.externalPort = awh::fmk::atoi <uint16_t> (this->_soap.value(answer, "NewExternalPort"));
 	// Запоминаем внутренний порт перенаправления
-	mapping.internalPort = this->_fmk->atoi <uint16_t> (this->_soap.value(answer, "NewInternalPort"));
+	mapping.internalPort = awh::fmk::atoi <uint16_t> (this->_soap.value(answer, "NewInternalPort"));
 	// Запоминаем срок жизни перенаправления
-	mapping.lifeTime = this->_fmk->atoi <uint32_t> (this->_soap.value(answer, "NewLeaseDuration"));
+	mapping.lifeTime = awh::fmk::atoi <uint32_t> (this->_soap.value(answer, "NewLeaseDuration"));
 	// Получаем признак включения перенаправления
 	const string_view enabled = this->_soap.value(answer, "NewEnabled");
 	/**
@@ -857,13 +859,13 @@ awh::proto::portmap::UPnP::proto_t awh::proto::portmap::UPnP::proto(const string
 	 * @note Сличение ведётся без учёта регистра: обозначение договора службы
 	 *       записывают вольно, а разбирать перечень перенаправлений это не мешает
 	 */
-	if(this->_fmk->compare(text, "UDP"))
+	if(awh::fmk::compare(text, "UDP"))
 		// Выводим определённый договор перенаправления порта
 		return proto_t::UDP;
 	/**
 	 * Если обозначением договора является TCP
 	 */
-	if(this->_fmk->compare(text, "TCP"))
+	if(awh::fmk::compare(text, "TCP"))
 		// Выводим определённый договор перенаправления порта
 		return proto_t::TCP;
 	// Выводим неопределённый договор перенаправления порта

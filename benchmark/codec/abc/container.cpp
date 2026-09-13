@@ -30,10 +30,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../../include/sys/fmk.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/cryptography/crypto.hpp"
 #include "../../../include/compressor/block.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -47,32 +46,6 @@ using namespace awh::benchmark::binary;
  *
  */
 namespace {
-	/**
-	 * @brief Функция извлечения объекта журнала замеров
-	 *
-	 * @details Журнал гасится: замер меряет работу кодека, а не вывод записей, и
-	 *          сценарии отказа портили бы и вывод, и время
-	 *
-	 * @return объект журнала замеров
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект фреймворка замеров
-		static awh::fmk_t fmk;
-		// Объект журнала замеров
-		static awh::log_t log(& fmk);
-		// Признак выполненной настройки журнала
-		static const bool ready = [](){
-			// Выполняем гашение вывода журнала замеров
-			log.level(awh::log_t::level_t::NONE);
-			// Выводим признак выполненной настройки
-			return true;
-		}();
-		// Снимаем неиспользуемый признак настройки
-		(void) ready;
-		// Выводим объект журнала замеров
-		return & log;
-	}
 	/**
 	 * @brief Количество записей собираемого контейнера
 	 *
@@ -143,12 +116,6 @@ namespace {
 	 */
 	class Environment {
 		private:
-			// Объект фреймворка
-			fmk_t _fmk;
-		private:
-			// Объект журнала
-			log_t _log;
-		private:
 			// Объект сжатия данных
 			compressor::block_t _compressor;
 		private:
@@ -180,7 +147,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			Environment() noexcept : _log(&this->_fmk), _compressor(&this->_log), _crypto(&this->_fmk, &this->_log) {
+			Environment() noexcept : _compressor(), _crypto() {
 				// Выполняем установку соли шифрования
 				this->_crypto.salt("соль замеров контейнера");
 				// Выполняем установку пароля шифрования
@@ -209,7 +176,7 @@ namespace {
 		// Эталонная запись контейнера
 		static const vector <uint8_t> result = []() noexcept -> vector <uint8_t> {
 			// Сборка бинарной записи
-			awh::codec::abc::writer_t writer(::logger());
+			awh::codec::abc::writer_t writer;
 			// Выполняем укладку эталонной записи контейнера
 			if(!(writer.mapBegin(static_cast <uint64_t> (4)) &&
 			     writer.text("city") && writer.text("Москва") &&
@@ -235,7 +202,7 @@ namespace {
 	 */
 	static uint64_t assemble(const bool packed, const bool ciphered, vector <uint8_t> & result) noexcept {
 		// Сборщик контейнера
-		awh::codec::abc::assembler_t assembler(::logger());
+		awh::codec::abc::assembler_t assembler;
 		/**
 		 * Если содержимое кадров следует сжимать
 		 */
@@ -396,7 +363,7 @@ namespace {
 			return result;
 		}
 		// Выборщик записей контейнера
-		awh::codec::abc::fetcher_t fetcher(::logger());
+		awh::codec::abc::fetcher_t fetcher;
 		// Выполняем установку модуля сжатия данных
 		fetcher.compressor(environment().compressor());
 		/**
@@ -474,7 +441,7 @@ namespace {
 			return result;
 		}
 		// Правщик контейнера
-		awh::codec::abc::editor_t editor(::logger());
+		awh::codec::abc::editor_t editor;
 		// Выполняем установку модуля сжатия данных
 		editor.compressor(environment().compressor());
 		/**

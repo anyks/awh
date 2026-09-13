@@ -26,6 +26,7 @@
 #include <regex/regex.hpp>
 #include <regex/text.hpp>
 #include <encoding/unicode/utf8.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -101,7 +102,7 @@ static awh::regex::engine_t & engine() noexcept {
 	 *       Отказы его молчанием не пропадают: их читает выражение вызовами
 	 *       error(), offset() и message() и само пишет их в свой журнал
 	 */
-	static thread_local awh::regex::engine_t result(nullptr);
+	static thread_local awh::regex::engine_t result;
 	// Выводим движок сопоставления потока исполнения
 	return result;
 }
@@ -123,11 +124,9 @@ size_t awh::RegularExpression::Hash::operator () (const key_t & key) const noexc
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::RegularExpression::RegularExpression(const log_t * log) noexcept :
- _log(log), _limit(awh::regex::MAX_STEPS), _nesting(awh::regex::MAX_RECURSION) {}
+awh::RegularExpression::RegularExpression() noexcept :
+ _limit(awh::regex::MAX_STEPS), _nesting(awh::regex::MAX_RECURSION) {}
 /**
  * @brief Метод извлечения кода ошибки последней сборки
  *
@@ -252,23 +251,18 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 		// Выполняем установку текста ошибки последней операции сборки
 		report().message = engine().message();
 		/**
-		 * Если объект журнала событий передан
+		 * Если включён режим отладки
 		 */
-		if(this->_log != nullptr) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, make_tuple(string(pattern), flags), log_t::flag_t::WARNING, report().offset, report().message.c_str());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Regular expression could not be built at offset %zu: %s", log_t::flag_t::WARNING, report().offset, report().message.c_str());
-			#endif
-		}
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, awh::log::flag_t::WARNING, report().offset, report().message.c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("Regular expression could not be built at offset %zu: %s", awh::log::flag_t::WARNING, report().offset, report().message.c_str());
+		#endif
 		// Выводим отсутствие собранного регулярного выражения
 		return exp_t();
 	}
@@ -367,9 +361,8 @@ void awh::RegularExpression::receive() const noexcept {
 	/**
 	 * Если объект журнала событий передан
 	 */
-	if(this->_log != nullptr)
 		// Записываем ошибку в лог
-		this->_log->print("Regular expression matching failed: %s", log_t::flag_t::WARNING, report().message.c_str());
+		awh::log::print("Regular expression matching failed: %s", awh::log::flag_t::WARNING, report().message.c_str());
 }
 /**
  * @brief Метод проверки наличия совпадения в тексте

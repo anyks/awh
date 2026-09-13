@@ -27,8 +27,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <cryptography/crypto.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -42,12 +42,16 @@ using namespace awh;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Создаём объект для работы с криптографией
-	crypto_t crypto(&fmk, &log);
+	crypto_t crypto;
 	// Строка для компрессии данных
 	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
 	// Печатаем заголовок в отладочный вывод компрессии AES256

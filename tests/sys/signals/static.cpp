@@ -594,7 +594,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 			// Устанавливаем нулевой лимит на размер core dump
 			::setrlimit(RLIMIT_CORE, &limit);
 			// Создаём локальный объект работы с сигналами
-			awh::signals_t signals(nullptr, nullptr);
+			awh::signals_t signals;
 			// Устанавливаем обработчик сигнала
 			signals.on([](const int32_t){
 				/**
@@ -706,7 +706,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 			// Устанавливаем нулевой лимит на размер core dump
 			::setrlimit(RLIMIT_CORE, &limit);
 			// Создаём локальный объект работы с сигналами
-			awh::signals_t signals(nullptr, nullptr);
+			awh::signals_t signals;
 			// Устанавливаем обработчик сигнала
 			signals.on([](const int32_t){
 				/**

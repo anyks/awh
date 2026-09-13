@@ -8,6 +8,7 @@
 #include <regex/backtrack.hpp>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 using namespace std;
 using namespace awh;
 static size_t encode(uint32_t code, char * out){
@@ -108,6 +109,8 @@ static void probe(const vector <uint32_t> & codes){
 	}
 }
 int main(){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	const string pattern = "\\X";
 	int32_t code = 0; PCRE2_SIZE off = 0;
 	re = pcre2_compile((PCRE2_SPTR) pattern.c_str(), pattern.size(), PCRE2_UTF | PCRE2_UCP, &code, &off, nullptr);

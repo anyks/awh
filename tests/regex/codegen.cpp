@@ -57,44 +57,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -563,7 +533,7 @@ TEST(Regex, CodegenSubset) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -571,7 +541,7 @@ TEST(Regex, CodegenSubset) {
 		// Выполняем проверку применимости кодогенерации к выражению
 		ASSERT_EQ(regex::codegen_t::applicable(expression.forward), sample.applicable) << sample.pattern;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		// Выполняем проверку порождения сопоставителя выражения
 		ASSERT_EQ(codegen.compile(expression.forward), sample.applicable) << sample.pattern;
 		// Выполняем проверку готовности порождённого сопоставителя
@@ -1217,13 +1187,13 @@ TEST(Regex, CodegenBounds) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
 		ASSERT_TRUE(engine.build(sample.pattern, 0, expression)) << sample.pattern;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		// Выполняем проверку порождения сопоставителя выражения
 		ASSERT_TRUE(codegen.compile(expression.forward)) << sample.pattern;
 		// Создаём набор границ, установленных порождённым кодом
@@ -1271,7 +1241,7 @@ TEST(Regex, CodegenMatching) {
 	// Создаём источник псевдослучайных значений
 	mt19937 gen(20260802);
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	// Количество выражений, получивших кодогенерацию
 	size_t accepted = 0;
 	/**
@@ -1510,7 +1480,7 @@ TEST(Regex, CodegenMatching) {
 			// Переходим к следующему образцу сличения
 			continue;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		/**
 		 * Если кодогенерация к выражению неприменима
 		 */
@@ -1576,7 +1546,7 @@ TEST(Regex, CodegenUTF) {
 	// Создаём источник псевдослучайных значений
 	mt19937 gen(20260805);
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	// Количество выражений, получивших кодогенерацию
 	size_t accepted = 0;
 	/**
@@ -1671,7 +1641,7 @@ TEST(Regex, CodegenUTF) {
 			// Переходим к следующему образцу сличения
 			continue;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		/**
 		 * Если кодогенерация к выражению неприменима
 		 */
@@ -1754,13 +1724,13 @@ TEST(Regex, CodegenArena) {
 		// Выходим из проверки длины текста
 		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	// Создаём собираемое регулярное выражение
 	regex::expression_t expression;
 	// Выполняем сборку выражения с записью кадра на каждый проход
 	ASSERT_TRUE(engine.build("(?:([a-m])[a-m])*", 0, expression));
 	// Создаём объект преобразования программы в машинный код
-	regex::codegen_t codegen(::logger());
+	regex::codegen_t codegen;
 	// Выполняем проверку порождения сопоставителя выражения
 	ASSERT_TRUE(codegen.compile(expression.forward));
 	// Создаём текст сопоставления длиной в тридцать тысяч знаков
@@ -1815,7 +1785,7 @@ TEST(Regex, CodegenArena) {
 		// Выполняем сборку выражения с построениями вне тела повторения
 		ASSERT_TRUE(engine.build((string("(?:([a-m])[a-m])*") + trailing), 0, appended));
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t generated(::logger());
+		regex::codegen_t generated;
 		// Выполняем проверку порождения сопоставителя выражения
 		ASSERT_TRUE(generated.compile(appended.forward));
 		// Создаём набор границ совпадения порождённого сопоставителя
@@ -1862,7 +1832,7 @@ TEST(Regex, CodegenArena) {
 		// Выполняем сборку выражения стороны порога области записей
 		ASSERT_TRUE(engine.build(pattern, 0, crossed)) << pattern;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t generated(::logger());
+		regex::codegen_t generated;
 		/**
 		 * Если порождение сопоставителя выражения не выполнено
 		 */
@@ -1916,7 +1886,7 @@ TEST(Regex, CodegenArena) {
 		// Выполняем сборку выражения с числом групп свыше кадра вызова
 		ASSERT_TRUE(engine.build(pattern, 0, widened)) << pattern;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t generated(::logger());
+		regex::codegen_t generated;
 		/**
 		 * Если порождение сопоставителя выражения выполнено
 		 */
@@ -2008,7 +1978,7 @@ TEST(Regex, CodegenProgress) {
 		"_a0a z1y", "xyz,abc;", "(", "", "((()))", "(z)"
 	};
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	/**
 	 * Выполняем обход набора разбираемых выражений
 	 */
@@ -2018,7 +1988,7 @@ TEST(Regex, CodegenProgress) {
 		// Выполняем сборку выражения из текста
 		ASSERT_TRUE(engine.build(pattern, 0, expression)) << pattern;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		/**
 		 * Выполняем проверку порождения сопоставителя выражения
 		 *
@@ -2107,7 +2077,7 @@ TEST(Regex, CodegenLazyFrameless) {
 		"a@b@com", "one,two,z9", "lazy dog", "(inner (deep) tail)"
 	};
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	/**
 	 * Выполняем обход набора проверяемых выражений
 	 */
@@ -2117,7 +2087,7 @@ TEST(Regex, CodegenLazyFrameless) {
 		// Выполняем сборку выражения из текста
 		ASSERT_TRUE(engine.build(pattern, 0, expression)) << pattern;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		/**
 		 * Если порождение сопоставителя выражения не выполнено
 		 *
@@ -2163,7 +2133,7 @@ TEST(Regex, CodegenSealed) {
 		// Выходим из проверки прохода ряда без отдачи
 		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	/**
 	 * @brief Набор выражений и текстов сопоставления
 	 *
@@ -2203,7 +2173,7 @@ TEST(Regex, CodegenSealed) {
 		// Выполняем сборку регулярного выражения
 		ASSERT_TRUE(engine.build(item.pattern, 0, expression)) << item.pattern;
 		// Создаём объект преобразования программы в машинный код
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		/**
 		 * Если порождение сопоставителя выражения не выполнено
 		 */
@@ -2255,7 +2225,7 @@ TEST(Regex, CodegenLeadingRun) {
 		// Выходим из проверки ряда проходов ведущей ветви
 		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	/**
 	 * @brief Набор выражений, ряду ведущей ветви подлежащих и не подлежащих
 	 *
@@ -2420,9 +2390,9 @@ TEST(Regex, CodegenEngine) {
 	 */
 	for(auto & pattern : patterns) {
 		// Создаём движок сопоставления исполнением программы
-		regex::engine_t plain(::logger());
+		regex::engine_t plain;
 		// Создаём движок сопоставления порождённым машинным кодом
-		regex::engine_t machine(::logger());
+		regex::engine_t machine;
 		// Создаём выражение, исполнением программы сопоставляемое
 		regex::expression_t first;
 		// Создаём выражение, порождённым машинным кодом сопоставляемое
@@ -2477,7 +2447,7 @@ TEST(Regex, CodegenEngine) {
 	 */
 	{
 		// Создаём движок регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения с сопоставлением лишь с начала текста
@@ -2491,7 +2461,7 @@ TEST(Regex, CodegenEngine) {
 	 */
 	{
 		// Создаём движок регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку выражения с отказом от пустого совпадения
@@ -2525,7 +2495,7 @@ TEST(Regex, CodegenStorage) {
 		// Выходим из проверки записи порождённого сопоставителя
 		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	/**
 	 * @brief Набор выражений проверки записи порождённого сопоставителя
 	 *
@@ -2553,7 +2523,7 @@ TEST(Regex, CodegenStorage) {
 		// Получаем программу сопоставления в прямом направлении
 		const regex::program_t & program = expression.forward;
 		// Создаём порождаемый сопоставитель выражения
-		regex::codegen_t fresh(::logger());
+		regex::codegen_t fresh;
 		/**
 		 * Если кодогенерация к выражению неприменима
 		 */
@@ -2567,7 +2537,7 @@ TEST(Regex, CodegenStorage) {
 		// Выполняем проверку непустоты записи сопоставителя
 		ASSERT_FALSE(record.empty()) << pattern;
 		// Создаём восстанавливаемый сопоставитель выражения
-		regex::codegen_t restored(::logger());
+		regex::codegen_t restored;
 		// Позиция чтения записи порождённого сопоставителя
 		size_t offset = 0;
 		// Выполняем восстановление порождённого сопоставителя
@@ -2612,7 +2582,7 @@ TEST(Regex, CodegenStorageForeign) {
 		// Выходим из проверки отказа восстановления
 		GTEST_SKIP() << "кодогенерация сборкой не поддерживается";
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	// Создаём собираемое регулярное выражение
 	regex::expression_t expression;
 	// Выполняем сборку регулярного выражения
@@ -2620,7 +2590,7 @@ TEST(Regex, CodegenStorageForeign) {
 	// Получаем программу сопоставления в прямом направлении
 	const regex::program_t & program = expression.forward;
 	// Создаём порождаемый сопоставитель выражения
-	regex::codegen_t fresh(::logger());
+	regex::codegen_t fresh;
 	// Выполняем порождение сопоставителя выражения
 	ASSERT_TRUE(fresh.compile(program));
 	// Запись порождённого сопоставителя выражения
@@ -2638,7 +2608,7 @@ TEST(Regex, CodegenStorageForeign) {
 		// Выполняем подмену опознания набора команд
 		foreign[0] = static_cast <char> (0x5A);
 		// Создаём восстанавливаемый сопоставитель выражения
-		regex::codegen_t restored(::logger());
+		regex::codegen_t restored;
 		// Позиция чтения записи порождённого сопоставителя
 		size_t offset = 0;
 		// Выполняем проверку отказа восстановления сопоставителя
@@ -2657,14 +2627,14 @@ TEST(Regex, CodegenStorageForeign) {
 		// Получаем оборванную запись порождённого сопоставителя
 		const string cut = record.substr(0, i);
 		// Создаём восстанавливаемый сопоставитель выражения
-		regex::codegen_t restored(::logger());
+		regex::codegen_t restored;
 		// Позиция чтения записи порождённого сопоставителя
 		size_t offset = 0;
 		// Выполняем проверку отказа восстановления сопоставителя
 		EXPECT_FALSE(restored.restore(cut, offset, program)) << "оборвано на " << i;
 	}
 	// Создаём восстанавливаемый сопоставитель выражения
-	regex::codegen_t restored(::logger());
+	regex::codegen_t restored;
 	// Позиция чтения записи порождённого сопоставителя
 	size_t offset = 0;
 	// Выполняем проверку восстановления записи нетронутой
@@ -2719,7 +2689,7 @@ TEST(Regex, CodegenRefusal) {
 		// Получаем текст очередного регулярного выражения
 		const char * pattern = sample.pattern;
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -2727,7 +2697,7 @@ TEST(Regex, CodegenRefusal) {
 		// Выполняем проверку непригодности программы порождению
 		EXPECT_FALSE(regex::codegen_t::applicable(expression.forward)) << pattern;
 		// Создаём объект порождения машинного кода
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		// Выполняем проверку отказа порождения сопоставителя
 		EXPECT_FALSE(codegen.compile(expression.forward)) << pattern;
 		// Выполняем проверку отсутствия порождённого сопоставителя
@@ -2797,13 +2767,13 @@ TEST(Regex, CodegenFilter) {
 	 */
 	for(auto & sample : SAMPLES) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
 		ASSERT_TRUE(engine.build(sample.pattern, sample.flags, expression)) << sample.pattern;
 		// Создаём объект порождения машинного кода
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		/**
 		 * Если порождение сопоставителя выражения не выполнено
 		 */
@@ -2835,7 +2805,7 @@ TEST(Regex, CodegenFilter) {
 		// Выполняем сохранение порождённого сопоставителя
 		ASSERT_TRUE(codegen.save(record)) << sample.pattern;
 		// Создаём объект порождения, запись принимающий
-		regex::codegen_t restored(::logger());
+		regex::codegen_t restored;
 		// Смещение чтения записи сохранения
 		size_t offset = 0;
 		/**
@@ -2914,7 +2884,7 @@ TEST(Regex, CodegenNarrowing) {
 	 */
 	for(const char * pattern : patterns) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		/**
@@ -3029,7 +2999,7 @@ TEST(Regex, CodegenNarrowing) {
  */
 TEST(Regex, CompilerSubsetRefusal) {
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	/**
 	 * @brief Выражения, регулярному подмножеству не принадлежащие
 	 *
@@ -3144,7 +3114,7 @@ TEST(Regex, CodegenSkipping) {
 	for(const char * pattern : {headed[0], headed[1], headed[2], headed[3],
 	 plain[0], plain[1], plain[2], plain[3]}) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём выражение эталонное, порождения машинного кода лишённое
 		regex::expression_t reference;
 		// Выполняем проверку сборки выражения эталонного
@@ -3236,7 +3206,7 @@ TEST(Regex, CodegenMutated) {
 	 */
 	for(const char * pattern : SAMPLES) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения
@@ -3282,7 +3252,7 @@ TEST(Regex, CodegenMutated) {
 				// Выполняем подмену очередного поля указания
 				::memcpy((target + shift), &value, sizeof(value));
 				// Создаём объект порождения машинного кода
-				regex::codegen_t codegen(::logger());
+				regex::codegen_t codegen;
 				/**
 				 * Если порождение машинного кода по испорченной программе выполнено
 				 */
@@ -3327,7 +3297,7 @@ TEST(Regex, EmitterFrameGuard) {
 	// Количество мест кадра вызова проверки
 	constexpr uint32_t SEATS = 8;
 	// Создаём объект порождения последовательности команд
-	regex::emitter_t emitter(::logger());
+	regex::emitter_t emitter;
 	// Выполняем размещение входа в порождаемый сопоставитель
 	emitter.prologue(SEATS * static_cast <uint32_t> (sizeof(size_t)));
 	// Выполняем проверку отсутствия отказа порождения по входу
@@ -3350,7 +3320,7 @@ TEST(Regex, EmitterFrameGuard) {
 	 */
 	{
 		// Создаём объект порождения последовательности команд
-		regex::emitter_t writing(::logger());
+		regex::emitter_t writing;
 		// Выполняем размещение входа в порождаемый сопоставитель
 		writing.prologue(SEATS * static_cast <uint32_t> (sizeof(size_t)));
 		// Выполняем запись за пределы кадра вызова
@@ -3363,7 +3333,7 @@ TEST(Regex, EmitterFrameGuard) {
 	 */
 	{
 		// Создаём объект порождения последовательности команд
-		regex::emitter_t reading(::logger());
+		regex::emitter_t reading;
 		// Выполняем размещение входа в порождаемый сопоставитель
 		reading.prologue(SEATS * static_cast <uint32_t> (sizeof(size_t)));
 		// Выполняем чтение за пределами кадра вызова
@@ -3381,7 +3351,7 @@ TEST(Regex, EmitterFrameGuard) {
 	 */
 	{
 		// Создаём объект порождения последовательности команд
-		regex::emitter_t bare(::logger());
+		regex::emitter_t bare;
 		// Выполняем запись в место кадра до размещения входа
 		bare.store(regex::emitter_t::reg_t::SCRATCH, regex::emitter_t::reg_t::STACK, (SEATS * 4));
 		// Выполняем проверку отсутствия отказа порождения
@@ -3433,7 +3403,7 @@ TEST(Regex, CodegenRefusalAgreement) {
 		{".+",              static_cast <uint32_t> (regex::flag_t::UTF)}
 	};
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	/**
 	 * Выполняем перебор набора выражений вне подмножества
 	 */

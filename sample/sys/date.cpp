@@ -23,8 +23,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <sys/chrono.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -38,18 +39,20 @@ using namespace awh;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
-	// Устанавливаем объект логера
-	fmk.setLogger(&log);
 	// Устанавливаем название сервиса
-	log.name("Chrono");
+	awh::log::name("Chrono");
 	// Устанавливаем формат времени
-	log.format("%H:%M:%S %d.%m.%Y");
+	awh::log::format("%H:%M:%S %d.%m.%Y");
 	// Создаём объект работы с датой и временем
-	chrono_t chrono(&fmk, &log);
+	chrono_t chrono;
 
 	/**
 	 * Разбор записи даты по строке формата
@@ -60,7 +63,7 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Разбор записи даты по строке формата ===", log_t::flag_t::INFO);
+		awh::log::print("=== Разбор записи даты по строке формата ===", awh::log::flag_t::INFO);
 		// Список записей дат и образцов, по которым они разбираются
 		const std::pair <const char *, const char *> records[] = {
 			// Запись с долей секунды и нулевым смещением зоны
@@ -85,8 +88,8 @@ int32_t main(){
 			// Выполняем разбор записи даты
 			const uint64_t date = chrono.parse(record.first, record.second);
 			// Записываем в лог полученный штамп времени и запись даты в едином виде
-			log.print(
-				"%-30s [%s] => %s (%llu)", log_t::flag_t::INFO, record.first, record.second,
+			awh::log::print(
+				"%-30s [%s] => %s (%llu)", awh::log::flag_t::INFO, record.first, record.second,
 				chrono.format(date, "%Y-%m-%d %H:%M:%S.%s %i").c_str(), date
 			);
 		}
@@ -103,7 +106,7 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Записи даты, заданные стандартом ===", log_t::flag_t::INFO);
+		awh::log::print("=== Записи даты, заданные стандартом ===", awh::log::flag_t::INFO);
 		// Момент времени, для которого формируются записи
 		const uint64_t date = chrono.parse("2026-04-06T12:37:01.520Z", chrono_t::standard_t::RFC3339);
 		// Список стандартов, записи которых формируются
@@ -122,14 +125,14 @@ int32_t main(){
 			// Выполняем формирование записи даты по стандарту
 			const string & result = chrono.format(date, standard.second);
 			// Записываем в лог полученную запись и итог обратного её разбора
-			log.print(
-				"%-9s %-34s => %llu", log_t::flag_t::INFO, standard.first,
+			awh::log::print(
+				"%-9s %-34s => %llu", awh::log::flag_t::INFO, standard.first,
 				result.c_str(), chrono.parse(result, standard.second)
 			);
 		}
 		// Выполняем формирование записи RFC 3339 в зоне, смещённой на три часа
-		log.print(
-			"RFC 3339 в зоне +03:00: %s", log_t::flag_t::INFO,
+		awh::log::print(
+			"RFC 3339 в зоне +03:00: %s", awh::log::flag_t::INFO,
 			chrono.format(date, 3 * 3600, chrono_t::standard_t::RFC3339).c_str()
 		);
 	}
@@ -143,7 +146,7 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Проверка пригодности записи даты ===", log_t::flag_t::INFO);
+		awh::log::print("=== Проверка пригодности записи даты ===", awh::log::flag_t::INFO);
 		// Список записей дат, пригодность которых проверяется
 		const std::pair <const char *, const char *> records[] = {
 			// Пригодная запись
@@ -158,17 +161,17 @@ int32_t main(){
 		// Выполняем перебор всех записей дат
 		for(auto & record : records)
 			// Записываем в лог итог проверки записи даты
-			log.print("%-21s [%s] => %s", log_t::flag_t::INFO, record.first, record.second, (chrono.validate(record.first, record.second) ? "пригодна" : "непригодна"));
+			awh::log::print("%-21s [%s] => %s", awh::log::flag_t::INFO, record.first, record.second, (chrono.validate(record.first, record.second) ? "пригодна" : "непригодна"));
 		// Записываем в лог итог проверки записи заголовка HTTP по стандарту
-		log.print("Запись HTTP по стандарту => %s", log_t::flag_t::INFO, (chrono.validate("Mon, 06 Apr 2026 12:37:01 GMT", chrono_t::standard_t::RFC1123) ? "пригодна" : "непригодна"));
+		awh::log::print("Запись HTTP по стандарту => %s", awh::log::flag_t::INFO, (chrono.validate("Mon, 06 Apr 2026 12:37:01 GMT", chrono_t::standard_t::RFC1123) ? "пригодна" : "непригодна"));
 		// Записываем в лог итог проверки записи с чужими разделителями
-		log.print("Запись с чужими разделителями => %s", log_t::flag_t::INFO, (chrono.validate("Mon 06/Apr/2026 12:37:01 GMT", chrono_t::standard_t::RFC1123) ? "пригодна" : "непригодна"));
+		awh::log::print("Запись с чужими разделителями => %s", awh::log::flag_t::INFO, (chrono.validate("Mon 06/Apr/2026 12:37:01 GMT", chrono_t::standard_t::RFC1123) ? "пригодна" : "непригодна"));
 		// Записываем в лог итог проверки обозначения временной зоны
-		log.print("Обозначение зоны \"+03:30\" => %s", log_t::flag_t::INFO, (chrono.validateTimeZone("+03:30") ? "пригодно" : "непригодно"));
+		awh::log::print("Обозначение зоны \"+03:30\" => %s", awh::log::flag_t::INFO, (chrono.validateTimeZone("+03:30") ? "пригодно" : "непригодно"));
 		// Записываем в лог итог проверки обозначения размерности времени
-		log.print("Размерность \"90m\" => %s", log_t::flag_t::INFO, (chrono.validateSeconds("90m") ? "пригодна" : "непригодна"));
+		awh::log::print("Размерность \"90m\" => %s", awh::log::flag_t::INFO, (chrono.validateSeconds("90m") ? "пригодна" : "непригодна"));
 		// Записываем в лог итог проверки обозначения размерности без единицы
-		log.print("Размерность \"42\" => %s", log_t::flag_t::INFO, (chrono.validateSeconds("42") ? "пригодна" : "непригодна"));
+		awh::log::print("Размерность \"42\" => %s", awh::log::flag_t::INFO, (chrono.validateSeconds("42") ? "пригодна" : "непригодна"));
 	}
 
 	/**
@@ -180,23 +183,23 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Двузначный год и секунда координации ===", log_t::flag_t::INFO);
+		awh::log::print("=== Двузначный год и секунда координации ===", awh::log::flag_t::INFO);
 		// Устанавливаем неподвижный рубеж по правилам POSIX
 		chrono.century(chrono_t::century_t::POSIX);
 		// Записываем в лог год, раскрытый по правилам POSIX
-		log.print("POSIX:  \"70-04-06\" => %s", log_t::flag_t::INFO, chrono.format(chrono.parse("70-04-06", "%y-%m-%d"), "%Y-%m-%d").c_str());
+		awh::log::print("POSIX:  \"70-04-06\" => %s", awh::log::flag_t::INFO, chrono.format(chrono.parse("70-04-06", "%y-%m-%d"), "%Y-%m-%d").c_str());
 		// Возвращаем скользящее окно по правилам RFC 9110
 		chrono.century(chrono_t::century_t::WINDOW);
 		// Записываем в лог год, раскрытый по правилам RFC 9110
-		log.print("RFC 9110: \"70-04-06\" => %s", log_t::flag_t::INFO, chrono.format(chrono.parse("70-04-06", "%y-%m-%d"), "%Y-%m-%d").c_str());
+		awh::log::print("RFC 9110: \"70-04-06\" => %s", awh::log::flag_t::INFO, chrono.format(chrono.parse("70-04-06", "%y-%m-%d"), "%Y-%m-%d").c_str());
 		// Отключаем приём секунды координации при проверке записи
 		chrono.leapSecond(false);
 		// Записываем в лог итог проверки записи с секундой координации
-		log.print("Секунда координации отклоняется => %s", log_t::flag_t::INFO, (chrono.validate("2026-12-31 23:59:60", "%Y-%m-%d %H:%M:%S") ? "пригодна" : "непригодна"));
+		awh::log::print("Секунда координации отклоняется => %s", awh::log::flag_t::INFO, (chrono.validate("2026-12-31 23:59:60", "%Y-%m-%d %H:%M:%S") ? "пригодна" : "непригодна"));
 		// Возвращаем приём секунды координации, требуемый RFC 3339 и ISO 8601
 		chrono.leapSecond(true);
 		// Записываем в лог итог проверки записи с секундой координации
-		log.print("Секунда координации принимается => %s", log_t::flag_t::INFO, (chrono.validate("2026-12-31 23:59:60", "%Y-%m-%d %H:%M:%S") ? "пригодна" : "непригодна"));
+		awh::log::print("Секунда координации принимается => %s", awh::log::flag_t::INFO, (chrono.validate("2026-12-31 23:59:60", "%Y-%m-%d %H:%M:%S") ? "пригодна" : "непригодна"));
 	}
 
 	/**
@@ -207,13 +210,13 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Составляющие даты ===", log_t::flag_t::INFO);
+		awh::log::print("=== Составляющие даты ===", awh::log::flag_t::INFO);
 		// Момент времени, составляющие которого извлекаются
 		const uint64_t date = chrono.parse("2026-04-06T12:37:01.520Z", chrono_t::standard_t::RFC3339);
 		// Записываем в лог составляющие даты, извлечённые числом
-		log.print(
+		awh::log::print(
 			"Год=%u месяц=%u число=%u час=%u минуты=%u секунды=%u миллисекунды=%u",
-			log_t::flag_t::INFO,
+			awh::log::flag_t::INFO,
 			chrono.get <uint16_t> (date, chrono_t::unit_t::YEAR),
 			chrono.get <uint8_t> (date, chrono_t::unit_t::MONTH),
 			chrono.get <uint8_t> (date, chrono_t::unit_t::DATE),
@@ -223,18 +226,18 @@ int32_t main(){
 			chrono.get <uint16_t> (date, chrono_t::unit_t::MILLISECONDS)
 		);
 		// Записываем в лог составляющие даты, извлечённые названием
-		log.print(
+		awh::log::print(
 			"Месяц=%s день недели=%s дней с начала года=%u недель=%u",
-			log_t::flag_t::INFO,
+			awh::log::flag_t::INFO,
 			chrono.get <string> (date, chrono_t::unit_t::MONTH).c_str(),
 			chrono.get <string> (date, chrono_t::unit_t::DAY).c_str(),
 			chrono.get <uint16_t> (date, chrono_t::unit_t::DAYS),
 			chrono.get <uint8_t> (date, chrono_t::unit_t::WEEKS)
 		);
 		// Записываем в лог признаки года и половины суток
-		log.print(
+		awh::log::print(
 			"Високосный=%s половина суток=%s летнее время=%s",
-			log_t::flag_t::INFO,
+			awh::log::flag_t::INFO,
 			(chrono.leap(date) ? "да" : "нет"),
 			((chrono.h12(date) == chrono_t::h12_t::AM) ? "AM" : "PM"),
 			(chrono.dst(date) ? "да" : "нет")
@@ -245,7 +248,7 @@ int32_t main(){
 		 * ни одного поля не определяют. Так же поступает и strptime.
 		 */
 		// Записываем в лог дату записью недельного счёта ISO 8601
-		log.print("Недельный счёт ISO 8601: %s", log_t::flag_t::INFO, chrono.format(date, "%G-W%V-%u").c_str());
+		awh::log::print("Недельный счёт ISO 8601: %s", awh::log::flag_t::INFO, chrono.format(date, "%G-W%V-%u").c_str());
 		// Устанавливаем момент времени во внутренний объект даты
 		chrono.timestamp(date, chrono_t::type_t::MILLISECONDS);
 		// Заменяем год во внутреннем объекте даты
@@ -253,7 +256,7 @@ int32_t main(){
 		// Заменяем месяц во внутреннем объекте даты его названием
 		chrono.set <string> ("December", chrono_t::unit_t::MONTH);
 		// Записываем в лог собранную по частям дату
-		log.print("Собранная по частям дата: %s", log_t::flag_t::INFO, chrono.format("%Y-%m-%d %H:%M:%S", chrono_t::storage_t::LOCAL).c_str());
+		awh::log::print("Собранная по частям дата: %s", awh::log::flag_t::INFO, chrono.format("%Y-%m-%d %H:%M:%S", chrono_t::storage_t::LOCAL).c_str());
 		// Выполняем очистку внутреннего объекта даты
 		chrono.clear();
 	}
@@ -266,23 +269,23 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Календарные отрезки и смещения ===", log_t::flag_t::INFO);
+		awh::log::print("=== Календарные отрезки и смещения ===", awh::log::flag_t::INFO);
 		// Момент времени, отрезки вокруг которого считаются
 		const uint64_t date = chrono.parse("2026-04-06T12:37:01.520Z", chrono_t::standard_t::RFC3339);
 		// Записываем в лог начало и конец суток
-		log.print("Сутки:  [%s .. %s]", log_t::flag_t::INFO, chrono.format(chrono.begin(date, chrono_t::type_t::DAY), "%Y-%m-%d %H:%M:%S.%s").c_str(), chrono.format(chrono.end(date, chrono_t::type_t::DAY), "%Y-%m-%d %H:%M:%S.%s").c_str());
+		awh::log::print("Сутки:  [%s .. %s]", awh::log::flag_t::INFO, chrono.format(chrono.begin(date, chrono_t::type_t::DAY), "%Y-%m-%d %H:%M:%S.%s").c_str(), chrono.format(chrono.end(date, chrono_t::type_t::DAY), "%Y-%m-%d %H:%M:%S.%s").c_str());
 		// Записываем в лог начало и конец недели
-		log.print("Неделя: [%s .. %s]", log_t::flag_t::INFO, chrono.format(chrono.begin(date, chrono_t::type_t::WEEK), "%Y-%m-%d %H:%M:%S.%s").c_str(), chrono.format(chrono.end(date, chrono_t::type_t::WEEK), "%Y-%m-%d %H:%M:%S.%s").c_str());
+		awh::log::print("Неделя: [%s .. %s]", awh::log::flag_t::INFO, chrono.format(chrono.begin(date, chrono_t::type_t::WEEK), "%Y-%m-%d %H:%M:%S.%s").c_str(), chrono.format(chrono.end(date, chrono_t::type_t::WEEK), "%Y-%m-%d %H:%M:%S.%s").c_str());
 		// Записываем в лог начало и конец месяца
-		log.print("Месяц:  [%s .. %s]", log_t::flag_t::INFO, chrono.format(chrono.begin(date, chrono_t::type_t::MONTH), "%Y-%m-%d %H:%M:%S.%s").c_str(), chrono.format(chrono.end(date, chrono_t::type_t::MONTH), "%Y-%m-%d %H:%M:%S.%s").c_str());
+		awh::log::print("Месяц:  [%s .. %s]", awh::log::flag_t::INFO, chrono.format(chrono.begin(date, chrono_t::type_t::MONTH), "%Y-%m-%d %H:%M:%S.%s").c_str(), chrono.format(chrono.end(date, chrono_t::type_t::MONTH), "%Y-%m-%d %H:%M:%S.%s").c_str());
 		// Записываем в лог смещение даты на месяц вперёд
-		log.print("Месяц вперёд:  %s", log_t::flag_t::INFO, chrono.format(chrono.offset(date, 1, chrono_t::type_t::MONTH, chrono_t::offset_t::INCREMENT), "%Y-%m-%d %H:%M:%S").c_str());
+		awh::log::print("Месяц вперёд:  %s", awh::log::flag_t::INFO, chrono.format(chrono.offset(date, 1, chrono_t::type_t::MONTH, chrono_t::offset_t::INCREMENT), "%Y-%m-%d %H:%M:%S").c_str());
 		// Записываем в лог смещение даты на трое суток назад
-		log.print("Трое суток назад: %s", log_t::flag_t::INFO, chrono.format(chrono.offset(date, 3, chrono_t::type_t::DAY, chrono_t::offset_t::DECREMENT), "%Y-%m-%d %H:%M:%S").c_str());
+		awh::log::print("Трое суток назад: %s", awh::log::flag_t::INFO, chrono.format(chrono.offset(date, 3, chrono_t::type_t::DAY, chrono_t::offset_t::DECREMENT), "%Y-%m-%d %H:%M:%S").c_str());
 		// Записываем в лог количество прошедших с начала года суток
-		log.print("Прошло суток с начала года: %llu", log_t::flag_t::INFO, chrono.actual(date, chrono_t::type_t::DAY, chrono_t::type_t::YEAR, chrono_t::actual_t::PASSED));
+		awh::log::print("Прошло суток с начала года: %llu", awh::log::flag_t::INFO, chrono.actual(date, chrono_t::type_t::DAY, chrono_t::type_t::YEAR, chrono_t::actual_t::PASSED));
 		// Записываем в лог количество оставшихся до конца года суток
-		log.print("Осталось суток до конца года: %llu", log_t::flag_t::INFO, chrono.actual(date, chrono_t::type_t::DAY, chrono_t::type_t::YEAR, chrono_t::actual_t::LEFT));
+		awh::log::print("Осталось суток до конца года: %llu", awh::log::flag_t::INFO, chrono.actual(date, chrono_t::type_t::DAY, chrono_t::type_t::YEAR, chrono_t::actual_t::LEFT));
 	}
 
 	/**
@@ -294,17 +297,17 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Размерности времени ===", log_t::flag_t::INFO);
+		awh::log::print("=== Размерности времени ===", awh::log::flag_t::INFO);
 		// Список обозначений размерности времени, переводимых в секунды
 		const char * durations[] = {"45s", "90m", "1.5h", "2d", "1w", "3M", "1y", "-2h"};
 		// Выполняем перебор всех обозначений размерности времени
 		for(auto & duration : durations)
 			// Записываем в лог перевод обозначения размерности в секунды
-			log.print("%-5s => %.0f секунд", log_t::flag_t::INFO, duration, chrono.seconds(duration));
+			awh::log::print("%-5s => %.0f секунд", awh::log::flag_t::INFO, duration, chrono.seconds(duration));
 		// Записываем в лог обратный перевод количества секунд в обозначение
-		log.print("788130 секунд => %s", log_t::flag_t::INFO, chrono.seconds(788130.).c_str());
+		awh::log::print("788130 секунд => %s", awh::log::flag_t::INFO, chrono.seconds(788130.).c_str());
 		// Записываем в лог перевод записи даты из одного вида в другой
-		log.print("Перевод записи: %s", log_t::flag_t::INFO, chrono.strip("06/Apr/2026:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z", "%Y-%m-%dT%H:%M:%SZ").c_str());
+		awh::log::print("Перевод записи: %s", awh::log::flag_t::INFO, chrono.strip("06/Apr/2026:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z", "%Y-%m-%dT%H:%M:%SZ").c_str());
 	}
 
 	/**
@@ -316,27 +319,27 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Временные зоны ===", log_t::flag_t::INFO);
+		awh::log::print("=== Временные зоны ===", awh::log::flag_t::INFO);
 		// Момент времени, для которого разрешаются зоны
 		const uint64_t date = chrono.parse("2026-07-06T12:37:01Z", chrono_t::standard_t::RFC3339);
 		// Записываем в лог смещение зоны, заданной обозначением
-		log.print("Смещение зоны \"MSK\": %s", log_t::flag_t::INFO, chrono.format(chrono.getTimeZone("MSK")).c_str());
+		awh::log::print("Смещение зоны \"MSK\": %s", awh::log::flag_t::INFO, chrono.format(chrono.getTimeZone("MSK")).c_str());
 		// Записываем в лог смещение сводной зоны, разрешённое по моменту времени
-		log.print("Смещение зоны ET на июль: %s", log_t::flag_t::INFO, chrono.format(chrono.getTimeZone(chrono_t::zone_t::ET, date)).c_str());
+		awh::log::print("Смещение зоны ET на июль: %s", awh::log::flag_t::INFO, chrono.format(chrono.getTimeZone(chrono_t::zone_t::ET, date)).c_str());
 		// Записываем в лог смещение зоны, обозначение которой переведено в элемент перечисления
-		log.print("Сопоставление \"msk\" => %s", log_t::flag_t::INFO, chrono.format(chrono.getTimeZone(chrono.matchTimeZone("msk"))).c_str());
+		awh::log::print("Сопоставление \"msk\" => %s", awh::log::flag_t::INFO, chrono.format(chrono.getTimeZone(chrono.matchTimeZone("msk"))).c_str());
 		// Записываем в лог смещение зоны, заданной названием со смещением от него
-		log.print("Смещение зоны \"GMT+0530\": %s", log_t::flag_t::INFO, chrono.format(chrono.getTimeZone("GMT+0530")).c_str());
+		awh::log::print("Смещение зоны \"GMT+0530\": %s", awh::log::flag_t::INFO, chrono.format(chrono.getTimeZone("GMT+0530")).c_str());
 		// Записываем в лог одну и ту же дату в разных зонах
-		log.print("В зоне окружения: %s", log_t::flag_t::INFO, chrono.format(date, "%Y-%m-%d %H:%M:%S %o").c_str());
+		awh::log::print("В зоне окружения: %s", awh::log::flag_t::INFO, chrono.format(date, "%Y-%m-%d %H:%M:%S %o").c_str());
 		// Записываем в лог дату в зоне, заданной обозначением
-		log.print("В зоне \"MSK\":     %s", log_t::flag_t::INFO, chrono.format(date, "MSK", "%Y-%m-%d %H:%M:%S %o").c_str());
+		awh::log::print("В зоне \"MSK\":     %s", awh::log::flag_t::INFO, chrono.format(date, "MSK", "%Y-%m-%d %H:%M:%S %o").c_str());
 		// Записываем в лог дату в зоне, заданной элементом перечисления
-		log.print("В зоне PT:        %s", log_t::flag_t::INFO, chrono.format(date, chrono_t::zone_t::PT, "%Y-%m-%d %H:%M:%S %o").c_str());
+		awh::log::print("В зоне PT:        %s", awh::log::flag_t::INFO, chrono.format(date, chrono_t::zone_t::PT, "%Y-%m-%d %H:%M:%S %o").c_str());
 		// Добавляем собственное обозначение временной зоны
 		chrono.addTimeZone("ANYKS", 5 * 3600 + 1800);
 		// Записываем в лог дату в собственной временной зоне
-		log.print("В зоне \"ANYKS\":   %s", log_t::flag_t::INFO, chrono.format(date, "ANYKS", "%Y-%m-%d %H:%M:%S %o").c_str());
+		awh::log::print("В зоне \"ANYKS\":   %s", awh::log::flag_t::INFO, chrono.format(date, "ANYKS", "%Y-%m-%d %H:%M:%S %o").c_str());
 	}
 
 	/**
@@ -344,19 +347,19 @@ int32_t main(){
 	 */
 	{
 		// Записываем в лог заголовок раздела
-		log.print("=== Текущий момент времени ===", log_t::flag_t::INFO);
+		awh::log::print("=== Текущий момент времени ===", awh::log::flag_t::INFO);
 		// Записываем в лог текущий момент времени в разных размерностях
-		log.print(
+		awh::log::print(
 			"Секунды=%llu миллисекунды=%llu наносекунды=%llu",
-			log_t::flag_t::INFO,
+			awh::log::flag_t::INFO,
 			chrono.timestamp(chrono_t::type_t::SECONDS),
 			chrono.timestamp(chrono_t::type_t::MILLISECONDS),
 			chrono.timestamp(chrono_t::type_t::NANOSECONDS)
 		);
 		// Записываем в лог текущую дату записью заголовка HTTP
-		log.print("Заголовок HTTP: %s", log_t::flag_t::INFO, chrono.format(chrono.timestamp(chrono_t::type_t::MILLISECONDS), chrono_t::standard_t::RFC1123).c_str());
+		awh::log::print("Заголовок HTTP: %s", awh::log::flag_t::INFO, chrono.format(chrono.timestamp(chrono_t::type_t::MILLISECONDS), chrono_t::standard_t::RFC1123).c_str());
 		// Записываем в лог текущую дату в зоне окружения
-		log.print("В зоне окружения: %s", log_t::flag_t::INFO, chrono.format("%A, %d %B %Y %H:%M:%S %o").c_str());
+		awh::log::print("В зоне окружения: %s", awh::log::flag_t::INFO, chrono.format("%A, %d %B %Y %H:%M:%S %o").c_str());
 	}
 	// Выводим результат
 	return EXIT_SUCCESS;

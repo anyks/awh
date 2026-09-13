@@ -71,18 +71,6 @@ namespace {
 };
 
 /**
- * @brief Конструктор
- *
- */
-awh::codec::abc::Header::Header() noexcept :
- version(VERSION_MAJOR), revision(VERSION_MINOR), flags(static_cast <uint16_t> (flag_t::NONE)),
- content(0), length(0), records(0), index(0), extent(0), signature(0), generation(0) {
-	// Выполняем обнуление признака владельца контейнера
-	::memset(this->owner, 0, OWNER_LENGTH);
-	// Выполняем обнуление отпечатка открытого ключа
-	::memset(this->fingerprint, 0, FINGERPRINT_LENGTH);
-}
-/**
  * @brief Метод проверки объявленного свойства контейнера
  *
  * @param flag проверяемое свойство контейнера
@@ -281,6 +269,18 @@ bool awh::codec::abc::Header::unpack(const void * buffer, const size_t size, err
 	this->generation = abc::gather(octets + 80, 8);
 	// Сообщаем, что заголовок снят
 	return true;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Header::Header() noexcept :
+ version(VERSION_MAJOR), revision(VERSION_MINOR), flags(static_cast <uint16_t> (flag_t::NONE)),
+ content(0), length(0), records(0), index(0), extent(0), signature(0), generation(0) {
+	// Выполняем обнуление признака владельца контейнера
+	::memset(this->owner, 0, OWNER_LENGTH);
+	// Выполняем обнуление отпечатка открытого ключа
+	::memset(this->fingerprint, 0, FINGERPRINT_LENGTH);
 }
 /**
  * @brief Функция быстрой проверки поданных октетов на признак контейнера

@@ -22,6 +22,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <server/server.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -40,9 +42,6 @@ using namespace placeholders;
 class Executor {
 	private:
 		// Объект фреймворка
-		[[maybe_unused]] const fmk_t * _fmk;
-		// Объект работы с логами
-		const log_t * _log;
 	public:
 		/**
 		 * @brief Метод обработки событий записи данных клиентом
@@ -53,7 +52,7 @@ class Executor {
 		 */
 		void write([[maybe_unused]] const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
-			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
+			awh::log::print("Client write event: %zu bytes", awh::log::flag_t::INFO, size);
 		}
 		/**
 		 * @brief Метод обработки событий чтения данных клиентом
@@ -68,13 +67,13 @@ class Executor {
 			// Если данные получены
 			if(size > 0)
 				// Записываем данные в лог
-				this->_log->print("%s", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
+				awh::log::print("%s", awh::log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
-			else this->_log->print("No data received", log_t::flag_t::WARNING);
+			else awh::log::print("No data received", awh::log::flag_t::WARNING);
 			// Отправляем данные обратно клиенту
 			if(server->send(eid, data, size) == 0)
 				// Записываем ошибку в лог отправки данных клиентом на сервер
-				this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
+				awh::log::print("Failed to send data to client", awh::log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки событий изменения статуса сервера
@@ -91,12 +90,12 @@ class Executor {
 				// Если событие сервера запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
 					// Записываем в лог сообщение об успешном запуске события сервера
-					this->_log->print("Server launched on port %d", log_t::flag_t::INFO, server->getPort());
+					awh::log::print("Server launched on port %d", awh::log::flag_t::INFO, server->getPort());
 				break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события сервера
-					this->_log->print("Server destroyed", log_t::flag_t::INFO);
+					awh::log::print("Server destroyed", awh::log::flag_t::INFO);
 				break;
 			}
 		}
@@ -123,7 +122,7 @@ class Executor {
 		 */
 		void launch(const string & address, const uint16_t port, [[maybe_unused]] server_t * server) noexcept {
 			// Записываем в лог сообщение о запуске сервера
-			this->_log->print("Server is launching to %s:%d", log_t::flag_t::INFO, address.c_str(), port);
+			awh::log::print("Server is launching to %s:%d", awh::log::flag_t::INFO, address.c_str(), port);
 		}
 		/**
 		 * @brief Метод обработки событий готовности сервера к работе
@@ -136,7 +135,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
-			this->_log->print("Server is ready to accept connections: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
+			awh::log::print("Server is ready to accept connections: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок сервера
@@ -148,17 +147,14 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
-			this->_log->print("Server error: %s", log_t::flag_t::CRITICAL, message.c_str());
+			awh::log::print("Server error: %s", awh::log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект логирования
-		 *
 		 */
-		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
+		Executor() {}
 };
 
 /**
@@ -168,14 +164,17 @@ class Executor {
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект исполнителя для обработки событий сервера
-	Executor executor(&fmk, &log);
+	Executor executor;
 	// Создаём объект сервера
-	server_t server(&fmk, &log);
+	server_t server;
 	// Создаём событие сервера и сохраняем его идентификатор
 	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события

@@ -22,20 +22,24 @@
 
 #include <net/io.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace std;
 
 int main(int argc, char ** argv){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Требуемое количество подключений
 	const size_t count = ((argc > 1) ? static_cast <size_t> (::atol(argv[1])) : 1000);
-	// Объект фреймворка
-	awh::fmk_t fmk;
-	// Объект логирования
-	awh::log_t log(&fmk);
 	// Отключаем вывод логирования
-	log.level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Объект асинхронного движка ввода-вывода
-	awh::engine::io_t io(&fmk, &log);
+	awh::engine::io_t io;
 	// Выполняем инициализацию движка
 	if(!io.initialize()){
 		// Сообщаем о неудачной инициализации

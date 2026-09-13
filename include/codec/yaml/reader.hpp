@@ -538,7 +538,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				private:
 					// Настройки разбора текста
 					settings_t _settings;
@@ -1715,30 +1714,25 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log) noexcept;
+					Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора текста
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a text
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log, const settings_t & settings) noexcept;
+					Reader(const settings_t & settings) noexcept;
 			} reader_t;
 		};
 	};

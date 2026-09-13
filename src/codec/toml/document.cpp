@@ -23,9 +23,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <cstdio>
-#include <fstream>
-#include <sys/stat.h>
 #include <cmath>
 #include <limits>
 #include <unordered_set>
@@ -65,6 +62,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1831,7 +1829,7 @@ bool awh::codec::toml::Document::parse(const string_view text) noexcept {
 		// Выполняем огранение предела вложенности потолком допустимого
 		settings.maxDepth = MAX_DEPTH;
 	// Объект потокового чтения текста настроек
-	reader_t reader(this->_log, settings);
+	reader_t reader(settings);
 	/**
 	 * Если подача разбираемого текста не удалась
 	 */
@@ -3916,7 +3914,7 @@ string awh::codec::toml::Document::text(const writer_t::settings_t & settings) c
 		return string();
 	}
 	// Объект записи текста настроек
-	writer_t writer(this->_log, settings);
+	writer_t writer(settings);
 	/**
 	 * Собираемое составное имя очередной записи
 	 *
@@ -4066,9 +4064,6 @@ bool awh::codec::toml::Document::load(const string & filename) noexcept {
 	 *       какими отзывается файл пустой. Без проверки этой чтение отвечало УСПЕХОМ,
 	 *       отдавая дерево без записей. Замерено 07.09.2026 подачею пути `/tmp`
 	 *
-	 * @note Распознавание ведётся ДО открытия потока намеренно: у MS Windows каталог не
-	 *       открывается вовсе, и распознавание после открытия там мертво
-	 *
 	 * @note Код отказа здесь `FILE_NOT_READ`, и он сходится с кодеками JSON, XML и CSV -
 	 *       шесть кодеков из девяти отвечают ныне одинаково. Прежде стоял `FILE_NOT_OPENED`,
 	 *       и то было неверно ПО СУЩЕСТВУ: каталог на POSIX открывается потоком УСПЕШНО и
@@ -4076,11 +4071,13 @@ bool awh::codec::toml::Document::load(const string & filename) noexcept {
 	 *       что открылось, значит назвать не ту причину, и потребитель пойдёт поверять права
 	 *       и путь вместо вида предмета
 	 *
-	 * @warning Распознавание каталога стоит ДО открытия потока намеренно: у MS Windows
-	 *          каталог потоком не открывается вовсе, и распознавание после открытия было бы
-	 *          там мертво - ответом стал бы код отказа ОТКРЫТИЯ, и договор разошёлся бы по
-	 *          системам. На BSD расхождения этого не видно вовсе. Довод замерен Василием на
-	 *          стенде Windows 11 ARM64; у всех трёх моих кодеков порядок этот соблюдён
+	 * @note Распознавание каталога стоит ПЕРВЫМ намеренно. Прежде довод стоял на порядке
+	 *       относительно открытия потока - у MS Windows каталог потоком не открывался
+	 *       вовсе, - но потока здесь более нет: работа идёт ходом `fs_t`. Порядок остаётся
+	 *       нужен по иной причине: ход чтения на каталоге оставляет пусто, неотличимо от
+	 *       файла пустого, и вид предмета надлежит узнать до чтения. Расхождение по
+	 *       системам замерено Василием на стенде Windows 11 ARM64; у всех трёх моих
+	 *       кодеков порядок этот соблюдён
 	 */
 	/**
 	 * @note Ссылки РАЗРЕШАЮТСЯ - второй довод ложью, - ибо путь, на каталог указывающий
@@ -4199,9 +4196,8 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("%s document failed: %s", log_t::flag_t::CRITICAL, "TOML",
+			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "TOML",
 			 ::awh::codec::toml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -4221,9 +4217,8 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("%s document failed: %s", log_t::flag_t::CRITICAL, "TOML",
+			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "TOML",
 			 ::awh::codec::toml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -4245,9 +4240,8 @@ bool awh::codec::toml::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("%s document failed: %s", log_t::flag_t::CRITICAL, "TOML",
+			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "TOML",
 			 ::awh::codec::toml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -4338,41 +4332,23 @@ void awh::codec::toml::Document::report() const noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе
-		this->_log->print("TOML document failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
-}
-/**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним лишь
- *          доводом построения, но и после него - потребитель, дерево получивший готовым,
- *          иначе не имел бы способа направить его отчёты в свой журнал вовсе
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::toml::Document::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
+		awh::log::print("TOML document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::toml::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 }
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::toml::Document::Document(const fmk_t * fmk, const log_t * log) noexcept :
- _encoding(encoding_t::NONE), _fmk(fmk), _log(log), _fs(fmk, log), _error(error_t::NONE), _garbage(0), _compacted(0) {}
+awh::codec::toml::Document::Document() noexcept :
+ _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _garbage(0), _compacted(0) {}
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки дерева настроек
  *
  */
-awh::codec::toml::Document::Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept :
- _encoding(encoding_t::NONE), _fmk(fmk), _log(log), _fs(fmk, log), _error(error_t::NONE), _garbage(0), _compacted(0) {
+awh::codec::toml::Document::Document(const settings_t & settings) noexcept :
+ _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _garbage(0), _compacted(0) {
 	// Выполняем установку настроек дерева настроек
 	this->settings(settings);
 }

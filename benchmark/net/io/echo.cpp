@@ -217,7 +217,7 @@ namespace {
 		// Полезная нагрузка одного обмена
 		static uint8_t payload[ECHO_PAYLOAD] = {0};
 		// Создаём объект асинхронного движка ввода-вывода
-		awh::engine::io_t io(framework(), logger());
+		awh::engine::io_t io;
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Добавляем новое событие сервера
@@ -354,7 +354,14 @@ namespace {
 	 * @return результат измерения
 	 *
 	 */
-	static awh::benchmark::result_t single() noexcept {
+	/**
+	 * @note Имя сценария несёт приставку неспроста: `single` у части систем занято
+	 *       СИСТЕМНЫМ ИМЕНЕМ ТИПА (`typedef float single` в `floatingpoint.h` у Solaris
+	 *       и illumos), и взятие адреса такого имени разбирается как взятие адреса типа -
+	 *       сборка отвечает «expected primary-expression before ')' token», указывая на
+	 *       строку с закрывающей скобкой, а не на имя
+	 */
+	static awh::benchmark::result_t singleFlow() noexcept {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Получаем итоги прогона сценария обмена
@@ -374,7 +381,7 @@ namespace {
 	 * @return результат измерения
 	 *
 	 */
-	static awh::benchmark::result_t multi() noexcept {
+	static awh::benchmark::result_t multiFlow() noexcept {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Выполняем прогон сценария обмена
@@ -412,12 +419,12 @@ namespace {
 	// Регистрируем сценарий обмена на одном подключении
 	static const bool gSingle = awh::benchmark::add(
 		"net/io/echo/single", "обменов/с", SINGLE_THRESHOLD,
-		awh::benchmark::bound_t::MINIMUM, &::single
+		awh::benchmark::bound_t::MINIMUM, &::singleFlow
 	);
 	// Регистрируем сценарий обмена на множестве подключений
 	static const bool gMulti = awh::benchmark::add(
 		"net/io/echo/multi", "обменов/с", MULTI_THRESHOLD,
-		awh::benchmark::bound_t::MINIMUM, &::multi
+		awh::benchmark::bound_t::MINIMUM, &::multiFlow
 	);
 	/**
 	 * @brief Функция прогона сценария учёта системных вызовов на один обмен

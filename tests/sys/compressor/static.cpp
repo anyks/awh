@@ -49,7 +49,7 @@ TEST_F(CompressorFixture, ResetAndCreateCompressorTest){
 	// Проверяем, что объект компрессии сброшен
 	ASSERT_TRUE(this->_compressor == nullptr);
 	// Создаём объект компрессии заново
-	this->_compressor = std::make_unique <awh::compressor::block_t> (this->_log.get());
+	this->_compressor = std::make_unique <awh::compressor::block_t> ();
 	// Проверяем, что объект компрессии создан
 	ASSERT_TRUE(this->_compressor != nullptr);
 }
@@ -62,7 +62,7 @@ TEST_F(CompressorFixture, ReCreateCompressorTest){
 	// Проверяем, что объект компрессии создан
 	ASSERT_TRUE(this->_compressor != nullptr);
 	// Создаём объект компрессии заново
-	this->_compressor = std::make_unique <awh::compressor::block_t> (this->_log.get());
+	this->_compressor = std::make_unique <awh::compressor::block_t> ();
 	// Проверяем, что объект компрессии создан
 	ASSERT_TRUE(this->_compressor != nullptr);
 }
@@ -1764,11 +1764,11 @@ TEST_F(CompressorFixture, StreamWindowBitsRangeTest){
 			// Устанавливаем размер скользящего окна
 			params.wbits = wbits;
 			// Создаём потоковую сессию компрессии
-			awh::compressor::stream_t encoder(method, awh::compressor::event_t::ENCODE, params, this->_log.get());
+			awh::compressor::stream_t encoder(method, awh::compressor::event_t::ENCODE, params);
 			// Проверяем что сессия не заведена
 			ASSERT_FALSE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", wbits = " << wbits << ", encode";
 			// Создаём потоковую сессию декомпрессии
-			awh::compressor::stream_t decoder(method, awh::compressor::event_t::DECODE, params, this->_log.get());
+			awh::compressor::stream_t decoder(method, awh::compressor::event_t::DECODE, params);
 			// Проверяем что сессия не заведена
 			ASSERT_FALSE(decoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", wbits = " << wbits << ", decode";
 		}
@@ -1779,7 +1779,7 @@ TEST_F(CompressorFixture, StreamWindowBitsRangeTest){
 			// Устанавливаем размер скользящего окна
 			params.wbits = wbits;
 			// Создаём потоковую сессию компрессии
-			awh::compressor::stream_t encoder(method, awh::compressor::event_t::ENCODE, params, this->_log.get());
+			awh::compressor::stream_t encoder(method, awh::compressor::event_t::ENCODE, params);
 			// Проверяем что сессия заведена
 			ASSERT_TRUE(encoder.valid()) << "method = " << static_cast <uint16_t> (method) << ", wbits = " << wbits;
 		}
@@ -1949,7 +1949,7 @@ TEST_F(CompressorFixture, StreamNullLogTest){
 	// Устанавливаем размер скользящего окна
 	params.wbits = 15;
 	// Создаём потоковую сессию компрессии с пустым объектом работы с логами
-	awh::compressor::stream_t encoder(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::ENCODE, params, nullptr);
+	awh::compressor::stream_t encoder(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::ENCODE, params);
 	// Проверяем что потоковая сессия заведена
 	ASSERT_TRUE(encoder.valid());
 	// Буфер выхода очередной порции
@@ -1972,7 +1972,7 @@ TEST_F(CompressorFixture, StreamNullLogTest){
 	// Проверяем что компрессия выполнена
 	ASSERT_FALSE(compressed.empty());
 	// Создаём потоковую сессию декомпрессии с пустым объектом работы с логами
-	awh::compressor::stream_t decoder(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::DECODE, params, nullptr);
+	awh::compressor::stream_t decoder(awh::compressor::method_t::DEFLATE, awh::compressor::event_t::DECODE, params);
 	// Проверяем что потоковая сессия заведена
 	ASSERT_TRUE(decoder.valid());
 	// Результат декомпрессии данных

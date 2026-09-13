@@ -46,6 +46,7 @@
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../main.hpp"
+#include <sys/log.hpp>
 
 /**
  * Если сборка выполняется со сличением с эталонной реализацией
@@ -56,7 +57,6 @@
 	 */
 	#define PCRE2_CODE_UNIT_WIDTH 8
 	#include <pcre2.h>
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -76,44 +76,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 #endif
 
@@ -340,7 +310,7 @@ namespace {
 		 */
 		#if defined(AWH_TEST_PCRE2)
 			// Создаём объект движка регулярных выражений
-			regex::engine_t engine(::logger());
+			regex::engine_t engine;
 			// Получаем набор режимов сопоставления движком
 			const uint32_t flags = (jit ? static_cast <uint32_t> (regex::flag_t::JIT) : 0);
 			// Код ошибки сборки эталонного регулярного выражения
@@ -415,9 +385,9 @@ namespace {
 			// Создаём источник псевдослучайных значений
 			mt19937 gen(seed);
 			// Создаём объект движка регулярных выражений
-			regex::engine_t engine(::logger());
+			regex::engine_t engine;
 			// Создаём объект хранилища собранных выражений
-			const regex::storage_t storage(::logger());
+			const regex::storage_t storage;
 			// Получаем набор режимов сопоставления движком
 			const uint32_t flags = ((utf ? (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP)) : 0) |
 			 (jit ? static_cast <uint32_t> (regex::flag_t::JIT) : 0));
@@ -760,7 +730,7 @@ void refusals([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 		// Получаем количество обёрток порождаемого выражения
 		const size_t wraps = (sizeof(WRAPS) / sizeof(WRAPS[0]));
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество образцов, обеими сторонами принятых и отвергнутых
@@ -1003,7 +973,7 @@ void modes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_
 		const size_t options = (sizeof(OPTIONS) / sizeof(OPTIONS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -1182,7 +1152,7 @@ void folding([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		const size_t count = (sizeof(PARTS) / sizeof(PARTS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -1362,7 +1332,7 @@ void captures([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint
 		const size_t wraps = (sizeof(WRAPS) / sizeof(WRAPS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -1554,7 +1524,7 @@ void breaks([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 		const size_t count = (sizeof(PARTS) / sizeof(PARTS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -1745,7 +1715,7 @@ void naming([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32
 		const size_t references = (sizeof(REFERENCES) / sizeof(REFERENCES[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -2057,7 +2027,7 @@ void escapes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		const size_t parts = (sizeof(PARTS) / sizeof(PARTS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -2243,7 +2213,7 @@ void lookarounds([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		const size_t tails = (sizeof(TAILS) / sizeof(TAILS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -2443,7 +2413,7 @@ void runs([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint32_t
 		const size_t tails = (sizeof(TAILS) / sizeof(TAILS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -2671,7 +2641,7 @@ void subroutines([[maybe_unused]] const size_t samples, [[maybe_unused]] const u
 		const size_t wraps = (sizeof(WRAPS) / sizeof(WRAPS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -2838,7 +2808,7 @@ void repeats([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		const size_t greeds = (sizeof(GREEDS) / sizeof(GREEDS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -2990,7 +2960,7 @@ void classes([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		const size_t count = (sizeof(ITEMS) / sizeof(ITEMS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов
@@ -3179,7 +3149,7 @@ void inlines([[maybe_unused]] const size_t samples, [[maybe_unused]] const uint3
 		const size_t atoms = (sizeof(ATOMS) / sizeof(ATOMS[0]));
 		const size_t texts = (sizeof(TEXTS) / sizeof(TEXTS[0]));
 		// Создаём объект работы с регулярными выражениями
-		regexp_t regexp(::logger());
+		regexp_t regexp;
 		// Создаём генератор порождения образцов сличения
 		mt19937 gen(seed);
 		// Количество сличённых образцов

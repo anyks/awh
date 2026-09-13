@@ -40,6 +40,7 @@
  */
 #include <cstring>
 #include <limits>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -84,14 +85,6 @@ awh::codec::abc::Packer::Settings::Settings() noexcept :
  binary(compressor::method_t::LZ4), numeric(compressor::method_t::ZSTD),
  threshold(64), hash(crypto_t::hash_t::SHA256), cipher(crypto_t::cipher_t::AES256), encrypt(false) {}
 /**
- * @brief Конструктор
- *
- * @param log объект для работы с логами
- *
- */
-awh::codec::abc::Packer::Packer(const log_t * log) noexcept :
- _error(error_t::NONE), _compressor(nullptr), _crypto(nullptr), _log(log) {}
-/**
  * @brief Метод объявления отказа укладки либо снятия кадра
  *
  * @param error объявляемый код отказа
@@ -115,20 +108,20 @@ bool awh::codec::abc::Packer::fail(const error_t error) noexcept {
 	 *       молчали об одном: набор спрашивал причину работою `error()`, а журнала не
 	 *       спрашивал никто. Закреплены порознь: работы разные
 	 */
-	if((error != error_t::NONE) && (this->_log != nullptr)){
+	if(error != error_t::NONE){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
-			 log_t::flag_t::WARNING, abc::message(error));
+			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
+			 awh::log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -652,3 +645,9 @@ void awh::codec::abc::Packer::settings(const settings_t & settings) noexcept {
 	// Выполняем установку настроек укладки кадра
 	this->_settings = settings;
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Packer::Packer() noexcept :
+ _error(error_t::NONE), _compressor(nullptr), _crypto(nullptr) {}

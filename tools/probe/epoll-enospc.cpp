@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <string>
 #include <fstream>
+#include <sys/fmk.hpp>
 
 // Путь к пределу наблюдений epoll
 static const char * WATCHES = "/proc/sys/fs/epoll/max_user_watches";
@@ -48,6 +49,13 @@ static bool setWatches(const long value) noexcept {
 }
 
 int main(int argc, char * argv[]){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Порт петли
 	const uint16_t port = static_cast <uint16_t> ((argc > 1) ? ::atoi(argv[1]) : 43917);
 	// Исходный предел наблюдений
@@ -58,9 +66,7 @@ int main(int argc, char * argv[]){
 	}
 	::printf("PROBE: исходный предел наблюдений %ld\n", saved);
 
-	awh::fmk_t fmk;
-	awh::log_t log(&fmk);
-	awh::engine::io_t io(&fmk, &log);
+	awh::engine::io_t io;
 
 	// Признак доставки сообщения
 	bool delivered = false;

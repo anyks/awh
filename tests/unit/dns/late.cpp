@@ -104,13 +104,13 @@ TEST_F(DNSUnitFixture, DnsPromptAnswerAccepted) {
 	// Выполняем проверку того, что порт сервером получен
 	ASSERT_GT(server.port(), static_cast <uint16_t> (0));
 	// Создаём объект DNS-резолвера
-	awh::unit::dns_t dns(awh::event::family_t::IPV4, this->_fmk.get(), this->_log.get());
+	awh::unit::dns_t dns(awh::event::family_t::IPV4);
 	// Выполняем настройку резолвера на подставной сервер имён
 	this->setup(dns, server, TEST_DELAY, 1);
 	// Собираемый итог разрешения доменного имени
 	outcome_t result;
 	// Объект работы с сетевыми адресами, которым адрес приводится к строке
-	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr;
 	/**
 	 * Устанавливаем функцию обратного вызова на получение адреса
 	 */
@@ -158,7 +158,7 @@ TEST_F(DNSUnitFixture, DnsPromptAnswerAccepted) {
 	 *       один на процесс, и не останови его проверка - следующая в нём и застрянет,
 	 *       а отклика может не случиться вовсе. Таймер завершает работу в любом исходе
 	 */
-	awh::unit::timer_t timer(this->_fmk.get(), this->_log.get());
+	awh::unit::timer_t timer;
 	// Заводим таймер остановки работы резолвера
 	const awh::event::id_t tid = timer.timeout(TEST_DELAY);
 	// Устанавливаем функцию обратного вызова на срабатывание таймера
@@ -219,7 +219,7 @@ TEST_F(DNSUnitFixture, DnsLateAnswerDiscarded) {
 	 */
 	ASSERT_TRUE(server.start(TEST_DELAY * 4, false));
 	// Создаём объект DNS-резолвера
-	awh::unit::dns_t dns(awh::event::family_t::IPV4, this->_fmk.get(), this->_log.get());
+	awh::unit::dns_t dns(awh::event::family_t::IPV4);
 	// Выполняем настройку резолвера на подставной сервер имён
 	this->setup(dns, server, TEST_DELAY, 1);
 	// Собираемый итог разрешения доменного имени
@@ -277,7 +277,7 @@ TEST_F(DNSUnitFixture, DnsLateAnswerDiscarded) {
 		}, std::placeholders::_1
 	);
 	// Создаём объект узла таймера, которым работа резолвера завершается
-	awh::unit::timer_t timer(this->_fmk.get(), this->_log.get());
+	awh::unit::timer_t timer;
 	/**
 	 * Заводим таймер завершения работы резолвера
 	 *
@@ -325,7 +325,7 @@ TEST_F(DNSUnitFixture, DnsSilentServerAttempts) {
 	// Выполняем запуск подставного сервера имён, не отвечающего вовсе
 	ASSERT_TRUE(server.start(0, true));
 	// Создаём объект DNS-резолвера
-	awh::unit::dns_t dns(awh::event::family_t::IPV4, this->_fmk.get(), this->_log.get());
+	awh::unit::dns_t dns(awh::event::family_t::IPV4);
 	// Выполняем настройку резолвера на подставной сервер имён
 	this->setup(dns, server, TEST_DELAY, 3);
 	// Собираемый итог разрешения доменного имени
@@ -431,7 +431,7 @@ TEST_F(DNSUnitFixture, DnsForeignAnswerKeepsWaiting) {
 	 */
 	ASSERT_TRUE(server.start(0, false, UINT32_MAX));
 	// Создаём объект DNS-резолвера
-	awh::unit::dns_t dns(awh::event::family_t::IPV4, this->_fmk.get(), this->_log.get());
+	awh::unit::dns_t dns(awh::event::family_t::IPV4);
 	// Выполняем настройку резолвера на подставной сервер имён
 	this->setup(dns, server, TEST_DELAY, 1);
 	// Собираемый итог разрешения доменного имени
@@ -527,7 +527,7 @@ TEST_F(DNSUnitFixture, DnsTargetPortAppliesAfterServers) {
 	// Выполняем запуск подставного сервера имён, отвечающего сразу
 	ASSERT_TRUE(server.start(0, false));
 	// Создаём объект DNS-резолвера
-	awh::unit::dns_t dns(awh::event::family_t::IPV4, this->_fmk.get(), this->_log.get());
+	awh::unit::dns_t dns(awh::event::family_t::IPV4);
 	// Устанавливаем срок ожидания ответа сервера имён
 	dns.setTimeout(TEST_DELAY);
 	// Устанавливаем число попыток обращения к серверу имён
@@ -609,7 +609,7 @@ TEST_F(DNSUnitFixture, DnsTargetPortAppliesAfterServers) {
  */
 TEST_F(DNSUnitFixture, DnsIdentifiersAreNotSequential) {
 	// Создаём объект DNS-резолвера
-	awh::unit::dns_t dns(awh::event::family_t::IPV4, this->_fmk.get(), this->_log.get());
+	awh::unit::dns_t dns(awh::event::family_t::IPV4);
 	// Число выдаваемых для проверки номеров
 	constexpr size_t COUNT = 32;
 	// Число пар, идущих подряд по значению

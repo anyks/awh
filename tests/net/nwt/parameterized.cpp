@@ -75,8 +75,6 @@ class NwtTestParameterizedFixture : public NwtFixture, public ::testing::WithPar
 TEST_P(NwtTestParameterizedFixture, NwtTestingTest){
 	// Выполняем очистку объекта работы со списком параметров URL
 	this->_nwt->clear();
-	// Устанавливаем логер для объекта работы со списком параметров URL
-	this->_nwt->setLogger(this->_log.get());
 	// Если пользовательская зона указана, устанавливаем её
 	if(!this->_parameter.zone.empty()){
 		// Устанавливаем пользовательскую зону для объекта работы со списком параметров URL

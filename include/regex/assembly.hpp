@@ -102,7 +102,7 @@
  * Подключаем заголовочные файлы модуля
  */
 #include "common.hpp"
-#include "../sys/log.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -162,9 +162,6 @@ namespace awh {
 			private:
 				// Флаг разрешения исполнения размещённого участка памяти
 				bool _executable;
-			private:
-				// Объект журнала событий
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -386,15 +383,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Assembly(const log_t * log) noexcept;
+				explicit Assembly() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

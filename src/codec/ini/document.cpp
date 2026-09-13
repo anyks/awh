@@ -23,9 +23,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <cstdio>
-#include <fstream>
-#include <sys/stat.h>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
 #include <set>
@@ -58,6 +55,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1226,7 +1224,7 @@ bool awh::codec::ini::Document::parse(const string_view text) noexcept {
 		// Выполняем огранение предела вложенности потолком допустимого
 		settings.maxDepth = MAX_DEPTH;
 	// Объект потокового чтения текста настроек
-	reader_t reader(this->_log, settings);
+	reader_t reader(settings);
 	// Выполняем заведение раздела без имени
 	this->_sections.emplace_back();
 	// Порядковый номер раздела, которому принадлежат разбираемые записи
@@ -3005,9 +3003,6 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 	 *       какими отзывается файл пустой. Без проверки этой чтение отвечало УСПЕХОМ,
 	 *       отдавая дерево без записей. Замерено 07.09.2026 подачею пути `/tmp`
 	 *
-	 * @note Распознавание ведётся ДО открытия потока намеренно: у MS Windows каталог не
-	 *       открывается вовсе, и распознавание после открытия там мертво
-	 *
 	 * @note Код отказа здесь `FILE_NOT_READ`, и он сходится с кодеками JSON, XML и CSV -
 	 *       шесть кодеков из девяти отвечают ныне одинаково. Прежде стоял `FILE_NOT_OPENED`,
 	 *       и то было неверно ПО СУЩЕСТВУ: каталог на POSIX открывается потоком УСПЕШНО и
@@ -3015,11 +3010,13 @@ bool awh::codec::ini::Document::load(const string & filename) noexcept {
 	 *       что открылось, значит назвать не ту причину, и потребитель пойдёт поверять права
 	 *       и путь вместо вида предмета
 	 *
-	 * @warning Распознавание каталога стоит ДО открытия потока намеренно: у MS Windows
-	 *          каталог потоком не открывается вовсе, и распознавание после открытия было бы
-	 *          там мертво - ответом стал бы код отказа ОТКРЫТИЯ, и договор разошёлся бы по
-	 *          системам. На BSD расхождения этого не видно вовсе. Довод замерен Василием на
-	 *          стенде Windows 11 ARM64; у всех трёх моих кодеков порядок этот соблюдён
+	 * @note Распознавание каталога стоит ПЕРВЫМ намеренно. Прежде довод стоял на порядке
+	 *       относительно открытия потока - у MS Windows каталог потоком не открывался
+	 *       вовсе, - но потока здесь более нет: работа идёт ходом `fs_t`. Порядок остаётся
+	 *       нужен по иной причине: ход чтения на каталоге оставляет пусто, неотличимо от
+	 *       файла пустого, и вид предмета надлежит узнать до чтения. Расхождение по
+	 *       системам замерено Василием на стенде Windows 11 ARM64; у всех трёх моих
+	 *       кодеков порядок этот соблюдён
 	 */
 	/**
 	 * @note Ссылки РАЗРЕШАЮТСЯ - второй довод ложью, - ибо путь, на каталог указывающий
@@ -3140,9 +3137,8 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI document failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -3166,9 +3162,8 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI document failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -3198,9 +3193,8 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		 *          был НЕМ: замерено подачею пути в каталог, отказ приходил при коде НОЛЬ,
 		 *          тогда как JSON, XML и CSV называли причину
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("INI document failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -3264,7 +3258,7 @@ string awh::codec::ini::Document::text(const writer_t::settings_t & settings) co
 	 */
 	options.separated = false;
 	// Объект записи текста настроек
-	writer_t writer(this->_log, options);
+	writer_t writer(options);
 	// Признак успешной записи очередной записи дерева
 	bool result = true;
 	/**
@@ -3396,41 +3390,23 @@ void awh::codec::ini::Document::report() const noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе
-		this->_log->print("INI document failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::ini::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
-}
-/**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним лишь
- *          доводом построения, но и после него - потребитель, дерево получивший готовым,
- *          иначе не имел бы способа направить его отчёты в свой журнал вовсе
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::ini::Document::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
+		awh::log::print("INI document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 }
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::ini::Document::Document(const fmk_t * fmk, const log_t * log) noexcept :
- _encoding(encoding_t::NONE), _fmk(fmk), _log(log), _fs(fmk, log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
+awh::codec::ini::Document::Document() noexcept :
+ _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false) {}
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки дерева настроек
  *
  */
-awh::codec::ini::Document::Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept :
- _encoding(encoding_t::NONE), _fmk(fmk), _log(log), _fs(fmk, log), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
+awh::codec::ini::Document::Document(const settings_t & settings) noexcept :
+ _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
 /**
  * @brief Деструктор
  *

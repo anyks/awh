@@ -40,6 +40,7 @@
  */
 #include "../../main.hpp"
 #include "../../../include/unit/cluster.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -60,14 +61,11 @@ using namespace awh;
  *
  */
 TEST(ClusterLinkFixture, ClusterWorkerLinkTest){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод журнала: обе роли пишут в один поток
-	log.mode({});
+	awh::log::mode({});
 	// Создаём объект кластера
-	unit::cluster_t cluster(&fmk, &log);
+	unit::cluster_t cluster;
 	// Признак того, что мастер получил доклад об удавшейся связи
 	std::atomic_bool linked{false};
 	/**
@@ -220,14 +218,11 @@ TEST(ClusterLinkFixture, ClusterWorkerLinkTest){
  *
  */
 TEST(ClusterLinkFixture, ClusterWorkerShutdownTest){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод журнала: обе роли пишут в один поток
-	log.mode({});
+	awh::log::mode({});
 	// Создаём объект кластера
-	unit::cluster_t cluster(&fmk, &log);
+	unit::cluster_t cluster;
 	// Число узлов, вошедших в кластер за время проверки
 	std::atomic_uint32_t joined{0};
 	// Код, каким завершился ушедший по приказу работник
@@ -335,14 +330,11 @@ TEST(ClusterLinkFixture, ClusterWorkerShutdownTest){
  *
  */
 TEST(ClusterLinkFixture, ClusterLinkRefusalTest){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод журнала: обе роли пишут в один поток
-	log.mode({});
+	awh::log::mode({});
 	// Создаём объект кластера
-	unit::cluster_t cluster(&fmk, &log);
+	unit::cluster_t cluster;
 	// Доклад работника об итогах отказов
 	string report;
 	/**
@@ -472,14 +464,11 @@ TEST(ClusterLinkFixture, ClusterLinkRefusalTest){
  *
  */
 TEST(ClusterLinkFixture, ClusterLinkVetoTest){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод журнала: обе роли пишут в один поток
-	log.mode({});
+	awh::log::mode({});
 	// Создаём объект кластера
-	unit::cluster_t cluster(&fmk, &log);
+	unit::cluster_t cluster;
 	// Признак того, что мастер получил доклад о запрете
 	std::atomic_bool refused{false};
 	// Признак того, что связь всё же завелась вопреки запрету
@@ -610,14 +599,11 @@ TEST(ClusterLinkFixture, ClusterLinkVetoTest){
  *
  */
 TEST(ClusterLinkFixture, ClusterLinkDropTest){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод журнала: обе роли пишут в один поток
-	log.mode({});
+	awh::log::mode({});
 	// Создаём объект кластера
-	unit::cluster_t cluster(&fmk, &log);
+	unit::cluster_t cluster;
 	// Признак того, что переживший работник узнал о разрыве
 	std::atomic_bool dropped{false};
 	/**

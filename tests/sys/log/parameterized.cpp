@@ -18,11 +18,12 @@
  * @copyright Copyright © 2025
  *
  */
+#include "log.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "log.hpp"
 
 /**
  * @brief Структура параметров тестов логов
@@ -38,7 +39,7 @@ struct LogTestParameter {
 	// Аргументы формирования лога
 	std::vector <std::string> args;
 	// Флаг типа логирования
-	awh::log_t::flag_t flag = awh::log_t::flag_t::NONE;
+	awh::log::flag_t flag = awh::log::flag_t::NONE;
 };
 
 /**
@@ -65,7 +66,7 @@ TEST_P(LogTestParameterizedFixture, LogPrintTest){
 	 */
 	uint16_t received = 0;
 	// Подписываемся на получение логов
-	this->_log->subscribe([this, &received](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	awh::log::subscribe([this, &received](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 		// Запоминаем, что запись до подписчика дошла
 		received++;
 		// Проверяем корректность полученного флага лога
@@ -74,13 +75,13 @@ TEST_P(LogTestParameterizedFixture, LogPrintTest){
 		ASSERT_EQ(this->_parameter.result, text);
 	});
 	// Устанавливаем режимы логов
-	this->_log->mode({awh::log_t::mode_t::CONSOLE});
+	awh::log::mode({awh::log::mode_t::CONSOLE});
 	// Записываем в лог с параметрами в отладочном режиме
-	this->_log->debug(this->_parameter.format, this->_parameter.method, {}, this->_parameter.flag, this->_parameter.args);
+	awh::log::debug(this->_parameter.format, this->_parameter.method, {}, this->_parameter.flag, this->_parameter.args);
 	// Устанавливаем режимы логов в отложенном режиме
-	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем формирование лога в отложенном режиме
-	this->_log->print(this->_parameter.format, this->_parameter.flag, this->_parameter.args);
+	awh::log::print(this->_parameter.format, this->_parameter.flag, this->_parameter.args);
 	/**
 	 * До подписчика обязана дойти ровно одна запись - та, что сделана в режиме DEFERRED
 	 *
@@ -103,28 +104,28 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, LogTestParameterizedFixture,
 			__PRETTY_FUNCTION__,
 			"Hello World!!!",
 			{"Hello", "World", "!!!"},
-			awh::log_t::flag_t::NONE
+			awh::log::flag_t::NONE
 		}),
 		LogTestParameter({
 			"$1 $2$3",
 			__PRETTY_FUNCTION__,
 			"Привет Мир!!!",
 			{"Привет", "Мир", "!!!"},
-			awh::log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		}),
 		LogTestParameter({
 			"$1 $2$3",
 			__PRETTY_FUNCTION__,
 			"Hello World!!!",
 			{"Hello", "World", "!!!"},
-			awh::log_t::flag_t::INFO
+			awh::log::flag_t::INFO
 		}),
 		LogTestParameter({
 			"$1 $2$3",
 			__PRETTY_FUNCTION__,
 			"Привет Мир!!!",
 			{"Привет", "Мир", "!!!"},
-			awh::log_t::flag_t::WARNING
+			awh::log::flag_t::WARNING
 		})
 	)
 );

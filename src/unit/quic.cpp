@@ -25,6 +25,8 @@
  */
 #include <net/addr.hpp>
 #include <unit/quic.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -76,7 +78,7 @@ awh::unit::QuicServer::ClusterParams::ClusterParams() noexcept :
  */
 uint64_t awh::unit::QuicServer::date() const noexcept {
 	// Выводим текущий штамп времени в миллисекундах
-	return this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	return awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 }
 /**
  * @brief Метод формирования адреса удалённого эндпоинта сессии
@@ -137,7 +139,7 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	// Если шаблон контекста безопасности не установлен
 	if((this->_coder == nullptr) || (this->_ctx == 0)){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC security context is not set", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC security context is not set", awh::log::flag_t::CRITICAL);
 		// Уничтожаем сессию соединения
 		this->_io->destroy(oid);
 		// Выходим из метода
@@ -154,7 +156,7 @@ void awh::unit::QuicServer::accept([[maybe_unused]] const event::id_t eid, const
 	// Создаём соединение QUIC на шаблоне контекста безопасности
 	session.connection = make_unique <quic::connection_t> (
 		quic::endpoint_t::SERVER, this->_ctx,
-		* this->_coder, this->_log
+		* this->_coder
 	);
 	// Устанавливаем локальные транспортные параметры соединения
 	session.connection->params(this->_params);
@@ -642,7 +644,7 @@ bool awh::unit::QuicServer::drop(const event::id_t oid, const uint8_t * data, co
 		// Выводим отрицательный результат
 		return false;
 	// Записываем в лог сообщение об отправке сброса без сохранения состояния
-	this->_log->print("QUIC stateless reset is sent: ID=%u", log_t::flag_t::INFO, oid);
+	awh::log::print("QUIC stateless reset is sent: ID=%u", awh::log::flag_t::INFO, oid);
 	// Выводим положительный результат
 	return true;
 }
@@ -666,7 +668,7 @@ void awh::unit::QuicServer::mark(const event::id_t oid, session_t & session, con
 	 */
 	if(!this->_io->setExplicitCongestionNotification(oid, this->_family, marking)){
 		// Записываем предупреждение в лог
-		this->_log->print("QUIC outgoing datagrams marking is not applied: ID=%u", log_t::flag_t::WARNING, oid);
+		awh::log::print("QUIC outgoing datagrams marking is not applied: ID=%u", awh::log::flag_t::WARNING, oid);
 		// Выходим из метода - установленная маркировка неизвестна
 		return;
 	}
@@ -889,7 +891,7 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 	// Если события не созданы
 	if((this->_eid == 0) || (this->_tid == 0)){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC server events are not created", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC server events are not created", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
@@ -916,7 +918,7 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 		// Снимаем уведомление о перегрузке пути, так-как отметок система не выдаёт
 		this->_ecn = false;
 		// Сообщаем, что уведомление о перегрузке пути на этой системе недоступно
-		this->_log->print("QUIC explicit congestion notification is not supported by the system for the selected address family", log_t::flag_t::WARNING);
+		awh::log::print("QUIC explicit congestion notification is not supported by the system for the selected address family", awh::log::flag_t::WARNING);
 	}
 	/**
 	 * Если общий ключ вывода токенов сброса не задан приложением: генерируем его
@@ -924,7 +926,7 @@ awh::event::id_t awh::unit::QuicServer::issue(const event::family_t family, [[ma
 	 */
 	if(this->_resetKey.empty() && !quic::resetKey(this->_resetKey))
 		// Записываем предупреждение в лог - сброс без сохранения состояния недоступен
-		this->_log->print("QUIC stateless reset key is not generated", log_t::flag_t::WARNING);
+		awh::log::print("QUIC stateless reset key is not generated", awh::log::flag_t::WARNING);
 	// Устанавливаем интервал проверки таймеров соединений
 	this->_io->setTimeout(this->_tid, event::action_t::NONE, 25);
 	/**
@@ -1829,7 +1831,7 @@ void awh::unit::QuicServer::start() noexcept {
 				// Если кластер не инициализирован
 				if(this->_cluster == nullptr){
 					// Создаём объект кластера для управления процессами сервера
-					this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+					this->_cluster = make_unique <cluster_t> ();
 					// Если имя кластера установлено
 					if(!this->_clusterParams.name.empty())
 						// Устанавливаем название кластера
@@ -2474,13 +2476,13 @@ void awh::unit::QuicServer::clusterCount(const uint16_t count) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {count}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2709,12 +2711,9 @@ bool awh::unit::QuicServer::clusterSetBufferSize(const pid_t pid, const event::a
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::QuicServer::QuicServer(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _eid(0), _tid(0), _inheritedEid(0), _retry(false), _ecn(false), _family(event::family_t::IPV4),
+awh::unit::QuicServer::QuicServer() noexcept :
+ unit_t(), _eid(0), _tid(0), _inheritedEid(0), _retry(false), _ecn(false), _family(event::family_t::IPV4),
  _resetKey{""}, _ctx(0), _coder(nullptr), _cluster(nullptr),
  _listenType(event::address_t::IPV4), _awaitingPort(false), _backlog(0), _listenPort(0),
  _portBegin(0), _portEnd(0), _listenHost{""} {}
@@ -2754,7 +2753,7 @@ awh::unit::QuicServer::~QuicServer() noexcept {
  */
 uint64_t awh::unit::QuicClient::date() const noexcept {
 	// Выводим текущий штамп времени в миллисекундах
-	return this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	return awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 }
 /**
  * @brief Метод обработки принятой датаграммы соединения
@@ -2878,7 +2877,7 @@ void awh::unit::QuicClient::connected([[maybe_unused]] const event::id_t eid, co
 	 */
 	if(this->_connection->connect() != quic::status_t::OK){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC connection is not started", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC connection is not started", awh::log::flag_t::CRITICAL);
 		// Выходим из метода
 		return;
 	}
@@ -3135,7 +3134,7 @@ void awh::unit::QuicClient::mark(const event::ecn_t marking) noexcept {
 	// Если смена маркировки исходящих датаграмм не выполнена
 	if(!this->_io->setExplicitCongestionNotification(this->_eid, this->_family, marking)){
 		// Записываем предупреждение в лог
-		this->_log->print("QUIC outgoing datagrams marking is not applied", log_t::flag_t::WARNING);
+		awh::log::print("QUIC outgoing datagrams marking is not applied", awh::log::flag_t::WARNING);
 		// Выходим из метода - установленная на сокете маркировка неизвестна
 		return;
 	}
@@ -3271,7 +3270,7 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 	// Если шаблон контекста безопасности не установлен
 	if((this->_coder == nullptr) || (this->_ctx == 0)){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC security context is not set", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC security context is not set", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
@@ -3286,7 +3285,7 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 	// Если события не созданы
 	if((this->_eid == 0) || (this->_tid == 0)){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC client events are not created", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC client events are not created", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
@@ -3313,7 +3312,7 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 		// Снимаем уведомление о перегрузке пути, так-как отметок система не выдаёт
 		this->_ecn = false;
 		// Сообщаем, что уведомление о перегрузке пути на этой системе недоступно
-		this->_log->print("QUIC explicit congestion notification is not supported by the system for the selected address family", log_t::flag_t::WARNING);
+		awh::log::print("QUIC explicit congestion notification is not supported by the system for the selected address family", awh::log::flag_t::WARNING);
 	}
 	// Сбрасываем флаг выполненного оповещения о завершённом соединении
 	this->_notified = false;
@@ -3332,7 +3331,7 @@ awh::event::id_t awh::unit::QuicClient::issue(const event::family_t family, [[ma
 	// Если локальный адрес события клиента не установлен
 	if(!this->_io->setAddress(this->_eid, ((this->_family == event::family_t::IPV6) ? event::address_t::IPV6 : event::address_t::IPV4), ((this->_family == event::family_t::IPV6) ? "::" : "0.0.0.0"))){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC client address is not set", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC client address is not set", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return 0;
 	}
@@ -3448,7 +3447,7 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 	// Если шаблон контекста безопасности не установлен
 	if((this->_coder == nullptr) || (this->_ctx == 0)){
 		// Записываем ошибку в лог
-		this->_log->print("QUIC security context is not set", log_t::flag_t::CRITICAL);
+		awh::log::print("QUIC security context is not set", awh::log::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return false;
 	}
@@ -3463,7 +3462,7 @@ bool awh::unit::QuicClient::connect(const event::id_t eid) noexcept {
 	// Создаём соединение QUIC на шаблоне контекста безопасности
 	this->_connection = make_unique <quic::connection_t> (
 		quic::endpoint_t::CLIENT, this->_ctx,
-		* this->_coder, this->_log
+		* this->_coder
 	);
 	// Устанавливаем локальные транспортные параметры соединения
 	this->_connection->params(this->_params);
@@ -3870,7 +3869,7 @@ bool awh::unit::QuicClient::setTarget(const event::id_t eid, string_view target)
 		// Возвращаем значение по умолчанию
 		return false;
 	// Разбираем адрес удалённого сервера в штатную структуру сетевого адреса фреймворка
-	net_addr_t resolver(this->_fmk, this->_log);
+	net_addr_t resolver;
 	// Если разбор адреса удалённого сервера выполнен успешно
 	if(resolver.parse(target))
 		// Запоминаем структуру сетевого адреса удалённого сервера для установки адреса эндпоинта соединению
@@ -4493,12 +4492,9 @@ void awh::unit::QuicClient::callback(const callback_t & callback) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::QuicClient::QuicClient(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _eid(0), _tid(0), _connected(false), _notified(false), _ecn(false),
+awh::unit::QuicClient::QuicClient() noexcept :
+ unit_t(), _eid(0), _tid(0), _connected(false), _notified(false), _ecn(false),
  _family(event::family_t::IPV4), _marking(event::ecn_t::NOT_ECT), _ctx(0), _coder(nullptr),
  _token{""}, _targetPort(0), _target(nullptr), _connection(nullptr),
  _datagram{""}, _handed(false), _dest(0), _tunnel(quic::connection_t::INVALID_STREAM) {}

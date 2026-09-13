@@ -52,12 +52,8 @@ void ChronoFixture::SetUp(){
 	::setenv("TZ", "UTC", 1);
 	// Применяем установленную временную зону
 	::tzset();
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект модуля работы с датой и временем
-	this->_chrono = std::make_unique <awh::chrono_t> (this->_fmk.get(), this->_log.get());
+	this->_chrono = std::make_unique <awh::chrono_t> ();
 }
 
 /**

@@ -39,6 +39,8 @@
  */
 #include <encoding/ascii.hpp>
 #include <net/uri.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -256,32 +258,29 @@ namespace uri {
 	/**
 	 * @brief Функция определения вида записи адреса по его схеме
 	 *
-	 * @param fmk    объект фреймворка
 	 * @param scheme схема URI
 	 * @return       вид записи адреса
 	 *
 	 */
-	[[nodiscard]] static uri_t::form_t schemeForm(const fmk_t * fmk, string_view scheme) noexcept;
+	[[nodiscard]] static uri_t::form_t schemeForm(string_view scheme) noexcept;
 
 	/**
 	 * @brief Функция определения стандартного порта схемы, разновидности не имеющей
 	 *
-	 * @param fmk    объект фреймворка
 	 * @param scheme схема URI
 	 * @return       стандартный порт или 0, если для схемы он не определён
 	 *
 	 */
-	[[nodiscard]] static uint16_t schemePort(const fmk_t * fmk, string_view scheme) noexcept;
+	[[nodiscard]] static uint16_t schemePort(string_view scheme) noexcept;
 
 	/**
 	 * @brief Функция определения разновидности URI по его схеме
 	 *
-	 * @param fmk    объект фреймворка
 	 * @param scheme схема URI
 	 * @return       разновидность URI
 	 *
 	 */
-	[[nodiscard]] static uri_t::type_t schemeType(const fmk_t * fmk, string_view scheme) noexcept;
+	[[nodiscard]] static uri_t::type_t schemeType(string_view scheme) noexcept;
 
 	/**
 	 * @brief Функция проверки хвоста записи на представление порта
@@ -335,7 +334,6 @@ namespace uri {
 	/**
 	 * @brief Парсинг URI в один проход (Single Pass)
 	 *
-	 * @param fmk      объект фреймворка
 	 * @param uri      строка URI для парсинга
 	 * @param scheme   ссылка для сохранения схемы URI
 	 * @param userinfo ссылка для сохранения параметров пользователя URI
@@ -350,7 +348,6 @@ namespace uri {
 	 *
 	 */
 	[[nodiscard]] static bool parse(
-		const fmk_t * fmk,
 		string_view uri,
 		string_view & scheme,
 		string_view & userinfo,
@@ -458,7 +455,7 @@ namespace uri {
 							 */
 							// Признак того, что за двоеточием стоит представление порта
 							const bool port = (!slashes && uri::portLike(ptr + 1, end) &&
-								(uri::schemeType(fmk, string_view(tokenBegin, ptr - tokenBegin)) == uri_t::type_t::SCHEME));
+								(uri::schemeType(string_view(tokenBegin, ptr - tokenBegin)) == uri_t::type_t::SCHEME));
 							// Если у кандидата приметы хоста — это домен, а не схема
 							if(guess && !slashes && (port || uri::hostLike(tokenBegin, ptr))){
 								// Помечаем наличие authority без //
@@ -625,7 +622,7 @@ namespace uri {
 						 * учётная запись с хостом, а запись "stun:example.com:3478" хоста не
 						 * давала вовсе - он целиком ложился сегментом пути
 						 */
-						const uri_t::form_t form = uri::schemeForm(fmk, scheme);
+						const uri_t::form_t form = uri::schemeForm(scheme);
 						// Признак того, что авторити записана сразу за двоеточием схемы
 						bool hasAtInOpaque = (form == uri_t::form_t::BARE);
 						/**
@@ -1148,10 +1145,9 @@ namespace uri {
 	 * @param result результат, в который добавляется закодированная строка
 	 * @param text   строка текста для кодирования
 	 * @param item   тип элемента URI, для которого выполняется кодирование
-	 * @param log    объект работы с логами
 	 *
 	 */
-	static void encode(string & result, string_view text, const uri_t::item_t item, const log_t * log) noexcept {
+	static void encode(string & result, string_view text, const uri_t::item_t item) noexcept {
 		// Если строка не передана, то добавлять нечего
 		if(text.empty())
 			// Выходим из функции
@@ -1200,13 +1196,13 @@ namespace uri {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::WARNING, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("%s", log_t::flag_t::WARNING, error.what());
+				awh::log::print("%s", awh::log::flag_t::WARNING, error.what());
 			#endif
 		}
 	}
@@ -1258,11 +1254,10 @@ namespace uri {
 	 *          применяет их к полученным значениям сам: адресу они не принадлежат.
 	 *
 	 * @param text строка текста для декодирования
-	 * @param log  объект работы с логами
 	 * @return     результат декодирования
 	 *
 	 */
-	[[nodiscard]] static string decode(string_view text, const log_t * log) noexcept {
+	[[nodiscard]] static string decode(string_view text) noexcept {
 		// Переменная результата
 		string result = "";
 		// Если строка передана
@@ -1332,13 +1327,13 @@ namespace uri {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::WARNING, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::WARNING, error.what());
+					awh::log::print("%s", awh::log::flag_t::WARNING, error.what());
 				#endif
 			}
 		}
@@ -1662,10 +1657,9 @@ namespace uri {
 	 *
 	 * @param result результат, в который дописываются сегменты пути
 	 * @param path   разбираемый путь URI
-	 * @param log    объект работы с логами
 	 *
 	 */
-	static void splitPath(vector <string> & result, string_view path, const log_t * log) noexcept {
+	static void splitPath(vector <string> & result, string_view path) noexcept {
 		// Если путь пустой, разбирать нечего
 		if(path.empty())
 			// Выходим из функции
@@ -1681,14 +1675,14 @@ namespace uri {
 			// Получаем сегмент пути URI
 			segment = path.substr(start, end - start);
 			// Добавляем сегмент пути URI в путь URI
-			result.push_back(decode(segment, log));
+			result.push_back(decode(segment));
 			// Обновляем позицию начала следующего сегмента
 			start = (end + 1);
 		}
 		// Получаем последний сегмент пути URI
 		segment = path.substr(start);
 		// Добавляем последний сегмент пути URI в путь URI
-		result.push_back(decode(segment, log));
+		result.push_back(decode(segment));
 	}
 
 	/**
@@ -1696,10 +1690,9 @@ namespace uri {
 	 *
 	 * @param result результат, в который заносятся пары ключ-значение
 	 * @param query  разбираемые параметры URI
-	 * @param log    объект работы с логами
 	 *
 	 */
-	static void splitQuery(unordered_multimap <string, string> & result, string_view query, const log_t * log) noexcept {
+	static void splitQuery(unordered_multimap <string, string> & result, string_view query) noexcept {
 		// Если параметры пустые, разбирать нечего
 		if(query.empty())
 			// Выходим из функции
@@ -1723,9 +1716,9 @@ namespace uri {
 				// Если в паре ключ-значение параметров URI есть символ "="
 				if(pos != string_view::npos)
 					// Добавляем пару ключ-значение параметров URI в параметры URI
-					result.emplace(decode(pair.substr(0, pos), log), decode(pair.substr(pos + 1), log));
+					result.emplace(decode(pair.substr(0, pos)), decode(pair.substr(pos + 1)));
 				// Иначе добавляем пару как ключ с пустым значением
-				else result.emplace(decode(pair, log), "");
+				else result.emplace(decode(pair), "");
 			}
 			// Если пары ключ-значение параметров URI закончились, прерываем разбор
 			if(end == string_view::npos)
@@ -1746,12 +1739,11 @@ namespace uri {
 	 *          разбор. Отбор по длине оставляет из них не более трёх: схем одной
 	 *          длины в наборе больше трёх не встречается.
 	 *
-	 * @param fmk    объект фреймворка
 	 * @param scheme схема URI для определения типа
 	 * @return       тип URI, соответствующий схеме
 	 *
 	 */
-	[[nodiscard]] static uri_t::type_t schemeType(const fmk_t * fmk, string_view scheme) noexcept {
+	[[nodiscard]] static uri_t::type_t schemeType(string_view scheme) noexcept {
 		/**
 		 * Разновидность выводится из схемы, и у записи без схемы её нет. Пустая
 		 * схема давала разновидность незнакомой, и объект, схему потерявший,
@@ -1769,74 +1761,74 @@ namespace uri {
 			// Если длина схемы составляет два символа
 			case 2: {
 				// Если протокол является WS
-				if(fmk->compare(scheme, "ws"))
+				if(awh::fmk::compare(scheme, "ws"))
 					// Выводим тип URI как WS
 					return uri_t::type_t::WS;
 			} break;
 			// Если длина схемы составляет три символа
 			case 3: {
 				// Если протокол является WSS
-				if(fmk->compare(scheme, "wss"))
+				if(awh::fmk::compare(scheme, "wss"))
 					// Выводим тип URI как WSS
 					return uri_t::type_t::WSS;
 				// Если протокол является SSH
-				if(fmk->compare(scheme, "ssh"))
+				if(awh::fmk::compare(scheme, "ssh"))
 					// Выводим тип URI как SSH
 					return uri_t::type_t::SSH;
 				// Если протокол является FTP
-				if(fmk->compare(scheme, "ftp"))
+				if(awh::fmk::compare(scheme, "ftp"))
 					// Выводим тип URI как FTP
 					return uri_t::type_t::FTP;
 			} break;
 			// Если длина схемы составляет четыре символа
 			case 4: {
 				// Если протокол является HTTP
-				if(fmk->compare(scheme, "http"))
+				if(awh::fmk::compare(scheme, "http"))
 					// Выводим тип URI как HTTP
 					return uri_t::type_t::HTTP;
 				// Если протокол является MQTT
-				if(fmk->compare(scheme, "mqtt"))
+				if(awh::fmk::compare(scheme, "mqtt"))
 					// Выводим тип URI как MQTT
 					return uri_t::type_t::MQTT;
 				// Если протокол является File
-				if(fmk->compare(scheme, "file"))
+				if(awh::fmk::compare(scheme, "file"))
 					// Выводим тип URI как File
 					return uri_t::type_t::FILE;
 				// Если протокол является Unix Socket
-				if(fmk->compare(scheme, "unix"))
+				if(awh::fmk::compare(scheme, "unix"))
 					// Выводим тип URI как Unix Socket
 					return uri_t::type_t::UDS;
 			} break;
 			// Если длина схемы составляет пять символов
 			case 5: {
 				// Если протокол является HTTPS
-				if(fmk->compare(scheme, "https"))
+				if(awh::fmk::compare(scheme, "https"))
 					// Выводим тип URI как HTTPS
 					return uri_t::type_t::HTTPS;
 				// Если протокол является REDIS
-				if(fmk->compare(scheme, "redis"))
+				if(awh::fmk::compare(scheme, "redis"))
 					// Выводим тип URI как REDIS
 					return uri_t::type_t::REDIS;
 				// Если протокол является MySQL
-				if(fmk->compare(scheme, "mysql"))
+				if(awh::fmk::compare(scheme, "mysql"))
 					// Выводим тип URI как MySQL
 					return uri_t::type_t::MYSQL;
 			} break;
 			// Если длина схемы составляет шесть символов
 			case 6: {
 				// Если протокол является E-mail
-				if(fmk->compare(scheme, "mailto"))
+				if(awh::fmk::compare(scheme, "mailto"))
 					// Выводим тип URI как E-mail
 					return uri_t::type_t::EMAIL;
 				// Если протокол является Socks5
-				if(fmk->compare(scheme, "socks5"))
+				if(awh::fmk::compare(scheme, "socks5"))
 					// Выводим тип URI как Socks5
 					return uri_t::type_t::SOCKS5;
 			} break;
 			// Если длина схемы составляет десять символов
 			case 10: {
 				// Если протокол является PostgreSQL
-				if(fmk->compare(scheme, "postgresql"))
+				if(awh::fmk::compare(scheme, "postgresql"))
 					// Выводим тип URI как PostgreSQL
 					return uri_t::type_t::POSTGRESQL;
 			} break;
@@ -1864,12 +1856,11 @@ namespace uri {
 	 *
 	 *          Схема неизвестная считается иерархической: их подавляющее большинство
 	 *
-	 * @param fmk    объект фреймворка
 	 * @param scheme схема URI
 	 * @return       вид записи адреса
 	 *
 	 */
-	[[nodiscard]] static uri_t::form_t schemeForm(const fmk_t * fmk, string_view scheme) noexcept {
+	[[nodiscard]] static uri_t::form_t schemeForm(string_view scheme) noexcept {
 		/**
 		 * Отбираем известные схемы по их длине
 		 */
@@ -1877,55 +1868,55 @@ namespace uri {
 			// Если длина схемы составляет два символа
 			case 2: {
 				// Если схема является IM, то авторити записана сразу за двоеточием
-				if(fmk->compare(scheme, "im"))
+				if(awh::fmk::compare(scheme, "im"))
 					// Выводим вид записи адреса как авторити за двоеточием
 					return uri_t::form_t::BARE;
 			} break;
 			// Если длина схемы составляет три символа
 			case 3: {
 				// Если схема является SIP, то авторити записана сразу за двоеточием
-				if(fmk->compare(scheme, "sip"))
+				if(awh::fmk::compare(scheme, "sip"))
 					// Выводим вид записи адреса как авторити за двоеточием
 					return uri_t::form_t::BARE;
 				// Если схема является обозначением сообщения, то авторити у неё нет
-				if(fmk->compare(scheme, "mid") || fmk->compare(scheme, "cid"))
+				if(awh::fmk::compare(scheme, "mid") || awh::fmk::compare(scheme, "cid"))
 					// Выводим вид записи адреса как запись без авторити
 					return uri_t::form_t::NONE;
 				// Если схема является обозначением ресурса, номера или места, то авторити у неё нет
-				if(fmk->compare(scheme, "urn") || fmk->compare(scheme, "tel") ||
-				   fmk->compare(scheme, "sms") || fmk->compare(scheme, "geo"))
+				if(awh::fmk::compare(scheme, "urn") || awh::fmk::compare(scheme, "tel") ||
+				   awh::fmk::compare(scheme, "sms") || awh::fmk::compare(scheme, "geo"))
 					// Выводим вид записи адреса как запись без авторити
 					return uri_t::form_t::NONE;
 			} break;
 			// Если длина схемы составляет четыре символа
 			case 4: {
 				// Если схема является ACCT, PRES, XMPP, SIPS, H323, STUN или TURN, то авторити записана сразу за двоеточием
-				if(fmk->compare(scheme, "acct") || fmk->compare(scheme, "pres") ||
-				   fmk->compare(scheme, "xmpp") || fmk->compare(scheme, "sips") ||
-				   fmk->compare(scheme, "h323") || fmk->compare(scheme, "stun") ||
-				   fmk->compare(scheme, "turn"))
+				if(awh::fmk::compare(scheme, "acct") || awh::fmk::compare(scheme, "pres") ||
+				   awh::fmk::compare(scheme, "xmpp") || awh::fmk::compare(scheme, "sips") ||
+				   awh::fmk::compare(scheme, "h323") || awh::fmk::compare(scheme, "stun") ||
+				   awh::fmk::compare(scheme, "turn"))
 					// Выводим вид записи адреса как авторити за двоеточием
 					return uri_t::form_t::BARE;
 				// Если схема является обозначением статьи или данных, то авторити у неё нет
-				if(fmk->compare(scheme, "news") || fmk->compare(scheme, "data"))
+				if(awh::fmk::compare(scheme, "news") || awh::fmk::compare(scheme, "data"))
 					// Выводим вид записи адреса как запись без авторити
 					return uri_t::form_t::NONE;
 			} break;
 			// Если длина схемы составляет пять символов
 			case 5: {
 				// Если схема является STUNS или TURNS, то авторити записана сразу за двоеточием
-				if(fmk->compare(scheme, "stuns") || fmk->compare(scheme, "turns"))
+				if(awh::fmk::compare(scheme, "stuns") || awh::fmk::compare(scheme, "turns"))
 					// Выводим вид записи адреса как авторити за двоеточием
 					return uri_t::form_t::BARE;
 			} break;
 			// Если длина схемы составляет шесть символов
 			case 6: {
 				// Если схема является почтовой, то авторити записана сразу за двоеточием
-				if(fmk->compare(scheme, "mailto"))
+				if(awh::fmk::compare(scheme, "mailto"))
 					// Выводим вид записи адреса как авторити за двоеточием
 					return uri_t::form_t::BARE;
 				// Если схема является ссылкой на содержимое, то авторити у неё нет
-				if(fmk->compare(scheme, "magnet"))
+				if(awh::fmk::compare(scheme, "magnet"))
 					// Выводим вид записи адреса как запись без авторити
 					return uri_t::form_t::NONE;
 			} break;
@@ -1948,12 +1939,11 @@ namespace uri {
 	 *          записи их порта не несут, и опускать у них нечего (RFC 7565, 3860,
 	 *          3859, 5122)
 	 *
-	 * @param fmk    объект фреймворка
 	 * @param scheme схема URI
 	 * @return       стандартный порт или 0, если для схемы он не определён
 	 *
 	 */
-	[[nodiscard]] static uint16_t schemePort(const fmk_t * fmk, string_view scheme) noexcept {
+	[[nodiscard]] static uint16_t schemePort(string_view scheme) noexcept {
 		/**
 		 * Отбираем известные схемы по их длине
 		 */
@@ -1961,29 +1951,29 @@ namespace uri {
 			// Если длина схемы составляет три символа
 			case 3: {
 				// Если схема является SIP, то стандартный порт 5060
-				if(fmk->compare(scheme, "sip"))
+				if(awh::fmk::compare(scheme, "sip"))
 					// Выводим стандартный порт схемы
 					return 5060;
 			} break;
 			// Если длина схемы составляет четыре символа
 			case 4: {
 				// Если схема является SIPS, то стандартный порт 5061
-				if(fmk->compare(scheme, "sips"))
+				if(awh::fmk::compare(scheme, "sips"))
 					// Выводим стандартный порт схемы
 					return 5061;
 				// Если схема является H323, то стандартный порт 1720
-				if(fmk->compare(scheme, "h323"))
+				if(awh::fmk::compare(scheme, "h323"))
 					// Выводим стандартный порт схемы
 					return 1720;
 				// Если схема является STUN или TURN, то стандартный порт 3478
-				if(fmk->compare(scheme, "stun") || fmk->compare(scheme, "turn"))
+				if(awh::fmk::compare(scheme, "stun") || awh::fmk::compare(scheme, "turn"))
 					// Выводим стандартный порт схемы
 					return 3478;
 			} break;
 			// Если длина схемы составляет пять символов
 			case 5: {
 				// Если схема является STUNS или TURNS, то стандартный порт 5349
-				if(fmk->compare(scheme, "stuns") || fmk->compare(scheme, "turns"))
+				if(awh::fmk::compare(scheme, "stuns") || awh::fmk::compare(scheme, "turns"))
 					// Выводим стандартный порт схемы
 					return 5349;
 			} break;
@@ -2143,7 +2133,7 @@ void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
 	// Устанавливаем схему URI, приведённую к нижнему регистру (RFC 3986 6.2.2.1)
 	this->_scheme = uri::lower(scheme);
 	// Устанавливаем тип URI, соответствующий схеме
-	this->_type = uri::schemeType(this->_fmk, scheme);
+	this->_type = uri::schemeType(scheme);
 	/**
 	 * Вид записи отбирается по схеме, и смена схемы его за собой ведёт: адрес,
 	 * переведённый со схемы "http" на "mailto", записывается уже одним двоеточием.
@@ -2163,7 +2153,7 @@ void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
 	// Если вид записи задан не явно, а авторити у адреса есть
 	if((this->_form != form_t::COMMAND) && this->hasAuthority()){
 		// Вид записи, соответствующий новой схеме URI
-		const form_t form = uri::schemeForm(this->_fmk, scheme);
+		const form_t form = uri::schemeForm(scheme);
 		// Устанавливаем вид записи адреса, соответствующий новой схеме URI
 		this->_form = ((form == form_t::NONE) ? form_t::BARE : form);
 	}
@@ -2404,7 +2394,7 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 			// Если атрибуты адреса завелись, а вид записи задан не был
 			if((this->_attr != nullptr) && (this->_form == form_t::NONE))
 				// Запоминаем вид записи, отбирая его по схеме адреса
-				this->_form = uri::schemeForm(this->_fmk, this->_scheme);
+				this->_form = uri::schemeForm(this->_scheme);
 		}
 	/**
 	 * Если возникает ошибка
@@ -2415,13 +2405,13 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2485,13 +2475,13 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -2540,7 +2530,7 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		 */
 		if(this->_form == form_t::NONE)
 			// Запоминаем вид записи, отбирая его по схеме адреса
-			this->_form = uri::schemeForm(this->_fmk, this->_scheme);
+			this->_form = uri::schemeForm(this->_scheme);
 		/**
 		 * Зона принадлежит одному лишь IPv6-адресу: у прочих разновидностей хоста
 		 * её нет, и от прежнего хоста новому она достаться не должна
@@ -2754,13 +2744,13 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {host}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2803,7 +2793,7 @@ uint16_t awh::Uniform_Resource_Identifier::defaultPort() const noexcept {
 		 * "stun:" или "turn:" он такая же принадлежность схемы, как порт 80 у HTTP,
 		 * и записывался наравне с заданным явно
 		 */
-		case static_cast <uint8_t> (type_t::SCHEME): return uri::schemePort(this->_fmk, this->_scheme);
+		case static_cast <uint8_t> (type_t::SCHEME): return uri::schemePort(this->_scheme);
 	}
 	// Для неизвестного типа URI стандартный порт не определён
 	return 0;
@@ -2887,13 +2877,13 @@ void awh::Uniform_Resource_Identifier::appendUser(string & result, const bool de
 	 * оказывается "user", а всё остальное - путём
 	 */
 	// Добавляем логин пользователя URI в результат
-	uri::encode(result, this->_user.username, item_t::USER, this->_log);
+	uri::encode(result, this->_user.username, item_t::USER);
 	// Если пароль пользователя URI не пустой, то добавляем его в результат
 	if(!this->_user.password.empty()){
 		// Добавляем разделитель логина и пароля пользователя URI
 		result.append(1, ':');
 		// Добавляем пароль пользователя URI в результат
-		uri::encode(result, this->_user.password, item_t::USER, this->_log);
+		uri::encode(result, this->_user.password, item_t::USER);
 	}
 	// Если требуется разделитель, добавляем символ "@" после параметров пользователя URI
 	if(delimiter)
@@ -2996,13 +2986,13 @@ void awh::Uniform_Resource_Identifier::appendHost(string & result, const format_
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3075,7 +3065,7 @@ void awh::Uniform_Resource_Identifier::appendPath(string & result, const bool le
 			// Добавляем разделитель перед сегментом пути URI
 			result.append(1, '/');
 		// Добавляем сегмент пути URI в результат
-		uri::encode(result, * i, item_t::PATH, this->_log);
+		uri::encode(result, * i, item_t::PATH);
 	}
 }
 /**
@@ -3228,7 +3218,7 @@ awh::Uniform_Resource_Identifier::form_t awh::Uniform_Resource_Identifier::print
 	 * этот приходится на каждое из них
 	 */
 	const bool bare = (!authority || ((this->_form != form_t::COMMAND) &&
-		(userinfo || (uri::schemeForm(this->_fmk, this->_scheme) == form_t::BARE))));
+		(userinfo || (uri::schemeForm(this->_scheme) == form_t::BARE))));
 	// Выводим вид записи адреса
 	return (bare ? form_t::BARE : form_t::SLASHES);
 }
@@ -3366,7 +3356,7 @@ void awh::Uniform_Resource_Identifier::appendQuery(string & result, const bool s
 			 */
 			for(index = 0; index < count; index++){
 				// Добавляем ключ параметра URI в результат
-				uri::encode(result, pairs[index]->first, item_t::QUERY, this->_log);
+				uri::encode(result, pairs[index]->first, item_t::QUERY);
 				/**
 				 * Разделитель ключа и значения ставится только при непустом значении:
 				 * параметр без значения записывается одним ключом, и приписанный ему
@@ -3381,7 +3371,7 @@ void awh::Uniform_Resource_Identifier::appendQuery(string & result, const bool s
 					// Добавляем разделитель ключа и значения параметра URI
 					result.append(1, '=');
 					// Добавляем значение параметра URI в результат
-					uri::encode(result, pairs[index]->second, item_t::QUERY, this->_log);
+					uri::encode(result, pairs[index]->second, item_t::QUERY);
 				}
 				// Добавляем разделитель пар параметров URI
 				result.append(1, '&');
@@ -3423,13 +3413,13 @@ void awh::Uniform_Resource_Identifier::appendQuery(string & result, const bool s
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3503,13 +3493,13 @@ uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -3555,13 +3545,13 @@ void awh::Uniform_Resource_Identifier::port(const uint16_t port) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {port}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -3638,7 +3628,7 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 		// Признак разрешения выводить авторити по приметам хоста
 		const bool guess = this->empty();
 		// Выполняем парсинг URI
-		if(uri::parse(this->_fmk, uri, scheme, userinfo, host, port, path, query, fragment, form, guess)){
+		if(uri::parse(uri, scheme, userinfo, host, port, path, query, fragment, form, guess)){
 			// Номер порта URI, полученный разбором его представления
 			uint16_t number = 0;
 			/**
@@ -3681,7 +3671,7 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 			// Если отвергнутому хосту есть что испортить, снимаем снимок адреса
 			if(guarded){
 				// Заводим снимок разобранного прежде адреса
-				snapshot = make_unique <Uniform_Resource_Identifier> (this->_fmk, this->_log);
+				snapshot = make_unique <Uniform_Resource_Identifier> ();
 				// Запоминаем разобранный прежде адрес
 				(* snapshot) = (* this);
 			}
@@ -3719,7 +3709,7 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 			// Если разрешение ссылок ведётся в совместимом режиме
 			if(refScheme && (this->_resolve == resolve_t::COMPATIBLE) && !refAuthority && !this->_scheme.empty()){
 				// Схема, совпавшая со схемой основы, отбрасывается
-				if(this->_fmk->compare(scheme, this->_scheme))
+				if(awh::fmk::compare(scheme, this->_scheme))
 					// Запоминаем, что схемы ссылка не несёт
 					refScheme = false;
 			}
@@ -3737,7 +3727,7 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 				// Устанавливаем схему URI, приведённую к нижнему регистру (RFC 3986 6.2.2.1)
 				this->_scheme = uri::lower(scheme);
 				// Устанавливаем тип URI, соответствующий схеме
-				this->_type = uri::schemeType(this->_fmk, scheme);
+				this->_type = uri::schemeType(scheme);
 			/**
 			 * Ссылка с авторити замещает авторити целиком - вместе с параметрами
 			 * пользователя и портом, - а схему оставляет от прежнего адреса
@@ -3766,9 +3756,9 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 				// Если в параметрах пользователя URI есть символ ":", то разделяем логин и пароль
 				if(pos != string_view::npos){
 					// Устанавливаем логин пользователя URI (с декодированием процент-последовательностей)
-					this->_user.username = uri::decode(userinfo.substr(0, pos), this->_log);
+					this->_user.username = uri::decode(userinfo.substr(0, pos));
 					// Устанавливаем пароль пользователя URI (с декодированием процент-последовательностей)
-					this->_user.password = uri::decode(userinfo.substr(pos + 1), this->_log);
+					this->_user.password = uri::decode(userinfo.substr(pos + 1));
 				/**
 				 * Если в параметрах пользователя URI нет символа ":", то устанавливаем
 				 * только логин, а пароль сбрасываем: учётная запись берётся от ссылки
@@ -3776,7 +3766,7 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 				 */
 				} else {
 					// Устанавливаем логин пользователя URI (с декодированием процент-последовательностей)
-					this->_user.username = uri::decode(userinfo, this->_log);
+					this->_user.username = uri::decode(userinfo);
 					// Сбрасываем пароль пользователя URI
 					this->_user.password.clear();
 				}
@@ -3915,7 +3905,7 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 					// Если схема из номера порта вывелась
 					if(!this->_scheme.empty())
 						// Устанавливаем вид записи адреса, соответствующий выведенной схеме
-						this->_form = uri::schemeForm(this->_fmk, this->_scheme);
+						this->_form = uri::schemeForm(this->_scheme);
 				}
 			// Если порт не указан явно в строке URI
 			} else if(port.empty()) {
@@ -3968,13 +3958,13 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 				// Очищаем все предыдущие сегменты пути URI
 				this->_path.clear();
 				// Разбираем путь ссылки на сегменты
-				uri::splitPath(this->_path, path, this->_log);
+				uri::splitPath(this->_path, path);
 				// Снимаем точечные сегменты пути
 				uri::removeDotSegments(this->_path);
 				// Очищаем все предыдущие параметры URI
 				this->_query.clear();
 				// Разбираем параметры ссылки на пары ключ-значение
-				uri::splitQuery(this->_query, query, this->_log);
+				uri::splitQuery(this->_query, query);
 			// Если ссылка несёт путь
 			} else if(refPath) {
 				/**
@@ -3993,19 +3983,19 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 					// Снимаем последний сегмент базового пути
 					this->_path.pop_back();
 				// Разбираем путь ссылки на сегменты
-				uri::splitPath(this->_path, path, this->_log);
+				uri::splitPath(this->_path, path);
 				// Снимаем точечные сегменты пути
 				uri::removeDotSegments(this->_path);
 				// Очищаем все предыдущие параметры URI
 				this->_query.clear();
 				// Разбираем параметры ссылки на пары ключ-значение
-				uri::splitQuery(this->_query, query, this->_log);
+				uri::splitQuery(this->_query, query);
 			// Если ссылка несёт одни параметры, путь остаётся от базового адреса
 			} else if(refQuery) {
 				// Очищаем все предыдущие параметры URI
 				this->_query.clear();
 				// Разбираем параметры ссылки на пары ключ-значение
-				uri::splitQuery(this->_query, query, this->_log);
+				uri::splitQuery(this->_query, query);
 			}
 			/**
 			 * Путь к доменному сокету адресу принадлежит хостом, а не путём: подключение
@@ -4039,7 +4029,7 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 			// Якорь берётся от ссылки всегда: не заданный ею якорь снимается
 			if(fragment.data() != nullptr)
 				// Устанавливаем якорь URI
-				this->_fragment = uri::decode(fragment, this->_log);
+				this->_fragment = uri::decode(fragment);
 			// Если якорь ссылкой не задан, то очищаем его
 			else this->_fragment.clear();
 			// Выводим согласие с записью: разбор её состоялся и к адресу применён
@@ -4054,13 +4044,13 @@ bool awh::Uniform_Resource_Identifier::resolve(string_view uri) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uri), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {uri}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отказ от записи, оставляя разобранный прежде адрес нетронутым
@@ -4163,13 +4153,13 @@ string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t si
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::WARNING, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+				awh::log::print("%s", awh::log::flag_t::WARNING, error.what());
 			#endif
 		}
 	}
@@ -4360,7 +4350,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							// Добавляем разделитель якоря URI
 							result.append(1, '#');
 							// Добавляем якорь URI в результат
-							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
+							uri::encode(result, this->_fragment, item_t::FRAGMENT);
 						break;
 					}
 				}
@@ -4511,7 +4501,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::POSTGRESQL):
 						case static_cast <uint8_t> (type_t::SCHEME):
 							// Добавляем якорь URI в результат
-							uri::encode(result, this->_fragment, item_t::FRAGMENT, this->_log);
+							uri::encode(result, this->_fragment, item_t::FRAGMENT);
 						break;
 					}
 				}
@@ -4698,13 +4688,13 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (format)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4854,7 +4844,7 @@ bool awh::Uniform_Resource_Identifier::sameHost(const Uniform_Resource_Identifie
 								// Если порты хоста в атрибутах URI адреса равны
 								if(result)
 									// Выполняем сравнение доменов в атрибутах URI адреса
-									result = this->_fmk->compare(awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain, awh_cast <const net::attr_fqdn_t *> (uri._attr.get())->domain);
+									result = awh::fmk::compare(awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain, awh_cast <const net::attr_fqdn_t *> (uri._attr.get())->domain);
 							} break;
 							// Если атрибуты URI адреса являются IPv4-адресом
 							case static_cast <uint8_t> (net::type_t::IPV4): {
@@ -4919,13 +4909,13 @@ bool awh::Uniform_Resource_Identifier::sameHost(const Uniform_Resource_Identifie
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат сличения хостов URI
@@ -4966,7 +4956,7 @@ bool awh::Uniform_Resource_Identifier::sameOrigin(const Uniform_Resource_Identif
 		// Выводим, что происхождения записей не совпадают
 		return false;
 	// Выполняем сличение схем URI
-	if(!this->_fmk->compare(this->_scheme, uri._scheme))
+	if(!awh::fmk::compare(this->_scheme, uri._scheme))
 		// Выводим, что происхождения записей не совпадают
 		return false;
 	/**
@@ -5017,7 +5007,7 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 			// Если схемы URI равны
 			if(result)
 				// Выполняем сравнение схем URI
-				result = this->_fmk->compare(this->_scheme, uri._scheme);
+				result = awh::fmk::compare(this->_scheme, uri._scheme);
 		}
 		// Если типы URI равны
 		if(result){
@@ -5116,13 +5106,13 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -5272,13 +5262,13 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -5469,13 +5459,13 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -5489,15 +5479,11 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_Identifier && uri) noexcept :
  _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _resolve(resolve_t::STRICT), _scheme{""}, _fragment{""}, _zone{""},
- _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
+ _addr(nullptr), _attr(nullptr), _callback(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Устанавливаем объект фреймворка
-		this->_fmk = uri._fmk;
-		// Устанавливаем объект для работы с логами
-		this->_log = uri._log;
 		// Устанавливаем тип URI
 		this->_type = uri._type;
 		// Устанавливаем вид записи адреса
@@ -5531,7 +5517,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		// Выполняем перенос режима разрешения относительных ссылок
 		this->_resolve = uri._resolve;
 		// Инициализируем объект работы с сетевыми адресами
-		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
+		this->_addr = make_unique <net_addr_t> ();
 	/**
 	 * Если возникает ошибка
 	 */
@@ -5541,13 +5527,13 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5559,15 +5545,11 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
  */
 awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Resource_Identifier & uri) noexcept :
  _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _resolve(resolve_t::STRICT), _scheme{""}, _fragment{""}, _zone{""},
- _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(nullptr), _log(nullptr) {
+ _addr(nullptr), _attr(nullptr), _callback(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Устанавливаем объект фреймворка
-		this->_fmk = uri._fmk;
-		// Устанавливаем объект для работы с логами
-		this->_log = uri._log;
 		// Устанавливаем тип URI
 		this->_type = uri._type;
 		// Устанавливаем вид записи адреса
@@ -5599,7 +5581,7 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		// Выполняем копирование режима разрешения относительных ссылок
 		this->_resolve = uri._resolve;
 		// Инициализируем объект работы с сетевыми адресами
-		this->_addr = make_unique <net_addr_t> (this->_fmk, this->_log);
+		this->_addr = make_unique <net_addr_t> ();
 		// Если атрибуты URI не пустые
 		if(uri._attr != nullptr){
 			/**
@@ -5730,28 +5712,25 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const fmk_t * fmk, const log_t * log) noexcept :
+awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier() noexcept :
  _type(type_t::NONE), _form(form_t::NONE), _rooted(false), _resolve(resolve_t::STRICT), _scheme{""}, _fragment{""}, _zone{""},
- _addr(nullptr), _attr(nullptr), _callback(nullptr), _fmk(fmk), _log(log) {
+ _addr(nullptr), _attr(nullptr), _callback(nullptr) {
 	// Инициализируем объект работы с сетевыми адресами
-	this->_addr = make_unique <net_addr_t> (fmk, log);
+	this->_addr = make_unique <net_addr_t> ();
 }
 /**
  * @brief Деструктор

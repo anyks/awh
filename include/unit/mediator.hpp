@@ -416,18 +416,13 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Mediator(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Mediator() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

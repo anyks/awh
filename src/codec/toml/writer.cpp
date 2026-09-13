@@ -44,6 +44,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -115,9 +116,8 @@ bool awh::codec::toml::Writer::refuse(const error_t error) noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе записи текста
-		this->_log->print("TOML writing failed: %s", log_t::flag_t::CRITICAL, awh::codec::toml::message(error));
+		awh::log::print("TOML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error));
 	/**
 	 * Если отказ застал строку незавершённой
 	 */
@@ -2846,22 +2846,17 @@ void awh::codec::toml::Writer::clear() noexcept {
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::toml::Writer::Writer(const log_t * log) noexcept :
- _log(log),
+awh::codec::toml::Writer::Writer() noexcept :
  _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0),
  _written(newline_t::LF) {}
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки записи текста настроек
  *
  */
-awh::codec::toml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
- _log(log),
+awh::codec::toml::Writer::Writer(const settings_t & settings) noexcept :
  _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0),
  _written(settings.newline), _settings(settings) {}
 /**

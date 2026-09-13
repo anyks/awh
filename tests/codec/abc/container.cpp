@@ -64,6 +64,7 @@
  *       нужны самим заголовкам MS Windows, и снимать их прежде подключения нельзя
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -86,10 +87,6 @@ namespace {
 	 */
 	class ContainerFixture : public testing::Test {
 		protected:
-			// Объект фреймворка
-			unique_ptr <fmk_t> _fmk;
-			// Объект журнала
-			unique_ptr <log_t> _log;
 			// Объект сжатия данных
 			unique_ptr <compressor::block_t> _compressor;
 			// Объект шифрования данных
@@ -100,14 +97,10 @@ namespace {
 			 *
 			 */
 			void SetUp() override {
-				// Выполняем заведение объекта фреймворка
-				this->_fmk = make_unique <fmk_t> ();
-				// Выполняем заведение объекта журнала
-				this->_log = make_unique <log_t> (this->_fmk.get());
 				// Выполняем заведение объекта сжатия данных
-				this->_compressor = make_unique <compressor::block_t> (this->_log.get());
+				this->_compressor = make_unique <compressor::block_t> ();
 				// Выполняем заведение объекта шифрования данных
-				this->_crypto = make_unique <crypto_t> (this->_fmk.get(), this->_log.get());
+				this->_crypto = make_unique <crypto_t> ();
 				// Выполняем установку соли шифрования
 				this->_crypto->salt("соль контейнера");
 				// Выполняем установку пароля шифрования
@@ -162,7 +155,7 @@ namespace {
  */
 TEST_F(ContainerFixture, PlainRoundtrip) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Ожидаемое содержимое тела контейнера
 	vector <uint8_t> expected;
 	/**
@@ -184,7 +177,7 @@ TEST_F(ContainerFixture, PlainRoundtrip) {
 	// Выполняем проверку опознания собранного контейнера до загрузки тела
 	ASSERT_TRUE(abc::probe(buffer.data(), buffer.size()));
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу собранного контейнера снимателю
 	ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
 	// Количество снятых кадров
@@ -250,7 +243,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 		return assembler.complete(result);
 	};
 	// Сборщик, собирающий два контейнера подряд
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Буфер первого собранного контейнера
 	vector <uint8_t> first;
 	// Выполняем сборку первого контейнера тремя записями
@@ -266,7 +259,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 	ASSERT_TRUE(assemble(assembler, {"иная", "вторая иная"}, second))
 		<< "код отказа: " << abc::message(assembler.error());
 	// Сборщик, заводимый свежим ради эталона
-	abc::assembler_t pristine(this->_log.get());
+	abc::assembler_t pristine;
 	// Буфер эталонного контейнера
 	vector <uint8_t> sample;
 	// Выполняем сборку эталонного контейнера теми же двумя записями
@@ -280,7 +273,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 	 */
 	ASSERT_EQ(second, sample);
 	// Сниматель, снимающий два контейнера подряд
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу первого контейнера снимателю
 	ASSERT_TRUE(loader.feed(first.data(), first.size()));
 	// Количество снятых кадров контейнера
@@ -321,7 +314,7 @@ TEST_F(ContainerFixture, ResetForgetsEverything) {
 }
 TEST_F(ContainerFixture, HeaderProperties) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Получаем настройки сборки контейнера
 	abc::assembler_t::settings_t settings = assembler.settings();
 	// Выполняем установку строгого вида записи
@@ -344,7 +337,7 @@ TEST_F(ContainerFixture, HeaderProperties) {
 	// Выполняем завершение сборки контейнера
 	ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу собранного контейнера снимателю
 	ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
 	// Количество снятых кадров
@@ -370,7 +363,7 @@ TEST_F(ContainerFixture, HeaderProperties) {
  */
 TEST_F(ContainerFixture, BlockThreshold) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Получаем настройки сборки контейнера
 	abc::assembler_t::settings_t settings = assembler.settings();
 	// Выполняем установку порога накопления записей в один октет
@@ -392,7 +385,7 @@ TEST_F(ContainerFixture, BlockThreshold) {
 	// Выполняем завершение сборки контейнера
 	ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу собранного контейнера снимателю
 	ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
 	// Количество снятых кадров
@@ -413,7 +406,7 @@ TEST_F(ContainerFixture, BlockThreshold) {
  */
 TEST_F(ContainerFixture, PayloadKindSwitch) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Выполняем сборку записи знакового текста
 	const vector <uint8_t> text = record("знаковый текст");
 	// Выполняем внесение записи знакового текста
@@ -434,7 +427,7 @@ TEST_F(ContainerFixture, PayloadKindSwitch) {
 	// Выполняем завершение сборки контейнера
 	ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу собранного контейнера снимателю
 	ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
 	// Количество снятых кадров
@@ -454,7 +447,7 @@ TEST_F(ContainerFixture, PayloadKindSwitch) {
  */
 TEST_F(ContainerFixture, StreamingFeed) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Получаем настройки сборки контейнера
 	abc::assembler_t::settings_t settings = assembler.settings();
 	// Выполняем установку порога накопления записей в один октет
@@ -480,7 +473,7 @@ TEST_F(ContainerFixture, StreamingFeed) {
 	// Выполняем завершение сборки контейнера
 	ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Собираемое содержимое всех кадров
 	vector <uint8_t> payload;
 	// Количество снятых кадров
@@ -524,7 +517,7 @@ TEST_F(ContainerFixture, StreamingFeed) {
  */
 TEST_F(ContainerFixture, SecuredRoundtrip) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Выполняем установку модуля сжатия сборщику контейнера
 	assembler.compressor(this->_compressor.get());
 	// Выполняем установку модуля шифрования сборщику контейнера
@@ -558,7 +551,7 @@ TEST_F(ContainerFixture, SecuredRoundtrip) {
 	 */
 	ASSERT_LT(buffer.size(), item.size());
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем установку модуля сжатия снимателю контейнера
 	loader.compressor(this->_compressor.get());
 	// Выполняем установку модуля шифрования снимателю контейнера
@@ -587,7 +580,7 @@ TEST_F(ContainerFixture, SecuredRoundtrip) {
  */
 TEST_F(ContainerFixture, FailureKeepsPending) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Получаем настройки укладки кадра
 	abc::packer_t::settings_t packing = assembler.packer().settings();
 	// Выполняем установку признака шифрования содержимого кадра
@@ -618,7 +611,7 @@ TEST_F(ContainerFixture, FailureKeepsPending) {
 	 */
 	ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем установку модуля шифрования снимателю контейнера
 	loader.crypto(this->_crypto.get());
 	// Выполняем подачу собранного контейнера снимателю
@@ -642,7 +635,7 @@ TEST_F(ContainerFixture, FailureKeepsPending) {
  */
 TEST_F(ContainerFixture, BodyLengthStopsTaking) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Выполняем сборку записи
 	const vector <uint8_t> item = record("запись тела");
 	// Выполняем внесение записи в собираемый контейнер
@@ -657,7 +650,7 @@ TEST_F(ContainerFixture, BodyLengthStopsTaking) {
 	// Выполняем добавление октетов за телом собранного контейнера
 	buffer.insert(buffer.end(), trailer.begin(), trailer.end());
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу собранного контейнера снимателю
 	ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
 	// Количество снятых кадров
@@ -677,7 +670,7 @@ TEST_F(ContainerFixture, BodyLengthStopsTaking) {
  */
 TEST_F(ContainerFixture, ForeignOctets) {
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Чужие октеты, поданные снимателю контейнера
 	const string foreign = "это вовсе не контейнер, а обыкновенный текст, длиною поболее заголовка опознания";
 	// Выполняем подачу чужих октетов снимателю
@@ -703,7 +696,7 @@ TEST_F(ContainerFixture, ForeignOctets) {
  */
 TEST_F(ContainerFixture, ModulesAreOptional) {
 	// Сборщик контейнера, какому не отдано ни сжатия, ни шифрования
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Получаем настройки сборки контейнера
 	abc::assembler_t::settings_t settings = assembler.settings();
 	// Выполняем установку порога накопления, дающего несколько кадров
@@ -729,7 +722,7 @@ TEST_F(ContainerFixture, ModulesAreOptional) {
 	// Выполняем завершение сборки контейнера
 	ASSERT_TRUE(assembler.complete(buffer)) << "код отказа: " << abc::message(assembler.error());
 	// Сниматель контейнера, какому не отдано ни сжатия, ни шифрования
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу собранного контейнера снимателю
 	ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
 	// Количество снятых кадров
@@ -749,7 +742,7 @@ TEST_F(ContainerFixture, ModulesAreOptional) {
 	// Выполняем проверку содержимого снятых кадров
 	ASSERT_EQ(payload, expected);
 	// Выборщик записей контейнера, какому не отдано ни сжатия, ни шифрования
-	abc::fetcher_t fetcher(this->_log.get());
+	abc::fetcher_t fetcher;
 	// Выполняем открытие контейнера отданной работой чтения
 	ASSERT_TRUE(fetcher.open([&buffer](const uint64_t offset, const size_t size, vector <uint8_t> & result) noexcept -> bool {
 		// Если затребованные октеты за концом контейнера
@@ -780,7 +773,7 @@ TEST_F(ContainerFixture, ModulesAreOptional) {
  */
 TEST_F(ContainerFixture, ChunkBeyondBody) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Выполняем сборку записи
 	const vector <uint8_t> item = record("запись тела контейнера");
 	// Выполняем внесение записи в собираемый контейнер
@@ -844,7 +837,7 @@ TEST_F(ContainerFixture, ChunkBeyondBody) {
 		  abc::CHUNK_HEADER + static_cast <size_t> (length)), 8);
 	}
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем подачу правленого контейнера снимателю
 	ASSERT_TRUE(loader.feed(damaged.data(), damaged.size()));
 	// Содержимое снятого кадра
@@ -861,7 +854,7 @@ TEST_F(ContainerFixture, ChunkBeyondBody) {
 	 */
 	{
 		// Сниматель контейнера
-		abc::loader_t loader(this->_log.get());
+		abc::loader_t loader;
 		// Выполняем подачу нетронутого контейнера снимателю
 		ASSERT_TRUE(loader.feed(pristine.data(), pristine.size()));
 		// Количество снятых кадров
@@ -958,7 +951,7 @@ TEST_F(ContainerFixture, RecordBeyondEntryField) {
 		return;
 	}
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Выполняем проверку отказа внесения записи, не вмещающейся в строку оглавления
 	const bool appended = assembler.append(buffer, size, abc::payload_t::BINARY);
 	// Код отказа внесения записи
@@ -1005,7 +998,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 	// Выполняем заведение ключа владельца контейнера
 	ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Выполняем объявление подписи собираемого контейнера
 	assembler.sign(this->_crypto.get(), "владелец");
 	// Выполняем сборку записи для проверок
@@ -1020,7 +1013,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 	// Код отказа поверки подписи владельца
 	abc::error_t error = abc::error_t::NONE;
 	// Выполняем проверку того, что подпись собранного контейнера сходится
-	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", origin.data(), origin.size(), error, this->_log.get()))
+	ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", origin.data(), origin.size(), error))
 		<< "код отказа: " << abc::message(error);
 	// Заголовок опознания собранного контейнера
 	abc::header_t header;
@@ -1040,7 +1033,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 	 */
 	{
 		// Выполняем проверку отказа поверки подписи на пустых октетах
-		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", nullptr, 0, error, this->_log.get()));
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", nullptr, 0, error));
 		// Выполняем проверку кода отказа поверки подписи
 		ASSERT_EQ(error, abc::error_t::INTERNAL);
 	}
@@ -1061,7 +1054,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 		// Выполняем укладку пересобранного заголовка в порченый контейнер
 		::memcpy(broken.data(), record.data(), record.size());
 		// Выполняем проверку отказа поверки подписи порченого контейнера
-		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error, this->_log.get()));
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error));
 		// Выполняем проверку кода отказа поверки подписи
 		ASSERT_EQ(error, abc::error_t::TRUNCATED_SIGNATURE);
 	}
@@ -1074,7 +1067,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 		// Выполняем усечение октетов посреди заголовка кадра записи подписи
 		cut.resize(static_cast <size_t> (header.signature) + (abc::CHUNK_HEADER / 2));
 		// Выполняем проверку отказа поверки подписи усечённого контейнера
-		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", cut.data(), cut.size(), error, this->_log.get()));
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", cut.data(), cut.size(), error));
 		// Выполняем проверку кода отказа поверки подписи
 		ASSERT_EQ(error, abc::error_t::TRUNCATED_SIGNATURE);
 	}
@@ -1095,7 +1088,7 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 			// Выполняем укладку очередного октета объявленной длины кадра
 			broken.at(abc::HEADER_LENGTH + 4 + i) = 0xFF;
 		// Выполняем проверку отказа поверки подписи порченого контейнера
-		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error, this->_log.get()));
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error));
 		// Выполняем проверку кода отказа поверки подписи
 		ASSERT_EQ(error, abc::error_t::TRUNCATED_CHUNK);
 	}
@@ -1116,22 +1109,20 @@ TEST_F(ContainerFixture, VerifyRefusesBrokenLayout) {
 		// Выполняем укладку пересобранного заголовка в порченый контейнер
 		::memcpy(broken.data(), record.data(), record.size());
 		// Выполняем проверку отказа поверки подписи порченого контейнера
-		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error, this->_log.get()));
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", broken.data(), broken.size(), error));
 		// Выполняем проверку кода отказа поверки подписи
 		ASSERT_EQ(error, abc::error_t::TRUNCATED_CHUNK);
 	}
 }
 TEST_F(ContainerFixture, FailuresReachLogger) {
-	// Объект журнала проверки
-	log_t log(this->_fmk.get());
 	// Накопленные записи журнала
 	vector <string> records;
 	// Выполняем разрешение вывода записей в функцию обратного вызова
-	log.mode({log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем разрешение вывода всех видов записей
-	log.level(log_t::level_t::ALL);
+	awh::log::level(awh::log::level_t::ALL);
 	// Выполняем подписку на получение записей журнала
-	log.subscribe([&records](const log_t::flag_t flag, string_view text) noexcept -> void {
+	awh::log::subscribe([&records](const awh::log::flag_t flag, string_view text) noexcept -> void {
 		// Выполняем накопление полученной записи журнала
 		records.push_back(string(text));
 		// Снимаем неиспользуемый вид записи
@@ -1142,7 +1133,7 @@ TEST_F(ContainerFixture, FailuresReachLogger) {
 	 */
 	{
 		// Сниматель контейнера с журналом проверки
-		abc::loader_t loader(& log);
+		abc::loader_t loader;
 		// Чужие октеты, поданные снимателю контейнера
 		const string foreign = "это вовсе не контейнер, а обыкновенный текст, длиною поболее заголовка опознания";
 		// Выполняем подачу чужих октетов снимателю
@@ -1178,7 +1169,7 @@ TEST_F(ContainerFixture, FailuresReachLogger) {
 		// Октеты, контейнером не являющиеся вовсе
 		const string foreign = "ни заголовка, ни подписи";
 		// Выполняем проверку отказа поверки подписи
-		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", foreign.data(), foreign.size(), error, & log));
+		ASSERT_FALSE(abc::verify(* this->_crypto, "владелец", foreign.data(), foreign.size(), error));
 		// Выполняем проверку того, что отказ дошёл до журнала
 		ASSERT_FALSE(records.empty()) << "отказ поверки подписи до журнала не дошёл";
 		// Выполняем проверку того, что запись несёт текст отказа
@@ -1195,7 +1186,7 @@ TEST_F(ContainerFixture, FailuresReachLogger) {
 		// Выполняем очистку накопленных записей журнала
 		records.clear();
 		// Сборщик контейнера с журналом проверки
-		abc::assembler_t assembler(& log);
+		abc::assembler_t assembler;
 		// Выполняем сборку записи
 		const vector <uint8_t> item = record("запись без отказов");
 		// Выполняем внесение записи в собираемый контейнер
@@ -1205,7 +1196,7 @@ TEST_F(ContainerFixture, FailuresReachLogger) {
 		// Выполняем завершение сборки контейнера
 		ASSERT_TRUE(assembler.complete(buffer));
 		// Сниматель контейнера с журналом проверки
-		abc::loader_t loader(& log);
+		abc::loader_t loader;
 		// Выполняем подачу собранного контейнера снимателю
 		ASSERT_TRUE(loader.feed(buffer.data(), buffer.size()));
 		// Количество снятых кадров
@@ -1292,7 +1283,7 @@ TEST_F(ContainerFixture, LayoutOffsetsFollowBody) {
 	 */
 	{
 		// Сборщик контейнера
-		abc::assembler_t assembler(this->_log.get());
+		abc::assembler_t assembler;
 		// Выполняем объявление сжатия собираемого контейнера
 		assembler.compressor(this->_compressor.get());
 		/**
@@ -1319,7 +1310,7 @@ TEST_F(ContainerFixture, LayoutOffsetsFollowBody) {
 		// Выполняем заведение ключа владельца контейнера
 		ASSERT_TRUE(this->_crypto->generateKey("владелец", crypto_t::signature_t::ED25519));
 		// Сборщик контейнера
-		abc::assembler_t assembler(this->_log.get());
+		abc::assembler_t assembler;
 		// Выполняем объявление подписи собираемого контейнера
 		assembler.sign(this->_crypto.get(), "владелец");
 		/**
@@ -1359,7 +1350,7 @@ TEST_F(ContainerFixture, LayoutOffsetsFollowBody) {
  */
 TEST_F(ContainerFixture, EmptyRecordRefusedByTheAssembler) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Собранная запись, годная сама по себе
 	const vector <uint8_t> item = record("годная запись");
 	// Выполняем проверку отказа внесения записи, поданной пустым указателем
@@ -1394,7 +1385,7 @@ TEST_F(ContainerFixture, EmptyRecordRefusedByTheAssembler) {
  */
 TEST_F(ContainerFixture, FeedRefusesTheAbsentBuffer) {
 	// Сниматель контейнера
-	abc::loader_t loader(this->_log.get());
+	abc::loader_t loader;
 	// Выполняем проверку отказа подачи октетов по пустому указателю при длине
 	ASSERT_FALSE(loader.feed(nullptr, 64));
 	// Выполняем проверку названной причины отказа
@@ -1427,7 +1418,7 @@ TEST_F(ContainerFixture, SignerRefusalNamesTheSigningCause) {
 	const vector <uint8_t> item = record("подписанное содержимое контейнера");
 	{
 		// Сборщик контейнера
-		abc::assembler_t assembler(this->_log.get());
+		abc::assembler_t assembler;
 		/**
 		 * Выполняем объявление подписи от имени, ключа не имеющего: подписыватель отдан
 		 * и исправен, а ключа под этим именем у него нет
@@ -1449,7 +1440,7 @@ TEST_F(ContainerFixture, SignerRefusalNamesTheSigningCause) {
 	 */
 	{
 		// Сборщик контейнера
-		abc::assembler_t assembler(this->_log.get());
+		abc::assembler_t assembler;
 		// Выполняем объявление подписи от имени владельца контейнера
 		assembler.sign(this->_crypto.get(), "владелец");
 		// Выполняем внесение записи в собираемый контейнер
@@ -1462,7 +1453,7 @@ TEST_F(ContainerFixture, SignerRefusalNamesTheSigningCause) {
 		// Код отказа поверки подписи владельца
 		abc::error_t error = abc::error_t::NONE;
 		// Выполняем проверку того, что подпись собранного контейнера сходится
-		ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", data.data(), data.size(), error, this->_log.get()))
+		ASSERT_TRUE(abc::verify(* this->_crypto, "владелец", data.data(), data.size(), error))
 			<< "код отказа: " << abc::message(error);
 	}
 }
@@ -1483,7 +1474,7 @@ TEST_F(ContainerFixture, IndexPackFailureCarriesThePackerCause) {
 	const vector <uint8_t> item = record("содержимое контейнера");
 	{
 		// Сборщик контейнера
-		abc::assembler_t assembler(this->_log.get());
+		abc::assembler_t assembler;
 		/**
 		 * Выполняем установку порога накопления, укладывающего кадром всякую запись:
 		 * без того тело копится и укладывается при ЗАВЕРШЕНИИ, отказом ответится оно, и
@@ -1524,7 +1515,7 @@ TEST_F(ContainerFixture, IndexPackFailureCarriesThePackerCause) {
 		// Выполняем установку пароля шифрования
 		this->_crypto->password("пароль владельца");
 		// Сборщик контейнера
-		abc::assembler_t assembler(this->_log.get());
+		abc::assembler_t assembler;
 		// Выполняем установку модуля шифрования сборщику
 		assembler.crypto(this->_crypto.get());
 		// Выполняем внесение записи в собираемый контейнер
@@ -1570,7 +1561,7 @@ TEST_F(ContainerFixture, ComposeFailureCarriesTheWriterCause){
 		deep = outer;
 	}
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	/**
 	 * Выполняем проверку того, что слишком глубокое значение отвергается
 	 */
@@ -1599,7 +1590,7 @@ TEST_F(ContainerFixture, ComposeFailureCarriesTheWriterCause){
  */
 TEST_F(ContainerFixture, ZeroBlockThresholdIsRaisedToTheSmallest) {
 	// Сборщик контейнера
-	abc::assembler_t assembler(this->_log.get());
+	abc::assembler_t assembler;
 	// Настройки сборки контейнера
 	abc::assembler_t::settings_t settings = assembler.settings();
 	// Выполняем установку нулевого порога накопления записей

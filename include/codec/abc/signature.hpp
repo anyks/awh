@@ -47,8 +47,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 #include "../../cryptography/crypto.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -222,9 +222,6 @@ namespace awh {
 				private:
 					// Свёртки кадров контейнера
 					vector <vector <uint8_t>> _leaves;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -352,17 +349,13 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
-					 * @param log object for working with logs
-					 *
 					 * \~
 					 */
-					explicit Merkle(const log_t * log) noexcept :
-					 _crypto(nullptr), _log(log) {}
+					explicit Merkle() noexcept :
+					 _crypto(nullptr) {}
 					/**
 					 * \~russian
 					 * @brief Деструктор

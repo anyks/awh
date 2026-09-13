@@ -44,44 +44,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -237,7 +207,7 @@ namespace {
 		// Устанавливаем признак проверки повторного объявления имён
 		settings.duplicates = duplicates;
 		// Объект потокового чтения текста настроек
-		awh::codec::toml::reader_t reader(::logger(), settings);
+		awh::codec::toml::reader_t reader(settings);
 		/**
 		 * Если передать текст настроек не удалось
 		 */
@@ -264,7 +234,7 @@ namespace {
 	 */
 	static uint64_t feed(const string & text) noexcept {
 		// Объект потокового чтения текста настроек
-		awh::codec::toml::reader_t reader(::logger());
+		awh::codec::toml::reader_t reader;
 		// Количество полученных событий разбора
 		uint64_t result = 0;
 		// Смещение очередного подаваемого куска текста настроек

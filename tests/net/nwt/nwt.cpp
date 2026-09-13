@@ -29,12 +29,8 @@
  *
  */
 void NwtFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект работы со списком параметров URL
-	this->_nwt = std::make_unique <awh::nwt_t> (this->_log.get());
+	this->_nwt = std::make_unique <awh::nwt_t> ();
 }
 
 /**

@@ -23,6 +23,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/notifier.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -138,13 +139,13 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог запуска события
-					this->_log->debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+					awh::log::debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог запуска события
-					this->_log->print("Notifier event could not be launched", log_t::flag_t::WARNING);
+					awh::log::print("Notifier event could not be launched", awh::log::flag_t::WARNING);
 				#endif
 			// Добавляем идентификатор события уведомителя в список событий уведомителя
 			} else this->_events.emplace(result);
@@ -159,13 +160,13 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог создания события
-				this->_log->debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				awh::log::debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				this->_log->print("Notifier event could not be created", log_t::flag_t::WARNING);
+				awh::log::print("Notifier event could not be created", awh::log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -216,11 +217,8 @@ size_t awh::unit::Notifier::trigger(const event::id_t eid, const void * buffer, 
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Notifier::Notifier() noexcept : unit_t() {}
 /**
  * @brief Деструктор
  *

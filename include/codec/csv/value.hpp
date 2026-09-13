@@ -157,8 +157,6 @@ namespace awh {
 					vector <string> _header;
 					// Вложенные значения: записи у таблицы, поля у записи
 					vector <Value> _items;
-					// Объект ведения журнала работы
-					const log_t * _log;
 					/**
 					 * Объект фреймворка
 					 *
@@ -170,12 +168,10 @@ namespace awh {
 					 *          либо видом, - и сохранение у такого значения отвечает отказом, а не
 					 *          пишет узким ходом молча
 					 */
-					const fmk_t * _fmk;
 					// Код отказа последней работы над значением
 					mutable error_t _error;
 					// Место отказа последней работы над значением
 					mutable location_t _errorLocation;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод получения пустого значения общего пользования
@@ -256,29 +252,6 @@ namespace awh {
 					const location_t & errorLocation() const noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @details Привязка поздняя нужна там, где значение заведено копией либо
-					 *          собрано из значений языка: журнала при заведении ему взять
-					 *          неоткуда, а сообщать о бедах оно обязано туда же, куда и
-					 *          прочие части кодека
-					 *
-					 * @note Журнал уходит ВГЛУБЬ по вложенным значениям: значение владеет
-					 *       ими целиком, и разойдись журнал у родителя с детьми - беда
-					 *       записи поля уходила бы в пустоту, тогда как беда таблицы
-					 *       сообщалась бы исправно
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
 					 * @brief Метод извлечения вида хранимого значения
 					 *
 					 * @return вид хранимого значения
@@ -305,7 +278,6 @@ namespace awh {
 					 * \~
 					 */
 					bool is(const type_t type) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества вложенных значений
@@ -349,7 +321,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения содержимого поля
@@ -401,7 +372,6 @@ namespace awh {
 					 * \~
 					 */
 					bool header(const vector <string> & names) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод проверки наличия столбца с указанным именем
@@ -444,7 +414,6 @@ namespace awh {
 					 * \~
 					 */
 					size_t column(const string & name) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод обращения к вложенному значению по номеру
@@ -507,7 +476,6 @@ namespace awh {
 					 * @see Договор этот закреплён проверкою CodecContract.EnumerationAndLookupFormAClosedTraversal
 					 */
 					const Value & at(const string & path) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод добавления записи в таблицу
@@ -538,7 +506,6 @@ namespace awh {
 					 * \~
 					 */
 					bool erase(const size_t index) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Шаблон вида числа, к какому ведётся извлечение
@@ -551,7 +518,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод извлечения числового значения поля
@@ -577,6 +543,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					template <typename T>
 					bool extract(T & result) const noexcept;
 					/**
 					 * \~russian
@@ -764,7 +731,6 @@ namespace awh {
 					 * \~
 					 */
 					bool value(string & result) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод снятия значения с таблицы
@@ -803,7 +769,6 @@ namespace awh {
 					 * \~
 					 */
 					bool graft(Document & document) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста таблицы
@@ -907,7 +872,6 @@ namespace awh {
 					 * \~
 					 */
 					string dump() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Оператор сличения значений
@@ -938,7 +902,6 @@ namespace awh {
 					 * \~
 					 */
 					bool operator != (const Value & value) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -988,35 +951,6 @@ namespace awh {
 					 * \~
 					 */
 					explicit Value(const Document & document) noexcept;
-					/**
-					 * \~russian
-					 * @brief Конструктор с объектом ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Constructor with the object of the keeping of the work log
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					explicit Value(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * @param fmk framework object
-					 * @param log object for working with logs
-					 *
-					 * \~
-					 */
-					Value(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1205,7 +1139,6 @@ namespace awh {
 					 * \~
 					 */
 					void reset() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор

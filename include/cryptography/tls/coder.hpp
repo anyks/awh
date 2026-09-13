@@ -58,8 +58,6 @@ struct ssl_ctx_st;
 #include "fingerprint.hpp"
 #include "../../net/addr.hpp"
 #include "../../net/event.hpp"
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 #include "../../compressor/block.hpp"
 
 /**
@@ -477,10 +475,6 @@ namespace awh {
 			private:
 				// Объект работы с отпечатками TLS
 				const fgp_t * _fgp;
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -1698,36 +1692,26 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
 				 *
-				 * @param fmk framework object
-				 * @param log object for working with logs
-				 *
 				 * \~
 				 */
-				explicit Coder(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Coder() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param fgp объект для работы с отпечатками TLS
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 *
 				 * @param fgp object for working with the TLS fingerprints
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Coder(const fgp_t * fgp) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор
@@ -1747,5 +1731,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_SSL_ENGINE__

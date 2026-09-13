@@ -26,7 +26,6 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/net/nwt.hpp"
 
 /**
@@ -35,10 +34,6 @@
  */
 class NwtFixture : public testing::Test {
 	protected:
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 		// Объект работы со списком параметров URL
 		std::unique_ptr <awh::nwt_t> _nwt;
 	public:

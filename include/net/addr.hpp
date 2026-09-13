@@ -47,7 +47,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "net.hpp"
-#include "../sys/log.hpp"
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
@@ -112,7 +111,7 @@ namespace awh {
 	 * @par Пример: разбор адреса и проверка принадлежности сети
 	 *
 	 * @code{.cpp}
-	 * awh::net_addr_t addr(&fmk, &log);
+	 * awh::net_addr_t addr;
 	 * // Разбираем адрес, вид записи определяется сам
 	 * if(addr.parse("192.168.1.42")){
 	 *     // Узнаём, откуда адрес: из локальной сети, из внешней или зарезервирован
@@ -156,7 +155,7 @@ namespace awh {
 	 * @par Example: the parsing of an address and the check of the belonging to a network
 	 *
 	 * @code{.cpp}
-	 * awh::net_addr_t addr(&fmk, &log);
+	 * awh::net_addr_t addr;
 	 * // Parsing the address, the kind of the record is determined by itself
 	 * if(addr.parse("192.168.1.42")){
 	 *     // Finding out where the address is from: from the local network, from an external one or reserved
@@ -643,12 +642,6 @@ namespace awh {
 		private:
 			// Бинарный буфер данных
 			buffer_t _buffer;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект для работы с логами
-			const log_t * _log;
-		private:
 					public:
 			/**
 			 * \~russian
@@ -2400,17 +2393,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Network_Address(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Network_Address() noexcept;
 		public:
 			/**
 			 * \~russian
@@ -2461,5 +2449,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_NET_ADDR__

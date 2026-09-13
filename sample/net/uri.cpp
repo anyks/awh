@@ -23,6 +23,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/uri.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -36,18 +37,22 @@ using namespace awh;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Выполняем создание объекта URI
-	uri_t uri(&fmk, &log);
+	uri_t uri;
 	// Генерируем ETag для строки "Hello, World!" и выводим его
 	cout << " ETag: " << "W/" << uri.etag("Hello, World!", 8) << endl;
 	// Устанавливаем функцию обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
-	uri.callback([&fmk](const uri_t * uri) -> string {
+	uri.callback([](const uri_t * uri) -> string {
 		// Генерируем контрольную сумму для строки URI и возвращаем её в виде параметра "checksum"
-		return fmk.format("%s=%s", "checksum", uri->etag(uri->print(uri_t::item_t::QUERY)).c_str());
+		return awh::fmk::format("%s=%s", "checksum", uri->etag(uri->print(uri_t::item_t::QUERY)).c_str());
 	});
 
 	cout << endl << endl;

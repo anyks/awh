@@ -40,6 +40,7 @@
 
 #include <proto/http/parser/http3/qpack.hpp>
 #include <proto/http/parser/http2/hpack.hpp>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
@@ -649,6 +650,13 @@ static void decoderAgainstReference(size_t & failures, size_t & sections, size_t
  *
  */
 int32_t main() noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество обнаруженных расхождений
 	size_t failures = 0;
 	// Количество сверенных секций

@@ -43,44 +43,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -216,7 +186,7 @@ namespace {
 	 */
 	static uint64_t build(const string & text, const awh::codec::ini::document_t::settings_t & settings) noexcept {
 		// Дерево настроек
-		awh::codec::ini::document_t document(::logger());
+		awh::codec::ini::document_t document;
 		/**
 		 * Если разбор текста настроек выполнить не удалось
 		 */
@@ -239,7 +209,7 @@ namespace {
 		// Собираемое дерево настроек
 		static const awh::codec::ini::document_t result = []() noexcept -> awh::codec::ini::document_t {
 			// Собираемое дерево настроек
-			awh::codec::ini::document_t result(::logger());
+			awh::codec::ini::document_t result;
 			// Выполняем разбор эталонного текста настроек
 			result.parse(service());
 			// Выводим собранное дерево настроек
@@ -358,7 +328,7 @@ namespace {
 		// Разбираемый текст настроек
 		const string & text = sections();
 		// Собираемое дерево настроек
-		awh::codec::ini::document_t document(::logger());
+		awh::codec::ini::document_t document;
 		/**
 		 * Если разбор текста настроек выполнить не удалось
 		 */
@@ -472,7 +442,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(0, ASSEMBLY_ROUNDS, [&keys]() noexcept {
 			// Собираемое дерево настроек
-			awh::codec::ini::document_t document(::logger());
+			awh::codec::ini::document_t document;
 			// Накопитель итогов заведения свойств
 			uint64_t result = 0;
 			/**

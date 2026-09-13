@@ -37,7 +37,6 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/sys/chrono.hpp"
 
 /**
@@ -107,10 +106,6 @@ class ChronoFixture : public testing::Test {
 		// Временная зона окружения, действовавшая до начала теста
 		std::string _zone;
 	protected:
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 		// Объект работы с датой и временем
 		std::unique_ptr <awh::chrono_t> _chrono;
 	public:

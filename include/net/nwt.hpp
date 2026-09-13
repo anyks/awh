@@ -97,7 +97,7 @@ namespace awh {
 	 * @par Пример: определение вида записи
 	 *
 	 * @code{.cpp}
-	 * awh::nwt_t nwt(&log);
+	 * awh::nwt_t nwt();
 	 * // Добавляем собственную доменную зону, иначе она останется неизвестной
 	 * nwt.zone("local");
 	 * const awh::nwt_t::url_t url = nwt.parse("https://user:pass@anyks.com:443/path?query=1#anchor");
@@ -125,7 +125,7 @@ namespace awh {
 	 * @par Example: the determination of the kind of a record
 	 *
 	 * @code{.cpp}
-	 * awh::nwt_t nwt(&log);
+	 * awh::nwt_t nwt();
 	 * // Adding an own domain zone, otherwise it will remain unknown
 	 * nwt.zone("local");
 	 * const awh::nwt_t::url_t url = nwt.parse("https://user:pass@anyks.com:443/path?query=1#anchor");
@@ -327,9 +327,6 @@ namespace awh {
 			// Список пользовательских доменных зон интернета
 			unordered_set <string> _user;
 		private:
-			// Объект логера
-			const Logging * _log;
-		private:
 			/**
 			 * \~russian
 			 * @brief Метод проверки, является ли домен верхнего уровня известной доменной зоной
@@ -452,20 +449,6 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод установки объекта логирования
-			 *
-			 * @param log объект работы с логами
-			 *
-			 * \~english
-			 * @brief Method of setting the logging object
-			 * @param log object for working with logs
-			 *
-			 * \~
-			 */
-			void setLogger(const Logging * log) noexcept;
-		public:
-			/**
-			 * \~russian
 			 * @brief Конструктор
 			 *
 			 *
@@ -475,19 +458,6 @@ namespace awh {
 			 * \~
 			 */
 			explicit Network_Types() noexcept;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * @param log объект для работы с логами
-			 *
-			 * \~english
-			 * @brief Constructor
-			 * @param log object for working with logs
-			 *
-			 * \~
-			 */
-			explicit Network_Types(const Logging * log) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

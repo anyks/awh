@@ -29,12 +29,8 @@
  *
  */
 void CompressorFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект компрессии
-	this->_compressor = std::make_unique <awh::compressor::block_t> (this->_log.get());
+	this->_compressor = std::make_unique <awh::compressor::block_t> ();
 }
 
 /**

@@ -23,6 +23,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <proto/portmap/device.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -122,13 +124,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text.length()), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -144,19 +146,19 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text.length()), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Объект дерева разметки описания устройства
-	codec::xml::document_t document(this->_fmk, this->_log);
+	codec::xml::document_t document;
 	/**
 	 * Если разбор описания устройства выполнить не удалось
 	 */
@@ -168,17 +170,17 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(document.errorLocation().line, document.errorLocation().column),
-				log_t::flag_t::WARNING, codec::xml::message(document.error())
+				{document.errorLocation().line, document.errorLocation().column},
+				awh::log::flag_t::WARNING, codec::xml::message(document.error())
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, codec::xml::message(document.error()));
+			awh::log::print("%s", awh::log::flag_t::WARNING, codec::xml::message(document.error()));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -196,13 +198,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(root.name().local), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {root.name().local}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -222,13 +224,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(description.base), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.base}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -258,13 +260,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(description.name, description.type), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.name, description.type}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -368,13 +370,13 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(description.name, description.udn), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.name, description.udn}, awh::log::flag_t::WARNING, message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -402,7 +404,7 @@ const awh::proto::portmap::Device::service_t * awh::proto::portmap::Device::serv
 		 *       записывают вольно, а отвергать пригодную службу из-за разницы в
 		 *       написании незачем
 		 */
-		if(this->_fmk->compare(service.type, type))
+		if(awh::fmk::compare(service.type, type))
 			// Выводим обнаруженную службу устройства
 			return &service;
 	}
@@ -448,13 +450,13 @@ string awh::proto::portmap::Device::address(const description_t & description, c
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(string(base), string(address)), log_t::flag_t::WARNING, "unable to parse the device description address");
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(base), string(address)}, awh::log::flag_t::WARNING, "unable to parse the device description address");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "unable to parse the device description address");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "unable to parse the device description address");
 		#endif
 		// Выводим пустой адрес управления службой
 		return string();
@@ -471,13 +473,13 @@ string awh::proto::portmap::Device::address(const description_t & description, c
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(string(base), string(address)), log_t::flag_t::WARNING, "unable to resolve the service control address");
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(base), string(address)}, awh::log::flag_t::WARNING, "unable to resolve the service control address");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "unable to resolve the service control address");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "unable to resolve the service control address");
 		#endif
 		// Выводим пустой адрес управления службой
 		return string();

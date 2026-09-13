@@ -41,6 +41,7 @@
 #include <locale>
 
 #include "headers.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на пространство имён HTTP-протокола
@@ -843,7 +844,7 @@ TEST_F(HeadersFixture, SwapTest){
 	// Устанавливаем протокол первого контейнера
 	this->_headers->proto(proto_t::HTTP1);
 	// Создаём второй контейнер заголовков
-	headers_t other(this->_fmk.get(), this->_log.get());
+	headers_t other;
 	// Наполняем второй контейнер заголовками
 	other.emplace("Accept", "text/html");
 	// Устанавливаем протокол второго контейнера
@@ -872,7 +873,7 @@ TEST_F(HeadersFixture, MergeTest){
 	// Наполняем первый контейнер заголовками
 	this->_headers->emplace("Host", "example.com");
 	// Создаём второй контейнер заголовков
-	headers_t other(this->_fmk.get(), this->_log.get());
+	headers_t other;
 	// Наполняем второй контейнер заголовками
 	other.emplace("Accept", "text/html");
 	// Добавляем во второй контейнер ещё один заголовок
@@ -897,7 +898,7 @@ TEST_F(HeadersFixture, MergeOperatorTest){
 	// Наполняем первый контейнер заголовками
 	this->_headers->emplace("Host", "example.com");
 	// Создаём второй контейнер заголовков
-	headers_t other(this->_fmk.get(), this->_log.get());
+	headers_t other;
 	// Наполняем второй контейнер заголовками
 	other.emplace("Accept", "text/html");
 	// Выполняем слияние заголовков через оператор
@@ -934,7 +935,7 @@ TEST_F(HeadersFixture, CopyHeadersNoSlicingTest){
 	// Проверяем что контейнеры равны
 	ASSERT_TRUE(copy == (* this->_headers));
 	// Проверяем копирование через оператор присваивания
-	headers_t assigned(this->_fmk.get(), this->_log.get());
+	headers_t assigned;
 	// Выполняем присваивание копированием
 	assigned = (* this->_headers);
 	// Проверяем что стартовая строка присвоенного контейнера сформирована без срезки провайдера
@@ -959,7 +960,7 @@ TEST_F(HeadersFixture, MoveHeadersTest){
 	// Проверяем что перемещённый контейнер содержит заголовки
 	ASSERT_TRUE(moved.has("Host"));
 	// Проверяем перемещение через оператор присваивания
-	headers_t movedAssigned(this->_fmk.get(), this->_log.get());
+	headers_t movedAssigned;
 	// Выполняем присваивание перемещением
 	movedAssigned = std::move(moved);
 	// Проверяем что перемещённый контейнер содержит заголовки
@@ -972,9 +973,9 @@ TEST_F(HeadersFixture, MoveHeadersTest){
  */
 TEST_F(HeadersFixture, EqualityMultiplicityTest){
 	// Создаём первый контейнер заголовков
-	headers_t headers1(this->_fmk.get(), this->_log.get());
+	headers_t headers1;
 	// Создаём второй контейнер заголовков
-	headers_t headers2(this->_fmk.get(), this->_log.get());
+	headers_t headers2;
 	// Наполняем первый контейнер заголовками с разными значениями одного названия
 	headers1 = headers_t::fields_t ({this->header("Set-Cookie", "a=1"), this->header("Set-Cookie", "b=2")});
 	// Наполняем второй контейнер теми же заголовками, но в другом порядке
@@ -1009,13 +1010,13 @@ TEST_F(HeadersFixture, EqualityMultiplicityTest){
  */
 TEST_F(HeadersFixture, EqualityTest){
 	// Создаём первый контейнер заголовков
-	headers_t headers1(this->_fmk.get(), this->_log.get());
+	headers_t headers1;
 	// Наполняем первый контейнер заголовками
 	headers1.emplace("Host", "example.com");
 	// Добавляем в первый контейнер ещё один заголовок
 	headers1.emplace("Accept", "text/html");
 	// Создаём второй контейнер заголовков
-	headers_t headers2(this->_fmk.get(), this->_log.get());
+	headers_t headers2;
 	// Наполняем второй контейнер такими же заголовками
 	headers2.emplace("Accept", "text/html");
 	// Добавляем во второй контейнер ещё один заголовок
@@ -1189,13 +1190,13 @@ TEST_F(HeadersFixture, OstreamOperatorTest){
  */
 TEST_F(HeadersFixture, ConstructWithDataTest){
 	// Создаём контейнер из списка заголовков
-	headers_t fromVector(headers_t::fields_t ({this->header("Host", "example.com")}), this->_fmk.get(), this->_log.get());
+	headers_t fromVector(headers_t::fields_t ({this->header("Host", "example.com")}));
 	// Проверяем что заголовок добавлен
 	ASSERT_TRUE(fromVector.has("Host"));
 	// Создаём объект провайдера через умный указатель
 	std::unique_ptr <provider_t> provider = std::make_unique <request_t> (version_t::HTTP1_1, method_t::GET, "/data");
 	// Создаём контейнер из протокола, провайдера и списка заголовков
-	headers_t full(proto_t::HTTP1, std::move(provider), headers_t::fields_t ({this->header("Accept", "text/html")}), this->_fmk.get(), this->_log.get());
+	headers_t full(proto_t::HTTP1, std::move(provider), headers_t::fields_t ({this->header("Accept", "text/html")}));
 	// Проверяем что протокол установлен
 	ASSERT_EQ(full.proto(), proto_t::HTTP1);
 	// Проверяем что провайдер установлен через стартовую строку
@@ -1368,12 +1369,8 @@ TEST_F(HeadersFixture, DateNowTest){
  *
  */
 TEST_F(HeadersFixture, ConstructionFormsTest){
-	// Создаём объект фреймворка
-	awh::fmk_t fmk;
-	// Создаём объект логирования
-	awh::log_t log(&fmk);
 	// Отключаем вывод сообщений контейнера
-	log.level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Формируем заголовок узла назначения
 	const headers_t::header_t host = headers_t::header_t().from("Host", "anyks.com");
 	// Формируем заголовок принимаемых типов содержимого
@@ -1496,61 +1493,61 @@ TEST_F(HeadersFixture, ConstructionFormsTest){
 	 */
 	{
 		// Проверяем построение с объектами от фреймворка и логирования
-		check(headers_t(&fmk, &log), false, "объекты");
+		check(headers_t(), false, "объекты");
 		// Проверяем построение с объектами от протокола
-		check(headers_t(proto_t::HTTP1, &fmk, &log), false, "объекты и протокол");
+		check(headers_t(proto_t::HTTP1), false, "объекты и протокол");
 		// Проверяем построение с объектами от провайдера вызывающей стороны
-		check(headers_t(external.get(), &fmk, &log), false, "объекты и провайдер");
+		check(headers_t(external.get()), false, "объекты и провайдер");
 		// Проверяем построение с объектами от провайдера во владении
-		check(headers_t(provider(), &fmk, &log), false, "объекты и владение");
+		check(headers_t(provider()), false, "объекты и владение");
 		// Проверяем построение с объектами от вектора
-		check(headers_t(fields, &fmk, &log), true, "объекты и вектор");
+		check(headers_t(fields), true, "объекты и вектор");
 		// Проверяем построение с объектами от набора
-		check(headers_t(entries, &fmk, &log), true, "объекты и набор");
+		check(headers_t(entries), true, "объекты и набор");
 		// Проверяем построение с объектами от отображения
-		check(headers_t(mapping, &fmk, &log), true, "объекты и отображение");
+		check(headers_t(mapping), true, "объекты и отображение");
 		// Проверяем построение с объектами от списка инициализации
-		check(headers_t({host, accept}, &fmk, &log), true, "объекты и список");
+		check(headers_t({host, accept}), true, "объекты и список");
 		// Проверяем построение с объектами от протокола и вектора
-		check(headers_t(proto_t::HTTP1, fields, &fmk, &log), true, "объекты, протокол и вектор");
+		check(headers_t(proto_t::HTTP1, fields), true, "объекты, протокол и вектор");
 		// Проверяем построение с объектами от протокола и набора
-		check(headers_t(proto_t::HTTP1, entries, &fmk, &log), true, "объекты, протокол и набор");
+		check(headers_t(proto_t::HTTP1, entries), true, "объекты, протокол и набор");
 		// Проверяем построение с объектами от протокола и отображения
-		check(headers_t(proto_t::HTTP1, mapping, &fmk, &log), true, "объекты, протокол и отображение");
+		check(headers_t(proto_t::HTTP1, mapping), true, "объекты, протокол и отображение");
 		// Проверяем построение с объектами от протокола и списка
-		check(headers_t(proto_t::HTTP1, {host, accept}, &fmk, &log), true, "объекты, протокол и список");
+		check(headers_t(proto_t::HTTP1, {host, accept}), true, "объекты, протокол и список");
 		// Проверяем построение с объектами от провайдера вызывающей стороны и вектора
-		check(headers_t(external.get(), fields, &fmk, &log), true, "объекты, провайдер и вектор");
+		check(headers_t(external.get(), fields), true, "объекты, провайдер и вектор");
 		// Проверяем построение с объектами от провайдера вызывающей стороны и набора
-		check(headers_t(external.get(), entries, &fmk, &log), true, "объекты, провайдер и набор");
+		check(headers_t(external.get(), entries), true, "объекты, провайдер и набор");
 		// Проверяем построение с объектами от провайдера вызывающей стороны и отображения
-		check(headers_t(external.get(), mapping, &fmk, &log), true, "объекты, провайдер и отображение");
+		check(headers_t(external.get(), mapping), true, "объекты, провайдер и отображение");
 		// Проверяем построение с объектами от провайдера вызывающей стороны и списка
-		check(headers_t(external.get(), {host, accept}, &fmk, &log), true, "объекты, провайдер и список");
+		check(headers_t(external.get(), {host, accept}), true, "объекты, провайдер и список");
 		// Проверяем построение с объектами от провайдера во владении и вектора
-		check(headers_t(provider(), fields, &fmk, &log), true, "объекты, владение и вектор");
+		check(headers_t(provider(), fields), true, "объекты, владение и вектор");
 		// Проверяем построение с объектами от провайдера во владении и набора
-		check(headers_t(provider(), entries, &fmk, &log), true, "объекты, владение и набор");
+		check(headers_t(provider(), entries), true, "объекты, владение и набор");
 		// Проверяем построение с объектами от провайдера во владении и отображения
-		check(headers_t(provider(), mapping, &fmk, &log), true, "объекты, владение и отображение");
+		check(headers_t(provider(), mapping), true, "объекты, владение и отображение");
 		// Проверяем построение с объектами от провайдера во владении и списка
-		check(headers_t(provider(), {host, accept}, &fmk, &log), true, "объекты, владение и список");
+		check(headers_t(provider(), {host, accept}), true, "объекты, владение и список");
 		// Проверяем построение с объектами от протокола, провайдера вызывающей стороны и вектора
-		check(headers_t(proto_t::HTTP1, external.get(), fields, &fmk, &log), true, "объекты, протокол, провайдер и вектор");
+		check(headers_t(proto_t::HTTP1, external.get(), fields), true, "объекты, протокол, провайдер и вектор");
 		// Проверяем построение с объектами от протокола, провайдера вызывающей стороны и набора
-		check(headers_t(proto_t::HTTP1, external.get(), entries, &fmk, &log), true, "объекты, протокол, провайдер и набор");
+		check(headers_t(proto_t::HTTP1, external.get(), entries), true, "объекты, протокол, провайдер и набор");
 		// Проверяем построение с объектами от протокола, провайдера вызывающей стороны и отображения
-		check(headers_t(proto_t::HTTP1, external.get(), mapping, &fmk, &log), true, "объекты, протокол, провайдер и отображение");
+		check(headers_t(proto_t::HTTP1, external.get(), mapping), true, "объекты, протокол, провайдер и отображение");
 		// Проверяем построение с объектами от протокола, провайдера вызывающей стороны и списка
-		check(headers_t(proto_t::HTTP1, external.get(), {host, accept}, &fmk, &log), true, "объекты, протокол, провайдер и список");
+		check(headers_t(proto_t::HTTP1, external.get(), {host, accept}), true, "объекты, протокол, провайдер и список");
 		// Проверяем построение с объектами от протокола, провайдера во владении и вектора
-		check(headers_t(proto_t::HTTP1, provider(), fields, &fmk, &log), true, "объекты, протокол, владение и вектор");
+		check(headers_t(proto_t::HTTP1, provider(), fields), true, "объекты, протокол, владение и вектор");
 		// Проверяем построение с объектами от протокола, провайдера во владении и набора
-		check(headers_t(proto_t::HTTP1, provider(), entries, &fmk, &log), true, "объекты, протокол, владение и набор");
+		check(headers_t(proto_t::HTTP1, provider(), entries), true, "объекты, протокол, владение и набор");
 		// Проверяем построение с объектами от протокола, провайдера во владении и отображения
-		check(headers_t(proto_t::HTTP1, provider(), mapping, &fmk, &log), true, "объекты, протокол, владение и отображение");
+		check(headers_t(proto_t::HTTP1, provider(), mapping), true, "объекты, протокол, владение и отображение");
 		// Проверяем построение с объектами от протокола, провайдера во владении и списка
-		check(headers_t(proto_t::HTTP1, provider(), {host, accept}, &fmk, &log), true, "объекты, протокол, владение и список");
+		check(headers_t(proto_t::HTTP1, provider(), {host, accept}), true, "объекты, протокол, владение и список");
 	}
 }
 
@@ -2073,7 +2070,7 @@ TEST_F(HeadersFixture, IdentLifetimeTest){
 	// Проверяем что идентификация сервиса перенесена в копию
 	ASSERT_EQ(copy.ident(), ident);
 	// Создаём контейнер заголовков для проверки оператора присваивания
-	Headers assigned(this->_fmk.get(), this->_log.get());
+	Headers assigned;
 	// Копируем контейнер заголовков оператором присваивания
 	assigned = (* this->_headers);
 	// Проверяем что идентификация сервиса перенесена оператором присваивания
@@ -2603,7 +2600,7 @@ TEST_F(HeadersFixture, AssignKeepsBinaryProtoTest){
 	 */
 	ASSERT_EQ(this->_headers->proto(), proto_t::HTTP3);
 	// Создаём контейнер заголовков без установленного протокола
-	Headers detected(this->_fmk.get(), this->_log.get());
+	Headers detected;
 	// Присваиваем ему набор полей без псевдозаголовков
 	detected = headers_t::fields_t {
 		headers_t::header_t{}.from("Accept", "text/html")
@@ -2774,9 +2771,9 @@ TEST_F(HeadersFixture, PayloadLargerThanLimitTest){
  */
 TEST_F(HeadersFixture, EqualityAccountsProtoAndProviderTest){
 	// Создаём первый контейнер заголовков
-	Headers first(this->_fmk.get(), this->_log.get());
+	Headers first;
 	// Создаём второй контейнер заголовков
-	Headers second(this->_fmk.get(), this->_log.get());
+	Headers second;
 	// Добавляем заголовок в первый контейнер
 	first.emplace("Accept", "text/html");
 	// Добавляем такой же заголовок во второй контейнер
@@ -2842,7 +2839,7 @@ TEST_F(HeadersFixture, ResetDropsProviderTest){
  */
 TEST_F(HeadersFixture, MergeModesTest){
 	// Создаём контейнер заголовков для слияния
-	Headers source(this->_fmk.get(), this->_log.get());
+	Headers source;
 	// Добавляем в него поле, встречающееся в сообщении единожды
 	source.emplace("Content-Length", "128");
 	// Добавляем в текущий контейнер такое же поле с другим значением
@@ -2925,7 +2922,7 @@ TEST_F(HeadersFixture, EraseCompactsSetTest){
  */
 TEST_F(HeadersFixture, MergeRejectedKeepsHeadersTest){
 	// Создаём контейнер заголовков для слияния
-	Headers source(this->_fmk.get(), this->_log.get());
+	Headers source;
 	// Добавляем в него заголовок с длинным значением
 	source.emplace("X-Field", "value that is much longer than the limit allows");
 	// Добавляем в текущий контейнер одноимённый заголовок с коротким значением
@@ -2943,7 +2940,7 @@ TEST_F(HeadersFixture, MergeRejectedKeepsHeadersTest){
 	// Проверяем что прежнее значение осталось нетронутым
 	ASSERT_EQ(this->_headers->at("X-Field"), "short");
 	// Создаём контейнер заголовков с помещающимся значением
-	Headers fitting(this->_fmk.get(), this->_log.get());
+	Headers fitting;
 	// Добавляем в него одноимённый заголовок с коротким значением
 	fitting.emplace("X-Field", "tiny");
 	// Выполняем слияние в режиме замены
@@ -3066,7 +3063,7 @@ TEST_F(HeadersFixture, UnknownMinorVersionTest){
  */
 TEST_F(HeadersFixture, MergeAppendRejectedKeepsSetTest){
 	// Создаём контейнер заголовков для слияния
-	Headers source(this->_fmk.get(), this->_log.get());
+	Headers source;
 	// Добавляем в него первый заголовок
 	source.emplace("X-First", "one", headers_t::mode_t::APPEND);
 	// Добавляем в него второй заголовок
@@ -3749,7 +3746,7 @@ TEST_F(HeadersFixture, ResponseStatusPseudoHeaderTest){
  */
 TEST_F(HeadersFixture, ProviderParticipatesInEqualityTest){
 	// Создаём второй контейнер заголовков
-	headers_t other(this->_fmk.get(), this->_log.get());
+	headers_t other;
 	// Проверяем что два пустых контейнера без провайдера равны
 	ASSERT_TRUE((* this->_headers) == other);
 	// Создаём объект запроса клиента
@@ -3980,9 +3977,9 @@ TEST_F(HeadersFixture, AbsoluteUriWithoutPathTest){
  */
 TEST_F(HeadersFixture, EqualityWithResponseProvidersTest){
 	// Создаём первый контейнер заголовков
-	Headers first(this->_fmk.get(), this->_log.get());
+	Headers first;
 	// Создаём второй контейнер заголовков
-	Headers second(this->_fmk.get(), this->_log.get());
+	Headers second;
 	// Создаём объект ответа сервера
 	response_t response(version_t::HTTP1_1, 200, "OK");
 	// Устанавливаем провайдер ответа первому контейнеру
@@ -4069,7 +4066,7 @@ TEST_F(HeadersFixture, PrintNamedUsesContainerProtoTest){
  */
 TEST_F(HeadersFixture, ProtoDetectionFormsTest){
 	// Создаём контейнер заголовков для присваивания набора
-	Headers entries(this->_fmk.get(), this->_log.get());
+	Headers entries;
 	// Присваиваем набор заголовков с псевдозаголовком
 	entries = headers_t::entries_t {
 		headers_t::header_t().from(":method", "GET"),
@@ -4078,7 +4075,7 @@ TEST_F(HeadersFixture, ProtoDetectionFormsTest){
 	// Проверяем что протокол определён по составу набора
 	ASSERT_EQ(entries.proto(), proto_t::HTTP2);
 	// Создаём контейнер заголовков для присваивания списка инициализации
-	Headers list(this->_fmk.get(), this->_log.get());
+	Headers list;
 	// Присваиваем список инициализации с псевдозаголовком
 	list = {
 		headers_t::header_t().from(":status", "200"),
@@ -4087,7 +4084,7 @@ TEST_F(HeadersFixture, ProtoDetectionFormsTest){
 	// Проверяем что протокол определён по составу списка
 	ASSERT_EQ(list.proto(), proto_t::HTTP2);
 	// Создаём контейнер заголовков с псевдозаголовками через конструктор
-	Headers built(headers_t::fields_t {headers_t::header_t().from(":method", "GET")}, this->_fmk.get(), this->_log.get());
+	Headers built(headers_t::fields_t {headers_t::header_t().from(":method", "GET")});
 	// Проверяем что протокол определён конструктором
 	ASSERT_EQ(built.proto(), proto_t::HTTP2);
 }
@@ -4108,7 +4105,7 @@ TEST_F(HeadersFixture, CountAndEmptyMergeTest){
 	// Проверяем количество заголовков указанного названия
 	ASSERT_EQ(this->_headers->count("Set-Cookie"), 2u);
 	// Создаём пустой контейнер заголовков
-	Headers empty(this->_fmk.get(), this->_log.get());
+	Headers empty;
 	// Выполняем слияние с пустым контейнером
 	this->_headers->merge(empty);
 	// Проверяем что слияние с пустым контейнером набор не изменило
@@ -4318,7 +4315,7 @@ TEST_F(HeadersFixture, InitializerListAssignmentTest){
 	// Проверяем что набор опустел
 	ASSERT_TRUE(this->_headers->empty());
 	// Создаём отдельный контейнер для проверки обнаружения по псевдозаголовку
-	headers_t binary(this->_fmk.get(), this->_log.get());
+	headers_t binary;
 	// Присваиваем список инициализации с псевдозаголовком
 	binary = {this->header(":method", "GET"), this->header("X-Custom", "value")};
 	// Проверяем что протокол определён как HTTP/2
@@ -4695,7 +4692,7 @@ TEST_F(HeadersFixture, ConversionsWithoutProviderTest){
 	// Проверяем что копия равна источнику
 	ASSERT_TRUE(copy == (* this->_headers));
 	// Присваиваем контейнер без провайдера копированием
-	headers_t assigned(this->_fmk.get(), this->_log.get());
+	headers_t assigned;
 	// Выполняем присваивание
 	assigned = (* this->_headers);
 	// Проверяем что присвоенный контейнер равен источнику
@@ -4714,21 +4711,21 @@ TEST_F(HeadersFixture, ConversionsWithoutProviderTest){
  */
 TEST_F(HeadersFixture, ConstructionFromEmptyCollectionsTest){
 	// Создаём контейнер из пустого списка полей
-	headers_t fromFields(headers_t::fields_t{}, this->_fmk.get(), this->_log.get());
+	headers_t fromFields(headers_t::fields_t{});
 	// Проверяем что набор пуст
 	ASSERT_TRUE(fromFields.empty());
 	// Создаём контейнер из пустого набора заголовков
-	headers_t fromEntries(headers_t::entries_t{}, this->_fmk.get(), this->_log.get());
+	headers_t fromEntries(headers_t::entries_t{});
 	// Проверяем что набор пуст
 	ASSERT_TRUE(fromEntries.empty());
 	// Создаём контейнер из непустого списка полей
-	headers_t filled(headers_t::fields_t{this->header("X-Custom", "value")}, this->_fmk.get(), this->_log.get());
+	headers_t filled(headers_t::fields_t{this->header("X-Custom", "value")});
 	// Проверяем что заголовок попал в набор
 	ASSERT_EQ(filled.size(), 1);
 	// Проверяем что протокол определён по составу полей
 	ASSERT_EQ(filled.proto(), proto_t::HTTP1);
 	// Создаём контейнер из набора заголовков с псевдозаголовком
-	headers_t binary(headers_t::entries_t{this->header(":method", "GET")}, this->_fmk.get(), this->_log.get());
+	headers_t binary(headers_t::entries_t{this->header(":method", "GET")});
 	// Проверяем что протокол определён как HTTP/2
 	ASSERT_EQ(binary.proto(), proto_t::HTTP2);
 }
@@ -4745,7 +4742,7 @@ TEST_F(HeadersFixture, MergePartialNameMatchTest){
 	// Добавляем третий заголовок
 	this->_headers->emplace("X-Third", "3", headers_t::mode_t::APPEND);
 	// Создаём контейнер для слияния
-	headers_t source(this->_fmk.get(), this->_log.get());
+	headers_t source;
 	// Добавляем заголовок, совпадающий по названию со вторым
 	source.emplace("X-Second", "22", headers_t::mode_t::APPEND);
 	// Добавляем заголовок, ни с чем не совпадающий
@@ -4763,13 +4760,13 @@ TEST_F(HeadersFixture, MergePartialNameMatchTest){
 	// Проверяем итоговый размер набора
 	ASSERT_EQ(this->_headers->size(), 4);
 	// Проверяем что слияние с пустым контейнером набор не меняет
-	this->_headers->merge(headers_t(this->_fmk.get(), this->_log.get()), headers_t::mode_t::REPLACE);
+	this->_headers->merge(headers_t(), headers_t::mode_t::REPLACE);
 	// Проверяем что размер набора сохранён
 	ASSERT_EQ(this->_headers->size(), 4);
 	// Опускаем предел количества записей так, чтобы слияние в него не поместилось
 	this->_headers->maxRecords(4);
 	// Создаём контейнер, слияние с которым предел превысит
-	headers_t big(this->_fmk.get(), this->_log.get());
+	headers_t big;
 	// Добавляем в него заголовок с новым названием
 	big.emplace("X-Fifth", "5", headers_t::mode_t::APPEND);
 	// Выполняем слияние, которое поместиться не может

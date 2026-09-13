@@ -29,6 +29,7 @@
  * Подключаем заголовочный файл записи текста разметки
  */
 #include <codec/xml/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён замеров этого файла
@@ -48,44 +49,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка замеров
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка замеров
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка замеров
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка замеров
-			return fmk;
-		}
-		// Объект журнала замеров
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала замеров
-	 *
-	 * @return объект журнала замеров
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала замеров
-		static Silent silent;
-		// Выводим объект журнала замеров
-		return &silent.log;
-	}
 }
 
 /**
@@ -306,7 +277,7 @@ namespace {
 	 */
 	static uint64_t namespacesDocument() noexcept {
 		// Объект записи текста разметки
-		awh::codec::xml::writer_t writer(::logger());
+		awh::codec::xml::writer_t writer;
 		// Выполняем открытие корневого узла разметки
 		writer.open("root", "urn:example:root");
 		/**
@@ -333,7 +304,7 @@ namespace {
 	}
 	static uint64_t soapCall() noexcept {
 		// Объект записи текста разметки
-		awh::codec::xml::writer_t writer(::logger());
+		awh::codec::xml::writer_t writer;
 		// Выполняем запись объявления разметки
 		writer.declaration();
 		// Выполняем открытие узла оболочки обращения
@@ -394,7 +365,7 @@ namespace {
 		 */
 		const auto write = []() noexcept -> uint64_t {
 			// Объект записи текста разметки
-			awh::codec::xml::writer_t writer(::logger());
+			awh::codec::xml::writer_t writer;
 			// Выполняем открытие корневого узла разметки
 			writer.open("root");
 			/**
@@ -478,7 +449,7 @@ namespace {
 		 */
 		const auto write = [&content]() noexcept -> uint64_t {
 			// Объект записи текста разметки
-			awh::codec::xml::writer_t writer(::logger());
+			awh::codec::xml::writer_t writer;
 			// Выполняем открытие корневого узла разметки
 			writer.open("root");
 			/**

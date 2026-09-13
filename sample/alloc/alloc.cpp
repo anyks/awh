@@ -30,10 +30,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <sys/macro/lib.hpp>
 #include <alloc/alloc.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -109,14 +109,18 @@ static void diagnose(const char * title, const void * addr) noexcept {
  */
 int32_t main() noexcept {
 	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	/**
 	 * Заводим фреймворк
 	 *
 	 * Захват выдачи памяти процесса делает САМ конструктор фреймворка, единожды за
 	 * процесс. Отдельно звать `capture` приложению незачем
 	 */
-	fmk_t fmk;
-	// Заводим объект работы с журналом
-	log_t log(&fmk, AWH_SHORT_NAME);
 	// Печатаем расход сразу за заведением
 	::consumption("Расход памяти сразу за заведением фреймворка");
 	/**
@@ -159,18 +163,18 @@ int32_t main() noexcept {
 	 *
 	 * Ищет того, кто просит помногу: адрес и размер выдачи приходят сюда
 	 */
-	alloc::Allocator::onLarge([&log](const void * addr, const size_t size) noexcept -> void {
+	alloc::Allocator::onLarge([](const void * addr, const size_t size) noexcept -> void {
 		// Записываем доклад о крупной выдаче в журнал
-		log.print("Крупная выдача: %zu байт по адресу %p", log_t::flag_t::INFO, size, addr);
+		awh::log::print("Крупная выдача: %zu байт по адресу %p", awh::log::flag_t::INFO, size, addr);
 	});
 	/**
 	 * Ставим отклик упора в потолок кучи
 	 *
 	 * Зовётся, когда куче запрещено брать у системы сверх заданного
 	 */
-	alloc::Allocator::onLimit([&log](const size_t taken) noexcept -> void {
+	alloc::Allocator::onLimit([](const size_t taken) noexcept -> void {
 		// Записываем доклад об упоре в потолок в журнал
-		log.print("Куча упёрлась в потолок: взято %zu байт", log_t::flag_t::WARNING, taken);
+		awh::log::print("Куча упёрлась в потолок: взято %zu байт", awh::log::flag_t::WARNING, taken);
 	});
 	/**
 	 * Занимаем память и смотрим, как меняется расход

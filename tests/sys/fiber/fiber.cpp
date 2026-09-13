@@ -22,18 +22,15 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "fiber.hpp"
+#include <sys/log.hpp>
 
 /**
  * @brief Метод настройки тестовой фикстуры
  *
  */
 void FiberFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::unique_ptr <awh::fmk_t> (new awh::fmk_t());
-	// Создаём объект работы с логами
-	this->_log = std::unique_ptr <awh::log_t> (new awh::log_t(this->_fmk.get()));
 	// Отключаем вывод журнала: проверки говорят сами за себя
-	this->_log->level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 }
 
 /**
@@ -42,7 +39,5 @@ void FiberFixture::SetUp(){
  */
 void FiberFixture::TearDown(){
 	// Освобождаем объект работы с логами
-	this->_log.reset(nullptr);
 	// Освобождаем объект фреймворка
-	this->_fmk.reset(nullptr);
 }

@@ -45,7 +45,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "types.hpp"
-#include "../sys/log.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -128,9 +128,6 @@ namespace awh {
 				 * сюда, а наружу выход переносится либо копируется по типу контейнера
 				 */
 				mutable vector <char> _out;
-			private:
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -440,7 +437,6 @@ namespace awh {
 				 * @param method метод компрессии
 				 * @param event  направление операции
 				 * @param params параметры инициализации
-				 * @param log    объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -454,11 +450,10 @@ namespace awh {
 				 * @param method compression method
 				 * @param event  operation direction
 				 * @param params initialization parameters
-				 * @param log    object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Stream(const method_t method, const event_t event, const params_t & params, const log_t * log) noexcept;
+				explicit Stream(const method_t method, const event_t event, const params_t & params) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

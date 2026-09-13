@@ -40,6 +40,7 @@
  */
 #include <cstring>
 #include <limits>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -91,22 +92,20 @@ bool awh::codec::abc::Merkle::fail(const char * message) const noexcept {
 	 *       закреплены каждая своею проверкою: работы разные, и закрепление одной другую
 	 *       не стережёт
 	 */
-	if(this->_log != nullptr){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(this->_leaves.size()),
-			 log_t::flag_t::WARNING, message);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("ABC: %s", log_t::flag_t::WARNING, message);
-		#endif
-	}
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {this->_leaves.size()},
+		 awh::log::flag_t::WARNING, message);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		awh::log::print("ABC: %s", awh::log::flag_t::WARNING, message);
+	#endif
 	// Сообщаем, что работа с деревом отвечена отказом
 	return false;
 }
@@ -212,7 +211,7 @@ bool awh::codec::abc::Merkle::root(vector <uint8_t> & result, const void * buffe
 		// Выводим признак неудачного сведения дерева
 		return this->fail("Merkle tree: the module of the encryption or the appended chunk is not given");
 	// Дерево свёрток с приданным кадром
-	Merkle merkle(this->_log);
+	Merkle merkle;
 	// Выполняем установку модуля шифрования дереву свёрток
 	merkle.crypto(this->_crypto);
 	// Выполняем перенесение свёрток нынешнего дерева

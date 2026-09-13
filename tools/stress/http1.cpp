@@ -36,6 +36,8 @@
 #include <sys/resource.h>
 
 #include <proto/http/parser/http1/http.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh::http;
 
@@ -101,17 +103,15 @@ namespace {
 /**
  * @brief Функция приёма тела фиксированного размера
  *
- * @param fmk    объект фреймворка
- * @param log    объект логирования
  * @param volume объём тела сообщения
  * @return       итоги прогона
  *
  */
-static outcome_t receiveIdentity(const awh::fmk_t * fmk, const awh::log_t * log, const uint64_t volume) noexcept {
+static outcome_t receiveIdentity(const uint64_t volume) noexcept {
 	// Итоги прогона
 	outcome_t result{true, 0, 0, 0.0, 0.0, ""};
 	// Создаём объект парсера-приёмника ответа
-	parser_http_t parser(direct_t::RESPONSE, fmk, log);
+	parser_http_t parser(direct_t::RESPONSE);
 	// Поднимаем предел размера тела до проверяемого объёма
 	parser_http_t::limits_t limits;
 	// Устанавливаем предел размера тела
@@ -201,18 +201,16 @@ static outcome_t receiveIdentity(const awh::fmk_t * fmk, const awh::log_t * log,
 /**
  * @brief Функция приёма тела в кодировке chunked
  *
- * @param fmk    объект фреймворка
- * @param log    объект логирования
  * @param volume объём тела сообщения
  * @param chunk  размер одного чанка тела
  * @return       итоги прогона
  *
  */
-static outcome_t receiveChunked(const awh::fmk_t * fmk, const awh::log_t * log, const uint64_t volume, const size_t chunk) noexcept {
+static outcome_t receiveChunked(const uint64_t volume, const size_t chunk) noexcept {
 	// Итоги прогона
 	outcome_t result{true, 0, 0, 0.0, 0.0, ""};
 	// Создаём объект парсера-приёмника ответа
-	parser_http_t parser(direct_t::RESPONSE, fmk, log);
+	parser_http_t parser(direct_t::RESPONSE);
 	// Поднимаем пределы размера тела и размера чанка до проверяемого объёма
 	parser_http_t::limits_t limits;
 	// Устанавливаем предел размера тела
@@ -320,21 +318,19 @@ static outcome_t receiveChunked(const awh::fmk_t * fmk, const awh::log_t * log, 
  *          обратная разбираемость в генераторе - собранное обязано разбираться
  *          в отправленное
  *
- * @param fmk    объект фреймворка
- * @param log    объект логирования
  * @param volume объём тела сообщения
  * @param source признак подачи тела pull-источником вместо sendData
  * @param chunked признак кадрирования тела методом chunked
  * @return       итоги прогона
  *
  */
-static outcome_t sendLarge(const awh::fmk_t * fmk, const awh::log_t * log, const uint64_t volume, const bool source, const bool chunked) noexcept {
+static outcome_t sendLarge(const uint64_t volume, const bool source, const bool chunked) noexcept {
 	// Итоги прогона
 	outcome_t result{true, 0, 0, 0.0, 0.0, ""};
 	// Создаём объект парсера-отправителя ответа
-	parser_http_t sender(direct_t::RESPONSE, fmk, log);
+	parser_http_t sender(direct_t::RESPONSE);
 	// Создаём объект парсера-приёмника собираемого ответа
-	parser_http_t receiver(direct_t::RESPONSE, fmk, log);
+	parser_http_t receiver(direct_t::RESPONSE);
 	// Поднимаем пределы приёмника до проверяемого объёма
 	parser_http_t::limits_t limits;
 	// Устанавливаем предел размера тела
@@ -495,18 +491,16 @@ static outcome_t sendLarge(const awh::fmk_t * fmk, const awh::log_t * log, const
  *          отправленным до октета, а объект после очистки - разобрать следующее
  *          сообщение как ни в чём не бывало
  *
- * @param fmk    объект фреймворка
- * @param log    объект логирования
  * @param volume объём тела сообщения
  * @param cycles количество циклов обрыва и восстановления
  * @return       итоги прогона
  *
  */
-static outcome_t breakAndRestart(const awh::fmk_t * fmk, const awh::log_t * log, const uint64_t volume, const size_t cycles) noexcept {
+static outcome_t breakAndRestart(const uint64_t volume, const size_t cycles) noexcept {
 	// Итоги прогона
 	outcome_t result{true, 0, 0, 0.0, 0.0, ""};
 	// Создаём объект парсера-приёмника ответа
-	parser_http_t parser(direct_t::RESPONSE, fmk, log);
+	parser_http_t parser(direct_t::RESPONSE);
 	// Поднимаем предел размера тела до проверяемого объёма
 	parser_http_t::limits_t limits;
 	// Устанавливаем предел размера тела
@@ -716,14 +710,12 @@ static outcome_t breakAndRestart(const awh::fmk_t * fmk, const awh::log_t * log,
  *          Content]. Проверяется, что обе части, принятые разными сообщениями,
  *          складываются в исходное тело до октета
  *
- * @param fmk    объект фреймворка
- * @param log    объект логирования
  * @param volume объём тела сообщения
  * @param cycles количество циклов докачки
  * @return       итоги прогона
  *
  */
-static outcome_t resumeByRange(const awh::fmk_t * fmk, const awh::log_t * log, const uint64_t volume, const size_t cycles) noexcept {
+static outcome_t resumeByRange(const uint64_t volume, const size_t cycles) noexcept {
 	// Итоги прогона
 	outcome_t result{true, 0, 0, 0.0, 0.0, ""};
 	// Позиция сверки принятого тела
@@ -778,7 +770,7 @@ static outcome_t resumeByRange(const awh::fmk_t * fmk, const awh::log_t * log, c
 		 */
 		{
 			// Создаём объект парсера-приёмника ответа
-			parser_http_t parser(direct_t::RESPONSE, fmk, log);
+			parser_http_t parser(direct_t::RESPONSE);
 			// Применяем лимиты безопасности разбора
 			parser.limits(limits);
 			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
@@ -826,7 +818,7 @@ static outcome_t resumeByRange(const awh::fmk_t * fmk, const awh::log_t * log, c
 		 */
 		{
 			// Создаём объект парсера-приёмника ответа нового соединения
-			parser_http_t parser(direct_t::RESPONSE, fmk, log);
+			parser_http_t parser(direct_t::RESPONSE);
 			// Применяем лимиты безопасности разбора
 			parser.limits(limits);
 			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
@@ -910,18 +902,16 @@ static outcome_t resumeByRange(const awh::fmk_t * fmk, const awh::log_t * log, c
  *          объект возвращается к состоянию нового полной очисткой, после чего
  *          собирает следующее сообщение целиком
  *
- * @param fmk    объект фреймворка
- * @param log    объект логирования
  * @param volume объём тела сообщения
  * @param cycles количество циклов обрыва
  * @return       итоги прогона
  *
  */
-static outcome_t senderBreak(const awh::fmk_t * fmk, const awh::log_t * log, const uint64_t volume, const size_t cycles) noexcept {
+static outcome_t senderBreak(const uint64_t volume, const size_t cycles) noexcept {
 	// Итоги прогона
 	outcome_t result{true, 0, 0, 0.0, 0.0, ""};
 	// Создаём объект парсера-отправителя ответа
-	parser_http_t sender(direct_t::RESPONSE, fmk, log);
+	parser_http_t sender(direct_t::RESPONSE);
 	// Понижаем пороги выходного буфера
 	sender.sendWaterMarks(256 * 1024, 64 * 1024);
 	/**
@@ -1082,7 +1072,7 @@ static outcome_t senderBreak(const awh::fmk_t * fmk, const awh::log_t * log, con
 			// Количество расхождений содержимого следующего сообщения
 			uint64_t mismatches = 0;
 			// Создаём объект парсера-приёмника собранного сообщения
-			parser_http_t receiver(direct_t::RESPONSE, fmk, log);
+			parser_http_t receiver(direct_t::RESPONSE);
 			// Устанавливаем метод запроса, которому соответствует ожидаемый ответ
 			receiver.method(method_t::GET);
 			// Устанавливаем функцию обратного вызова обработки фрагмента тела сообщения
@@ -1159,16 +1149,19 @@ static outcome_t senderBreak(const awh::fmk_t * fmk, const awh::log_t * log, con
  *
  */
 int32_t main(int32_t argc, char ** argv) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Объём тела проверяемых сообщений в мебибайтах
 	const uint64_t volume = ((argc > 1) ? ::strtoull(argv[1], nullptr, 10) : 1024) * 1024ull * 1024ull;
 	// Количество циклов обрыва соединения
 	const size_t cycles = ((argc > 2) ? static_cast <size_t> (::strtoull(argv[2], nullptr, 10)) : 32);
-	// Создаём объект фреймворка
-	awh::fmk_t fmk;
-	// Создаём объект логирования
-	awh::log_t log(&fmk);
 	// Отключаем вывод сообщений парсера
-	log.level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Потребление памяти до начала прогонов
 	const double before = ::peakMemory();
 	// Признак неуспешного прогона
@@ -1194,25 +1187,25 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			failed = true;
 	};
 	// Выполняем приём тела фиксированного размера
-	report("приём identity", ::receiveIdentity(&fmk, &log, volume));
+	report("приём identity", ::receiveIdentity(volume));
 	// Выполняем приём тела в кодировке chunked порциями по 16 КиБ
-	report("приём chunked 16К", ::receiveChunked(&fmk, &log, volume, (16 * 1024)));
+	report("приём chunked 16К", ::receiveChunked(volume, (16 * 1024)));
 	// Выполняем приём тела в кодировке chunked порциями по 1 МиБ
-	report("приём chunked 1М", ::receiveChunked(&fmk, &log, volume, (1024 * 1024)));
+	report("приём chunked 1М", ::receiveChunked(volume, (1024 * 1024)));
 	// Выполняем сборку тела фиксированного размера методом отправки
-	report("сборка identity push", ::sendLarge(&fmk, &log, volume, false, false));
+	report("сборка identity push", ::sendLarge(volume, false, false));
 	// Выполняем сборку тела в кодировке chunked методом отправки
-	report("сборка chunked push", ::sendLarge(&fmk, &log, volume, false, true));
+	report("сборка chunked push", ::sendLarge(volume, false, true));
 	// Выполняем сборку тела фиксированного размера pull-источником
-	report("сборка identity pull", ::sendLarge(&fmk, &log, volume, true, false));
+	report("сборка identity pull", ::sendLarge(volume, true, false));
 	// Выполняем сборку тела в кодировке chunked pull-источником
-	report("сборка chunked pull", ::sendLarge(&fmk, &log, volume, true, true));
+	report("сборка chunked pull", ::sendLarge(volume, true, true));
 	// Выполняем циклы обрыва соединения посреди приёма тела
-	report("обрыв приёма", ::breakAndRestart(&fmk, &log, (volume / cycles), cycles));
+	report("обрыв приёма", ::breakAndRestart((volume / cycles), cycles));
 	// Выполняем циклы докачки прерванного тела запросом диапазона
-	report("докачка 206", ::resumeByRange(&fmk, &log, (volume / cycles), cycles));
+	report("докачка 206", ::resumeByRange((volume / cycles), cycles));
 	// Выполняем циклы обрыва соединения посреди сборки
-	report("обрыв сборки", ::senderBreak(&fmk, &log, (volume / cycles), cycles));
+	report("обрыв сборки", ::senderBreak((volume / cycles), cycles));
 	// Выводим итоговое потребление памяти
 	::printf(
 		"\nпамять: до прогонов %.1f МБ, после %.1f МБ (прирост %.1f МБ на %.0f ГБ данных)\n",

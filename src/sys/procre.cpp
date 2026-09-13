@@ -58,7 +58,7 @@
 	/**
 	 * Системные заголовочные файлы
 	 */
-	#include <dirent.h>
+	#include <sys/dirent.hpp>
 	#include <unistd.h>
 	#include <sys/file.h>
 	#include <sys/stat.h>
@@ -123,7 +123,7 @@
 	 * Системные заголовочные файлы
 	 */
 	#include <fcntl.h>
-	#include <dirent.h>
+	#include <sys/dirent.hpp>
 	#include <unistd.h>
 	#include <procfs.h>
 	#include <sys/stat.h>
@@ -152,6 +152,7 @@
  */
 #include <encoding/ascii.hpp>
 #include <sys/procre.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -171,11 +172,10 @@ using namespace std;
 		 * @brief Функция извлечения данных из файла
 		 *
 		 * @param filename путь к файлу для извлечения
-		 * @param log      объект для работы с логами
 		 * @return         содержимое файла
 		 *
 		 */
-		static string read(const string & filename, const awh::log_t * log) noexcept {
+		static string read(const string & filename) noexcept {
 			// Переменная результата
 			string result = "";
 			/**
@@ -212,13 +212,13 @@ using namespace std;
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), awh::log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 			// Возвращаем результат
@@ -420,15 +420,15 @@ void awh::Process_Resolver::scanning() noexcept {
 				::fclose(fp);
 			}
 			// Теперь читаем информацию о всех процессах из /proc и сопоставляем её с информацией о сокете
-			DIR * dir = ::opendir("/proc");
+			awh::dir::DIR * dir = awh::dir::opendir("/proc");
 			// Если каталог открыт удачно
 			if(dir != nullptr){
 				// Буфер для хранения информации о сокете
-				struct dirent * entry = nullptr;
+				awh::dir::dirent * entry = nullptr;
 				/**
 				 * Читаем записи из каталога и извлекаем информацию о процессе
 				 */
-				while((entry = ::readdir(dir)) != nullptr){
+				while((entry = awh::dir::readdir(dir)) != nullptr){
 					// Если запись является каталогом и её имя начинается с цифры
 					if((entry->d_type == DT_DIR) && awh::ascii::isDigit(entry->d_name[0])){
 						// Получаем идентификатор процесса из имени каталога
@@ -438,15 +438,15 @@ void awh::Process_Resolver::scanning() noexcept {
 						// Выполняем заполнение буфера для получения названия приложения которому принадлежит процесс
 						::snprintf(path, sizeof(path), "/proc/%d/fd", pid);
 						// Открываем каталог для чтения информации о файловых дескрипторах процесса
-						DIR * dir = ::opendir(path);
+						awh::dir::DIR * dir = awh::dir::opendir(path);
 						// Если каталог открыт удачно
 						if(dir != nullptr){
 							// Буфер для хранения информации о сокете
-							struct dirent * entry = nullptr;
+							awh::dir::dirent * entry = nullptr;
 							/**
 							 * Читаем записи из каталога и извлекаем информацию о сокете
 							 */
-							while((entry = ::readdir(dir)) != nullptr){
+							while((entry = awh::dir::readdir(dir)) != nullptr){
 								// Если запись является символической ссылкой или её тип неизвестен
 								if((entry->d_type == DT_LNK) || (entry->d_type == DT_UNKNOWN)){
 									// Буфер для хранения пути к файловому дескриптору процесса
@@ -479,27 +479,27 @@ void awh::Process_Resolver::scanning() noexcept {
 								}
 							}
 							// Закрываем каталог
-							::closedir(dir);
+							awh::dir::closedir(dir);
 						}
 					}
 				}
 				// Закрываем каталог
-				::closedir(dir);
+				awh::dir::closedir(dir);
 			}
 		/**
 		 * Реализация под Sun Solaris
 		 */
 		#elif __sun__
 			// Читаем информацию о всех процессах из /proc и сопоставляем её с информацией о сокете
-			DIR * dir = ::opendir("/proc");
+			awh::dir::DIR * dir = awh::dir::opendir("/proc");
 			// Если каталог открыт удачно
 			if(dir != nullptr){
 				// Буфер для хранения информации о сокете
-				struct dirent * entry = nullptr;
+				awh::dir::dirent * entry = nullptr;
 				/**
 				 * Читаем записи из каталога и извлекаем информацию о процессе
 				 */
-				while((entry = ::readdir(dir)) != nullptr){
+				while((entry = awh::dir::readdir(dir)) != nullptr){
 					// Если запись является каталогом и её имя начинается с цифры
 					if((entry->d_name[0] >= '0') && (entry->d_name[0] <= '9')){
 						// Получаем идентификатор процесса из имени каталога
@@ -509,15 +509,15 @@ void awh::Process_Resolver::scanning() noexcept {
 						// Выполняем заполнение буфера для получения названия приложения которому принадлежит процесс
 						::snprintf(path, sizeof(path), "/proc/%d/fd", pid);
 						// Открываем каталог для чтения информации о файловых дескрипторах процесса
-						DIR * dir = ::opendir(path);
+						awh::dir::DIR * dir = awh::dir::opendir(path);
 						// Если каталог открыт удачно
 						if(dir != nullptr){
 							// Буфер для хранения информации о сокете
-							struct dirent * entry = nullptr;
+							awh::dir::dirent * entry = nullptr;
 							/**
 							 * Читаем записи из каталога и извлекаем информацию о сокете
 							 */
-							while((entry = ::readdir(dir)) != nullptr){
+							while((entry = awh::dir::readdir(dir)) != nullptr){
 								// Если запись является каталогом и её имя начинается с цифры
 								if((entry->d_name[0] >= '0') && (entry->d_name[0] <= '9')){
 									// Буфер для хранения пути к файловому дескриптору процесса
@@ -659,12 +659,12 @@ void awh::Process_Resolver::scanning() noexcept {
 								}
 							}
 							// Закрываем каталог
-							::closedir(dir);
+							awh::dir::closedir(dir);
 						}
 					}
 				}
 				// Закрываем каталог
-				::closedir(dir);
+				awh::dir::closedir(dir);
 			}
 		/**
 		 * Для операционной системы macOS
@@ -687,13 +687,13 @@ void awh::Process_Resolver::scanning() noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			// Если список идентификаторов процессов получен
 			} else if(bytes > 0) {
@@ -1646,13 +1646,13 @@ void awh::Process_Resolver::scanning() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1771,7 +1771,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 			// Формируем название файла
 			ss << "/proc/" << pid << "/comm";
 			// Выполняем извлечение данных файла
-			result = ::procre::read(ss.str(), this->_log);
+			result = ::procre::read(ss.str());
 			// Если файл прочитан удачно
 			if(!result.empty()){
 				// Если последний символ является переносом строки
@@ -1862,13 +1862,13 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {pid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1887,10 +1887,8 @@ void awh::Process_Resolver::on(function <void (const pid_t, const info_t &)> cal
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::Process_Resolver::Process_Resolver(const log_t * log) noexcept : _callback(nullptr), _log(log) {}
+awh::Process_Resolver::Process_Resolver() noexcept : _callback(nullptr) {}
 /**
  * @brief Деструктор
  *

@@ -37,6 +37,8 @@
 #include <nghttp2/nghttp2.h>
 
 #include <proto/http/parser/http2/http.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh;
 using namespace awh::http;
@@ -216,15 +218,13 @@ static std::string reaction(const std::string & output) noexcept {
 /**
  * @brief Функция прогона потока байт через наш парсер
  *
- * @param fmk   объект фреймворка
- * @param log   объект логов
  * @param input подаваемый поток байт
  * @return      описание класса реакции
  *
  */
-static std::string ours(const fmk_t * fmk, const log_t * log, const std::string & input) noexcept {
+static std::string ours(const std::string & input) noexcept {
 	// Создаём объект парсера сервера
-	parser_http2_t server(direct_t::REQUEST, fmk, log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Накопитель исходящего потока байт
 	std::string output;
 	// Устанавливаем функцию обратного вызова записи исходящих байт
@@ -324,14 +324,18 @@ static std::string reference(const std::string & input) noexcept {
 }
 
 int32_t main(int32_t argc, char * argv[]){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Включаем подробный вывод кадров по требованию
 	::verbose = ((argc > 1) && (::strcmp(argv[1], "-v") == 0));
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод логов: проверки намеренно шлют некорректный трафик
-	log.level(log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Корректный блок заголовков запроса
 	const std::string request = ::block({{":method", "GET"}, {":scheme", "https"}, {":path", "/"}, {":authority", "example.com"}});
 	// Преамбула соединения: magic-строка и SETTINGS клиента
@@ -424,7 +428,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Формируем полный поток байт случая
 		const std::string input = (preface + item.second);
 		// Получаем реакцию нашего парсера
-		const std::string mine = ::ours(&fmk, &log, input);
+		const std::string mine = ::ours(input);
 		// Получаем реакцию эталонной реализации
 		const std::string peer = ::reference(input);
 		// Печатаем строку сравнения

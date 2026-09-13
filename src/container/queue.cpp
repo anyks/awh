@@ -33,6 +33,8 @@
 #include <sys/macro/lib.hpp>
 #include <sys/macro/global.hpp>
 #include <container/queue.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -108,11 +110,10 @@ bool awh::Queue::rss(const size_t size) noexcept {
 						// Если памяти для добавления данных недостаточно
 						else {
 							// Формируем сообщение об ошибке
-							const string message = (this->_fmk != nullptr) ?
-								("You are trying to map " + this->_fmk->bytes(static_cast <double> (this->_buffer.size() + (bytes - available))) +
-								 " of data into a " + this->_fmk->bytes(static_cast <double> (this->_max.memory)) +
-								 " data buffer, which is impossible") :
-								"There is not enough memory in the reserved queue to add a new portion of data";
+							const string message = (
+								 "You are trying to map " + awh::fmk::bytes(static_cast <double> (this->_buffer.size() + (bytes - available))) +
+								 " of data into a " + awh::fmk::bytes(static_cast <double> (this->_max.memory)) +
+								 " data buffer, which is impossible");
 							// Записываем ошибку в лог
 							this->error(__PRETTY_FUNCTION__, size, message.c_str());
 						}
@@ -125,11 +126,10 @@ bool awh::Queue::rss(const size_t size) noexcept {
 			// Если памяти для добавления данных недостаточно
 			else {
 				// Формируем сообщение об ошибке
-				const string message = (this->_fmk != nullptr) ?
-					("You are trying to map " + this->_fmk->bytes(static_cast <double> (bytes)) +
-					 " of data into a " + this->_fmk->bytes(static_cast <double> (this->_max.memory)) +
-					 " data buffer, which is impossible") :
-					"There is not enough memory in the reserved queue to add a new portion of data";
+				const string message = (
+								 "You are trying to map " + awh::fmk::bytes(static_cast <double> (bytes)) +
+					 " of data into a " + awh::fmk::bytes(static_cast <double> (this->_max.memory)) +
+					 " data buffer, which is impossible");
 				// Записываем ошибку в лог
 				this->error(__PRETTY_FUNCTION__, size, message.c_str());
 			}
@@ -153,37 +153,19 @@ bool awh::Queue::rss(const size_t size) noexcept {
  *
  */
 void awh::Queue::error([[maybe_unused]] const char * func, [[maybe_unused]] const size_t size, const char * message) const noexcept {
-	// Если объект лога установлен
-	if(this->_log != nullptr){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", func, make_tuple(size), log_t::flag_t::CRITICAL, message);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, message);
-		#endif
-	// Если объект логирования не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", func, message);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			::fprintf(stderr, "ERROR! %s\n\n", message);
-		#endif
-	}
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		// Записываем ошибку в лог
+		awh::log::debug("%s", func, {size}, awh::log::flag_t::CRITICAL, message);
+	/**
+	 * Если режим отладки не включён
+	 */
+	#else
+		// Записываем ошибку в лог
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, message);
+	#endif
 }
 /**
  * @brief Метод удаления записи в очереди
@@ -796,22 +778,6 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 			// Выполняем захват обоих мьютексов без риска взаимной блокировки
 			::lock(lock1, lock2);
 		}
-		// Если объект фреймворка установлен
-		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = queue._fmk;
-		// Если объект для работы с логами установлен
-		if((queue._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
-			this->_log = queue._log;
-		// Если объект фреймворка установлен
-		if((this->_fmk != nullptr) && (queue._fmk == nullptr))
-			// Копируем объект фреймворка
-			queue._fmk = this->_fmk;
-		// Если объект для работы с логами установлен
-		if((this->_log != nullptr) && (queue._log == nullptr))
-			// Копируем объект для работы с логами установлен
-			queue._log = this->_log;
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(queue._buffer);
 		/**
@@ -909,18 +875,6 @@ void awh::Queue::threadSafety(const bool mode) noexcept {
 	this->_cv.notify_all();
 }
 /**
- * @brief Метод установки объекта логирования
- *
- * @param log объект работы с логами
- *
- */
-void awh::Queue::setLogger(const log_t * log) noexcept {
-	// Выполняем блокировку потока
-	const locker_t <> lock(this->_mtx);
-	// Устанавливаем объект логирования
-	this->_log = log;
-}
-/**
  * @brief Получения размера данных в очереди
  *
  * @return размер данных в очереди
@@ -977,14 +931,6 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 			// Выполняем захват обоих мьютексов без риска взаимной блокировки
 			::lock(lock1, lock2);
 		}
-		// Если объект фреймворка установлен
-		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = queue._fmk;
-		// Если объект для работы с логами установлен
-		if((queue._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
-			this->_log = queue._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
@@ -1046,14 +992,6 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 			// Выполняем захват обоих мьютексов без риска взаимной блокировки
 			::lock(lock1, lock2);
 		}
-		// Если объект фреймворка установлен
-		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = queue._fmk;
-		// Если объект для работы с логами установлен
-		if((queue._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
-			this->_log = queue._log;
 		// Выполняем копирование последнего итератора
 		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
@@ -1139,7 +1077,7 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
  * @brief Разрешаем пустое значение объекта
  *
  */
-awh::Queue::Queue() noexcept : _fmk(nullptr), _log(nullptr) {}
+awh::Queue::Queue() noexcept {}
 /**
  * @brief Конструктор перемещения
  *
@@ -1157,14 +1095,6 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 		if(queue._mtx.enabled)
 			// Выполняем блокировку сторонней очереди
 			lock = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
-		// Если объект фреймворка установлен
-		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = queue._fmk;
-		// Если объект для работы с логами установлен
-		if((queue._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
-			this->_log = queue._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
@@ -1212,14 +1142,6 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 		if(queue._mtx.enabled)
 			// Выполняем блокировку сторонней очереди
 			lock = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
-		// Если объект фреймворка установлен
-		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = queue._fmk;
-		// Если объект для работы с логами установлен
-		if((queue._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
-			this->_log = queue._log;
 		// Выполняем копирование буфера данных
 		this->_buffer = queue._buffer;
 		// Выполняем копирование последнего итератора
@@ -1242,14 +1164,6 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 		this->error(__PRETTY_FUNCTION__, 0, error.what());
 	}
 }
-/**
- * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
- */
-awh::Queue::Queue(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *

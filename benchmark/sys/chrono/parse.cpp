@@ -125,7 +125,7 @@ namespace {
 	 */
 	static outcome_t parsing(const char * sample, const char * format) noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель результатов разбора записи даты
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции

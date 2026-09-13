@@ -33,8 +33,6 @@
 #include <cstdio>
 #include <limits>
 #include <atomic>
-#include <fstream>
-#include <sys/stat.h>
 #include <type_traits>
 
 /**
@@ -42,6 +40,7 @@
  */
 #include <num/lexical/lexical.hpp>
 #include <codec/xml/value.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1131,44 +1130,6 @@ void awh::codec::xml::Value::detached(const size_t index) noexcept {
 	}
 	// Выполняем учёт снятия очередного одноимённого узла разметки
 	i->second.count--;
-}
-/**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::xml::Value::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-	/**
-	 * Выполняем перебор всех вложенных узлов
-	 *
-	 * @note Логгер уходит вглубь: значение владеет узлами своими целиком, и сообщать о
-	 *       бедах они обязаны туда же, куда и родитель
-	 */
-	for(auto & item : this->_items)
-		// Выполняем установку объекта ведения журнала вложенному узлу
-		item.setLogger(log);
-}
-/**
- * @brief Метод установки объекта фреймворка
- *
- * @param fmk объект фреймворка
- *
- */
-void awh::codec::xml::Value::setFramework(const fmk_t * fmk) noexcept {
-	// Устанавливаем объект фреймворка
-	this->_fmk = fmk;
-	/**
-	 * Выполняем перебор всех вложенных узлов
-	 *
-	 * @note Объект уходит вглубь наравне с журналом: значение владеет узлами своими
-	 *       целиком, и работа с файловой системой у них общая
-	 */
-	for(auto & item : this->_items)
-		// Выполняем установку объекта фреймворка вложенному узлу
-		item.setFramework(fmk);
 }
 /**
  * @brief Метод сброса отображения имён вложенных узлов
@@ -2557,9 +2518,8 @@ bool awh::codec::xml::Value::absorb(const node_t & node, const uint32_t depth) n
 		/**
 		 * Если объект для работы с логами установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного снятия
 		return false;
 	}
@@ -2743,7 +2703,7 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 *          зависит от устройства СОСЕДА, а не от него самого
 	 */
 	this->_error = error_t::NONE;
-	document_t document(this->_fmk, this->_log);
+	document_t document;
 	// Настройки разбора, огранённые пределом возвратных работ
 	reader_t::settings_t bounded = settings;
 	/**
@@ -2830,7 +2790,6 @@ bool awh::codec::xml::Value::parse(const string & text, const reader_t::settings
 	 *       разбором, объекта у них нет вовсе, и сохранение вложенного значения без него
 	 *       отвечало бы отказом там, где корень сохраняется исправно
 	 */
-	this->setFramework(this->_fmk);
 	// Выводим признак успешного разбора
 	return true;
 }
@@ -2854,28 +2813,14 @@ bool awh::codec::xml::Value::load(const string & filename) noexcept {
  *
  */
 bool awh::codec::xml::Value::load(const string & filename, const reader_t::settings_t & settings) noexcept {
-	/**
-	 * Если объект фреймворка значению не задан
-	 *
-	 * @details Работа с файловой системой ведётся через него: приведение пути к широкому
-	 * виду живёт в нём, и без него путь под MS Windows уходил бы узким - кириллический
-	 * адрес ложился бы на диск искажённым, а розыск находил бы его обратно тем же неверным
-	 * приведением, отчего отказа не было бы НИКОГДА
-	 */
-	if(this->_fmk == nullptr){
-		// Запоминаем код отказа открытия файла разметки
-		this->_error = error_t::FILE_NOT_OPENED;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
-		// Выводим признак неудачного разбора
-		return false;
-	}
 	// Объект для работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
+	/**
+	 * Разряд пути спрашивается ОДНАЖДЫ: ходу этому стоит обращение к файловой
+	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
+	 * кодами отказа
+	 */
+	const fs_t::type_t type = fs.type(filename);
 	/**
 	 * Если файл разметки физическим файлом не является
 	 *
@@ -2895,7 +2840,7 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 	 *       там мёртво - каталог отвечал бы кодом отказа ОТКРЫТИЯ вместо кода отказа
 	 *       чтения. Замерено на стенде Windows 11 ARM64
 	 */
-	if(fs.type(filename) == fs_t::type_t::DIR){
+	if(type == fs_t::type_t::DIR){
 		// Выполняем очистку прежнего содержимого значения
 		this->clear();
 		/**
@@ -2911,9 +2856,8 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -2923,7 +2867,7 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 	 * @note Проверка эта стоит вместо прежнего открытия потоком: ходы файловой системы
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
 	 */
-	if(fs.type(filename) != fs_t::type_t::FILE){
+	if(type != fs_t::type_t::FILE){
 		// Выполняем очистку прежнего содержимого значения
 		this->clear();
 		/**
@@ -2938,9 +2882,8 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 		/**
 		 * Если объект для работы с логами установлен
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -3023,9 +2966,8 @@ bool awh::codec::xml::Value::load(const string & filename, const reader_t::setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -3073,7 +3015,7 @@ string awh::codec::xml::Value::dump(const writer_t::settings_t & settings) const
 		// Выводим пустой текст значения
 		return string();
 	// Поток записи текста разметки
-	writer_t writer(this->_log);
+	writer_t writer;
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	/**
@@ -3152,27 +3094,8 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 	 */
 	const string temporary = (filename + ".awh-tmp");
 	// Открываем временный файл разметки для записи
-	/**
-	 * Если объект фреймворка значению не задан
-	 *
-	 * @warning Отказ здесь честнее записи узким ходом: значение, заведённое без фреймворка,
-	 *          сохранять ему нечем, и молчаливое падение обратно на узкий ход было бы бедою
-	 *          разряда «принято молча»
-	 */
-	if(this->_fmk == nullptr){
-		// Запоминаем код отказа записи файла разметки
-		this->_error = error_t::FILE_NOT_WRITTEN;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
-		// Выводим признак неудачной записи
-		return false;
-	}
 	// Объект для работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Выполняем снос остатка прежней работы под тем же именем
 	 *
@@ -3204,9 +3127,8 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -3232,9 +3154,8 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -3273,9 +3194,8 @@ bool awh::codec::xml::Value::save(const string & filename, const writer_t::setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -3399,25 +3319,6 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (const Value & value
 	this->_attributes = value._attributes;
 	// Выполняем сброс отображения имён свойств узла
 	this->reproperty();
-	/**
-	 * Если объект ведения журнала у источника установлен, а у цели ещё нет
-	 *
-	 * @note Настроенная цель своего логгера НЕ отдаёт: присваивание переносит значение,
-	 *       а не настройку того, кому о бедах сообщать
-	 */
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем снятие объекта ведения журнала с источника
-		this->_log = value._log;
-	/**
-	 * Если объект фреймворка у источника установлен, а у цели ещё нет
-	 *
-	 * @note Объект этот перенимается наравне с журналом и по тому же правилу: работа с
-	 *       файловой системой у цели без него невозможна вовсе, и значение, взявшее
-	 *       содержимое источника, обязано уметь сохранять себя ровно так же, как он
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем снятие объекта фреймворка с источника
-		this->_fmk = value._fmk;
 	// Выполняем копирование связываний префиксов
 	this->_bindings = value._bindings;
 	// Выполняем копирование вложенных узлов
@@ -3455,25 +3356,6 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
 	this->_attributes = ::std::move(value._attributes);
 	// Выполняем сброс отображения имён свойств узла
 	this->reproperty();
-	/**
-	 * Если объект ведения журнала у источника установлен, а у цели ещё нет
-	 *
-	 * @note Настроенная цель своего логгера НЕ отдаёт: присваивание переносит значение,
-	 *       а не настройку того, кому о бедах сообщать
-	 */
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем снятие объекта ведения журнала с источника
-		this->_log = value._log;
-	/**
-	 * Если объект фреймворка у источника установлен, а у цели ещё нет
-	 *
-	 * @note Объект этот перенимается наравне с журналом и по тому же правилу: работа с
-	 *       файловой системой у цели без него невозможна вовсе, и значение, взявшее
-	 *       содержимое источника, обязано уметь сохранять себя ровно так же, как он
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем снятие объекта фреймворка с источника
-		this->_fmk = value._fmk;
 	// Выполняем перенос связываний префиксов
 	this->_bindings = ::std::move(value._bindings);
 	// Выполняем перенос вложенных узлов
@@ -3490,20 +3372,6 @@ awh::codec::xml::Value & awh::codec::xml::Value::operator = (Value && value) noe
  *
  */
 awh::codec::xml::Value::Value() noexcept : _kind(kind_t::NONE), _indexed(false), _propertied(false) {}
-/**
- * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
- */
-awh::codec::xml::Value::Value(const fmk_t * fmk, const log_t * log) noexcept :
- _kind(kind_t::NONE), _indexed(false), _propertied(false) {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-	// Устанавливаем объект фреймворка
-	this->_fmk = fmk;
-}
 /**
  * @brief Конструктор узла указанного вида
  *
@@ -3538,6 +3406,19 @@ awh::codec::xml::Value::Value(const kind_t kind, const string & text) noexcept :
 awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE), _indexed(false), _propertied(false) {
 	// Выполняем снятие значения с узла дерева разметки
 	this->absorb(node);
+	/**
+	 * Перенимаем у документа объект ведения журнала и объект фреймворка
+	 *
+	 * @warning Ставится ПОСЛЕ снятия: снятие начинается с очистки значения, и пара,
+	 *          поставленная до него, стиралась бы. Замерено падением 13.09.2026
+	 *
+	 * @warning Без этого значение, снятое с узла документа, остаётся с пустой парой, и
+	 *          первая же работа его с файловой системой валит процесс: ход записи заводит
+	 *          объект работы с файловой системой этой самой парой. Заслона на пустоту тут
+	 *          не ставится - пара обязательна по договору AWH, и проверять её никто не должен
+	 */
+	if(node._document != nullptr){
+	}
 }
 /**
  * @brief Конструктор копирования
@@ -3547,7 +3428,7 @@ awh::codec::xml::Value::Value(const node_t & node) noexcept : _kind(kind_t::NONE
  */
 awh::codec::xml::Value::Value(const Value & value) noexcept :
  _kind(value._kind), _prefix(value._prefix), _local(value._local), _uri(value._uri),
- _text(value._text), _attributes(value._attributes), _bindings(value._bindings), _items(value._items), _indexed(false), _propertied(false), _log(value._log) {}
+ _text(value._text), _attributes(value._attributes), _bindings(value._bindings), _items(value._items), _indexed(false), _propertied(false) {}
 /**
  * @brief Конструктор переноса
  *
@@ -3558,10 +3439,15 @@ awh::codec::xml::Value::Value(Value && value) noexcept :
  _kind(value._kind), _prefix(::std::move(value._prefix)), _local(::std::move(value._local)),
  _uri(::std::move(value._uri)), _text(::std::move(value._text)),
  _attributes(::std::move(value._attributes)), _bindings(::std::move(value._bindings)),
- _items(::std::move(value._items)), _indexed(false), _propertied(false), _log(value._log) {
+ _items(::std::move(value._items)), _indexed(false), _propertied(false) {
 	// Выполняем очистку значения, у какого содержимое отобрано
 	value.clear();
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::xml::Builder::Builder() noexcept {}
 /**
  * @brief Метод помещения собранного узла на своё место
  *

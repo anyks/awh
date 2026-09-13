@@ -33,8 +33,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/fmk.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/cryptography/tls/coder.hpp"
 
 /**
@@ -47,10 +45,6 @@
  */
 class TlsFixture : public testing::Test {
 	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект для работы с логами
-		std::unique_ptr <awh::log_t> _log;
 		// Объект кодера транспортной безопасности
 		std::unique_ptr <awh::tls::Coder> _coder;
 	protected:

@@ -270,11 +270,8 @@ size_t awh::proto::Socks5::frameSize(const socks5_t::state_t state, const uint8_
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::proto::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::proto::Socks5::Socks5() noexcept {}
 /**
  * @brief Деструктор
  *

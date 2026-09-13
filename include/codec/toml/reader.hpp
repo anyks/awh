@@ -104,7 +104,7 @@ namespace awh {
 			 * достаётся потребителю потоком, а не собранным заранее деревом
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(log);
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -161,7 +161,7 @@ namespace awh {
 			 * goes to the consumer as a stream rather than as a tree assembled beforehand
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(log);
+			 *  reader_t reader();
 			 *
 			 *  reader.feed(chunk.data(), chunk.size(), last);
 			 *
@@ -186,7 +186,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -1604,30 +1603,25 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log) noexcept;
+					Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора текста настроек
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a settings text
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log, const settings_t & settings) noexcept;
+					Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

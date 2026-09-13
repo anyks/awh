@@ -120,7 +120,7 @@ namespace {
 		// Блок передаваемых данных
 		static vector <uint8_t> chunk(STREAM_CHUNK, 0x5A);
 		// Создаём объект асинхронного движка ввода-вывода
-		awh::engine::io_t io(framework(), logger());
+		awh::engine::io_t io;
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Добавляем новое событие сервера

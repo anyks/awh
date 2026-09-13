@@ -181,10 +181,8 @@ namespace awh {
 						// Дробное число
 						double real;
 					} numeric_t;
-				private:
 					// Вид хранимого значения
 					kind_t _kind;
-				private:
 					/**
 					 * \~russian
 					 * Вид числа, опознанный при заведении значения
@@ -202,10 +200,8 @@ namespace awh {
 					 * \~
 					 */
 					type_t _type;
-				private:
 					// Число либо логическое значение родного вида
 					numeric_t _number;
-				private:
 					/**
 					 * \~russian
 					 * Содержимое значения строкового и запись числа, в родной вид не вместимого
@@ -223,7 +219,6 @@ namespace awh {
 					 * \~
 					 */
 					string _text;
-				private:
 					/**
 					 * \~russian
 					 * Имена полей объекта
@@ -239,10 +234,8 @@ namespace awh {
 					 * \~
 					 */
 					vector <string> _names;
-				private:
 					// Значения вместилища в порядке их следования
 					vector <Value> _items;
-				private:
 					/**
 					 * \~russian
 					 * Отображение имён полей объекта на их номера, заводимое по требованию
@@ -268,7 +261,6 @@ namespace awh {
 					 * \~
 					 */
 					mutable unordered_map <string, size_t> _index;
-				private:
 					/**
 					 * \~russian
 					 * Признак заведённости отображения имён полей объекта
@@ -284,21 +276,6 @@ namespace awh {
 					 * \~
 					 */
 					mutable bool _indexed;
-				private:
-					/**
-					 * \~russian
-					 * Объект ведения журнала работы
-					 *
-					 * @note Умолчание стоит прямо в объявлении намеренно: конструкторы копии и
-					 *       переноса логгера не принимают, и без умолчания поле у них осталось
-					 *       бы неопределённым. Сами они логгер СНИМАЮТ С ИСТОЧНИКА, но лишь
-					 *       когда своего у цели ещё нет: настроенная цель своего не отдаёт
-					 *
-					 * \~english
-					 * Object of the keeping of the work log
-					 *
-					 * \~
-					 */
 					/**
 					 * \~russian
 					 * @brief Код отказа последней работы над значением
@@ -315,7 +292,20 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error = error_t::NONE;
-					const log_t * _log = nullptr;
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Умолчание стоит прямо в объявлении намеренно: конструкторы копии и
+					 *       переноса логгера не принимают, и без умолчания поле у них осталось
+					 *       бы неопределённым. Сами они логгер СНИМАЮТ С ИСТОЧНИКА, но лишь
+					 *       когда своего у цели ещё нет: настроенная цель своего не отдаёт
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
 					/**
 					 * \~russian
 					 * Объект фреймворка
@@ -332,8 +322,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const fmk_t * _fmk = nullptr;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод розыска номера поля объекта по имени
@@ -384,7 +372,6 @@ namespace awh {
 					 * \~
 					 */
 					void reindex() const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Шаблонный метод извлечения числа затребованным видом
@@ -403,7 +390,6 @@ namespace awh {
 					 */
 					template <typename T>
 					bool extract(T & result) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод записи значения в поток записи
@@ -426,7 +412,6 @@ namespace awh {
 					 * \~
 					 */
 					bool compose(writer_t & writer) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод снятия значения со ссылки на узел документа
@@ -440,7 +425,6 @@ namespace awh {
 					 * \~
 					 */
 					void absorb(const Document::value_t & value) noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения значения неопределённого
@@ -537,7 +521,6 @@ namespace awh {
 					 * \~
 					 */
 					static void limit(const size_t value) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод проверки определённости значения
@@ -630,7 +613,6 @@ namespace awh {
 					 * \~
 					 */
 					bool is(const type_t type) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества значений вместилища
@@ -667,7 +649,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения строкового содержимого значения
@@ -716,7 +697,6 @@ namespace awh {
 					 * \~
 					 */
 					const string & key(const size_t index) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод проверки наличия поля объекта с указанным именем
@@ -798,7 +778,6 @@ namespace awh {
 					 * \~
 					 */
 					Value & place(const string & path) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод обращения к полю объекта по имени
@@ -981,7 +960,6 @@ namespace awh {
 					template <typename T>
 					typename std::enable_if <std::is_same <T, char>::value, Value &>::type
 					operator [] (const T name) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод добавления значения в конец массива
@@ -1105,7 +1083,6 @@ namespace awh {
 					 * \~
 					 */
 					bool erase(const size_t index) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения логического значения
@@ -1260,7 +1237,6 @@ namespace awh {
 					 * \~
 					 */
 					bool value(string & result) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста JSON во владеющее значение
@@ -1419,7 +1395,6 @@ namespace awh {
 					 * \~
 					 */
 					bool save(const string & filename, const writer_t::settings_t & settings) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод сличения значений
@@ -1479,7 +1454,6 @@ namespace awh {
 					 * \~
 					 */
 					bool operator != (const Value & value) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Оператор присваивания копированием
@@ -1510,7 +1484,18 @@ namespace awh {
 					 * \~
 					 */
 					Value & operator = (Value && value) noexcept;
-				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор копирования
+					 *
+					 * @param value копируемое значение
+					 *
+					 * \~english
+					 * @brief Copy constructor
+					 * @param value value being copied
+					 *
+					 * \~
+					 */
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -1696,77 +1681,6 @@ namespace awh {
 					explicit Value(const Document::value_t & value) noexcept;
 					/**
 					 * \~russian
-					 * @brief Конструктор копирования
-					 *
-					 * @param value копируемое значение
-					 *
-					 * \~english
-					 * @brief Copy constructor
-					 * @param value value being copied
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @details Привязка поздняя нужна там, где значение заведено копией либо
-					 * переносом: логгера они не принимают, и снять его с источника выходит лишь
-					 * когда у источника он есть
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта фреймворка
-					 *
-					 * @details Объект уходит вглубь наравне с журналом: значение владеет вложенными
-					 * целиком, и работа с файловой системой у них общая
-					 *
-					 * @param fmk объект фреймворка
-					 *
-					 * \~english
-					 * @brief Method of the setting of the framework object
-					 *
-					 * @details The object goes deep alongside the log: a value owns the nested ones
-					 * entirely, and their work with the file system is common
-					 *
-					 * @param fmk framework object
-					 *
-					 * \~
-					 */
-					void setFramework(const fmk_t * fmk) noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * @details Вид этот и есть общий у всех кодеков рамки: работа с файловой
-					 * системой требует обоих объектов, и значение, заведённое без них, сохранять
-					 * себя в файл не умеет
-					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * @param fmk framework object
-					 * @param log object for working with logs
-					 *
-					 * \~
-					 */
-					Value(const fmk_t * fmk, const log_t * log) noexcept;
-					/**
-					 * \~russian
 					 * @brief Конструктор копии
 					 *
 					 * @param value копируемое значение
@@ -1840,7 +1754,6 @@ namespace awh {
 				private:
 					// Собираемое значение
 					value_t _result;
-				private:
 					/**
 					 * \~russian
 					 * Стек указаний на открытые вместилища
@@ -1858,13 +1771,10 @@ namespace awh {
 					 * \~
 					 */
 					vector <value_t *> _nesting;
-				private:
 					// Имя поля объекта, записанное перед значением
 					string _name;
-				private:
 					// Признак того, что имя поля объекта записано, а значение ещё нет
 					bool _keyed;
-				private:
 					/**
 					 * \~russian
 					 * Признак того, что поле объекта кладётся рядом, а не поверх
@@ -1882,7 +1792,6 @@ namespace awh {
 					 * \~
 					 */
 					bool _appended;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод помещения собранного значения на своё место
@@ -2114,7 +2023,6 @@ namespace awh {
 					 * \~
 					 */
 					bool value(const value_t & value) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения текущей глубины вложенности
@@ -2158,7 +2066,6 @@ namespace awh {
 					 * \~
 					 */
 					value_t finish() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2168,10 +2075,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Builder(const log_t * log) noexcept : _keyed(false), _appended(false) {
-						// Выполняем установку объекта ведения журнала собираемому значению
-						this->_result.setLogger(log);
-					}
+					explicit Builder() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

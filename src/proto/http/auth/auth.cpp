@@ -34,6 +34,8 @@
 #include <proto/http/auth/basic.hpp>
 #include <proto/http/auth/digest.hpp>
 #include <proto/http/auth/bearer.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -178,7 +180,7 @@ string awh::http::Authorization::Scheme::name() const noexcept {
  * @brief Метод сравнения строк в постоянном времени
  *
  * @details Используется для сравнения секретов и подписей. Не делегируется
- *          в fmk_t::compare(), так как тот завершается досрочно и не подходит
+ *          в awh::fmk::compare(), так как тот завершается досрочно и не подходит
  *          для криптографических сверок.
  *
  * @param left  первая строка
@@ -223,13 +225,13 @@ bool awh::http::Authorization::Scheme::schemePayload(const string_view header, c
 	// Копируем заголовок для нормализации через fmk_t
 	string text(header);
 	// Удаляем крайние пробелы у заголовка
-	this->_fmk->transform(text, fmk_t::transform_t::TRIM);
+	awh::fmk::transform(text, awh::fmk::transform_t::TRIM);
 	// Если длина заголовка недостаточна для схемы и полезной нагрузки
 	if(text.size() < (scheme.size() + 1))
 		// Сообщаем о неудачном извлечении
 		return false;
 	// Сравниваем название схемы без учёта регистра (RFC 7235)
-	if(!this->_fmk->compare(text.substr(0, scheme.size()), scheme))
+	if(!awh::fmk::compare(text.substr(0, scheme.size()), scheme))
 		// Сообщаем о неудачном извлечении
 		return false;
 	// Перемещаем индекс за название схемы
@@ -291,12 +293,10 @@ bool awh::http::Authorization::Scheme::parse([[maybe_unused]] const string_view 
  * @param owner  сторона работы (клиент/сервер)
  * @param params общие параметры авторизации
  * @param crypto объект криптографии
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
  *
  */
-awh::http::Authorization::Scheme::Scheme(const owner_t owner, params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
- _owner(owner), _params(params), _fmk(fmk), _log(log), _crypto(crypto) {}
+awh::http::Authorization::Scheme::Scheme(const owner_t owner, params_t & params, const crypto_t * crypto) noexcept :
+ _owner(owner), _params(params), _crypto(crypto) {}
 /**
  * @brief Деструктор
  *
@@ -346,22 +346,22 @@ void awh::http::Authorization::type(const type_t type, const hash_t hash) noexce
 			// Если тип авторизации HMAC
 			case static_cast <uint8_t> (type_t::HMAC):
 				// Создаём стратегию HMAC-авторизации
-				scheme = make_unique <hmac_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
+				scheme = make_unique <hmac_t> (this->_owner, this->_params, &this->_crypto);
 			break;
 			// Если тип авторизации BASIC
 			case static_cast <uint8_t> (type_t::BASIC):
 				// Создаём стратегию BASIC-авторизации
-				scheme = make_unique <basic_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
+				scheme = make_unique <basic_t> (this->_owner, this->_params, &this->_crypto);
 			break;
 			// Если тип авторизации DIGEST
 			case static_cast <uint8_t> (type_t::DIGEST):
 				// Создаём стратегию DIGEST-авторизации
-				scheme = make_unique <digest_scheme_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
+				scheme = make_unique <digest_scheme_t> (this->_owner, this->_params, &this->_crypto);
 			break;
 			// Если тип авторизации BEARER
 			case static_cast <uint8_t> (type_t::BEARER):
 				// Создаём стратегию BEARER-авторизации
-				scheme = make_unique <bearer_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
+				scheme = make_unique <bearer_t> (this->_owner, this->_params, &this->_crypto);
 			break;
 		}
 		// Сбрасываем временное состояние только после успешного создания стратегии
@@ -383,13 +383,13 @@ void awh::http::Authorization::type(const type_t type, const hash_t hash) noexce
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (type), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим в лог сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -517,7 +517,7 @@ void awh::http::Authorization::signNonce(string_view nonce) noexcept {
  * @details Вызывается на клиенте **до** headers()/header(). Значение попадает
  *          в Signature-Input и участвует в канонической базе подписи.
  *          Если передать 0, при формировании подписи будет использован текущий
- *          штамп времени (fmk_t::timestamp).
+ *          штамп времени (awh::fmk::timestamp).
  *
  * @param stamp штамп времени в секундах (0 — автоматически при формировании)
  *
@@ -556,7 +556,7 @@ void awh::http::Authorization::component(string_view name, string_view value) no
 		// Формируем ключ компонента в нижнем регистре
 		string key(name);
 		// Приводим ключ компонента к нижнему регистру
-		this->_fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
+		awh::fmk::transform(key, awh::fmk::transform_t::LOWER_CASE);
 		// Если компонент с таким именем уже добавлен
 		if(const auto it = this->_params.sign.componentIndex.find(key); it != this->_params.sign.componentIndex.end())
 			// Обновляем значение существующего компонента
@@ -919,7 +919,7 @@ bool awh::http::Authorization::parse(const string_view name, const string_view h
 		// Устанавливаем имя заголовка в нижнем регистре для сравнения
 		string field(name);
 		// Приводим имя заголовка к нижнему регистру
-		this->_fmk->transform(field, fmk_t::transform_t::LOWER_CASE);
+		awh::fmk::transform(field, awh::fmk::transform_t::LOWER_CASE);
 		// Если это заголовок Signature-Input, очищаем разобранные учётные данные
 		if(field.compare("signature-input") == 0)
 			// Очищаем разобранные учётные данные предыдущего запроса
@@ -976,12 +976,10 @@ void awh::http::Authorization::callbackCheckUser(function <bool (const string &,
  * @brief Конструктор
  *
  * @param owner сторона работы (клиент/сервер)
- * @param fmk   объект фреймворка
- * @param log   объект для работы с логами
  *
  */
-awh::http::Authorization::Authorization(const owner_t owner, const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _owner(owner), _crypto(fmk, log), _scheme(nullptr), _fmk(fmk), _log(log) {}
+awh::http::Authorization::Authorization(const owner_t owner) noexcept :
+ _type(type_t::NONE), _owner(owner), _crypto(), _scheme(nullptr) {}
 /**
  * @brief Деструктор
  *

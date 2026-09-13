@@ -18,16 +18,16 @@
  * @copyright Copyright © 2026
  *
  */
+#include "syslog.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы бенчмарков
  */
-#include "syslog.hpp"
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён сценариев этого файла
@@ -43,45 +43,15 @@ namespace {
 	 */
 	struct SilentSysLogReader {
 		/**
-		 * @brief Функция получения объекта фреймворка сценариев
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          сценарии, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка сценариев
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка сценариев
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка сценариев
-			return fmk;
-		}
-		// Объект журнала сценариев
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentSysLogReader() noexcept : log(&SilentSysLogReader::framework()) {
+		SilentSysLogReader() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 
-	/**
-	 * @brief Функция получения объекта журнала сценариев
-	 *
-	 * @return объект журнала сценариев
-	 *
-	 */
-	const awh::log_t * readerLogger() noexcept {
-		// Объект журнала сценариев
-		static SilentSysLogReader silent;
-		// Выводим объект журнала сценариев
-		return &silent.log;
-	}
 
 	/**
 	 * @brief Порог пропускной способности чтения записи устаревшего описания
@@ -161,7 +131,7 @@ namespace {
 	 */
 	size_t consume(const std::string & text, const size_t step = 0) noexcept {
 		// Объект потокового чтения записей
-		awh::codec::syslog::reader_t reader(&SilentSysLogReader::framework(), ::readerLogger());
+		awh::codec::syslog::reader_t reader;
 		// Количество выданных событий разбора
 		size_t result = 0;
 		// Смещение подачи текста записей

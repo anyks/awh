@@ -101,7 +101,6 @@
  */
 #include <net/net.hpp>
 #include <net/event.hpp>
-#include <sys/log.hpp>
 
 /**
  * \~russian
@@ -170,7 +169,6 @@ namespace awh {
 			 *
 			 * @param sock отмечаемый сокет
 			 * @param dscp устанавливаемый класс обслуживания
-			 * @param log  объект ведения журнала
 			 * @return     результат выполнения установки
 			 *
 			 * \~english
@@ -180,12 +178,11 @@ namespace awh {
 			 *          when the destination becomes known
 			 * @param sock marked socket
 			 * @param dscp the set class of the service
-			 * @param log  object of the keeping of the log
 			 * @return     result of the performance of the setting
 			 *
 			 * \~
 			 */
-			bool mark(const net::socket_t sock, const event::dscp_t dscp, const log_t * log) noexcept;
+			bool mark(const net::socket_t sock, const event::dscp_t dscp) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция получения запрошенного класса обслуживания
@@ -209,7 +206,6 @@ namespace awh {
 			 *          назначение неизвестно, и поток завести нельзя
 			 *
 			 * @param sock применяемый сокет
-			 * @param log  объект ведения журнала
 			 * @return     результат выполнения применения
 			 *
 			 * \~english
@@ -217,12 +213,11 @@ namespace awh {
 			 * @details It is to be called by the engine as soon as the socket is connected: before that
 			 *          the destination is unknown, and a flow cannot be started
 			 * @param sock applied socket
-			 * @param log  object of the keeping of the log
 			 * @return     result of the performance of the application
 			 *
 			 * \~
 			 */
-			bool apply(const net::socket_t sock, const log_t * log) noexcept;
+			bool apply(const net::socket_t sock) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция снятия потока с сокета

@@ -61,67 +61,11 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <args/lexer.hpp>
 #include <args/schema.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
-/**
- * @brief Средства заведения молчащего журнала работы (внутренняя компоновка)
- *
- */
-namespace {
-	/**
-	 * @brief Объект молчащего журнала работы
-	 *
-	 */
-	struct Silent {
-		/**
-		 * @brief Функция получения объекта фреймворка
-		 *
-		 * @return объект фреймворка
-		 *
-		 */
-		static awh::fmk_t & framework() noexcept {
-			// Объект фреймворка
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка
-			return fmk;
-		}
-		// Объект журнала работы
-		awh::log_t log;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept : log(&Silent::framework()) {
-			// Выполняем отключение вывода журнала
-			this->log.mode({});
-		}
-	};
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала работы
-	 *
-	 * @return объект журнала работы
-	 *
-	 */
-	awh::log_t * logger() noexcept {
-		// Объект журнала работы
-		static Silent silent;
-		// Выводим объект журнала работы
-		return &silent.log;
-	}
-}
 
 /**
  * Используем стандартное пространство имён
@@ -396,6 +340,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Получаем количество проходов генератора
 	const uint64_t count = ((argc > 1) ? static_cast <uint64_t> (::atoll(argv[1])) : 3000);
 	// Получаем зерно источника случайных чисел
@@ -409,9 +360,9 @@ int main(int argc, char * argv[]) noexcept {
 	// Учёт проделанной работы
 	Statistic totals;
 	// Создаём разборщик параметров запуска
-	const awh::args::lexer_t lexer(::framework(), ::logger());
+	const awh::args::lexer_t lexer;
 	// Создаём описание ожидаемых параметров запуска
-	awh::args::schema_t schema(::framework(), ::logger());
+	awh::args::schema_t schema;
 	/**
 	 * Выполняем проходы генератора
 	 */

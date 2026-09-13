@@ -148,7 +148,7 @@ namespace {
 		// Итоги прогона сценария
 		outcome_t result;
 		// Объект работы с адресами
-		awh::net_addr_t addr(framework(), logger());
+		awh::net_addr_t addr;
 		/**
 		 * Выполняем прогрев: первые обращения выводят модуль на установившийся режим
 		 */
@@ -192,7 +192,7 @@ namespace {
 		// Итоги прогона сценария
 		outcome_t result;
 		// Объект работы с адресами
-		awh::net_addr_t addr(framework(), logger());
+		awh::net_addr_t addr;
 		// Выполняем разбор образца адреса
 		addr.parse(sample);
 		/**
@@ -237,7 +237,7 @@ namespace {
 		// Итоги прогона сценария
 		outcome_t result;
 		// Объект работы с адресами
-		awh::net_addr_t addr(framework(), logger());
+		awh::net_addr_t addr;
 		/**
 		 * Выполняем прогрев: первые обращения выводят модуль на установившийся режим
 		 */
@@ -284,7 +284,7 @@ namespace {
 		// Итоги прогона сценария
 		outcome_t result;
 		// Объект работы с адресами
-		awh::net_addr_t addr(framework(), logger());
+		awh::net_addr_t addr;
 		// Выполняем разбор проверяемого адреса
 		addr.parse("192.168.1.100");
 		/**

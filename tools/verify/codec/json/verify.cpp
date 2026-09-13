@@ -33,8 +33,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <codec/json/json.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -54,44 +55,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 
@@ -128,7 +99,7 @@ namespace {
 	 */
 	static bool digest(const string & text, const size_t chunk, string & output) noexcept {
 		// Объект документа
-		json::document_t doc(::logger());
+		json::document_t doc;
 		// Получаем настройки документа
 		json::document_t::settings_t settings = doc.settings();
 		/**
@@ -156,7 +127,7 @@ namespace {
 			return true;
 		}
 		// Объект потокового чтения текста документа
-		json::reader_t reader(::logger());
+		json::reader_t reader;
 		// Получаем настройки потокового чтения текста
 		json::reader_t::settings_t reading = reader.settings();
 		// Выполняем установку настроек потокового чтения текста
@@ -238,6 +209,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	/**
 	 * Если каталог корпуса не передан
 	 */

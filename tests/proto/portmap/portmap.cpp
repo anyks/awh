@@ -29,10 +29,6 @@
  *
  */
 void PortmapFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 }
 
 /**
@@ -49,7 +45,7 @@ void PortmapFixture::TearDown() {}
  */
 std::unique_ptr <awh::proto::portmap::natpmp_t> PortmapFixture::makeNatPmp() const noexcept {
 	// Создаём и возвращаем объект кодека договора NAT-PMP
-	return std::make_unique <awh::proto::portmap::natpmp_t> (this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::proto::portmap::natpmp_t> ();
 }
 /**
  * @brief Фабричный метод создания кодека договора PCP
@@ -59,7 +55,7 @@ std::unique_ptr <awh::proto::portmap::natpmp_t> PortmapFixture::makeNatPmp() con
  */
 std::unique_ptr <awh::proto::portmap::pcp_t> PortmapFixture::makePcp() const noexcept {
 	// Создаём и возвращаем объект кодека договора PCP
-	return std::make_unique <awh::proto::portmap::pcp_t> (this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::proto::portmap::pcp_t> ();
 }
 /**
  * @brief Фабричный метод создания кодека договора SSDP
@@ -69,7 +65,7 @@ std::unique_ptr <awh::proto::portmap::pcp_t> PortmapFixture::makePcp() const noe
  */
 std::unique_ptr <awh::proto::portmap::ssdp_t> PortmapFixture::makeSsdp() const noexcept {
 	// Создаём и возвращаем объект кодека договора SSDP
-	return std::make_unique <awh::proto::portmap::ssdp_t> (this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::proto::portmap::ssdp_t> ();
 }
 /**
  * @brief Фабричный метод создания кодека описания устройства UPnP
@@ -79,7 +75,7 @@ std::unique_ptr <awh::proto::portmap::ssdp_t> PortmapFixture::makeSsdp() const n
  */
 std::unique_ptr <awh::proto::portmap::device_t> PortmapFixture::makeDevice() const noexcept {
 	// Создаём и возвращаем объект кодека описания устройства UPnP
-	return std::make_unique <awh::proto::portmap::device_t> (this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::proto::portmap::device_t> ();
 }
 /**
  * @brief Фабричный метод создания кодека договора SOAP
@@ -89,7 +85,7 @@ std::unique_ptr <awh::proto::portmap::device_t> PortmapFixture::makeDevice() con
  */
 std::unique_ptr <awh::proto::portmap::soap_t> PortmapFixture::makeSoap() const noexcept {
 	// Создаём и возвращаем объект кодека договора SOAP
-	return std::make_unique <awh::proto::portmap::soap_t> (this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::proto::portmap::soap_t> ();
 }
 /**
  * @brief Фабричный метод создания кодека действий службы перенаправления UPnP
@@ -99,7 +95,7 @@ std::unique_ptr <awh::proto::portmap::soap_t> PortmapFixture::makeSoap() const n
  */
 std::unique_ptr <awh::proto::portmap::upnp_t> PortmapFixture::makeUpnp() const noexcept {
 	// Создаём и возвращаем объект кодека действий службы перенаправления UPnP
-	return std::make_unique <awh::proto::portmap::upnp_t> (this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::proto::portmap::upnp_t> ();
 }
 /**
  * @brief Метод записи адреса записью IPv6, отведённой договором PCP
@@ -110,7 +106,7 @@ std::unique_ptr <awh::proto::portmap::upnp_t> PortmapFixture::makeUpnp() const n
  */
 void PortmapFixture::encodeAddress(uint8_t * address, const std::string & value) const noexcept {
 	// Создаём объект работы с адресами
-	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr;
 	// Выполняем разбор записываемого адреса
 	if(!addr.parse(value))
 		// Выходим из записи адреса
@@ -134,7 +130,7 @@ bool PortmapFixture::decodeAddress(const uint8_t * address, uint32_t & value) co
 	// Выполняем копирование извлекаемого адреса
 	::memcpy(buffer.data(), address, buffer.size());
 	// Создаём объект работы с адресами
-	awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr;
 	// Выполняем размещение извлекаемого адреса
 	addr.v6(buffer, awh::net_addr_t::endian_t::LITTLE);
 	// Запоминаем извлечённый адрес IPv4

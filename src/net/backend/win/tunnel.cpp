@@ -62,6 +62,7 @@
  *
  */
 #include <winioctl.h>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -241,11 +242,10 @@ namespace {
 	 * @details Подключается она единожды за время работы и остаётся подключённой:
 	 *          отключение её при живых устройствах устранило бы их разом
 	 *
-	 * @param log объект ведения журнала
 	 * @return    набор вызовов драйвера либо пустое значение при отказе
 	 *
 	 */
-	static const wintun_t * __awh_wintun__(const awh::log_t * log) noexcept {
+	static const wintun_t * __awh_wintun__() noexcept {
 		// Набор вызовов драйвера
 		static wintun_t result;
 		// Признак уже выполненной попытки подключения
@@ -277,9 +277,8 @@ namespace {
 		// Если подключить библиотеку драйвера не удалось
 		if(result.dll == nullptr){
 			// Если объект ведения журнала передан
-			if(log != nullptr)
 				// Выводим в журнал сообщение о невозможности подключения
-				log->print("%s: wintun.dll could not be loaded, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				awh::log::print("%s: wintun.dll could not be loaded, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 			// Выводим пустое значение
 			return nullptr;
 		}
@@ -319,9 +318,8 @@ namespace {
 			 *          отвести движок на драйвер tap-windows6
 			 *
 			 */
-			if(log != nullptr)
 				// Выводим в журнал сообщение о несовпадении состава библиотеки
-				log->print("%s: wintun.dll does not export the expected entry points", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+				awh::log::print("%s: wintun.dll does not export the expected entry points", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
 			// Выполняем отключение библиотеки драйвера
 			::FreeLibrary(result.dll);
 			// Сбрасываем описатель подключённой библиотеки
@@ -371,7 +369,6 @@ namespace {
 	 *          сетевых устройств, откуда и снимается уникальный номер каждого
 	 *
 	 * @param name  название занятого устройства
-	 * @param log   объект ведения журнала
 	 * @return      дескриптор занятого устройства
 	 *
 	 */
@@ -444,7 +441,7 @@ namespace {
 		// Выводим название устройства
 		return result;
 	}
-	static HANDLE __awh_tap__(string & name, const awh::log_t * log) noexcept {
+	static HANDLE __awh_tap__(string & name) noexcept {
 		/**
 		 * @brief Ветвь настроек класса сетевых устройств
 		 *
@@ -455,9 +452,8 @@ namespace {
 		// Если открыть ветвь настроек класса сетевых устройств не удалось
 		if(::RegOpenKeyExW(HKEY_LOCAL_MACHINE, BRANCH, 0, KEY_READ, &branch) != ERROR_SUCCESS){
 			// Если объект ведения журнала передан
-			if(log != nullptr)
 				// Выводим в журнал сообщение о невозможности опроса устройств
-				log->print("%s: network adapter class registry branch could not be opened", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+				awh::log::print("%s: network adapter class registry branch could not be opened", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
 			// Выводим пустой дескриптор
 			return INVALID_HANDLE_VALUE;
 		}
@@ -646,7 +642,7 @@ namespace {
 		// Если свободного устройства найти не удалось
 		if((result == INVALID_HANDLE_VALUE) && (log != nullptr))
 			// Выводим в журнал сообщение об отсутствии свободных устройств
-			log->print("%s: no free tap-windows6 adapter is available, the driver installer creates them", awh::log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+			awh::log::print("%s: no free tap-windows6 adapter is available, the driver installer creates them", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
 		// Выводим результат занятия устройства
 		return result;
 	}
@@ -734,10 +730,9 @@ namespace {
 	 *       заведённой НАПОЛОВИНУ, и незаведённое поле стоит в ней умолчанием
 	 *
 	 * @param entry откатываемая запись устройства
-	 * @param log   объект для работы с логами
 	 *
 	 */
-	static void __awh_unwind__(entry_t & entry, const awh::log_t * log) noexcept {
+	static void __awh_unwind__(entry_t & entry) noexcept {
 		/**
 		 * Определяем драйвер, каким устройство заводилось
 		 */
@@ -745,7 +740,7 @@ namespace {
 			// Если устройство заводилось драйвером Wintun
 			case static_cast <uint8_t> (awh::win::tunnel::driver_t::WINTUN): {
 				// Выполняем подключение библиотеки драйвера
-				const wintun_t * wintun = ::__awh_wintun__(log);
+				const wintun_t * wintun = ::__awh_wintun__();
 				// Если библиотека драйвера подключена
 				if(wintun != nullptr){
 					// Если сеанс обмена заведён - закрываем его
@@ -868,11 +863,10 @@ void awh::win::tunnel::threadSafety(const bool mode) noexcept {
  * @param sock   дескриптор туннельного устройства
  * @param local  адрес своего конца туннеля
  * @param remote адрес встречного конца туннеля
- * @param log    объект ведения журнала
  * @return       результат выполнения сообщения
  *
  */
-bool awh::win::tunnel::configure(const net::socket_t sock, const uint32_t local, const uint32_t remote, const log_t * log) noexcept {
+bool awh::win::tunnel::configure(const net::socket_t sock, const uint32_t local, const uint32_t remote) noexcept {
 	// Дескриптор устройства, каким оно заведено драйвером tap-windows6
 	HANDLE handle = INVALID_HANDLE_VALUE;
 	{
@@ -915,7 +909,7 @@ bool awh::win::tunnel::configure(const net::socket_t sock, const uint32_t local,
 	// Если сообщить драйверу адреса туннеля не удалось
 	if(!result && (log != nullptr))
 		// Выводим в журнал сообщение о невозможности сообщения адресов
-		log->print("%s: tap-windows6 adapter could not be configured for the point-to-point mode, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+		awh::log::print("%s: tap-windows6 adapter could not be configured for the point-to-point mode, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 	// Выводим результат выполнения сообщения
 	return result;
 }
@@ -925,22 +919,21 @@ bool awh::win::tunnel::configure(const net::socket_t sock, const uint32_t local,
  * @param type   вид заводимого устройства
  * @param driver драйвер, каким устройство заводится
  * @param name   название заводимого устройства
- * @param log    объект ведения журнала
  * @return       дескриптор заведённого устройства
  *
  */
-awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const driver_t driver, string & name, const log_t * log) noexcept {
+awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const driver_t driver, string & name) noexcept {
 	// Если вид заводимого устройства не поддерживается
 	if((type != event::eth_t::TUN) && (type != event::eth_t::TAP)){
 		// Выводим в журнал сообщение о неподдерживаемом виде устройства
-		log->print("%s: only TUN and TAP devices are supported", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+		awh::log::print("%s: only TUN and TAP devices are supported", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
 		// Выводим пустой дескриптор
 		return net::invalid_socket_t;
 	}
 	// Если кадры канального уровня запрошены у драйвера, какой их не переносит
 	if((type == event::eth_t::TAP) && (driver == driver_t::WINTUN)){
 		// Выводим в журнал сообщение о несовместимости драйвера с видом устройства
-		log->print("%s: Wintun carries network layer packets only, TAP requires tap-windows6", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+		awh::log::print("%s: Wintun carries network layer packets only, TAP requires tap-windows6", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
 		// Выводим пустой дескриптор
 		return net::invalid_socket_t;
 	}
@@ -953,7 +946,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 		// Если устройство заводится драйвером Wintun
 		case static_cast <uint8_t> (driver_t::WINTUN): {
 			// Выполняем подключение библиотеки драйвера
-			const wintun_t * wintun = ::__awh_wintun__(log);
+			const wintun_t * wintun = ::__awh_wintun__();
 			// Если подключить библиотеку драйвера не удалось
 			if(wintun == nullptr)
 				// Выводим пустой дескриптор
@@ -969,7 +962,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			// Если завести устройство не удалось
 			if(entry.adapter == nullptr){
 				// Выводим в журнал сообщение о невозможности заведения устройства
-				log->print("%s: Wintun adapter could not be created, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				awh::log::print("%s: Wintun adapter could not be created, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
 			}
@@ -993,7 +986,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			// Если открыть сеанс обмена не удалось
 			if(entry.session == nullptr){
 				// Выводим в журнал сообщение о невозможности открытия сеанса обмена
-				log->print("%s: Wintun session could not be started, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				awh::log::print("%s: Wintun session could not be started, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 				// Выполняем устранение заведённого устройства
 				wintun->close(entry.adapter);
 				// Выводим пустой дескриптор
@@ -1009,9 +1002,9 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 				entry.name = ::__awh_name__(luid);
 			} catch(const std::exception & error) {
 				// Выводим в журнал сообщение о нехватке памяти под заведение устройства
-				log->print("%s: tunnel device could not be created, %s", log_t::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
+				awh::log::print("%s: tunnel device could not be created, %s", awh::log::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
 				// Выполняем откат заведённого устройства
-				::__awh_unwind__(entry, log);
+				::__awh_unwind__(entry);
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
 			}
@@ -1035,7 +1028,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			 */
 			if(entry.event == nullptr){
 				// Выводим в журнал сообщение о невозможности получения события готовности
-				log->print("%s: Wintun readiness event could not be obtained, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				awh::log::print("%s: Wintun readiness event could not be obtained, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 				// Выполняем закрытие открытого сеанса обмена
 				wintun->end(entry.session);
 				// Выполняем устранение заведённого устройства
@@ -1056,7 +1049,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			 */
 			entry.name = name;
 			// Выполняем занятие свободного устройства
-			entry.handle = ::__awh_tap__(entry.name, log);
+			entry.handle = ::__awh_tap__(entry.name);
 			// Если занять свободное устройство не удалось
 			if(entry.handle == INVALID_HANDLE_VALUE)
 				// Выводим пустой дескриптор
@@ -1072,7 +1065,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			// Если перевести устройство в рабочее состояние не удалось
 			if(!::__awh_activate__(entry.handle, (type == event::eth_t::TUN))){
 				// Выводим в журнал сообщение о невозможности перевода устройства
-				log->print("%s: tap-windows6 adapter could not be brought up, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				awh::log::print("%s: tap-windows6 adapter could not be brought up, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 				// Выполняем освобождение занятого устройства
 				::CloseHandle(entry.handle);
 				// Выводим пустой дескриптор
@@ -1089,7 +1082,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 			// Если завести событие готовности не удалось
 			if(entry.event == nullptr){
 				// Выводим в журнал сообщение о невозможности заведения события
-				log->print("%s: tap-windows6 readiness event could not be created, error %lu", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
+				awh::log::print("%s: tap-windows6 readiness event could not be created, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 				// Выполняем освобождение занятого устройства
 				::CloseHandle(entry.handle);
 				// Выводим пустой дескриптор
@@ -1108,9 +1101,9 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 				entry.buffer.resize(0xFFFF, 0);
 			} catch(const std::exception & error) {
 				// Выводим в журнал сообщение о нехватке памяти под заведение устройства
-				log->print("%s: tunnel device could not be created, %s", log_t::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
+				awh::log::print("%s: tunnel device could not be created, %s", awh::log::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
 				// Выполняем откат заведённого устройства
-				::__awh_unwind__(entry, log);
+				::__awh_unwind__(entry);
 				// Выводим пустой дескриптор
 				return net::invalid_socket_t;
 			}
@@ -1127,7 +1120,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 		// Если драйвер заведения устройства не определён
 		default: {
 			// Выводим в журнал сообщение о неопределённом драйвере
-			log->print("%s: tunnel driver is not specified", log_t::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
+			awh::log::print("%s: tunnel driver is not specified", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
 			// Выводим пустой дескриптор
 			return net::invalid_socket_t;
 		}
@@ -1158,7 +1151,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 		::__awh_registry__.emplace(result, ::std::move(entry));
 	} catch(const std::exception & error) {
 		// Выводим в журнал сообщение о невозможности занесения устройства
-		log->print("%s: tunnel device could not be registered, %s", log_t::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
+		awh::log::print("%s: tunnel device could not be registered, %s", awh::log::flag_t::CRITICAL, ::__AWH_TUNNEL_BACKEND__, error.what());
 		// Признак того, что запись в реестр всё же попала
 		bool registered = false;
 		{
@@ -1178,7 +1171,7 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
 		 */
 		if(!registered)
 			// Выполняем откат заведённого устройства
-			::__awh_unwind__(entry, log);
+			::__awh_unwind__(entry);
 		// Выводим пустой дескриптор
 		return net::invalid_socket_t;
 	}
@@ -1189,11 +1182,10 @@ awh::net::socket_t awh::win::tunnel::create(const event::eth_t type, const drive
  * @brief Функция устранения туннельного устройства
  *
  * @param sock дескриптор устраняемого устройства
- * @param log  объект ведения журнала
  * @return     результат выполнения устранения
  *
  */
-bool awh::win::tunnel::destroy(const net::socket_t sock, const log_t * log) noexcept {
+bool awh::win::tunnel::destroy(const net::socket_t sock) noexcept {
 	// Устраняемая запись реестра устройств
 	entry_t entry;
 	{
@@ -1235,7 +1227,7 @@ bool awh::win::tunnel::destroy(const net::socket_t sock, const log_t * log) noex
 		// Если устройство заведено драйвером Wintun
 		case static_cast <uint8_t> (driver_t::WINTUN): {
 			// Выполняем подключение библиотеки драйвера
-			const wintun_t * wintun = ::__awh_wintun__(log);
+			const wintun_t * wintun = ::__awh_wintun__();
 			// Если библиотека драйвера подключена
 			if(wintun != nullptr){
 				// Выполняем закрытие сеанса обмена

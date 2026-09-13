@@ -55,44 +55,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -267,7 +237,7 @@ TEST(Regex, AssemblyExecution) {
 		// Выходим из проверки передачи управления
 		GTEST_SKIP() << "исполняемая память сборкой не поддерживается";
 	// Создаём объект исполняемой памяти кодогенерации
-	regex::assembly_t assembly(::logger());
+	regex::assembly_t assembly;
 	// Выполняем проверку размещения участка исполняемой памяти
 	ASSERT_TRUE(assembly.allocate(sizeof(ADDER)));
 	/**
@@ -313,7 +283,7 @@ TEST(Regex, AssemblyProtection) {
 		// Выходим из проверки раздельности записи и исполнения
 		GTEST_SKIP() << "исполняемая память сборкой не поддерживается";
 	// Создаём объект исполняемой памяти кодогенерации
-	regex::assembly_t assembly(::logger());
+	regex::assembly_t assembly;
 	/**
 	 * Выполняем проверку отказа наполнения неразмещённого участка
 	 */
@@ -376,7 +346,7 @@ TEST(Regex, AssemblyOwnership) {
 		// Выходим из проверки передачи владения участком памяти
 		GTEST_SKIP() << "исполняемая память сборкой не поддерживается";
 	// Создаём объект исполняемой памяти кодогенерации
-	regex::assembly_t source(::logger());
+	regex::assembly_t source;
 	// Выполняем проверку размещения участка исполняемой памяти
 	ASSERT_TRUE(source.allocate(sizeof(ADDER)));
 	// Выполняем проверку наполнения участка порождённым машинным кодом
@@ -396,7 +366,7 @@ TEST(Regex, AssemblyOwnership) {
 	// Выполняем проверку исполнимости перемещённого участка памяти
 	EXPECT_EQ(reinterpret_cast <adder_t> (const_cast <void *> (target.entry()))(5, 7), static_cast <uint64_t> (12));
 	// Создаём объект исполняемой памяти для проверки оператора перемещения
-	regex::assembly_t moved(::logger());
+	regex::assembly_t moved;
 	// Выполняем проверку размещения участка исполняемой памяти
 	ASSERT_TRUE(moved.allocate(sizeof(ADDER)));
 	// Выполняем перемещение объекта исполняемой памяти оператором
@@ -437,7 +407,7 @@ TEST(Regex, AssemblyCacheFlush) {
 	// Получаем размер участка, оба тела кода вмещающий
 	const size_t length = ((sizeof(ADDER) > sizeof(SUBBER)) ? sizeof(ADDER) : sizeof(SUBBER));
 	// Создаём объект исполняемой памяти кодогенерации
-	regex::assembly_t assembly(::logger());
+	regex::assembly_t assembly;
 	// Выполняем проверку размещения участка исполняемой памяти
 	ASSERT_TRUE(assembly.allocate(length));
 	// Выполняем проверку наполнения участка машинным кодом сложения

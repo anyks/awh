@@ -378,7 +378,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpOwnAnswer) {
 	// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
 	router.start(INTERNAL_PORT);
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Устанавливаем вид опроса маршрутизатора
 	portmap.setType(awh::unit::portmap_t::type_t::NAT_PMP);
 	// Устанавливаем адрес поддельного маршрутизатора
@@ -424,7 +424,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpForeignAnswer) {
 	// Выполняем запуск поддельного маршрутизатора с чужим внутренним портом
 	router.start(INTERNAL_PORT + 1);
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Устанавливаем вид опроса маршрутизатора
 	portmap.setType(awh::unit::portmap_t::type_t::NAT_PMP);
 	// Устанавливаем адрес поддельного маршрутизатора
@@ -503,7 +503,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpRefusal) {
 		// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
 		router.start(INTERNAL_PORT);
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный маршрутизатор
 		setup(portmap);
 		// Выполняем ожидание итога обращения к маршрутизатору
@@ -575,7 +575,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpDamagedAnswer) {
 		// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
 		router.start(INTERNAL_PORT);
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный маршрутизатор
 		setup(portmap);
 		// Выполняем ожидание итога обращения к маршрутизатору
@@ -608,7 +608,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpExternal) {
 	// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
 	router.start(INTERNAL_PORT);
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный маршрутизатор
 	setup(portmap);
 	// Выполняем ожидание итога обращения к маршрутизатору
@@ -653,7 +653,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpCloseAndRenew) {
 		// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
 		router.start(INTERNAL_PORT);
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный маршрутизатор
 		setup(portmap);
 		// Выполняем ожидание итога обращения к маршрутизатору
@@ -688,7 +688,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpEpochRollback) {
 	// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
 	router.start(INTERNAL_PORT);
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Устанавливаем вид опроса маршрутизатора
 	portmap.setType(awh::unit::portmap_t::type_t::NAT_PMP);
 	// Устанавливаем адрес поддельного маршрутизатора
@@ -745,7 +745,7 @@ TEST_F(PortmapUnitFixture, PortmapNatPmpEpochSteady) {
 	// Выполняем запуск поддельного маршрутизатора с тем же внутренним портом
 	router.start(INTERNAL_PORT);
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Устанавливаем вид опроса маршрутизатора
 	portmap.setType(awh::unit::portmap_t::type_t::NAT_PMP);
 	// Устанавливаем адрес поддельного маршрутизатора
@@ -853,7 +853,7 @@ static void proclaim(const uint32_t epoch) noexcept {
  */
 TEST_F(PortmapUnitFixture, PortmapNatPmpAnnouncement) {
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Устанавливаем вид опроса маршрутизатора
 	portmap.setType(awh::unit::portmap_t::type_t::NAT_PMP);
 	// Устанавливаем адрес маршрутизатора, от которого ответа не будет

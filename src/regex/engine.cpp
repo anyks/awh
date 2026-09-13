@@ -25,6 +25,7 @@
  */
 #include <regex/probe.hpp>
 #include <regex/engine.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -35,10 +36,8 @@ using namespace awh;
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::regex::Engine::Engine(const log_t * log) noexcept : _error(error_t::NONE), _log(log) {}
+awh::regex::Engine::Engine() noexcept : _error(error_t::NONE) {}
 /**
  * @brief Метод извлечения кода ошибки последней операции
  *
@@ -208,7 +207,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 			// Выходим из порождения сопоставителя выражения
 			return;
 		// Создаём сопоставитель выражения в виде порождённого машинного кода
-		expression.machine = make_shared <codegen_t> (this->_log);
+		expression.machine = make_shared <codegen_t> ();
 		/**
 		 * Если порождение сопоставителя выражения не выполнено
 		 */
@@ -223,23 +222,18 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		// Выполняем установку кода ошибки разбора выражения
 		this->_error = this->_parser.error();
 		/**
-		 * Если объект журнала событий передан
+		 * Если включён режим отладки
 		 */
-		if(this->_log != nullptr) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Regular expression could not be parsed at offset %zu: %s", __PRETTY_FUNCTION__, make_tuple(string(pattern)), log_t::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Regular expression could not be parsed at offset %zu: %s", log_t::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
-			#endif
-		}
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("Regular expression could not be parsed at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern)}, awh::log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("Regular expression could not be parsed at offset %zu: %s", awh::log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
+		#endif
 		// Выводим результат выполнения сборки
 		return false;
 	}

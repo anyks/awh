@@ -83,7 +83,7 @@ namespace {
 	 */
 	static awh::crypto_t & keyed() noexcept {
 		// Объект криптографии сценариев работ с ключом RSA
-		static awh::crypto_t result(framework(), logger());
+		static awh::crypto_t result;
 		// Признак выполненной выработки ключа RSA
 		static const bool ready = result.generatePrivateKeyRSA(2048);
 		// Снимаем предупреждение о неиспользуемом признаке выработки

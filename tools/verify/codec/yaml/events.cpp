@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -24,44 +25,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 using namespace awh::codec;
 /**
@@ -83,11 +54,18 @@ static std::string escaped(const std::string_view text){
 	return result;
 }
 int main(int argc, char ** argv){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	std::ifstream file(argv[1], std::ios::binary);
 	std::stringstream stream; stream << file.rdbuf();
 	const std::string text = stream.str();
 	yaml::reader_t::settings_t settings;
-	yaml::reader_t reader(::logger(), settings);
+	yaml::reader_t reader(settings);
 	if(!reader.feed(text)){ std::cout << "ОТКАЗ: " << yaml::message(reader.error()) << "\n"; return 1; }
 	/**
 	 * Места событий открытия построений, проходом предварительным собранные
@@ -98,7 +76,7 @@ int main(int argc, char ** argv){
 	std::vector <uint64_t> starts;
 	{
 		yaml::reader_t::settings_t opening;
-		yaml::reader_t scout(::logger(), opening);
+		yaml::reader_t scout(opening);
 		if(scout.feed(text)){
 			while(scout.next()){
 				if((scout.event() == yaml::event_t::MAPPING_START) ||
@@ -251,7 +229,7 @@ int main(int argc, char ** argv){
 	 */
 	{
 		// Дерево документа разбираемого текста
-		yaml::document_t tree(::logger());
+		yaml::document_t tree;
 		/**
 		 * Если разобрать текст деревом не удалось
 		 */
@@ -269,7 +247,7 @@ int main(int argc, char ** argv){
 			 */
 			if(!written.empty()){
 				// Дерево документа перезаписи снятого значения
-				yaml::document_t rebuilt(::logger());
+				yaml::document_t rebuilt;
 				/**
 				 * Если перезапись снятого значения разобрать не удалось
 				 */

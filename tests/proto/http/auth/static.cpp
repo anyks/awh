@@ -33,6 +33,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "auth.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * Подписываемся на пространство имён HTTP-протокола
@@ -93,7 +94,7 @@ TEST_F(AuthFixture, BasicClientHeaderTest){
 	// Проверяем что заголовок начинается со схемы BASIC
 	ASSERT_EQ(header.compare(0, 6, "Basic "), 0);
 	// Создаём объект криптографии для декодирования учётных данных
-	awh::crypto_t crypto(this->_fmk.get(), this->_log.get());
+	awh::crypto_t crypto;
 	// Декодируем полезную нагрузку заголовка из BASE64
 	const std::string credentials = crypto.decrypt <std::string> (header.substr(6), awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::BASE64);
 	// Проверяем что декодированные учётные данные соответствуют паре «логин:пароль»
@@ -623,7 +624,7 @@ TEST_F(AuthFixture, HmacSignatureRawLengthTest){
 	// Получаем значение подписи, записанное BASE64
 	const std::string signature = value.substr(begin + 1, end - (begin + 1));
 	// Создаём объект криптографии для разбора записи BASE64
-	awh::crypto_t crypto(this->_fmk.get(), this->_log.get());
+	awh::crypto_t crypto;
 	// Выполняем разбор записи BASE64
 	const std::string & digest = crypto.decrypt <std::string> (signature, awh::crypto_t::hash_t::NONE, awh::crypto_t::cipher_t::BASE64);
 	// Проверяем что кодирована сама имитовставка, а не её шестнадцатеричная запись
@@ -1229,7 +1230,7 @@ TEST_F(AuthFixture, HmacClockSkewTest){
 	client->component("@method", "GET");
 	client->component("@path", "/data");
 	// Подпись создаётся с created на 30 секунд в будущем
-	const uint64_t future = this->_fmk->timestamp <uint64_t> (awh::fmk_t::chrono_t::SECONDS) + 30;
+	const uint64_t future = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS) + 30;
 	client->signCreated(future);
 	std::vector <std::pair <std::string, std::string>> headers;
 	client->headers(headers);
@@ -1498,7 +1499,7 @@ TEST_F(AuthFixture, HmacSignMaxAgeTest){
 	client->key("shared-secret-key");
 	client->component("@method", "GET");
 	client->component("@path", "/data");
-	const uint64_t now = this->_fmk->timestamp <uint64_t> (awh::fmk_t::chrono_t::SECONDS);
+	const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 	client->signCreated(now - 600);
 	std::vector <std::pair <std::string, std::string>> headers;
 	client->headers(headers);
@@ -1833,7 +1834,7 @@ TEST_F(AuthFixture, HmacStrictDefaultMaxAgeTest){
 	client->component("@method", "GET");
 	client->component("@path", "/data");
 	// Подпись создана 10 минут назад, без expires
-	const uint64_t now = this->_fmk->timestamp <uint64_t> (awh::fmk_t::chrono_t::SECONDS);
+	const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 	client->signCreated(now - 600);
 	std::vector <std::pair <std::string, std::string>> headers;
 	client->headers(headers);

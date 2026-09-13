@@ -25,8 +25,6 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
-#include <fstream>
-#include <sys/stat.h>
 #include <algorithm>
 #include <type_traits>
 #include <unordered_map>
@@ -57,6 +55,7 @@
  *          числом, и сборка развалилась бы вдали от места
  */
 #include <codec/yaml/value.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -468,37 +467,20 @@ awh::codec::yaml::Document::Settings::Settings() noexcept :
  schema(schema_t::CORE), encoding(encoding_t::NONE), duplicates(duplicate_t::ERROR),
  maxDepth(0), maxScalar(0), maxExpansion(0), retain(false) {}
 /**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним лишь
- *          доводом построения, но и после него - потребитель, дерево получивший готовым,
- *          иначе не имел бы способа направить его отчёты в свой журнал вовсе
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::yaml::Document::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-}
-/**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::yaml::Document::Document(const fmk_t * fmk, const log_t * log) noexcept :
- _fmk(fmk), _log(log), _fs(fmk, log), _generation(0), _prologue(0), _encoding(encoding_t::NONE), _versioned(false),
+awh::codec::yaml::Document::Document() noexcept :
+ _fs(), _generation(0), _prologue(0), _encoding(encoding_t::NONE), _versioned(false),
  _schema(schema_t::CORE), _error(error_t::NONE) {}
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки разбора документа
  *
  */
-awh::codec::yaml::Document::Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept :
- _fmk(fmk), _log(log), _fs(fmk, log), _settings(settings), _generation(0), _prologue(0), _encoding(encoding_t::NONE),
+awh::codec::yaml::Document::Document(const settings_t & settings) noexcept :
+ _fs(), _settings(settings), _generation(0), _prologue(0), _encoding(encoding_t::NONE),
  _versioned(false), _schema(settings.schema), _error(error_t::NONE) {}
 /**
  * @brief Метод вывода сообщения об отказе в лог
@@ -508,9 +490,8 @@ void awh::codec::yaml::Document::report() const noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе построения дерева документа
-		this->_log->print("YAML document failed: %s at line %u column %u", log_t::flag_t::CRITICAL, awh::codec::yaml::message(this->_error), this->_location.line, this->_location.column);
+		awh::log::print("YAML document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error), this->_location.line, this->_location.column);
 }
 /**
  * @brief Метод получения настроек разбора документа
@@ -2615,7 +2596,7 @@ bool awh::codec::yaml::Document::parse(const string & text) noexcept {
 	 *          готовому дереву, о которых подпись предупреждает прямо
 	 */
 	// Объект потокового чтения текста
-	reader_t reader(this->_log, settings);
+	reader_t reader(settings);
 	/**
 	 * @brief Функция снятия удержания при кодировке, отличной от UTF-8
 	 *
@@ -2726,11 +2707,13 @@ bool awh::codec::yaml::Document::load(const string & filename) noexcept {
 	 *       что открылось, значит назвать не ту причину, и потребитель пойдёт поверять права
 	 *       и путь вместо вида предмета
 	 *
-	 * @warning Распознавание каталога стоит ДО открытия потока намеренно: у MS Windows
-	 *          каталог потоком не открывается вовсе, и распознавание после открытия было бы
-	 *          там мертво - ответом стал бы код отказа ОТКРЫТИЯ, и договор разошёлся бы по
-	 *          системам. На BSD расхождения этого не видно вовсе. Довод замерен Василием на
-	 *          стенде Windows 11 ARM64; у всех трёх моих кодеков порядок этот соблюдён
+	 * @note Распознавание каталога стоит ПЕРВЫМ намеренно. Прежде довод стоял на порядке
+	 *       относительно открытия потока - у MS Windows каталог потоком не открывался
+	 *       вовсе, - но потока здесь более нет: работа идёт ходом `fs_t`. Порядок остаётся
+	 *       нужен по иной причине: ход чтения на каталоге оставляет пусто, неотличимо от
+	 *       файла пустого, и вид предмета надлежит узнать до чтения. Расхождение по
+	 *       системам замерено Василием на стенде Windows 11 ARM64; у всех трёх моих
+	 *       кодеков порядок этот соблюдён
 	 */
 	/**
 	 * @note Ссылки РАЗРЕШАЮТСЯ - второй довод ложью, - ибо путь, на каталог указывающий
@@ -4851,7 +4834,7 @@ void awh::codec::yaml::Document::compose(writer_t & writer, const uint32_t index
  */
 string awh::codec::yaml::Document::dump(const writer_t::settings_t & settings) const noexcept {
 	// Объект записи текста документа
-	writer_t writer(this->_log, settings);
+	writer_t writer(settings);
 	/**
 	 * Если исходный текст удержан, а документов он не несёт
 	 *
@@ -7328,9 +7311,8 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("%s document failed: %s", log_t::flag_t::CRITICAL, "YAML",
+			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
 			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -7350,9 +7332,8 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("%s document failed: %s", log_t::flag_t::CRITICAL, "YAML",
+			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
 			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
@@ -7374,9 +7355,8 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("%s document failed: %s", log_t::flag_t::CRITICAL, "YAML",
+			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
 			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;

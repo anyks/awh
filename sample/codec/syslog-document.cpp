@@ -18,48 +18,24 @@
  * @copyright Copyright © 2026
  *
  */
+#include <codec/syslog/syslog.hpp>
 
 /**
  * Стандартные заголовочные файлы
  */
 #include <iostream>
+#include <sys/fmk.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/syslog/syslog.hpp>
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён образца
  *
  */
 namespace {
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Выводим объект фреймворка
-		return &fmk;
-	}
 
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект для работы с логами
-		static awh::log_t log(::framework());
-		// Выводим объект для работы с логами
-		return &log;
-	}
 }
 
 /**
@@ -90,11 +66,18 @@ static const char * RECORD =
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Отключаем неиспользуемые переменные
 	(void) argc;
 	(void) argv;
 	// Объект события, удерживаемого целиком
-	codec::syslog::document_t document(::framework(), ::logger());
+	codec::syslog::document_t document;
 	// Если разбор записи отказом завершился
 	if(!document.parse(RECORD)){
 		// Выводим сообщение об ошибке разбора записи
@@ -198,7 +181,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 *       видом, описанию отвечающим, а порядок блоков берётся порядком дерева.
 	 *       Обратимость закрепляется сличением деревьев, а не текстов
 	 */
-	codec::syslog::document_t again(::framework(), ::logger());
+	codec::syslog::document_t again;
 	// Если повторный разбор собранной записи отказом завершился
 	if(!again.parse(built)){
 		// Выводим сообщение об ошибке повторного разбора

@@ -595,9 +595,9 @@ class NetCompareParameterizedFixture : public NetFixture, public ::testing::With
  */
 TEST_P(NetCompareParameterizedFixture, NetCompareIPv4Test){
 	// Создаём первый объект сетевого адреса
-	awh::net_addr_t addr1(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr1;
 	// Создаём второй объект сетевого адреса
-	awh::net_addr_t addr2(this->_fmk.get(), this->_log.get());
+	awh::net_addr_t addr2;
 	// Выполняем парсинг первого хоста
 	ASSERT_TRUE(addr1.parse(this->_parameter.host1));
 	// Выполняем парсинг второго хоста

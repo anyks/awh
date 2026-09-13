@@ -334,9 +334,6 @@ namespace awh {
 				// Код ошибки хранилища собранных выражений
 				mutable storage_error_t _error;
 			private:
-				// Объект журнала событий
-				const log_t * _log;
-			private:
 				/**
 				 * \~russian
 				 * Срок годности записи в секундах
@@ -691,8 +688,8 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Storage(const log_t * log) noexcept :
-				 _error(storage_error_t::NONE), _log(log), _lifetime(0), _trusted(false),
+				explicit Storage() noexcept :
+				 _error(storage_error_t::NONE), _lifetime(0), _trusted(false),
 				 _method(compressor::method_t::NONE), _ciphered(false) {}
 				/**
 				 * \~russian

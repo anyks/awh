@@ -64,8 +64,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "provider.hpp"
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
+#include <sys/log.hpp>
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -476,9 +476,6 @@ namespace awh {
 						// Текущее значение итератора
 						iterator _it;
 					private:
-						// Объект работы с логами
-						const log_t * _log;
-					private:
 						/**
 						 * \~russian
 						 * @brief Метод вывода сообщения об ошибке в лог
@@ -495,7 +492,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
+						void _error(const char * func, const char * message, const awh::log::flag_t flag = awh::log::flag_t::CRITICAL) const noexcept;
 					public:
 						/**
 						 * \~russian
@@ -641,16 +638,14 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 * @param it  итератор для установки
-						 * @param log объект для работы с логами
 						 *
 						 * \~english
 						 * @brief Constructor
 						 * @param it  iterator for the setting
-						 * @param log object for the work with the logs
 						 *
 						 * \~
 						 */
-						explicit Iterator(iterator it, const log_t * log) noexcept;
+						explicit Iterator(iterator it) noexcept;
 				} iterator_t;
 				/**
 				 * \~russian
@@ -709,9 +704,6 @@ namespace awh {
 						// Текущее значение итератора
 						const_iterator _it;
 					private:
-						// Объект работы с логами
-						const log_t * _log;
-					private:
 						/**
 						 * \~russian
 						 * @brief Метод вывода сообщения об ошибке в лог
@@ -728,7 +720,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
+						void _error(const char * func, const char * message, const awh::log::flag_t flag = awh::log::flag_t::CRITICAL) const noexcept;
 					public:
 						/**
 						 * \~russian
@@ -852,16 +844,14 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 * @param it  итератор для установки
-						 * @param log объект для работы с логами
 						 *
 						 * \~english
 						 * @brief Constructor
 						 * @param it  iterator for the setting
-						 * @param log object for the work with the logs
 						 *
 						 * \~
 						 */
-						explicit Const_Iterator(const_iterator it, const log_t * log) noexcept;
+						explicit Const_Iterator(const_iterator it) noexcept;
 				} const_iterator_t;
 			private:
 				/**
@@ -936,11 +926,6 @@ namespace awh {
 			private:
 				// Объект провайдера HTTP-запроса/ответа
 				unique_ptr <provider_t> _provider = nullptr;
-			private:
-				// Объект фреймворка
-				const fmk_t * _fmk = nullptr;
-				// Объект работы с логами
-				const log_t * _log = nullptr;
 			private:
 				/**
 				 * \~russian
@@ -1089,7 +1074,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
+				void _error(const char * func, const char * message, const awh::log::flag_t flag = awh::log::flag_t::CRITICAL) const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -2859,532 +2844,6 @@ namespace awh {
 				 * \~
 				 */
 				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param fmk framework object
-				 * @param log object for working with logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto протокол HTTP-запроса/ответа
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto protocol of the HTTP request/answer
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 *
-				 * \~
-				 */
-				explicit Headers(const provider_t * provider, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 *
-				 * \~
-				 */
-				explicit Headers(unique_ptr <provider_t> && provider, const fmk_t * fmk, const log_t * log) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto   протокол HTTP-запроса/ответа
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto   protocol of the HTTP request/answer
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto   протокол HTTP-запроса/ответа
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto   protocol of the HTTP request/answer
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto   протокол HTTP-запроса/ответа
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto   protocol of the HTTP request/answer
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto   протокол HTTP-запроса/ответа
-				 * @param headers список заголовков инициализации
-				 * @param fmk     объект фреймворка
-				 * @param log     объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto   protocol of the HTTP request/answer
-				 * @param headers list of the headers of the initialization
-				 * @param fmk     object of the framework
-				 * @param log     object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const provider_t * provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const provider_t * provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const provider_t * provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const provider_t * provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(unique_ptr <provider_t> && provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(unique_ptr <provider_t> && provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(unique_ptr <provider_t> && provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(unique_ptr <provider_t> && provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const provider_t * provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const provider_t * provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const provider_t * provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, const provider_t * provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
-			public:
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const fields_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const entries_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, const multimap_t & headers, const fmk_t * fmk, const log_t * log) noexcept;
-				/**
-				 * \~russian
-				 * @brief Конструктор
-				 *
-				 * @param proto    протокол HTTP-запроса/ответа
-				 * @param provider объект провайдера HTTP-запроса/ответа
-				 * @param headers  список заголовков инициализации
-				 * @param fmk      объект фреймворка
-				 * @param log      объект для работы с логами
-				 *
-				 * \~english
-				 * @brief Constructor
-				 * @param proto    protocol of the HTTP request/answer
-				 * @param provider object of the provider of the HTTP request/answer
-				 * @param headers  list of the headers of the initialization
-				 * @param fmk      object of the framework
-				 * @param log      object for the work with the logs
-				 *
-				 * \~
-				 */
-				explicit Headers(const proto_t proto, unique_ptr <provider_t> && provider, initializer_list <header_t> headers, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
 				/**
 				 * \~russian

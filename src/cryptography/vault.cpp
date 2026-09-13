@@ -31,6 +31,7 @@
  */
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён вспомогательных средств
@@ -357,12 +358,9 @@ size_t awh::Vault::count() const noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::Vault::Vault(const fmk_t * fmk, const log_t * log) noexcept :
- _secrets(), _crypto(fmk, log), _ready(false), _shelter(), _fmk(fmk), _log(log) {
+awh::Vault::Vault() noexcept :
+ _secrets(), _crypto(), _ready(false), _shelter() {
 	/**
 	 * Спрашиваем у распределителя, какая защита состоялась НА ДЕЛЕ
 	 *
@@ -407,9 +405,9 @@ awh::Vault::Vault(const fmk_t * fmk, const log_t * log) noexcept :
 	/**
 	 * Если случайного ключа взять неоткуда
 	 */
-	} else if(this->_log != nullptr)
+	} else
 		// Выводим сообщение об ошибке
-		this->_log->print("Vault is not prepared: the source of randomness is not available", log_t::flag_t::CRITICAL);
+		awh::log::print("Vault is not prepared: the source of randomness is not available", awh::log::flag_t::CRITICAL);
 	// Затираем случайные октеты
 	::OPENSSL_cleanse(key, sizeof(key));
 	// Затираем случайные октеты соли

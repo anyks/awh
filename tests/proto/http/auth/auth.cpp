@@ -29,10 +29,6 @@
  *
  */
 void AuthFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 }
 
 /**
@@ -50,5 +46,5 @@ void AuthFixture::TearDown() {}
  */
 std::unique_ptr <awh::http::auth_t> AuthFixture::make(const awh::http::auth_t::owner_t owner) const noexcept {
 	// Создаём и возвращаем объект модуля авторизации
-	return std::make_unique <awh::http::auth_t> (owner, this->_fmk.get(), this->_log.get());
+	return std::make_unique <awh::http::auth_t> (owner);
 }

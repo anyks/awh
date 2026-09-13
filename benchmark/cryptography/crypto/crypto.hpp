@@ -35,8 +35,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/fmk.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/cryptography/crypto.hpp"
 
 /**
@@ -161,20 +159,6 @@ namespace awh {
 			 *
 			 */
 			const std::vector <uint8_t> & buffer() noexcept;
-			/**
-			 * @brief Функция получения объекта фреймворка
-			 *
-			 * @return объект фреймворка
-			 *
-			 */
-			const awh::fmk_t * framework() noexcept;
-			/**
-			 * @brief Функция получения объекта работы с логами
-			 *
-			 * @return объект работы с логами
-			 *
-			 */
-			const awh::log_t * logger() noexcept;
 			/**
 			 * @brief Функция получения эталонного объекта криптографии
 			 *

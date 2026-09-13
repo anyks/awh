@@ -58,31 +58,15 @@ namespace {
 	 *
 	 */
 	struct EnvCef {
-		// Объект фреймворка проверок
-		awh::fmk_t fmk;
-		// Объект журнала проверок
-		awh::log_t log;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		EnvCef() noexcept : log(&this->fmk) {
+		EnvCef() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта окружения проверок
-	 *
-	 * @return объект окружения проверок
-	 *
-	 */
-	EnvCef & environment() noexcept {
-		// Объект окружения проверок
-		static EnvCef env;
-		// Выводим объект окружения проверок
-		return env;
-	}
 	/**
 	 * @brief Разбираемая запись живого журнала
 	 *
@@ -105,7 +89,7 @@ using namespace awh::codec;
  */
 TEST(CodecCefDocument, Layout) {
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Выполняем разбор записи живого журнала
 	ASSERT_TRUE(doc.parse(::RECORD));
 	// Выполняем проверку приставки syslog
@@ -136,7 +120,7 @@ TEST(CodecCefDocument, Layout) {
  */
 TEST(CodecCefDocument, Traversal) {
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Выполняем разбор записи живого журнала
 	ASSERT_TRUE(doc.parse(::RECORD));
 	// Получаем звенья пути расширения записи
@@ -171,7 +155,7 @@ TEST(CodecCefDocument, Traversal) {
  */
 TEST(CodecCefDocument, DuplicateKeys) {
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Выполняем разбор записи живого журнала
 	ASSERT_TRUE(doc.parse(::RECORD));
 	// Получаем звенья пути повторяющегося ключа расширения
@@ -204,7 +188,7 @@ TEST(CodecCefDocument, DuplicateKeys) {
  */
 TEST(CodecCefDocument, Naming) {
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Выполняем разбор записи живого журнала
 	ASSERT_TRUE(doc.parse(::RECORD));
 	// Выполняем проверку того, что обход выдаёт сырые ключи записи
@@ -237,7 +221,7 @@ TEST(CodecCefDocument, Naming) {
  */
 TEST(CodecCefDocument, ResetAgainstErase) {
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Выполняем разбор записи живого журнала
 	ASSERT_TRUE(doc.parse(::RECORD));
 	// Выполняем сброс значения пары расширения
@@ -267,7 +251,7 @@ TEST(CodecCefDocument, ResetAgainstErase) {
  */
 TEST(CodecCefDocument, Roundtrip) {
 	// Объект события CEF
-	cef::document_t first(&::environment().fmk, &::environment().log);
+	cef::document_t first;
 	// Выполняем разбор записи живого журнала
 	ASSERT_TRUE(first.parse(::RECORD));
 	// Выполняем сбор записи CEF из дерева события
@@ -275,7 +259,7 @@ TEST(CodecCefDocument, Roundtrip) {
 	// Выполняем проверку непустоты собранной записи
 	ASSERT_FALSE(text.empty());
 	// Объект события CEF повторного разбора
-	cef::document_t second(&::environment().fmk, &::environment().log);
+	cef::document_t second;
 	// Выполняем повторный разбор собранной записи
 	ASSERT_TRUE(second.parse(text));
 	// Выполняем проверку совпадения деревьев разбора
@@ -290,7 +274,7 @@ TEST(CodecCefDocument, EmptyValue) {
 	// Настройки разбора записей
 	cef::reader_t::settings_t settings;
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Выполняем разбор записи с пустым значением
 	ASSERT_TRUE(doc.parse("CEF:0|A|B|C|D|E|1|cs3= cs3Label=CVEID"));
 	// Выполняем проверку того, что пустое значение есть последовательность знаков
@@ -328,7 +312,7 @@ TEST(CodecCefDocument, Timestamps) {
 	// Настройки разбора записей
 	cef::reader_t::settings_t settings;
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
 	settings.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
@@ -390,7 +374,7 @@ TEST(CodecCefDocument, TimestampRefusal) {
 	// Настройки разбора записей
 	cef::reader_t::settings_t settings;
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
 	settings.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
@@ -427,7 +411,7 @@ TEST(CodecCefDocument, TimestampFraction) {
 	// Настройки разбора записей
 	cef::reader_t::settings_t settings;
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
 	settings.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
@@ -461,7 +445,7 @@ TEST(CodecCefDocument, Strictness) {
 	// Настройки разбора записей
 	cef::reader_t::settings_t settings;
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Устанавливаем строгое сличение ключей расширения со словарём
 	settings.mode = cef::mode_t::STRONG;
 	// Устанавливаем настройки разбора записей
@@ -492,7 +476,7 @@ TEST(CodecCefDocument, Numbers) {
 	// Настройки разбора записей
 	cef::reader_t::settings_t settings;
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Устанавливаем сличение имён ключей и простых видов значений
 	settings.mode = cef::mode_t::MEDIUM;
 	// Устанавливаем настройки разбора записей
@@ -525,7 +509,7 @@ TEST(CodecCefDocument, Numbers) {
  */
 TEST(CodecCefDocument, DeclaredRefusalsAreActuallyRaised) {
 	// Объект события CEF
-	cef::document_t doc(&::environment().fmk, &::environment().log);
+	cef::document_t doc;
 	// Настройки укладки записей в дерево
 	cef::reader_t::settings_t settings;
 	// Устанавливаем сличение имён ключей и всех видов значений
@@ -603,7 +587,7 @@ TEST(CodecCefDocument, DirectoryIsRefused) {
 	// Выполняем заведение каталога подачи
 	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0);
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Выполняем проверку отказа чтения каталога, поданного вместо файла
 	EXPECT_FALSE(document.load(directory));
 	// Выполняем проверку того, что отказ назван кодом чтения файла
@@ -613,13 +597,13 @@ TEST(CodecCefDocument, DirectoryIsRefused) {
 	// Адрес заводимого файла записи событий безопасности
 	const string filename = "./cef-directory-probe.log";
 	// Объект события CEF для записи в файл
-	cef::document_t source(&::environment().fmk, &::environment().log);
+	cef::document_t source;
 	// Выполняем чтение записи событий безопасности деревом события
 	ASSERT_TRUE(source.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Выполняем запись события в файл
 	ASSERT_TRUE(source.save(filename));
 	// Объект события CEF для чтения из файла
-	cef::document_t target(&::environment().fmk, &::environment().log);
+	cef::document_t target;
 	// Выполняем проверку успешности чтения годного файла
 	ASSERT_TRUE(target.load(filename)) << static_cast <uint32_t> (target.error());
 	// Выполняем проверку того, что производитель записи из файла прочтён
@@ -649,7 +633,7 @@ TEST(CodecCefDocument, DirectoryIsRefused) {
  */
 TEST(CodecCefDocument, OversizedPathIndexIsRefused) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Перечень из двух значений, в дерево ставимый
 	abc::value_t list(abc::kind_t::ARRAY);
 	// Ставим первое значение в перечень
@@ -711,7 +695,7 @@ TEST(CodecCefDocument, OversizedPathIndexIsRefused) {
  */
 TEST(CodecCefDocument, EmptyDocumentQueries) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Выполняем проверку того, что пар расширения нет вовсе
 	EXPECT_EQ(document.size(), static_cast <size_t> (0));
 	// Выполняем проверку того, что дата пустого дерева пуста
@@ -741,7 +725,7 @@ TEST(CodecCefDocument, EmptyDocumentQueries) {
  */
 TEST(CodecCefDocument, PathEdges) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Выполняем проверку отказа постановки значения пустым путём
 	EXPECT_FALSE(document.set("", abc::value_t(string("value"))));
 	// Выполняем проверку отказа постановки значения корневым путём
@@ -820,7 +804,7 @@ TEST(CodecCefDocument, PathEdges) {
  */
 TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Настройки укладки записей в дерево
 	cef::reader_t::settings_t settings;
 	// Устанавливаем сличение имён ключей и всех видов значений
@@ -850,7 +834,7 @@ TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	 * @note Дерево заводится ЗАНОВО: разбор, отказом завершившийся, оставляет прежнее
 	 *       дерево, и проверка на старом объекте мерила бы не тот разбор
 	 */
-	cef::document_t broken(&::environment().fmk, &::environment().log);
+	cef::document_t broken;
 	// Устанавливаем настройки укладки записей в дерево
 	ASSERT_TRUE(broken.settings(settings));
 	// Выполняем проверку отказа разбора значения, числом не являющегося
@@ -858,7 +842,7 @@ TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	// Выполняем проверку кода отказа разбора записи
 	EXPECT_EQ(broken.error(), cef::error_t::INVALID_NUMBER);
 	// Объект события CEF для дробного значения, числом не являющегося
-	cef::document_t fractional(&::environment().fmk, &::environment().log);
+	cef::document_t fractional;
 	// Устанавливаем настройки укладки записей в дерево
 	ASSERT_TRUE(fractional.settings(settings));
 	// Выполняем проверку отказа разбора дробного значения, числом не являющегося
@@ -872,7 +856,7 @@ TEST(CodecCefDocument, TypedValuesAtStrongMode) {
 	 *       умолчании та же запись читается успешно, а значения ложатся знаками. Без неё
 	 *       проверка зеленела бы и с выключенным сличением
 	 */
-	cef::document_t weak(&::environment().fmk, &::environment().log);
+	cef::document_t weak;
 	// Выполняем проверку успешности разбора негодного значения при умолчании настроек
 	ASSERT_TRUE(weak.parse("CEF:0|security|threatmanager|1.0|100|detected|10|cn1=сорок"));
 	// Выполняем проверку того, что значение легло в дерево знаками
@@ -893,7 +877,7 @@ TEST(CodecCefDocument, TypedValuesAtStrongMode) {
  */
 TEST(CodecCefDocument, FieldByFullName) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Выполняем разбор записи с ключами расширения
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1 ownKey=собственное"));
 	// Выполняем проверку выдачи значения по полному имени ключа
@@ -924,7 +908,7 @@ TEST(CodecCefDocument, FieldByFullName) {
  */
 TEST(CodecCefDocument, FailurePaths) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Выполняем проверку отказа записи события в непригодный файл
@@ -949,7 +933,7 @@ TEST(CodecCefDocument, FailurePaths) {
 	// Выполняем проверку того, что чтение следующей записи новыми настройками идёт
 	EXPECT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Объект события CEF для отказа разбора
-	cef::document_t broken(&::environment().fmk, &::environment().log);
+	cef::document_t broken;
 	// Выполняем проверку отказа разбора записи, описанию не отвечающей
 	EXPECT_FALSE(broken.parse("НЕ CEF ВОВСЕ|security"));
 	// Выполняем проверку того, что отказ назван кодом
@@ -972,7 +956,7 @@ TEST(CodecCefDocument, FailurePaths) {
  */
 TEST(CodecCefDocument, PathEscaping) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Выполняем проверку постановки значения именем с косой чертой
@@ -1010,7 +994,7 @@ TEST(CodecCefDocument, PathEscaping) {
  */
 TEST(CodecCefDocument, EraseArrayItem) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Выполняем разбор записи с повторяющимся ключом расширения
 	ASSERT_TRUE(document.parse("CEF:0|A|B|C|D|E|1|cs1=первое cs1=второе cs1=третье"));
 	// Выполняем проверку того, что значения ключа сложены перечнем
@@ -1036,7 +1020,7 @@ TEST(CodecCefDocument, EraseArrayItem) {
  */
 TEST(CodecCefDocument, SettingsRoundtrip) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Настройки разбора событий
 	cef::reader_t::settings_t settings;
 	// Отключаем разбор приставки syslog перед словом «CEF:»
@@ -1060,7 +1044,7 @@ TEST(CodecCefDocument, SettingsRoundtrip) {
  */
 TEST(CodecCefDocument, SetThroughScalarDeepPath) {
 	// Объект события CEF
-	cef::document_t document(&::environment().fmk, &::environment().log);
+	cef::document_t document;
 	// Ставим значение скаляром звеном будущего пути
 	ASSERT_TRUE(document.set("/extension/src", abc::value_t(string("1.2.3.4"))));
 	// Выполняем проверку отказа постановки значения сквозь скаляр в середине пути
@@ -1083,7 +1067,7 @@ TEST(CodecCefDocument, SetThroughScalarDeepPath) {
  */
 TEST(CodecCefDocument, FileRoundtrip) {
 	// Объект события, записываемого в файл
-	cef::document_t source(&::environment().fmk, &::environment().log);
+	cef::document_t source;
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(source.parse("CEF:0|security|threatmanager|1.0|100|detected a threat|10|src=10.0.0.1 spt=1232"));
 	// Адрес временного файла оборота
@@ -1091,7 +1075,7 @@ TEST(CodecCefDocument, FileRoundtrip) {
 	// Выполняем проверку успешности записи события в файл
 	ASSERT_TRUE(source.save(filename));
 	// Объект события, из файла читаемого
-	cef::document_t target(&::environment().fmk, &::environment().log);
+	cef::document_t target;
 	// Выполняем проверку успешности чтения события из файла
 	ASSERT_TRUE(target.load(filename));
 	// Выполняем проверку того, что оборот через файл дал то же дерево
@@ -1125,7 +1109,7 @@ TEST(CodecCefDocument, SaveOverLongerFile) {
 	// Адрес временного файла сохранения
 	const string filename = "/tmp/awh-cef-overwrite.log";
 	// Объект события, записываемого длинной записью
-	cef::document_t before(&::environment().fmk, &::environment().log);
+	cef::document_t before;
 	// Выполняем разбор длинной записи событий безопасности
 	ASSERT_TRUE(before.parse("CEF:0|security|threatmanager|1.0|100|detected a threat|10|src=10.0.0.1 spt=1232 dst=10.0.0.2 dpt=443 msg=длинное сообщение записи"));
 	// Выполняем проверку успешности записи длинной записи в файл
@@ -1133,7 +1117,7 @@ TEST(CodecCefDocument, SaveOverLongerFile) {
 	// Величина файла с длинной записью
 	const size_t length = before.dump().size();
 	// Объект события, записываемого короткой записью
-	cef::document_t after(&::environment().fmk, &::environment().log);
+	cef::document_t after;
 	// Выполняем разбор короткой записи событий безопасности
 	ASSERT_TRUE(after.parse("CEF:0|A|B|C|D|E|1|src=1.2.3.4"));
 	// Выполняем проверку того, что короткая запись длинной короче
@@ -1141,7 +1125,7 @@ TEST(CodecCefDocument, SaveOverLongerFile) {
 	// Выполняем проверку успешности записи короткой записи поверх длинной
 	ASSERT_TRUE(after.save(filename));
 	// Объект события, из файла читаемого
-	cef::document_t target(&::environment().fmk, &::environment().log);
+	cef::document_t target;
 	// Выполняем проверку успешности чтения события из файла
 	ASSERT_TRUE(target.load(filename));
 	// Выполняем проверку того, что в файле осталась одна лишь короткая запись
@@ -1189,7 +1173,7 @@ TEST(CodecCefDocument, UnreadableFileIsRefused) {
 	// Адрес временного файла проверки
 	const string filename = "/tmp/awh-cef-unreadable.log";
 	// Объект события, записываемого в файл
-	cef::document_t source(&::environment().fmk, &::environment().log);
+	cef::document_t source;
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(source.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Выполняем проверку успешности записи события в файл
@@ -1197,7 +1181,7 @@ TEST(CodecCefDocument, UnreadableFileIsRefused) {
 	// Выполняем отнятие всех прав у файла проверки
 	ASSERT_EQ(::chmod(filename.c_str(), 0), 0);
 	// Объект события, из файла читаемого
-	cef::document_t target(&::environment().fmk, &::environment().log);
+	cef::document_t target;
 	// Выполняем проверку отказа чтения файла, для чтения недоступного
 	EXPECT_FALSE(target.load(filename));
 	// Выполняем проверку того, что отказ назван кодом чтения файла
@@ -1206,4 +1190,101 @@ TEST(CodecCefDocument, UnreadableFileIsRefused) {
 	ASSERT_EQ(::chmod(filename.c_str(), 0600), 0);
 	// Выполняем снос временного файла проверки
 	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка чтения записи по символьной ссылке
+ *
+ * @details Ссылка на файл читается ровно как файл: тот, кто её открывает, разницы не
+ *          видит, и `ifstream`, стоявший здесь до переезда на `sys/fs`, открывал её без
+ *          всякой оговорки. Договор кодека обязан остаться тем же
+ *
+ * @note Заведено 13.09.2026 по РЕГРЕССИИ, внесённой переездом: ход `fs_t::type` по
+ *       умолчанию ссылку ОТЛИЧАЕТ от файла, отвечая `LINK`, и первая редакция заслона
+ *       отвергала всякую ссылку кодом `FILE_NOT_OPENED`. Прочесть её `fs_t` при этом
+ *       давал без единой жалобы - отказ был выдуман кодеком, а не системой. Ни одна
+ *       проверка ссылок не касалась, оттого регрессия и прошла восемь машин зелёной
+ *
+ */
+TEST(CodecCefDocument, SymlinkIsReadAsFile) {
+	// Адрес файла записи
+	const string filename = "/tmp/awh-cef-symlink-target.log";
+	// Адрес символьной ссылки на файл записи
+	const string linkname = "/tmp/awh-cef-symlink.log";
+	// Объект события, записываемого в файл
+	cef::document_t source;
+	// Выполняем разбор годной записи событий безопасности
+	ASSERT_TRUE(source.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
+	// Выполняем проверку успешности записи события в файл
+	ASSERT_TRUE(source.save(filename));
+	// Выполняем снос ссылки, прежним прогоном оставленной
+	::remove(linkname.c_str());
+	// Выполняем заведение символьной ссылки на файл записи
+	ASSERT_EQ(::symlink(filename.c_str(), linkname.c_str()), 0);
+	// Объект события, по ссылке читаемого
+	cef::document_t target;
+	// Выполняем проверку успешности чтения события по символьной ссылке
+	ASSERT_TRUE(target.load(linkname)) << "код отказа: " << static_cast <uint32_t> (target.error());
+	// Выполняем проверку того, что чтение по ссылке дало то же дерево
+	EXPECT_EQ(source.root(), target.root());
+	// Выполняем снос символьной ссылки
+	::remove(linkname.c_str());
+	// Выполняем снос файла записи
+	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка отклонения символьной ссылки на каталог
+ *
+ * @details Ссылка на каталог есть тот же каталог для того, кто его открывает, и отвечаться
+ *          обязана тем же кодом, что и каталог поданный прямо
+ *
+ */
+TEST(CodecCefDocument, SymlinkToDirectoryIsRefused) {
+	// Адрес символьной ссылки на каталог
+	const string linkname = "/tmp/awh-cef-dirlink";
+	// Выполняем снос ссылки, прежним прогоном оставленной
+	::remove(linkname.c_str());
+	// Выполняем заведение символьной ссылки на каталог
+	ASSERT_EQ(::symlink("/tmp", linkname.c_str()), 0);
+	// Объект события CEF
+	cef::document_t document;
+	// Выполняем проверку отказа чтения по ссылке на каталог
+	EXPECT_FALSE(document.load(linkname));
+	// Выполняем проверку того, что отказ назван кодом чтения файла
+	EXPECT_EQ(document.error(), cef::error_t::FILE_NOT_READ);
+	// Выполняем снос символьной ссылки
+	::remove(linkname.c_str());
+}
+
+/**
+ * @brief Проверка отказа сохранения там, где писать нельзя
+ *
+ * @details Отказ записи опознаётся ПРИЗНАКОМ самого хода `fs_t::write`: с переделки
+ *          `sys/fs` все восемь работ записи отвечают вызывающему, а не одному лишь
+ *          журналу. Ветвь эта прежде проверками затронута не была вовсе - карта покрытия
+ *          держала её пустой, - и отказ сохранения был неотличим от успеха
+ *
+ * @note Два негодных адреса и оба взяты из живых ошибок потребителя: путь в несуществующий
+ *       каталог и путь, каталогом ЯВЛЯЮЩИЙСЯ
+ *
+ */
+TEST(CodecCefDocument, SaveFailureIsReported) {
+	// Объект события, записываемого в файл
+	cef::document_t document;
+	// Выполняем разбор годной записи событий безопасности
+	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
+	// Выполняем проверку отказа сохранения в несуществующий каталог
+	EXPECT_FALSE(document.save("/tmp/awh-cef-нет-такого-каталога/событие.log"));
+	// Выполняем проверку отказа сохранения по адресу, каталогом являющемуся
+	EXPECT_FALSE(document.save("/tmp"));
+	/**
+	 * Объект события, записи не несущего
+	 *
+	 * @note Сбор записи из пустого дерева отвечается пустотою, и сохранять тогда нечего:
+	 *       заведись файл, потребитель получил бы пустой файл вместо отказа
+	 */
+	cef::document_t empty;
+	// Выполняем проверку отказа сохранения события, записи не несущего
+	EXPECT_FALSE(empty.save("/tmp/awh-cef-empty.log"));
 }

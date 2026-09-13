@@ -31,11 +31,11 @@
  * Подключаем заголовочные файлы бенчмарков
  */
 #include "cef.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён сценариев этого файла
@@ -51,44 +51,14 @@ namespace {
 	 */
 	struct SilentCefReader {
 		/**
-		 * @brief Функция получения объекта фреймворка сценариев
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          сценарии, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка сценариев
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка сценариев
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка сценариев
-			return fmk;
-		}
-		// Объект журнала сценариев
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentCefReader() noexcept : log(&SilentCefReader::framework()) {
+		SilentCefReader() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала сценариев
-	 *
-	 * @return объект журнала сценариев
-	 *
-	 */
-	const awh::log_t * readerLogger() noexcept {
-		// Объект журнала сценариев
-		static SilentCefReader silent;
-		// Выводим объект журнала сценариев
-		return &silent.log;
-	}
 
 	/**
 	 * @brief Порог пропускной способности чтения записи обнаружения вторжений
@@ -214,7 +184,7 @@ namespace {
 	 */
 	size_t consume(const std::string & text, const size_t step = 0) noexcept {
 		// Объект потокового чтения записей
-		awh::codec::cef::reader_t reader(&SilentCefReader::framework(), ::readerLogger());
+		awh::codec::cef::reader_t reader;
 		// Количество выданных событий разбора
 		size_t result = 0;
 		// Смещение подачи текста записей

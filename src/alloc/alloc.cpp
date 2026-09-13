@@ -105,6 +105,7 @@
 #include <atomic>
 #include <cstring>
 #include <chrono>
+#include <sys/log.hpp>
 
 /**
  * Ветвление процесса есть не у всех систем
@@ -463,8 +464,6 @@ namespace {
 	 */
 	// Наибольшее занятое за время работы
 	static std::atomic <int64_t> summit(0);
-	// Объект журнала
-	static const awh::log_t * journal = nullptr;
 	/**
 	 * Поток доклада
 	 *
@@ -1642,11 +1641,11 @@ namespace {
 				// Получаем состояние карантина
 				const awh::alloc::Quarantine::state_t quarantine = machinery->quarantine.state();
 				// Если испорченных блоков прибавилось
-				if((quarantine.spoiled > spoiledSeen) && (journal != nullptr)){
+				if(quarantine.spoiled > spoiledSeen){
 					// Запоминаем число доложенных испорченных блоков
 					spoiledSeen = quarantine.spoiled;
 					// Докладываем о записи по освобождённому блоку
-					journal->print("Memory was written after being freed: %zu block(s), first at %p offset %zu", awh::log_t::flag_t::CRITICAL, quarantine.spoiled, quarantine.culprit, quarantine.offset);
+					awh::log::print("Memory was written after being freed: %zu block(s), first at %p offset %zu", awh::log::flag_t::CRITICAL, quarantine.spoiled, quarantine.culprit, quarantine.offset);
 				}
 				/**
 				 * Отдаём системе свободное, отлежавшее отсрочку
@@ -3466,13 +3465,11 @@ void awh::alloc::Allocator::release(void * addr) noexcept {
  * @brief Метод захвата выделения памяти процесса
  *
  * @param options настройки распределителя
- * @param log     объект журнала
  * @return        признак состоявшегося захвата
  *
  */
-bool awh::alloc::Allocator::capture(const options_t & options, const log_t * log) noexcept {
+bool awh::alloc::Allocator::capture(const options_t & options) noexcept {
 	// Запоминаем объект журнала
-	::journal = log;
 	/**
 	 * Отказываем сразу, если подмена запрещена сборкой
 	 *
@@ -3481,10 +3478,8 @@ bool awh::alloc::Allocator::capture(const options_t & options, const log_t * log
 	 * обслуживания и занятая область завелись бы под выдачу, какой к ним не придёт
 	 */
 	#if defined(AWH_ALLOC_DISABLED)
-		// Если объект журнала задан
-		if(::journal != nullptr)
-			// Записываем отказ захвата в журнал
-			::journal->print("Memory allocation capture is disabled at build time", log_t::flag_t::WARNING);
+		// Записываем отказ захвата в журнал
+		awh::log::print("Memory allocation capture is disabled at build time", awh::log::flag_t::WARNING);
 		// Отвечаем отказом
 		return false;
 	#endif
@@ -3607,10 +3602,8 @@ bool awh::alloc::Allocator::capture(const options_t & options, const log_t * log
 		 */
 		// Останавливаем поток обслуживания, заведённый выше
 		::slumber();
-		// Если объект журнала задан
-		if(::journal != nullptr)
-			// Записываем отказ захвата в журнал
-			::journal->print("Memory allocation capture failed: %s", log_t::flag_t::WARNING, ::seizing()->name());
+		// Записываем отказ захвата в журнал
+		awh::log::print("Memory allocation capture failed: %s", awh::log::flag_t::WARNING, ::seizing()->name());
 		// Отвечаем отказом
 		return false;
 	}

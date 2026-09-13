@@ -41,8 +41,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../http.hpp"
-#include "../../../sys/fmk.hpp"
-#include "../../../sys/log.hpp"
 #include "../../../sys/macro/global.hpp"
 
 /**
@@ -317,11 +315,6 @@ namespace awh {
 				status_t _status;
 				// Направление потока данных (запрос/ответ)
 				direct_t _direct;
-			protected:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -469,18 +462,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param direct направление потока данных
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 * @param direct direction of the stream of the data
-				 * @param fmk    object of the framework
-				 * @param log    object for the work with the logs
 				 *
 				 * \~
 				 */
-				explicit Parser(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Parser(const direct_t direct) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

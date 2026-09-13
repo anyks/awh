@@ -7,9 +7,14 @@
 #include "silent.hpp"
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 using namespace std; using namespace awh;
 struct Item { const char * pattern; const char * text; const char * name; };
 int main(){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
+	// Отключаем вывод журнала работы стенда
+	verify::silence();
 	const vector<Item> items = {
 		{"(?<y>\\d{4})-(?<m>\\d{2})-(?<d>\\d{2})", "дата 2026-07-31 тут", "y"},
 		{"(?<y>\\d{4})-(?<m>\\d{2})-(?<d>\\d{2})", "дата 2026-07-31 тут", "m"},
@@ -25,7 +30,7 @@ int main(){
 		{"(?<w>\\w+) \\k<w>", "hello hello", "w"}
 	};
 	size_t checked = 0, diverged = 0;
-	regexp_t regexp(verify::logger());
+	regexp_t regexp;
 	for(const auto & item : items){
 		// Эталон
 		int32_t e = 0; PCRE2_SIZE o = 0;

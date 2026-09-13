@@ -62,6 +62,7 @@
  * Подключаем заголовочный файл
  */
 #include <sys/fiber.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -593,17 +594,14 @@ namespace awh {
 	 *
 	 * @param task функция, выполняемая волокном
 	 * @param size размер стека волокна в октетах
-	 * @param log  объект работы с логами
 	 * @return     заведённое волокно, либо nullptr при отказе
 	 *
 	 */
-	static fiber::ctx_t * __awh_spawn__(fiber::task_t && task, const size_t size, const log_t * log) noexcept {
+	static fiber::ctx_t * __awh_spawn__(fiber::task_t && task, const size_t size) noexcept {
 		// Если работа волокна не задана, заводить нечего
 		if(task == nullptr){
-			// Если объект логирования передан
-			if(log != nullptr)
 				// Записываем ошибку в лог
-				log->print("Fiber cannot be spawned without a task", log_t::flag_t::WARNING);
+				awh::log::print("Fiber cannot be spawned without a task", awh::log::flag_t::WARNING);
 			// Выводим пустой результат
 			return nullptr;
 		}
@@ -611,10 +609,8 @@ namespace awh {
 		fiber::ctx_t * result = new (std::nothrow) fiber::ctx_t();
 		// Если волокно завести не удалось
 		if(result == nullptr){
-			// Если объект логирования передан
-			if(log != nullptr)
 				// Записываем ошибку в лог
-				log->print("Fiber object cannot be allocated", log_t::flag_t::CRITICAL);
+				awh::log::print("Fiber object cannot be allocated", awh::log::flag_t::CRITICAL);
 			// Выводим пустой результат
 			return nullptr;
 		}
@@ -641,10 +637,8 @@ namespace awh {
 			void * memory = ::mmap(nullptr, (size + __awh_fiber_page__()), (PROT_READ | PROT_WRITE), (MAP_PRIVATE | MAP_ANON | MAP_STACK), -1, 0);
 			// Если память под стек отвести не удалось
 			if(memory == MAP_FAILED){
-				// Если объект логирования передан
-				if(log != nullptr)
 					// Записываем ошибку в лог
-					log->print("Fiber stack of %zu bytes cannot be mapped", log_t::flag_t::CRITICAL, size);
+					awh::log::print("Fiber stack of %zu bytes cannot be mapped", awh::log::flag_t::CRITICAL, size);
 				// Освобождаем волокно
 				delete result;
 				// Выводим пустой результат
@@ -667,10 +661,8 @@ namespace awh {
 			 *       работает ровно так же, как работало прежде, - но в журнал заносится
 			 */
 			if(::mprotect(memory, __awh_fiber_page__(), PROT_NONE) != 0){
-				// Если объект логирования передан
-				if(log != nullptr)
 					// Записываем предупреждение в лог
-					log->print("Fiber stack guard page cannot be protected: %s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("Fiber stack guard page cannot be protected: %s", awh::log::flag_t::WARNING, ::strerror(errno));
 			}
 			// Запоминаем стек волокна, начиная его ЗА стражем
 			result->stack = (reinterpret_cast <char *> (memory) + __awh_fiber_page__());
@@ -697,10 +689,8 @@ namespace awh {
 			result->handle = ::CreateFiber(size, &__awh_fiber_trampoline__, result);
 			// Если волокно системы завести не удалось
 			if(result->handle == nullptr){
-				// Если объект логирования передан
-				if(log != nullptr)
 					// Записываем ошибку в лог
-					log->print("System fiber cannot be created", log_t::flag_t::CRITICAL);
+					awh::log::print("System fiber cannot be created", awh::log::flag_t::CRITICAL);
 				// Освобождаем волокно
 				delete result;
 				// Выводим пустой результат
@@ -978,18 +968,15 @@ awh::fiber::Context * awh::fiber::current() noexcept {
  * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
  *
  * @param task функция, выполняемая волокном
- * @param log  объект работы с логами
  * @return     заведённое волокно, либо nullptr при отказе
  *
  */
-awh::fiber::Context * awh::fiber::spawn(task_t task, const log_t * log) noexcept {
+awh::fiber::Context * awh::fiber::spawn(task_t task) noexcept {
 	// Выводим заведённое волокно
-	return __awh_spawn__(::move(task), STACK_SIZE, log);
+	return __awh_spawn__(::move(task), STACK_SIZE);
 }
 /**
  * @brief Функция заведения волокна
- *
- * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
  *
  * @param task функция, выполняемая волокном
  * @param size размер стека волокна в октетах
@@ -998,20 +985,7 @@ awh::fiber::Context * awh::fiber::spawn(task_t task, const log_t * log) noexcept
  */
 awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept {
 	// Выводим заведённое волокно
-	return __awh_spawn__(::move(task), size, nullptr);
-}
-/**
- * @brief Функция заведения волокна
- *
- * @param task функция, выполняемая волокном
- * @param size размер стека волокна в октетах
- * @param log  объект работы с логами
- * @return     заведённое волокно, либо nullptr при отказе
- *
- */
-awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size, const log_t * log) noexcept {
-	// Выводим заведённое волокно
-	return __awh_spawn__(::move(task), size, log);
+	return __awh_spawn__(::move(task), size);
 }
 
 /**

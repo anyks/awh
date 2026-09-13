@@ -38,6 +38,7 @@
  * Подключаем заголовочные файлы тестового окружения
  */
 #include "../../main.hpp"
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -57,54 +58,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта фреймворка проверок
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -126,7 +87,7 @@ using namespace awh::codec;
  */
 static bool convert(const string & input, const size_t step, string & result, xml::error_t & error, xml::encoding_t & enc) noexcept {
 	// Объект приведения исходного текста к кодировке UTF-8
-	xml::decoder_t decoder(::logger());
+	xml::decoder_t decoder;
 	// Выполняем очистку приведённого текста
 	result.clear();
 	/**
@@ -525,7 +486,7 @@ TEST(CodecXmlEncoding, Forced) {
 	// Приведённый к кодировке UTF-8 текст
 	string result;
 	// Объект приведения исходного текста к кодировке UTF-8
-	xml::decoder_t decoder(::logger());
+	xml::decoder_t decoder;
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(xml::encoding_t::LATIN1));
 	// Выполняем приведение исходного текста
@@ -720,7 +681,7 @@ TEST(CodecXmlEncoding, SameTextAcrossEncodings) {
 		// Выполняем склеивание подряд идущих кусков содержимого
 		settings.mergeText = true;
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(::logger());
+		xml::reader_t reader;
 		// Выполняем установку настроек разбора текста разметки
 		reader.settings(settings);
 		// Собираемый слепок выдачи разбора
@@ -813,7 +774,7 @@ TEST(CodecXmlEncoding, TruncatedCharacter) {
 	// Дописываем закрывающую метку узла разметки
 	text.append("</a>");
 	// Объект потокового чтения разметки
-	xml::reader_t reader(::logger());
+	xml::reader_t reader;
 	// Выполняем подачу текста разметки целиком
 	ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
 	/**
@@ -875,7 +836,7 @@ TEST(CodecXmlEncoding, ByteOrderMarkAgreement) {
 	 */
 	auto outcome = [](const string & text) -> xml::error_t {
 		// Объект потокового чтения разметки
-		xml::reader_t reader(::logger());
+		xml::reader_t reader;
 		// Выполняем подачу текста разметки целиком
 		reader.feed(text.data(), text.size(), true);
 		// Выполняем перебор всех событий разбора
@@ -953,7 +914,7 @@ TEST(CodecXmlEncoding, ReaderRefusals) {
 	 */
 	auto feed = [](const string & text, const size_t step) noexcept -> xml::error_t {
 		// Объект потокового чтения текста разметки
-		xml::reader_t reader(::logger());
+		xml::reader_t reader;
 		// Положение подачи в разбираемом тексте
 		size_t offset = 0;
 		/**
@@ -1065,7 +1026,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder(::logger());
+		xml::decoder_t decoder;
 		// Приведённый текст
 		string result;
 		// Выполняем подачу куска, оборванного посреди последовательности знака
@@ -1080,7 +1041,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder(::logger());
+		xml::decoder_t decoder;
 		// Приведённый текст
 		string result;
 		// Выполняем подачу куска, оборванного посреди последовательности знака
@@ -1098,7 +1059,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder(::logger());
+		xml::decoder_t decoder;
 		// Приведённый текст
 		string result;
 		// Выполняем подачу куска, оборванного посреди последовательности знака
@@ -1115,7 +1076,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 		// Выполняем перебор кодировок и недопустимых знаков в них
 		for(uint32_t kind = 0; kind < 4; kind++){
 			// Объект приведения кодировки исходного текста
-			xml::decoder_t decoder(::logger());
+			xml::decoder_t decoder;
 			// Приведённый текст
 			string result;
 			// Приводимый кусок исходного текста
@@ -1153,7 +1114,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder(::logger());
+		xml::decoder_t decoder;
 		// Приведённый текст
 		string result;
 		// Выполняем подачу негодной последовательности байтов
@@ -1170,7 +1131,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder(::logger());
+		xml::decoder_t decoder;
 		// Приведённый текст
 		string result;
 		// Собираем объявление разметки со словом без знака равенства
@@ -1187,7 +1148,7 @@ TEST(CodecXmlEncoding, ChunkBoundaryAndKinds) {
 	 */
 	{
 		// Объект приведения кодировки исходного текста
-		xml::decoder_t decoder(::logger());
+		xml::decoder_t decoder;
 		// Выполняем навязывание кодировки извне
 		ASSERT_TRUE(decoder.encoding(xml::encoding_t::UTF8));
 		// Выполняем проверку установки навязанной кодировки
@@ -1227,7 +1188,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 		{"cp866",        "\x8F\xE0\xA8\xA2\xA5\xE2"}
 	}) {
 		// Дерево разметки
-		xml::document_t document(::framework(), ::logger());
+		xml::document_t document;
 		// Собираем текст разметки с объявлением очередной кодировки
 		const string text = ("<?xml version=\"1.0\" encoding=\"" + item.first + "\"?><a>" + item.second + "</a>");
 		// Выполняем разбор текста разметки
@@ -1267,7 +1228,7 @@ TEST(CodecXmlEncoding, SingleByteEncodingsFromCharset){
 		"UTF-32"
 	}) {
 		// Дерево разметки
-		xml::document_t document(::framework(), ::logger());
+		xml::document_t document;
 		// Собираем текст разметки с объявлением неподдерживаемой кодировки
 		const string text = ("<?xml version=\"1.0\" encoding=\"" + item + "\"?><a>x</a>");
 		// Выполняем проверку отказа разбора
@@ -1581,7 +1542,7 @@ TEST(CodecXmlEncoding, NameableAgreesWithTheWriter) {
 		// Приговор открытого посредника годности имени
 		const bool verdict = xml::nameable(name);
 		// Объект записи текста разметки
-		xml::writer_t writer(::logger());
+		xml::writer_t writer;
 		// Признак принятия имени самой записью
 		const bool taken = writer.open(name);
 		// Выполняем проверку совпадения приговоров
@@ -1654,7 +1615,7 @@ TEST(CodecXmlEncoding, BothHalvesAgreeOnNameValidity) {
 		// Приговор открытого посредника годности имени
 		const bool judge = xml::nameable(probe.name);
 		// Чтение текста разметки
-		xml::reader_t reader(::logger());
+		xml::reader_t reader;
 		// Текст разметки с проверяемым именем узла
 		const string text = string("<") + probe.name + "/>";
 		// Выполняем подачу текста разметки целиком
@@ -1713,7 +1674,7 @@ TEST(CodecXmlEncoding, FastNameTableAgreesWithTheSlowJudge) {
 	 */
 	const auto taken = [](const string & text, const string & expected) noexcept -> bool {
 		// Чтение текста разметки
-		xml::reader_t reader(::logger());
+		xml::reader_t reader;
 		// Выполняем подачу текста разметки целиком
 		reader.feed(text.data(), text.size(), true);
 		// Местное имя разобранного узла разметки

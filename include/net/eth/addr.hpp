@@ -37,8 +37,7 @@
  */
 #include "iface.hpp"
 #include "../net.hpp"
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -120,11 +119,6 @@ namespace awh {
 			private:
 				// Объект управления шлюзами, которым спрашивается маршрут
 				const Gateway * _gateway;
-			private:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -374,17 +368,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Network_Address(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Network_Address() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

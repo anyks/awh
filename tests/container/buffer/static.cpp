@@ -57,7 +57,7 @@ TEST_F(BufferFixture, ResetAndCreateBufferTest){
 	// Проверяем что объект буфера удалён
 	ASSERT_TRUE(this->_buffer == nullptr);
 	// Создаём объект буфера заново
-	this->_buffer = std::make_unique <awh::buffer_t> (this->_fmk.get(), this->_log.get());
+	this->_buffer = std::make_unique <awh::buffer_t> ();
 	// Проверяем что объект буфера создан
 	ASSERT_TRUE(this->_buffer != nullptr);
 }
@@ -70,7 +70,7 @@ TEST_F(BufferFixture, ReCreateBufferTest){
 	// Если объект буфера создан
 	ASSERT_TRUE(this->_buffer != nullptr);
 	// Создаём объект буфера заново
-	this->_buffer = std::make_unique <awh::buffer_t> (this->_fmk.get(), this->_log.get());
+	this->_buffer = std::make_unique <awh::buffer_t> ();
 	// Проверяем что объект буфера создан
 	ASSERT_TRUE(this->_buffer != nullptr);
 }
@@ -81,9 +81,9 @@ TEST_F(BufferFixture, ReCreateBufferTest){
  */
 TEST_F(BufferFixture, CopyBufferTest){
 	// Создаём первый буфер данных
-	awh::buffer_t buffer1(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer1;
 	// Создаём второй буфер данных
-	awh::buffer_t buffer2(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer2;
 	/**
 	 * В цикле добавляем данные в буфер
 	 */
@@ -104,9 +104,9 @@ TEST_F(BufferFixture, CopyBufferTest){
  */
 TEST_F(BufferFixture, MoveBufferTest){
 	// Создаём первый буфер данных
-	awh::buffer_t buffer1(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer1;
 	// Создаём второй буфер данных
-	awh::buffer_t buffer2(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer2;
 	// Заполняем первый буфер данными
 	std::vector <size_t> data = {888,9320,444,228,713,908,41134,77,24,1,66,39};
 	/**
@@ -135,9 +135,9 @@ TEST_F(BufferFixture, MoveBufferTest){
  */
 TEST_F(BufferFixture, IndexesBufferTest){
 	// Создаём первый буфер данных
-	awh::buffer_t buffer1(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer1;
 	// Создаём второй буфер данных
-	awh::buffer_t buffer2(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer2;
 	/**
 	 * В цикле добавляем данные в буфер
 	 */
@@ -181,7 +181,7 @@ TEST_F(BufferFixture, IndexesBufferTest){
  */
 TEST_F(BufferFixture, ZeroCopyPrepareCommitBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Данные для записи
 	const std::string text = "Hello Zero-Copy World";
 	// Резервируем место в хвосте буфера
@@ -214,7 +214,7 @@ TEST_F(BufferFixture, ZeroCopyPrepareCommitBufferTest){
  */
 TEST_F(BufferFixture, WriterGuardBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Данные для записи
 	const std::string text = "Framed payload";
 	/**
@@ -261,7 +261,7 @@ TEST_F(BufferFixture, WriterGuardBufferTest){
  */
 TEST_F(BufferFixture, StreamConsumeBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Добавляем полный фрейм и кусок следующего фрейма
 	ASSERT_TRUE(buffer.push(std::string("FRAME1")));
 	// Добавляем часть следующего фрейма
@@ -290,7 +290,7 @@ TEST_F(BufferFixture, StreamConsumeBufferTest){
  */
 TEST_F(BufferFixture, OverflowLimitBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Устанавливаем максимальный размер потребления памяти
 	buffer.setMaxMemory(16);
 	// Добавляем данные в пределах лимита
@@ -319,7 +319,7 @@ TEST_F(BufferFixture, OverflowLimitBufferTest){
  */
 TEST_F(BufferFixture, CompactionReuseBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Устанавливаем максимальный размер потребления памяти
 	buffer.setMaxMemory(64);
 	/**
@@ -343,7 +343,7 @@ TEST_F(BufferFixture, CompactionReuseBufferTest){
  */
 TEST_F(BufferFixture, BackFrontAfterEraseBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	/**
 	 * Добавляем элементы в буфер
 	 */
@@ -378,9 +378,9 @@ TEST_F(BufferFixture, BackFrontAfterEraseBufferTest){
  */
 TEST_F(BufferFixture, SwapContentBufferTest){
 	// Создаём первый буфер данных
-	awh::buffer_t buffer1(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer1;
 	// Создаём второй буфер данных
-	awh::buffer_t buffer2(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer2;
 	// Заполняем первый буфер данными
 	ASSERT_TRUE(buffer1.push(std::string("AAA")));
 	// Заполняем второй буфер данными
@@ -399,9 +399,9 @@ TEST_F(BufferFixture, SwapContentBufferTest){
  */
 TEST_F(BufferFixture, PushMoveAppendBufferTest){
 	// Создаём первый буфер данных
-	awh::buffer_t buffer1(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer1;
 	// Создаём второй буфер данных
-	awh::buffer_t buffer2(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer2;
 	// Заполняем первый буфер данными
 	ASSERT_TRUE(buffer1.push(std::string("HEAD")));
 	// Заполняем второй буфер данными
@@ -422,7 +422,7 @@ TEST_F(BufferFixture, PushMoveAppendBufferTest){
  */
 TEST_F(BufferFixture, SteadyStateNoReallocationBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Размер порции потоковой записи
 	static constexpr size_t PORTION = (16 * 1024);
 	/**
@@ -474,7 +474,7 @@ TEST_F(BufferFixture, SteadyStateNoReallocationBufferTest){
  */
 TEST_F(BufferFixture, GeometricGrowthBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Количество зафиксированных увеличений выделенной памяти
 	size_t growths = 0;
 	// Предыдущий объём выделенной памяти
@@ -512,7 +512,7 @@ TEST_F(BufferFixture, GeometricGrowthBufferTest){
  */
 TEST_F(BufferFixture, CommitBeyondReservationBufferTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Выполняем прогрев буфера, чтобы в хвосте появился запас
 	ASSERT_TRUE(buffer.push(std::string(4096, 'a')));
 	// Освобождаем добавленные данные (хранилище сохраняется)

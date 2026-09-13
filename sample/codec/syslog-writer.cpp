@@ -28,38 +28,14 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/syslog/writer.hpp>
-#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён образца
  *
  */
 namespace {
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Выводим объект фреймворка
-		return &fmk;
-	}
 
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект для работы с логами
-		static awh::log_t log(::framework());
-		// Выводим объект для работы с логами
-		return &log;
-	}
 }
 
 /**
@@ -81,7 +57,7 @@ using namespace std;
  */
 static void build(const char * title, const codec::abc::value_t & value) noexcept {
 	// Объект записи событий
-	codec::syslog::writer_t writer(::framework(), ::logger());
+	codec::syslog::writer_t writer;
 	// Настройки записи событий
 	codec::syslog::writer_t::settings_t settings;
 	// Выключаем запись знака конца строки: вывод и без него строку завершает
@@ -115,6 +91,13 @@ static void build(const char * title, const codec::abc::value_t & value) noexcep
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Отключаем неиспользуемые переменные
 	(void) argc;
 	(void) argv;

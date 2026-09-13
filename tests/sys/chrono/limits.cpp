@@ -322,7 +322,7 @@ TEST_F(ChronoFixture, ExecutionZoneIdempotentChronoTest){
 		std::make_pair("+05:30", 19800), std::make_pair("GMT+0530", 19800), std::make_pair("UTC-3:28", -12480)
 	}){
 		// Объект работы с датой и временем для проверки обозначения
-		awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+		awh::chrono_t chrono;
 		/**
 		 * Выполняем повторную установку одного и того же обозначения. Смещение читается
 		 * из местного хранилища: без довода хранилища метод выдаёт зону операционной
@@ -341,7 +341,7 @@ TEST_F(ChronoFixture, ExecutionZoneIdempotentChronoTest){
 	 */
 	{
 		// Объект работы с датой и временем для проверки установки смещением
-		awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+		awh::chrono_t chrono;
 		/**
 		 * Выполняем повторную установку одного и того же смещения
 		 */
@@ -358,7 +358,7 @@ TEST_F(ChronoFixture, ExecutionZoneIdempotentChronoTest){
 	 */
 	{
 		// Объект работы с датой и временем для проверки установки идентификатором
-		awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+		awh::chrono_t chrono;
 		/**
 		 * Выполняем повторную установку одного и того же идентификатора
 		 */
@@ -371,7 +371,7 @@ TEST_F(ChronoFixture, ExecutionZoneIdempotentChronoTest){
 		}
 	}
 	// Объект работы с датой и временем для проверки непригодных обозначений
-	awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+	awh::chrono_t chrono;
 	// Выполняем установку известной временной зоны
 	chrono.setTimeZone("MSK");
 	/**
@@ -444,7 +444,7 @@ TEST_F(ChronoFixture, ExecutionYearWindowChronoTest){
  */
 TEST_F(ChronoFixture, ExecutionYearWindowOffChronoTest){
 	// Объект работы с датой и временем с отключённым правилом
-	awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+	awh::chrono_t chrono;
 	// Выполняем отключение правила раскрытия двузначного года
 	chrono.yearWindow(0);
 	// Выполняем проверку того, что правило отключено

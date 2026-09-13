@@ -37,8 +37,6 @@
 /**
  * Наши модули
  */
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 
 /**
  * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
@@ -57,6 +55,7 @@
 #include "iface.hpp"
 #include "socket.hpp"
 #include "gateway.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -134,27 +133,17 @@ namespace awh {
 			eth::socket_t socket;
 			// Объект управления шлюзами
 			eth::gateway_t gateway;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Ethernet(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Ethernet() noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

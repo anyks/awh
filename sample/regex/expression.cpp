@@ -32,43 +32,7 @@
 #include <regex/regex.hpp>
 #include <regex/storage.hpp>
 #include <sys/fs.hpp>
-#include <sys/log.hpp>
-
-/**
- * @brief Пространство имён образца
- *
- */
-namespace {
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @details Построения образца стоят и вне main(): объект заводится статикою
-	 *          местною, дабы всякое построение писало сообщения в один журнал
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Объект для работы с логами
-		static awh::log_t log(&fmk);
-		// Выводим объект для работы с логами
-		return &log;
-	}
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Выводим объект фреймворка
-		return &fmk;
-	}
-}
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -280,7 +244,7 @@ static void storing(const regexp_t & regexp) noexcept {
 	// Выводим заголовок примера
 	cout << "== Хранилище собранных выражений" << endl;
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage(::logger());
+	const regex::storage_t storage;
 	// Набор собираемых выражений
 	vector <regex::storage_t::exp_t> expressions;
 	/**
@@ -343,9 +307,9 @@ static void keeping(const regexp_t & regexp) noexcept {
 	// Выводим заголовок примера
 	cout << "== Запись хранилища в файловой системе" << endl;
 	// Создаём объект хранилища собранных выражений
-	const regex::storage_t storage(::logger());
+	const regex::storage_t storage;
 	// Создаём объект работы с файловой системой
-	const fs_t fs(::framework(), ::logger());
+	const fs_t fs;
 	// Путь к файлу записи собранных выражений
 	const string filename = "expressions.rex";
 	// Набор собираемых выражений
@@ -434,8 +398,15 @@ static void keeping(const regexp_t & regexp) noexcept {
  *
  */
 int32_t main(){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект работы с регулярными выражениями
-	regexp_t regexp(::logger());
+	regexp_t regexp;
 	// Выполняем пример проверки соответствия текста выражению
 	matching(regexp);
 	// Выполняем пример извлечения границ совпадения и захваченных групп

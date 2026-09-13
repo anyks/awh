@@ -103,7 +103,7 @@ namespace awh {
 			 * их заголовками и выделениями памяти
 			 *
 			 *  @code{.cpp}
-			 *  document_t document(log);
+			 *  document_t document();
 			 *
 			 *  document.parse(text);
 			 *
@@ -124,7 +124,7 @@ namespace awh {
 			 * their headers and memory allocations
 			 *
 			 *  @code{.cpp}
-			 *  document_t document(log);
+			 *  document_t document();
 			 *
 			 *  document.parse(text);
 			 *
@@ -136,65 +136,6 @@ namespace awh {
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод вывода сообщения об отказе в лог
-					 *
-					 * @details Код отказа остаётся доступен потребителю через error(): журнал
-					 * его не заменяет, а лишь оповещает о случившемся
-					 *
-					 * \~english
-					 * @brief Method of the output of the message about a refusal into the log
-					 * @details The code of the refusal remains available to the consumer through error():
-					 * the log does not replace it but merely notifies about what has happened
-					 *
-					 * \~
-					 */
-					void report() const noexcept;
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-					const log_t * _log;
-				private:
-					/**
-					 * \~russian
-					 * Объект фреймворка
-					 *
-					 * @note Держится ради работы с файловой системой: приведение пути к широкому
-					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
-					 *       узким. Кириллический путь при этом ложится на диск искажённым, а
-					 *       узкий же розыск находит его обратно тем же неверным приведением -
-					 *       оттого отказа не бывает никогда, и порок тише отказа
-					 *
-					 * \~english
-					 * Framework object
-					 *
-					 * \~
-					 */
-					const fmk_t * _fmk;
-					/**
-					 * \~russian
-					 * Объект для работы с файловой системой
-					 *
-					 * @note Изменяемость его намеренна: сохранение таблицы объявлено НЕИЗМЕНЯЮЩИМ
-					 *       - оно таблицы не трогает, - а подмена целевого файла временным
-					 *       константным ходом у файловой системы не является. Состоянием
-					 *       таблицы объект этот не служит, и неизменность её он не нарушает
-					 *
-					 * \~english
-					 * Object for working with the file system
-					 *
-					 * \~
-					 */
-					mutable fs_t _fs;
 				public:
 					/**
 					 * \~russian
@@ -230,9 +171,32 @@ namespace awh {
 						Settings() noexcept {}
 					} settings_t;
 				private:
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
+					/**
+					 * \~russian
+					 * Объект для работы с файловой системой
+					 *
+					 * @note Изменяемость его намеренна: сохранение таблицы объявлено НЕИЗМЕНЯЮЩИМ
+					 *       - оно таблицы не трогает, - а подмена целевого файла временным
+					 *       константным ходом у файловой системы не является. Состоянием
+					 *       таблицы объект этот не служит, и неизменность её он не нарушает
+					 *
+					 * \~english
+					 * Object for working with the file system
+					 *
+					 * \~
+					 */
+					fs_t _fs;
 					// Настройки контейнера
 					settings_t _settings;
-				private:
 					/**
 					 * @brief Код отказа последней работы над таблицей
 					 *
@@ -251,7 +215,6 @@ namespace awh {
 					 * складывалось бы с новым кодом в донесение стройное, но ложное
 					 */
 					mutable location_t _location;
-				private:
 					/**
 					 * \~russian
 					 * Кодировка, какою исходный текст таблицы прочитан
@@ -268,22 +231,18 @@ namespace awh {
 					 * \~
 					 */
 					encoding_t _encoding = encoding_t::NONE;
-				private:
 					// Хранилище знаков полей таблицы
 					string _storage;
 					// Хранилище имён столбцов
 					string _names;
-				private:
 					// Указания на поля таблицы в хранилище знаков
 					vector <span_t> _fields;
 					// Указания на начало каждой записи в перечне полей
 					vector <uint32_t> _records;
 					// Указания на имена столбцов в хранилище имён
 					vector <span_t> _header;
-				private:
 					// Соответствие имён столбцов их номерам
 					unordered_map <string_view, uint32_t> _columns;
-				private:
 					/**
 					 * \~russian
 					 * Признак того, что запись начата и ещё не завершена
@@ -301,7 +260,21 @@ namespace awh {
 					 * \~
 					 */
 					bool _opened;
-				private:
+					/**
+					 * \~russian
+					 * @brief Метод вывода сообщения об отказе в лог
+					 *
+					 * @details Код отказа остаётся доступен потребителю через error(): журнал
+					 * его не заменяет, а лишь оповещает о случившемся
+					 *
+					 * \~english
+					 * @brief Method of the output of the message about a refusal into the log
+					 * @details The code of the refusal remains available to the consumer through error():
+					 * the log does not replace it but merely notifies about what has happened
+					 *
+					 * \~
+					 */
+					void report() const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения содержимого по указанию в хранилище знаков
@@ -422,7 +395,6 @@ namespace awh {
 					 * \~
 					 */
 					bool parse(const string_view text, const settings_t & settings) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод чтения таблицы из файла
@@ -551,7 +523,6 @@ namespace awh {
 					 *      неделимость записи: отказ оставляет прежний файл нетронутым
 					 */
 					bool save(const string & filename) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения кода отказа последней работы над таблицей
@@ -623,7 +594,6 @@ namespace awh {
 					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения количества записей таблицы
@@ -734,7 +704,6 @@ namespace awh {
 					 * \~
 					 */
 					size_t size(const size_t row) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения имён столбцов
@@ -787,7 +756,6 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t column(const string_view name) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения содержимого поля по номеру записи и столбца
@@ -849,7 +817,6 @@ namespace awh {
 					 * \~
 					 */
 					string_view get(const size_t row, const string_view name) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения записи целиком
@@ -922,7 +889,6 @@ namespace awh {
 					 * \~
 					 */
 					vector <string_view> col(const string_view name) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод приведения содержимого поля к числу либо логическому значению
@@ -978,7 +944,6 @@ namespace awh {
 					 */
 					template <typename T>
 					bool numeric(const size_t row, const size_t col, T & result) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод установки заголовка таблицы
@@ -1054,7 +1019,6 @@ namespace awh {
 					 * \~
 					 */
 					bool append(const vector <string_view> & fields) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод сборки текста таблицы
@@ -1106,7 +1070,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения настроек контейнера
@@ -1133,7 +1096,6 @@ namespace awh {
 					 * \~
 					 */
 					void settings(const settings_t & settings) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Оператор вывода таблицы последовательностью знаков
@@ -1147,54 +1109,29 @@ namespace awh {
 					 * \~
 					 */
 					operator string() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
-					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log) noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-				public:
+					Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk      объект фреймворка
-					 * @param log      объект для работы с логами
 					 * @param settings настройки контейнера
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the container
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept;
+					Document(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

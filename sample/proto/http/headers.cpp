@@ -29,9 +29,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <proto/http/headers.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -45,15 +44,12 @@ using namespace awh::http;
 /**
  * @brief Демонстрация базовых операций с контейнером HTTP-заголовков
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleBasic() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== BASIC ======== " << endl;
 	// Создаём контейнер HTTP-заголовков
-	headers_t headers(fmk, log);
+	headers_t headers;
 	// Добавляем заголовок хоста запроса
 	headers.emplace("Host", "example.com");
 	// Добавляем заголовок типа содержимого
@@ -80,15 +76,12 @@ static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация работы с несколькими заголовками с одним названием
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleMulti(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleMulti() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== MULTI-VALUE ======== " << endl;
 	// Создаём контейнер HTTP-заголовков
-	headers_t headers(fmk, log);
+	headers_t headers;
 	// Добавляем заголовок принимаемых типов содержимого
 	headers.emplace("Accept", "text/html");
 	/**
@@ -121,15 +114,12 @@ static void sampleMulti(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация обхода заголовков через итераторы
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleIterate(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleIterate() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== ITERATE ======== " << endl;
 	// Создаём контейнер HTTP-заголовков
-	headers_t headers(fmk, log);
+	headers_t headers;
 	// Добавляем заголовок соединения
 	headers.emplace("Connection", "keep-alive");
 	// Добавляем заголовок длины содержимого
@@ -154,15 +144,12 @@ static void sampleIterate(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация печати HTTP-запроса клиента (стартовая строка + заголовки)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleRequest() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== REQUEST (HTTP/1.1) ======== " << endl;
 	// Создаём контейнер HTTP-заголовков
-	headers_t headers(fmk, log);
+	headers_t headers;
 	// Формируем параметры запроса клиента (метод, версия протокола и URI)
 	request_t request(version_t::HTTP1_1, method_t::GET, "/index.html");
 	// Устанавливаем объект провайдера запроса в контейнер заголовков
@@ -179,15 +166,12 @@ static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация печати HTTP-ответа сервера (стартовая строка + заголовки)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleResponse(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleResponse() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== RESPONSE (HTTP/1.1) ======== " << endl;
 	// Создаём контейнер HTTP-заголовков
-	headers_t headers(fmk, log);
+	headers_t headers;
 	// Формируем параметры ответа сервера (версия протокола и код ответа)
 	response_t response(version_t::HTTP1_1, static_cast <uint16_t> (200));
 	// Устанавливаем объект провайдера ответа в контейнер заголовков
@@ -206,15 +190,12 @@ static void sampleResponse(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация печати запроса в формате HTTP/2 (псевдозаголовки)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleHttp2(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleHttp2() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== REQUEST (HTTP/2) ======== " << endl;
 	// Создаём контейнер HTTP-заголовков с протоколом HTTP/2
-	headers_t headers(proto_t::HTTP2, fmk, log);
+	headers_t headers(proto_t::HTTP2);
 	// Формируем параметры запроса клиента для протокола HTTP/2
 	request_t request(version_t::HTTP2, method_t::GET, "https://example.com/path");
 	// Устанавливаем объект провайдера запроса в контейнер заголовков
@@ -227,21 +208,18 @@ static void sampleHttp2(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация слияния и обмена контейнеров заголовков
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleMerge(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleMerge() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== MERGE / SWAP ======== " << endl;
 	// Создаём первый контейнер с базовыми заголовками
-	headers_t base(fmk, log);
+	headers_t base;
 	// Добавляем заголовок хоста в первый контейнер
 	base.emplace("Host", "anyks.com");
 	// Добавляем заголовок соединения в первый контейнер
 	base.emplace("Connection", "keep-alive");
 	// Создаём второй контейнер с дополнительными заголовками
-	headers_t extra(fmk, log);
+	headers_t extra;
 	// Добавляем заголовок кэширования во второй контейнер
 	extra.emplace("Cache-Control", "no-cache");
 	// Добавляем заголовок принимаемых кодировок во второй контейнер
@@ -251,7 +229,7 @@ static void sampleMerge(const fmk_t * fmk, const log_t * log) noexcept {
 	// Выводим количество заголовков после слияния
 	cout << "After merge: " << base.size() << " headers" << endl;
 	// Создаём пустой контейнер для обмена
-	headers_t target(fmk, log);
+	headers_t target;
 	// Обмениваемся содержимым контейнеров
 	target.swap(base);
 	// Выводим количество заголовков после обмена
@@ -260,11 +238,8 @@ static void sampleMerge(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация преобразования контейнера в стандартные коллекции
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleConvert(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleConvert() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== CONVERT ======== " << endl;
 	// Создаём контейнер HTTP-заголовков сразу с несколькими одноимёнными заголовками
@@ -272,7 +247,7 @@ static void sampleConvert(const fmk_t * fmk, const log_t * log) noexcept {
 		headers_t::header_t{}.from("Host", "example.com"),
 		headers_t::header_t{}.from("Set-Cookie", "a=1"),
 		headers_t::header_t{}.from("Set-Cookie", "b=2")
-	}, fmk, log);
+	});
 	// Преобразуем контейнер в мультикарту заголовков (сохраняет все вхождения)
 	const headers_t::multimap_t multi = static_cast <headers_t::multimap_t> (headers);
 	// Выводим количество записей в мультикарте
@@ -293,26 +268,30 @@ static void sampleConvert(const fmk_t * fmk, const log_t * log) noexcept {
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Демонстрируем базовые операции с заголовками
-	sampleBasic(&fmk, &log);
+	sampleBasic();
 	// Демонстрируем работу с заголовками с одним названием
-	sampleMulti(&fmk, &log);
+	sampleMulti();
 	// Демонстрируем обход заголовков через итераторы
-	sampleIterate(&fmk, &log);
+	sampleIterate();
 	// Демонстрируем печать HTTP-запроса клиента
-	sampleRequest(&fmk, &log);
+	sampleRequest();
 	// Демонстрируем печать HTTP-ответа сервера
-	sampleResponse(&fmk, &log);
+	sampleResponse();
 	// Демонстрируем печать запроса в формате HTTP/2
-	sampleHttp2(&fmk, &log);
+	sampleHttp2();
 	// Демонстрируем слияние и обмен контейнеров заголовков
-	sampleMerge(&fmk, &log);
+	sampleMerge();
 	// Демонстрируем преобразование контейнера в стандартные коллекции
-	sampleConvert(&fmk, &log);
+	sampleConvert();
 	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

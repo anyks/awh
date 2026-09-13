@@ -131,11 +131,6 @@ namespace awh {
 			mutable eth_t _eth;
 			// Объект работы с сетевыми адресами
 			mutable net_addr_t _addr;
-		protected:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
@@ -2081,18 +2076,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Engine(const fmk_t * fmk, const log_t * log) noexcept :
-			 _eth(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log) {}
+			explicit Engine() noexcept : _eth(), _addr() {}
 			/**
 			 * \~russian
 			 * @brief Деструктор

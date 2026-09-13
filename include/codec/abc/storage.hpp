@@ -49,8 +49,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../sys/fs.hpp"
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -258,7 +257,28 @@ namespace awh {
 					 *       него здесь нет. Держать ссылку без потребителя значило бы
 					 *       заводить поле, о каком собиратель справедливо предупреждает
 					 */
-					const log_t * _log;
+				private:
+					/**
+					 * \~russian
+					 * @brief Метод объявления отказа работы с носителем
+					 *
+					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
+					 * работа отвечает отказом множеством путей, и запись в каждом из них
+					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
+					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
+					 *
+					 * @param error объявляемый код отказа
+					 * @return      признак успешности, всегда ложь
+					 *
+					 * \~english
+					 * @brief Method of the declaration of a failure
+					 *
+					 * @param error code of the failure being declared
+					 * @return      flag of the success, always false
+					 *
+					 * \~
+					 */
+					bool fail(const error_t error) noexcept;
 				public:
 					/**
 					 * \~russian
@@ -572,59 +592,6 @@ namespace awh {
 					 * \~
 					 */
 					error_t error() const noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
-					 * @note Объекты фреймворка и журнала берутся УКАЗАТЕЛЯМИ от пользователя,
-					 *       как то заведено во всём AWH: заводить их у себя нельзя
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * @param fmk framework object
-					 * @param log object for working with logs
-					 *
-					 * \~
-					 */
-					explicit Storage(const fmk_t * fmk, const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Деструктор
-					 *
-					 *
-					 * \~english
-					 * @brief Destructor
-					 *
-					 * \~
-					 */
-					~Storage() noexcept;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод объявления отказа работы с носителем
-					 *
-					 * @details Донесение идёт отсюда, из единственного места объявления отказа:
-					 * работа отвечает отказом множеством путей, и запись в каждом из них
-					 * разошлась бы с прочими. Отказ, ПРИНЯТЫЙ от нижнего слоя, сюда не идёт -
-					 * тот слой донёс о нём сам, и второе донесение лишь двоило бы записи
-					 *
-					 * @param error объявляемый код отказа
-					 * @return      признак успешности, всегда ложь
-					 *
-					 * \~english
-					 * @brief Method of the declaration of a failure
-					 *
-					 * @param error code of the failure being declared
-					 * @return      flag of the success, always false
-					 *
-					 * \~
-					 */
-					bool fail(const error_t error) noexcept;
 				private:
 					/**
 					 * \~russian
@@ -640,6 +607,31 @@ namespace awh {
 					 */
 					Storage(const Storage &) = delete;
 					Storage & operator = (const Storage &) = delete;
+				public:
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 * @note Объекты фреймворка и журнала берутся УКАЗАТЕЛЯМИ от пользователя,
+					 *       как то заведено во всём AWH: заводить их у себя нельзя
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					explicit Storage() noexcept;
+					/**
+					 * \~russian
+					 * @brief Деструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Destructor
+					 *
+					 * \~
+					 */
+					~Storage() noexcept;
 			} storage_t;
 		};
 	};

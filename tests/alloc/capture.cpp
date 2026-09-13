@@ -58,7 +58,7 @@ namespace {
 				// Настройки распределителя памяти
 				awh::alloc::options_t options;
 				// Захватываем выдачу памяти процесса
-				__awh_alloc_seized__ = awh::alloc::Allocator::capture(options, nullptr);
+				__awh_alloc_seized__ = awh::alloc::Allocator::capture(options);
 			}
 	};
 	/**

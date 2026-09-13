@@ -45,6 +45,7 @@
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -356,7 +357,14 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
  */
 static bool directory(const fs_t & fs, const string & filename) noexcept {
 	// Выводим результат проверки того, что адрес указывает на каталог
-	return (fs.type(filename) == fs_t::type_t::DIR);
+	/**
+	 * Выводим результат проверки того, что адрес указывает на каталог
+	 *
+	 * @warning Ссылки ПРОХОДЯТСЯ, а не различаются - второй довод `false`: ссылка на
+	 *          каталог есть тот же каталог для того, кто его открывает, и различать их
+	 *          здесь значило бы принять ссылку за годный файл
+	 */
+	return (fs.type(filename, false) == fs_t::type_t::DIR);
 }
 
 bool awh::codec::syslog::Document::load(const string & filename) noexcept {
@@ -383,7 +391,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 		 */
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим в лог сообщение о подаче каталога вместо файла
-		this->_log->print("SysLog file \"%s\" is a directory", log_t::flag_t::CRITICAL, filename.c_str());
+		awh::log::print("SysLog file \"%s\" is a directory", awh::log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -393,11 +401,22 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 	 * @note Сюда приходит и отсутствующий файл, и всякий иной вид объекта файловой
 	 *       системы: открыть его нечем, и код здесь именно `FILE_NOT_OPENED`
 	 */
-	if(this->_fs.type(filename) != fs_t::type_t::FILE){
+	/**
+	 * @warning Ссылки ПРОХОДЯТСЯ, а не различаются - второй довод `false`: ссылка на файл
+	 *          читается ровно как файл, и `ifstream`, стоявший здесь прежде, открывал её
+	 *          без всякой разницы. Различай их - и кодек отвечал бы отказом на файл,
+	 *          какой прочесть может
+	 *
+	 * @note Найдено щупом 13.09.2026 после переезда на `sys/fs`: ход `type` по умолчанию
+	 *       ссылку ОТЛИЧАЕТ от файла, отвечая `LINK`, и первая моя редакция заслона
+	 *       отвергала всякую ссылку кодом `FILE_NOT_OPENED`. Прочесть её при этом `fs_t`
+	 *       давал без единой жалобы - то есть отказ был выдуман мною, а не системой
+	 */
+	if(this->_fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код ошибки открытия файла
 		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим в лог сообщение об ошибке открытия файла
-		this->_log->print("SysLog file \"%s\" could not be opened", log_t::flag_t::CRITICAL, filename.c_str());
+		awh::log::print("SysLog file \"%s\" could not be opened", awh::log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -424,7 +443,7 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
 		// Запоминаем код ошибки чтения файла
 		this->_error = error_t::FILE_NOT_READ;
 		// Выводим в лог сообщение об ошибке чтения файла
-		this->_log->print("SysLog file \"%s\" could not be read", log_t::flag_t::CRITICAL, filename.c_str());
+		awh::log::print("SysLog file \"%s\" could not be read", awh::log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -455,7 +474,7 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 *
 	 * @note Найдено Василием при переводе кодека CSV и проверено здесь
 	 */
-	if(this->_fs.type(filename) == fs_t::type_t::FILE)
+	if(this->_fs.type(filename, false) == fs_t::type_t::FILE)
 		// Выполняем снос прежнего файла записи системного журнала
 		this->_fs.unlink(filename);
 	/**
@@ -468,7 +487,7 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 */
 	if(!this->_fs.write(filename, content.data(), content.size())){
 		// Выводим в лог сообщение об ошибке записи файла
-		this->_log->print("SysLog file \"%s\" could not be written", log_t::flag_t::CRITICAL, filename.c_str());
+		awh::log::print("SysLog file \"%s\" could not be written", awh::log::flag_t::CRITICAL, filename.c_str());
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -487,7 +506,7 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	 */
 	if(!this->_fs.flush(filename))
 		// Выводим в лог сообщение о том, что записанное на носитель не сброшено
-		this->_log->print("SysLog file \"%s\" was written but not flushed onto the medium", log_t::flag_t::WARNING, filename.c_str());
+		awh::log::print("SysLog file \"%s\" was written but not flushed onto the medium", awh::log::flag_t::WARNING, filename.c_str());
 	// Выводим положительный результат выполнения операции
 	return true;
 }
@@ -1054,12 +1073,10 @@ void awh::codec::syslog::Document::settings(const writer_t::settings_t & setting
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  */
-awh::codec::syslog::Document::Document(const fmk_t * fmk, const log_t * log) noexcept :
- _root(abc::kind_t::MAP), _error(error_t::NONE), _reader(fmk, log),
- _writer(fmk, log), _chrono(fmk, log), _fs(fmk, log), _log(log) {}
+awh::codec::syslog::Document::Document() noexcept :
+ _root(abc::kind_t::MAP), _error(error_t::NONE), _reader(),
+ _writer(), _chrono(), _fs() {}
 
 /**
  * Возвращаем имена, системными макросами занятые

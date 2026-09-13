@@ -33,6 +33,8 @@
  * Подключаем заголовочный файл разбора записи числа
  */
 #include <num/lexical/lexical.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -372,7 +374,7 @@ bool awh::codec::Bridge::encodeJSON(const abc::value_t & value, string & result)
 	// Выполняем сброс кода отказа последнего перевода
 	this->_error = error_t::NONE;
 	// Создаём писателя записи JSON
-	json::writer_t writer(this->_log);
+	json::writer_t writer;
 	// Получаем настройки записи текста JSON
 	json::writer_t::settings_t settings = writer.settings();
 	// Устанавливаем вид оформления собираемой записи
@@ -424,7 +426,7 @@ bool awh::codec::Bridge::decodeJSON(const string_view text, abc::value_t & resul
 	 */
 	result.clear();
 	// Создаём документ записи JSON
-	json::document_t document(this->_fmk, this->_log);
+	json::document_t document;
 	// Выполняем разбор поданной записи JSON
 	if(!document.parse(text)){
 		// Запоминаем код отказа перевода
@@ -707,7 +709,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 		// Запись числа, от обвязки пробелами очищенная
 		string record = text;
 		// Выполняем очистку записи от обвязки пробелами
-		this->_fmk->transform(record, fmk_t::transform_t::TRIM);
+		awh::fmk::transform(record, awh::fmk::transform_t::TRIM);
 		// Если запись несёт ведущий плюс, разбору не поддающийся
 		if(!record.empty() && (record.front() == '+'))
 			// Выполняем отбрасывание ведущего плюса
@@ -721,7 +723,7 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 		/**
 		 * Целое спрашивается разбором, а НЕ проверкой каркаса
 		 *
-		 * @warning Проверка `fmk_t::is` привратником здесь стояла и записи с
+		 * @warning Проверка `awh::fmk::is` привратником здесь стояла и записи с
 		 *          указателем степени отбрасывала: замер 08.09.2026 - `1e-9` она
 		 *          признаёт, а `-2.5e3`, `1E5` и `1.7976931348623157e+308` уже нет,
 		 *          и такая запись выходила мостом ПОСЛЕДОВАТЕЛЬНОСТЬЮ ЗНАКОВ.
@@ -778,11 +780,11 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 		}
 	}
 	// Если запись означает истину
-	if(this->_fmk->compare("true", text))
+	if(awh::fmk::compare("true", text))
 		// Выводим значение логическою истиной
 		return abc::value_t(true);
 	// Если запись означает ложь
-	if(this->_fmk->compare("false", text))
+	if(awh::fmk::compare("false", text))
 		// Выводим значение логическою ложью
 		return abc::value_t(false);
 	// Выводим значение последовательностью знаков
@@ -1015,7 +1017,7 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
  */
 bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи YAML
-	yaml::document_t document(this->_fmk, this->_log);
+	yaml::document_t document;
 	/**
 	 * Выполняем заведение первого документа записи YAML
 	 *
@@ -1321,7 +1323,7 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
  */
 bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи TOML
-	toml::document_t document(this->_fmk, this->_log);
+	toml::document_t document;
 	// Собираемое владеющее значение записи TOML
 	toml::Value root;
 	// Выполняем подачу дерева значений владеющему значению
@@ -1775,7 +1777,7 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
  */
 bool awh::codec::Bridge::encodeXML(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи XML
-	xml::document_t document(this->_fmk, this->_log);
+	xml::document_t document;
 	// Имя корневого узла собираемой записи
 	string name = this->_settings.root;
 	// Значение, содержимым корневого узла становящееся
@@ -1973,13 +1975,13 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
  */
 bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) noexcept {
 	// Создаём документ записи INI
-	ini::document_t document(this->_fmk, this->_log);
+	ini::document_t document;
 	// Если дерево значений отображением не является
 	if(!value.is(abc::type_t::MAP)){
 		// Запоминаем код отказа перевода
 		this->_error = error_t::STRUCTURE;
 		// Выводим сообщение о негодном строении дерева
-		this->_log->print("Запись INI требует отображения корнем дерева", log_t::flag_t::WARNING);
+		awh::log::print("Запись INI требует отображения корнем дерева", awh::log::flag_t::WARNING);
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	}
@@ -2241,7 +2243,7 @@ bool awh::codec::Bridge::decodeYAML(const string_view text, abc::value_t & resul
 	 *          обходом по звеньям
 	 */
 	// Создаём документ записи YAML
-	yaml::document_t document(this->_fmk, this->_log);
+	yaml::document_t document;
 	// Выполняем разбор поданной записи YAML
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -2443,9 +2445,9 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 		// Выполняем перебор всех свойств узла разметки
 		for(auto & attribute : attributes){
 			// Если свойство несёт пометку перечня
-			if(this->_fmk->compare(this->_settings.array, string(attribute.name.local))){
+			if(awh::fmk::compare(this->_settings.array, string(attribute.name.local))){
 				// Запоминаем нахождение пометки перечня
-				marked = this->_fmk->compare("true", string(attribute.value));
+				marked = awh::fmk::compare("true", string(attribute.value));
 				// Выходим из перебора свойств узла
 				break;
 			}
@@ -2505,7 +2507,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
 			 *          обратным чтением обращался в значение по настройке. Замерено
 			 *          04.09.2026 ворошителем
 			 */
-			if(marked && !this->_settings.array.empty() && this->_fmk->compare(this->_settings.array, name))
+			if(marked && !this->_settings.array.empty() && awh::fmk::compare(this->_settings.array, name))
 				// Продолжаем перебор свойств узла дальше
 				continue;
 			// Выполняем укладку значения свойства узла
@@ -2572,7 +2574,7 @@ bool awh::codec::Bridge::absorbXML(const xml::document_t & document, const strin
  */
 bool awh::codec::Bridge::decodeXML(const string_view text, abc::value_t & result) noexcept {
 	// Создаём документ записи XML
-	xml::document_t document(this->_fmk, this->_log);
+	xml::document_t document;
 	// Выполняем разбор поданной записи XML
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -2705,7 +2707,7 @@ bool awh::codec::Bridge::absorbTOML(const toml::document_t & document, const str
  */
 bool awh::codec::Bridge::decodeTOML(const string_view text, abc::value_t & result) noexcept {
 	// Создаём документ записи TOML
-	toml::document_t document(this->_fmk, this->_log);
+	toml::document_t document;
 	// Выполняем разбор поданной записи TOML
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -2826,7 +2828,7 @@ bool awh::codec::Bridge::absorbINI(const ini::document_t & document, const strin
  */
 bool awh::codec::Bridge::decodeINI(const string_view text, abc::value_t & result) noexcept {
 	// Создаём документ записи INI
-	ini::document_t document(this->_fmk, this->_log);
+	ini::document_t document;
 	// Выполняем разбор поданной записи INI
 	if(!document.parse(string(text))){
 		// Запоминаем код отказа перевода
@@ -2902,7 +2904,7 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 		// Запоминаем код отказа перевода
 		this->_error = error_t::WRITING;
 		// Выводим сообщение о пустой записи при непустом дереве
-		this->_log->print("Кодек отдал пустую запись при непустом дереве значений", log_t::flag_t::WARNING);
+		awh::log::print("Кодек отдал пустую запись при непустом дереве значений", awh::log::flag_t::WARNING);
 		// Выходим из метода, перевод отвечен отказом
 		return false;
 	};
@@ -2933,7 +2935,7 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
 			// Выводим сообщение о неведомом виде записи
-			this->_log->print("Кодек вида %u мостом ещё не переводится", log_t::flag_t::WARNING, static_cast <uint16_t> (format));
+			awh::log::print("Кодек вида %u мостом ещё не переводится", awh::log::flag_t::WARNING, static_cast <uint16_t> (format));
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
@@ -2988,7 +2990,7 @@ bool awh::codec::Bridge::decode(const string_view text, abc::value_t & result, c
 			// Запоминаем код отказа перевода
 			this->_error = error_t::UNSUPPORTED;
 			// Выводим сообщение о неведомом виде записи
-			this->_log->print("Кодек вида %u мостом ещё не переводится", log_t::flag_t::WARNING, static_cast <uint16_t> (format));
+			awh::log::print("Кодек вида %u мостом ещё не переводится", awh::log::flag_t::WARNING, static_cast <uint16_t> (format));
 			// Выходим из метода, перевод отвечен отказом
 			return false;
 		}
@@ -3031,14 +3033,9 @@ void awh::codec::Bridge::settings(const settings_t & settings) noexcept {
  * \~russian
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  * \~english
  * @brief Constructor
- * @param fmk object of the framework
- * @param log object for working with the logs
  *
  * \~
  */
-awh::codec::Bridge::Bridge(const fmk_t * fmk, const log_t * log) noexcept : _error(error_t::NONE), _fmk(fmk), _log(log) {}
+awh::codec::Bridge::Bridge() noexcept : _error(error_t::NONE) {}

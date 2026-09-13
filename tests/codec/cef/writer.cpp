@@ -57,17 +57,13 @@ namespace {
 	 *
 	 */
 	struct EnvCefWriter {
-		// Объект фреймворка проверок
-		awh::fmk_t fmk;
-		// Объект журнала проверок
-		awh::log_t log;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		EnvCefWriter() noexcept : log(&this->fmk) {
+		EnvCefWriter() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 	/**
@@ -137,7 +133,7 @@ using namespace awh::codec;
  */
 static string rewriteCef(const string & text, const cef::writer_t::settings_t & settings = cef::writer_t::settings_t()) noexcept {
 	// Объект события CEF
-	cef::document_t doc(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::document_t doc;
 	// Устанавливаем настройки записи событий
 	doc.settings(settings);
 	// Если разбор записи отказом завершился
@@ -232,7 +228,7 @@ TEST(CodecCefWriter, DuplicateKeys) {
  */
 TEST(CodecCefWriter, Nested) {
 	// Объект записи событий
-	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::writer_t writer;
 	// Настройки записи событий
 	cef::writer_t::settings_t settings;
 	// Заводим дерево события отображением
@@ -283,7 +279,7 @@ TEST(CodecCefWriter, Nested) {
  */
 TEST(CodecCefWriter, Failures) {
 	// Объект записи событий
-	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::writer_t writer;
 	// Собираемая запись CEF
 	string result;
 	// Заводим дерево события последовательностью знаков
@@ -365,7 +361,7 @@ TEST(CodecCefWriter, LocaleNumbers) {
 		 *       записи вместо проверки глухоты. Замерено 09.09.2026: руками собранное
 		 *       дерево выдавало запись без единого расширения
 		 */
-		cef::document_t document(&::writerEnvironment().fmk, &::writerEnvironment().log);
+		cef::document_t document;
 		// Выполняем разбор годной записи событий безопасности
 		ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1")) << name;
 		/**
@@ -476,7 +472,7 @@ TEST(CodecCefWriter, ValueKinds) {
 	 */
 	for(const auto & sample : SAMPLES){
 		// Объект события CEF
-		cef::document_t document(&::writerEnvironment().fmk, &::writerEnvironment().log);
+		cef::document_t document;
 		// Выполняем разбор годной записи событий безопасности
 		ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 		// Ставим значение очередного вида парой расширения
@@ -494,7 +490,7 @@ TEST(CodecCefWriter, ValueKinds) {
 	 * @note Проверяется отдельно: пустая запись значения в общий перебор не ложится -
 	 *       розыск «cs1=» нашёл бы её и у всякого иного вида
 	 */
-	cef::document_t document(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::document_t document;
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Ставим пустое значение парой расширения
@@ -521,7 +517,7 @@ TEST(CodecCefWriter, ValueKinds) {
  */
 TEST(CodecCefWriter, EscapingDisabled) {
 	// Объект события CEF
-	cef::document_t document(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::document_t document;
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Настройки записи событий без постановки отмены знаков
@@ -555,7 +551,7 @@ TEST(CodecCefWriter, EscapingDisabled) {
  */
 TEST(CodecCefWriter, NewlineEscaping) {
 	// Объект события CEF
-	cef::document_t document(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::document_t document;
 	// Выполняем разбор годной записи событий безопасности
 	ASSERT_TRUE(document.parse("CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1"));
 	// Ставим значение с переводом строки и возвратом каретки парой расширения
@@ -580,7 +576,7 @@ TEST(CodecCefWriter, NewlineEscaping) {
  */
 TEST(CodecCefWriter, NestedAsText) {
 	// Объект записи событий
-	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::writer_t writer;
 	// Настройки записи событий
 	cef::writer_t::settings_t settings;
 	// Заводим дерево события отображением
@@ -631,7 +627,7 @@ TEST(CodecCefWriter, NestedAsText) {
  */
 TEST(CodecCefWriter, NestedHeaderField) {
 	// Объект записи событий
-	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::writer_t writer;
 	// Настройки записи событий
 	cef::writer_t::settings_t settings;
 	// Заводим дерево события отображением
@@ -682,7 +678,7 @@ TEST(CodecCefWriter, NestedHeaderField) {
  */
 TEST(CodecCefWriter, ExtensionKeyEdges) {
 	// Объект записи событий
-	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::writer_t writer;
 	// Настройки записи событий
 	cef::writer_t::settings_t settings;
 	/**
@@ -746,7 +742,7 @@ TEST(CodecCefWriter, ExtensionKeyEdges) {
  */
 TEST(CodecCefWriter, UnrepresentableSyslogPrefix) {
 	// Объект записи событий
-	cef::writer_t writer(&::writerEnvironment().fmk, &::writerEnvironment().log);
+	cef::writer_t writer;
 	// Настройки записи событий
 	cef::writer_t::settings_t settings;
 	// Заводим дерево события отображением

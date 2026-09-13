@@ -26,7 +26,6 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/net/addr.hpp"
 #include "../../../include/net/eth/eth.hpp"
 
@@ -36,10 +35,6 @@
  */
 class EthFixture : public testing::Test {
 	protected:
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 		// Объект работы с Ethernet
 		std::unique_ptr <awh::eth_t> _eth;
 		// Объект сетевого адреса

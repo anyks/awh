@@ -44,7 +44,7 @@
  *       только обычной сборкой
  *
  */
-static awh::nwt_t __awh_static_storage_nwt__(nullptr);
+static awh::nwt_t __awh_static_storage_nwt__;
 
 /**
  * @brief Тест построения объекта модуля на уровне файла
@@ -88,7 +88,7 @@ TEST_F(NwtFixture, ResetAndCreateNwtTest){
 	// Проверяем, что объект работы со списком параметров URL сброшен
 	ASSERT_TRUE(this->_nwt == nullptr);
 	// Создаём объект работы со списком параметров URL заново
-	this->_nwt = std::make_unique <awh::nwt_t> (this->_log.get());
+	this->_nwt = std::make_unique <awh::nwt_t> ();
 	// Проверяем, что объект работы со списком параметров URL создан
 	ASSERT_TRUE(this->_nwt != nullptr);
 }
@@ -101,7 +101,7 @@ TEST_F(NwtFixture, ReCreateNwtTest){
 	// Проверяем, что объект работы со списком параметров URL создан
 	ASSERT_TRUE(this->_nwt != nullptr);
 	// Создаём объект работы со списком параметров URL заново
-	this->_nwt = std::make_unique <awh::nwt_t> (this->_log.get());
+	this->_nwt = std::make_unique <awh::nwt_t> ();
 	// Проверяем, что объект работы со списком параметров URL создан
 	ASSERT_TRUE(this->_nwt != nullptr);
 }

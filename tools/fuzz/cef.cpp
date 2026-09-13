@@ -35,6 +35,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <codec/cef/cef.hpp>
+#include <sys/fmk.hpp>
 #include <sys/log.hpp>
 
 /**
@@ -98,38 +99,6 @@ namespace {
 
 	// Итоги работы ворошителя
 	Totals totals;
-
-	/**
-	 * @brief Объект журнала ворошителя с отключённым выводом
-	 *
-	 */
-	struct Silent {
-		// Объект фреймворка ворошителя
-		awh::fmk_t fmk;
-		// Объект журнала ворошителя
-		awh::log_t log;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept : log(&this->fmk) {
-			// Выполняем отключение вывода логов
-			this->log.mode({});
-		}
-	};
-
-	/**
-	 * @brief Функция получения объекта окружения ворошителя
-	 *
-	 * @return объект окружения ворошителя
-	 *
-	 */
-	Silent & environment() noexcept {
-		// Объект окружения ворошителя
-		static Silent silent;
-		// Выводим объект окружения ворошителя
-		return silent;
-	}
 
 	/**
 	 * @brief Функция построения куска текста произвольного вида
@@ -309,7 +278,7 @@ namespace {
 	 */
 	cef::state_t consume(const string & text, const size_t step, vector <Event> & events, cef::error_t & code) noexcept {
 		// Объект потокового чтения записей
-		cef::reader_t reader(&environment().fmk, &environment().log);
+		cef::reader_t reader;
 		// Смещение подачи записи
 		size_t offset = 0;
 		/**
@@ -429,14 +398,14 @@ namespace {
 		 * Включаем снятие отмены знаков со значений
 		 *
 		 * @details Обратимость обещана при УМОЛЧАНИИ и по той же причине: разбор пар
-		 *          ведётся ходом `fmk_t::kv`, а он снимает кавычки-ограду значения
+		 *          ведётся ходом `awh::fmk::kv`, а он снимает кавычки-ограду значения
 		 *          всегда, настройке кодека не подчиняясь. При выключенном снятии
 		 *          отмены значение «"a b=c"» выдаётся без ограды и, записанное обратно
 		 *          как есть, разбирается двумя парами вместо одной
 		 */
 		settings.unescape = true;
 		// Объект события CEF
-		cef::document_t doc(&environment().fmk, &environment().log);
+		cef::document_t doc;
 		// Устанавливаем настройки разбора записей
 		doc.settings(settings);
 		/**
@@ -474,7 +443,7 @@ namespace {
 		// Наращиваем количество записей, собранных обратно
 		totals.rewrites++;
 		// Объект события CEF повторного разбора
-		cef::document_t again(&environment().fmk, &environment().log);
+		cef::document_t again;
 		// Устанавливаем настройки разбора записей
 		again.settings(settings);
 		/**
@@ -590,6 +559,15 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	// Выполняем отключение вывода журнала: отказы здесь ожидаемы и часты
+	awh::log::mode({});
 	// Количество выполняемых проходов генератора
 	uint64_t count = 3000;
 	/**

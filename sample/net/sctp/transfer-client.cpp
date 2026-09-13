@@ -54,6 +54,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/io.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Если операционная система несёт протокол SCTP
@@ -208,11 +210,10 @@ static bool complete(engine::io_t & io, const event::id_t eid) noexcept {
  *
  * @param io   объект работы с асинхронными событиями
  * @param sctp объект работы с протоколом SCTP
- * @param log  объект работы с логами
  * @param eid  идентификатор события
  *
  */
-static void feed(engine::io_t & io, engine::sctp_t & sctp, const log_t & log, const event::id_t eid) noexcept {
+static void feed(engine::io_t & io, engine::sctp_t & sctp, const event::id_t eid) noexcept {
 	// Если весь файл уже принят к отправке
 	if(__sending__.queued)
 		// Выходим из функции
@@ -253,7 +254,7 @@ static void feed(engine::io_t & io, engine::sctp_t & sctp, const log_t & log, co
 	// Запоминаем, что весь файл принят к отправке
 	__sending__.queued = true;
 	// Выводим сообщение о том, что файл принят к отправке целиком
-	log.print("Файл принят к отправке целиком: %zu октетов", log_t::flag_t::INFO, total);
+	awh::log::print("Файл принят к отправке целиком: %zu октетов", awh::log::flag_t::INFO, total);
 }
 
 /**
@@ -265,6 +266,13 @@ static void feed(engine::io_t & io, engine::sctp_t & sctp, const log_t & log, co
  *
  */
 int32_t main(int32_t argc, char * argv[]){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Если вид сокета либо адрес файла не названы
 	if(argc < 3){
 		// Выводим порядок запуска
@@ -293,16 +301,10 @@ int32_t main(int32_t argc, char * argv[]){
 	if(!__sending__.stream && __sending__.bounds)
 		// Выводим предупреждение
 		cout << " Признак границ записи у сокета упорядоченных сообщений не значит ничего: границы там заложены видом сокета" << endl;
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект работы с логами
-	log_t log(&fmk);
-	// Устанавливаем объект работы с логами
-	fmk.setLogger(&log);
 	// Если прочитать отправляемый файл не удалось
 	if(!load(argv[2], __sending__.payload) || __sending__.payload.empty()){
 		// Выводим сообщение об ошибке
-		log.print("Файл прочитать не удалось либо он пуст: %s", log_t::flag_t::CRITICAL, argv[2]);
+		awh::log::print("Файл прочитать не удалось либо он пуст: %s", awh::log::flag_t::CRITICAL, argv[2]);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -319,12 +321,12 @@ int32_t main(int32_t argc, char * argv[]){
 		? (__sending__.bounds ? 1 : 0)
 		: ((total + __sending__.chunk - 1) / __sending__.chunk));
 	// Выводим сведения об отправляемом файле
-	log.print("ФАЙЛ: октетов=%zu записей=%zu сумма=%016llX", log_t::flag_t::INFO,
+	awh::log::print("ФАЙЛ: октетов=%zu записей=%zu сумма=%016llX", awh::log::flag_t::INFO,
 		total, records, static_cast <unsigned long long> (digest(__sending__.payload.data(), total)));
 	// Объект асинхронного движка ввода-вывода
-	engine::io_t io(&fmk, &log);
+	engine::io_t io;
 	// Объект работы с протоколом SCTP
-	engine::sctp_t sctp(&fmk, &log);
+	engine::sctp_t sctp;
 	// Создаём событие клиента
 	event::id_t eid = io.event(
 		event::node_t::CLIENT, event::family_t::IPV4,
@@ -336,7 +338,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если завести движок не удалось
 	if(!io.initialize()){
 		// Выводим сообщение об ошибке
-		log.print("Движок завести не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Движок завести не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -348,28 +350,28 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если установить локальный адрес не удалось
 	if(!io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 		// Выводим сообщение об ошибке
-		log.print("Локальный адрес установить не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Локальный адрес установить не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если установить адрес удалённого сервера не удалось
 	if(!io.setTarget(eid, target)){
 		// Выводим сообщение об ошибке
-		log.print("Адрес удалённого сервера установить не удалось: %s", log_t::flag_t::CRITICAL, target.c_str());
+		awh::log::print("Адрес удалённого сервера установить не удалось: %s", awh::log::flag_t::CRITICAL, target.c_str());
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем отклик подключения
-	io.on(eid, static_cast <engine::callback::connect_t> ([&io, &sctp, &log](const event::id_t eid, const bool ok) noexcept -> void {
+	io.on(eid, static_cast <engine::callback::connect_t> ([&io, &sctp](const event::id_t eid, const bool ok) noexcept -> void {
 		// Если подключиться не удалось
 		if(!ok){
 			// Выводим сообщение об ошибке
-			log.print("Подключиться к серверу не удалось", log_t::flag_t::CRITICAL);
+			awh::log::print("Подключиться к серверу не удалось", awh::log::flag_t::CRITICAL);
 			// Выходим из функции
 			return;
 		}
 		// Выводим сообщение об установленном подключении
-		log.print("Подключение установлено", log_t::flag_t::INFO);
+		awh::log::print("Подключение установлено", awh::log::flag_t::INFO);
 		/**
 		 * Если границы записи затребованы, а система их не несёт - об этом надо сказать
 		 *
@@ -379,16 +381,16 @@ int32_t main(int32_t argc, char * argv[]){
 		 */
 		if(__sending__.stream && __sending__.bounds && !sctp.partialSupported(eid))
 			// Выводим предупреждение
-			log.print("Границы записи система не поддерживает: файл уйдёт несколькими записями", log_t::flag_t::WARNING);
+			awh::log::print("Границы записи система не поддерживает: файл уйдёт несколькими записями", awh::log::flag_t::WARNING);
 		// Запоминаем свободное место очереди при пустой очереди
 		__sending__.capacity = io.available(eid);
 		// Запоминаем идентификатор события отправки
 		__event__ = eid;
 		// Выполняем отправку файла
-		feed(io, sctp, log, eid);
+		feed(io, sctp, eid);
 	}));
 	// Устанавливаем отклик состояния события
-	io.on(eid, [&io, &sctp, &log](const event::id_t eid, const event::status_t status) noexcept -> void {
+	io.on(eid, [&io, &sctp](const event::id_t eid, const event::status_t status) noexcept -> void {
 		/**
 		 * Определяем состояние события
 		 */
@@ -396,34 +398,34 @@ int32_t main(int32_t argc, char * argv[]){
 			// Если очередь отправки переполнилась
 			case static_cast <uint8_t> (event::status_t::QUEUE_OVERFLOW):
 				// Выводим сообщение о переполнении очереди
-				log.print("Очередь отправки переполнена: отправлено %zu из %zu", log_t::flag_t::INFO,
+				awh::log::print("Очередь отправки переполнена: отправлено %zu из %zu", awh::log::flag_t::INFO,
 					__sending__.offset, __sending__.payload.size());
 			break;
 			// Если в очереди отправки освободилось место
 			case static_cast <uint8_t> (event::status_t::QUEUE_AVAILABLE):
 				// Досылаем остаток файла
-				feed(io, sctp, log, eid);
+				feed(io, sctp, eid);
 			break;
 		}
 	});
 	// Если зафиксировать настройки события не удалось
 	if(!io.commit(eid)){
 		// Выводим сообщение об ошибке
-		log.print("Настройки события зафиксировать не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Настройки события зафиксировать не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если подключиться к серверу не удалось
 	if(!io.connect(eid)){
 		// Выводим сообщение об ошибке
-		log.print("Подключение к серверу выполнить не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Подключение к серверу выполнить не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если запустить событие не удалось
 	if(!io.launch(eid)){
 		// Выводим сообщение об ошибке
-		log.print("Событие запустить не удалось", log_t::flag_t::CRITICAL);
+		awh::log::print("Событие запустить не удалось", awh::log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -439,7 +441,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Продолжаем оборот цикла
 			continue;
 		// Выводим сообщение о завершении отправки
-		log.print("Отправка завершена, выдерживаем %u мс перед закрытием", log_t::flag_t::INFO, __linger__);
+		awh::log::print("Отправка завершена, выдерживаем %u мс перед закрытием", awh::log::flag_t::INFO, __linger__);
 		/**
 		 * Выдерживаем время перед закрытием подключения
 		 *

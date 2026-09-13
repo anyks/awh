@@ -69,6 +69,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "eth.hpp"
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён файлового охвата
@@ -105,10 +106,6 @@ namespace {
 			std::string _ifname;
 			// Объект работы с Ethernet
 			const awh::eth_t * _eth;
-			// Объект фреймворка
-			const awh::fmk_t * _fmk;
-			// Объект работы с логами
-			const awh::log_t * _log;
 		private:
 			/**
 			 * @brief Метод сборки объекта маршрута из слепка
@@ -153,11 +150,9 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 * @param eth объект работы с Ethernet
-			 * @param fmk объект фреймворка
-			 * @param log объект работы с логами
 			 */
-			explicit RouteGuard(const awh::eth_t * eth, const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
-			 _saved(false), _substitute(0), _prefix(0), _gateway(0), _destination(0), _ifname{}, _eth(eth), _fmk(fmk), _log(log) {
+			explicit RouteGuard(const awh::eth_t * eth) noexcept :
+			 _saved(false), _substitute(0), _prefix(0), _gateway(0), _destination(0), _ifname{}, _eth(eth) {
 				// Структура маршрута
 				awh::eth::gateway_t::route_t route{};
 				// Инициализируем объект адреса шлюза в маршруте
@@ -233,7 +228,7 @@ namespace {
 					return;
 				}
 				// Объект адреса шлюза
-				awh::net_addr_t addr(this->_fmk, this->_log);
+				awh::net_addr_t addr;
 				// Устанавливаем адрес шлюза по умолчанию
 				addr.v4(this->_gateway, awh::net_addr_t::endian_t::LITTLE);
 				// Получаем адрес шлюза по умолчанию в виде строки
@@ -313,7 +308,7 @@ TEST_F(EthFixture, GatewayRouteSubstitutionTest){
 		// Пропускаем проверку с указанием причины
 		GTEST_SKIP() << "подмена маршрута по умолчанию требует полномочий суперпользователя";
 	// Заводим охранника маршрута по умолчанию
-	RouteGuard guard(this->_eth.get(), this->_fmk.get(), this->_log.get());
+	RouteGuard guard(this->_eth.get());
 	// Структура маршрута
 	awh::eth::gateway_t::route_t route{};
 	// Инициализируем объект адреса шлюза в маршруте
@@ -968,8 +963,10 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 	 */
 	// Признак того, что заслон назвал причину отказа
 	bool named = false;
+	// Разрешаем отложенный вывод: подписка кормится именно им
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Подписываемся на журнал ради разбора довода отказа
-	this->_log->subscribe([&named]([[maybe_unused]] const awh::log_t::flag_t flag, const std::string_view text) noexcept -> void {
+	awh::log::subscribe([&named]([[maybe_unused]] const awh::log::flag_t flag, const std::string_view text) noexcept -> void {
 		// Отмечаем, что довод отказа назвал длину префикса
 		named = (named || (text.find("prefix length") != std::string_view::npos));
 	});
@@ -1039,7 +1036,7 @@ TEST_F(EthFixture, GatewayOversizedPrefixTest){
 	 */
 	ASSERT_TRUE(named) << "Заслон по длине префикса причину отказа не назвал: отказ пришёл от системы, а не от заслона";
 	// Снимаем подписку на журнал
-	this->_log->subscribe(nullptr);
+	awh::log::subscribe(nullptr);
 }
 
 /**
@@ -1090,14 +1087,11 @@ TEST_F(EthFixture, GatewayRemoveLinkScopeRouteIPv4){
 		if(::system("ip addr add 10.55.55.1/24 dev awhdummy > /dev/null 2>&1") != 0)
 			// Выходим с признаком пропуска
 			::_exit(2);
-		// Создаём объект фреймворка уже В НОВОМ пространстве имён
-		awh::fmk_t fmk;
 		// Создаём объект логгера
-		awh::log_t log(&fmk);
 		// Создаём объект работы с Ethernet
-		awh::eth_t eth(&fmk, &log);
+		awh::eth_t eth;
 		// Создаём объект сетевого адреса
-		awh::net_addr_t addr(&fmk, &log);
+		awh::net_addr_t addr;
 		// Структура сносимого маршрута
 		awh::eth::gateway_t::route_t route{};
 		// Инициализируем объект адреса шлюза в маршруте

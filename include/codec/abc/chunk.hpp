@@ -45,7 +45,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 #include "../../compressor/block.hpp"
 #include "../../cryptography/crypto.hpp"
 
@@ -502,9 +501,6 @@ namespace awh {
 				private:
 					// Модуль шифрования, отданный потребителем
 					const crypto_t * _crypto;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -677,16 +673,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
-					 * @param log object for working with logs
-					 *
 					 * \~
 					 */
-					explicit Packer(const log_t * log) noexcept;
+					explicit Packer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -708,5 +700,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_CODEC_ABC_CHUNK__

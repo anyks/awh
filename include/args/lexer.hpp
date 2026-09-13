@@ -41,7 +41,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "common.hpp"
-#include "../sys/fmk.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -164,8 +164,6 @@ namespace awh {
 				// Настройки разбора параметров
 				settings_t _settings;
 			private:
-				// Объект фреймворка
-				const fmk_t * _fmk;
 				/**
 				 * Объект работы с логами
 				 *
@@ -181,7 +179,6 @@ namespace awh {
 				 *       этот в сборке проекта не включён. Понадобится разборщику
 				 *       журнал - поле уже на месте
 				 */
-				const log_t * _log;
 			private:
 				/**
 				 * \~russian
@@ -292,17 +289,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk object of the framework
-				 * @param log object for working with the logs
 				 *
 				 * \~
 				 */
-				explicit Lexer(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Lexer() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

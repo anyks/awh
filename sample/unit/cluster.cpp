@@ -27,6 +27,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <unit/cluster.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -40,18 +42,22 @@ using namespace awh;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Создаём объект кластера
-	unit::cluster_t cluster(&fmk, &log);
+	unit::cluster_t cluster;
 	// Устанавливаем количество дочерних процессов в кластере
 	cluster.count(4);
 	// Устанавливаем функцию обратного вызова на изменение статуса кластера
-	cluster.on <void (const event::status_t)> ("status", [&log](const event::status_t status) noexcept -> void {
+	cluster.on <void (const event::status_t)> ("status", [](const event::status_t status) noexcept -> void {
 		// Возвращаем статус работы кластера
-		log.print("Cluster status: %s", log_t::flag_t::INFO, (status == event::status_t::LAUNCHED) ? "launched" : "destroyed");
+		awh::log::print("Cluster status: %s", awh::log::flag_t::INFO, (status == event::status_t::LAUNCHED) ? "launched" : "destroyed");
 		/**
 		// Если статус работы кластера - запущен
 		if(status == event::status_t::LAUNCHED)
@@ -60,9 +66,9 @@ int32_t main(){
 		 */
 	}, placeholders::_1);
 	// Устанавливаем функцию обратного вызова на события работы кластера
-	cluster.on <void (const pid_t, const unit::cluster_t::event_t)> ("events", [&cluster, &log](const pid_t pid, const unit::cluster_t::event_t event) noexcept -> void {
+	cluster.on <void (const pid_t, const unit::cluster_t::event_t)> ("events", [&cluster](const pid_t pid, const unit::cluster_t::event_t event) noexcept -> void {
 		// Возвращаем событие работы кластера
-		log.print("Cluster event: %s (pid: %u)", log_t::flag_t::INFO, (event == unit::cluster_t::event_t::START) ? "started" : "stopped", pid);
+		awh::log::print("Cluster event: %s (pid: %u)", awh::log::flag_t::INFO, (event == unit::cluster_t::event_t::START) ? "started" : "stopped", pid);
 		// Если процесс является мастер-процессом
 		if(cluster.master()){
 			// Если событие - запуск процесса
@@ -93,26 +99,26 @@ int32_t main(){
 		}
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие пересоздания процесса
-	cluster.on <void (const pid_t, const pid_t)> ("rebase", [&log](const pid_t old_pid, const pid_t new_pid) noexcept -> void {
+	cluster.on <void (const pid_t, const pid_t)> ("rebase", [](const pid_t old_pid, const pid_t new_pid) noexcept -> void {
 		// Возвращаем событие перезапуска процесса
-		log.print("Cluster process [%u] has been reborn as process [%u]", log_t::flag_t::INFO, old_pid, new_pid);
+		awh::log::print("Cluster process [%u] has been reborn as process [%u]", awh::log::flag_t::INFO, old_pid, new_pid);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", [&log](const pid_t pid, const event::error_t error, const string & message) noexcept -> void {
+	cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", [](const pid_t pid, const event::error_t error, const string & message) noexcept -> void {
 		// Возвращаем событие получения ошибки
-		log.print("Cluster process [%u] has received error [%d]: %s", log_t::flag_t::CRITICAL, pid, static_cast <uint16_t >(error), message.c_str());
+		awh::log::print("Cluster process [%u] has received error [%d]: %s", awh::log::flag_t::CRITICAL, pid, static_cast <uint16_t >(error), message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие отправки сообщений
-	cluster.on <void (const pid_t, const size_t)> ("sending", [&log](const pid_t pid, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const size_t)> ("sending", [](const pid_t pid, const size_t size) noexcept -> void {
 		// Возвращаем событие записи сообщения
-		log.print("Cluster process [%u] has sent message: %zu bytes, from PID=%u,", log_t::flag_t::INFO, ::getpid(), size, pid);
+		awh::log::print("Cluster process [%u] has sent message: %zu bytes, from PID=%u,", awh::log::flag_t::INFO, ::getpid(), size, pid);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения сообщений
-	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("message", [&log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("message", [](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Возвращаем событие получения сообщения
-		log.print("Cluster process [%u] has received message: %zu bytes, from PID=%u, message: %s", log_t::flag_t::INFO, ::getpid(), size, pid, message.c_str());
+		awh::log::print("Cluster process [%u] has received message: %zu bytes, from PID=%u, message: %s", awh::log::flag_t::INFO, ::getpid(), size, pid, message.c_str());
 		/**
 		// Если процесс является мастер-процессом
 		if(cluster.master())
@@ -122,17 +128,17 @@ int32_t main(){
 		 */
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-	cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", [&log](const pid_t pid, const event::status_t status, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", [](const pid_t pid, const event::status_t status, const size_t size) noexcept -> void {
 		// Возвращаем событие доступности очереди сообщений
-		log.print("Cluster process [%u] has message queue availability: %zu bytes, status: %s", log_t::flag_t::INFO, pid, size, (status == event::status_t::QUEUE_OVERFLOW) ? "overflow" : "available");
+		awh::log::print("Cluster process [%u] has message queue availability: %zu bytes, status: %s", awh::log::flag_t::INFO, pid, size, (status == event::status_t::QUEUE_OVERFLOW) ? "overflow" : "available");
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса процесса
-	cluster.on <void (const pid_t, const event::status_t)> ("state", [&log](const pid_t pid, const event::status_t status) noexcept -> void {
+	cluster.on <void (const pid_t, const event::status_t)> ("state", [](const pid_t pid, const event::status_t status) noexcept -> void {
 		// Возвращаем событие изменения статуса
-		log.print("Cluster process [%u] state: %d", log_t::flag_t::INFO, pid, static_cast <uint16_t> (status));
+		awh::log::print("Cluster process [%u] state: %d", awh::log::flag_t::INFO, pid, static_cast <uint16_t> (status));
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие завершения процесса
-	cluster.on <void (const pid_t, const int32_t)> ("exit", [&log](const pid_t pid, const int32_t status) noexcept -> void {
+	cluster.on <void (const pid_t, const int32_t)> ("exit", [](const pid_t pid, const int32_t status) noexcept -> void {
 		/**
 		 * Состояние завершения приходит в том виде, в каком его отдаёт система, и к
 		 * общему виду между системами не приводится: у POSIX это упакованное состояние
@@ -141,17 +147,17 @@ int32_t main(){
 		 */
 		if(unit::cluster_t::crashed(status))
 			// Возвращаем событие падения процесса
-			log.print("Cluster process [%u] has crashed, signal: %d", log_t::flag_t::CRITICAL, pid, unit::cluster_t::termsig(status));
+			awh::log::print("Cluster process [%u] has crashed, signal: %d", awh::log::flag_t::CRITICAL, pid, unit::cluster_t::termsig(status));
 		// Если процесс был снят с клавиатуры
 		else if(unit::cluster_t::manual(status))
 			// Возвращаем событие ручной остановки процесса
-			log.print("Cluster process [%u] has been interrupted", log_t::flag_t::WARNING, pid);
+			awh::log::print("Cluster process [%u] has been interrupted", awh::log::flag_t::WARNING, pid);
 		// Если процесс завершился сам
 		else if(unit::cluster_t::exited(status))
 			// Возвращаем событие завершения процесса
-			log.print("Cluster process [%u] has exited with code: %d", log_t::flag_t::INFO, pid, unit::cluster_t::exitcode(status));
+			awh::log::print("Cluster process [%u] has exited with code: %d", awh::log::flag_t::INFO, pid, unit::cluster_t::exitcode(status));
 		// Если процесс был остановлен мастером
-		else log.print("Cluster process [%u] has been stopped by master", log_t::flag_t::INFO, pid);
+		else awh::log::print("Cluster process [%u] has been stopped by master", awh::log::flag_t::INFO, pid);
 	}, placeholders::_1, placeholders::_2);
 	/**
 	 * Устанавливаем функцию обратного вызова на вход узла в кластер
@@ -160,7 +166,7 @@ int32_t main(){
 	 *          и номер мастера. Извещения эти - единственный путь к связи, и приходят
 	 *          они лишь о тех узлах, которые ПОДНЯЛИСЬ и дошли до цикла событий
 	 */
-	cluster.on <void (const pid_t)> ("join", [&cluster, &log](const pid_t pid) noexcept -> void {
+	cluster.on <void (const pid_t)> ("join", [&cluster](const pid_t pid) noexcept -> void {
 		/**
 		 * Возвращаем событие входа узла в кластер
 		 *
@@ -169,7 +175,7 @@ int32_t main(){
 		 *       У мастера `nodes` пустует всегда: список соседей заводится извещениями,
 		 *       а извещает как раз он сам
 		 */
-		log.print("Cluster node [%u] has joined (known to [%u]: %zu)", log_t::flag_t::INFO, pid, ::getpid(),
+		awh::log::print("Cluster node [%u] has joined (known to [%u]: %zu)", awh::log::flag_t::INFO, pid, ::getpid(),
 		 (cluster.master() ? cluster.workers().size() : cluster.nodes().size()));
 		/**
 		 * Заказываем прямую связь с соседом
@@ -183,9 +189,9 @@ int32_t main(){
 			cluster.link(pid);
 	}, placeholders::_1);
 	// Устанавливаем функцию обратного вызова на выбытие узла из кластера
-	cluster.on <void (const pid_t)> ("leave", [&log](const pid_t pid) noexcept -> void {
+	cluster.on <void (const pid_t)> ("leave", [](const pid_t pid) noexcept -> void {
 		// Возвращаем событие выбытия узла из кластера
-		log.print("Cluster node [%u] has left", log_t::flag_t::INFO, pid);
+		awh::log::print("Cluster node [%u] has left", awh::log::flag_t::INFO, pid);
 	}, placeholders::_1);
 	/**
 	 * Устанавливаем функцию обратного вызова на запрос разрешения связи
@@ -194,16 +200,16 @@ int32_t main(){
 	 *          заводится лишь тогда, когда отклик этот отвечает согласием. Не установлен
 	 *          отклик - разрешены все связи
 	 */
-	cluster.on <bool (const pid_t, const pid_t)> ("linking", [&log](const pid_t initiator, const pid_t peer) noexcept -> bool {
+	cluster.on <bool (const pid_t, const pid_t)> ("linking", [](const pid_t initiator, const pid_t peer) noexcept -> bool {
 		// Возвращаем событие запроса разрешения связи
-		log.print("Cluster link [%u] <-> [%u] is permitted", log_t::flag_t::INFO, initiator, peer);
+		awh::log::print("Cluster link [%u] <-> [%u] is permitted", awh::log::flag_t::INFO, initiator, peer);
 		// Разрешаем заведение связи
 		return true;
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на заведение прямой связи
-	cluster.on <void (const pid_t, const event::id_t)> ("linked", [&cluster, &log](const pid_t pid, const event::id_t eid) noexcept -> void {
+	cluster.on <void (const pid_t, const event::id_t)> ("linked", [&cluster](const pid_t pid, const event::id_t eid) noexcept -> void {
 		// Возвращаем событие заведения прямой связи
-		log.print("Cluster process [%u] is linked to [%u], event: %llu", log_t::flag_t::INFO, ::getpid(), pid, static_cast <uint64_t> (eid));
+		awh::log::print("Cluster process [%u] is linked to [%u], event: %llu", awh::log::flag_t::INFO, ::getpid(), pid, static_cast <uint64_t> (eid));
 		/**
 		 * Отправляем посылку соседу НАПРЯМУЮ
 		 *
@@ -218,16 +224,16 @@ int32_t main(){
 		}
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на разрыв прямой связи
-	cluster.on <void (const pid_t, const unit::cluster_t::reason_t)> ("unlinked", [&log](const pid_t pid, const unit::cluster_t::reason_t reason) noexcept -> void {
+	cluster.on <void (const pid_t, const unit::cluster_t::reason_t)> ("unlinked", [](const pid_t pid, const unit::cluster_t::reason_t reason) noexcept -> void {
 		// Возвращаем событие разрыва прямой связи
-		log.print("Cluster process [%u] is unlinked from [%u], reason: %u", log_t::flag_t::WARNING, ::getpid(), pid, static_cast <uint16_t> (reason));
+		awh::log::print("Cluster process [%u] is unlinked from [%u], reason: %u", awh::log::flag_t::WARNING, ::getpid(), pid, static_cast <uint16_t> (reason));
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на получение сообщения по прямой связи
-	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("peer", [&cluster, &log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("peer", [&cluster](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Возвращаем событие получения сообщения по прямой связи
-		log.print("Cluster process [%u] has received a direct message from [%u]: %s", log_t::flag_t::INFO, ::getpid(), pid, message.c_str());
+		awh::log::print("Cluster process [%u] has received a direct message from [%u]: %s", awh::log::flag_t::INFO, ::getpid(), pid, message.c_str());
 		/**
 		 * Пересылаем соседу подтверждение ЧЕРЕЗ МАСТЕРА
 		 *
@@ -246,11 +252,11 @@ int32_t main(){
 		}
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на получение пересылки через мастера
-	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("relay", [&log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
+	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("relay", [](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящей пересылки
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Возвращаем событие получения пересылки
-		log.print("Cluster process [%u] has received a relayed message from [%u]: %s", log_t::flag_t::INFO, ::getpid(), pid, message.c_str());
+		awh::log::print("Cluster process [%u] has received a relayed message from [%u]: %s", awh::log::flag_t::INFO, ::getpid(), pid, message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	/**
 	 * Устанавливаем функцию обратного вызова на приказ завершить работу
@@ -262,9 +268,9 @@ int32_t main(){
 	 * @note Ушедший по приказу работник возрождению не подлежит, и счётчик быстрых
 	 *       падений его уход не задевает: мастер отличает уход от падения
 	 */
-	cluster.on <void (const int32_t)> ("shutdown", [&cluster, &log](const int32_t code) noexcept -> void {
+	cluster.on <void (const int32_t)> ("shutdown", [&cluster](const int32_t code) noexcept -> void {
 		// Возвращаем событие получения приказа завершить работу
-		log.print("Cluster process [%u] has been ordered to terminate with code %d", log_t::flag_t::WARNING, ::getpid(), code);
+		awh::log::print("Cluster process [%u] has been ordered to terminate with code %d", awh::log::flag_t::WARNING, ::getpid(), code);
 		// Уходим из кластера названным кодом, доведя своё дело до конца
 		cluster.leave(code);
 	}, placeholders::_1);

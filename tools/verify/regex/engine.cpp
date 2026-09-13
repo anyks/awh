@@ -54,6 +54,21 @@
 using namespace std;
 using namespace awh;
 
+/**
+ * @brief Глушитель журнала работы стенда
+ *
+ * @details Журнал един на процесс, и глушение выполняется единожды, до входа в стенд
+ */
+static const struct Silencer {
+	/**
+	 * @brief Конструктор
+	 */
+	Silencer() noexcept {
+		// Выполняем отключение вывода журнала работы стенда
+		verify::silence();
+	}
+} silencer;
+
 using bounds_t = vector <pair <size_t, size_t>>;
 
 /**
@@ -217,7 +232,7 @@ TEST(Regex, Engine) {
 				// Выполняем размещение искомой последовательности в тексте
 				text.insert(at, item.needle);
 				// Создаём объект движка регулярных выражений
-				regex::engine_t engine(verify::logger());
+				regex::engine_t engine;
 				// Выполняем сборку регулярного выражения
 				ASSERT_TRUE(engine.build(item.pattern, 0)) << "Шаблон: " << item.pattern;
 				// Набор границ совпадения движка регулярных выражений

@@ -29,10 +29,6 @@
  *
  */
 void ParserHttp3Fixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 }
 
 /**
@@ -50,7 +46,7 @@ void ParserHttp3Fixture::TearDown() {}
  */
 void ParserHttp3Fixture::setup(endpoint_t & endpoint, const awh::http::direct_t direct) const noexcept {
 	// Создаём объект парсера стороны соединения
-	endpoint.parser = std::make_unique <awh::http::parser_http3_t> (direct, this->_fmk.get(), this->_log.get());
+	endpoint.parser = std::make_unique <awh::http::parser_http3_t> (direct);
 	/**
 	 * Идентификаторы потоков выдаются по правилам RFC 9000 §2.1: младший бит
 	 * различает инициатора (0 - клиент, 1 - сервер), второй - направленность

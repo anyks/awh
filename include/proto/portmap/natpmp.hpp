@@ -37,12 +37,11 @@
  */
 #include <cstddef>
 #include <cstdint>
+#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 
 /**
  * \~russian
@@ -385,11 +384,6 @@ namespace awh {
 						 */
 						Request() noexcept;
 					} request_t;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект работы с логами
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -491,18 +485,13 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект работы с логами
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					NAT_PMP(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+					NAT_PMP() noexcept {}
 			} natpmp_t;
 
 			/**

@@ -1636,35 +1636,26 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit DNS(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit DNS() noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 * @param family family of the IP addresses IPv4/IPv6
-				 * @param fmk    framework object
-				 * @param log    object for working with logs
 				 *
 				 * \~
 				 */
-				explicit DNS(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit DNS(const event::family_t family) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

@@ -29,42 +29,14 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/syslog/reader.hpp>
-#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён образца
  *
  */
 namespace {
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
-	 *          main(): объект заводится статикою местною, дабы всякое построение
-	 *          образца работало с одним и тем же фреймворком
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Выводим объект фреймворка
-		return &fmk;
-	}
 
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект для работы с логами
-		static awh::log_t log(::framework());
-		// Выводим объект для работы с логами
-		return &log;
-	}
 }
 
 /**
@@ -132,11 +104,18 @@ static const char * name(const codec::syslog::field_t field) noexcept {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Отключаем неиспользуемые переменные
 	(void) argc;
 	(void) argv;
 	// Объект потокового чтения записей
-	codec::syslog::reader_t reader(::framework(), ::logger());
+	codec::syslog::reader_t reader;
 	// Настройки разбора записей
 	codec::syslog::reader_t::settings_t settings;
 	/**

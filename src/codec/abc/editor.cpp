@@ -34,6 +34,7 @@
  */
 #include <cstring>
 #include <limits>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -99,20 +100,20 @@ bool awh::codec::abc::Editor::fail(const error_t error) noexcept {
 	 *       Проверка утверждает ОБЕ половины: причина доносится при отказе и НЕ доносится
 	 *       при успехе
 	 */
-	if((error != error_t::NONE) && (this->_log != nullptr)){
+	if(error != error_t::NONE){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
-			 log_t::flag_t::WARNING, abc::message(error));
+			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
+			 awh::log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -310,6 +311,237 @@ bool awh::codec::abc::Editor::harvest() noexcept {
 	return true;
 }
 /**
+ * @brief Метод укладки накопленных записей кадром в память
+ *
+ * @return признак успешности укладки
+ *
+ */
+bool awh::codec::abc::Editor::pack() noexcept {
+	/**
+	 * Если накопленных записей нет, укладывать нечего
+	 */
+	if(this->_pending.empty())
+		// Выводим признак успешной укладки
+		return true;
+	// Буфер уложенного кадра
+	vector <uint8_t> chunk;
+	/**
+	 * Если уложить накопленные записи кадром не вышло
+	 */
+	if(!this->_packer.pack(this->_pending.data(), this->_pending.size(), this->_kind,
+	 this->_number, static_cast <uint32_t> (this->_header.generation + 1), chunk)){
+		// Выполняем установку кода отказа укладки кадра
+		this->_error = this->_packer.error();
+		/**
+		 * Накопленное отказом не сбрасывается: причина отказа может быть устранена,
+		 * и следующая попытка пройдёт по тем же данным
+		 */
+		return false;
+	}
+	/**
+	 * Выполняем перебор накопленных правок оглавления
+	 */
+	for(edit_t & mark : this->_marks){
+		/**
+		 * Если правка ещё не привязана к уложенному кадру
+		 */
+		if(mark.batch == numeric_limits <size_t>::max())
+			// Выполняем привязку правки к укладываемому кадру
+			mark.batch = this->_batches.size();
+	}
+	// Выполняем внесение уложенного кадра в череду ожидающих записи
+	this->_batches.push_back(::std::move(chunk));
+	// Выполняем увеличение порядкового номера следующего кадра
+	this->_number++;
+	// Выполняем очистку накопленных записей
+	this->_pending.clear();
+	// Выводим признак успешной укладки
+	return true;
+}
+/**
+ * @brief Метод внесения записи в конец контейнера
+ *
+ * @param buffer буфер вносимой записи
+ * @param size   размер вносимой записи
+ * @param kind   вид содержимого вносимой записи
+ * @return       признак успешности внесения
+ *
+ */
+bool awh::codec::abc::Editor::add(const void * buffer, const size_t size,
+ const payload_t kind, const bool added, const uint64_t number) noexcept {
+	// Выполняем захват замка состояния правки контейнера
+	lock_guard <recursive_mutex> lock(this->_mtx);
+	// Выполняем сброс кода отказа правки контейнера
+	this->_error = error_t::NONE;
+	/**
+	 * Если контейнер ещё не открыт
+	 */
+	if(!this->_opened){
+		// Выполняем установку кода отказа накопления записи
+		this->fail(error_t::INTERNAL);
+		// Выводим признак неудачного накопления записи
+		return false;
+	}
+	/**
+	 * Если запись нам не передана
+	 */
+	if((buffer == nullptr) || (size == 0)){
+		// Выполняем установку кода отказа накопления записи
+		this->fail(error_t::EMPTY_RECORD);
+		// Выводим признак неудачного накопления записи
+		return false;
+	}
+	/**
+	 * Если длина записи шире отведённого ей поля оглавления
+	 *
+	 * @note Поверка стоит ДО всякой правки состояния: смещение и длина строки оглавления
+	 *       хранятся в uint32, и приведение к нему усекло бы длину молча, а откатывать
+	 *       накопленное было бы уже нечем
+	 *
+	 * @note Закреплено `EditorFixture.DeclaredRecordLengthBeyondTheEntryFieldIsRefused`.
+	 *       Место это числилось слепым с доводом «нужен буфер свыше четырёх гигаоктетов»,
+	 *       а довод был шире правды: заслон мерит ОБЪЯВЛЕННУЮ длину и буфера не касается,
+	 *       и потому поверяется мелким буфером с объявленной длиною (06.09.2026)
+	 */
+	if(size > static_cast <size_t> (numeric_limits <uint32_t>::max())){
+		// Выполняем установку кода отказа накопления записи
+		this->fail(error_t::INVALID_LENGTH);
+		// Выводим признак неудачного накопления записи
+		return false;
+	}
+	/**
+	 * Если вид содержимого сменился, выполняем укладку накопленного кадром
+	 */
+	if(!this->_pending.empty() && (kind != this->_kind)){
+		/**
+		 * Если уложить накопленное кадром не вышло
+		 */
+		if(!this->pack())
+			// Выводим признак неудачного накопления записи
+			return false;
+	}
+	/**
+	 * Если накопленное вместе с поданной записью шире поля смещения, выполняем укладку
+	 * накопленного кадром: смещение записи в кадре хранится тем же uint32
+	 */
+	if(!this->_pending.empty() &&
+	 ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
+		/**
+		 * Если уложить накопленное кадром не вышло
+		 */
+		if(!this->pack())
+			// Выводим признак неудачного накопления записи
+			return false;
+	}
+	/**
+	 * Признак незакреплённых правок, каким он был до накопления
+	 *
+	 * @note Держится он затем, что откат отвергнутого накопления обязан вернуть и его:
+	 *       без того отвергнутая запись оставляла бы правку ОБЪЯВЛЕННОЙ при пустом
+	 *       списке правок и пустом накоплении
+	 */
+	const bool dirty = this->_dirty;
+	// Выполняем установку вида содержимого накопленных записей
+	this->_kind = kind;
+	// Заводимая правка оглавления
+	edit_t mark;
+	// Выполняем установку смещения записи в содержимом кадра
+	mark.entry.offset = static_cast <uint32_t> (this->_pending.size());
+	// Выполняем установку длины накопляемой записи
+	mark.entry.length = static_cast <uint32_t> (size);
+	// Выполняем установку признака того, что запись вносится, а не правится
+	mark.added = added;
+	// Выполняем установку номера правимой строки оглавления
+	mark.number = number;
+	// Выполняем объявление того, что запись кадром ещё не уложена
+	mark.batch = numeric_limits <size_t>::max();
+	// Выполняем внесение заведённой правки оглавления
+	this->_marks.push_back(mark);
+	// Выполняем накопление поданной записи
+	this->_pending.insert(this->_pending.end(),
+	 reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
+	// Выполняем объявление наличия незакреплённых правок
+	this->_dirty = true;
+	/**
+	 * Если накоплено записей больше порога, выполняем укладку их кадром
+	 */
+	if(this->_pending.size() >= this->_settings.block){
+		/**
+		 * Если уложить накопленное кадром не вышло
+		 */
+		if(!this->pack()){
+			/**
+			 * Выполняем откат внесённой правки: без него отвергнутая запись осталась бы
+			 * сосчитанной, выдавалась бы чтением и заклинила бы всякую следующую укладку
+			 */
+			this->_marks.pop_back();
+			// Выполняем снятие накопленных октетов отвергнутой записи
+			this->_pending.resize(static_cast <size_t> (mark.entry.offset));
+			/**
+			 * Выполняем возврат признака незакреплённых правок
+			 *
+			 * @details Откат возвращал список правок да накопленные октеты, а признак этот
+			 *          оставлял выставленным - и правка числилась незакреплённой при пустом
+			 *          состоянии. Следующая фиксация ранним выходом «закреплять нечего» не
+			 *          уходила, а вела ВСЮ работу: метила прежнее оглавление мусором,
+			 *          писала новое, поднимала поколение
+			 *
+			 * @note Замерено щупом 03.09.2026, а не выведено рассуждением: контейнер о
+			 *       197 октетах при НУЛЕ накопленного и НУЛЕ правок рос до 349 октетов,
+			 *       мусор с нуля до 56, поколение с нуля до единицы. Круг повторяется
+			 *       сколько угодно, и файл растёт без предела
+			 *
+			 * @note Отказ этот достижим открытым API: настройка укладчика `encrypt` при
+			 *       неотданном модуле шифрования. Закреплено
+			 *       `EditorFixture.RefusedAddLeavesNothingToCommit`
+			 */
+			this->_dirty = dirty;
+			// Выводим признак неудачного накопления записи
+			return false;
+		}
+	}
+	/**
+	 * Если способ фиксации велит закреплять правки по размеру их
+	 */
+	if((this->_settings.mode == mode_t::SIZE) && (this->pending() >= this->_settings.limit))
+		// Выводим результат самочинной фиксации накопленных правок
+		return this->commit();
+	/**
+	 * Если способ фиксации велит закреплять правки по количеству их
+	 */
+	if((this->_settings.mode == mode_t::RECORDS) && (this->_marks.size() >= this->_settings.limit))
+		// Выводим результат самочинной фиксации накопленных правок
+		return this->commit();
+	/**
+	 * Если способ фиксации велит поверять срок при обращении и срок наступил
+	 */
+	if((this->_settings.mode == mode_t::DEADLINE) && this->_schedule.touch())
+		// Выводим результат самочинной фиксации накопленных правок
+		return this->commit();
+	// Выводим признак успешного накопления записи
+	return true;
+}
+/**
+ * @brief Метод установки модуля сжатия
+ *
+ * @param value устанавливаемый модуль сжатия, ноль - снятие модуля
+ *
+ */
+void awh::codec::abc::Editor::compressor(const compressor::block_t * value) noexcept {
+	// Выполняем установку модуля сжатия укладчику кадра
+	this->_packer.compressor(value);
+}
+/**
+ * @brief Метод установки модуля шифрования
+ *
+ * @param value устанавливаемый модуль шифрования, ноль - снятие модуля
+ *
+ */
+void awh::codec::abc::Editor::crypto(const crypto_t * value) noexcept {
+	// Выполняем установку модуля шифрования укладчику кадра
+	this->_packer.crypto(value);
+}
+/**
  * @brief Метод объявления подписи правимого контейнера
  *
  * @param crypto модуль шифрования, ноль - снятие подписи
@@ -387,74 +619,6 @@ bool awh::codec::abc::Editor::sign(const crypto_t * crypto, const string & name,
 	}
 	// Выводим признак успешно объявленной подписи
 	return true;
-}
-/**
- * @brief Метод укладки накопленных записей кадром в память
- *
- * @return признак успешности укладки
- *
- */
-bool awh::codec::abc::Editor::pack() noexcept {
-	/**
-	 * Если накопленных записей нет, укладывать нечего
-	 */
-	if(this->_pending.empty())
-		// Выводим признак успешной укладки
-		return true;
-	// Буфер уложенного кадра
-	vector <uint8_t> chunk;
-	/**
-	 * Если уложить накопленные записи кадром не вышло
-	 */
-	if(!this->_packer.pack(this->_pending.data(), this->_pending.size(), this->_kind,
-	 this->_number, static_cast <uint32_t> (this->_header.generation + 1), chunk)){
-		// Выполняем установку кода отказа укладки кадра
-		this->_error = this->_packer.error();
-		/**
-		 * Накопленное отказом не сбрасывается: причина отказа может быть устранена,
-		 * и следующая попытка пройдёт по тем же данным
-		 */
-		return false;
-	}
-	/**
-	 * Выполняем перебор накопленных правок оглавления
-	 */
-	for(edit_t & mark : this->_marks){
-		/**
-		 * Если правка ещё не привязана к уложенному кадру
-		 */
-		if(mark.batch == numeric_limits <size_t>::max())
-			// Выполняем привязку правки к укладываемому кадру
-			mark.batch = this->_batches.size();
-	}
-	// Выполняем внесение уложенного кадра в череду ожидающих записи
-	this->_batches.push_back(::std::move(chunk));
-	// Выполняем увеличение порядкового номера следующего кадра
-	this->_number++;
-	// Выполняем очистку накопленных записей
-	this->_pending.clear();
-	// Выводим признак успешной укладки
-	return true;
-}
-/**
- * @brief Метод установки модуля сжатия
- *
- * @param value устанавливаемый модуль сжатия, ноль - снятие модуля
- *
- */
-void awh::codec::abc::Editor::compressor(const compressor::block_t * value) noexcept {
-	// Выполняем установку модуля сжатия укладчику кадра
-	this->_packer.compressor(value);
-}
-/**
- * @brief Метод установки модуля шифрования
- *
- * @param value устанавливаемый модуль шифрования, ноль - снятие модуля
- *
- */
-void awh::codec::abc::Editor::crypto(const crypto_t * value) noexcept {
-	// Выполняем установку модуля шифрования укладчику кадра
-	this->_packer.crypto(value);
 }
 /**
  * @brief Метод открытия контейнера отданными работами чтения и записи
@@ -743,169 +907,6 @@ bool awh::codec::abc::Editor::open(source_t source, sink_t sink, const uint64_t 
 	// Выполняем установку признака открытого контейнера
 	this->_opened = true;
 	// Выводим признак успешно открытого контейнера
-	return true;
-}
-/**
- * @brief Метод внесения записи в конец контейнера
- *
- * @param buffer буфер вносимой записи
- * @param size   размер вносимой записи
- * @param kind   вид содержимого вносимой записи
- * @return       признак успешности внесения
- *
- */
-bool awh::codec::abc::Editor::add(const void * buffer, const size_t size,
- const payload_t kind, const bool added, const uint64_t number) noexcept {
-	// Выполняем захват замка состояния правки контейнера
-	lock_guard <recursive_mutex> lock(this->_mtx);
-	// Выполняем сброс кода отказа правки контейнера
-	this->_error = error_t::NONE;
-	/**
-	 * Если контейнер ещё не открыт
-	 */
-	if(!this->_opened){
-		// Выполняем установку кода отказа накопления записи
-		this->fail(error_t::INTERNAL);
-		// Выводим признак неудачного накопления записи
-		return false;
-	}
-	/**
-	 * Если запись нам не передана
-	 */
-	if((buffer == nullptr) || (size == 0)){
-		// Выполняем установку кода отказа накопления записи
-		this->fail(error_t::EMPTY_RECORD);
-		// Выводим признак неудачного накопления записи
-		return false;
-	}
-	/**
-	 * Если длина записи шире отведённого ей поля оглавления
-	 *
-	 * @note Поверка стоит ДО всякой правки состояния: смещение и длина строки оглавления
-	 *       хранятся в uint32, и приведение к нему усекло бы длину молча, а откатывать
-	 *       накопленное было бы уже нечем
-	 *
-	 * @note Закреплено `EditorFixture.DeclaredRecordLengthBeyondTheEntryFieldIsRefused`.
-	 *       Место это числилось слепым с доводом «нужен буфер свыше четырёх гигаоктетов»,
-	 *       а довод был шире правды: заслон мерит ОБЪЯВЛЕННУЮ длину и буфера не касается,
-	 *       и потому поверяется мелким буфером с объявленной длиною (06.09.2026)
-	 */
-	if(size > static_cast <size_t> (numeric_limits <uint32_t>::max())){
-		// Выполняем установку кода отказа накопления записи
-		this->fail(error_t::INVALID_LENGTH);
-		// Выводим признак неудачного накопления записи
-		return false;
-	}
-	/**
-	 * Если вид содержимого сменился, выполняем укладку накопленного кадром
-	 */
-	if(!this->_pending.empty() && (kind != this->_kind)){
-		/**
-		 * Если уложить накопленное кадром не вышло
-		 */
-		if(!this->pack())
-			// Выводим признак неудачного накопления записи
-			return false;
-	}
-	/**
-	 * Если накопленное вместе с поданной записью шире поля смещения, выполняем укладку
-	 * накопленного кадром: смещение записи в кадре хранится тем же uint32
-	 */
-	if(!this->_pending.empty() &&
-	 ((this->_pending.size() + size) > static_cast <size_t> (numeric_limits <uint32_t>::max()))){
-		/**
-		 * Если уложить накопленное кадром не вышло
-		 */
-		if(!this->pack())
-			// Выводим признак неудачного накопления записи
-			return false;
-	}
-	/**
-	 * Признак незакреплённых правок, каким он был до накопления
-	 *
-	 * @note Держится он затем, что откат отвергнутого накопления обязан вернуть и его:
-	 *       без того отвергнутая запись оставляла бы правку ОБЪЯВЛЕННОЙ при пустом
-	 *       списке правок и пустом накоплении
-	 */
-	const bool dirty = this->_dirty;
-	// Выполняем установку вида содержимого накопленных записей
-	this->_kind = kind;
-	// Заводимая правка оглавления
-	edit_t mark;
-	// Выполняем установку смещения записи в содержимом кадра
-	mark.entry.offset = static_cast <uint32_t> (this->_pending.size());
-	// Выполняем установку длины накопляемой записи
-	mark.entry.length = static_cast <uint32_t> (size);
-	// Выполняем установку признака того, что запись вносится, а не правится
-	mark.added = added;
-	// Выполняем установку номера правимой строки оглавления
-	mark.number = number;
-	// Выполняем объявление того, что запись кадром ещё не уложена
-	mark.batch = numeric_limits <size_t>::max();
-	// Выполняем внесение заведённой правки оглавления
-	this->_marks.push_back(mark);
-	// Выполняем накопление поданной записи
-	this->_pending.insert(this->_pending.end(),
-	 reinterpret_cast <const uint8_t *> (buffer), reinterpret_cast <const uint8_t *> (buffer) + size);
-	// Выполняем объявление наличия незакреплённых правок
-	this->_dirty = true;
-	/**
-	 * Если накоплено записей больше порога, выполняем укладку их кадром
-	 */
-	if(this->_pending.size() >= this->_settings.block){
-		/**
-		 * Если уложить накопленное кадром не вышло
-		 */
-		if(!this->pack()){
-			/**
-			 * Выполняем откат внесённой правки: без него отвергнутая запись осталась бы
-			 * сосчитанной, выдавалась бы чтением и заклинила бы всякую следующую укладку
-			 */
-			this->_marks.pop_back();
-			// Выполняем снятие накопленных октетов отвергнутой записи
-			this->_pending.resize(static_cast <size_t> (mark.entry.offset));
-			/**
-			 * Выполняем возврат признака незакреплённых правок
-			 *
-			 * @details Откат возвращал список правок да накопленные октеты, а признак этот
-			 *          оставлял выставленным - и правка числилась незакреплённой при пустом
-			 *          состоянии. Следующая фиксация ранним выходом «закреплять нечего» не
-			 *          уходила, а вела ВСЮ работу: метила прежнее оглавление мусором,
-			 *          писала новое, поднимала поколение
-			 *
-			 * @note Замерено щупом 03.09.2026, а не выведено рассуждением: контейнер о
-			 *       197 октетах при НУЛЕ накопленного и НУЛЕ правок рос до 349 октетов,
-			 *       мусор с нуля до 56, поколение с нуля до единицы. Круг повторяется
-			 *       сколько угодно, и файл растёт без предела
-			 *
-			 * @note Отказ этот достижим открытым API: настройка укладчика `encrypt` при
-			 *       неотданном модуле шифрования. Закреплено
-			 *       `EditorFixture.RefusedAddLeavesNothingToCommit`
-			 */
-			this->_dirty = dirty;
-			// Выводим признак неудачного накопления записи
-			return false;
-		}
-	}
-	/**
-	 * Если способ фиксации велит закреплять правки по размеру их
-	 */
-	if((this->_settings.mode == mode_t::SIZE) && (this->pending() >= this->_settings.limit))
-		// Выводим результат самочинной фиксации накопленных правок
-		return this->commit();
-	/**
-	 * Если способ фиксации велит закреплять правки по количеству их
-	 */
-	if((this->_settings.mode == mode_t::RECORDS) && (this->_marks.size() >= this->_settings.limit))
-		// Выводим результат самочинной фиксации накопленных правок
-		return this->commit();
-	/**
-	 * Если способ фиксации велит поверять срок при обращении и срок наступил
-	 */
-	if((this->_settings.mode == mode_t::DEADLINE) && this->_schedule.touch())
-		// Выводим результат самочинной фиксации накопленных правок
-		return this->commit();
-	// Выводим признак успешного накопления записи
 	return true;
 }
 /**
@@ -1901,7 +1902,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	// Смещение записи убранного контейнера
 	uint64_t offset = HEADER_LENGTH;
 	// Оглавление убранного контейнера
-	index_t index(this->_log);
+	index_t index;
 	// Накопленные записи убранного контейнера
 	vector <uint8_t> pending;
 	/**
@@ -1917,7 +1918,7 @@ bool awh::codec::abc::Editor::compact(sink_t target, const payload_t kind, uint6
 	// Буфер уложенного кадра убранного контейнера
 	vector <uint8_t> chunk;
 	// Дерево свёрток по кадрам убранного контейнера
-	merkle_t merkle(this->_log);
+	merkle_t merkle;
 	// Выполняем установку модуля шифрования дереву свёрток уборки
 	merkle.crypto(this->_signer);
 	/**
@@ -2496,6 +2497,15 @@ void awh::codec::abc::Editor::settings(const settings_t & settings) noexcept {
 	}
 }
 /**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Editor::Editor() noexcept :
+ _merkle(), _signer(nullptr), _hash(crypto_t::hash_t::SHA256), _index(), _packer(),
+ _error(error_t::NONE), _opened(false), _length(0), _garbage(0), _erasing(0), _number(0),
+ _kind(payload_t::MIXED), _tailed(false), _dirty(false), _origin(0), _cached(false),
+ _source(nullptr), _sink(nullptr) {}
+/**
  * @brief Деструктор
  *
  */
@@ -2507,14 +2517,3 @@ awh::codec::abc::Editor::~Editor() noexcept {
 	 */
 	this->_schedule.stop();
 }
-/**
- * @brief Конструктор
- *
- * @param log объект для работы с логами
- *
- */
-awh::codec::abc::Editor::Editor(const log_t * log) noexcept :
- _merkle(log), _signer(nullptr), _hash(crypto_t::hash_t::SHA256), _index(log), _packer(log),
- _error(error_t::NONE), _opened(false), _length(0), _garbage(0), _erasing(0), _number(0),
- _kind(payload_t::MIXED), _tailed(false), _dirty(false), _origin(0), _cached(false),
- _source(nullptr), _sink(nullptr), _log(log) {}

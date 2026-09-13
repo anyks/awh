@@ -43,7 +43,6 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -495,7 +494,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log = nullptr;
 				private:
 					// Признак того, что подан последний кусок текста
 					bool _last;
@@ -1262,21 +1260,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Reader(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1298,5 +1282,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_CODEC_JSON_READER__

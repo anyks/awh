@@ -30,10 +30,8 @@
 #include <cmath>
 #include <unordered_set>
 #include <cstdlib>
-#include <cstdio>
 #include <atomic>
 #include <limits>
-#include <fstream>
 #include <type_traits>
 
 /**
@@ -48,6 +46,7 @@
  *       здесь прежде стоявшая, снята - две тождественные копии расходятся молча
  */
 #include <codec/numeric.hpp>
+#include <sys/log.hpp>
 /**
  * Подключаем переносимую подмену целевого файла временным
  *
@@ -1827,7 +1826,7 @@ bool awh::codec::yaml::Value::parse(const string & text, const Document::setting
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document(this->_fmk, this->_log, settings);
+	document_t document(settings);
 	/**
 	 * Если разобрать текст документа не удалось
 	 */
@@ -1875,13 +1874,23 @@ bool awh::codec::yaml::Value::load(const string & filename, const Document::sett
 	// Выполняем очистку прежнего значения
 	this->clear();
 	// Выполняем заведение дерева документа
-	document_t document(this->_fmk, this->_log, settings);
+	document_t document(settings);
 	/**
 	 * Если разобрать текст документа из файла не удалось
 	 */
-	if(!document.load(filename))
+	if(!document.load(filename)){
+		/**
+		 * Код отказа перенимается у дерева документа
+		 *
+		 * @note Без переноса отказ выходил при коде НОЛЬ, и причина его терялась: по
+		 *       одному признаку выдачи читающий не отличит несуществующий файл от
+		 *       негодного текста. У INI и TOML заслон этот стоит своим спросом наличия,
+		 *       и расхождение было неразличимо, пока отказ наводился иным путём
+		 */
+		this->_error = document.error();
 		// Выводим признак неудачного разбора
 		return false;
+	}
 	/**
 	 * Если текст несёт более одного документа
 	 *
@@ -1941,7 +1950,7 @@ string awh::codec::yaml::Value::dump(const writer_t::settings_t & settings) cons
 		 */
 		return string();
 	// Выполняем заведение потока записи
-	writer_t writer(this->_log);
+	writer_t writer;
 	// Выполняем установку настроек записи текста
 	writer.settings(settings);
 	/**
@@ -2336,9 +2345,8 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект для работы с логами установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи недействительного значения
-			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL, awh::codec::yaml::message(error_t::INVALID_PATH));
+			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error_t::INVALID_PATH));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2365,24 +2373,8 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 	 *       у него он был закрыт месяцем раньше
 	 */
 	const string temporary(filename + ".awh-tmp");
-	/**
-	 * Если объект фреймворка не назначен вовсе
-	 */
-	if((this->_fmk == nullptr) || (this->_log == nullptr)){
-		// Запоминаем код отказа записи файла настроек
-		this->_error = error_t::FILE_NOT_WRITTEN;
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
-			 ::awh::codec::yaml::message(this->_error));
-		// Выводим признак неудачной записи
-		return false;
-	}
 	// Объект работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
@@ -2403,9 +2395,8 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
@@ -2425,9 +2416,8 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
@@ -2443,9 +2433,8 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("YAML value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
@@ -2668,18 +2657,6 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (const Value & val
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	/**
-	 * Если журнал присваиваемого значения назначен, а своего у нас нет
-	 *
-	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
-	 *       содержимое, а не место, куда сообщения этого значения уходят
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем перенятие объекта фреймворка
-		this->_fmk = value._fmk;
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем копирование объекта для работы с логами
-		this->_log = value._log;
 	// Выполняем копирование вида хранимого значения
 	this->_kind = value._kind;
 	// Выполняем копирование вида хранения значения
@@ -2731,18 +2708,6 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	/**
-	 * Если журнал присваиваемого значения назначен, а своего у нас нет
-	 *
-	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
-	 *       содержимое, а не место, куда сообщения этого значения уходят
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем перенятие объекта фреймворка
-		this->_fmk = value._fmk;
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем перенос объекта для работы с логами
-		this->_log = value._log;
 	// Выполняем перенос вида хранимого значения
 	this->_kind = value._kind;
 	// Выполняем перенос вида хранения значения
@@ -2783,31 +2748,11 @@ awh::codec::yaml::Value & awh::codec::yaml::Value::operator = (Value && value) n
 	return (* this);
 }
 /**
- * @brief Метод установки объекта для работы с логами
- *
- * @param log объект для работы с логами
- *
- */
-void awh::codec::yaml::Value::setLogger(const log_t * log) noexcept {
-	// Выполняем установку объекта для работы с логами
-	this->_log = log;
-}
-/**
- * @brief Метод установки объекта фреймворка
- *
- * @param fmk объект фреймворка
- *
- */
-void awh::codec::yaml::Value::setFramework(const fmk_t * fmk) noexcept {
-	// Выполняем установку объекта фреймворка
-	this->_fmk = fmk;
-}
-/**
  * @brief Конструктор
  *
  */
 awh::codec::yaml::Value::Value() noexcept :
- _log(nullptr), _kind(kind_t::NONE), _type(type_t::UNDEFINED), _schema(schema_t::CORE),
+ _kind(kind_t::NONE), _type(type_t::UNDEFINED), _schema(schema_t::CORE),
  _style(style_t::PLAIN), _chomp(chomp_t::KEEP), _layout(layout_t::BLOCK), _local(false),
  _keyLocal(false) {}
 /**

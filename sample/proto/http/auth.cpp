@@ -30,9 +30,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <proto/http/auth/auth.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -46,15 +45,12 @@ using namespace awh::http;
 /**
  * @brief Демонстрация схемы BASIC-авторизации (клиент/сервер)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleBasic() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== BASIC ======== " << endl;
 	// Создаём модуль авторизации на стороне клиента
-	auth_t client(auth_t::owner_t::CLIENT, fmk, log);
+	auth_t client(auth_t::owner_t::CLIENT);
 	// Выбираем схему BASIC-авторизации
 	client.type(auth_t::type_t::BASIC);
 	// Устанавливаем логин пользователя
@@ -66,7 +62,7 @@ static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
 	// Выводим сформированные учётные данные клиента
 	cout << "Client Authorization: " << credentials << endl;
 	// Создаём модуль авторизации на стороне сервера
-	auth_t server(auth_t::owner_t::SERVER, fmk, log);
+	auth_t server(auth_t::owner_t::SERVER);
 	// Выбираем схему BASIC-авторизации
 	server.type(auth_t::type_t::BASIC);
 	// Регистрируем функцию проверки пары «логин/пароль»
@@ -82,15 +78,12 @@ static void sampleBasic(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация схемы BEARER-авторизации (клиент/сервер)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleBearer(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleBearer() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== BEARER ======== " << endl;
 	// Создаём модуль авторизации на стороне клиента
-	auth_t client(auth_t::owner_t::CLIENT, fmk, log);
+	auth_t client(auth_t::owner_t::CLIENT);
 	// Выбираем схему BEARER-авторизации
 	client.type(auth_t::type_t::BEARER);
 	// Устанавливаем токен доступа
@@ -100,7 +93,7 @@ static void sampleBearer(const fmk_t * fmk, const log_t * log) noexcept {
 	// Выводим сформированные учётные данные клиента
 	cout << "Client Authorization: " << credentials << endl;
 	// Создаём модуль авторизации на стороне сервера
-	auth_t server(auth_t::owner_t::SERVER, fmk, log);
+	auth_t server(auth_t::owner_t::SERVER);
 	// Выбираем схему BEARER-авторизации
 	server.type(auth_t::type_t::BEARER);
 	// Регистрируем функцию проверки токена доступа
@@ -116,18 +109,16 @@ static void sampleBearer(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация схемы DIGEST-авторизации (клиент/сервер)
  *
- * @param fmk  объект фреймворка
- * @param log  объект для работы с логами
  * @param hash алгоритм хэширования
  * @param name название алгоритма для вывода
  * @param sess флаг сессионного режима алгоритма (-sess)
  *
  */
-static void sampleDigest(const fmk_t * fmk, const log_t * log, const auth_t::hash_t hash, const string & name, const bool sess) noexcept {
+static void sampleDigest(const auth_t::hash_t hash, const string & name, const bool sess) noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== DIGEST " << name << (sess ? "-sess" : "") << " ======== " << endl;
 	// Создаём модуль авторизации на стороне сервера
-	auth_t server(auth_t::owner_t::SERVER, fmk, log);
+	auth_t server(auth_t::owner_t::SERVER);
 	// Выбираем схему DIGEST-авторизации с указанным алгоритмом
 	server.type(auth_t::type_t::DIGEST, hash);
 	// Устанавливаем сессионный режим алгоритма при необходимости
@@ -144,7 +135,7 @@ static void sampleDigest(const fmk_t * fmk, const log_t * log, const auth_t::has
 	// Выводим сформированный вызов сервера
 	cout << "Server WWW-Authenticate: " << challenge << endl;
 	// Создаём модуль авторизации на стороне клиента
-	auth_t client(auth_t::owner_t::CLIENT, fmk, log);
+	auth_t client(auth_t::owner_t::CLIENT);
 	// Выбираем схему DIGEST-авторизации с указанным алгоритмом
 	client.type(auth_t::type_t::DIGEST, hash);
 	// Устанавливаем логин пользователя
@@ -167,15 +158,12 @@ static void sampleDigest(const fmk_t * fmk, const log_t * log, const auth_t::has
 /**
  * @brief Демонстрация защиты DIGEST от повторного воспроизведения (replay)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleDigestReplay(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleDigestReplay() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== DIGEST REPLAY PROTECTION ======== " << endl;
 	// Создаём модуль авторизации на стороне сервера
-	auth_t server(auth_t::owner_t::SERVER, fmk, log);
+	auth_t server(auth_t::owner_t::SERVER);
 	// Выбираем схему DIGEST-авторизации
 	server.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем название сервера (realm)
@@ -188,7 +176,7 @@ static void sampleDigestReplay(const fmk_t * fmk, const log_t * log) noexcept {
 	// Формируем вызов авторизации сервера
 	const string challenge = server.header();
 	// Создаём модуль авторизации на стороне клиента
-	auth_t client(auth_t::owner_t::CLIENT, fmk, log);
+	auth_t client(auth_t::owner_t::CLIENT);
 	// Выбираем схему DIGEST-авторизации
 	client.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 	// Устанавливаем логин пользователя
@@ -221,15 +209,12 @@ static void sampleDigestReplay(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация авторизации подписью HMAC (RFC 9421, клиент/сервер)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleHmac(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleHmac() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== HMAC (RFC 9421) ======== " << endl;
 	// Создаём модуль авторизации на стороне клиента
-	auth_t client(auth_t::owner_t::CLIENT, fmk, log);
+	auth_t client(auth_t::owner_t::CLIENT);
 	// Выбираем схему подписи HMAC с алгоритмом SHA-256
 	client.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
 	// Устанавливаем секретный ключ подписи
@@ -253,7 +238,7 @@ static void sampleHmac(const fmk_t * fmk, const log_t * log) noexcept {
 		// Выводим название и значение заголовка подписи
 		cout << "Client " << header.first << ": " << header.second << endl;
 	// Создаём модуль авторизации на стороне сервера
-	auth_t server(auth_t::owner_t::SERVER, fmk, log);
+	auth_t server(auth_t::owner_t::SERVER);
 	// Выбираем схему подписи HMAC с алгоритмом SHA-256
 	server.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
 	// Восстанавливаем значения покрываемых компонентов из принятого запроса
@@ -279,15 +264,12 @@ static void sampleHmac(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация авторизации через прокси (Proxy-Authorization)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleProxy(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleProxy() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== PROXY (BASIC) ======== " << endl;
 	// Создаём модуль авторизации на стороне клиента
-	auth_t client(auth_t::owner_t::CLIENT, fmk, log);
+	auth_t client(auth_t::owner_t::CLIENT);
 	// Выбираем схему BASIC-авторизации
 	client.type(auth_t::type_t::BASIC);
 	// Включаем режим работы через прокси
@@ -299,7 +281,7 @@ static void sampleProxy(const fmk_t * fmk, const log_t * log) noexcept {
 	// Формируем заголовок учётных данных вместе с его именем
 	cout << "Client " << client.header(true);
 	// Создаём модуль авторизации на стороне сервера (прокси)
-	auth_t server(auth_t::owner_t::SERVER, fmk, log);
+	auth_t server(auth_t::owner_t::SERVER);
 	// Выбираем схему BASIC-авторизации
 	server.type(auth_t::type_t::BASIC);
 	// Включаем режим работы через прокси
@@ -316,28 +298,32 @@ static void sampleProxy(const fmk_t * fmk, const log_t * log) noexcept {
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Демонстрируем схему BASIC-авторизации
-	sampleBasic(&fmk, &log);
+	sampleBasic();
 	// Демонстрируем схему BEARER-авторизации
-	sampleBearer(&fmk, &log);
+	sampleBearer();
 	// Демонстрируем схему DIGEST-авторизации для алгоритма MD5
-	sampleDigest(&fmk, &log, auth_t::hash_t::MD5, "MD5", false);
+	sampleDigest(auth_t::hash_t::MD5, "MD5", false);
 	// Демонстрируем схему DIGEST-авторизации для алгоритма SHA-256
-	sampleDigest(&fmk, &log, auth_t::hash_t::SHA256, "SHA-256", false);
+	sampleDigest(auth_t::hash_t::SHA256, "SHA-256", false);
 	// Демонстрируем схему DIGEST-авторизации для алгоритма SHA-512
-	sampleDigest(&fmk, &log, auth_t::hash_t::SHA512, "SHA-512", false);
+	sampleDigest(auth_t::hash_t::SHA512, "SHA-512", false);
 	// Демонстрируем схему DIGEST-авторизации в сессионном режиме (SHA-256-sess)
-	sampleDigest(&fmk, &log, auth_t::hash_t::SHA256, "SHA-256", true);
+	sampleDigest(auth_t::hash_t::SHA256, "SHA-256", true);
 	// Демонстрируем защиту DIGEST от повторного воспроизведения
-	sampleDigestReplay(&fmk, &log);
+	sampleDigestReplay();
 	// Демонстрируем авторизацию подписью HMAC
-	sampleHmac(&fmk, &log);
+	sampleHmac();
 	// Демонстрируем авторизацию через прокси
-	sampleProxy(&fmk, &log);
+	sampleProxy();
 	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

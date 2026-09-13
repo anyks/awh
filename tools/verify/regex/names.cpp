@@ -6,9 +6,14 @@
 #include "silent.hpp"
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 using namespace std; using namespace awh;
 struct Item { const char * pattern; const char * text; };
 int main(){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
+	// Отключаем вывод журнала работы стенда
+	verify::silence();
 	const vector<Item> items = {
 		{"(?<w>a+)b", "aab"},
 		{"(?'w'a+)b", "aab"},
@@ -42,7 +47,7 @@ int main(){
 			}
 			pcre2_match_data_free(d); pcre2_code_free(re);
 		}
-		regex::engine_t engine(verify::logger());
+		regex::engine_t engine;
 		const bool oursBuilt = engine.build(item.pattern, 0);
 		bool ours = false; size_t ob = 0, oe = 0;
 		vector<pair<size_t,size_t>> caps;

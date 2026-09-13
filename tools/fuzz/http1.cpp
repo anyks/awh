@@ -46,6 +46,7 @@
  */
 #include <proto/http/parser/http1/http.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Подписываемся на пространство имён HTTP-протокола
@@ -265,8 +266,6 @@ namespace {
 	/**
 	 * @brief Функция разбора сообщения с заданным размером фрагмента подачи
 	 *
-	 * @param fmk      объект фреймворка
-	 * @param log      объект логирования
 	 * @param setup    настройки разбора сообщения
 	 * @param message  разбираемое сообщение
 	 * @param fragment размер фрагмента подачи (0 - сообщение подаётся целиком)
@@ -274,11 +273,11 @@ namespace {
 	 * @return         наблюдаемый результат разбора
 	 *
 	 */
-	static outcome_t parsing(const awh::fmk_t * fmk, const awh::log_t * log, const setup_t & setup, const std::string & message, const size_t fragment, const bool closed = false) noexcept {
+	static outcome_t parsing(const setup_t & setup, const std::string & message, const size_t fragment, const bool closed = false) noexcept {
 		// Результат разбора сообщения
 		outcome_t result;
 		// Создаём объект настраиваемой фабрики парсеров
-		parser_http_t factory(setup.direct, fmk, log);
+		parser_http_t factory(setup.direct);
 		// Применяем лимиты безопасности разбора
 		factory.limits(setup.limits);
 		// Применяем протокол, с которым работает парсер
@@ -1084,8 +1083,6 @@ namespace {
 	 *          не сработавшая на своём сообщении, и защита, сработавшая на чужом,
 	 *          ловятся одинаково
 	 *
-	 * @param fmk     объект фреймворка
-	 * @param log     объект логирования
 	 * @param setup   настройки разбора сообщения
 	 * @param message разбираемое сообщение
 	 * @param traits  признаки сформированного сообщения
@@ -1093,13 +1090,13 @@ namespace {
 	 * @return        результат сверки
 	 *
 	 */
-	static bool crossmode(const awh::fmk_t * fmk, const awh::log_t * log, const setup_t & setup, const std::string & message, const traits_t & traits, std::string & reason) noexcept {
+	static bool crossmode(const setup_t & setup, const std::string & message, const traits_t & traits, std::string & reason) noexcept {
 		// Формируем настройки разбора прямым соединением
 		setup_t options = setup;
 		// Эталоном служит прямое соединение: ему режим ничего не ужесточает
 		options.proto = proto_t::HTTP1;
 		// Выполняем разбор сообщения прямым соединением
-		const outcome_t plain = ::parsing(fmk, log, options, message, 0, true);
+		const outcome_t plain = ::parsing(options, message, 0, true);
 		/**
 		 * Перебираем режимы работы, ужесточающие разбор
 		 */
@@ -1107,7 +1104,7 @@ namespace {
 			// Устанавливаем проверяемый режим работы парсера
 			options.proto = proto;
 			// Выполняем разбор того же сообщения проверяемым режимом
-			const outcome_t actual = ::parsing(fmk, log, options, message, 0, true);
+			const outcome_t actual = ::parsing(options, message, 0, true);
 			// Код ошибки, предсказанной проверяемому режиму
 			parser_http_t::error_t error = parser_http_t::error_t::NONE;
 			// Если режим обязан отвергнуть сообщение
@@ -1593,19 +1590,17 @@ namespace {
 	/**
 	 * @brief Функция сборки исходящего сообщения
 	 *
-	 * @param fmk      объект фреймворка
-	 * @param log      объект логирования
 	 * @param outgoing описание собираемого исходящего сообщения
 	 * @param pull     признак выдачи байтов pull-моделью вместо функции обратного вызова записи
 	 * @param source   признак подачи тела pull-источником вместо sendData
 	 * @return         собранные байты исходящего сообщения
 	 *
 	 */
-	static std::string emit(const awh::fmk_t * fmk, const awh::log_t * log, const outgoing_t & outgoing, const bool pull, const bool source) noexcept {
+	static std::string emit(const outgoing_t & outgoing, const bool pull, const bool source) noexcept {
 		// Собранные байты исходящего сообщения
 		std::string wire;
 		// Создаём объект парсера-отправителя
-		parser_http_t sender(outgoing.direct, fmk, log);
+		parser_http_t sender(outgoing.direct);
 		// Устанавливаем протокол, с которым работает отправитель
 		sender.proto(outgoing.proto);
 		// Устанавливаем пороги выходного буфера
@@ -1854,17 +1849,15 @@ namespace {
 	/**
 	 * @brief Функция проверки обратной разбираемости собранного сообщения
 	 *
-	 * @param fmk      объект фреймворка
-	 * @param log      объект логирования
 	 * @param outgoing описание собранного исходящего сообщения
 	 * @param wire     собранные байты исходящего сообщения
 	 * @param reason   выводимая причина расхождения
 	 * @return         результат проверки
 	 *
 	 */
-	static bool roundtrip(const awh::fmk_t * fmk, const awh::log_t * log, const outgoing_t & outgoing, const std::string & wire, std::string & reason) noexcept {
+	static bool roundtrip(const outgoing_t & outgoing, const std::string & wire, std::string & reason) noexcept {
 		// Создаём объект парсера-приёмника собранного сообщения
-		parser_http_t receiver(outgoing.direct, fmk, log);
+		parser_http_t receiver(outgoing.direct);
 		/**
 		 * Устанавливаем приёмнику тот же протокол, что и отправителю: проверяемый
 		 * инвариант в том, что собранное нами сообщение принимает наш же приёмник,
@@ -2062,16 +2055,14 @@ namespace {
 	 *          ту самую функцию, тело которой выполняется. Этот класс реентрантности
 	 *          давал дефекты работы с памятью не раз, поэтому проверяется постоянно
 	 *
-	 * @param fmk объект фреймворка
-	 * @param log объект логирования
 	 * @return    результат проверки пригодности парсера после сброса
 	 *
 	 */
-	static bool reentrancy(const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+	static bool reentrancy() noexcept {
 		// Выбираем направление разбираемого трафика
 		const direct_t direct = (::chance(50) ? direct_t::REQUEST : direct_t::RESPONSE);
 		// Создаём объект парсера
-		parser_http_t parser(direct, fmk, log);
+		parser_http_t parser(direct);
 		// Признаки формируемого сообщения: реентрантности они не нужны
 		traits_t traits{};
 		// Формируем разбираемое сообщение
@@ -2179,14 +2170,17 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char ** argv) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество выполняемых итераций
 	const size_t rounds = ((argc > 1) ? static_cast <size_t> (::strtoull(argv[1], nullptr, 10)) : 3000);
-	// Создаём объект фреймворка
-	awh::fmk_t fmk;
-	// Создаём объект логирования
-	awh::log_t log(&fmk);
 	// Отключаем вывод сообщений парсера: генератор намеренно подаёт нештатный трафик
-	log.level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Набор проверяемых размеров фрагмента подачи (0 - сообщение подаётся целиком)
 	static const size_t fragments[] = {0, 2, 3, 5, 8, 17, 64, 250};
 	// Количество разобранных сообщений
@@ -2227,7 +2221,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			 * крупноблочный путь, поэтому она разбирает сообщение самым простым
 			 * из имеющихся способов
 			 */
-			const outcome_t expected = ::parsing(&fmk, &log, options, message, 1);
+			const outcome_t expected = ::parsing(options, message, 1);
 			// Считаем разобранное сообщение
 			total++;
 			// Если сообщение разобрано полностью
@@ -2243,7 +2237,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			 */
 			for(const size_t fragment : fragments){
 				// Выполняем разбор сообщения проверяемым размером фрагмента
-				const outcome_t actual = ::parsing(&fmk, &log, options, message, fragment);
+				const outcome_t actual = ::parsing(options, message, fragment);
 				// Считаем выполненную сверку
 				checks++;
 				// Если результат разбора совпал с эталонным
@@ -2295,7 +2289,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 				// Считаем выполненную сверку режимов
 				modes++;
 				// Если режим разобрал сообщение не так, как предписано таблицей предсказаний
-				if(!::crossmode(&fmk, &log, options, message, traits, reason)){
+				if(!::crossmode(options, message, traits, reason)){
 					// Выводим сообщение о расхождении режимов работы
 					::printf(
 						"РАСХОЖДЕНИЕ РЕЖИМОВ: итерация %zu, направление %s, %s\n",
@@ -2319,9 +2313,9 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			// Формируем описание собираемого исходящего сообщения
 			const outgoing_t outgoing = ::compose();
 			// Собираем сообщение с выдачей байтов функцией обратного вызова записи
-			const std::string pushed = ::emit(&fmk, &log, outgoing, false, false);
+			const std::string pushed = ::emit(outgoing, false, false);
 			// Собираем то же сообщение с выдачей байтов pull-моделью
-			const std::string pulled = ::emit(&fmk, &log, outgoing, true, false);
+			const std::string pulled = ::emit(outgoing, true, false);
 			/**
 			 * Собираем то же сообщение с подачей тела pull-источником. Сообщения с
 			 * трейлерами так не собираются: источник завершает тело сам по достижении
@@ -2329,7 +2323,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			 * интерфейса, зафиксированное в документации метода dataSource
 			 */
 			const std::string sourced = (outgoing.trailers.empty()
-			 ? ::emit(&fmk, &log, outgoing, false, true) : pushed);
+			 ? ::emit(outgoing, false, true) : pushed);
 			// Считаем собранное исходящее сообщение
 			emitted++;
 			// Если способ выдачи байтов повлиял на провод
@@ -2369,7 +2363,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 					continue;
 				}
 				// Если собранное сообщение не разбирается обратно в то же самое
-				if(!::roundtrip(&fmk, &log, outgoing, wire, reason)){
+				if(!::roundtrip(outgoing, wire, reason)){
 					// Выводим сообщение о расхождении обратной разбираемости
 					::printf(
 						"РАСХОЖДЕНИЕ КРУГА: итерация %zu, способ %s, %s\n", round,
@@ -2392,7 +2386,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 			// Считаем выполненный сеанс проверки реентрантности
 			reentrant++;
 			// Если парсер после реентрантных сбросов оказался непригоден
-			if(!::reentrancy(&fmk, &log)){
+			if(!::reentrancy()){
 				// Выводим сообщение о непригодности парсера
 				::printf("РЕЕНТРАНТНОСТЬ: итерация %zu, парсер не разобрал проверочное сообщение\n", round);
 				// Выводим код выхода с ошибкой

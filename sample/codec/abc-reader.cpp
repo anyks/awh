@@ -28,33 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <codec/abc/abc.hpp>
-
-/**
- * @brief Пространство имён образца
- *
- */
-namespace {
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
-	 *          main(): объект заводится статикою местною, дабы всякое построение
-	 *          образца писало сообщения в один и тот же журнал
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Объект для работы с логами
-		static awh::log_t log(&fmk);
-		// Выводим объект для работы с логами
-		return &log;
-	}
-}
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -185,11 +160,18 @@ static void report(const abc::reader_t & reader, const size_t depth) noexcept {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Не используем параметры приложения
 	(void) argc;
 	(void) argv;
 	// Объект сборки разбираемой записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Получаем настройки сборки бинарной записи
 	abc::writer_t::settings_t settings = writer.settings();
 	/**
@@ -216,7 +198,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Собранная запись
 	const vector <uint8_t> & record = writer.record();
 	// Объект чтения бинарной записи
-	abc::reader_t reader(::logger());
+	abc::reader_t reader;
 	// Выводим заголовок разбора записи целиком
 	cout << "Разбор записи целиком:" << endl;
 	// Выполняем подачу записи разбирателю целиком

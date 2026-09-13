@@ -45,7 +45,6 @@
 #include "quic.hpp"
 #include "crypto.hpp"
 #include "params.hpp"
-#include "../../sys/log.hpp"
 #include "../../sys/macro/global.hpp"
 #include "../../cryptography/tls/coder.hpp"
 
@@ -222,9 +221,6 @@ namespace awh {
 			private:
 				// Состояния уровней шифрования
 				level_data_t _levels[LEVELS];
-			private:
-				// Объект для работы с логами
-				const log_t * _log;
 			private:
 				/**
 				 * Дружественный класс доступа обратных вызовов BoringSSL QUIC API
@@ -626,7 +622,6 @@ namespace awh {
 				 * @param endpoint роль локального эндпоинта на соединении
 				 * @param ctx      идентификатор шаблона контекста безопасности
 				 * @param coder    объект кодера транспортной безопасности
-				 * @param log      объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -637,11 +632,10 @@ namespace awh {
 				 * @param endpoint role of the local endpoint on the connection
 				 * @param ctx      identifier of the template of the security context
 				 * @param coder    object of the coder of the transport security
-				 * @param log      object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept;
+				explicit Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

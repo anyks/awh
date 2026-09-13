@@ -62,6 +62,8 @@
  * Подключаем записанный образец сличения
  */
 #include "conformance.hpp"
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Если стенд собирается со сличением с эталонной реализацией
@@ -80,7 +82,6 @@
 	#include <pcre2.h>
 #endif
 
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -100,44 +101,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -602,7 +573,7 @@ namespace {
 		// Создаём источник псевдослучайных значений
 		mt19937 gen(block.seed);
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Получаем набор режимов сопоставления движком
 		const uint32_t flags = (block.utf ? (static_cast <uint32_t> (regex::flag_t::UTF) | static_cast <uint32_t> (regex::flag_t::UCP)) : 0);
 		// Накапливаемая сумма по итогам сопоставления блока
@@ -804,7 +775,7 @@ namespace {
 				return true;
 			}
 			// Создаём объект исполняемой памяти кодогенерации
-			regex::assembly_t assembly(::logger());
+			regex::assembly_t assembly;
 			/**
 			 * Если размещение участка исполняемой памяти не выполнено
 			 */
@@ -870,7 +841,7 @@ namespace {
 		// Подписываемся на перечисление регистров соглашения о вызове
 		using reg_t = regex::emitter_t::reg_t;
 		// Создаём объект порождения машинного кода
-		regex::emitter_t emitter(::logger());
+		regex::emitter_t emitter;
 		/**
 		 * Выполняем размещение входа в порождаемую подпрограмму
 		 *
@@ -897,7 +868,7 @@ namespace {
 			return false;
 		}
 		// Создаём объект исполняемой памяти кодогенерации
-		regex::assembly_t assembly(::logger());
+		regex::assembly_t assembly;
 		/**
 		 * Если размещение порождённого кода не выполнено
 		 */
@@ -972,7 +943,7 @@ namespace {
 			// Подписываемся на перечисление регистров соглашения о вызове
 			using reg_t = regex::emitter_t::reg_t;
 			// Создаём объект порождения машинного кода
-			regex::emitter_t emitter(::logger());
+			regex::emitter_t emitter;
 			// Выполняем размещение входа в порождаемый сопоставитель
 			emitter.prologue(0);
 			/**
@@ -1027,7 +998,7 @@ namespace {
 				return false;
 			}
 			// Создаём объект исполняемой памяти кодогенерации
-			regex::assembly_t assembly(::logger());
+			regex::assembly_t assembly;
 			/**
 			 * Если размещение порождённого кода не выполнено
 			 */
@@ -1120,7 +1091,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 	// Создаём источник псевдослучайных значений
 	mt19937 gen(20260807);
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(::logger());
+	regex::engine_t engine;
 	// Количество выражений, кодогенерацию получивших
 	size_t accepted = 0;
 	// Количество выполненных сличений границ совпадения
@@ -1177,7 +1148,7 @@ bool matching(const bool utf, const bool verbose) noexcept {
 			// Переходим к образцу следующему
 			continue;
 		// Создаём объект порождения машинного кода выражения
-		regex::codegen_t codegen(::logger());
+		regex::codegen_t codegen;
 		/**
 		 * Если порождение машинного кода выражения не выполнено
 		 */
@@ -1394,7 +1365,7 @@ static bool indexing() noexcept {
 	 */
 	typedef bool (* probe_t) (const char *, size_t, size_t, size_t *, const void *);
 	// Создаём объект порождения машинного кода
-	awh::regex::emitter_t emitter(::logger());
+	awh::regex::emitter_t emitter;
 	// Выполняем размещение входа в порождаемый образец
 	emitter.prologue(32);
 	// Выполняем перенос позиции начала попытки в регистр позиции
@@ -1421,7 +1392,7 @@ static bool indexing() noexcept {
 		return false;
 	}
 	// Создаём объект размещения исполняемой памяти
-	awh::regex::assembly_t assembly(::logger());
+	awh::regex::assembly_t assembly;
 	/**
 	 * Если размещение порождённого образца не выполнено
 	 */
@@ -1553,7 +1524,7 @@ static bool nesting() noexcept {
 	// Размер записи кадра образца в байтах
 	constexpr uint32_t FRAME = (PLACES * 8);
 	// Создаём объект порождения машинного кода
-	awh::regex::emitter_t emitter(::logger());
+	awh::regex::emitter_t emitter;
 	// Выполняем размещение входа в порождаемый образец
 	emitter.prologue(FRAME);
 	/**
@@ -1631,7 +1602,7 @@ static bool nesting() noexcept {
 		return false;
 	}
 	// Создаём объект размещения исполняемой памяти
-	awh::regex::assembly_t assembly(::logger());
+	awh::regex::assembly_t assembly;
 	/**
 	 * Если размещение порождённого образца не выполнено
 	 */
@@ -2034,9 +2005,9 @@ static bool scattering() noexcept {
  */
 static bool storing(const char * write, const char * read) noexcept {
 	// Создаём объект работы с регулярными выражениями
-	const awh::regexp_t regexp(::logger());
+	const awh::regexp_t regexp;
 	// Создаём объект хранилища собранных выражений
-	awh::regex::storage_t storage(::logger());
+	awh::regex::storage_t storage;
 	/**
 	 * Выполняем установку доверия порождённому коду записи
 	 *
@@ -2227,6 +2198,13 @@ static bool storing(const char * write, const char * read) noexcept {
 	return true;
 }
 int main(int argc, char ** argv) {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	/**
 	 * Выполняем отмену буферизации вывода стенда
 	 *

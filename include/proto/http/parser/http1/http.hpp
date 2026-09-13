@@ -2815,8 +2815,6 @@ namespace awh {
 				 *       и без объектов и потому проверяет их сам
 				 *
 				 * @param direct направление трафика (запрос/ответ)
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -2829,12 +2827,10 @@ namespace awh {
 				 *       By this the parser differs from the container of the headers which is built
 				 *       even without the objects and therefore checks them itself
 				 * @param direct direction of the traffic (a request/an answer)
-				 * @param fmk    object of the framework
-				 * @param log    object for the work with the logs
 				 *
 				 * \~
 				 */
-				explicit Parser_HTTP(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Parser_HTTP(const direct_t direct) noexcept;
 			public:
 				/**
 				 * \~russian

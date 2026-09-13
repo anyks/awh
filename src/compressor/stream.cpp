@@ -78,8 +78,9 @@
 #include <cstring>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/log.hpp>
 #include <compressor/stream.hpp>
 
 /**
@@ -130,20 +131,6 @@ namespace awh {
 				 */
 				virtual bool code(const void * buffer, const size_t size, const flush_t flush, vector <char> & out) noexcept = 0;
 			protected:
-				// Объект работы с логами (устанавливается владеющим потоком)
-				const log_t * _log = nullptr;
-			public:
-				/**
-				 * @brief Метод установки объекта работы с логами
-				 *
-				 * @param log объект для работы с логами
-				 *
-				 */
-				void log(const log_t * log) noexcept {
-					// Запоминаем объект работы с логами
-					this->_log = log;
-				}
-			protected:
 				/**
 				 * @brief Метод проверки выхода на превышение допустимого предела
 				 *
@@ -164,10 +151,8 @@ namespace awh {
 					if(static_cast <uint64_t> (out.size()) <= static_cast <uint64_t> (AWH_COMPRESSOR_MAX_OUTPUT))
 						// Выводим отрицательный результат
 						return false;
-					// Если объект работы с логами установлен
-					if(this->_log != nullptr)
-						// Записываем ошибку в лог
-						this->_log->print("%s: %s", log_t::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
+					// Записываем ошибку в лог
+					log::print("%s: %s", log::flag_t::WARNING, tag, "Decompressed data exceeds the allowed limit");
 					// Выводим положительный результат
 					return true;
 				}
@@ -2043,21 +2028,19 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 		 * она собиралась сообщить об ошибке вызывающей стороны
 		 */
 		// Если объект работы с логами установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Buffer is not passed");
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Buffer is not passed");
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (flush)}, log::flag_t::WARNING, "Buffer is not passed");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Compressor: %s", log::flag_t::WARNING, "Buffer is not passed");
+		#endif
 		// Выходим из функции
 		return;
 	}
@@ -2076,21 +2059,19 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 	 */
 	if(!compressor::fits(size, this->_method)){
 		// Если объект работы с логами установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Compressor: %s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (flush)), log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Compressor: %s", log_t::flag_t::WARNING, "Input chunk is too large for the selected method");
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (flush)}, log::flag_t::WARNING, "Input chunk is too large for the selected method");
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			log::print("Compressor: %s", log::flag_t::WARNING, "Input chunk is too large for the selected method");
+		#endif
 		// Выходим из функции
 		return;
 	}
@@ -2149,8 +2130,6 @@ template void awh::compressor::Stream::push <vector <uint8_t>> (const void *, co
 awh::compressor::Stream & awh::compressor::Stream::operator = (stream_t && stream) noexcept {
 	// Если объект не совпадает
 	if(this != &stream){
-		// Устанавливаем объект для работы с логами
-		this->_log = stream._log;
 		// Устанавливаем направление операции
 		this->_event = stream._event;
 		// Устанавливаем метод компрессии
@@ -2173,7 +2152,7 @@ awh::compressor::Stream & awh::compressor::Stream::operator = (stream_t && strea
  */
 awh::compressor::Stream::Stream(stream_t && stream) noexcept :
  _event(stream._event), _method(stream._method),
- _coder(::move(stream._coder)), _out(::move(stream._out)), _log(stream._log) {
+ _coder(::move(stream._coder)), _out(::move(stream._out)) {
 	// Сбрасываем направление операции у источника
 	stream._event = event_t::NONE;
 	// Сбрасываем метод компрессии у источника
@@ -2185,18 +2164,17 @@ awh::compressor::Stream::Stream(stream_t && stream) noexcept :
  */
 awh::compressor::Stream::Stream() noexcept :
  _event(event_t::NONE), _method(method_t::NONE),
- _coder(nullptr), _log(nullptr) {}
+ _coder(nullptr) {}
 /**
  * @brief Конструктор
  *
  * @param method метод компрессии
  * @param event  направление операции
  * @param params параметры инициализации
- * @param log    объект для работы с логами
  *
  */
-awh::compressor::Stream::Stream(const method_t method, const event_t event, const params_t & params, const log_t * log) noexcept :
- _event(event), _method(method), _coder(nullptr), _log(log) {
+awh::compressor::Stream::Stream(const method_t method, const event_t event, const params_t & params) noexcept :
+ _event(event), _method(method), _coder(nullptr) {
 	/**
 	 * Размер скользящего окна сторожится и здесь, а не одними лишь установщиками
 	 * блочного режима: конструктор открыт наружу, и параметры приходят к нему как
@@ -2213,9 +2191,8 @@ awh::compressor::Stream::Stream(const method_t method, const event_t event, cons
 			// Если размер скользящего окна лежит вне допустимого промежутка
 			if((params.wbits < 9) || (params.wbits > MAX_WBITS)){
 				// Если объект работы с логами установлен
-				if(log != nullptr)
 					// Записываем ошибку в лог
-					log->print("Compressor: %s", log_t::flag_t::WARNING, "Window bits are out of range");
+					log::print("Compressor: %s", log::flag_t::WARNING, "Window bits are out of range");
 				// Выходим из функции, оставляя поток невалидным
 				return;
 			}
@@ -2223,10 +2200,6 @@ awh::compressor::Stream::Stream(const method_t method, const event_t event, cons
 	}
 	// Создаём бэкенд для указанного метода
 	this->_coder = makeCoder(method, event, params);
-	// Если бэкенд создан
-	if(this->_coder != nullptr)
-		// Передаём бэкенду объект работы с логами
-		this->_coder->log(log);
 	// Если бэкенд создан, но контекст не инициализирован — сбрасываем
 	if((this->_coder != nullptr) && !this->_coder->valid())
 		// Сбрасываем бэкенд (поток становится невалидным)

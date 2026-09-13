@@ -28,9 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <proto/http/parser/http1/http.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -44,15 +43,12 @@ using namespace awh::http;
 /**
  * @brief Демонстрация разбора простого HTTP-запроса клиента
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleRequest() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== REQUEST ======== " << endl;
 	// Создаём объект парсера запросов клиента
-	parser_http_t parser(direct_t::REQUEST, fmk, log);
+	parser_http_t parser(direct_t::REQUEST);
 	// Устанавливаем функцию обратного вызова для обработки заголовков сообщения
 	parser.on(parser_http_t::header_callback_t([](const uint32_t, const string_view name, const string_view value, const parser_t::part_t) noexcept -> bool {
 		// Выводим название и значение очередного заголовка
@@ -89,15 +85,12 @@ static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация инкрементального (потокового) разбора HTTP-ответа сервера
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleStreaming(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleStreaming() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== STREAMING ======== " << endl;
 	// Создаём объект парсера ответов сервера
-	parser_http_t parser(direct_t::RESPONSE, fmk, log);
+	parser_http_t parser(direct_t::RESPONSE);
 	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
 	parser.on(parser_http_t::data_callback_t([](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 		// Выводим очередной принятый фрагмент тела сообщения (zero-copy)
@@ -123,15 +116,12 @@ static void sampleStreaming(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация разбора chunked-ответа с расширениями чанков и трейлерами
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleChunked(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleChunked() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== CHUNKED ======== " << endl;
 	// Создаём объект парсера ответов сервера
-	parser_http_t parser(direct_t::RESPONSE, fmk, log);
+	parser_http_t parser(direct_t::RESPONSE);
 	// Собранное тело сообщения
 	string body = "";
 	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
@@ -188,15 +178,12 @@ static void sampleChunked(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация разбора конвейерных (pipelined) запросов в одном буфере
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void samplePipelining(const fmk_t * fmk, const log_t * log) noexcept {
+static void samplePipelining() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== PIPELINING ======== " << endl;
 	// Создаём объект парсера запросов клиента
-	parser_http_t parser(direct_t::REQUEST, fmk, log);
+	parser_http_t parser(direct_t::REQUEST);
 	// Формируем данные трёх конвейерных HTTP-запросов в одном буфере
 	const string message =
 		"GET /first HTTP/1.1\r\nHost: x\r\n\r\n"
@@ -226,15 +213,12 @@ static void samplePipelining(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация кадрирования ответа на запрос методом HEAD
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleHead(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleHead() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== HEAD RESPONSE ======== " << endl;
 	// Создаём объект парсера ответов сервера
-	parser_http_t parser(direct_t::RESPONSE, fmk, log);
+	parser_http_t parser(direct_t::RESPONSE);
 	/**
 	 * Сообщаем парсеру метод запроса, которому соответствует ожидаемый ответ:
 	 * ответ на HEAD содержит Content-Length, но тело при этом не передаётся
@@ -252,15 +236,12 @@ static void sampleHead(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация чтения тела до закрытия соединения (HTTP/1.0)
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleUntilClose(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleUntilClose() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== BODY UNTIL CLOSE ======== " << endl;
 	// Создаём объект парсера ответов сервера
-	parser_http_t parser(direct_t::RESPONSE, fmk, log);
+	parser_http_t parser(direct_t::RESPONSE);
 	// Собранное тело сообщения
 	string body = "";
 	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
@@ -286,15 +267,12 @@ static void sampleUntilClose(const fmk_t * fmk, const log_t * log) noexcept {
 /**
  * @brief Демонстрация детектирования ошибок разбора и защиты от request smuggling
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-static void sampleErrors(const fmk_t * fmk, const log_t * log) noexcept {
+static void sampleErrors() noexcept {
 	// Печатаем заголовок демонстрации
 	cout << " ======== ERRORS ======== " << endl;
 	// Создаём объект парсера запросов клиента
-	parser_http_t parser(direct_t::REQUEST, fmk, log);
+	parser_http_t parser(direct_t::REQUEST);
 	// Формируем данные HTTP-запроса с конфликтом кадрирования (попытка request smuggling)
 	const string message = "POST / HTTP/1.1\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n";
 	// Выполняем разбор данных HTTP-запроса
@@ -311,24 +289,28 @@ static void sampleErrors(const fmk_t * fmk, const log_t * log) noexcept {
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Демонстрируем разбор простого HTTP-запроса клиента
-	sampleRequest(&fmk, &log);
+	sampleRequest();
 	// Демонстрируем инкрементальный (потоковый) разбор HTTP-ответа сервера
-	sampleStreaming(&fmk, &log);
+	sampleStreaming();
 	// Демонстрируем разбор chunked-ответа с расширениями чанков и трейлерами
-	sampleChunked(&fmk, &log);
+	sampleChunked();
 	// Демонстрируем разбор конвейерных (pipelined) запросов
-	samplePipelining(&fmk, &log);
+	samplePipelining();
 	// Демонстрируем кадрирование ответа на запрос методом HEAD
-	sampleHead(&fmk, &log);
+	sampleHead();
 	// Демонстрируем чтение тела до закрытия соединения (HTTP/1.0)
-	sampleUntilClose(&fmk, &log);
+	sampleUntilClose();
 	// Демонстрируем детектирование ошибок разбора
-	sampleErrors(&fmk, &log);
+	sampleErrors();
 	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

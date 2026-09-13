@@ -134,7 +134,7 @@ namespace awh {
 			 * собран целиком
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(log, reader_t::settings_t::git());
+			 *  reader_t reader(reader_t::settings_t::git());
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -201,7 +201,7 @@ namespace awh {
 			 * is assembled in full
 			 *
 			 *  @code{.cpp}
-			 *  reader_t reader(log, reader_t::settings_t::git());
+			 *  reader_t reader(reader_t::settings_t::git());
 			 *
 			 *  while(reader.feed(chunk, size, last)){
 			 *    while(reader.next()){
@@ -231,7 +231,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -1596,30 +1595,25 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log) noexcept;
+					Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора текста настроек
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a settings text
 					 *
 					 * \~
 					 */
-					Reader(const log_t * log, const settings_t & settings) noexcept;
+					Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

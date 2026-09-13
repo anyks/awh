@@ -41,6 +41,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/queue.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -239,13 +240,13 @@ void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, make_tuple(pos, size), log_t::flag_t::WARNING);
+				awh::log::debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, {pos, size}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("It is not possible to set the size of an individual record for TCP payload", log_t::flag_t::WARNING);
+				awh::log::print("It is not possible to set the size of an individual record for TCP payload", awh::log::flag_t::WARNING);
 			#endif
 		} break;
 		// Если очередь для границ сообщений (например, UDP)
@@ -615,7 +616,7 @@ size_t awh::Network_Queue::push(const void * head, const size_t length, const vo
 		 */
 		if(result != size)
 			// Выводим сообщение об ошибке
-			this->_log->print("Network queue: a record of two parts has been torn, the head has been laid without its data", log_t::flag_t::CRITICAL);
+			awh::log::print("Network queue: a record of two parts has been torn, the head has been laid without its data", awh::log::flag_t::CRITICAL);
 		// Возвращаем размер добавленных данных без учёта головы
 		return result;
 	}
@@ -691,13 +692,10 @@ bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::Network_Queue::Network_Queue(const fmk_t * fmk, const log_t * log) noexcept :
+awh::Network_Queue::Network_Queue() noexcept :
  _type(type_t::NONE), _read(0), _write(0), _total(0),
- _count(0), _bwrite(0), _buffer(nullptr), _fmk(fmk), _log(log) {}
+ _count(0), _bwrite(0), _buffer(nullptr) {}
 /**
  * @brief Деструктор
  *

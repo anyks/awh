@@ -217,7 +217,7 @@ TEST_F(PortmapUnitFixture, PortmapDatagramAttempts) {
 		// Выполняем запуск молчащего приёмника просьб
 		router.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Устанавливаем вид опроса маршрутизатора
 		portmap.setType(awh::unit::portmap_t::type_t::NAT_PMP);
 		// Устанавливаем адрес молчащего приёмника просьб
@@ -293,7 +293,7 @@ TEST_F(PortmapUnitFixture, PortmapDiscoveryAttempts) {
 	 */
 	for(const uint8_t attempts : {static_cast <uint8_t> (1), static_cast <uint8_t> (3)}){
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Устанавливаем вид опроса маршрутизатора
 		portmap.setType(awh::unit::portmap_t::type_t::UPNP);
 		// Устанавливаем разновидность сети, в которой ведётся обмен

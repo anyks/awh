@@ -509,9 +509,6 @@ namespace awh {
 				 * \~
 				 */
 				string _marker;
-			private:
-				// Объект журнала событий
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -766,8 +763,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param log объект для работы с логами
-				 *
 				 * @details Журналом сообщается отказ сборки выражения: текст его
 				 *          и смещение ошибки в шаблоне иначе выходят наружу лишь
 				 *          опросом методов error() и message(), какого потребитель
@@ -775,11 +770,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Engine(const log_t * log) noexcept;
+				explicit Engine() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

@@ -94,6 +94,19 @@ namespace awh {
 		namespace xml {
 			/**
 			 * \~russian
+			 * @brief Предобъявление владеющего значения разметки
+			 *
+			 * @note Нужно дружеству: полное имя `awh::codec::xml::Value` обязано разрешаться,
+			 *       иначе краткое имя внутри документа легло бы не на владеющее значение
+			 *
+			 * \~english
+			 * @brief Forward declaration of the owning value of a markup
+			 *
+			 * \~
+			 */
+			class Value;
+			/**
+			 * \~russian
 			 * @brief Индекс узла дерева разметки в арене
 			 *
 			 * \~english
@@ -202,9 +215,13 @@ namespace awh {
 					// Дерево разметки, которому принадлежит узел
 					const Document * _document;
 				private:
+					/**
+					 * Владеющее значение читает у узла документ, которому тот принадлежит, чтобы
+					 * перенять у документа объект фреймворка и объект ведения журнала
+					 */
+					friend class awh::codec::xml::Value;
 					// Индекс узла в арене дерева разметки
 					node_id_t _id;
-				private:
 					/**
 					 * \~russian
 					 * Клеймо поколения дерева, при котором узел снят
@@ -240,6 +257,18 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _stamp;
+					/**
+					 * \~russian
+					 * @brief Метод заведения отображения имён вложенных узлов родителя
+					 *
+					 * @note Отображение, уже заведённое, не перестраивается
+					 *
+					 * \~english
+					 * @brief Method of the creation of the mapping of the names of the nested nodes of a parent
+					 *
+					 * \~
+					 */
+					void reindex() const noexcept;
 				public:
 					/**
 					 * \~russian
@@ -341,7 +370,6 @@ namespace awh {
 					 * \~
 					 */
 					location_t location() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения родительского узла
@@ -368,20 +396,6 @@ namespace awh {
 					 * \~
 					 */
 					Node first() const noexcept;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод заведения отображения имён вложенных узлов родителя
-					 *
-					 * @note Отображение, уже заведённое, не перестраивается
-					 *
-					 * \~english
-					 * @brief Method of the creation of the mapping of the names of the nested nodes of a parent
-					 *
-					 * \~
-					 */
-					void reindex() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения последнего вложенного узла
@@ -421,7 +435,6 @@ namespace awh {
 					 * \~
 					 */
 					Node prev() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод поиска вложенного узла разметки по имени
@@ -512,7 +525,6 @@ namespace awh {
 					 * \~
 					 */
 					Node find(const string_view local, const string_view uri = "") const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения перечня атрибутов узла
@@ -593,7 +605,6 @@ namespace awh {
 					 * \~
 					 */
 					bool has(const string_view local, const string_view uri = "") const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Шаблон типа числа результата разбора
@@ -607,7 +618,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод получения содержимого узла числом
@@ -634,6 +644,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					template <typename T>
 					bool value(T & result) const noexcept {
 						// Выполняем разбор содержимого узла числом
 						return numeric(this->text(), result);
@@ -651,7 +662,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод получения значения атрибута узла числом
@@ -670,6 +680,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					template <typename T>
 					bool value(T & result, const string_view local, const string_view uri = "") const noexcept {
 						// Выполняем разбор значения атрибута узла числом
 						return numeric(this->attribute(local, uri), result);
@@ -687,7 +698,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод получения содержимого узла числом со значением по умолчанию
@@ -709,6 +719,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					template <typename T>
 					T number(const T fallback) const noexcept {
 						// Результат разбора содержимого узла
 						T result = fallback;
@@ -730,7 +741,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					template <typename T>
 					/**
 					 * \~russian
 					 * @brief Метод получения значения атрибута узла числом со значением по умолчанию
@@ -749,6 +759,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
+					template <typename T>
 					T number(const string_view local, const T fallback, const string_view uri = "") const noexcept {
 						// Результат разбора значения атрибута узла
 						T result = fallback;
@@ -757,7 +768,6 @@ namespace awh {
 						 */
 						return (this->value(result, local, uri) ? result : fallback);
 					}
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод проверки узла на пригодность
@@ -825,7 +835,6 @@ namespace awh {
 					 * \~
 					 */
 					bool operator != (const Node & node) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -880,10 +889,14 @@ namespace awh {
 			 * \~
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Document {
-				/**
-				 * Узел дерева обращается к арене и хранилищу знаков напрямую
-				 */
-				friend class Node;
+				private:
+					/**
+					 * Владеющее значение перенимает у документа пару указателей, какою тот живёт
+					 *
+					 * @warning Имя пишется ПОЛНЫМ: краткое `Value` внутри документа разрешилось бы
+					 *          не в владеющее значение
+					 */
+					friend class awh::codec::xml::Value;
 				private:
 					/**
 					 * \~russian
@@ -1096,37 +1109,12 @@ namespace awh {
 						Settings() noexcept {}
 					} settings_t;
 				private:
+				/**
+				 * Узел дерева обращается к арене и хранилищу знаков напрямую
+				 */
+				friend class Node;
 					// Настройки дерева разметки
 					settings_t _settings;
-				private:
-					/**
-					 * \~russian
-					 * @brief Метод розыска узла дерева по пути
-					 *
-					 * @details Путь записывается частями, разделёнными косой чертой, ровно как
-					 * у метода `at` владеющего значения: `/Envelope/Body/0`. Звено пути
-					 * обращается к вложенному узлу по местному имени либо по номеру
-					 *
-					 * @note Работа эта общая у прививки, опроса наличия и извлечения узла:
-					 *       розыск по пути обязан идти у них по одним правилам, а прежде он
-					 *       жил внутри одной лишь прививки
-					 *
-					 * @details Пустой путь ведёт к корневому узлу разметки - тому самому, какой
-					 * заводит и заменяет прививка пустым путём. Корень же арены узлом разметки не
-					 * является вовсе и содержимое текста лишь вмещает: путём к нему не ведут
-					 *
-					 * @param path разыскиваемый путь
-					 * @return     индекс разысканного узла, `INVALID_NODE` - узел не разыскан
-					 *
-					 * \~english
-					 * @brief Method of the search of a node of the tree by a path
-					 * @param path path being searched for
-					 * @return     index of the found node, `INVALID_NODE` — the node is not found
-					 *
-					 * \~
-					 */
-					node_id_t locate(const string & path) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * Код ошибки последней операции разбора
@@ -1141,7 +1129,6 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error;
-				private:
 					/**
 					 * \~russian
 					 * Объект ведения журнала работы
@@ -1154,21 +1141,21 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log = nullptr;
 					/**
 					 * \~russian
 					 * Объект фреймворка
 					 *
-					 * @note Держится ради работы с файловой системой: приведение пути к широкому
-					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
-					 *       узким, а кириллический адрес ложился бы на диск искажённым
+					 * @note Держится ради передачи владеющему значению: значение, снятое с узла
+					 *       документа, обязано унаследовать ту же пару, какою живёт документ, - без
+					 *       неё первая же работа его с файловой системой валит процесс. Достать
+					 *       фреймворк из объекта работы с файловой системой нельзя: хода наружу он
+					 *       не даёт
 					 *
 					 * \~english
 					 * Framework object
 					 *
 					 * \~
 					 */
-					const fmk_t * _fmk = nullptr;
 					/**
 					 * \~russian
 					 * Объект для работы с файловой системой
@@ -1182,8 +1169,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					mutable fs_t _fs;
-				private:
+					fs_t _fs;
 					/**
 					 * Положение обнаруженной ошибки в исходном тексте
 					 *
@@ -1192,7 +1178,6 @@ namespace awh {
 					 *       со старым местом в донесение стройное, но ложное
 					 */
 					mutable location_t _errorLocation;
-				private:
 					/**
 					 * \~russian
 					 * Кодировка, какою исходный текст разметки прочитан
@@ -1209,9 +1194,7 @@ namespace awh {
 					 * \~
 					 */
 					encoding_t _encoding = encoding_t::NONE;
-				private:
 					// Арена узлов дерева разметки
-				private:
 					/**
 					 * \~russian
 					 * Клеймо поколения дерева разметки
@@ -1231,15 +1214,11 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t _stamp;
-				private:
 					vector <record_t> _nodes;
-				private:
 					// Хранилище атрибутов всех узлов дерева
 					vector <property_t> _attributes;
-				private:
 					// Хранилище связываний префиксов, объявленных узлами дерева
 					vector <scope_t> _scopes;
-				private:
 					/**
 					 * \~russian
 					 * Отрезки хранилища связываний, объявленных узлами дерева
@@ -1257,10 +1236,8 @@ namespace awh {
 					 * \~
 					 */
 					unordered_map <node_id_t, span_t> _scoped;
-				private:
 					// Общее хранилище знаков имён и содержимого узлов
 					string _storage;
-				private:
 					/**
 					 * \~russian
 					 * Таблица размещённых имён для сведения повторов
@@ -1293,7 +1270,6 @@ namespace awh {
 					 * \~
 					 */
 					unordered_map <string, span_t> _interned;
-				private:
 					/**
 					 * \~russian
 					 * Отображения местных имён вложенных узлов на их номера по родительским узлам
@@ -1323,7 +1299,33 @@ namespace awh {
 					 * \~
 					 */
 					mutable unordered_map <node_id_t, unordered_map <string_view, entry_t>> _index;
-				private:
+					/**
+					 * \~russian
+					 * @brief Метод розыска узла дерева по пути
+					 *
+					 * @details Путь записывается частями, разделёнными косой чертой, ровно как
+					 * у метода `at` владеющего значения: `/Envelope/Body/0`. Звено пути
+					 * обращается к вложенному узлу по местному имени либо по номеру
+					 *
+					 * @note Работа эта общая у прививки, опроса наличия и извлечения узла:
+					 *       розыск по пути обязан идти у них по одним правилам, а прежде он
+					 *       жил внутри одной лишь прививки
+					 *
+					 * @details Пустой путь ведёт к корневому узлу разметки - тому самому, какой
+					 * заводит и заменяет прививка пустым путём. Корень же арены узлом разметки не
+					 * является вовсе и содержимое текста лишь вмещает: путём к нему не ведут
+					 *
+					 * @param path разыскиваемый путь
+					 * @return     индекс разысканного узла, `INVALID_NODE` - узел не разыскан
+					 *
+					 * \~english
+					 * @brief Method of the search of a node of the tree by a path
+					 * @param path path being searched for
+					 * @return     index of the found node, `INVALID_NODE` — the node is not found
+					 *
+					 * \~
+					 */
+					node_id_t locate(const string & path) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод получения последовательности знаков по отрезку хранилища
@@ -1354,7 +1356,6 @@ namespace awh {
 					 * \~
 					 */
 					name_t get(const title_t & title) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод переноса владеющего значения в арену дерева
@@ -1431,7 +1432,6 @@ namespace awh {
 					 * \~
 					 */
 					bool parse(const string_view text, const reader_t::settings_t & settings) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения кода ошибки разбора
@@ -1484,7 +1484,6 @@ namespace awh {
 					 *      распознавание метки порядка байтов да невхождение её в содержимое
 					 */
 					encoding_t encoding() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод записи дерева разметки текстом
@@ -1536,7 +1535,6 @@ namespace awh {
 					 * \~
 					 */
 					string dump(const writer_settings_t & settings) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста разметки из файла
@@ -1634,7 +1632,6 @@ namespace awh {
 					 * \~
 					 */
 					bool save(const string & filename, const writer_settings_t & settings) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения корня дерева
@@ -1666,7 +1663,6 @@ namespace awh {
 					 * \~
 					 */
 					node_t element() const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод прививки владеющего значения в дерево разметки
@@ -1946,7 +1942,6 @@ namespace awh {
 					 * \~
 					 */
 					node_t at(const string & path) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод получения количества вложенных узлов корня разметки
@@ -2023,7 +2018,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2034,21 +2028,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
+					Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

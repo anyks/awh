@@ -33,10 +33,6 @@
  */
 class VaultFixture : public testing::Test {
 	protected:
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 		// Объект склада тайн
 		std::unique_ptr <awh::vault_t> _vault;
 	public:

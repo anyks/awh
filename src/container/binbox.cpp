@@ -31,6 +31,8 @@
 #include <sys/macro/global.hpp>
 #include <sys/version.hpp>
 #include <container/binbox.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -114,11 +116,9 @@ namespace binbox {
 	 * @param version версия контейнера для создания дампа
 	 * @param records контейнер для хранения бинарных данных
 	 * @param result  результат бинарного буфера куда будет помещён итоговый дамп
-	 * @param fmk     объект фреймворка
-	 * @param log     объект для работы с логами
 	 *
 	 */
-	static void dump(const string & name, const uint32_t version, const unordered_map <uint64_t, binbox_t::record_t> & records, vector <uint8_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
+	static void dump(const string & name, const uint32_t version, const unordered_map <uint64_t, binbox_t::record_t> & records, vector <uint8_t> & result) noexcept {
 		// Если список записей передан
 		if(!name.empty() && !records.empty()){
 			/**
@@ -144,7 +144,7 @@ namespace binbox {
 				// Получаем размер тела дампа (версия + количество записей + полезная нагрузка)
 				const uintmax_t bodySize = (sizeof(version) + sizeof(count) + payload);
 				// Получаем заголовок контейнера
-				const string header = fmk->format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
+				const string header = awh::fmk::format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
 				// Выполняем очистку результирующего буфера данных
 				result.clear();
 				// Резервируем память под весь дамп целиком, чтобы избежать повторных реаллокаций
@@ -182,13 +182,13 @@ namespace binbox {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, __FUNCTION__, error.what());
 				#endif
 			}
 		}
@@ -200,11 +200,9 @@ namespace binbox {
 	 * @param version версия контейнера для извлечения записей
 	 * @param buffer  бинарный буфер дампа для извлечения записей контейнера
 	 * @param result  результирующий контейнер для извлечения записей из бинарного буфера
-	 * @param fmk     объект фреймворка
-	 * @param log     объект для работы с логами
 	 *
 	 */
-	static void dump(const string & name, const uint32_t version, const vector <uint8_t> & buffer, unordered_map <uint64_t, binbox_t::record_t> & result, const fmk_t * fmk, const log_t * log) noexcept {
+	static void dump(const string & name, const uint32_t version, const vector <uint8_t> & buffer, unordered_map <uint64_t, binbox_t::record_t> & result) noexcept {
 		// Если буфер данных передан
 		if(!name.empty() && !buffer.empty()){
 			/**
@@ -212,18 +210,18 @@ namespace binbox {
 			 */
 			try {
 				// Получаем заголовок контейнера
-				const string header = fmk->format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
+				const string header = awh::fmk::format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
 				// Если размер буфера данных меньше размера заголовка контейнера
 				if(buffer.size() < header.size()){
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container header is invalid");
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox container header is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
 				}
 				// Если заголовок контейнера не совпадает с заголовком в буфере данных
 				if(!std::equal(header.begin(), header.end(), buffer.begin())){
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container header is invalid");
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox container header is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
 				}
@@ -236,7 +234,7 @@ namespace binbox {
 				// Если в буфере недостаточно данных для извлечения размера тела дампа
 				if((buffer.size() - offset) < sizeof(size)){
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container size is invalid");
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox container size is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
 				}
@@ -247,7 +245,7 @@ namespace binbox {
 				// Если размер бинарных данных не соответствует размеру полезной нагрузки в буфере данных
 				if(size != static_cast <uintmax_t> (buffer.size() - offset)){
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container size is invalid");
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox container size is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
 				}
@@ -258,7 +256,7 @@ namespace binbox {
 				// Если в буфере недостаточно данных для извлечения версии контейнера и количества записей
 				if((buffer.size() - offset) < (sizeof(version) + sizeof(count))){
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container size is invalid");
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox container size is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
 				}
@@ -269,7 +267,7 @@ namespace binbox {
 				// Если текущая версия контейнера выше предыдущего
 				if(version_t(AWH_VERSION) > version_t(version))
 					// Записываем ошибку в лог
-					log->print("Extracted BinBox container v%s is lower than the current container v%s", log_t::flag_t::WARNING, static_cast <string> (version_t(version)).c_str(), AWH_VERSION);
+					awh::log::print("Extracted BinBox container v%s is lower than the current container v%s", awh::log::flag_t::WARNING, static_cast <string> (version_t(version)).c_str(), AWH_VERSION);
 				// Выполняем извлечение количества записей бинарных данных
 				::memcpy(reinterpret_cast <void *> (&count), &buffer[0] + offset, sizeof(count));
 				// Выполняем смещение в буфере
@@ -285,7 +283,7 @@ namespace binbox {
 						// Если в буфере недостаточно данных для извлечения идентификатора и размера записи
 						if((buffer.size() - offset) < (sizeof(idw) + sizeof(size))){
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
 							// Завершаем извлечение данных из бинарного контейнера
 							return;
 						}
@@ -302,7 +300,7 @@ namespace binbox {
 							// Если в буфере недостаточно данных для извлечения полезной нагрузки записи
 							if(static_cast <uintmax_t> (buffer.size() - offset) < size){
 								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
+								awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
 								// Завершаем извлечение данных из бинарного контейнера
 								return;
 							}
@@ -319,7 +317,7 @@ namespace binbox {
 						// Если запись бинарных данных не может быть извлечена
 						} else {
 							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
 							// Завершаем извлечение данных из бинарного контейнера
 							return;
 						}
@@ -334,13 +332,13 @@ namespace binbox {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.size()), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer.size()}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, __FUNCTION__, error.what());
 				#endif
 			}
 		}
@@ -400,37 +398,19 @@ awh::BinBox::Iterator & awh::BinBox::Iterator::operator ++ () noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Возвращаем результат
 	return (* this);
@@ -461,12 +441,10 @@ bool awh::BinBox::Iterator::operator != (const Iterator & other) const noexcept 
  * @brief Конструктор
  *
  * @param it  итератор для установки
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  *
  */
-awh::BinBox::Iterator::Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept :
- _it(it), _fmk(fmk), _log(log) {}
+awh::BinBox::Iterator::Iterator(iterator it) noexcept :
+ _it(it) {}
 
 /**
  * @brief Метод очистки всех данных
@@ -584,7 +562,7 @@ awh::BinBox::iterator_t awh::BinBox::erase(const iterator_t & it) noexcept {
 	// Выполняем удаление указанного заголовка
 	auto i = this->_records.erase(static_cast <iterator_t::iterator> (const_cast <iterator_t &> (it)));
 	// Возвращаем результат
-	return iterator_t(i, this->_fmk, this->_log);
+	return iterator_t(i);
 }
 /**
  * @brief Метод загрузки контейнера из файла
@@ -600,7 +578,7 @@ void awh::BinBox::load(string_view filename) noexcept {
 		// Выполняем загрузку данных из файла
 		this->_fs->read(filename, buffer);
 		// Извлекаем из бинарного буфера дампа, записи контейнера
-		::binbox::dump(this->_name, this->_version, buffer, this->_records, this->_fmk, this->_log);
+		::binbox::dump(this->_name, this->_version, buffer, this->_records);
 	}
 }
 /**
@@ -615,7 +593,7 @@ void awh::BinBox::save(string_view filename) noexcept {
 		// Переменная результата
 		vector <uint8_t> result;
 		// Выполняем дамп бинарного контейнера в бинарный буфер данных
-		::binbox::dump(this->_name, this->_version, this->_records, result, this->_fmk, this->_log);
+		::binbox::dump(this->_name, this->_version, this->_records, result);
 		// Если есть данные для сохранения дампа
 		if(!result.empty())
 			// Записываем в файл бинарные данные
@@ -651,13 +629,13 @@ uint64_t awh::BinBox::idw(string_view key) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {key}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -733,7 +711,7 @@ size_t awh::BinBox::size(const uint64_t idw) const noexcept {
 						// Выполняем извлечение размера данных в контейнере
 						return i->second.size;
 					// Если контейнер по каким-то причинам оказался битым
-					else this->_log->print("Metadata [%llu] in container does not match content", log_t::flag_t::CRITICAL, idw);
+					else awh::log::print("Metadata [%llu] in container does not match content", awh::log::flag_t::CRITICAL, idw);
 				}
 			}
 		/**
@@ -745,13 +723,13 @@ size_t awh::BinBox::size(const uint64_t idw) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
@@ -794,7 +772,7 @@ void * awh::BinBox::get(const uint64_t idw) const noexcept {
 						// Выполняем извлечение запрашиваемых данных
 						return i->second.buffer.get();
 					// Если контейнер по каким-то причинам оказался битым
-					else this->_log->print("Metadata [%llu] in container does not match content", log_t::flag_t::CRITICAL, idw);
+					else awh::log::print("Metadata [%llu] in container does not match content", awh::log::flag_t::CRITICAL, idw);
 				}
 			}
 		/**
@@ -806,13 +784,13 @@ void * awh::BinBox::get(const uint64_t idw) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
@@ -905,7 +883,7 @@ T awh::BinBox::get(const uint64_t idw) noexcept {
 				// Выполняем получение данных
 				::binbox::extract(buffer, result);
 			// Если извлекаемые данные не поддерживаются, то выводим сообщение об ошибке
-			else this->_log->print("Data type to set [%llu] could not be determined", log_t::flag_t::WARNING, idw);
+			else awh::log::print("Data type to set [%llu] could not be determined", awh::log::flag_t::WARNING, idw);
 		}
 	}
 	// Возвращаем результат
@@ -987,7 +965,7 @@ bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
 						// Выполняем извлечение запрашиваемых данных
 						buffer.insert(buffer.end(), i->second.buffer.get(), i->second.buffer.get() + i->second.size);
 					// Если контейнер по каким-то причинам оказался битым
-					else this->_log->print("Metadata [%llu] in container does not match content", log_t::flag_t::CRITICAL, idw);
+					else awh::log::print("Metadata [%llu] in container does not match content", awh::log::flag_t::CRITICAL, idw);
 				}
 			}
 		/**
@@ -999,13 +977,13 @@ bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw, buffer.size()), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw, buffer.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
@@ -1060,7 +1038,7 @@ bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noex
 						// Выполняем извлечение запрашиваемых данных
 						(* buffer) = i->second.buffer.get();
 					// Если контейнер по каким-то причинам оказался битым
-					} else this->_log->print("Metadata [%llu] in container does not match content", log_t::flag_t::CRITICAL, idw);
+					} else awh::log::print("Metadata [%llu] in container does not match content", awh::log::flag_t::CRITICAL, idw);
 				}
 			}
 		/**
@@ -1072,13 +1050,13 @@ bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noex
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
@@ -1252,13 +1230,13 @@ bool awh::BinBox::add(const uint64_t idw, const void * buffer, const size_t size
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw, buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
@@ -1421,7 +1399,7 @@ void awh::BinBox::swap(BinBox & binbox) noexcept {
  */
 awh::BinBox::iterator_t awh::BinBox::end() noexcept {
 	// Возвращаем результат
-	return iterator_t(this->_records.end(), this->_fmk, this->_log);
+	return iterator_t(this->_records.end());
 }
 /**
  * @brief Метод получение начального итератора
@@ -1431,7 +1409,7 @@ awh::BinBox::iterator_t awh::BinBox::end() noexcept {
  */
 awh::BinBox::iterator_t awh::BinBox::begin() noexcept {
 	// Возвращаем результат
-	return iterator_t(this->_records.begin(), this->_fmk, this->_log);
+	return iterator_t(this->_records.begin());
 }
 /**
  * @brief Метод поиска записи по ключу
@@ -1448,46 +1426,28 @@ awh::BinBox::iterator_t awh::BinBox::find(string_view key) noexcept {
 		 */
 		try {
 			// Извлекаем текущий итератор
-			return iterator_t(this->_records.find(this->idw(key)), this->_fmk, this->_log);
+			return iterator_t(this->_records.find(this->idw(key)));
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {key}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
-	return iterator_t(this->_records.end(), this->_fmk, this->_log);
+	return iterator_t(this->_records.end());
 }
 /**
  * @brief Метод поиска записи по идентификатору ключа
@@ -1504,46 +1464,28 @@ awh::BinBox::iterator_t awh::BinBox::find(const uint64_t idw) noexcept {
 		 */
 		try {
 			// Извлекаем текущий итератор
-			return iterator_t(this->_records.find(idw), this->_fmk, this->_log);
+			return iterator_t(this->_records.find(idw));
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
-	return iterator_t(this->_records.end(), this->_fmk, this->_log);
+	return iterator_t(this->_records.end());
 }
 /**
  * @brief Оператор проверки на существование контейнера
@@ -1565,7 +1507,7 @@ awh::BinBox::operator vector <uint8_t> () const noexcept {
 	// Переменная результата
 	vector <uint8_t> result;
 	// Выполняем дамп бинарного контейнера в бинарный буфер данных
-	::binbox::dump(this->_name, this->_version, this->_records, result, this->_fmk, this->_log);
+	::binbox::dump(this->_name, this->_version, this->_records, result);
 	// Возвращаем результат
 	return result;
 }
@@ -1603,7 +1545,7 @@ awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
  */
 awh::BinBox & awh::BinBox::operator = (const vector <uint8_t> & buffer) noexcept {
 	// Извлекаем из бинарного буфера дампа, записи контейнера
-	::binbox::dump(this->_name, this->_version, buffer, this->_records, this->_fmk, this->_log);
+	::binbox::dump(this->_name, this->_version, buffer, this->_records);
 	// Возвращаем текущее значение объекта
 	return (* this);
 }
@@ -1632,16 +1574,13 @@ awh::BinBox::BinBox(BinBox && binbox) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::BinBox::BinBox(const fmk_t * fmk, const log_t * log) noexcept :
- _name{AWH_SHORT_NAME}, _fs(nullptr), _crypto(nullptr), _fmk(fmk), _log(log) {
+awh::BinBox::BinBox() noexcept :
+ _name{AWH_SHORT_NAME}, _fs(nullptr), _crypto(nullptr) {
 	// Выполняем создание объекта работы с файловой системой
-	this->_fs = make_unique <fs_t> (fmk, log);
+	this->_fs = make_unique <fs_t> ();
 	// Выполняем инициализацию объекта работы с криптографией
-	this->_crypto = make_unique <crypto_t> (fmk, log);
+	this->_crypto = make_unique <crypto_t> ();
 	// Выполняем установку версии бинарного контейнера
 	this->_version = static_cast <uint32_t> (version_t(AWH_VERSION));
 }

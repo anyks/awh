@@ -24,6 +24,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/ini/encoding.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1445,18 +1446,14 @@ void awh::codec::ini::Decoder::report() const noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе
-		this->_log->print("INI encoding failed: %s", log_t::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
+		awh::log::print("INI encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
 }
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::ini::Decoder::Decoder(const log_t * log) noexcept :
- _log(log),
+awh::codec::ini::Decoder::Decoder() noexcept :
  _encoding(encoding_t::NONE), _error(error_t::NONE), _forced(false),
  _marked(false), _signed(false), _started(false), _length(0), _surrogate(0) {
 	// Выполняем сброс удержанных байтов незавершённой последовательности знака

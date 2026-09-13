@@ -29,6 +29,7 @@
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -80,9 +81,9 @@ bool awh::codec::syslog::Reader::fail(const error_t error, const size_t offset) 
 	// Выполняем определение положения места ошибки в исходном тексте
 	this->place(offset, this->_errorPosition);
 	// Выводим в лог сообщение об ошибке разбора
-	this->_log->print(
+	awh::log::print(
 		"SysLog parsing failed: %s at line %llu column %llu",
-		log_t::flag_t::CRITICAL,
+		awh::log::flag_t::CRITICAL,
 		awh::codec::syslog::message(error),
 		static_cast <unsigned long long> (this->_errorPosition.line),
 		static_cast <unsigned long long> (this->_errorPosition.column)
@@ -90,6 +91,7 @@ bool awh::codec::syslog::Reader::fail(const error_t error, const size_t offset) 
 	// Выводим отсутствие очередного события разбора
 	return false;
 }
+
 /**
  * @brief Метод определения положения смещения в исходном тексте
  *
@@ -117,6 +119,7 @@ void awh::codec::syslog::Reader::place(const size_t offset, pos_t & result) cons
 		} else result.column++;
 	}
 }
+
 /**
  * @brief Метод отыскания конца текущей записи
  *
@@ -152,6 +155,63 @@ bool awh::codec::syslog::Reader::measure(size_t & length, size_t & next) const n
 	// Выводим признак того, что запись целиком не найдена
 	return false;
 }
+
+/**
+ * @brief Метод разбора очередной записи целиком
+ *
+ * @param record текст очередной записи без знака конца строки
+ * @return       признак успешного разбора записи
+ */
+bool awh::codec::syslog::Reader::prepare(const string_view record) noexcept {
+	// Выполняем очистку полей заголовка предыдущей записи
+	this->_fields.clear();
+	// Выполняем очистку блоков структурированных данных предыдущей записи
+	this->_structures.clear();
+	// Выполняем очистку текста сообщения предыдущей записи
+	this->_message.clear();
+	// Сбрасываем признак объявленности текста сообщения
+	this->_messaged = false;
+	// Сбрасываем приоритет предыдущей записи
+	this->_priority = 0;
+	// Сбрасываем признак объявленности приоритета
+	this->_prioritized = false;
+	// Сбрасываем номер описания предыдущей записи
+	this->_version = 0;
+	// Если длина записи допустимую превышает
+	if(record.size() > static_cast <size_t> (this->_settings.maxRecord))
+		// Выводим отказ разбора слишком длинной записью
+		return this->fail(error_t::RECORD_TOO_LONG, this->_record);
+	// Смещение, за приставкой приоритета следующее
+	size_t offset = 0;
+	// Если разбор приставки приоритета отказом завершился
+	if(!this->priority(record, offset))
+		// Выводим признак неудачного разбора записи
+		return false;
+	/**
+	 * Определяем описание, каким надлежит читать запись
+	 *
+	 * @note Описание, самоопределением найденное, ЗАПОМИНАЕТСЯ: спрос его после
+	 *       разбора отвечает опознанным, а не настройкой, - то есть так же, как если
+	 *       бы описание задали вручную
+	 */
+	this->_standard = (this->_settings.standard == standard_t::AUTO ? this->detect(record, offset) : this->_settings.standard);
+	/**
+	 * Определяем описание записи
+	 */
+	switch(static_cast <uint8_t> (this->_standard)){
+		// Если запись читается устаревшим описанием
+		case static_cast <uint8_t> (standard_t::RFC3164):
+			// Выводим итог разбора записи устаревшим описанием
+			return this->legacy(record, offset);
+		// Если запись читается нынешним описанием
+		case static_cast <uint8_t> (standard_t::RFC5424):
+			// Выводим итог разбора записи нынешним описанием
+			return this->modern(record, offset);
+	}
+	// Выводим отказ разбора неопределённым описанием записи
+	return this->fail(error_t::UNKNOWN_STANDARD, this->_record);
+}
+
 /**
  * @brief Метод разбора приставки приоритета
  *
@@ -207,6 +267,17 @@ bool awh::codec::syslog::Reader::priority(const string_view record, size_t & off
 	// Выводим признак успешного разбора приставки
 	return true;
 }
+
+/**
+ * @brief Метод получения приоритета текущей записи
+ *
+ * @return приоритет текущей записи
+ */
+uint32_t awh::codec::syslog::Reader::priority() const noexcept {
+	// Выводим приоритет текущей записи
+	return this->_priority;
+}
+
 /**
  * @brief Метод определения описания записи по её виду
  *
@@ -234,431 +305,7 @@ awh::codec::syslog::standard_t awh::codec::syslog::Reader::detect(const string_v
 	// Выводим описание записи устаревшим
 	return standard_t::RFC3164;
 }
-/**
- * @brief Метод укладки поля заголовка
- *
- * @param field поле заголовка, укладываемое в запись
- * @param text  значение поля, записью объявленное
- * @return      признак успешной укладки поля
- */
-bool awh::codec::syslog::Reader::lay(const field_t field, const string_view text) noexcept {
-	/**
-	 * Если запись читается устаревшим описанием
-	 *
-	 * @details Знак «-» назначен отсутствующим значением ЛИШЬ описанием RFC 5424;
-	 * описание RFC 3164 его не знает вовсе, и метка приложения «-» есть законное имя,
-	 * а не отсутствие. Толкуй его отсутствием - и запись, собранная обратно, метки не
-	 * несла бы, а повторный разбор взял бы меткой первое слово текста
-	 *
-	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота записи
-	 *       «<129>Oct 9 22:14:15 icZF -: текст»
-	 */
-	if(this->_standard != standard_t::RFC5424){
-		// Заводим поле заголовка записи
-		this->_fields.emplace_back(field, string(text));
-		// Выводим признак успешной укладки поля
-		return true;
-	}
-	/**
-	 * Если поле несёт знак отсутствия значения
-	 *
-	 * @note Различие «значения нет» и «значение пусто» здесь и решается: описание
-	 *       назначает знак «-» отсутствию значения, и толковать его строкою из одного
-	 *       знака значило бы отдать потребителю утверждение, какого в записи не было
-	 *
-	 * @details Пустое поле правится ТЕМ ЖЕ правилом, что и знак отсутствия: описание
-	 * пустых полей не знает вовсе - место поля занимает либо значение, либо знак «-», -
-	 * и поле, пустым оказавшееся, есть след записи, описанию не отвечающей (двух
-	 * пробелов подряд, к примеру). Различать их нечем: записанное обратно, пустое поле
-	 * выйдет знаком «-», и оборот записи расходился бы молча
-	 *
-	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота записи
-	 *       с датой вида BSD, поданной в поле нынешнего описания
-	 */
-	if((text == NIL) || text.empty()){
-		/**
-		 * Определяем правило обращения с отсутствующим значением
-		 */
-		switch(static_cast <uint8_t> (this->_settings.nil)){
-			// Если поле в дерево не кладётся вовсе
-			case static_cast <uint8_t> (nil_t::OMIT):
-				// Выводим признак успешной укладки поля
-				return true;
-			// Если поле кладётся пустой последовательностью знаков
-			case static_cast <uint8_t> (nil_t::EMPTY): {
-				// Заводим поле заголовка записи
-				this->_fields.emplace_back(field, string());
-				// Выводим признак успешной укладки поля
-				return true;
-			}
-			/**
-			 * Если поле кладётся знаками «-», как в записи и стоит
-			 *
-			 * @note Знак этот ставится и полю, пустым оказавшемуся: правило у пустоты и
-			 *       у отсутствия одно, и вид представления назначает настройка. Клади
-			 *       здесь пустую строку - и запись, собранная обратно, несла бы «-», а
-			 *       повторный разбор дал бы «-» вместо пустоты
-			 */
-			case static_cast <uint8_t> (nil_t::LITERAL): {
-				// Заводим поле заголовка записи
-				this->_fields.emplace_back(field, string(NIL));
-				// Выводим признак успешной укладки поля
-				return true;
-			}
-		}
-	}
-	// Заводим поле заголовка записи
-	this->_fields.emplace_back(field, string(text));
-	// Выводим признак успешной укладки поля
-	return true;
-}
-/**
- * @brief Метод снятия отмены знаков со значения структурированных данных
- *
- * @param text   значение с отменёнными знаками
- * @param result значение со снятой отменой знаков
- */
-void awh::codec::syslog::Reader::unescape(const string_view text, string & result) const noexcept {
-	// Выполняем очистку результата снятия отмены знаков
-	result.clear();
-	// Резервируем память под значение со снятой отменой знаков
-	result.reserve(text.size());
-	/**
-	 * Выполняем перебор знаков значения
-	 */
-	for(size_t i = 0; i < text.size(); i++){
-		/**
-		 * Если знак является обратной косой и за ним следует знак отменяемый
-		 *
-		 * @note Описание RFC 5424, раздел 6.3.3, называет отменяемыми РОВНО ТРИ знака:
-		 *       кавычку, закрывающую квадратную скобку и саму обратную косую. Косая
-		 *       перед всяким иным знаком отмены не образует и остаётся в значении как
-		 *       есть - иначе разбор терял бы косые, каких потребитель не отменял
-		 */
-		if((text[i] == '\\') && ((i + 1) < text.size()) && ((text[i + 1] == '"') || (text[i + 1] == ']') || (text[i + 1] == '\\'))){
-			// Добавляем отменённый знак в результат
-			result.append(1, text[i + 1]);
-			// Сдвигаем указатель перебора на отменённый знак
-			i++;
-			// Продолжаем перебор знаков значения
-			continue;
-		}
-		// Добавляем очередной знак в результат
-		result.append(1, text[i]);
-	}
-}
-/**
- * @brief Метод разбора блоков структурированных данных
- *
- * @param record разбираемая запись
- * @param offset смещение начала первого блока
- * @return       признак успешного разбора блоков
- */
-bool awh::codec::syslog::Reader::structured(const string_view record, size_t & offset) noexcept {
-	/**
-	 * Если структурированных данных запись не несёт
-	 */
-	if((offset < record.size()) && (record[offset] == '-')){
-		// Сдвигаем смещение разбора за знак отсутствия данных
-		offset++;
-		// Выводим признак успешного разбора блоков
-		return true;
-	}
-	/**
-	 * Выполняем разбор блоков структурированных данных, пока они отыскиваются
-	 */
-	while((offset < record.size()) && (record[offset] == '[')){
-		// Сдвигаем смещение разбора за открывающую скобку блока
-		offset++;
-		// Запоминаем смещение начала опознавателя блока
-		const size_t begin = offset;
-		/**
-		 * Выполняем перебор знаков опознавателя блока
-		 *
-		 * @note Опознаватель оканчивается пробелом либо закрывающей скобкой: блок без
-		 *       единого поля описанием дозволен
-		 */
-		while((offset < record.size()) && (record[offset] != ' ') && (record[offset] != ']'))
-			// Сдвигаем смещение разбора
-			offset++;
-		// Если опознаватель блока оборвался вместе с записью
-		if(offset >= record.size())
-			// Выводим отказ разбора незакрытой скобкой блока
-			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
-		// Получаем опознаватель блока структурированных данных
-		const string_view name(record.data() + begin, offset - begin);
-		// Если опознаватель блока пуст
-		if(name.empty())
-			// Выводим отказ разбора ошибочным опознавателем блока
-			return this->fail(error_t::INVALID_STRUCTURE_ID, this->_record + begin);
-		// Если сличение ведётся и длина опознавателя допустимую превышает
-		if((this->_settings.mode == mode_t::STRONG) && (name.size() > static_cast <size_t> (MAX_NAME)))
-			// Выводим отказ разбора слишком длинным именем
-			return this->fail(error_t::NAME_TOO_LONG, this->_record + begin);
-		// Если количество блоков допустимое превышает
-		if(this->_structures.size() >= static_cast <size_t> (this->_settings.maxStructures))
-			// Выводим отказ разбора превышением предела настроек
-			return this->fail(error_t::OVERFLOW_LIMIT, this->_record + begin);
-		/**
-		 * Если сличение ведётся строго, проверяем неповторимость опознавателя блока
-		 *
-		 * @note Описание требует неповторимости опознавателей внутри записи. Проверка
-		 *       эта перебором, а не указателем: блоков в живых записях единицы, и
-		 *       заведение указателя стоило бы дороже самого перебора
-		 */
-		if(this->_settings.mode == mode_t::STRONG){
-			/**
-			 * Выполняем перебор объявленных блоков структурированных данных
-			 */
-			for(auto & structure : this->_structures){
-				// Если опознаватель блока уже объявлен
-				if(structure.first.compare(0, structure.first.size(), name.data(), name.size()) == 0)
-					// Выводим отказ разбора повторным опознавателем блока
-					return this->fail(error_t::DUPLICATE_STRUCTURE, this->_record + begin);
-			}
-		}
-		// Заводим блок структурированных данных записи
-		this->_structures.emplace_back(string(name), vector <pair <string, string>> ());
-		/**
-		 * Выполняем разбор полей блока структурированных данных
-		 */
-		while((offset < record.size()) && (record[offset] == ' ')){
-			// Сдвигаем смещение разбора за разделитель полей блока
-			offset++;
-			// Запоминаем смещение начала имени поля
-			const size_t start = offset;
-			/**
-			 * Выполняем перебор знаков имени поля блока
-			 */
-			while((offset < record.size()) && (record[offset] != '=') && (record[offset] != ']') && (record[offset] != ' '))
-				// Сдвигаем смещение разбора
-				offset++;
-			// Если имя поля оборвалось вместе с записью
-			if(offset >= record.size())
-				// Выводим отказ разбора незакрытой скобкой блока
-				return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + start);
-			// Если за именем поля не следует знак равенства
-			if(record[offset] != '=')
-				// Выводим отказ разбора ошибочным именем поля
-				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
-			// Получаем имя поля блока структурированных данных
-			const string_view key(record.data() + start, offset - start);
-			// Если имя поля блока пусто
-			if(key.empty())
-				// Выводим отказ разбора ошибочным именем поля
-				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
-			// Если сличение ведётся и длина имени поля допустимую превышает
-			if((this->_settings.mode == mode_t::STRONG) && (key.size() > static_cast <size_t> (MAX_NAME)))
-				// Выводим отказ разбора слишком длинным именем
-				return this->fail(error_t::NAME_TOO_LONG, this->_record + start);
-			// Сдвигаем смещение разбора за знак равенства
-			offset++;
-			// Если значение поля не взято в кавычки
-			if((offset >= record.size()) || (record[offset] != '"'))
-				// Выводим отказ разбора значением без кавычек
-				return this->fail(error_t::UNQUOTED_PARAM_VALUE, this->_record + offset);
-			// Сдвигаем смещение разбора за открывающую кавычку значения
-			offset++;
-			// Запоминаем смещение начала значения поля
-			const size_t value = offset;
-			/**
-			 * Выполняем перебор знаков значения поля блока
-			 *
-			 * @note Кавычка, обратной косой отменённая, значения не закрывает: отмена
-			 *       знаков внутри значения своя, и разбирать её позже, вторым проходом,
-			 *       значило бы разбирать дважды
-			 */
-			while(offset < record.size()){
-				// Если знак является обратной косой, знак за нею отменяющей
-				if((record[offset] == '\\') && ((offset + 1) < record.size())){
-					// Сдвигаем смещение разбора за отменённый знак
-					offset += 2;
-					// Продолжаем перебор знаков значения
-					continue;
-				}
-				// Если знак закрывает значение поля
-				if(record[offset] == '"')
-					// Выходим из цикла перебора знаков значения
-					break;
-				// Сдвигаем смещение разбора
-				offset++;
-			}
-			// Если кавычка значения не закрыта
-			if(offset >= record.size())
-				// Выводим отказ разбора незакрытой кавычкой значения
-				return this->fail(error_t::UNCLOSED_PARAM_VALUE, this->_record + value);
-			// Если количество полей блока допустимое превышает
-			if(this->_structures.back().second.size() >= static_cast <size_t> (this->_settings.maxParams))
-				// Выводим отказ разбора превышением предела настроек
-				return this->fail(error_t::OVERFLOW_LIMIT, this->_record + start);
-			// Заводим поле блока структурированных данных
-			this->_structures.back().second.emplace_back();
-			// Устанавливаем имя поля блока структурированных данных
-			this->_structures.back().second.back().first.assign(key.data(), key.size());
-			// Получаем значение поля блока структурированных данных
-			const string_view text(record.data() + value, offset - value);
-			// Если снятие отмены знаков со значений включено
-			if(this->_settings.unescape)
-				// Выполняем снятие отмены знаков со значения поля
-				this->unescape(text, this->_structures.back().second.back().second);
-			// Устанавливаем значение поля блока, отмену знаков сохраняя
-			else this->_structures.back().second.back().second.assign(text.data(), text.size());
-			// Сдвигаем смещение разбора за закрывающую кавычку значения
-			offset++;
-		}
-		// Если блок структурированных данных не закрыт
-		if((offset >= record.size()) || (record[offset] != ']'))
-			// Выводим отказ разбора незакрытой скобкой блока
-			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
-		// Сдвигаем смещение разбора за закрывающую скобку блока
-		offset++;
-	}
-	// Выводим признак успешного разбора блоков
-	return true;
-}
-/**
- * @brief Метод разбора записи описания RFC 5424
- *
- * @param record разбираемая запись
- * @param offset смещение, за приставкой приоритета следующее
- * @return       признак успешного разбора записи
- */
-bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset) noexcept {
-	// Поля заголовка записи, разделителем отделённые
-	string_view fields[MODERN_FIELDS];
-	/**
-	 * Выполняем отделение полей заголовка записи
-	 *
-	 * @note Разделителем полей описание назначает РОВНО ОДИН пробел, и полей этих
-	 *       ровно шесть: пропуск пробелов подряд означал бы приём записи, описанию не
-	 *       отвечающей, а пустое поле там записывается знаком отсутствия значения
-	 */
-	for(size_t i = 0; i < MODERN_FIELDS; i++){
-		// Запоминаем смещение начала очередного поля заголовка
-		const size_t begin = offset;
-		/**
-		 * Выполняем перебор знаков очередного поля заголовка
-		 */
-		while((offset < record.size()) && (record[offset] != ' '))
-			// Сдвигаем смещение разбора
-			offset++;
-		// Если поле заголовка оборвалось вместе с записью
-		if(offset >= record.size())
-			// Выводим отказ разбора недостачею полей заголовка
-			return this->fail(error_t::INCOMPLETE_HEADER, this->_record + begin);
-		// Запоминаем очередное поле заголовка записи
-		fields[i] = string_view(record.data() + begin, offset - begin);
-		// Сдвигаем смещение разбора за разделитель полей
-		offset++;
-	}
-	/**
-	 * Выполняем разбор номера описания записи
-	 */
-	for(size_t i = 0; i < fields[0].size(); i++){
-		// Если знак номера описания цифрой не является
-		if((fields[0][i] < '0') || (fields[0][i] > '9'))
-			// Выводим отказ разбора ошибочным номером описания
-			return this->fail(error_t::INVALID_VERSION, this->_record);
-		// Наращиваем номер описания очередной цифрой
-		this->_version = ((this->_version * 10) + static_cast <uint32_t> (fields[0][i] - '0'));
-	}
-	// Если номер описания записи пуст
-	if(fields[0].empty())
-		// Выводим отказ разбора ошибочным номером описания
-		return this->fail(error_t::INVALID_VERSION, this->_record);
-	// Если номер описания записи не поддерживается
-	if(this->_version > MAX_VERSION)
-		// Выводим отказ разбора неподдерживаемым номером описания
-		return this->fail(error_t::UNSUPPORTED_VERSION, this->_record);
-	/**
-	 * Если сличение ведётся, проверяем пригодность даты сообщения
-	 *
-	 * @note Дата разбирается ходом фреймворка, а не своим разбором: описание её -
-	 *       RFC 3339, и каркас знает его уже. Заводить рядом второй разбор значило бы
-	 *       держать один договор в двух местах
-	 */
-	if((this->_settings.mode != mode_t::NONE) && (fields[1] != NIL)){
-		// Признак пригодности записи даты
-		bool valid = false;
-		// Выполняем разбор даты сообщения ходом фреймворка
-		this->_chrono.parse(fields[1], chrono_t::standard_t::RFC3339, valid, chrono_t::storage_t::LOCAL);
-		// Если запись даты разбору не поддалась
-		if(!valid)
-			// Выводим отказ разбора ошибочной датой сообщения
-			return this->fail(error_t::INVALID_TIMESTAMP, this->_record);
-	}
-	/**
-	 * Если сличение ведётся строго, проверяем длины полей заголовка
-	 *
-	 * @note Пределы длин назначены самим описанием, разделы 6.2.4-6.2.7, и потому
-	 *       проверяются лишь при строгом сличении: живые устройства их превышают, а
-	 *       отвергать такие записи значило бы терять события
-	 */
-	if(this->_settings.mode == mode_t::STRONG){
-		// Если длина имени узла допустимую превышает
-		if(fields[2].size() > static_cast <size_t> (MAX_HOSTNAME))
-			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
-		// Если длина названия приложения допустимую превышает
-		if(fields[3].size() > static_cast <size_t> (MAX_APPLICATION))
-			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
-		// Если длина опознавателя работы допустимую превышает
-		if(fields[4].size() > static_cast <size_t> (MAX_PROCESS))
-			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
-		// Если длина опознавателя сообщения допустимую превышает
-		if(fields[5].size() > static_cast <size_t> (MAX_MESSAGE_ID))
-			// Выводим отказ разбора слишком длинным полем заголовка
-			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
-	}
-	// Выполняем укладку номера описания записи
-	this->lay(field_t::VERSION, fields[0]);
-	// Выполняем укладку даты сообщения
-	this->lay(field_t::TIMESTAMP, fields[1]);
-	// Выполняем укладку имени узла
-	this->lay(field_t::HOSTNAME, fields[2]);
-	// Выполняем укладку названия приложения
-	this->lay(field_t::APPLICATION, fields[3]);
-	// Выполняем укладку опознавателя работы
-	this->lay(field_t::PROCESS, fields[4]);
-	// Выполняем укладку опознавателя сообщения
-	this->lay(field_t::MESSAGE_ID, fields[5]);
-	// Если разбор блоков структурированных данных отказом завершился
-	if(!this->structured(record, offset))
-		// Выводим признак неудачного разбора записи
-		return false;
-	/**
-	 * Если за структурированными данными следует текст сообщения
-	 *
-	 * @note Разделитель здесь обязателен описанием, но живые устройства его опускают,
-	 *       и запись такая читается однозначно: текст сообщения начинается сразу за
-	 *       закрывающей скобкой
-	 */
-	if(offset < record.size()){
-		// Если за структурированными данными следует разделитель
-		if(record[offset] == ' ')
-			// Сдвигаем смещение разбора за разделитель
-			offset++;
-		// Получаем текст сообщения записи
-		string_view text(record.data() + offset, record.size() - offset);
-		/**
-		 * Если снятие метки порядка байтов включено и текст ею открывается
-		 *
-		 * @note Метка есть признак кодировки, а не часть сообщения: оставить её в
-		 *       тексте значило бы отдать потребителю три октета, каких он не писал
-		 */
-		if(this->_settings.bom && (text.size() >= BOM.size()) && (text.compare(0, BOM.size(), BOM) == 0))
-			// Сдвигаем текст сообщения за метку порядка байтов
-			text = string_view(text.data() + BOM.size(), text.size() - BOM.size());
-		// Запоминаем текст сообщения записи
-		this->_message.assign(text.data(), text.size());
-		// Запоминаем признак объявленности текста сообщения
-		this->_messaged = true;
-	}
-	// Выводим признак успешного разбора записи
-	return true;
-}
+
 /**
  * @brief Метод разбора записи описания RFC 3164
  *
@@ -963,61 +610,436 @@ bool awh::codec::syslog::Reader::legacy(const string_view record, size_t offset)
 	// Выводим признак успешного разбора записи
 	return true;
 }
+
 /**
- * @brief Метод разбора очередной записи целиком
+ * @brief Метод разбора записи описания RFC 5424
  *
- * @param record текст очередной записи без знака конца строки
+ * @param record разбираемая запись
+ * @param offset смещение, за приставкой приоритета следующее
  * @return       признак успешного разбора записи
  */
-bool awh::codec::syslog::Reader::prepare(const string_view record) noexcept {
-	// Выполняем очистку полей заголовка предыдущей записи
-	this->_fields.clear();
-	// Выполняем очистку блоков структурированных данных предыдущей записи
-	this->_structures.clear();
-	// Выполняем очистку текста сообщения предыдущей записи
-	this->_message.clear();
-	// Сбрасываем признак объявленности текста сообщения
-	this->_messaged = false;
-	// Сбрасываем приоритет предыдущей записи
-	this->_priority = 0;
-	// Сбрасываем признак объявленности приоритета
-	this->_prioritized = false;
-	// Сбрасываем номер описания предыдущей записи
-	this->_version = 0;
-	// Если длина записи допустимую превышает
-	if(record.size() > static_cast <size_t> (this->_settings.maxRecord))
-		// Выводим отказ разбора слишком длинной записью
-		return this->fail(error_t::RECORD_TOO_LONG, this->_record);
-	// Смещение, за приставкой приоритета следующее
-	size_t offset = 0;
-	// Если разбор приставки приоритета отказом завершился
-	if(!this->priority(record, offset))
+bool awh::codec::syslog::Reader::modern(const string_view record, size_t offset) noexcept {
+	// Поля заголовка записи, разделителем отделённые
+	string_view fields[MODERN_FIELDS];
+	/**
+	 * Выполняем отделение полей заголовка записи
+	 *
+	 * @note Разделителем полей описание назначает РОВНО ОДИН пробел, и полей этих
+	 *       ровно шесть: пропуск пробелов подряд означал бы приём записи, описанию не
+	 *       отвечающей, а пустое поле там записывается знаком отсутствия значения
+	 */
+	for(size_t i = 0; i < MODERN_FIELDS; i++){
+		// Запоминаем смещение начала очередного поля заголовка
+		const size_t begin = offset;
+		/**
+		 * Выполняем перебор знаков очередного поля заголовка
+		 */
+		while((offset < record.size()) && (record[offset] != ' '))
+			// Сдвигаем смещение разбора
+			offset++;
+		// Если поле заголовка оборвалось вместе с записью
+		if(offset >= record.size())
+			// Выводим отказ разбора недостачею полей заголовка
+			return this->fail(error_t::INCOMPLETE_HEADER, this->_record + begin);
+		// Запоминаем очередное поле заголовка записи
+		fields[i] = string_view(record.data() + begin, offset - begin);
+		// Сдвигаем смещение разбора за разделитель полей
+		offset++;
+	}
+	/**
+	 * Выполняем разбор номера описания записи
+	 */
+	for(size_t i = 0; i < fields[0].size(); i++){
+		// Если знак номера описания цифрой не является
+		if((fields[0][i] < '0') || (fields[0][i] > '9'))
+			// Выводим отказ разбора ошибочным номером описания
+			return this->fail(error_t::INVALID_VERSION, this->_record);
+		// Наращиваем номер описания очередной цифрой
+		this->_version = ((this->_version * 10) + static_cast <uint32_t> (fields[0][i] - '0'));
+	}
+	// Если номер описания записи пуст
+	if(fields[0].empty())
+		// Выводим отказ разбора ошибочным номером описания
+		return this->fail(error_t::INVALID_VERSION, this->_record);
+	// Если номер описания записи не поддерживается
+	if(this->_version > MAX_VERSION)
+		// Выводим отказ разбора неподдерживаемым номером описания
+		return this->fail(error_t::UNSUPPORTED_VERSION, this->_record);
+	/**
+	 * Если сличение ведётся, проверяем пригодность даты сообщения
+	 *
+	 * @note Дата разбирается ходом фреймворка, а не своим разбором: описание её -
+	 *       RFC 3339, и каркас знает его уже. Заводить рядом второй разбор значило бы
+	 *       держать один договор в двух местах
+	 */
+	if((this->_settings.mode != mode_t::NONE) && (fields[1] != NIL)){
+		// Признак пригодности записи даты
+		bool valid = false;
+		// Выполняем разбор даты сообщения ходом фреймворка
+		this->_chrono.parse(fields[1], chrono_t::standard_t::RFC3339, valid, chrono_t::storage_t::LOCAL);
+		// Если запись даты разбору не поддалась
+		if(!valid)
+			// Выводим отказ разбора ошибочной датой сообщения
+			return this->fail(error_t::INVALID_TIMESTAMP, this->_record);
+	}
+	/**
+	 * Если сличение ведётся строго, проверяем длины полей заголовка
+	 *
+	 * @note Пределы длин назначены самим описанием, разделы 6.2.4-6.2.7, и потому
+	 *       проверяются лишь при строгом сличении: живые устройства их превышают, а
+	 *       отвергать такие записи значило бы терять события
+	 */
+	if(this->_settings.mode == mode_t::STRONG){
+		// Если длина имени узла допустимую превышает
+		if(fields[2].size() > static_cast <size_t> (MAX_HOSTNAME))
+			// Выводим отказ разбора слишком длинным полем заголовка
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+		// Если длина названия приложения допустимую превышает
+		if(fields[3].size() > static_cast <size_t> (MAX_APPLICATION))
+			// Выводим отказ разбора слишком длинным полем заголовка
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+		// Если длина опознавателя работы допустимую превышает
+		if(fields[4].size() > static_cast <size_t> (MAX_PROCESS))
+			// Выводим отказ разбора слишком длинным полем заголовка
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+		// Если длина опознавателя сообщения допустимую превышает
+		if(fields[5].size() > static_cast <size_t> (MAX_MESSAGE_ID))
+			// Выводим отказ разбора слишком длинным полем заголовка
+			return this->fail(error_t::FIELD_TOO_LONG, this->_record);
+	}
+	// Выполняем укладку номера описания записи
+	this->lay(field_t::VERSION, fields[0]);
+	// Выполняем укладку даты сообщения
+	this->lay(field_t::TIMESTAMP, fields[1]);
+	// Выполняем укладку имени узла
+	this->lay(field_t::HOSTNAME, fields[2]);
+	// Выполняем укладку названия приложения
+	this->lay(field_t::APPLICATION, fields[3]);
+	// Выполняем укладку опознавателя работы
+	this->lay(field_t::PROCESS, fields[4]);
+	// Выполняем укладку опознавателя сообщения
+	this->lay(field_t::MESSAGE_ID, fields[5]);
+	// Если разбор блоков структурированных данных отказом завершился
+	if(!this->structured(record, offset))
 		// Выводим признак неудачного разбора записи
 		return false;
 	/**
-	 * Определяем описание, каким надлежит читать запись
+	 * Если за структурированными данными следует текст сообщения
 	 *
-	 * @note Описание, самоопределением найденное, ЗАПОМИНАЕТСЯ: спрос его после
-	 *       разбора отвечает опознанным, а не настройкой, - то есть так же, как если
-	 *       бы описание задали вручную
+	 * @note Разделитель здесь обязателен описанием, но живые устройства его опускают,
+	 *       и запись такая читается однозначно: текст сообщения начинается сразу за
+	 *       закрывающей скобкой
 	 */
-	this->_standard = (this->_settings.standard == standard_t::AUTO ? this->detect(record, offset) : this->_settings.standard);
-	/**
-	 * Определяем описание записи
-	 */
-	switch(static_cast <uint8_t> (this->_standard)){
-		// Если запись читается устаревшим описанием
-		case static_cast <uint8_t> (standard_t::RFC3164):
-			// Выводим итог разбора записи устаревшим описанием
-			return this->legacy(record, offset);
-		// Если запись читается нынешним описанием
-		case static_cast <uint8_t> (standard_t::RFC5424):
-			// Выводим итог разбора записи нынешним описанием
-			return this->modern(record, offset);
+	if(offset < record.size()){
+		// Если за структурированными данными следует разделитель
+		if(record[offset] == ' ')
+			// Сдвигаем смещение разбора за разделитель
+			offset++;
+		// Получаем текст сообщения записи
+		string_view text(record.data() + offset, record.size() - offset);
+		/**
+		 * Если снятие метки порядка байтов включено и текст ею открывается
+		 *
+		 * @note Метка есть признак кодировки, а не часть сообщения: оставить её в
+		 *       тексте значило бы отдать потребителю три октета, каких он не писал
+		 */
+		if(this->_settings.bom && (text.size() >= BOM.size()) && (text.compare(0, BOM.size(), BOM) == 0))
+			// Сдвигаем текст сообщения за метку порядка байтов
+			text = string_view(text.data() + BOM.size(), text.size() - BOM.size());
+		// Запоминаем текст сообщения записи
+		this->_message.assign(text.data(), text.size());
+		// Запоминаем признак объявленности текста сообщения
+		this->_messaged = true;
 	}
-	// Выводим отказ разбора неопределённым описанием записи
-	return this->fail(error_t::UNKNOWN_STANDARD, this->_record);
+	// Выводим признак успешного разбора записи
+	return true;
 }
+
+/**
+ * @brief Метод разбора блоков структурированных данных
+ *
+ * @param record разбираемая запись
+ * @param offset смещение начала первого блока
+ * @return       признак успешного разбора блоков
+ */
+bool awh::codec::syslog::Reader::structured(const string_view record, size_t & offset) noexcept {
+	/**
+	 * Если структурированных данных запись не несёт
+	 */
+	if((offset < record.size()) && (record[offset] == '-')){
+		// Сдвигаем смещение разбора за знак отсутствия данных
+		offset++;
+		// Выводим признак успешного разбора блоков
+		return true;
+	}
+	/**
+	 * Выполняем разбор блоков структурированных данных, пока они отыскиваются
+	 */
+	while((offset < record.size()) && (record[offset] == '[')){
+		// Сдвигаем смещение разбора за открывающую скобку блока
+		offset++;
+		// Запоминаем смещение начала опознавателя блока
+		const size_t begin = offset;
+		/**
+		 * Выполняем перебор знаков опознавателя блока
+		 *
+		 * @note Опознаватель оканчивается пробелом либо закрывающей скобкой: блок без
+		 *       единого поля описанием дозволен
+		 */
+		while((offset < record.size()) && (record[offset] != ' ') && (record[offset] != ']'))
+			// Сдвигаем смещение разбора
+			offset++;
+		// Если опознаватель блока оборвался вместе с записью
+		if(offset >= record.size())
+			// Выводим отказ разбора незакрытой скобкой блока
+			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
+		// Получаем опознаватель блока структурированных данных
+		const string_view name(record.data() + begin, offset - begin);
+		// Если опознаватель блока пуст
+		if(name.empty())
+			// Выводим отказ разбора ошибочным опознавателем блока
+			return this->fail(error_t::INVALID_STRUCTURE_ID, this->_record + begin);
+		// Если сличение ведётся и длина опознавателя допустимую превышает
+		if((this->_settings.mode == mode_t::STRONG) && (name.size() > static_cast <size_t> (MAX_NAME)))
+			// Выводим отказ разбора слишком длинным именем
+			return this->fail(error_t::NAME_TOO_LONG, this->_record + begin);
+		// Если количество блоков допустимое превышает
+		if(this->_structures.size() >= static_cast <size_t> (this->_settings.maxStructures))
+			// Выводим отказ разбора превышением предела настроек
+			return this->fail(error_t::OVERFLOW_LIMIT, this->_record + begin);
+		/**
+		 * Если сличение ведётся строго, проверяем неповторимость опознавателя блока
+		 *
+		 * @note Описание требует неповторимости опознавателей внутри записи. Проверка
+		 *       эта перебором, а не указателем: блоков в живых записях единицы, и
+		 *       заведение указателя стоило бы дороже самого перебора
+		 */
+		if(this->_settings.mode == mode_t::STRONG){
+			/**
+			 * Выполняем перебор объявленных блоков структурированных данных
+			 */
+			for(auto & structure : this->_structures){
+				// Если опознаватель блока уже объявлен
+				if(structure.first.compare(0, structure.first.size(), name.data(), name.size()) == 0)
+					// Выводим отказ разбора повторным опознавателем блока
+					return this->fail(error_t::DUPLICATE_STRUCTURE, this->_record + begin);
+			}
+		}
+		// Заводим блок структурированных данных записи
+		this->_structures.emplace_back(string(name), vector <pair <string, string>> ());
+		/**
+		 * Выполняем разбор полей блока структурированных данных
+		 */
+		while((offset < record.size()) && (record[offset] == ' ')){
+			// Сдвигаем смещение разбора за разделитель полей блока
+			offset++;
+			// Запоминаем смещение начала имени поля
+			const size_t start = offset;
+			/**
+			 * Выполняем перебор знаков имени поля блока
+			 */
+			while((offset < record.size()) && (record[offset] != '=') && (record[offset] != ']') && (record[offset] != ' '))
+				// Сдвигаем смещение разбора
+				offset++;
+			// Если имя поля оборвалось вместе с записью
+			if(offset >= record.size())
+				// Выводим отказ разбора незакрытой скобкой блока
+				return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + start);
+			// Если за именем поля не следует знак равенства
+			if(record[offset] != '=')
+				// Выводим отказ разбора ошибочным именем поля
+				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
+			// Получаем имя поля блока структурированных данных
+			const string_view key(record.data() + start, offset - start);
+			// Если имя поля блока пусто
+			if(key.empty())
+				// Выводим отказ разбора ошибочным именем поля
+				return this->fail(error_t::INVALID_PARAM_NAME, this->_record + start);
+			// Если сличение ведётся и длина имени поля допустимую превышает
+			if((this->_settings.mode == mode_t::STRONG) && (key.size() > static_cast <size_t> (MAX_NAME)))
+				// Выводим отказ разбора слишком длинным именем
+				return this->fail(error_t::NAME_TOO_LONG, this->_record + start);
+			// Сдвигаем смещение разбора за знак равенства
+			offset++;
+			// Если значение поля не взято в кавычки
+			if((offset >= record.size()) || (record[offset] != '"'))
+				// Выводим отказ разбора значением без кавычек
+				return this->fail(error_t::UNQUOTED_PARAM_VALUE, this->_record + offset);
+			// Сдвигаем смещение разбора за открывающую кавычку значения
+			offset++;
+			// Запоминаем смещение начала значения поля
+			const size_t value = offset;
+			/**
+			 * Выполняем перебор знаков значения поля блока
+			 *
+			 * @note Кавычка, обратной косой отменённая, значения не закрывает: отмена
+			 *       знаков внутри значения своя, и разбирать её позже, вторым проходом,
+			 *       значило бы разбирать дважды
+			 */
+			while(offset < record.size()){
+				// Если знак является обратной косой, знак за нею отменяющей
+				if((record[offset] == '\\') && ((offset + 1) < record.size())){
+					// Сдвигаем смещение разбора за отменённый знак
+					offset += 2;
+					// Продолжаем перебор знаков значения
+					continue;
+				}
+				// Если знак закрывает значение поля
+				if(record[offset] == '"')
+					// Выходим из цикла перебора знаков значения
+					break;
+				// Сдвигаем смещение разбора
+				offset++;
+			}
+			// Если кавычка значения не закрыта
+			if(offset >= record.size())
+				// Выводим отказ разбора незакрытой кавычкой значения
+				return this->fail(error_t::UNCLOSED_PARAM_VALUE, this->_record + value);
+			// Если количество полей блока допустимое превышает
+			if(this->_structures.back().second.size() >= static_cast <size_t> (this->_settings.maxParams))
+				// Выводим отказ разбора превышением предела настроек
+				return this->fail(error_t::OVERFLOW_LIMIT, this->_record + start);
+			// Заводим поле блока структурированных данных
+			this->_structures.back().second.emplace_back();
+			// Устанавливаем имя поля блока структурированных данных
+			this->_structures.back().second.back().first.assign(key.data(), key.size());
+			// Получаем значение поля блока структурированных данных
+			const string_view text(record.data() + value, offset - value);
+			// Если снятие отмены знаков со значений включено
+			if(this->_settings.unescape)
+				// Выполняем снятие отмены знаков со значения поля
+				this->unescape(text, this->_structures.back().second.back().second);
+			// Устанавливаем значение поля блока, отмену знаков сохраняя
+			else this->_structures.back().second.back().second.assign(text.data(), text.size());
+			// Сдвигаем смещение разбора за закрывающую кавычку значения
+			offset++;
+		}
+		// Если блок структурированных данных не закрыт
+		if((offset >= record.size()) || (record[offset] != ']'))
+			// Выводим отказ разбора незакрытой скобкой блока
+			return this->fail(error_t::UNCLOSED_STRUCTURE, this->_record + begin);
+		// Сдвигаем смещение разбора за закрывающую скобку блока
+		offset++;
+	}
+	// Выводим признак успешного разбора блоков
+	return true;
+}
+
+/**
+ * @brief Метод укладки поля заголовка
+ *
+ * @param field поле заголовка, укладываемое в запись
+ * @param text  значение поля, записью объявленное
+ * @return      признак успешной укладки поля
+ */
+bool awh::codec::syslog::Reader::lay(const field_t field, const string_view text) noexcept {
+	/**
+	 * Если запись читается устаревшим описанием
+	 *
+	 * @details Знак «-» назначен отсутствующим значением ЛИШЬ описанием RFC 5424;
+	 * описание RFC 3164 его не знает вовсе, и метка приложения «-» есть законное имя,
+	 * а не отсутствие. Толкуй его отсутствием - и запись, собранная обратно, метки не
+	 * несла бы, а повторный разбор взял бы меткой первое слово текста
+	 *
+	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота записи
+	 *       «<129>Oct 9 22:14:15 icZF -: текст»
+	 */
+	if(this->_standard != standard_t::RFC5424){
+		// Заводим поле заголовка записи
+		this->_fields.emplace_back(field, string(text));
+		// Выводим признак успешной укладки поля
+		return true;
+	}
+	/**
+	 * Если поле несёт знак отсутствия значения
+	 *
+	 * @note Различие «значения нет» и «значение пусто» здесь и решается: описание
+	 *       назначает знак «-» отсутствию значения, и толковать его строкою из одного
+	 *       знака значило бы отдать потребителю утверждение, какого в записи не было
+	 *
+	 * @details Пустое поле правится ТЕМ ЖЕ правилом, что и знак отсутствия: описание
+	 * пустых полей не знает вовсе - место поля занимает либо значение, либо знак «-», -
+	 * и поле, пустым оказавшееся, есть след записи, описанию не отвечающей (двух
+	 * пробелов подряд, к примеру). Различать их нечем: записанное обратно, пустое поле
+	 * выйдет знаком «-», и оборот записи расходился бы молча
+	 *
+	 * @note Найдено ворошителем 07.09.2026 расхождением деревьев после оборота записи
+	 *       с датой вида BSD, поданной в поле нынешнего описания
+	 */
+	if((text == NIL) || text.empty()){
+		/**
+		 * Определяем правило обращения с отсутствующим значением
+		 */
+		switch(static_cast <uint8_t> (this->_settings.nil)){
+			// Если поле в дерево не кладётся вовсе
+			case static_cast <uint8_t> (nil_t::OMIT):
+				// Выводим признак успешной укладки поля
+				return true;
+			// Если поле кладётся пустой последовательностью знаков
+			case static_cast <uint8_t> (nil_t::EMPTY): {
+				// Заводим поле заголовка записи
+				this->_fields.emplace_back(field, string());
+				// Выводим признак успешной укладки поля
+				return true;
+			}
+			/**
+			 * Если поле кладётся знаками «-», как в записи и стоит
+			 *
+			 * @note Знак этот ставится и полю, пустым оказавшемуся: правило у пустоты и
+			 *       у отсутствия одно, и вид представления назначает настройка. Клади
+			 *       здесь пустую строку - и запись, собранная обратно, несла бы «-», а
+			 *       повторный разбор дал бы «-» вместо пустоты
+			 */
+			case static_cast <uint8_t> (nil_t::LITERAL): {
+				// Заводим поле заголовка записи
+				this->_fields.emplace_back(field, string(NIL));
+				// Выводим признак успешной укладки поля
+				return true;
+			}
+		}
+	}
+	// Заводим поле заголовка записи
+	this->_fields.emplace_back(field, string(text));
+	// Выводим признак успешной укладки поля
+	return true;
+}
+
+/**
+ * @brief Метод снятия отмены знаков со значения структурированных данных
+ *
+ * @param text   значение с отменёнными знаками
+ * @param result значение со снятой отменой знаков
+ */
+void awh::codec::syslog::Reader::unescape(const string_view text, string & result) const noexcept {
+	// Выполняем очистку результата снятия отмены знаков
+	result.clear();
+	// Резервируем память под значение со снятой отменой знаков
+	result.reserve(text.size());
+	/**
+	 * Выполняем перебор знаков значения
+	 */
+	for(size_t i = 0; i < text.size(); i++){
+		/**
+		 * Если знак является обратной косой и за ним следует знак отменяемый
+		 *
+		 * @note Описание RFC 5424, раздел 6.3.3, называет отменяемыми РОВНО ТРИ знака:
+		 *       кавычку, закрывающую квадратную скобку и саму обратную косую. Косая
+		 *       перед всяким иным знаком отмены не образует и остаётся в значении как
+		 *       есть - иначе разбор терял бы косые, каких потребитель не отменял
+		 */
+		if((text[i] == '\\') && ((i + 1) < text.size()) && ((text[i + 1] == '"') || (text[i + 1] == ']') || (text[i + 1] == '\\'))){
+			// Добавляем отменённый знак в результат
+			result.append(1, text[i + 1]);
+			// Сдвигаем указатель перебора на отменённый знак
+			i++;
+			// Продолжаем перебор знаков значения
+			continue;
+		}
+		// Добавляем очередной знак в результат
+		result.append(1, text[i]);
+	}
+}
+
 /**
  * @brief Метод получения настроек разбора записей
  *
@@ -1027,6 +1049,7 @@ const awh::codec::syslog::Reader::settings_t & awh::codec::syslog::Reader::setti
 	// Выводим настройки разбора записей
 	return this->_settings;
 }
+
 /**
  * @brief Метод установки настроек разбора записей
  *
@@ -1042,7 +1065,7 @@ bool awh::codec::syslog::Reader::settings(const settings_t & settings) noexcept 
 	 */
 	if(!this->_buffer.empty()){
 		// Выводим в лог сообщение о смене настроек посреди разбора
-		this->_log->print("SysLog settings are changed in the middle of the parsing", log_t::flag_t::WARNING);
+		awh::log::print("SysLog settings are changed in the middle of the parsing", awh::log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1051,6 +1074,7 @@ bool awh::codec::syslog::Reader::settings(const settings_t & settings) noexcept 
 	// Выводим положительный результат выполнения операции
 	return true;
 }
+
 /**
  * @brief Метод сброса состояния чтения
  *
@@ -1103,6 +1127,7 @@ void awh::codec::syslog::Reader::reset() noexcept {
 	// Выполняем очистку значения текущего события
 	this->_value.clear();
 }
+
 /**
  * @brief Метод подачи очередного куска разбираемого текста
  *
@@ -1119,7 +1144,7 @@ bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, co
 	// Если текст уже подан последним куском
 	if(this->_end){
 		// Выводим в лог сообщение о подаче текста после последнего куска
-		this->_log->print("SysLog text is fed after the last chunk", log_t::flag_t::WARNING);
+		awh::log::print("SysLog text is fed after the last chunk", awh::log::flag_t::WARNING);
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -1142,6 +1167,7 @@ bool awh::codec::syslog::Reader::feed(const void * buffer, const size_t size, co
 	// Выводим положительный результат выполнения операции
 	return true;
 }
+
 /**
  * @brief Метод подачи разбираемого текста целиком
  *
@@ -1152,6 +1178,7 @@ bool awh::codec::syslog::Reader::feed(const string_view text) noexcept {
 	// Выводим итог подачи разбираемого текста целиком
 	return this->feed(text.data(), text.size(), true);
 }
+
 /**
  * @brief Метод перехода к очередному событию разбора
  *
@@ -1362,6 +1389,7 @@ bool awh::codec::syslog::Reader::next() noexcept {
 		}
 	}
 }
+
 /**
  * @brief Метод получения текущего состояния чтения
  *
@@ -1371,6 +1399,7 @@ awh::codec::syslog::state_t awh::codec::syslog::Reader::state() const noexcept {
 	// Выводим текущее состояние чтения
 	return this->_state;
 }
+
 /**
  * @brief Метод получения вида текущего события разбора
  *
@@ -1380,6 +1409,7 @@ awh::codec::syslog::event_t awh::codec::syslog::Reader::event() const noexcept {
 	// Выводим вид текущего события разбора
 	return this->_event;
 }
+
 /**
  * @brief Метод получения кода ошибки последней операции разбора
  *
@@ -1389,6 +1419,7 @@ awh::codec::syslog::error_t awh::codec::syslog::Reader::error() const noexcept {
 	// Выводим код ошибки последней операции разбора
 	return this->_error;
 }
+
 /**
  * @brief Метод получения положения обнаруженной ошибки
  *
@@ -1398,6 +1429,7 @@ const awh::codec::syslog::pos_t & awh::codec::syslog::Reader::errorPosition() co
 	// Выводим положение обнаруженной ошибки в исходном тексте
 	return this->_errorPosition;
 }
+
 /**
  * @brief Метод получения положения начала текущего события
  *
@@ -1407,6 +1439,7 @@ const awh::codec::syslog::pos_t & awh::codec::syslog::Reader::position() const n
 	// Выводим положение начала текущего события в исходном тексте
 	return this->_position;
 }
+
 /**
  * @brief Метод получения поля заголовка, текущим событием выданного
  *
@@ -1416,6 +1449,7 @@ awh::codec::syslog::field_t awh::codec::syslog::Reader::field() const noexcept {
 	// Выводим поле заголовка, текущим событием выданное
 	return this->_field;
 }
+
 /**
  * @brief Метод получения имени ключа текущего события
  *
@@ -1425,6 +1459,7 @@ const string & awh::codec::syslog::Reader::key() const noexcept {
 	// Выводим имя ключа текущего события
 	return this->_key;
 }
+
 /**
  * @brief Метод получения значения текущего события
  *
@@ -1434,6 +1469,7 @@ const string & awh::codec::syslog::Reader::value() const noexcept {
 	// Выводим значение текущего события
 	return this->_value;
 }
+
 /**
  * @brief Метод получения описания, каким прочтена текущая запись
  *
@@ -1443,15 +1479,7 @@ awh::codec::syslog::standard_t awh::codec::syslog::Reader::standard() const noex
 	// Выводим описание, каким прочтена текущая запись
 	return this->_standard;
 }
-/**
- * @brief Метод получения приоритета текущей записи
- *
- * @return приоритет текущей записи
- */
-uint32_t awh::codec::syslog::Reader::priority() const noexcept {
-	// Выводим приоритет текущей записи
-	return this->_priority;
-}
+
 /**
  * @brief Метод получения признака объявленности приоритета
  *
@@ -1461,6 +1489,7 @@ bool awh::codec::syslog::Reader::prioritized() const noexcept {
 	// Выводим признак того, что приоритет записью объявлен
 	return this->_prioritized;
 }
+
 /**
  * @brief Метод получения источника сообщения
  *
@@ -1470,6 +1499,7 @@ awh::codec::syslog::facility_t awh::codec::syslog::Reader::facility() const noex
 	// Выводим источник сообщения частным от деления приоритета на восемь
 	return static_cast <facility_t> (this->_priority / 8);
 }
+
 /**
  * @brief Метод получения степени важности сообщения
  *
@@ -1479,6 +1509,7 @@ awh::codec::syslog::severity_t awh::codec::syslog::Reader::severity() const noex
 	// Выводим важность сообщения остатком от деления приоритета на восемь
 	return static_cast <severity_t> (this->_priority % 8);
 }
+
 /**
  * @brief Метод получения номера описания записи
  *
@@ -1491,11 +1522,9 @@ uint32_t awh::codec::syslog::Reader::version() const noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  */
-awh::codec::syslog::Reader::Reader(const fmk_t * fmk, const log_t * log) noexcept :
+awh::codec::syslog::Reader::Reader() noexcept :
  _state(state_t::HUNGRY), _event(event_t::NONE), _error(error_t::NONE),
  _offset(0), _record(0), _end(false), _stage(stage_t::RECORD), _field(field_t::NONE),
  _index(0), _block(0), _messaged(false), _standard(standard_t::AUTO), _priority(0),
- _prioritized(false), _version(0), _chrono(fmk, log), _log(log) {}
+ _prioritized(false), _version(0), _chrono() {}

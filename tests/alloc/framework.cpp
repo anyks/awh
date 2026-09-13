@@ -25,11 +25,11 @@
  * Подключаем заголовочный файл главного модуля тестов
  */
 #include "../main.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * Подключаем наши модули
  */
-#include <sys/fmk.hpp>
 #include <alloc/alloc.hpp>
 
 /**
@@ -68,13 +68,11 @@ TEST(FrameworkFixture, ConstructorSeizesAllocator){
 		#if defined(AWH_ALLOC_DISABLED)
 			GTEST_SKIP() << "распределитель снят ключом сборки";
 		#else
-			// Заводим фреймворк: захват обязан состояться его конструктором
-			const awh::Framework fmk;
-			// Обращаемся к объекту, чтобы собиратель не счёл его лишним
-			static_cast <void> (fmk);
+			// Заводим модуль ядра: захват обязан состояться его заведением
+			awh::fmk::initialize();
 			// Утверждаем состоявшийся захват
 			ASSERT_TRUE(awh::alloc::Allocator::captured())
-			 << "конструктор фреймворка не завёл распределитель";
+			 << "заведение модуля ядра не завело распределитель";
 			// Берём память средствами языка
 			void * block = ::malloc(4096);
 			ASSERT_NE(block, nullptr);

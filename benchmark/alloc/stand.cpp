@@ -38,6 +38,7 @@
 #include <atomic>
 #include <chrono>
 #include <string>
+#include <sys/fmk.hpp>
 
 /**
  * Если стенд собран с нашим распределителем
@@ -54,7 +55,7 @@
 	 * @note Журнал стенду не нужен, а связывание его требует: подставляем пустое тело
 	 *
 	 */
-	void awh::Logging::print(std::string_view, flag_t, ...) const noexcept {}
+	void awh::log::print(std::string_view, awh::log::flag_t, ...) noexcept {}
 #endif
 
 /**
@@ -437,13 +438,20 @@ namespace {
  */
 int main(){
 	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	/**
 	 * Если стенд собран с нашим распределителем
 	 */
 	#if !defined(AWH_BENCH_SYSTEM)
 		// Настройки распределителя памяти
 		awh::alloc::options_t options;
 		// Захватываем выдачу памяти процесса
-		if(!awh::alloc::Allocator::capture(options, nullptr)){
+		if(!awh::alloc::Allocator::capture(options)){
 			// Печатаем отказ захвата
 			printf("ЗАХВАТ НЕ СОСТОЯЛСЯ: замерять нечего\n");
 			// Выходим с признаком отказа

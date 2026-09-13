@@ -28,47 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <codec/abc/abc.hpp>
-
-/**
- * @brief Пространство имён образца
- *
- */
-namespace {
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самого
-	 * дерева документа: фреймворк и журнал передаются указателями от пользователя,
-	 * как то заведено во всём AWH
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Выводим объект фреймворка
-		return & fmk;
-	}
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
-	 *          main(): объект заводится статикою местною, дабы всякое построение
-	 *          образца писало сообщения в один и тот же журнал
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект для работы с логами
-		static awh::log_t log(::framework());
-		// Выводим объект для работы с логами
-		return &log;
-	}
-}
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -141,11 +102,18 @@ static bool assemble(abc::writer_t & writer) noexcept {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Не используем параметры приложения
 	(void) argc;
 	(void) argv;
 	// Объект сборки разбираемой записи
-	abc::writer_t writer(::logger());
+	abc::writer_t writer;
 	// Выполняем сборку разбираемой записи
 	if(!::assemble(writer)){
 		// Выводим сообщение об отказе сборки
@@ -154,7 +122,7 @@ int main(int argc, char * argv[]) noexcept {
 		return EXIT_FAILURE;
 	}
 	// Объект дерева документа
-	abc::document_t document(::framework(), ::logger());
+	abc::document_t document;
 	// Выполняем разбор записи в дерево документа
 	if(!document.parse(writer.record().data(), writer.record().size())){
 		// Выводим сообщение об отказе разбора
@@ -217,7 +185,7 @@ int main(int argc, char * argv[]) noexcept {
 	cout << "  пересборка совпала с исходной записью: "
 	     << ((rebuilt == writer.record()) ? "да" : "нет") << endl;
 	// Объект потоковой сборки владеющего значения
-	abc::builder_t builder(::logger());
+	abc::builder_t builder;
 	// Выводим заголовок потоковой сборки значения
 	cout << endl << "Потоковая сборка значения:" << endl;
 	/**

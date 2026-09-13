@@ -79,6 +79,7 @@
  */
 #include <iphlpapi.h>
 #include <netioapi.h>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -498,7 +499,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 	// Если перечень устройств получить не удалось
 	if(adapters == nullptr){
 		// Выводим в журнал сообщение о невозможности опроса устройств
-		this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
+		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
 		// Выходим из функции
 		return;
 	}
@@ -664,7 +665,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 	 */
 	if(adapters == nullptr){
 		// Выводим в журнал сообщение о невозможности опроса устройств
-		this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
+		awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
 		// Заполнять источник нечем
 		return;
 	}
@@ -880,7 +881,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			// Если перечень соседей получить не удалось
 			if(::GetIpNetTable2(family, &table) != NO_ERROR){
 				// Выводим в журнал сообщение о невозможности опроса соседей
-				this->_log->print("%s: unable to get the neighbour table", log_t::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
+				awh::log::print("%s: unable to get the neighbour table", awh::log::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
 				// Выходим из функции
 				return;
 			}
@@ -938,7 +939,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 			// Если перечень устройств получить не удалось
 			if(adapters == nullptr){
 				// Выводим в журнал сообщение о невозможности опроса устройств
-				this->_log->print("%s: unable to get list of network interfaces", log_t::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
+				awh::log::print("%s: unable to get list of network interfaces", awh::log::flag_t::WARNING, ::__AWH_ADDR_BACKEND__);
 				// Выходим из функции
 				return;
 			}

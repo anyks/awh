@@ -18,29 +18,15 @@
  */
 
 #include <codec/yaml/yaml.hpp>
-#include <sys/log.hpp>
 
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
 
-/**
- * @brief Функция получения объекта логирования
- *
- * @return объект логирования
- *
- */
-static log_t * logger() noexcept {
-	// Объект фреймворка
-	static fmk_t fmk;
-	// Объект логирования
-	static log_t log(&fmk);
-	// Выводим объект логирования
-	return &log;
-}
 /**
  * @brief Функция экранирования записи строки по правилам JSON
  *
@@ -228,6 +214,8 @@ static void render(const codec::yaml::value_t & value, string & result) noexcept
  *
  */
 int main(int argc, char ** argv){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	/**
 	 * Если имя разбираемого файла не передано
 	 */
@@ -246,7 +234,7 @@ int main(int argc, char ** argv){
 	// Выполняем чтение содержимого разбираемого файла
 	buffer << file.rdbuf();
 	// Объект дерева документа
-	codec::yaml::document_t document(::logger());
+	codec::yaml::document_t document;
 	/**
 	 * Если разобрать текст документа не удалось
 	 */
@@ -272,7 +260,7 @@ int main(int argc, char ** argv){
 			return 3;
 		}
 		// Объект дерева документа, перезапись читающий обратно
-		codec::yaml::document_t back(::logger());
+		codec::yaml::document_t back;
 		/**
 		 * Если разобрать перезапись не удалось
 		 */

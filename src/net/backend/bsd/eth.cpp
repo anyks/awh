@@ -42,6 +42,8 @@
 #include <sys/os.hpp>
 #include <net/fds.hpp>
 #include <net/eth/eth.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -56,19 +58,16 @@ namespace options {
 	/**
 	 * @brief Метод применения сетевой оптимизации операционной системы
 	 *
-	 * @param fmk объект фреймворка
-	 * @param log объект работы с логами
-	 *
 	 */
-	static void netboost([[maybe_unused]] const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+	static void netboost() noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Выполняем инициализацию объекта работы с операционной системы
-			awh::os_t os(log);
+			awh::os_t os;
 			// Выполняем инициализацию объекта работы с файловыми дескрипторами
-			awh::fds_t fds(log);
+			awh::fds_t fds;
 			/**
 			 * Выполняем установку нужного нам количества файловых дескрипторов
 			 */
@@ -91,13 +90,13 @@ namespace options {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
+						awh::log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("Root privileges are required to apply network optimizations", awh::log_t::flag_t::WARNING);
+						awh::log::print("Root privileges are required to apply network optimizations", awh::log::flag_t::WARNING);
 					#endif
 				// Если права суперпользователя получены
 				} else {
@@ -189,11 +188,11 @@ namespace options {
 						// Если выбран лучший доступны алгоритм
 						if(!algorithm.empty()){
 							// Если найден алгоритм cubic
-							if(fmk->exists("cubic", algorithm))
+							if(awh::fmk::exists("cubic", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.cc.algorithm", "cubic");
 							// Если же найден алгоритм htcp
-							else if(fmk->exists("htcp", algorithm))
+							else if(awh::fmk::exists("htcp", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.cc.algorithm", "htcp");
 						}
@@ -222,11 +221,11 @@ namespace options {
 						// Если перечень доступных источников времени получен
 						if(!timecounter.empty()){
 							// Если доступен счётчик тактов с пониженной частотой
-							if(fmk->exists("TSC-low", timecounter))
+							if(awh::fmk::exists("TSC-low", timecounter))
 								// Выполняем выбор счётчика тактов с пониженной частотой
 								os.sysctl("kern.timecounter.hardware", "TSC-low");
 							// Если же доступен счётчик тактов
-							else if(fmk->exists("TSC", timecounter))
+							else if(awh::fmk::exists("TSC", timecounter))
 								// Выполняем выбор счётчика тактов
 								os.sysctl("kern.timecounter.hardware", "TSC");
 						}
@@ -270,11 +269,11 @@ namespace options {
 						// Если выбран лучший доступны алгоритм
 						if(!algorithm.empty()){
 							// Если найден алгоритм cubic
-							if(fmk->exists("cubic", algorithm))
+							if(awh::fmk::exists("cubic", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.congctl.selected", "cubic");
 							// Если же найден алгоритм newreno
-							else if(fmk->exists("newreno", algorithm))
+							else if(awh::fmk::exists("newreno", algorithm))
 								// Активируем выбранный нами алгоритм
 								os.sysctl("net.inet.tcp.congctl.selected", "newreno");
 						}
@@ -302,7 +301,7 @@ namespace options {
 						 */
 						const string & timecounter = os.sysctl <string> ("kern.timecounter.choice");
 						// Если перечень доступных источников времени получен и счётчик тактов доступен
-						if(!timecounter.empty() && fmk->exists("TSC", timecounter))
+						if(!timecounter.empty() && awh::fmk::exists("TSC", timecounter))
 							// Выполняем выбор счётчика тактов
 							os.sysctl("kern.timecounter.hardware", "TSC");
 					/**
@@ -352,13 +351,13 @@ namespace options {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -371,13 +370,10 @@ namespace options {
 	/**
 	 * @brief Конструктор
 	 *
-	 * @param fmk объект фреймворка
-	 * @param log объект работы с логами
-	 *
 	 */
-	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
-	 addr(fmk, log), iface(fmk, log), sctp(fmk, log), socket(fmk, log),
-	 gateway(fmk, log), _fmk(fmk), _log(log) {
+	awh::Ethernet::Ethernet() noexcept :
+	 addr(), iface(), sctp(), socket(),
+	 gateway() {
 		/**
 		 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
 		 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
@@ -386,7 +382,7 @@ namespace options {
 		/**
 		 * Выполняем настройку сетевых параметров
 		 */
-		::options::netboost(fmk, log);
+		::options::netboost();
 	}
 /**
  * Для остальных операционных систем
@@ -395,13 +391,10 @@ namespace options {
 	/**
 	 * @brief Конструктор
 	 *
-	 * @param fmk объект фреймворка
-	 * @param log объект работы с логами
-	 *
 	 */
-	awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
-	 addr(fmk, log), iface(fmk, log), socket(fmk, log),
-	 gateway(fmk, log), _fmk(fmk), _log(log) {
+	awh::Ethernet::Ethernet() noexcept :
+	 addr(), iface(), socket(),
+	 gateway() {
 		/**
 		 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
 		 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
@@ -410,7 +403,7 @@ namespace options {
 		/**
 		 * Выполняем настройку сетевых параметров
 		 */
-		::options::netboost(fmk, log);
+		::options::netboost();
 	}
 #endif
 /**

@@ -132,8 +132,8 @@ namespace awh {
 			 *
 			 * @code{.cpp}
 			 * #if __linux__ || __FreeBSD__ || __sun
-			 *     awh::engine::io_t io(&fmk, &log);
-			 *     awh::engine::sctp_t sctp(&fmk, &log);
+			 *     awh::engine::io_t io;
+			 *     awh::engine::sctp_t sctp;
 			 *     // Заводим событие SCTP-сокета обычным порядком движка
 			 *     const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
 			 *     io.setTargetPort(client, 9899);
@@ -211,8 +211,8 @@ namespace awh {
 			 *
 			 * @code{.cpp}
 			 * #if __linux__ || __FreeBSD__ || __sun
-			 *     awh::engine::io_t io(&fmk, &log);
-			 *     awh::engine::sctp_t sctp(&fmk, &log);
+			 *     awh::engine::io_t io;
+			 *     awh::engine::sctp_t sctp;
 			 *     // Starting an event of an SCTP socket in the usual order of the engine
 			 *     const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::SCTP);
 			 *     io.setTargetPort(client, 9899);
@@ -242,11 +242,6 @@ namespace awh {
 				private:
 					// Объект работы с сетью
 					eth_t _eth;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект работы с логами
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -596,17 +591,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					explicit Stream_Control_Transmission_Protocol(const fmk_t * fmk, const log_t * log) noexcept;
+					explicit Stream_Control_Transmission_Protocol() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -681,7 +671,7 @@ namespace awh {
 		 * @par Пример: сервер
 		 *
 		 * @code{.cpp}
-		 * awh::engine::io_t io(&fmk, &log);
+		 * awh::engine::io_t io;
 		 * // Заводим событие клиента и настраиваем его
 		 * const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		 * io.setTargetPort(client, 80);
@@ -705,7 +695,7 @@ namespace awh {
 		 * @endcode
 		 *
 		 * @code{.cpp}
-		 * awh::engine::io_t io(&fmk, &log);
+		 * awh::engine::io_t io;
 		 * // Заводим событие сервера и настраиваем его
 		 * const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		 * io.setSourcePort(server, 8080);
@@ -776,7 +766,7 @@ namespace awh {
 		 * @par Example: a server
 		 *
 		 * @code{.cpp}
-		 * awh::engine::io_t io(&fmk, &log);
+		 * awh::engine::io_t io;
 		 * // Starting an event of a client and setting it up
 		 * const awh::event::id_t client = io.event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		 * io.setTargetPort(client, 80);
@@ -800,7 +790,7 @@ namespace awh {
 		 * @endcode
 		 *
 		 * @code{.cpp}
-		 * awh::engine::io_t io(&fmk, &log);
+		 * awh::engine::io_t io;
 		 * // Starting an event of a server and setting it up
 		 * const awh::event::id_t server = io.event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::STREAM, awh::event::protocol_t::TCP);
 		 * io.setSourcePort(server, 8080);
@@ -840,11 +830,6 @@ namespace awh {
 					private:
 						// Тип списка контроля доступа
 						event::control_list_t _type;
-					private:
-						// Объект фреймворка
-						const fmk_t * _fmk;
-						// Объект работы с логами
-						const log_t * _log;
 					public:
 						/**
 						 * \~russian
@@ -923,7 +908,7 @@ namespace awh {
 						 *
 						 * \~
 						 */
-						explicit Control_List(const event::control_list_t type, const fmk_t * fmk, const log_t * log) noexcept;
+						explicit Control_List(const event::control_list_t type) noexcept;
 						/**
 						 * \~russian
 						 * @brief Деструктор
@@ -3261,7 +3246,7 @@ namespace awh {
 				 * @param timer тип таймера для событий сетевого движка
 				 *
 				 * @code{.cpp}
-				 * awh::engine::io_t io(&fmk, &log);
+				 * awh::engine::io_t io;
 				 * // Переключаем до заведения событий и до initialize()
 				 * io.setInternalTimer(awh::event::timer_t::DIFFICULT);
 				 * io.initialize();
@@ -3286,7 +3271,7 @@ namespace awh {
 				 * @param timer type of the timer for the events of the network engine
 				 *
 				 * @code{.cpp}
-				 * awh::engine::io_t io(&fmk, &log);
+				 * awh::engine::io_t io;
 				 * // Switching before the starting of the events and before initialize()
 				 * io.setInternalTimer(awh::event::timer_t::DIFFICULT);
 				 * io.initialize();
@@ -4137,17 +4122,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit IO(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit IO() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

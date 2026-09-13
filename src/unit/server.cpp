@@ -23,6 +23,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/server.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -92,13 +93,13 @@ void awh::unit::Server::unlinkClient(const event::id_t cid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(cid), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {cid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -148,13 +149,13 @@ void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -193,13 +194,13 @@ void awh::unit::Server::linkClient(const event::id_t sid, const event::id_t cid)
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, cid), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, cid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -229,7 +230,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 						// Если кластер не инициализирован
 						if(this->_cluster == nullptr){
 							// Создаём объект кластера для управления процессами сервера
-							this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+							this->_cluster = make_unique <cluster_t> ();
 							// Если имя кластера установлено
 							if(!this->_clusterParams.name.empty())
 								// Устанавливаем название кластера
@@ -303,7 +304,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 						// Если кластер не инициализирован
 						if(this->_cluster == nullptr){
 							// Создаём объект кластера для управления процессами сервера
-							this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+							this->_cluster = make_unique <cluster_t> ();
 							// Если имя кластера установлено
 							if(!this->_clusterParams.name.empty())
 								// Устанавливаем название кластера
@@ -717,7 +718,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Выходим из функции
 			return;
 		// Создаём объект кластера для управления процессами сервера
-		this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+		this->_cluster = make_unique <cluster_t> ();
 		// Если имя кластера установлено
 		if(!this->_clusterParams.name.empty())
 			// Устанавливаем название кластера
@@ -747,7 +748,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		// Запоминаем работника, готового обслуживать подключения
 		this->_handoverWorkers.push_back(pid);
 		// Записываем в лог сообщение о готовности работника обслуживать подключения
-		this->_log->print("Cluster worker process [%d] is ready to serve connections", log_t::flag_t::INFO, pid);
+		awh::log::print("Cluster worker process [%d] is ready to serve connections", awh::log::flag_t::INFO, pid);
 	}
 	/**
 	 * @brief Метод передачи принятого подключения работнику кластера
@@ -898,7 +899,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		// Если своего события сервера не нашлось
 		if(eid == 0){
 			// Записываем ошибку в лог
-			this->_log->print("Cluster worker process [%d] has no server event for the connection received from the master", log_t::flag_t::CRITICAL, ::getpid());
+			awh::log::print("Cluster worker process [%d] has no server event for the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -918,7 +919,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 		// Если событие подключения завести не удалось
 		if(cid == 0){
 			// Записываем ошибку в лог
-			this->_log->print("Cluster worker process [%d] cannot create an event for the connection received from the master", log_t::flag_t::CRITICAL, ::getpid());
+			awh::log::print("Cluster worker process [%d] cannot create an event for the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -933,7 +934,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Удаляем заведённое событие подключения
 			this->_io->destroy(cid);
 			// Записываем ошибку в лог
-			this->_log->print("Cluster worker process [%d] cannot set the target of the connection received from the master", log_t::flag_t::CRITICAL, ::getpid());
+			awh::log::print("Cluster worker process [%d] cannot set the target of the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -942,7 +943,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Удаляем заведённое событие подключения
 			this->_io->destroy(cid);
 			// Записываем ошибку в лог
-			this->_log->print("Cluster worker process [%d] cannot restore the connection received from the master", log_t::flag_t::CRITICAL, ::getpid());
+			awh::log::print("Cluster worker process [%d] cannot restore the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
 			// Выводим признак того, что сообщение было передачей подключения
 			return true;
 		}
@@ -953,7 +954,7 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
 			// Удаляем заведённое событие подключения
 			this->_io->destroy(cid);
 			// Записываем ошибку в лог
-			this->_log->print("Cluster worker process [%d] cannot start the connection received from the master", log_t::flag_t::CRITICAL, ::getpid());
+			awh::log::print("Cluster worker process [%d] cannot start the connection received from the master", awh::log::flag_t::CRITICAL, ::getpid());
 		}
 		// Выводим признак того, что сообщение было передачей подключения
 		return true;
@@ -1269,13 +1270,13 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Failed to commit server", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
+						awh::log::debug("Failed to commit server", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Failed to commit server", log_t::flag_t::CRITICAL);
+						awh::log::print("Failed to commit server", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			}
@@ -1289,13 +1290,13 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1344,13 +1345,13 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
+						awh::log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
+						awh::log::print("Failed to launch server", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			}
@@ -1364,13 +1365,13 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1452,13 +1453,13 @@ bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, ctx), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, ctx}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1518,13 +1519,13 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, make_tuple(eid, max), log_t::flag_t::CRITICAL);
+						awh::log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid, max}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
+						awh::log::print("Failed to launch server", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			}
@@ -1538,13 +1539,13 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, max), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, max}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2263,13 +2264,13 @@ void awh::unit::Server::stop() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог запуска события
-				this->_log->debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог запуска события
-				this->_log->print("This operating system is not supported", log_t::flag_t::CRITICAL);
+				awh::log::print("This operating system is not supported", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);
@@ -2323,7 +2324,7 @@ void awh::unit::Server::start() noexcept {
 					// Если кластер не инициализирован
 					if(this->_cluster == nullptr){
 						// Создаём объект кластера для управления процессами сервера
-						this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+						this->_cluster = make_unique <cluster_t> ();
 						// Если имя кластера установлено
 						if(!this->_clusterParams.name.empty())
 							// Устанавливаем название кластера
@@ -2391,13 +2392,13 @@ void awh::unit::Server::start() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог запуска события
-				this->_log->debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог запуска события
-				this->_log->print("This operating system is not supported", log_t::flag_t::CRITICAL);
+				awh::log::print("This operating system is not supported", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
 			::_exit(EXIT_FAILURE);
@@ -2525,13 +2526,13 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2639,13 +2640,13 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {count}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -2805,11 +2806,8 @@ bool awh::unit::Server::clusterSetBufferSize(const pid_t pid, const event::actio
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::Server::Server(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log), _cluster(nullptr)
+awh::unit::Server::Server() noexcept : unit_t(), _cluster(nullptr)
 /**
  * Для операционной системы MS Windows
  */

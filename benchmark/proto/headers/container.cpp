@@ -268,7 +268,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		return measure(ROUNDS, counting, []([[maybe_unused]] const size_t index) noexcept -> uint64_t {
 			// Создаём контейнер заголовков
-			awh::http::headers_t object(awh::http::proto_t::HTTP1, framework(), logger());
+			awh::http::headers_t object(awh::http::proto_t::HTTP1);
 			// Наполняем контейнер полями образца
 			fill(object);
 			// Выводим итог наполнения контейнера
@@ -288,7 +288,7 @@ namespace {
 	 */
 	static outcome_t lookup(const bool counting) noexcept {
 		// Создаём контейнер заголовков сценария
-		static awh::http::headers_t object(awh::http::proto_t::HTTP1, framework(), logger());
+		static awh::http::headers_t object(awh::http::proto_t::HTTP1);
 		// Наполняем контейнер полями образца, если он ещё не наполнен
 		if(object.empty())
 			// Наполняем контейнер полями образца
@@ -311,7 +311,7 @@ namespace {
 	 */
 	static outcome_t serializing(const bool counting) noexcept {
 		// Создаём контейнер заголовков сценария
-		static awh::http::headers_t object(awh::http::proto_t::HTTP1, framework(), logger());
+		static awh::http::headers_t object(awh::http::proto_t::HTTP1);
 		// Создаём объект запроса клиента
 		static awh::http::request_t request(awh::http::version_t::HTTP1_1, awh::http::method_t::GET, std::string("/index.html"));
 		// Наполняем контейнер полями образца, если он ещё не наполнен
@@ -342,7 +342,7 @@ namespace {
 	 */
 	static outcome_t replacing(const bool counting) noexcept {
 		// Создаём контейнер заголовков сценария
-		static awh::http::headers_t object(awh::http::proto_t::HTTP1, framework(), logger());
+		static awh::http::headers_t object(awh::http::proto_t::HTTP1);
 		// Наполняем контейнер полями образца, если он ещё не наполнен
 		if(object.empty())
 			// Наполняем контейнер полями образца

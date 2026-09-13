@@ -23,6 +23,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/timer.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -137,13 +138,13 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог запуска события
-					this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
+					awh::log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог запуска события
-					this->_log->print("Timer event could not be launched", log_t::flag_t::WARNING);
+					awh::log::print("Timer event could not be launched", awh::log::flag_t::WARNING);
 				#endif
 			// Добавляем идентификатор таймера в список активных таймеров
 			} else this->_timers.emplace(result);
@@ -158,13 +159,13 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог создания события
-				this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
+				awh::log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				this->_log->print("Timer event could not be created", log_t::flag_t::WARNING);
+				awh::log::print("Timer event could not be created", awh::log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -200,13 +201,13 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог запуска события
-					this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
+					awh::log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог запуска события
-					this->_log->print("Timer event could not be launched", log_t::flag_t::WARNING);
+					awh::log::print("Timer event could not be launched", awh::log::flag_t::WARNING);
 				#endif
 			// Добавляем идентификатор таймера в список активных таймеров
 			} else this->_timers.emplace(result);
@@ -221,13 +222,13 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог создания события
-				this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
+				awh::log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог создания события
-				this->_log->print("Timer event could not be created", log_t::flag_t::WARNING);
+				awh::log::print("Timer event could not be created", awh::log::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -253,11 +254,8 @@ void awh::unit::Timer::callback(const callback_t & callback) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::Timer::Timer(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Timer::Timer() noexcept : unit_t() {}
 /**
  * @brief Деструктор
  *

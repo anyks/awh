@@ -44,6 +44,7 @@
  */
 #include <net/eth/gateway.hpp>
 #include <net/backend/gnu/netlink.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -180,11 +181,10 @@ namespace routing {
 	 * @param type  тип запроса (RTM_NEWROUTE либо RTM_DELROUTE)
 	 * @param flags признаки запроса
 	 * @param route правимый маршрут
-	 * @param log   объект работы с логами
 	 * @return      результат правки таблицы маршрутов
 	 *
 	 */
-	static bool modify(const uint16_t type, const uint16_t flags, const awh::eth::Gateway::route_t & route, const awh::log_t * log) noexcept {
+	static bool modify(const uint16_t type, const uint16_t flags, const awh::eth::Gateway::route_t & route) noexcept {
 		// Если адрес шлюза не инициализирован
 		if(route.gateway == nullptr)
 			// Сообщаем, что правка не выполнена
@@ -220,7 +220,7 @@ namespace routing {
 		 */
 		if((route.destination != nullptr) && (static_cast <size_t> (route.destination->size) != size)){
 			// Записываем ошибку в лог
-			log->print("%s", awh::log_t::flag_t::CRITICAL, "route destination kind does not match the kind of the route gateway");
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, "route destination kind does not match the kind of the route gateway");
 			// Сообщаем, что правка не выполнена
 			return false;
 		}
@@ -269,7 +269,7 @@ namespace routing {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				log->print("Route prefix length %u exceeds the limit %u of the %s address", awh::log_t::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return false;
 			}
@@ -366,7 +366,7 @@ namespace routing {
 				::routing::attribute(&message.header, limit, RTA_OIF, &index, sizeof(index));
 		}
 		// Выполняем инициализацию объекта опроса ядра
-		const awh::gnu::netlink_t netlink(log);
+		const awh::gnu::netlink_t netlink;
 		// Выполняем отправку сообщения ядру
 		return netlink.commit(&message, message.header.nlmsg_len);
 	}
@@ -485,7 +485,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		// Признак того, что запись найдена
 		bool found = false;
 		// Выполняем инициализацию объекта опроса ядра
-		const gnu::netlink_t netlink(this->_log);
+		const gnu::netlink_t netlink;
 		/**
 		 * Выполняем выборку таблицы маршрутов
 		 */
@@ -631,13 +631,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(route.ifname), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {route.ifname}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -656,7 +656,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
  */
 bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 	// Выполняем заведение маршрута
-	return ::routing::modify(RTM_NEWROUTE, (NLM_F_CREATE | NLM_F_EXCL), route, this->_log);
+	return ::routing::modify(RTM_NEWROUTE, (NLM_F_CREATE | NLM_F_EXCL), route);
 }
 /**
  * @brief Метод удаления маршрута
@@ -667,16 +667,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
  */
 bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 	// Выполняем снятие маршрута
-	return ::routing::modify(RTM_DELROUTE, 0, route, this->_log);
+	return ::routing::modify(RTM_DELROUTE, 0, route);
 }
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Gateway::Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Gateway::Gateway() noexcept {}
 /**
  * @brief Деструктор
  *

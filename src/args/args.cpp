@@ -33,6 +33,8 @@
  * Подключаем заголовочный файл разбора записи числа
  */
 #include <num/lexical/lexical.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Если операционной системой является MS Windows
@@ -165,15 +167,15 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 		// Выводим пустую последовательность знаков
 		return codec::abc::value_t(string(text));
 	// Если запись значения является истиной
-	if(this->_fmk->compare(text, "true") || this->_fmk->compare(text, "yes") || this->_fmk->compare(text, "on"))
+	if(awh::fmk::compare(text, "true") || awh::fmk::compare(text, "yes") || awh::fmk::compare(text, "on"))
 		// Выводим логическое значение истиной
 		return codec::abc::value_t(true);
 	// Если запись значения является ложью
-	if(this->_fmk->compare(text, "false") || this->_fmk->compare(text, "no") || this->_fmk->compare(text, "off"))
+	if(awh::fmk::compare(text, "false") || awh::fmk::compare(text, "no") || awh::fmk::compare(text, "off"))
 		// Выводим логическое значение ложью
 		return codec::abc::value_t(false);
 	// Если запись значения является пустым значением
-	if(this->_fmk->compare(text, "null") || this->_fmk->compare(text, "nil"))
+	if(awh::fmk::compare(text, "null") || awh::fmk::compare(text, "nil"))
 		// Выводим пустое значение
 		return codec::abc::value_t(codec::abc::kind_t::NUL);
 	/**
@@ -194,8 +196,8 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 		/**
 		 * Определяем запись ЦЕЛОГО: ни точки, ни указателя степени в ней нет
 		 *
-		 * @warning Разбор идёт `num/lexical` НАПРЯМУЮ, а не ходами `fmk_t::is` и
-		 *          `fmk_t::atoi`, и оба хода тому виною порознь. Проверка `is`
+		 * @warning Разбор идёт `num/lexical` НАПРЯМУЮ, а не ходами `awh::fmk::is` и
+		 *          `awh::fmk::atoi`, и оба хода тому виною порознь. Проверка `is`
 		 *          признаёт `1e-9`, но отвергает `-2.5e3` и `1E5`, отчего одна и
 		 *          та же запись выходила то числом, то строкою. Приведение же
 		 *          `atoi` записи, разрядность превысившей, отвечает НУЛЁМ:
@@ -269,7 +271,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 		// Выполняем запоминание отказа укладки значения
 		this->_errors.emplace_back(error_t::EMPTY_PATH, location_t());
 		// Выводим в лог сообщение о негодном пути укладки
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
+		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::EMPTY_PATH), path.c_str());
 		// Выходим из метода, укладывать значение некуда
 		return false;
 	}
@@ -342,7 +344,7 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 			 * Выполняем слияние поля отображения вглубь: отображения сливаются
 			 * звено за звеном, а вместимые и одиночные значения ложатся целиком
 			 */
-			result = (this->merge(value[i], (path.empty() ? name : this->_fmk->format("%s/%s", path.c_str(), name.c_str())), source) && result);
+			result = (this->merge(value[i], (path.empty() ? name : awh::fmk::format("%s/%s", path.c_str(), name.c_str())), source) && result);
 		}
 		// Выводим результат слияния полей отображения
 		return result;
@@ -410,7 +412,7 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 				// Выполняем запоминание отказа разбора вместе с его положением
 				this->_errors.emplace_back(error_t::UNKNOWN, lexeme.location);
 				// Выводим в лог сообщение об имени, описанию неизвестном
-				this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
+				awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
 				// Выходим из метода, укладка отвечена отказом
 				return false;
 			}
@@ -427,7 +429,7 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error_t::ODD_VALUE, lexeme.location);
 		// Выводим в лог сообщение о значении, параметру не потребном
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
+		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
 		// Выходим из метода, укладка отвечена отказом
 		return false;
 	}
@@ -436,7 +438,7 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error_t::NO_VALUE, lexeme.location);
 		// Выводим в лог сообщение об отсутствии потребного значения
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
+		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
 		// Выходим из метода, укладка отвечена отказом
 		return false;
 	}
@@ -447,7 +449,7 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error_t::DUPLICATE, lexeme.location);
 		// Выводим в лог сообщение о повторной подаче параметра
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
+		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
 		// Выходим из метода, укладка отвечена отказом
 		return false;
 	}
@@ -530,7 +532,7 @@ bool awh::args::Args::parse(const int32_t count, const wchar_t * items[]) noexce
 		// Если довод набора запуска подан
 		if(items[i] != nullptr)
 			// Добавляем довод, переведённый из широких знаков, в контейнер
-			result.emplace_back(this->_fmk->convert(items[i]));
+			result.emplace_back(awh::fmk::convert(items[i]));
 	}
 	// Выполняем разбор собранного набора доводов запуска
 	return this->parse(result);
@@ -574,7 +576,7 @@ bool awh::args::Args::parse(const vector <string> & items) noexcept {
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error, location);
 		// Выводим в лог сообщение об отказе разбора набора запуска
-		this->_log->print("Args: %s at argument %zu", log_t::flag_t::WARNING, args::message(error), location.index);
+		awh::log::print("Args: %s at argument %zu", awh::log::flag_t::WARNING, args::message(error), location.index);
 		// Сообщаем, что разбор следует продолжить
 		return true;
 	});
@@ -615,7 +617,7 @@ bool awh::args::Args::text(const string_view text) noexcept {
 		// Выполняем запоминание отказа разбора вместе с его положением
 		this->_errors.emplace_back(error, location);
 		// Выводим в лог сообщение об отказе разбора текстового потока
-		this->_log->print("Args: %s at word %zu", log_t::flag_t::WARNING, args::message(error), location.index);
+		awh::log::print("Args: %s at word %zu", awh::log::flag_t::WARNING, args::message(error), location.index);
 		// Сообщаем, что разбор следует продолжить
 		return true;
 	});
@@ -633,7 +635,7 @@ bool awh::args::Args::env() noexcept {
 	// Если начало имён переменных окружения не установлено
 	if(this->_prefix.empty()){
 		// Выводим в лог сообщение об отсутствии начала имён переменных
-		this->_log->print("Args: environment prefix is not set", log_t::flag_t::WARNING);
+		awh::log::print("Args: environment prefix is not set", awh::log::flag_t::WARNING);
 		// Выходим из метода, отбирать переменные не по чему
 		return false;
 	}
@@ -655,7 +657,7 @@ bool awh::args::Args::env() noexcept {
 	 */
 	string prefix = this->_prefix;
 	// Выполняем перевод начала имён переменных окружения в верхний регистр
-	this->_fmk->transform(prefix, fmk_t::transform_t::UPPER_CASE);
+	awh::fmk::transform(prefix, awh::fmk::transform_t::UPPER_CASE);
 	// Признак успешности укладки собранного
 	bool result = true;
 	// Выполняем перебор всего набора переменных окружения
@@ -680,7 +682,7 @@ bool awh::args::Args::env() noexcept {
 		// Получаем остаток имени переменной без начала и подчёркивания за ним
 		string path(name.substr(prefix.length() + 1));
 		// Выполняем перевод остатка имени переменной в нижний регистр
-		this->_fmk->transform(path, fmk_t::transform_t::LOWER_CASE);
+		awh::fmk::transform(path, awh::fmk::transform_t::LOWER_CASE);
 		// Выполняем перебор всех знаков остатка имени переменной
 		for(size_t j = 0; j < path.length(); j++){
 			// Если знаком является подчёркивание
@@ -763,7 +765,7 @@ bool awh::args::Args::verify() noexcept {
 			// Выполняем запоминание отказа проверки
 			this->_errors.emplace_back(error_t::REQUIRED, location_t());
 			// Выводим в лог сообщение об отсутствии обязательного параметра
-			this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::REQUIRED), param.name.c_str());
+			awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::REQUIRED), param.name.c_str());
 			// Отмечаем, что проверка собранного отвечена отказом
 			result = false;
 		}
@@ -830,7 +832,7 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отсутствии файла настроек
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
+		awh::log::print("Args: %s \"%s\"", awh::log::flag_t::WARNING, args::message(error_t::FILESYSTEM), filename.c_str());
 		// Выходим из метода, читать нечего
 		return false;
 	}
@@ -872,14 +874,14 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 		// Выполняем запоминание отказа чтения файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отсутствии расширения имени
-		this->_log->print("Args: format of the settings file \"%s\" is not derivable from its name", log_t::flag_t::WARNING, filename.c_str());
+		awh::log::print("Args: format of the settings file \"%s\" is not derivable from its name", awh::log::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, читать нечего
 		return false;
 	}
 	// Извлекаемое расширение имени файла настроек
 	string extension = filename.substr(pos + 1);
 	// Выполняем перевод расширения в нижний регистр
-	this->_fmk->transform(extension, fmk_t::transform_t::LOWER_CASE);
+	awh::fmk::transform(extension, awh::fmk::transform_t::LOWER_CASE);
 	// Если расширение означает запись JSON
 	if(extension.compare("json") == 0)
 		// Выполняем чтение файла настроек записью JSON
@@ -903,7 +905,7 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 	// Выполняем запоминание отказа чтения файла настроек
 	this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 	// Выводим в лог сообщение о неведомом расширении имени
-	this->_log->print("Args: unknown format \"%s\" of the settings file \"%s\"", log_t::flag_t::WARNING, extension.c_str(), filename.c_str());
+	awh::log::print("Args: unknown format \"%s\" of the settings file \"%s\"", awh::log::flag_t::WARNING, extension.c_str(), filename.c_str());
 	// Выходим из метода, читать нечего
 	return false;
 }
@@ -986,7 +988,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отказе записи файла настроек
-		this->_log->print("Args: settings are not written to \"%s\"", log_t::flag_t::WARNING, filename.c_str());
+		awh::log::print("Args: settings are not written to \"%s\"", awh::log::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, запись отвечена отказом
 		return false;
 	}
@@ -1010,7 +1012,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отказе сброса записи на носитель
-		this->_log->print("Args: settings are not flushed into \"%s\"", log_t::flag_t::WARNING, filename.c_str());
+		awh::log::print("Args: settings are not flushed into \"%s\"", awh::log::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, запись отвечена отказом
 		return false;
 	}
@@ -1021,7 +1023,7 @@ bool awh::args::Args::save(const string & filename, const codec::Bridge::format_
 		// Выполняем запоминание отказа записи файла настроек
 		this->_errors.emplace_back(error_t::FILESYSTEM, location_t());
 		// Выводим в лог сообщение об отказе подмены файла настроек
-		this->_log->print("Args: settings are not moved into \"%s\"", log_t::flag_t::WARNING, filename.c_str());
+		awh::log::print("Args: settings are not moved into \"%s\"", awh::log::flag_t::WARNING, filename.c_str());
 		// Выходим из метода, запись отвечена отказом
 		return false;
 	}
@@ -1121,7 +1123,7 @@ T awh::args::Args::get(const string_view key) const noexcept {
 		// Выполняем извлечение последовательности знаков
 		if(value.value(text))
 			// Выводим признак совпадения записи с истиной
-			return (this->_fmk->compare(text, "true") || this->_fmk->compare(text, "yes") || this->_fmk->compare(text, "on") || this->_fmk->compare(text, "1"));
+			return (awh::fmk::compare(text, "true") || awh::fmk::compare(text, "yes") || awh::fmk::compare(text, "on") || awh::fmk::compare(text, "1"));
 		// Выводим логическое значение ложью
 		return false;
 	// Если извлекается число
@@ -1166,7 +1168,7 @@ T awh::args::Args::get(const string_view key) const noexcept {
 		 */
 		if(value.value(text))
 			// Выводим число, разобранное из последовательности знаков
-			return this->_fmk->atoi <T> (text);
+			return awh::fmk::atoi <T> (text);
 		// Выводим число нулём
 		return static_cast <T> (0);
 	}
@@ -1206,7 +1208,7 @@ vector <T> awh::args::Args::arr(const string_view key) const noexcept {
 	// Выполняем перебор всех значений вместимого
 	for(size_t i = 0; i < value.size(); i++)
 		// Добавляем извлечённое значение вместимого в контейнер
-		result.push_back(this->get <T> (this->_fmk->format("%s%c%zu", string(key).c_str(), this->_settings.delimiter, i)));
+		result.push_back(this->get <T> (awh::fmk::format("%s%c%zu", string(key).c_str(), this->_settings.delimiter, i)));
 	// Выводим контейнер извлечённых значений вместимого
 	return result;
 }
@@ -1313,13 +1315,10 @@ void awh::args::Args::lexing(const lexer_t::settings_t & settings) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::args::Args::Args(const fmk_t * fmk, const log_t * log) noexcept :
- _schema(fmk, log), _prefix{""}, _lexer(fmk, log), _bridge(fmk, log), _fs(fmk, log),
- _root(codec::abc::kind_t::MAP), _fmk(fmk), _log(log) {
+awh::args::Args::Args() noexcept :
+ _schema(), _prefix{""}, _lexer(), _bridge(), _fs(),
+ _root(codec::abc::kind_t::MAP) {
 	/**
 	 * @note Дерево настроек заводится БЕЗ фреймворка и журнала, и это не недосмотр:
 	 *       значение ABC берёт их лишь на двух своих ходах - разборе и выдаче, - а

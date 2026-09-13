@@ -100,7 +100,7 @@ namespace awh {
 			 * проверкой кругового прохода
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer(log);
+			 *  writer_t writer();
 			 *
 			 *  writer.field("имя");
 			 *  writer.field("значение");
@@ -133,7 +133,7 @@ namespace awh {
 			 * a round-trip test
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer(log);
+			 *  writer_t writer();
 			 *
 			 *  writer.field("name");
 			 *  writer.field("value");
@@ -165,7 +165,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -629,46 +628,26 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Writer(const log_t * log) noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
+					Writer() noexcept;
 				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log      объект для работы с логами
 					 * @param settings настройки записи текста
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the writing of a text
 					 *
 					 * \~
 					 */
-					Writer(const log_t * log, const settings_t & settings) noexcept;
+					Writer(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

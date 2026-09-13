@@ -55,57 +55,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Способ выдачи объекта фреймворка проверок
-	 *
-	 * @note Рамка нужна деревьям настроек: работы с файловой системой ведутся ходом
-	 *       `fs_t`, а тот обращает пути в широкую запись ходом `convert()`
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -168,7 +125,7 @@ struct Event {
  */
 static toml::state_t consume(const string & text, const size_t chunk, const toml::reader_t::settings_t & settings, vector <Event> & events) noexcept {
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader(::logger(), settings);
+	toml::reader_t reader(settings);
 	// Позиция чтения разбираемого текста
 	size_t offset = 0;
 	/**
@@ -275,7 +232,7 @@ TEST(CodecTomlReader, MalformedSequenceOutcomeIsIndependentOfTheChunking) {
 	 */
 	const auto outcome = [](const string & text, const size_t cut) noexcept -> uint8_t {
 		// Объект чтения текста настроек
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		/**
 		 * Если подача ведётся целиком
 		 */
@@ -458,7 +415,7 @@ TEST(CodecTomlReader, Numbers) {
 		// Собранные события разбора
 		vector <Event> refused;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Разбираемая запись числа за отрезком значений
 		const string source = "a = 9223372036854775808\n";
 		// Выполняем проверку отказа разбора записи числа
@@ -479,7 +436,7 @@ TEST(CodecTomlReader, Numbers) {
 		 */
 		for(auto & source : {string("a = 1e1000\n"), string("a = 1.0e+400\n"), string("a = -1e400\n")}){
 			// Объект потокового чтения текста настроек
-			toml::reader_t reader(::logger());
+			toml::reader_t reader;
 			// Выполняем проверку отказа разбора записи числа
 			ASSERT_FALSE(reader.feed(source.data(), source.size(), true)) << source;
 			// Выполняем проверку выданного кода ошибки разбора
@@ -495,7 +452,7 @@ TEST(CodecTomlReader, Floats) {
 	// Настройки разбора текста настроек
 	toml::reader_t::settings_t settings;
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader(::logger(), settings);
+	toml::reader_t reader(settings);
 	// Разбираемый текст настроек
 	const string text = "a = 3.14\nb = -0.5e3\nc = inf\nd = -inf\ne = nan\nf = true\ng = false\n";
 	// Выполняем проверку того, что разбор текста настроек удался
@@ -538,7 +495,7 @@ TEST(CodecTomlReader, Floats) {
  */
 TEST(CodecTomlReader, Stamps) {
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader(::logger());
+	toml::reader_t reader;
 	// Разбираемый текст настроек с отметками времени
 	const string text =
 		"a = 1979-05-27T07:32:00Z\n"
@@ -1037,7 +994,7 @@ TEST(CodecTomlReader, LineLimitLocation) {
 		// Запоминаем предел длины записи
 		settings.maxLine = 8;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Выполняем подачу разбираемого текста настроек целиком
 		static_cast <void> (reader.feed(item.first.data(), item.first.size(), true));
 		/**
@@ -1424,7 +1381,7 @@ TEST(CodecTomlReader, InlineScaling) {
 		// Запоминаем время начала разбора
 		const auto begin = chrono::steady_clock::now();
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Выполняем подачу разбираемого текста настроек
 		static_cast <void> (reader.feed(text.data(), text.size(), true));
 		/**
@@ -1487,7 +1444,7 @@ TEST(CodecTomlReader, Conformance) {
 		// Настройки разбора текста настроек
 		const toml::reader_t::settings_t settings;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Позиция чтения разбираемого текста
 		size_t offset = 0;
 		/**
@@ -1696,7 +1653,7 @@ TEST(CodecTomlReader, UnicodeNames) {
 			// Устанавливаем признание знаков Юникода в именах без кавычек
 			settings.unicode = true;
 			// Объект потокового чтения текста настроек
-			toml::reader_t reader(::logger(), settings);
+			toml::reader_t reader(settings);
 			/**
 			 * Выполняем подачу исходного текста кусками выбранного размера
 			 */
@@ -1716,7 +1673,7 @@ TEST(CodecTomlReader, UnicodeNames) {
 		}
 	}
 	// Объект записи текста настроек
-	toml::writer_t writer(::logger());
+	toml::writer_t writer;
 	// Выполняем запись имени ключа со знаком, черновиком не дозволенным
 	ASSERT_TRUE(writer.key("a\xC2\xA9""b"));
 	// Выполняем запись значения пары
@@ -1768,7 +1725,7 @@ TEST(CodecTomlReader, FloatGrammar) {
 		// Собираемый текст настроек с проверяемой записью числа
 		const string text = ("a = " + item.first + "\n");
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Выполняем подачу разбираемого текста настроек
 		static_cast <void> (reader.feed(text.data(), text.size(), true));
 		/**
@@ -1804,7 +1761,7 @@ TEST(CodecTomlReader, ChunkScaling) {
 		// Снимаем предел длины логической строки
 		settings.maxLine = 0;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Запоминаем время начала разбора текста настроек
 		const auto begin = chrono::steady_clock::now();
 		/**
@@ -1870,7 +1827,7 @@ TEST(CodecTomlReader, TruncatedDecodingOutcome) {
 		// Устанавливаем наибольшее допустимое количество частей имени ключа
 		settings.maxParts = 2;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		/**
 		 * Если текст подаётся целиком
 		 */
@@ -1940,7 +1897,7 @@ TEST(CodecTomlReader, AnonymousInlineDuplicates) {
 		 */
 		for(size_t size : {size_t(1), size_t(3), size_t(64)}){
 			// Объект потокового чтения текста настроек
-			toml::reader_t reader(::logger());
+			toml::reader_t reader;
 			/**
 			 * Выполняем подачу исходного текста кусками выбранного размера
 			 */
@@ -1982,7 +1939,7 @@ TEST(CodecTomlReader, NegativeZeroOffset) {
 		// Собираемый текст настроек с проверяемой отметкой времени
 		const string text = ("a = " + source + "\n");
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку разбора текста настроек
 		ASSERT_TRUE(document.parse(text)) << "«" << source << "»";
 		// Выполняем проверку того, что перезапись повторяет исходную запись
@@ -2125,7 +2082,7 @@ TEST(CodecTomlReader, CompactsBufferOnLargeText) {
 		 */
 		const auto refusal = [&settings](const size_t chunk, const string & broken) noexcept -> pair <uint32_t, uint32_t> {
 			// Объект потокового чтения текста настроек
-			toml::reader_t reader(::logger(), settings);
+			toml::reader_t reader(settings);
 			// Размер подаваемого куска текста настроек
 			const size_t size = (chunk > 0 ? chunk : broken.length());
 			// Смещение начала очередного куска подачи
@@ -2242,7 +2199,7 @@ TEST(CodecTomlReader, FractionBoundaries) {
 	 */
 	for(auto & sample : samples){
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись текста с отметкой времени
 		const string text = string("a = 1979-05-27T07:32:00.") + sample.fraction + "Z\n";
 		// Выполняем проверку успешности разбора текста
@@ -2280,7 +2237,7 @@ TEST(CodecTomlReader, FractionBoundaries) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Выполняем проверку отказа разбора доли секунды без разрядов
 		// Разбираемый текст с долей секунды без разрядов
 		const string text("a = 1979-05-27T07:32:00.Z\n");
@@ -2314,7 +2271,7 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку разбора текста настроек
 		ASSERT_TRUE(document.parse("k = \"\"\"\r\nтекст\"\"\"\n"));
 		// Выполняем проверку того, что первый перевод строки содержимому не достался
@@ -2325,7 +2282,7 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку разбора текста настроек
 		ASSERT_TRUE(document.parse("k = \"a\\bb\\fc\"\n"));
 		// Выполняем проверку того, что обходы обращены в знаки
@@ -2336,7 +2293,7 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись текста с обходом неведомым
 		const string text = "k = \"a\\qb\"\n";
 		// Выполняем проверку отказа разбора текста
@@ -2351,14 +2308,14 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку разбора текста с пятью кавычками подряд
 		ASSERT_TRUE(document.parse("k = \"\"\"a\"\"\"\"\"\n"));
 		// Выполняем проверку того, что две кавычки достались содержимому
 		ASSERT_EQ(document.text({"k"}), "a\"\"");
 	}{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись текста с кавычками числом свыше пяти
 		const string text = "k = \"\"\"a\"\"\"\"\"\"\n";
 		// Выполняем проверку отказа разбора текста
@@ -2371,7 +2328,7 @@ TEST(CodecTomlReader, StringEscapesAndFences) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись текста, возвратом каретки оборванная
 		const string text = "k = \"\"\"a\r";
 		// Выполняем проверку отказа разбора текста
@@ -2429,7 +2386,7 @@ TEST(CodecTomlReader, RefusalCodes) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись разбираемого текста
 		const string text(probe.text);
 		// Выполняем проверку отказа разбора текста
@@ -2445,7 +2402,7 @@ TEST(CodecTomlReader, RefusalCodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку отказа разбора текста
 		ASSERT_FALSE(document.parse("[table]\n[table]\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2459,7 +2416,7 @@ TEST(CodecTomlReader, RefusalCodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку отказа разбора текста
 		ASSERT_FALSE(document.parse("a = {b = 1}\na.c = 2\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2470,7 +2427,7 @@ TEST(CodecTomlReader, RefusalCodes) {
 	 */
 	{
 		// Объект дерева настроек
-		toml::document_t document(::framework(), ::logger());
+		toml::document_t document;
 		// Выполняем проверку отказа разбора текста
 		ASSERT_FALSE(document.parse("[table]\n[[table]]\n"));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2492,7 +2449,7 @@ TEST(CodecTomlReader, RefusalCodes) {
  */
 TEST(CodecTomlReader, ArrayTableAndInlineEvents) {
 	// Объект потокового чтения текста
-	toml::reader_t reader(::logger());
+	toml::reader_t reader;
 	// Разбираемый текст с набором таблиц и встроенной таблицей
 	const string text = "[[items]]\nname = \"первый\"\npoint = {x = 1, y = 2}\n";
 	// Выполняем проверку успешности разбора текста
@@ -2556,7 +2513,7 @@ TEST(CodecTomlReader, FinishEvent) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись разбираемого текста
 		const string text = "k = 1\n";
 		// Выполняем проверку успешности подачи текста
@@ -2569,7 +2526,7 @@ TEST(CodecTomlReader, FinishEvent) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись разбираемого текста
 		const string text = "[table]\nk = 1\n";
 		// Выполняем проверку успешности разбора текста
@@ -2588,7 +2545,7 @@ TEST(CodecTomlReader, FinishEvent) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись текста с именем без разделителя
 		const string text = "k 1\n";
 		// Выполняем проверку отказа разбора текста
@@ -2610,11 +2567,11 @@ TEST(CodecTomlReader, FinishEvent) {
  */
 TEST(CodecTomlReader, StampRefusesTailAfterZone) {
 	// Дерево настроек
-	toml::document_t document(::framework(), ::logger());
+	toml::document_t document;
 	// Выполняем проверку разбора отметки времени, записанной верно
 	ASSERT_TRUE(document.parse("stamp = 2026-08-30T10:00:00Z\n"));
 	// Второе дерево настроек
-	toml::document_t broken(::framework(), ::logger());
+	toml::document_t broken;
 	// Выполняем проверку отказа разбора отметки с хвостом за обозначением пояса
 	ASSERT_FALSE(broken.parse("stamp = 2026-08-30T10:00:00Zx\n"));
 }
@@ -2643,7 +2600,7 @@ TEST(CodecTomlReader, StampRefusesTailAfterZone) {
  */
 TEST(CodecTomlReader, CopySurvivesFeedUnlikeView) {
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader(::logger());
+	toml::reader_t reader;
 	// Первый кусок исходного текста
 	const string first = "key = \"значение\"\n";
 	/**
@@ -2718,7 +2675,7 @@ TEST(CodecTomlReader, CopySurvivesFeedUnlikeView) {
  */
 TEST(CodecTomlReader, CopyViewsPointIntoSource) {
 	// Объект потокового чтения текста настроек
-	toml::reader_t reader(::logger());
+	toml::reader_t reader;
 	// Исходный текст настроек
 	const string text = "key = \"значение\"\n";
 	// Выполняем подачу исходного текста целиком
@@ -2759,7 +2716,7 @@ TEST(CodecTomlReader, CopyViewsPointIntoSource) {
  */
 TEST(CodecTomlReader, NameSplitInsideCharacter) {
 	// Объект чтения текста настроек
-	toml::reader_t reader(::logger());
+	toml::reader_t reader;
 	// Имя пары, знаками Юникода записанное
 	const string name = "имя";
 	// Первый кусок текста настроек, знак имени разрезающий
@@ -2876,7 +2833,7 @@ TEST(CodecTomlReader, RefusalsNameTheirOwnCause) {
 	 */
 	for(auto & probe : probes){
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Разбираемая запись текста настроек
 		const string source(probe.source);
 		// Выполняем подачу разбираемой записи текста настроек
@@ -2900,7 +2857,7 @@ TEST(CodecTomlReader, RefusalsNameTheirOwnCause) {
 		// Устанавливаем запрет вложенности значений
 		settings.nesting = false;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Выполняем проверку отказа разбора перечня при запрете вложенности
 		ASSERT_FALSE(reader.feed("a = [1]\n", 8, true));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2918,7 +2875,7 @@ TEST(CodecTomlReader, RefusalsNameTheirOwnCause) {
 		// Устанавливаем запрет вложенности значений
 		settings.nesting = false;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Выполняем проверку отказа разбора встроенной таблицы при запрете вложенности
 		ASSERT_FALSE(reader.feed("a = {b = 1}\n", 12, true));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2933,7 +2890,7 @@ TEST(CodecTomlReader, RefusalsNameTheirOwnCause) {
 		// Устанавливаем предел вложенности в один уровень
 		settings.maxDepth = 1;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Выполняем проверку отказа разбора встроенной таблицы внутри перечня
 		ASSERT_FALSE(reader.feed("a = [{b = 1}]\n", 14, true));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2948,7 +2905,7 @@ TEST(CodecTomlReader, RefusalsNameTheirOwnCause) {
 		// Устанавливаем предел длины имени ключа в три знака
 		settings.maxKey = 3;
 		// Объект потокового чтения текста настроек
-		toml::reader_t reader(::logger(), settings);
+		toml::reader_t reader(settings);
 		// Выполняем проверку отказа разбора имени, предел длины превышающего
 		ASSERT_FALSE(reader.feed("abcd = 1\n", 9, true));
 		// Выполняем проверку выданного кода отказа разбора
@@ -2988,7 +2945,7 @@ TEST(CodecTomlReader, RefusalsNotCoveredBefore) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись разбираемого текста
 		const string text(probe.text);
 		// Выполняем проверку отказа разбора текста
@@ -3011,7 +2968,7 @@ TEST(CodecTomlReader, FeedRefusedAfterEnd) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись разбираемого текста
 		const string text("a = 1\n");
 		// Выполняем разбор текста настроек целиком
@@ -3035,7 +2992,7 @@ TEST(CodecTomlReader, FeedRefusedAfterEnd) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись разбираемого текста
 		const string text("a 1\n");
 		// Выполняем проверку отказа разбора текста настроек
@@ -3048,7 +3005,7 @@ TEST(CodecTomlReader, FeedRefusedAfterEnd) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись начала разбираемого текста
 		const string text("a = 1\n");
 		// Выполняем подачу начала разбираемого текста
@@ -3094,7 +3051,7 @@ TEST(CodecTomlReader, SingleByteChunks) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Выполняем подачу разбираемого текста целиком
 		ASSERT_TRUE(reader.feed(text.data(), text.size(), true));
 		/**
@@ -3113,7 +3070,7 @@ TEST(CodecTomlReader, SingleByteChunks) {
 	 */
 	{
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		/**
 		 * Выполняем подачу разбираемого текста по одному байту
 		 */
@@ -3180,7 +3137,7 @@ TEST(CodecTomlReader, MultilineRecordSplitAcrossChunks) {
 		// Собираемая запись продолжения разбираемого текста
 		const string tail(probe.tail);
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Выполняем подачу начала разбираемого текста
 		EXPECT_TRUE(reader.feed(head.data(), head.size(), false)) << probe.note;
 		/**
@@ -3245,7 +3202,7 @@ TEST(CodecTomlReader, RefusalsInsideMultilineRecord) {
 	 */
 	for(auto & probe : PROBES){
 		// Объект потокового чтения текста
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Собираемая запись разбираемого текста
 		const string text(probe.text);
 		// Выполняем проверку отказа разбора текста
@@ -3283,7 +3240,7 @@ TEST(CodecTomlReader, CommentEmissionIsSwitchable){
 		// Устанавливаем выдачу примечаний событиями
 		settings.emitComments = emit;
 		// Объект чтения текста настроек
-		toml::reader_t reader(::logger());
+		toml::reader_t reader;
 		// Выполняем установку настроек чтения
 		reader.settings(settings);
 		// Выполняем подачу текста настроек целиком
@@ -3335,7 +3292,7 @@ TEST(CodecTomlReader, CommentEmissionIsSwitchable){
  */
 TEST(CodecTomlReader, FeedAfterTheDeclaredEndIsRefused) {
 	// Объект потокового чтения текста
-	toml::reader_t reader(::logger());
+	toml::reader_t reader;
 	// Собираемая подача исходного текста
 	const string first = "k = 1\n";
 	// Выполняем проверку того, что первая подача с признаком конца принимается

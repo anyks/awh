@@ -8,11 +8,14 @@
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
 
 int main(int argc, char * argv[]) {
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	// Получаем количество порождаемых шаблонов
 	const size_t total = ((argc > 1) ? static_cast <size_t> (::atoll(argv[1])) : 200000);
 	// Создаём генератор псевдослучайных чисел с фиксированным зерном

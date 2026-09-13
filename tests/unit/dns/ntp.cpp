@@ -49,7 +49,7 @@ TEST_F(DNSUnitFixture, NtpOwnAnswerAccepted) {
 	// Выполняем запуск подставного сервера времени, отвечающего как положено
 	ASSERT_TRUE(server.start(false));
 	// Создаём объект NTP-клиента
-	awh::unit::ntp_t ntp(this->_fmk.get(), this->_log.get());
+	awh::unit::ntp_t ntp;
 	// Устанавливаем порт подставного сервера времени
 	ntp.setTargetPort(server.port());
 	// Устанавливаем срок ожидания ответа сервера времени
@@ -125,7 +125,7 @@ TEST_F(DNSUnitFixture, NtpForeignAnswerKeepsWaiting) {
 	// Выполняем запуск подставного сервера времени, отвечающего чужой меткой
 	ASSERT_TRUE(server.start(true));
 	// Создаём объект NTP-клиента
-	awh::unit::ntp_t ntp(this->_fmk.get(), this->_log.get());
+	awh::unit::ntp_t ntp;
 	// Устанавливаем порт подставного сервера времени
 	ntp.setTargetPort(server.port());
 	// Устанавливаем срок ожидания ответа сервера времени

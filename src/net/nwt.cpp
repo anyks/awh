@@ -27,8 +27,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <net/nwt.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -1513,37 +1513,19 @@ void awh::Network_Types::zone(string_view zone) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект логирования установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -1696,67 +1678,29 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noex
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			// Если объект логирования установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
+			#endif
 		}
 	}
 	// Возвращаем результат
 	return result;
 }
 /**
- * @brief Метод установки объекта логирования
- *
- * @param log объект работы с логами
- *
- */
-void awh::Network_Types::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект логера
-	this->_log = log;
-}
-/**
  * @brief Конструктор
  *
  */
-awh::Network_Types::Network_Types() noexcept : _log(nullptr) {
-	// Выполняем заполнение общих списков доменных зон только один раз для всех объектов
-	std::call_once(::__awh_init_once__, &::init);
-}
-/**
- * @brief Конструктор
- *
- * @param log объект для работы с логами
- *
- */
-awh::Network_Types::Network_Types(const log_t * log) noexcept : _log(log) {
+awh::Network_Types::Network_Types() noexcept {
 	// Выполняем заполнение общих списков доменных зон только один раз для всех объектов
 	std::call_once(::__awh_init_once__, &::init);
 }

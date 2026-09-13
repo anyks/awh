@@ -34,8 +34,6 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/fmk.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/net/addr.hpp"
 #include "../../../include/cryptography/tls/coder.hpp"
 #include "../../../include/proto/quic/quic.hpp"
@@ -55,10 +53,6 @@ class QuicSecurity;
  */
 class QuicFixture : public testing::Test {
 	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект для работы с логами
-		std::unique_ptr <awh::log_t> _log;
 		// Объект разбора сетевых адресов
 		std::unique_ptr <awh::net_addr_t> _addr;
 		// Тестовое окружение транспортной безопасности
@@ -180,11 +174,8 @@ class QuicSecurity {
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект для работы с логами
-		 *
 		 */
-		explicit QuicSecurity(const awh::fmk_t * fmk, const awh::log_t * log) noexcept;
+		explicit QuicSecurity() noexcept;
 		/**
 		 * @brief Деструктор
 		 *

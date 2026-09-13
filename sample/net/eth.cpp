@@ -31,6 +31,7 @@
 #include <net/addr.hpp>
 #include <net/eth/iface.hpp>
 #include <net/eth/gateway.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -44,16 +45,20 @@ using namespace awh;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Объект работы с сетевыми адресами
-	net_addr_t addr(&fmk, &log);
+	net_addr_t addr;
 	// Создаём объект Ethernet
-	eth::iface_t iface(&fmk, &log);
+	eth::iface_t iface;
 	// Создаём объект для работы с шлюзами
-	eth::gateway_t gateway(&fmk, &log);
+	eth::gateway_t gateway;
 	// Структура маршрута
 	eth::gateway_t::route_t route{};
 	// Инициализируем объект адреса назначения в маршруте

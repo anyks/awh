@@ -48,9 +48,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "tls.hpp"
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
 #include "../../sys/locker.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -2578,9 +2577,6 @@ namespace awh {
 						iterator _it;
 					private:
 						// Объект фреймворка
-						[[maybe_unused]] const fmk_t * _fmk;
-						// Объект работы с логами
-						const log_t * _log;
 					public:
 						/**
 						 * \~russian
@@ -2673,18 +2669,14 @@ namespace awh {
 						 * @brief Конструктор
 						 *
 						 * @param it  итератор для установки
-						 * @param fmk объект фреймворка
-						 * @param log объект для работы с логами
 						 *
 						 * \~english
 						 * @brief Constructor
 						 * @param it  iterator to set
-						 * @param fmk framework object
-						 * @param log object for working with logs
 						 *
 						 * \~
 						 */
-						explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept;
+						explicit Iterator(iterator it) noexcept;
 				} iterator_t;
 			private:
 				// Список поддерживаемых цифровых отпечатков браузеров
@@ -2694,9 +2686,6 @@ namespace awh {
 				mutable lock_state_t <std::shared_mutex> _mtx;
 			private:
 				// Объект фреймворка
-				[[maybe_unused]] const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -3246,17 +3235,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Fingerprint(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Fingerprint() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

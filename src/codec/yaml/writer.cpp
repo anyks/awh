@@ -32,6 +32,7 @@
 #include <num/lexical/lexical.hpp>
 #include <codec/yaml/writer.hpp>
 #include <codec/yaml/encoding.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -326,20 +327,17 @@ awh::codec::yaml::Writer::Settings::Settings() noexcept :
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::yaml::Writer::Writer(const log_t * log) noexcept :
- _log(log), _refused(false), _error(error_t::NONE), _keyed(false), _margin(0), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
+awh::codec::yaml::Writer::Writer() noexcept :
+ _refused(false), _error(error_t::NONE), _keyed(false), _margin(0), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {}
 /**
  * @brief Конструктор
  *
- * @param log      объект для работы с логами
  * @param settings настройки записи текста
  *
  */
-awh::codec::yaml::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
- _log(log), _refused(false), _error(error_t::NONE), _keyed(false), _margin(0), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
+awh::codec::yaml::Writer::Writer(const settings_t & settings) noexcept :
+ _refused(false), _error(error_t::NONE), _keyed(false), _margin(0), _hanging(false), _verbatim(false), _transferred(false), _opened(false), _taken(0) {
 	// Выполняем установку настроек записи текста
 	this->settings(settings);
 }
@@ -795,9 +793,8 @@ bool awh::codec::yaml::Writer::refuse(const error_t error) noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе записи текста
-		this->_log->print("YAML writing failed: %s", log_t::flag_t::CRITICAL, awh::codec::yaml::message(error));
+		awh::log::print("YAML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error));
 	// Выводим признак отказа для выхода из записи
 	return false;
 }

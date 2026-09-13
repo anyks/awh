@@ -34,8 +34,6 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/fmk.hpp"
-#include "../../../include/sys/log.hpp"
 #include "../../../include/cryptography/tls/coder.hpp"
 #include "../../../include/proto/quic/connection.hpp"
 
@@ -107,11 +105,8 @@ namespace awh {
 					/**
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
 					 */
-					explicit Security(const awh::fmk_t * fmk, const awh::log_t * log) noexcept;
+					explicit Security() noexcept;
 					/**
 					 * @brief Деструктор
 					 *

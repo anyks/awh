@@ -66,9 +66,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <codec/bridge.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Устанавливаем пространство имён
@@ -76,62 +76,6 @@
 using namespace std;
 using namespace awh;
 
-/**
- * @brief Средства заведения молчащего журнала работы (внутренняя компоновка)
- *
- */
-namespace {
-	/**
-	 * @brief Объект молчащего журнала работы
-	 *
-	 */
-	struct Silent {
-		/**
-		 * @brief Функция получения объекта фреймворка
-		 *
-		 * @return объект фреймворка
-		 *
-		 */
-		static awh::fmk_t & framework() noexcept {
-			// Объект фреймворка
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка
-			return fmk;
-		}
-		// Объект журнала работы
-		awh::log_t log;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept : log(&Silent::framework()) {
-			// Выполняем отключение вывода журнала
-			this->log.mode({});
-		}
-	};
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала работы
-	 *
-	 * @return объект журнала работы
-	 *
-	 */
-	awh::log_t * logger() noexcept {
-		// Объект молчащего журнала работы
-		static Silent silent;
-		// Выводим объект журнала работы
-		return &silent.log;
-	}
-}
 
 /**
  * @brief Средства построения деревьев значений (внутренняя компоновка)
@@ -366,6 +310,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Получаем количество проходов генератора
 	const uint64_t count = ((argc > 1) ? static_cast <uint64_t> (::atoll(argv[1])) : 3000);
 	// Получаем зерно источника случайных чисел
@@ -379,7 +330,7 @@ int main(int argc, char * argv[]) noexcept {
 	// Учёт проделанной работы
 	Statistic totals;
 	// Создаём мост между контейнером ABC и текстовыми кодеками
-	codec::bridge_t bridge(::framework(), ::logger());
+	codec::bridge_t bridge;
 	// Перечень видов записи, мостом переводимых
 	const codec::bridge_t::format_t formats[] = {
 		codec::bridge_t::format_t::JSON, codec::bridge_t::format_t::YAML,

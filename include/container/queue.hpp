@@ -65,9 +65,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../sys/fmk.hpp"
-#include "../sys/log.hpp"
 #include "../sys/locker.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -624,11 +623,6 @@ namespace awh {
 			// Объект состояния блокировки для обеспечения потокобезопасности
 			mutable lock_state_t <std::mutex> _mtx;
 		private:
-			// Объект фреймворка
-			const fmk_t * _fmk = nullptr;
-			// Объект работы с логами
-			const log_t * _log = nullptr;
-		private:
 			/**
 			 * \~russian
 			 * @brief Метод контроля памяти
@@ -1063,21 +1057,6 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод установки объекта логирования
-			 *
-			 * @param log объект работы с логами
-			 *
-			 * \~english
-			 * @brief Method setting the logging object
-			 *
-			 * @param log object for working with logs
-			 *
-			 * \~
-			 */
-			void setLogger(const log_t * log) noexcept;
-		public:
-			/**
-			 * \~russian
 			 * @brief Получения размера данных в очереди
 			 *
 			 * @return размер данных в очереди
@@ -1207,22 +1186,6 @@ namespace awh {
 			 * \~
 			 */
 			explicit Queue(const Queue & queue) noexcept;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * @param fmk framework object
-			 * @param log object for working with logs
-			 *
-			 * \~
-			 */
-			explicit Queue(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

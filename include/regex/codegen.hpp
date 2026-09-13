@@ -1061,7 +1061,6 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				const log_t * _log;
 			private:
 				/**
 				 * \~russian
@@ -1658,8 +1657,6 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param log объект для работы с логами
-				 *
 				 * @details Журнала сам кодогенератор не ведёт: отказ порождения
 				 *          есть сужение охвата штатное, о каком сообщать нечего, -
 				 *          сопоставление исполняется разбором программы, как и было
@@ -1668,11 +1665,10 @@ namespace awh {
 				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Codegen(const log_t * log) noexcept;
+				explicit Codegen() noexcept;
 		} codegen_t;
 	};
 };

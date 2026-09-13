@@ -52,6 +52,7 @@
  *
  */
 #include <qos2.h>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -176,11 +177,10 @@ namespace {
 	 * @details Открывается она единожды за время работы и остаётся открытой: закрытие
 	 *          её сняло бы разом все заведённые потоки
 	 *
-	 * @param log объект ведения журнала
 	 * @return    набор вызовов подсистемы либо пустое значение при отказе
 	 *
 	 */
-	static const qwave_t * __awh_qwave__(const awh::log_t * log) noexcept {
+	static const qwave_t * __awh_qwave__() noexcept {
 		// Набор вызовов подсистемы
 		static qwave_t result;
 		// Признак уже выполненной попытки открытия
@@ -208,9 +208,8 @@ namespace {
 		// Если подключить библиотеку подсистемы не удалось
 		if(result.dll == nullptr){
 			// Если объект ведения журнала передан
-			if(log != nullptr)
 				// Выводим в журнал сообщение о невозможности подключения
-				log->print("%s: qwave.dll could not be loaded, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
+				awh::log::print("%s: qwave.dll could not be loaded, error %lu", awh::log::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
 			// Выводим пустое значение
 			return nullptr;
 		}
@@ -232,9 +231,8 @@ namespace {
 		if((result.create == nullptr) || (result.close == nullptr) || (result.add == nullptr) ||
 		   (result.remove == nullptr) || (result.set == nullptr)){
 			// Если объект ведения журнала передан
-			if(log != nullptr)
 				// Выводим в журнал сообщение о несовпадении состава библиотеки
-				log->print("%s: qwave.dll does not export the expected entry points", awh::log_t::flag_t::WARNING, ::__AWH_QOS_BACKEND__);
+				awh::log::print("%s: qwave.dll does not export the expected entry points", awh::log::flag_t::WARNING, ::__AWH_QOS_BACKEND__);
 			// Выполняем отключение библиотеки подсистемы
 			::FreeLibrary(result.dll);
 			// Сбрасываем описатель подключённой библиотеки
@@ -251,9 +249,8 @@ namespace {
 		// Если открыть работу с подсистемой не удалось
 		if(!result.create(&version, &result.handle)){
 			// Если объект ведения журнала передан
-			if(log != nullptr)
 				// Выводим в журнал сообщение о невозможности открытия
-				log->print("%s: QoS subsystem could not be opened, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
+				awh::log::print("%s: QoS subsystem could not be opened, error %lu", awh::log::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
 			// Сбрасываем описатель работы с подсистемой
 			result.handle = nullptr;
 			// Выполняем отключение библиотеки подсистемы
@@ -272,13 +269,12 @@ namespace {
 	 * @param sock отмечаемый сокет
 	 * @param dscp устанавливаемый класс обслуживания
 	 * @param flow номер заведённого потока
-	 * @param log  объект ведения журнала
 	 * @return     результат выполнения заведения
 	 *
 	 */
-	static bool __awh_flow__(const awh::net::socket_t sock, const awh::event::dscp_t dscp, QOS_FLOWID & flow, const awh::log_t * log) noexcept {
+	static bool __awh_flow__(const awh::net::socket_t sock, const awh::event::dscp_t dscp, QOS_FLOWID & flow) noexcept {
 		// Выполняем открытие работы с подсистемой
-		const qwave_t * qwave = ::__awh_qwave__(log);
+		const qwave_t * qwave = ::__awh_qwave__();
 		// Если открыть работу с подсистемой не удалось
 		if(qwave == nullptr)
 			// Выводим отрицательный результат заведения
@@ -296,9 +292,8 @@ namespace {
 		 */
 		if(!qwave->add(qwave->handle, static_cast <SOCKET> (sock), nullptr, QOSTrafficTypeBestEffort, QOS_NON_ADAPTIVE_FLOW, &flow)){
 			// Если объект ведения журнала передан
-			if(log != nullptr)
 				// Выводим в журнал сообщение о невозможности заведения потока
-				log->print("%s: QoS flow could not be created, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
+				awh::log::print("%s: QoS flow could not be created, error %lu", awh::log::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
 			// Выводим отрицательный результат заведения
 			return false;
 		}
@@ -307,9 +302,8 @@ namespace {
 		// Если выставить отметку потоку не удалось
 		if(!qwave->set(qwave->handle, flow, QOSSetOutgoingDSCPValue, static_cast <ULONG> (sizeof(value)), &value, 0, nullptr)){
 			// Если объект ведения журнала передан
-			if(log != nullptr)
 				// Выводим в журнал сообщение о невозможности выставления отметки
-				log->print("%s: DSCP value could not be applied to the flow, error %lu", awh::log_t::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
+				awh::log::print("%s: DSCP value could not be applied to the flow, error %lu", awh::log::flag_t::WARNING, ::__AWH_QOS_BACKEND__, ::GetLastError());
 			// Выполняем снятие заведённого потока
 			qwave->remove(qwave->handle, static_cast <SOCKET> (sock), flow, 0);
 			// Сбрасываем номер заведённого потока
@@ -343,7 +337,6 @@ void awh::win::qos::threadSafety(const bool mode) noexcept {
  *
  * @param sock отмечаемый сокет
  * @param dscp устанавливаемый класс обслуживания
- * @param log  объект ведения журнала
  * @return     результат выполнения установки
  *
  * @note Отказ заведения потока за отказ установки не считается: назначение сокета к
@@ -351,7 +344,7 @@ void awh::win::qos::threadSafety(const bool mode) noexcept {
  *       применения. Отказ применения станет виден при нём самом
  *
  */
-bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp, const log_t * log) noexcept {
+bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp) noexcept {
 	// Если сокет не передан
 	if(sock == net::invalid_socket_t)
 		// Выводим отрицательный результат установки
@@ -372,7 +365,7 @@ bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp, con
 			// Если поток на сокете уже заведён
 			if(entry.flow != 0){
 				// Выполняем открытие работы с подсистемой
-				const qwave_t * qwave = ::__awh_qwave__(log);
+				const qwave_t * qwave = ::__awh_qwave__();
 				// Если работа с подсистемой открыта
 				if(qwave != nullptr){
 					// Устанавливаемое значение класса обслуживания
@@ -427,7 +420,7 @@ bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp, con
 		// Если наш поток всё же завёлся - снимаем его как лишний
 		if(flow != 0){
 			// Выполняем открытие работы с подсистемой
-			const qwave_t * qwave = ::__awh_qwave__(log);
+			const qwave_t * qwave = ::__awh_qwave__();
 			// Если работа с подсистемой открыта
 			if(qwave != nullptr)
 				// Выполняем снятие лишнего потока
@@ -463,11 +456,10 @@ awh::event::dscp_t awh::win::qos::mark(const net::socket_t sock) noexcept {
  * @brief Функция применения запомненной отметки к соединённому сокету
  *
  * @param sock применяемый сокет
- * @param log  объект ведения журнала
  * @return     результат выполнения применения
  *
  */
-bool awh::win::qos::apply(const net::socket_t sock, const log_t * log) noexcept {
+bool awh::win::qos::apply(const net::socket_t sock) noexcept {
 	// Запрошенный класс обслуживания
 	event::dscp_t dscp = event::dscp_t::CS0;
 	{
@@ -485,7 +477,7 @@ bool awh::win::qos::apply(const net::socket_t sock, const log_t * log) noexcept 
 	// Номер заводимого потока
 	QOS_FLOWID flow = 0;
 	// Если завести поток на сокете не удалось
-	if(!::__awh_flow__(sock, dscp, flow, log))
+	if(!::__awh_flow__(sock, dscp, flow))
 		// Выводим отрицательный результат применения
 		return false;
 	// Выполняем блокировку реестра отмеченных сокетов
@@ -504,7 +496,7 @@ bool awh::win::qos::apply(const net::socket_t sock, const log_t * log) noexcept 
 	 */
 	if((i == ::__awh_registry__.end()) || (i->second.flow != 0)){
 		// Выполняем открытие работы с подсистемой
-		const qwave_t * qwave = ::__awh_qwave__(log);
+		const qwave_t * qwave = ::__awh_qwave__();
 		// Если работа с подсистемой открыта
 		if(qwave != nullptr)
 			// Выполняем снятие лишнего потока

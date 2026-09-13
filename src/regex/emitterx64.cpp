@@ -52,6 +52,7 @@
  * Подключаем заголовочный файл модуля
  */
 #include <regex/emitter.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -413,9 +414,8 @@ void awh::regex::Emitter::jump(const size_t label) noexcept {
 		 *          о нём обращает изъян в «кодогенерация неприменима»
 		 *
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об изъяне порождения машинного кода
-			this->_log->print("Regex codegen: jump to the label %zu that has not been declared", log_t::flag_t::CRITICAL, label);
+			awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -455,9 +455,8 @@ void awh::regex::Emitter::branch(const cond_t cond, const size_t label) noexcept
 		 *          о нём обращает изъян в «кодогенерация неприменима»
 		 *
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об изъяне порождения машинного кода
-			this->_log->print("Regex codegen: jump to the label %zu that has not been declared", log_t::flag_t::CRITICAL, label);
+			awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения перехода к метке
 		return;
 	}
@@ -907,9 +906,8 @@ void awh::regex::Emitter::address(const reg_t target, const size_t label) noexce
 		 *          о нём обращает изъян в «кодогенерация неприменима»
 		 *
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об изъяне порождения машинного кода
-			this->_log->print("Regex codegen: jump to the label %zu that has not been declared", log_t::flag_t::CRITICAL, label);
+			awh::log::print("Regex codegen: jump to the label %zu that has not been declared", awh::log::flag_t::CRITICAL, label);
 		// Выходим из метода размещения вычисления адреса
 		return;
 	}

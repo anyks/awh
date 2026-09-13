@@ -212,9 +212,6 @@ namespace awh {
 				size_t operator () (const key_t & key) const noexcept;
 			};
 		private:
-			// Объект журнала событий
-			const log_t * _log;
-		private:
 			/**
 			 * \~russian
 			 * Наибольший допустимый объём работы сопоставления
@@ -677,11 +674,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit RegularExpression(const log_t * log) noexcept;
+			explicit RegularExpression() noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

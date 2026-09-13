@@ -36,6 +36,7 @@
  * Стандартный заголовочный файл
  */
 #include <cstdint>
+#include <utility>
 
 /**
  * Системный заголовочный файл
@@ -48,12 +49,12 @@
 	#include <io.h>
 #else
 	#include <unistd.h>
+#include <sys/macro/global.hpp>
 #endif
 
 /**
  * Подключаем заголовочный файл проекта
  */
-#include "../sys/log.hpp"
 
 /**
  * \~russian
@@ -91,7 +92,7 @@ namespace awh {
 	 * @par Пример: подъём предела на старте приложения
 	 *
 	 * @code{.cpp}
-	 * awh::fds_t fds(&log);
+	 * awh::fds_t fds();
 	 * // Узнаём, что имеем: мягкий предел и жёсткий потолок
 	 * const auto limits = fds.limit();
 	 * // Поднимаем мягкий предел до жёсткого потолка
@@ -116,7 +117,7 @@ namespace awh {
 	 * @par Example: raising the limit at the startup of an application
 	 *
 	 * @code{.cpp}
-	 * awh::fds_t fds(&log);
+	 * awh::fds_t fds();
 	 * // Finding out what we have: the soft limit and the hard ceiling
 	 * const auto limits = fds.limit();
 	 * // Raising the soft limit up to the hard ceiling
@@ -127,9 +128,6 @@ namespace awh {
 	 *
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Files_Descriptors {
-		private:
-			// Объект работы с логами
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
@@ -241,15 +239,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Files_Descriptors(const log_t * log) noexcept;
+			explicit Files_Descriptors() noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

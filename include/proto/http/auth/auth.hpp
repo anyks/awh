@@ -48,8 +48,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../../sys/fmk.hpp"
-#include "../../../sys/log.hpp"
 #include "../../../cryptography/crypto.hpp"
 
 /**
@@ -58,6 +56,7 @@
  * Имена снимаются лишь на время объявлений - возврат в конце файла
  */
 #include "../../../sys/macro/suppress.hpp"
+#include <sys/fmk.hpp>
 
 /**
  * \~russian
@@ -120,7 +119,7 @@ namespace awh {
 		 *
 		 * @code{.cpp}
 		 * // Создаём модуль авторизации на стороне клиента
-		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth_t auth(auth_t::owner_t::CLIENT);
 		 * // Выбираем схему DIGEST с алгоритмом SHA-256
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * // При необходимости включаем сессионный режим алгоритма (SHA-256-sess)
@@ -138,7 +137,7 @@ namespace awh {
 		 *
 		 * @code{.cpp}
 		 * // Создаём модуль авторизации на стороне сервера
-		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
+		 * auth_t auth(auth_t::owner_t::SERVER);
 		 * // Выбираем схему DIGEST с алгоритмом SHA-256
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * // При необходимости включаем сессионный режим алгоритма (SHA-256-sess)
@@ -159,7 +158,7 @@ namespace awh {
 		 *
 		 * @code{.cpp}
 		 * // Создаём модуль авторизации на стороне клиента
-		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth_t auth(auth_t::owner_t::CLIENT);
 		 * // Выбираем схему подписи HMAC с алгоритмом SHA-256
 		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
 		 * // Указываем секретный ключ и его идентификатор
@@ -170,7 +169,7 @@ namespace awh {
 		 * auth.component("@authority", "example.com");
 		 * auth.component("@path", "/foo");
 		 * // Опционально: задать параметры подписи до формирования заголовков
-		 * const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+		 * const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 		 * auth.signCreated(now);
 		 * auth.signExpires(now + 300); // срок действия 5 минут (если нужен)
 		 * auth.signNonce("unique-request-id"); // одноразовое значение (опционально)
@@ -180,7 +179,7 @@ namespace awh {
 		 * @endcode
 		 *
 		 * @code{.cpp}
-		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
+		 * auth_t auth(auth_t::owner_t::SERVER);
 		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
 		 * // Допуск расхождения часов клиента и сервера (по умолчанию 60 с)
 		 * auth.mode.clockSkew(120);
@@ -202,7 +201,7 @@ namespace awh {
 		 * @endcode
 		 *
 		 * @code{.cpp}
-		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth_t auth(auth_t::owner_t::CLIENT);
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * auth.user("login");
 		 * auth.pass("secret");
@@ -241,7 +240,7 @@ namespace awh {
 		 *
 		 * @code{.cpp}
 		 * // Creating the module of the authorization on the side of the client
-		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth_t auth(auth_t::owner_t::CLIENT);
 		 * // Choosing the DIGEST scheme with the SHA-256 algorithm
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * // If needed, turning on the session mode of the algorithm (SHA-256-sess)
@@ -259,7 +258,7 @@ namespace awh {
 		 *
 		 * @code{.cpp}
 		 * // Creating the module of the authorization on the side of the server
-		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
+		 * auth_t auth(auth_t::owner_t::SERVER);
 		 * // Choosing the DIGEST scheme with the SHA-256 algorithm
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * // If needed, turning on the session mode of the algorithm (SHA-256-sess)
@@ -280,7 +279,7 @@ namespace awh {
 		 *
 		 * @code{.cpp}
 		 * // Creating the module of the authorization on the side of the client
-		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth_t auth(auth_t::owner_t::CLIENT);
 		 * // Choosing the HMAC scheme of the signature with the SHA-256 algorithm
 		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
 		 * // Setting the secret key and its identifier
@@ -291,7 +290,7 @@ namespace awh {
 		 * auth.component("@authority", "example.com");
 		 * auth.component("@path", "/foo");
 		 * // Optionally: to set the parameters of the signature before the building of the headers
-		 * const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+		 * const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 		 * auth.signCreated(now);
 		 * auth.signExpires(now + 300); // the term of the validity is 5 minutes (if it is needed)
 		 * auth.signNonce("unique-request-id"); // a one-time value (optionally)
@@ -301,7 +300,7 @@ namespace awh {
 		 * @endcode
 		 *
 		 * @code{.cpp}
-		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
+		 * auth_t auth(auth_t::owner_t::SERVER);
 		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
 		 * // The tolerance of the divergence of the clocks of the client and of the server (60 s by default)
 		 * auth.mode.clockSkew(120);
@@ -323,7 +322,7 @@ namespace awh {
 		 * @endcode
 		 *
 		 * @code{.cpp}
-		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth_t auth(auth_t::owner_t::CLIENT);
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * auth.user("login");
 		 * auth.pass("secret");
@@ -800,10 +799,6 @@ namespace awh {
 						// Общие параметры авторизации (принадлежат фасаду)
 						params_t & _params;
 					protected:
-						// Объект фреймворка
-						const fmk_t * _fmk;
-						// Объект работы с логами
-						const log_t * _log;
 						// Объект криптографии (хэш/HMAC/BASE64)
 						const crypto_t * _crypto;
 					protected:
@@ -834,7 +829,7 @@ namespace awh {
 						 * @brief Метод сравнения строк в постоянном времени
 						 *
 						 * @details Используется для сравнения секретов и подписей. Не делегируется
-						 *          в fmk_t::compare(), так как тот завершается досрочно и не подходит
+						 *          в awh::fmk::compare(), так как тот завершается досрочно и не подходит
 						 *          для криптографических сверок.
 						 *
 						 * @param left  первая строка
@@ -844,7 +839,7 @@ namespace awh {
 						 * \~english
 						 * @brief Method of the comparison of the strings in a constant time
 						 * @details It is used for the comparison of the secrets and of the signatures. It is not delegated
-						 *          to fmk_t::compare(), as that one completes prematurely and is not suitable
+						 *          to awh::fmk::compare(), as that one completes prematurely and is not suitable
 						 *          for the cryptographic comparisons.
 						 * @param left  first string
 						 * @param right second string
@@ -976,8 +971,6 @@ namespace awh {
 						 * @param owner  сторона работы (клиент/сервер)
 						 * @param params общие параметры авторизации
 						 * @param crypto объект криптографии
-						 * @param fmk    объект фреймворка
-						 * @param log    объект для работы с логами
 						 *
 						 *
 						 * \~english
@@ -985,12 +978,10 @@ namespace awh {
 						 * @param owner  side of the work (client/server)
 						 * @param params common parameters of the authorization
 						 * @param crypto cryptography object
-						 * @param fmk    framework object
-						 * @param log    object for working with logs
 						 *
 						 * \~
 						 */
-						explicit Scheme(const owner_t owner, params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept;
+						explicit Scheme(const owner_t owner, params_t & params, const crypto_t * crypto) noexcept;
 						/**
 						 * \~russian
 						 * @brief Деструктор
@@ -1016,11 +1007,6 @@ namespace awh {
 				crypto_t _crypto;
 				// Активная стратегия выбранной схемы авторизации
 				unique_ptr <scheme_t> _scheme;
-			protected:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -1245,7 +1231,7 @@ namespace awh {
 				 * @details Вызывается на клиенте **до** headers()/header(). Значение попадает
 				 *          в Signature-Input и участвует в канонической базе подписи.
 				 *          Если передать 0, при формировании подписи будет использован текущий
-				 *          штамп времени (fmk_t::timestamp).
+				 *          штамп времени (awh::fmk::timestamp).
 				 *
 				 * @param stamp штамп времени в секундах (0 — автоматически при формировании)
 				 *
@@ -1254,7 +1240,7 @@ namespace awh {
 				 * @details It is called at a client **before** headers()/header(). The value gets
 				 *          into the Signature-Input and participates in the canonical base of the signature.
 				 *          If a 0 is passed, at the forming of the signature the current
-				 *          time stamp will be used (fmk_t::timestamp).
+				 *          time stamp will be used (awh::fmk::timestamp).
 				 * @param stamp time stamp in seconds (0 — automatically at the forming)
 				 *
 				 * \~
@@ -1759,18 +1745,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param owner сторона работы (клиент/сервер)
-				 * @param fmk   объект фреймворка
-				 * @param log   объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 * @param owner side of the work (a client/a server)
-				 * @param fmk   object of the framework
-				 * @param log   object for the work with the logs
 				 *
 				 * \~
 				 */
-				explicit Authorization(const owner_t owner, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Authorization(const owner_t owner) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор
@@ -1791,5 +1773,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_AUTH__

@@ -36,6 +36,8 @@
 #include <nghttp2/nghttp2.h>
 
 #include <proto/http/parser/http2/http.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh;
 using namespace awh::http;
@@ -242,12 +244,15 @@ static void staticTableAgainstReference(size_t & entries) noexcept {
 }
 
 int main(){
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект логов
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Отключаем вывод логов
-	log.level(log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Инициализируем генератор псевдослучайных чисел фиксированным зерном
 	std::mt19937 rng(20260727);
 	// Количество проверяемых блоков заголовков

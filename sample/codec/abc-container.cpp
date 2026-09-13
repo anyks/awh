@@ -32,46 +32,14 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <codec/abc/abc.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён образца
  *
  */
 namespace {
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @details Объект этот берётся ССЫЛКОЙ у обеих работ - и у журнала, и у самого
-	 * дерева документа: фреймворк и журнал передаются указателями от пользователя,
-	 * как то заведено во всём AWH
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Выводим объект фреймворка
-		return & fmk;
-	}
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
-	 *          main(): объект заводится статикою местною, дабы всякое построение
-	 *          образца писало сообщения в один и тот же журнал
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект для работы с логами
-		static awh::log_t log(::framework());
-		// Выводим объект для работы с логами
-		return &log;
-	}
 	/**
 	 * @brief Функция сборки одной записи контейнера
 	 *
@@ -82,7 +50,7 @@ namespace {
 	 */
 	std::vector <uint8_t> record(const uint64_t number, const std::string & text) noexcept {
 		// Объект сборки бинарной записи
-		awh::codec::abc::writer_t writer(::logger());
+		awh::codec::abc::writer_t writer;
 		// Выполняем сборку записи из двух полей
 		if(writer.mapBegin(static_cast <uint64_t> (2)) &&
 		   writer.text("номер") && writer.number(number) &&
@@ -114,11 +82,18 @@ using namespace awh::codec;
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Не используем параметры приложения
 	(void) argc;
 	(void) argv;
 	// Сборщик контейнера
-	abc::assembler_t assembler(::logger());
+	abc::assembler_t assembler;
 	// Количество вносимых записей
 	const uint64_t count = 5;
 	/**
@@ -165,7 +140,7 @@ int main(int argc, char * argv[]) noexcept {
 	cout << "Опознан как контейнер ABC: "
 	     << (abc::probe(buffer.data(), buffer.size()) ? "да" : "нет") << endl;
 	// Сниматель контейнера
-	abc::loader_t loader(::logger());
+	abc::loader_t loader;
 	// Выполняем подачу собранного контейнера снимателю
 	if(!loader.feed(buffer.data(), buffer.size())){
 		// Выводим сообщение об отказе подачи контейнера
@@ -214,7 +189,7 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	cout << endl << "Выборка записей по номеру:" << endl;
 	// Выборщик записей контейнера
-	abc::fetcher_t fetcher(::logger());
+	abc::fetcher_t fetcher;
 	/**
 	 * Выполняем открытие контейнера отданной работой чтения
 	 *
@@ -259,7 +234,7 @@ int main(int argc, char * argv[]) noexcept {
 			return EXIT_FAILURE;
 		}
 		// Объект дерева документа выбранной записи
-		abc::document_t document(::framework(), ::logger());
+		abc::document_t document;
 		// Выполняем разбор выбранной записи в дерево документа
 		if(document.parse(item.data(), item.size()))
 			// Выводим содержимое выбранной записи

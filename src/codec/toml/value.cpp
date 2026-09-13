@@ -30,9 +30,6 @@
 #include <cmath>
 #include <atomic>
 #include <limits>
-#include <cstdio>
-#include <fstream>
-#include <sys/stat.h>
 #include <type_traits>
 
 /**
@@ -46,6 +43,7 @@
  *       здесь прежде стоявшая, снята - две тождественные копии расходятся молча
  */
 #include <codec/numeric.hpp>
+#include <sys/log.hpp>
 /**
  * Подключаем переносимую подмену целевого файла временным
  *
@@ -1412,18 +1410,6 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (const Value & val
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	/**
-	 * Если журнал присваиваемого значения назначен, а своего у нас нет
-	 *
-	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
-	 *       содержимое, а не место, куда сообщения этого значения уходят
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем перенятие объекта фреймворка
-		this->_fmk = value._fmk;
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем копирование объекта для работы с логами
-		this->_log = value._log;
 	// Выполняем копирование типа хранимого значения
 	this->_type = value._type;
 	// Выполняем копирование записи строкового значения
@@ -1465,18 +1451,6 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
 	if(this == &value)
 		// Выводим ссылку на текущее значение
 		return (* this);
-	/**
-	 * Если журнал присваиваемого значения назначен, а своего у нас нет
-	 *
-	 * @note Назначенный журнал не перезаписывается: присваивание значения меняет
-	 *       содержимое, а не место, куда сообщения этого значения уходят
-	 */
-	if((value._fmk != nullptr) && (this->_fmk == nullptr))
-		// Выполняем перенятие объекта фреймворка
-		this->_fmk = value._fmk;
-	if((value._log != nullptr) && (this->_log == nullptr))
-		// Выполняем перенос объекта для работы с логами
-		this->_log = value._log;
 	// Выполняем перенос типа хранимого значения
 	this->_type = value._type;
 	// Выполняем перенос записи строкового значения
@@ -1512,31 +1486,11 @@ awh::codec::toml::Value & awh::codec::toml::Value::operator = (Value && value) n
 	return (* this);
 }
 /**
- * @brief Метод установки объекта для работы с логами
- *
- * @param log объект для работы с логами
- *
- */
-void awh::codec::toml::Value::setLogger(const log_t * log) noexcept {
-	// Выполняем установку объекта для работы с логами
-	this->_log = log;
-}
-/**
- * @brief Метод установки объекта фреймворка
- *
- * @param fmk объект фреймворка
- *
- */
-void awh::codec::toml::Value::setFramework(const fmk_t * fmk) noexcept {
-	// Выполняем установку объекта фреймворка
-	this->_fmk = fmk;
-}
-/**
  * @brief Конструктор
  *
  */
 awh::codec::toml::Value::Value() noexcept :
- _log(nullptr), _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {}
 /**
  * @brief Конструктор вместилища затребованного типа
@@ -1545,7 +1499,7 @@ awh::codec::toml::Value::Value() noexcept :
  *
  */
 awh::codec::toml::Value::Value(const type_t type) noexcept :
- _log(nullptr), _type(type), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _type(type), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {}
 /**
  * @brief Конструктор логического значения
@@ -1554,7 +1508,7 @@ awh::codec::toml::Value::Value(const type_t type) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const bool value) noexcept :
- _log(nullptr), _type(type_t::BOOLEAN), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _type(type_t::BOOLEAN), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(value), _multiline(false), _integer(0), _real(0.) {}
 /**
  * @brief Конструктор целого числа
@@ -1564,7 +1518,7 @@ awh::codec::toml::Value::Value(const bool value) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcept :
- _log(nullptr), _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
+ _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
  _boolean(false), _multiline(false), _integer(value), _real(0.) {}
 /**
  * @brief Конструктор целого числа без знака
@@ -1574,7 +1528,7 @@ awh::codec::toml::Value::Value(const int64_t value, const radix_t radix) noexcep
  *
  */
 awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexcept :
- _log(nullptr), _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
+ _type(type_t::INTEGER), _quoting(string_t::BASIC), _radix(radix),
  _boolean(false), _multiline(false), _integer(static_cast <int64_t> (value)), _real(0.) {
 	/**
 	 * Если величина разрядность целого со знаком превышает
@@ -1609,7 +1563,7 @@ awh::codec::toml::Value::Value(const uint64_t value, const radix_t radix) noexce
  *
  */
 awh::codec::toml::Value::Value(const double value) noexcept :
- _log(nullptr), _type(type_t::FLOAT), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _type(type_t::FLOAT), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(value) {}
 /**
  * @brief Конструктор целого числа записи любой
@@ -1638,7 +1592,7 @@ awh::codec::toml::Value::Value(const char value, const string_t quoting) noexcep
  *
  */
 awh::codec::toml::Value::Value(const string & value, const string_t quoting) noexcept :
- _log(nullptr), _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
+ _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.), _text(value) {}
 /**
  * @brief Конструктор строкового значения из строки языка
@@ -1648,7 +1602,7 @@ awh::codec::toml::Value::Value(const string & value, const string_t quoting) noe
  *
  */
 awh::codec::toml::Value::Value(const char * value, const string_t quoting) noexcept :
- _log(nullptr), _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
+ _type(type_t::STRING), _quoting(quoting), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.),
  _text((value != nullptr) ? value : "") {}
 /**
@@ -1658,7 +1612,7 @@ awh::codec::toml::Value::Value(const char * value, const string_t quoting) noexc
  *
  */
 awh::codec::toml::Value::Value(const Value & value) noexcept :
- _log(value._log), _type(value._type), _quoting(value._quoting), _radix(value._radix),
+ _type(value._type), _quoting(value._quoting), _radix(value._radix),
  _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
  _real(value._real), _stamp(value._stamp), _text(value._text),
  _names(value._names), _items(value._items) {}
@@ -1669,7 +1623,7 @@ awh::codec::toml::Value::Value(const Value & value) noexcept :
  *
  */
 awh::codec::toml::Value::Value(Value && value) noexcept :
- _log(value._log), _type(value._type), _quoting(value._quoting), _radix(value._radix),
+ _type(value._type), _quoting(value._quoting), _radix(value._radix),
  _boolean(value._boolean), _multiline(value._multiline), _integer(value._integer),
  _real(value._real), _stamp(value._stamp), _text(::std::move(value._text)),
  _names(::std::move(value._names)), _items(::std::move(value._items)),
@@ -1965,7 +1919,7 @@ bool awh::codec::toml::Value::absorb(const Document & document, const vector <st
  *
  */
 awh::codec::toml::Value::Value(const Document & document) noexcept :
- _log(nullptr), _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {
 	// Выполняем снятие значения с корня дерева настроек
 	this->absorb(document, {});
@@ -1978,7 +1932,7 @@ awh::codec::toml::Value::Value(const Document & document) noexcept :
  *
  */
 awh::codec::toml::Value::Value(const Document & document, const vector <string_view> & path) noexcept :
- _log(nullptr), _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
+ _type(type_t::NONE), _quoting(string_t::BASIC), _radix(radix_t::DECIMAL),
  _boolean(false), _multiline(false), _integer(0), _real(0.) {
 	// Выполняем снятие значения с дерева настроек по составному имени
 	this->absorb(document, path);
@@ -1992,15 +1946,21 @@ awh::codec::toml::Value::Value(const Document & document, const vector <string_v
  */
 bool awh::codec::toml::Value::parse(const string & text) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document(this->_fmk, this->_log);
+	Document document;
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
 	if(!document.parse(text))
 		// Выводим признак неудачного разбора
 		return false;
-	// Выполняем снятие значения с корня дерева настроек
-	return this->absorb(document, {});
+	/**
+	 * Если снять значение с корня дерева настроек не удалось
+	 */
+	if(!this->absorb(document, {}))
+		// Выводим признак неудачного разбора
+		return false;
+	// Выводим признак успешного разбора
+	return true;
 }
 /**
  * @brief Метод разбора текста настроек во владеющее значение с настройками
@@ -2012,15 +1972,21 @@ bool awh::codec::toml::Value::parse(const string & text) noexcept {
  */
 bool awh::codec::toml::Value::parse(const string & text, const Document::settings_t & settings) noexcept {
 	// Дерево настроек, разбором собираемое
-	Document document(this->_fmk, this->_log);
+	Document document;
 	/**
 	 * Если разбор текста настроек завершился отказом
 	 */
 	if(!document.parse(text, settings))
 		// Выводим признак неудачного разбора
 		return false;
-	// Выполняем снятие значения с корня дерева настроек
-	return this->absorb(document, {});
+	/**
+	 * Если снять значение с корня дерева настроек не удалось
+	 */
+	if(!this->absorb(document, {}))
+		// Выводим признак неудачного разбора
+		return false;
+	// Выводим признак успешного разбора
+	return true;
 }
 /**
  * @brief Метод чтения текста настроек из файла во владеющее значение
@@ -2030,30 +1996,18 @@ bool awh::codec::toml::Value::parse(const string & text, const Document::setting
  *
  */
 bool awh::codec::toml::Value::load(const string & filename) noexcept {
-	/**
-	 * Если путь указывает на каталог
-	 *
-	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
-	 *       какими отзывается файл пустой. Без проверки этой чтение отвечало бы УСПЕХОМ,
-	 *       отдавая значение без содержимого. Замерено 07.09.2026 подачею пути `/tmp`
-	 */
-	/**
-	 * Если объект фреймворка не назначен вовсе
-	 *
-	 * @note Без рамки работа с файловой системой невозможна: пути обращаются её ходом
-	 *       `convert()`, и без него кириллический путь у MS Windows лёг бы мусором.
-	 *       Отказ здесь честнее молчаливой подмены узким ходом
-	 */
-	if((this->_fmk == nullptr) || (this->_log == nullptr)){
-		// Запоминаем код отказа чтения файла настроек
-		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим признак неудачного чтения файла
-		return false;
-	}
 	// Объект работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
+	 *
+	 * @note Спрос этот покрывает и каталог: каталог открывается успешно, а читается
+	 *       признаками конца и отказа - теми же, какими отзывается файл пустой. Без него
+	 *       чтение отвечало бы УСПЕХОМ, отдавая значение без содержимого. Замерено
+	 *       07.09.2026 подачею пути `/tmp`
+	 *
+	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
+	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
 	 */
 	if(fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
@@ -2074,9 +2028,6 @@ bool awh::codec::toml::Value::load(const string & filename) noexcept {
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
-	/**
-	 * Если файл настроек открыть не удалось
-	 */
 	// Выполняем разбор считанного текста настроек
 	return this->parse(text);
 }
@@ -2089,30 +2040,18 @@ bool awh::codec::toml::Value::load(const string & filename) noexcept {
  *
  */
 bool awh::codec::toml::Value::load(const string & filename, const Document::settings_t & settings) noexcept {
-	/**
-	 * Если путь указывает на каталог
-	 *
-	 * @note Каталог открывается успешно, а читается признаками конца и отказа - теми же,
-	 *       какими отзывается файл пустой. Без проверки этой чтение отвечало бы УСПЕХОМ,
-	 *       отдавая значение без содержимого. Замерено 07.09.2026 подачею пути `/tmp`
-	 */
-	/**
-	 * Если объект фреймворка не назначен вовсе
-	 *
-	 * @note Без рамки работа с файловой системой невозможна: пути обращаются её ходом
-	 *       `convert()`, и без него кириллический путь у MS Windows лёг бы мусором.
-	 *       Отказ здесь честнее молчаливой подмены узким ходом
-	 */
-	if((this->_fmk == nullptr) || (this->_log == nullptr)){
-		// Запоминаем код отказа чтения файла настроек
-		this->_error = error_t::FILE_NOT_OPENED;
-		// Выводим признак неудачного чтения файла
-		return false;
-	}
 	// Объект работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Если читаемого файла настроек нет вовсе либо это не файл
+	 *
+	 * @note Спрос этот покрывает и каталог: каталог открывается успешно, а читается
+	 *       признаками конца и отказа - теми же, какими отзывается файл пустой. Без него
+	 *       чтение отвечало бы УСПЕХОМ, отдавая значение без содержимого. Замерено
+	 *       07.09.2026 подачею пути `/tmp`
+	 *
+	 * @note Ссылки РАЗРЕШАЮТСЯ вторым доводом ложью: путь, на каталог указывающий через
+	 *       ссылку, есть тот же каталог, а «/tmp» у macOS именно ссылка
 	 */
 	if(fs.type(filename, false) != fs_t::type_t::FILE){
 		// Запоминаем код отказа чтения файла настроек
@@ -2133,9 +2072,6 @@ bool awh::codec::toml::Value::load(const string & filename, const Document::sett
 		// Выводим признак неудачного чтения файла
 		return false;
 	}
-	/**
-	 * Если файл настроек открыть не удалось
-	 */
 	// Выполняем разбор считанного текста настроек
 	return this->parse(text, settings);
 }
@@ -2270,7 +2206,7 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	// Выполняем сброс кода отказа прежней работы
 	this->_error = error_t::NONE;
 	// Объект записи текста настроек
-	writer_t writer(this->_log, settings);
+	writer_t writer(settings);
 	/**
 	 * Если значение таблицей не является
 	 *
@@ -2458,9 +2394,8 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 		 *
 		 * @note Нашло пробел объединённое покрытие набора с ворошителем
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("TOML value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::toml::message(error_t::FILE_NOT_WRITTEN));
 		// Выводим признак неудачной записи
 		return false;
@@ -2486,24 +2421,8 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 	 *       у него он был закрыт месяцем раньше
 	 */
 	const string temporary(filename + ".awh-tmp");
-	/**
-	 * Если объект фреймворка не назначен вовсе
-	 */
-	if((this->_fmk == nullptr) || (this->_log == nullptr)){
-		// Запоминаем код отказа записи файла настроек
-		this->_error = error_t::FILE_NOT_WRITTEN;
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("TOML value failed: %s", log_t::flag_t::CRITICAL,
-			 ::awh::codec::toml::message(this->_error));
-		// Выводим признак неудачной записи
-		return false;
-	}
 	// Объект работы с файловой системой
-	fs_t fs(this->_fmk, this->_log);
+	fs_t fs;
 	/**
 	 * Выполняем снятие временного файла, от прежней записи оставшегося
 	 */
@@ -2524,9 +2443,8 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("TOML value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::toml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
@@ -2546,9 +2464,8 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("TOML value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::toml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
@@ -2564,9 +2481,8 @@ bool awh::codec::toml::Value::save(const string & filename) const noexcept {
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
-		if(this->_log != nullptr)
 			// Выполняем вывод сообщения об отказе записи
-			this->_log->print("TOML value failed: %s", log_t::flag_t::CRITICAL,
+			awh::log::print("TOML value failed: %s", awh::log::flag_t::CRITICAL,
 			 ::awh::codec::toml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;

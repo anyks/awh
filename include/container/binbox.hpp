@@ -44,9 +44,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include "../sys/fs.hpp"
-#include "../sys/fmk.hpp"
-#include "../sys/log.hpp"
 #include "../cryptography/crypto.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -135,11 +134,6 @@ namespace awh {
 				private:
 					// Текущее значение итератора
 					iterator _it;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект работы с логами
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -238,19 +232,15 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 * @param it  итератор для установки
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * @param it  iterator to set
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept;
+					explicit Iterator(iterator it) noexcept;
 			} iterator_t;
 		private:
 			// Название контейнера
@@ -268,11 +258,6 @@ namespace awh {
 			 * Контейнер для хранения бинарных данных
 			 */
 			unordered_map <uint64_t, record_t> _records;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект работы с логами
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
@@ -1073,18 +1058,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
 			 *
-			 * @param fmk framework object
-			 * @param log object for working with logs
-			 *
 			 * \~
 			 */
-			explicit BinBox(const fmk_t * fmk, const log_t * log) noexcept;
+			explicit BinBox() noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

@@ -49,66 +49,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <net/uri.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
-/**
- * @brief Средства заведения молчащего журнала работы (внутренняя компоновка)
- *
- */
-namespace {
-	/**
-	 * @brief Объект молчащего журнала работы
-	 *
-	 */
-	struct Silent {
-		/**
-		 * @brief Функция получения объекта фреймворка
-		 *
-		 * @return объект фреймворка
-		 *
-		 */
-		static awh::fmk_t & framework() noexcept {
-			// Объект фреймворка
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка
-			return fmk;
-		}
-		// Объект журнала работы
-		awh::log_t log;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept : log(&Silent::framework()) {
-			// Выполняем отключение вывода журнала
-			this->log.mode({});
-		}
-	};
-	/**
-	 * @brief Функция получения объекта фреймворка
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала работы
-	 *
-	 * @return объект журнала работы
-	 *
-	 */
-	awh::log_t * logger() noexcept {
-		// Объект журнала работы
-		static Silent silent;
-		// Выводим объект журнала работы
-		return &silent.log;
-	}
-}
 
 /**
  * Используем стандартное пространство имён
@@ -499,7 +443,7 @@ namespace {
 		 *          относительно первой по RFC 3986 5.2.2 - это записанное решение 1.1,
 		 *          а не дефект. Переиспользование объекта дало бы здесь ложные находки
 		 */
-		awh::uri_t first(::framework(), ::logger());
+		awh::uri_t first;
 		// Выполняем разбор исходной записи адреса
 		static_cast <void> (first.parse(source));
 		// Получаем печать разобранного адреса
@@ -509,7 +453,7 @@ namespace {
 			// Выводим признак устойчивости приведения
 			return true;
 		// Объект разбора приведённого адреса
-		awh::uri_t second(::framework(), ::logger());
+		awh::uri_t second;
 		// Выполняем разбор приведённой записи адреса
 		static_cast <void> (second.parse(once));
 		// Получаем печать повторно разобранного адреса
@@ -561,7 +505,7 @@ namespace {
 	 */
 	bool ordered(const string & source, Statistic & totals) noexcept {
 		// Объект разбора адреса
-		awh::uri_t uri(::framework(), ::logger());
+		awh::uri_t uri;
 		// Выполняем разбор исходной записи адреса
 		static_cast <void> (uri.parse(source));
 		// Получаем первую печать параметров запроса
@@ -599,6 +543,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Получаем количество проходов генератора
 	const uint64_t count = ((argc > 1) ? static_cast <uint64_t> (::atoll(argv[1])) : 3000);
 	// Получаем зерно источника случайных чисел
@@ -650,7 +601,7 @@ int main(int argc, char * argv[]) noexcept {
 		 */
 		{
 			// Объект разбора адреса
-			awh::uri_t uri(::framework(), ::logger());
+			awh::uri_t uri;
 			// Выполняем разбор записи адреса
 			static_cast <void> (uri.parse(text));
 			// Увеличиваем счёт записей, разбор переживших

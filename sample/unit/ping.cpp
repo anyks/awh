@@ -24,6 +24,9 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/icmp.hpp>
+#include <sys/chrono.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -42,20 +45,23 @@ using namespace placeholders;
  *
  */
 int32_t main(){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Объект работы с датой и временем
-	chrono_t chrono(&fmk, &log);
+	chrono_t chrono;
 	// Объект работы с сетевыми адресами
-	net_addr_t addr(&fmk, &log);
+	net_addr_t addr;
 	// Создаём объект узла ICMP-клиента
-	unit::icmp_t icmp(&fmk, &log);
+	unit::icmp_t icmp;
 	// Добавляем удалённый сервер для ICMP-запросов
 	icmp.setTarget("api.telegram.org");
 	// Устанавливаем функцию обратного вызова на событие получения ответа от ICMP-сервера
-	icmp.on <void (const unit::icmp_t::id_t, const unit::icmp_t::response_t &)> ("ping", [&addr, &chrono, &log]([[maybe_unused]] const unit::icmp_t::id_t identifier, const unit::icmp_t::response_t & response) noexcept -> void {
+	icmp.on <void (const unit::icmp_t::id_t, const unit::icmp_t::response_t &)> ("ping", [&addr, &chrono]([[maybe_unused]] const unit::icmp_t::id_t identifier, const unit::icmp_t::response_t & response) noexcept -> void {
 		// Лейбл единиц измерений
 		string label = "";
 		// Получаем аббревиатуру даты
@@ -108,15 +114,15 @@ int32_t main(){
 		// Устанавливаем IP-адрес события
 		addr.source(response.address);
 		// Записываем в лог информацию о полученном ответе от удалённого сервера (добавить размер отправляемого пакета)
-		// log.print("Ответ от %s: icmp_seq=%d time=%dms (ID: %d)", log_t::flag_t::INFO, static_cast <string> (addr).c_str(), sequence, elapsed, identifier);
-		log.print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, response.size, static_cast <string> (addr).c_str(), response.sequence, response.timeToLive, abbr.second, label.c_str());
+		// awh::log::print("Ответ от %s: icmp_seq=%d time=%dms (ID: %d)", awh::log::flag_t::INFO, static_cast <string> (addr).c_str(), sequence, elapsed, identifier);
+		awh::log::print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.1f %s", awh::log::flag_t::INFO, response.size, static_cast <string> (addr).c_str(), response.sequence, response.timeToLive, abbr.second, label.c_str());
 	}, placeholders::_1, placeholders::_2);
 	// Выполняем ICMP-запрос к удалённому серверу
 	if(icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::SYNC)){
 		// Выполняем инициализацию ICMP-клиента
 		if(icmp.init(event::family_t::IPV4)){
 			// Устанавливаем функцию обратного вызова на событие ICMP-клиента
-			icmp.on <void (const event::status_t)> ("status", [&icmp, &log](const event::status_t status) noexcept -> void {
+			icmp.on <void (const event::status_t)> ("status", [&icmp](const event::status_t status) noexcept -> void {
 				/**
 				 * В зависимости от статуса события ICMP-клиента выполняем определённые действия
 				 */
@@ -124,28 +130,28 @@ int32_t main(){
 					// Если событие ICMP-клиента запущено
 					case static_cast <uint8_t> (event::status_t::LAUNCHED): {
 						// Записываем в лог сообщение о запуске события ICMP-клиента
-						log.print("Событие ICMP-клиента было запущено", log_t::flag_t::INFO);
+						awh::log::print("Событие ICMP-клиента было запущено", awh::log::flag_t::INFO);
 						// Выполняем проверку существования удалённого сервера
 						if(!icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::ASYNC))
 							// Записываем ошибку в лог
-							log.print("Не удалось проверить существование удалённого сервера", log_t::flag_t::CRITICAL);
+							awh::log::print("Не удалось проверить существование удалённого сервера", awh::log::flag_t::CRITICAL);
 					} break;
 					// Если событие ICMP-клиента остановлено
 					case static_cast <uint8_t> (event::status_t::DESTROYED):
 						// Записываем в лог сообщение об остановке события ICMP-клиента
-						log.print("Событие ICMP-клиента было остановлено", log_t::flag_t::INFO);
+						awh::log::print("Событие ICMP-клиента было остановлено", awh::log::flag_t::INFO);
 					break;
 				}
 			}, placeholders::_1);
 			// Устанавливаем функцию обратного вызова на событие получения ошибок ICMP-клиента
-			icmp.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
+			icmp.on <void (const event::id_t, const event::error_t, const string &)> ("error", [](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
 				// Записываем в лог информацию об ошибке
-				log.print("ICMP error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
+				awh::log::print("ICMP error: %s (code: %d)", awh::log::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
 			}, placeholders::_1, placeholders::_2, placeholders::_3);
 			// Запускаем ICMP-клиент
 			icmp.start();
 		// Записываем ошибку в лог
-		} else log.print("Не удалось запустить событие ICMP-клиента", log_t::flag_t::CRITICAL);
+		} else awh::log::print("Не удалось запустить событие ICMP-клиента", awh::log::flag_t::CRITICAL);
 	}
 	// Возвращаем результат
 	return EXIT_SUCCESS;

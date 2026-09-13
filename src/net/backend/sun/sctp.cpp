@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <sys/uio.h>
 #include <netinet/sctp.h>
+#include <sys/log.hpp>
 
 /**
  * @brief Опознаватель модуля протокола передачи с управлением потоком
@@ -76,13 +77,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	// Заполняем объект ответа
 	} else {
@@ -187,13 +188,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -215,13 +216,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::WARNING, "SCTP events list is empty");
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::WARNING, "SCTP events list is empty");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, "SCTP events list is empty");
+			awh::log::print("%s", awh::log::flag_t::WARNING, "SCTP events list is empty");
 		#endif
 		// Выходим из функции
 		return false;
@@ -279,13 +280,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s: SCTP event of type %u is not supported by this system", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__, static_cast <uint32_t> (event));
+				awh::log::debug("%s: SCTP event of type %u is not supported by this system", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__, static_cast <uint32_t> (event));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s: SCTP event of type %u is not supported by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__, static_cast <uint32_t> (event));
+				awh::log::print("%s: SCTP event of type %u is not supported by this system", awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__, static_cast <uint32_t> (event));
 			#endif
 			// Переходим к следующему событию
 			continue;
@@ -347,13 +348,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -387,13 +388,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
 	 */
 	#if DEBUG_MODE
 		// Записываем ошибку в лог
-		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::print("%s: SCTP authentication is not implemented by this system", awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	#endif
 	// Выводим результат
 	return false;
@@ -418,13 +419,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey([[maybe_unu
 	 */
 	#if DEBUG_MODE
 		// Записываем ошибку в лог
-		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::print("%s: SCTP authentication is not implemented by this system", awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	#endif
 	// Выводим результат
 	return false;
@@ -450,13 +451,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey([[maybe_unu
 	 */
 	#if DEBUG_MODE
 		// Записываем ошибку в лог
-		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::print("%s: SCTP authentication is not implemented by this system", awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	#endif
 	// Выводим результат
 	return false;
@@ -480,13 +481,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks([[maybe_
 	 */
 	#if DEBUG_MODE
 		// Записываем ошибку в лог
-		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::print("%s: SCTP authentication is not implemented by this system", awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	#endif
 	// Выводим результат
 	return false;
@@ -512,13 +513,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks([[maybe_
 	 */
 	#if DEBUG_MODE
 		// Записываем ошибку в лог
-		this->_log->debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::debug("%s: SCTP authentication is not implemented by this system", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		this->_log->print("%s: SCTP authentication is not implemented by this system", log_t::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
+		awh::log::print("%s: SCTP authentication is not implemented by this system", awh::log::flag_t::WARNING, ::__AWH_SCTP_BACKEND__);
 	#endif
 	// Выводим результат
 	return false;
@@ -553,13 +554,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута инициализации (максимальное время INIT)
 			} else result = params.sinit_max_init_timeo;
@@ -579,13 +580,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.srto_initial;
@@ -601,13 +602,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
 		// Если тип таймаута - HEARTBEAT
@@ -629,13 +630,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.spp_hbinterval;
@@ -655,13 +656,13 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			// Устанавливаем значение таймаута
 			} else result = params.sasoc_cookie_life;
@@ -705,13 +706,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -730,13 +731,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -751,13 +752,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
+				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
 		// Если тип таймаута - HEARTBEAT
@@ -791,13 +792,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -816,13 +817,13 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -1018,7 +1019,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord(const n
 		// Выполняем установку режима явной границы записи
 		if(::setsockopt(sock, IPPROTO_SCTP, SCTP_EXPLICIT_EOR, reinterpret_cast <const char *> (&value), sizeof(value)) != 0){
 			// Выводим сообщение об ошибке
-			this->_log->print("SCTP explicit end of record: %s", log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("SCTP explicit end of record: %s", awh::log::flag_t::WARNING, ::strerror(errno));
 			// Выводим отрицательный результат
 			return false;
 		}
@@ -1029,7 +1030,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::explicitEndOfRecord(const n
 	 */
 	#else
 		// Выводим сообщение об ошибке
-		this->_log->print("SCTP explicit end of record is not supported by the operating system", log_t::flag_t::WARNING);
+		awh::log::print("SCTP explicit end of record is not supported by the operating system", awh::log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	#endif

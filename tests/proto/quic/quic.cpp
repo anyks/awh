@@ -55,14 +55,10 @@
  *
  */
 void QuicFixture::SetUp(){
-	// Инициализируем объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Инициализируем объект логирования
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Инициализируем объект разбора сетевых адресов
-	this->_addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
+	this->_addr = std::make_unique <awh::net_addr_t> ();
 	// Инициализируем тестовое окружение транспортной безопасности
-	this->_security = std::make_unique <QuicSecurity> (this->_fmk.get(), this->_log.get());
+	this->_security = std::make_unique <QuicSecurity> ();
 }
 
 /**
@@ -408,12 +404,9 @@ awh::tls::Coder::id_t QuicSecurity::make(const awh::quic::endpoint_t endpoint, c
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-QuicSecurity::QuicSecurity(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
- _client(0), _server(0), _coder(fmk, log) {
+QuicSecurity::QuicSecurity() noexcept :
+ _client(0), _server(0), _coder() {
 	// Сертификат тестового узла в формате PEM
 	std::string certificate = "";
 	// Приватный ключ тестового узла в формате PEM

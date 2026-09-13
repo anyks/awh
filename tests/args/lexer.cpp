@@ -140,12 +140,9 @@ TEST(ArgsLexer, Messages) {
  *
  */
 TEST(ArgsLexer, AssignedForm) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -175,12 +172,9 @@ TEST(ArgsLexer, AssignedForm) {
  *
  */
 TEST(ArgsLexer, SeparatedForm) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -206,12 +200,9 @@ TEST(ArgsLexer, SeparatedForm) {
  *
  */
 TEST(ArgsLexer, OrderIndependence) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -241,12 +232,9 @@ TEST(ArgsLexer, OrderIndependence) {
  *
  */
 TEST(ArgsLexer, FlagForm) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -276,12 +264,9 @@ TEST(ArgsLexer, FlagForm) {
  *
  */
 TEST(ArgsLexer, EmptyValue) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -305,12 +290,9 @@ TEST(ArgsLexer, EmptyValue) {
  *
  */
 TEST(ArgsLexer, NegativeNumber) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -330,7 +312,7 @@ TEST(ArgsLexer, NegativeNumber) {
 	// Снимаем признак взятия числа значением параметра
 	settings.negative = false;
 	// Создаём разборщик параметров запуска с изменёнными настройками
-	lexer_t plain(&fmk, &log);
+	lexer_t plain;
 	// Устанавливаем настройки разбора параметров
 	plain.settings(settings);
 	// Выполняем разбор того же набора с отключённым признаком
@@ -348,12 +330,9 @@ TEST(ArgsLexer, NegativeNumber) {
  *
  */
 TEST(ArgsLexer, Terminus) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -380,12 +359,9 @@ TEST(ArgsLexer, Terminus) {
  *
  */
 TEST(ArgsLexer, EmptyKeyFailure) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков разобранных лексем
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -410,12 +386,9 @@ TEST(ArgsLexer, EmptyKeyFailure) {
  *
  */
 TEST(ArgsLexer, TextSplit) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер слов, собранных разрезом текста
 	vector <string> items;
 	// Выполняем разрез текста с кавычками и обратной косой
@@ -435,12 +408,9 @@ TEST(ArgsLexer, TextSplit) {
  *
  */
 TEST(ArgsLexer, TextMatchesArgv) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер снимков лексем, разобранных из набора запуска
 	vector <shot_t> shots;
 	// Контейнер кодов отказов разбора
@@ -476,12 +446,9 @@ TEST(ArgsLexer, TextMatchesArgv) {
  *
  */
 TEST(ArgsLexer, TextFailures) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём разборщик параметров запуска
-	const lexer_t lexer(&fmk, &log);
+	const lexer_t lexer;
 	// Контейнер слов, собранных разрезом текста
 	vector <string> items;
 	// Контейнер кодов отказов разбора

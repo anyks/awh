@@ -48,7 +48,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../../sys/log.hpp"
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
@@ -1025,9 +1024,6 @@ namespace awh {
 				private:
 					// Опора обработчика прямой выдачи событий разбора
 					void * _context;
-				protected:
-					// Объект работы с логами
-					const log_t * _log;
 				private:
 					/**
 					 * \~russian
@@ -1526,14 +1522,12 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
 					 *
 					 * \~
 					 */
-					explicit Reader(const log_t * log) noexcept;
+					explicit Reader() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор
@@ -1555,5 +1549,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_CODEC_ABC_READER__

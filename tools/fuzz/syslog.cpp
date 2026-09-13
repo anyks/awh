@@ -18,6 +18,7 @@
  * @copyright Copyright © 2026
  *
  */
+#include <codec/syslog/syslog.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -29,12 +30,12 @@
 #include <cstring>
 #include <cstdlib>
 #include <cstdint>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <codec/syslog/syslog.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -99,38 +100,6 @@ namespace {
 
 	// Итоги работы ворошителя
 	Totals totals;
-
-	/**
-	 * @brief Объект окружения ворошителя с отключённым выводом журнала
-	 *
-	 */
-	struct Silent {
-		// Объект фреймворка ворошителя
-		awh::fmk_t fmk;
-		// Объект журнала ворошителя
-		awh::log_t log;
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept : log(&fmk) {
-			// Выполняем отключение вывода логов
-			this->log.mode({});
-		}
-	};
-
-	/**
-	 * @brief Функция получения объекта окружения ворошителя
-	 *
-	 * @return объект окружения ворошителя
-	 *
-	 */
-	Silent & environment() noexcept {
-		// Объект окружения ворошителя
-		static Silent silent;
-		// Выводим объект окружения ворошителя
-		return silent;
-	}
 
 	/**
 	 * @brief Функция построения куска текста произвольного вида
@@ -488,7 +457,7 @@ namespace {
 	                        const syslog::reader_t::settings_t & settings,
 	                        vector <Event> & events, syslog::error_t & error) noexcept {
 		// Объект потокового чтения записей
-		syslog::reader_t reader(&environment().fmk, &environment().log);
+		syslog::reader_t reader;
 		// Устанавливаем настройки разбора записей
 		reader.settings(settings);
 		// Смещение подачи записи
@@ -598,7 +567,7 @@ namespace {
 	 */
 	bool tree(const string & text, const syslog::reader_t::settings_t & settings) noexcept {
 		// Объект события, удерживаемого целиком
-		syslog::document_t doc(&environment().fmk, &environment().log);
+		syslog::document_t doc;
 		// Если установка настроек разбора записей отказом завершилась
 		if(!doc.settings(settings))
 			// Выводим успешность поверки: отказ настроек есть законный исход
@@ -655,7 +624,7 @@ namespace {
 		// Наращиваем количество записей, собранных обратно
 		totals.rewrites++;
 		// Объект события повторного разбора
-		syslog::document_t again(&environment().fmk, &environment().log);
+		syslog::document_t again;
 		// Если установка настроек разбора записей отказом завершилась
 		if(!again.settings(settings))
 			// Выводим успешность поверки: отказ настроек есть законный исход
@@ -730,6 +699,15 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	// Выполняем отключение вывода журнала: отказы здесь ожидаемы и часты
+	awh::log::mode({});
 	// Количество выполняемых проходов генератора
 	uint64_t count = 3000;
 	/**

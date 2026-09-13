@@ -37,6 +37,7 @@
  */
 #include <chrono>
 #include <cstring>
+#include <sys/log.hpp>
 
 /**
  * Если сборка выполняется со сравнением с эталонной реализацией
@@ -55,7 +56,6 @@
 	#include <pcre2.h>
 #endif
 
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -75,44 +75,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -191,7 +161,7 @@ namespace {
 		// Получаем количество повторений сценария
 		const size_t rounds = awh::benchmark::matching::rounds(scenario.kind);
 		// Создаём объект движка регулярных выражений
-		awh::regex::engine_t engine(::logger());
+		awh::regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		awh::regex::expression_t expression;
 		/**
@@ -289,7 +259,7 @@ namespace {
 		 */
 		{
 			// Создаём объект порождения машинного кода выражения
-			awh::regex::codegen_t codegen(::logger());
+			awh::regex::codegen_t codegen;
 			/**
 			 * Если порождение машинного кода выражения выполнено
 			 */
@@ -417,7 +387,7 @@ namespace {
 		// Получаем собираемое регулярное выражение
 		const char * pattern = "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3}) - (\\w+) \\[([^\\]]+)\\] \"(\\w+) (\\S+)\"";
 		// Создаём объект движка регулярных выражений
-		awh::regex::engine_t engine(::logger());
+		awh::regex::engine_t engine;
 		// Наименьшее время прохода набора повторений
 		double best = 0.0;
 		/**
@@ -529,9 +499,9 @@ namespace {
 		// Получаем собираемое регулярное выражение
 		const char * pattern = "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3}) - (\\w+) \\[([^\\]]+)\\] \"(\\w+) (\\S+)\"";
 		// Создаём объект работы с регулярными выражениями
-		const awh::regexp_t regexp(::logger());
+		const awh::regexp_t regexp;
 		// Создаём объект хранилища собранных выражений
-		const awh::regex::storage_t storage(::logger());
+		const awh::regex::storage_t storage;
 		// Выполняем сборку регулярного выражения
 		const auto expression = regexp.build(pattern);
 		/**

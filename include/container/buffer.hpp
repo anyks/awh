@@ -49,12 +49,12 @@
  */
 #include <vector>
 #include <cstddef>
+#include <sys/log.hpp>
+#include <sys/macro/global.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "../sys/fmk.hpp"
-#include "../sys/log.hpp"
 
 /**
  * \~russian
@@ -751,11 +751,6 @@ namespace awh {
 			// Буфер данных выделенной памяти
 			vector <uint8_t> _buffer;
 		private:
-			// Объект фреймворка
-			const fmk_t * _fmk = nullptr;
-			// Объект работы с логами
-			const log_t * _log = nullptr;
-		private:
 			/**
 			 * \~russian
 			 * @brief Метод контроля памяти
@@ -798,7 +793,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			void error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
+			void error(const char * func, const char * message, const awh::log::flag_t flag = awh::log::flag_t::CRITICAL) const noexcept;
 		public:
 			/**
 			 * \~russian
@@ -1529,21 +1524,6 @@ namespace awh {
 		public:
 			/**
 			 * \~russian
-			 * @brief Метод установки объекта логирования
-			 *
-			 * @param log объект работы с логами
-			 *
-			 * \~english
-			 * @brief Method setting the logging object
-			 *
-			 * @param log object for working with logs
-			 *
-			 * \~
-			 */
-			void setLogger(const log_t * log) noexcept;
-		public:
-			/**
-			 * \~russian
 			 * @brief Получения размера данных в буфера
 			 *
 			 * @return размер данных в буфера
@@ -1770,22 +1750,6 @@ namespace awh {
 			 * \~
 			 */
 			explicit Buffer(const Buffer & buffer) noexcept;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * @param fmk framework object
-			 * @param log object for working with logs
-			 *
-			 * \~
-			 */
-			explicit Buffer(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

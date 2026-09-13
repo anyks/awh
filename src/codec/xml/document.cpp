@@ -24,8 +24,6 @@
  */
 #include <cstdio>
 #include <cstring>
-#include <fstream>
-#include <sys/stat.h>
 #include <algorithm>
 
 /**
@@ -33,6 +31,7 @@
  */
 #include <codec/xml/document.hpp>
 #include <codec/xml/writer.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -100,6 +99,23 @@ static bool writable(const awh::fs_t & fs, const string & path) noexcept {
 	// Выводим признак того, что каталог назначения каталогом и является
 	return (fs.type(path.substr(0, slash)) == awh::fs_t::type_t::DIR);
 }
+/**
+ * @brief Метод получения количества узлов дерева
+ *
+ * @return количество узлов в арене дерева разметки
+ *
+ */
+size_t awh::codec::xml::Document::size() const noexcept {
+	// Выводим количество вложенных узлов корня разметки
+	return this->element().size();
+}
+/**
+ * @brief Метод получения содержимого по отрезку хранилища знаков
+ *
+ * @param span отрезок хранилища знаков
+ * @return     содержимое, на которое указывает отрезок
+ *
+ */
 string_view awh::codec::xml::Document::get(const span_t & span) const noexcept {
 	/**
 	 * Если отрезок выходит за пределы хранилища знаков
@@ -163,7 +179,7 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 	// Выполняем очистку дерева разметки
 	this->clear();
 	// Объект потокового чтения текста разметки
-	reader_t reader(this->_log, settings);
+	reader_t reader(settings);
 	// Количество начал разметки в исходном тексте
 	size_t tags = 0;
 	{
@@ -509,26 +525,21 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 			// Запоминаем положение обнаруженной ошибки
 			this->_errorLocation = location;
 			/**
-			 * Если объект ведения журнала работы установлен
+			 * Выполняем запись об отказе сборки дерева в журнал
+			 *
+			 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: текст
+			 *       разобрался, а места под дерево не хватило - беда своя, не чужая
 			 */
-			if(this->_log != nullptr){
-				/**
-				 * Выполняем запись об отказе сборки дерева в журнал
-				 *
-				 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: текст
-				 *       разобрался, а места под дерево не хватило - беда своя, не чужая
-				 */
-				#if DEBUG_MODE
-					this->_log->debug("XML document build failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
-					                  ::std::make_tuple(location.line, location.column), log_t::flag_t::CRITICAL,
-					                  static_cast <unsigned long long> (location.line),
-					                  static_cast <unsigned long long> (location.column), message(this->_error));
-				#else
-					this->_log->print("XML document build failed at line %llu column %llu: %s", log_t::flag_t::CRITICAL,
-					                  static_cast <unsigned long long> (location.line),
-					                  static_cast <unsigned long long> (location.column), message(this->_error));
-				#endif
-			}
+			#if DEBUG_MODE
+				awh::log::debug("XML document build failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
+				                  {location.line, location.column}, awh::log::flag_t::CRITICAL,
+				                  static_cast <unsigned long long> (location.line),
+				                  static_cast <unsigned long long> (location.column), message(this->_error));
+			#else
+				awh::log::print("XML document build failed at line %llu column %llu: %s", awh::log::flag_t::CRITICAL,
+				                  static_cast <unsigned long long> (location.line),
+				                  static_cast <unsigned long long> (location.column), message(this->_error));
+			#endif
 			// Выводим отрицательный результат выполнения операции
 			return false;
 		}
@@ -762,26 +773,6 @@ awh::codec::xml::encoding_t awh::codec::xml::Document::encoding() const noexcept
 	return this->_encoding;
 }
 /**
- * @brief Метод извлечения настроек дерева разметки
- *
- * @return настройки дерева разметки
- *
- */
-const awh::codec::xml::Document::settings_t & awh::codec::xml::Document::settings() const noexcept {
-	// Выводим настройки дерева разметки
-	return this->_settings;
-}
-/**
- * @brief Метод установки настроек дерева разметки
- *
- * @param settings устанавливаемые настройки дерева разметки
- *
- */
-void awh::codec::xml::Document::settings(const settings_t & settings) noexcept {
-	// Выполняем установку настроек дерева разметки
-	this->_settings = settings;
-}
-/**
  * @brief Метод записи дерева разметки текстом
  *
  * @return текст разметки собранного дерева
@@ -830,7 +821,7 @@ string awh::codec::xml::Document::dump(const writer_settings_t & settings) const
 		return string();
 	}
 	// Объект записи текста разметки
-	writer_t writer(this->_log, settings);
+	writer_t writer(settings);
 	/**
 	 * Если запись дерева разметки не удалась
 	 *
@@ -857,6 +848,12 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	// Выполняем очистку дерева разметки
 	this->clear();
 	/**
+	 * Разряд пути спрашивается ОДНАЖДЫ: ходу этому стоит обращение к файловой
+	 * системе, а судится разряд дважды - каталог и всё прочее отвечают разными
+	 * кодами отказа
+	 */
+	const fs_t::type_t type = this->_fs.type(filename);
+	/**
 	 * Если адрес указывает на каталог
 	 *
 	 * @note Распознавание идёт ДО открытия потока намеренно, и порядок этот держит
@@ -867,7 +864,7 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 *       стоящее после открытия, там мёртво - каталог отвечал бы кодом отказа
 	 *       ОТКРЫТИЯ вместо кода отказа чтения. Замерено на стенде Windows 11 ARM64
 	 */
-	if(this->_fs.type(filename) == fs_t::type_t::DIR){
+	if(type == fs_t::type_t::DIR){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
@@ -881,9 +878,8 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -893,7 +889,7 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 	 * @note Проверка эта стоит вместо прежнего открытия потоком: ходы файловой системы
 	 *       признака успеха не дают вовсе, и годность адреса спрашивается до чтения
 	 */
-	if(this->_fs.type(filename) != fs_t::type_t::FILE){
+	if(type != fs_t::type_t::FILE){
 		/**
 		 * Если объект ведения журнала работы установлен
 		 */
@@ -907,9 +903,8 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
@@ -982,14 +977,33 @@ bool awh::codec::xml::Document::load(const string & filename) noexcept {
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачного разбора
 		return false;
 	}
 	// Выводим признак успешности разбора собранного текста разметки
 	return this->parse(text);
+}
+/**
+ * @brief Метод извлечения настроек дерева разметки
+ *
+ * @return настройки дерева разметки
+ *
+ */
+const awh::codec::xml::Document::settings_t & awh::codec::xml::Document::settings() const noexcept {
+	// Выводим настройки дерева разметки
+	return this->_settings;
+}
+/**
+ * @brief Метод установки настроек дерева разметки
+ *
+ * @param settings устанавливаемые настройки дерева разметки
+ *
+ */
+void awh::codec::xml::Document::settings(const settings_t & settings) noexcept {
+	// Выполняем установку настроек дерева разметки
+	this->_settings = settings;
 }
 /**
  * @brief Метод записи дерева разметки в файл
@@ -1089,9 +1103,8 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1121,9 +1134,8 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1162,9 +1174,8 @@ bool awh::codec::xml::Document::save(const string & filename, const writer_setti
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
 		 *          Найдено щупом по местам отказа у кодека CSV 04.09.2026
 		 */
-		if(this->_log != nullptr)
-			// Выполняем вывод сообщения об отказе
-			this->_log->print("XML document failed: %s", log_t::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
+		// Выполняем вывод сообщения об отказе
+		awh::log::print("XML document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::xml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -1207,16 +1218,6 @@ awh::codec::xml::node_t awh::codec::xml::Document::element() const noexcept {
 	}
 	// Выводим непригодный узел дерева разметки
 	return node_t();
-}
-/**
- * @brief Метод получения количества узлов дерева
- *
- * @return количество узлов в арене дерева разметки
- *
- */
-size_t awh::codec::xml::Document::size() const noexcept {
-	// Выводим количество вложенных узлов корня разметки
-	return this->element().size();
 }
 /**
  * @brief Метод получения количества узлов арены дерева
@@ -1280,17 +1281,7 @@ void awh::codec::xml::Document::clear() noexcept {
  * @brief Конструктор
  *
  */
-awh::codec::xml::Document::Document(const fmk_t * fmk, const log_t * log) noexcept : _error(error_t::NONE), _log(log), _fmk(fmk), _fs(fmk, log), _stamp(0) {}
-/**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::xml::Document::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-}
+awh::codec::xml::Document::Document() noexcept : _error(error_t::NONE), _fs(), _stamp(0) {}
 /**
  * @brief Деструктор
  *
@@ -1397,12 +1388,6 @@ awh::codec::xml::name_t awh::codec::xml::Node::name() const noexcept {
 	return this->_document->get(this->_document->_nodes[this->_id].name);
 }
 /**
- * @brief Метод получения содержимого узла
- *
- * @return содержимое узла
- *
- */
-/**
  * @brief Метод получения количества вложенных узлов
  *
  * @return количество вложенных узлов первого уровня
@@ -1430,6 +1415,12 @@ size_t awh::codec::xml::Node::size() const noexcept {
 	// Выводим количество вложенных узлов первого уровня
 	return result;
 }
+/**
+ * @brief Метод получения содержимого узла разметки
+ *
+ * @return содержимое узла, собранное из его текстовых звеньев
+ *
+ */
 string awh::codec::xml::Node::text() const noexcept {
 	// Собираемое содержимое узла
 	string result;

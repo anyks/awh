@@ -29,18 +29,13 @@
  */
 #include <chrono>
 #include <vector>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Метод настройки тестового окружения
  *
  */
 void PortmapUnitFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
-	// Устанавливаем объект работы с логами
-	this->_fmk->setLogger(this->_log.get());
 }
 
 /**

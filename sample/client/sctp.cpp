@@ -23,6 +23,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <client/client.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -39,11 +41,6 @@ using namespace placeholders;
  *
  */
 class Executor {
-	private:
-		// Объект фреймворка
-		const fmk_t * _fmk;
-		// Объект работы с логами
-		const log_t * _log;
 	public:
 		/**
 		 * @brief Метод обработки событий записи данных клиентом
@@ -53,7 +50,7 @@ class Executor {
 		 */
 		void write(const size_t size) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
-			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
+			awh::log::print("Client write event: %zu bytes", awh::log::flag_t::INFO, size);
 		}
 		/**
 		 * @brief Метод обработки событий чтения данных клиентом
@@ -67,9 +64,9 @@ class Executor {
 			// Если данные получены
 			if(size > 0)
 				// Записываем данные в лог
-				this->_log->print("%s", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
+				awh::log::print("%s", awh::log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
-			else this->_log->print("No data received", log_t::flag_t::WARNING);
+			else awh::log::print("No data received", awh::log::flag_t::WARNING);
 			// Останавливаем событие клиента
 			client->stop();
 		}
@@ -90,14 +87,14 @@ class Executor {
 					// Выполняем подключение клиента к удалённому серверу
 					if(!client->connect())
 						// Записываем ошибку в лог
-						this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
+						awh::log::print("Failed to connect to remote server", awh::log::flag_t::WARNING);
 					// Если подключение выполнено, то выводим сообщение об успешном подключении клиента к удалённому серверу
-					else this->_log->print("Successfully connected to remote server", log_t::flag_t::INFO);
+					else awh::log::print("Successfully connected to remote server", awh::log::flag_t::INFO);
 				} break;
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события клиента
-					this->_log->print("SCTP client destroyed", log_t::flag_t::INFO);
+					awh::log::print("SCTP client destroyed", awh::log::flag_t::INFO);
 				break;
 			}
 		}
@@ -117,7 +114,7 @@ class Executor {
 				// Если статус возрождения события
 				case static_cast <uint8_t> (event::status_t::REBIRTHED): {
 					// Записываем в лог сообщение об возрождении события
-					this->_log->print("SCTP client rebirthed: ID=%u", log_t::flag_t::INFO, eid);
+					awh::log::print("SCTP client rebirthed: ID=%u", awh::log::flag_t::INFO, eid);
 					// Выполняем подписку на SCTP события
 					sctp->eventsSubscribe(eid, {
 						net::sctp::event_type_t::ASSOC_CHANGE,
@@ -148,9 +145,9 @@ class Executor {
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(request.c_str(), request.size()) == 0)
 					// Записываем ошибку в лог отправки данных клиентом на сервер
-					this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+					awh::log::print("Failed to send data to remote server", awh::log::flag_t::WARNING);
 			// Если подключение не выполнено, то выводим сообщение об ошибке подключения клиента к удалённому серверу
-			} else this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
+			} else awh::log::print("Failed to connect to remote server", awh::log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод получения событий SCTP
@@ -245,9 +242,9 @@ class Executor {
 		 */
 		void minfo(const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept {
 			// Записываем в лог информацию о сообщении SCTP-сокета
-			this->_log->print(
+			awh::log::print(
 				"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
-				log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
+				awh::log::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
 			);
 		}
 		/**
@@ -260,7 +257,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
-			this->_log->print("Client is ready to connect to remote server: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
+			awh::log::print("Client is ready to connect to remote server: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок клиента
@@ -271,7 +268,7 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
-			this->_log->print("Client error: %s", log_t::flag_t::CRITICAL, message.c_str());
+			awh::log::print("Client error: %s", awh::log::flag_t::CRITICAL, message.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок транспортного уровня безопасности TLS
@@ -282,17 +279,14 @@ class Executor {
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
-			this->_log->print("TLS error: %s", log_t::flag_t::CRITICAL, message.c_str());
+			awh::log::print("TLS error: %s", awh::log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
 		 * @brief Конструктор
 		 *
-		 * @param fmk объект фреймворка
-		 * @param log объект логирования
-		 *
 		 */
-		Executor(const fmk_t * fmk, const log_t * log) : _fmk(fmk), _log(log) {}
+		Executor() {}
 };
 
 /**
@@ -304,18 +298,21 @@ class Executor {
  *
  */
 int32_t main(int32_t argc, char * argv[]){
-	// Создаём объект фреймворка
-	fmk_t fmk;
-	// Создаём объект логирования
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект SCTP протокола
-	engine::sctp_t sctp(&fmk, &log);
+	engine::sctp_t sctp;
 	// Создаём объект исполнителя для обработки событий клиента
-	Executor executor(&fmk, &log);
+	Executor executor;
 	// Создаём объект транспортного уровня безопасности
-	tls::coder_t tls(&fmk, &log);
+	tls::coder_t tls;
 	// Создаём объект DNS-резолвера
-	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
+	unit::dns_t dns(event::family_t::IPV4);
 	// Регистрируем объект транспортного уровня безопасности
 	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
@@ -354,7 +351,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Включаем проверку имени хоста TLS
 	tls.validateServerNameIndication(cts, false);
 	// Создаём объект клиента
-	client_t client(tls.transport(cts), &tls, &dns, &fmk, &log);
+	client_t client(tls.transport(cts), &tls, &dns);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор

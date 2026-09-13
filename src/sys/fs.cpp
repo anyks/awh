@@ -57,11 +57,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <fcntl.h>
-#if defined(_MSC_VER)
-	#include <sys/dirent.hpp>
-#else
-	#include <dirent.h>
-#endif
+#include <sys/dirent.hpp>
 /**
  * Заголовок замков файлов принадлежит наречиям POSIX: у оснастки MSVC его нет вовсе,
  * а приёмов его библиотека здесь не зовёт - подключение остаётся лишь для тех систем,
@@ -134,6 +130,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <sys/fs.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -161,7 +159,7 @@ namespace awh {
 				 */
 				typedef struct Place {
 					// Объект дескриптора вложенного каталога
-					_WDIR * handle;
+					awh::dir::_WDIR * handle;
 					// Адрес вложенного каталога
 					string address;
 					/**
@@ -171,7 +169,7 @@ namespace awh {
 					 * @param address адрес вложенного каталога
 					 *
 					 */
-					explicit Place(_WDIR * handle, string_view address) noexcept :
+					explicit Place(awh::dir::_WDIR * handle, string_view address) noexcept :
 					 handle(handle), address{address} {}
 				} place_t;
 			private:
@@ -200,7 +198,7 @@ namespace awh {
 				string _address;
 			private:
 				// Объект дескриптора
-				_WDIR * _handle;
+				awh::dir::_WDIR * _handle;
 			private:
 				/**
 				 * @brief Места обхода вложенных каталогов
@@ -273,7 +271,7 @@ namespace awh {
 				 * @param handle объект дескриптора
 				 *
 				 */
-				void set(_WDIR * handle) noexcept;
+				void set(awh::dir::_WDIR * handle) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки незавершённости обхода
@@ -311,7 +309,7 @@ namespace awh {
 				 * @return объект дескриптора вложенного каталога
 				 *
 				 */
-				_WDIR * top() const noexcept;
+				awh::dir::_WDIR * top() const noexcept;
 				/**
 				 * @brief Метод извлечения адреса верхнего места обхода
 				 *
@@ -332,7 +330,7 @@ namespace awh {
 				 * @param address адрес вложенного каталога
 				 *
 				 */
-				void push(_WDIR * handle, string_view address) noexcept;
+				void push(awh::dir::_WDIR * handle, string_view address) noexcept;
 			public:
 				/**
 				 * @brief Метод извлечения адреса незавершённой записи обхода
@@ -357,7 +355,7 @@ namespace awh {
 				 * @return объект дескриптора
 				 *
 				 */
-				operator _WDIR * () const noexcept;
+				operator awh::dir::_WDIR * () const noexcept;
 			public:
 				/**
 				 * @brief Конструктор
@@ -370,7 +368,7 @@ namespace awh {
 				 * @param handle объект дескриптора
 				 *
 				 */
-				explicit HandleDir(_WDIR * handle) noexcept;
+				explicit HandleDir(awh::dir::_WDIR * handle) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -399,7 +397,7 @@ namespace awh {
 			// Если каталог валиден
 			if(this->valid())
 				// Выполняем перемотку каталога к началу
-				::_wrewinddir(this->_handle);
+				awh::dir::_wrewinddir(this->_handle);
 		}
 		/**
 		 * @brief Метод сброса состояния обхода
@@ -416,14 +414,14 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(place.handle != nullptr)
 					// Закрываем вложенный каталог
-					::_wclosedir(place.handle);
+					awh::dir::_wclosedir(place.handle);
 			}
 			// Выполняем очистку стопки мест обхода
 			this->_places.clear();
 			// Если каталог валиден
 			if(this->valid()){
 				// Закрываем каталог
-				::_wclosedir(this->_handle);
+				awh::dir::_wclosedir(this->_handle);
 				// Сбрасываем объект дескриптора
 				this->_handle = nullptr;
 			}
@@ -490,7 +488,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		void HandleDir::set(_WDIR * handle) noexcept {
+		void HandleDir::set(awh::dir::_WDIR * handle) noexcept {
 			// Если установка ещё не выполнена
 			if(!this->valid())
 				// Выполняем установку
@@ -542,7 +540,7 @@ namespace awh {
 		 * @return объект дескриптора вложенного каталога
 		 *
 		 */
-		_WDIR * HandleDir::top() const noexcept {
+		awh::dir::_WDIR * HandleDir::top() const noexcept {
 			// Возвращаем дескриптор верхнего места обхода
 			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
 		}
@@ -566,7 +564,7 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(this->_places.back().handle != nullptr)
 					// Закрываем вложенный каталог
-					::_wclosedir(this->_places.back().handle);
+					awh::dir::_wclosedir(this->_places.back().handle);
 				// Выполняем снятие верхнего места обхода
 				this->_places.pop_back();
 			}
@@ -578,7 +576,7 @@ namespace awh {
 		 * @param address адрес вложенного каталога
 		 *
 		 */
-		void HandleDir::push(_WDIR * handle, string_view address) noexcept {
+		void HandleDir::push(awh::dir::_WDIR * handle, string_view address) noexcept {
 			// Если вложенный каталог валиден
 			if(handle != nullptr)
 				// Выполняем добавление места обхода
@@ -618,7 +616,7 @@ namespace awh {
 		 * @return объект дескриптора
 		 *
 		 */
-		HandleDir::operator _WDIR * () const noexcept {
+		HandleDir::operator awh::dir::_WDIR * () const noexcept {
 			// Возвращаем объект дескриптора
 			return this->_handle;
 		}
@@ -637,7 +635,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		HandleDir::HandleDir(_WDIR * handle) noexcept :
+		HandleDir::HandleDir(awh::dir::_WDIR * handle) noexcept :
 		 _repeat(false), _active(false),
 		 _delivered(0), _pendingType(0),
 		 _pending{""}, _address{""},
@@ -775,7 +773,7 @@ namespace awh {
 				 */
 				typedef struct Place {
 					// Объект дескриптора вложенного каталога
-					DIR * handle;
+					awh::dir::DIR * handle;
 					// Адрес вложенного каталога
 					string address;
 					/**
@@ -785,7 +783,7 @@ namespace awh {
 					 * @param address адрес вложенного каталога
 					 *
 					 */
-					explicit Place(DIR * handle, string_view address) noexcept :
+					explicit Place(awh::dir::DIR * handle, string_view address) noexcept :
 					 handle(handle), address{address} {}
 				} place_t;
 			private:
@@ -814,7 +812,7 @@ namespace awh {
 				string _address;
 			private:
 				// Объект дескриптора
-				DIR * _handle;
+				awh::dir::DIR * _handle;
 			private:
 				/**
 				 * @brief Места обхода вложенных каталогов
@@ -887,7 +885,7 @@ namespace awh {
 				 * @param handle объект дескриптора
 				 *
 				 */
-				void set(DIR * handle) noexcept;
+				void set(awh::dir::DIR * handle) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки незавершённости обхода
@@ -925,7 +923,7 @@ namespace awh {
 				 * @return объект дескриптора вложенного каталога
 				 *
 				 */
-				DIR * top() const noexcept;
+				awh::dir::DIR * top() const noexcept;
 				/**
 				 * @brief Метод извлечения адреса верхнего места обхода
 				 *
@@ -946,7 +944,7 @@ namespace awh {
 				 * @param address адрес вложенного каталога
 				 *
 				 */
-				void push(DIR * handle, string_view address) noexcept;
+				void push(awh::dir::DIR * handle, string_view address) noexcept;
 			public:
 				/**
 				 * @brief Метод извлечения адреса незавершённой записи обхода
@@ -971,7 +969,7 @@ namespace awh {
 				 * @return объект дескриптора
 				 *
 				 */
-				operator DIR * () const noexcept;
+				operator awh::dir::DIR * () const noexcept;
 			public:
 				/**
 				 * @brief Конструктор
@@ -984,7 +982,7 @@ namespace awh {
 				 * @param dir объект каталога
 				 *
 				 */
-				explicit HandleDir(DIR * dir) noexcept;
+				explicit HandleDir(awh::dir::DIR * dir) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -1013,7 +1011,7 @@ namespace awh {
 			// Если каталог валиден
 			if(this->valid())
 				// Выполняем перемотку каталога к началу
-				::rewinddir(this->_handle);
+				awh::dir::rewinddir(this->_handle);
 		}
 		/**
 		 * @brief Метод сброса состояния обхода
@@ -1030,14 +1028,14 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(place.handle != nullptr)
 					// Закрываем вложенный каталог
-					::closedir(place.handle);
+					awh::dir::closedir(place.handle);
 			}
 			// Выполняем очистку стопки мест обхода
 			this->_places.clear();
 			// Если каталог валиден
 			if(this->valid()){
 				// Закрываем каталог
-				::closedir(this->_handle);
+				awh::dir::closedir(this->_handle);
 				// Сбрасываем объект дескриптора
 				this->_handle = nullptr;
 			}
@@ -1104,7 +1102,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		void HandleDir::set(DIR * handle) noexcept {
+		void HandleDir::set(awh::dir::DIR * handle) noexcept {
 			// Если установка ещё не выполнена
 			if(!this->valid())
 				// Выполняем установку
@@ -1156,7 +1154,7 @@ namespace awh {
 		 * @return объект дескриптора вложенного каталога
 		 *
 		 */
-		DIR * HandleDir::top() const noexcept {
+		awh::dir::DIR * HandleDir::top() const noexcept {
 			// Возвращаем дескриптор верхнего места обхода
 			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
 		}
@@ -1180,7 +1178,7 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(this->_places.back().handle != nullptr)
 					// Закрываем вложенный каталог
-					::closedir(this->_places.back().handle);
+					awh::dir::closedir(this->_places.back().handle);
 				// Выполняем снятие верхнего места обхода
 				this->_places.pop_back();
 			}
@@ -1192,7 +1190,7 @@ namespace awh {
 		 * @param address адрес вложенного каталога
 		 *
 		 */
-		void HandleDir::push(DIR * handle, string_view address) noexcept {
+		void HandleDir::push(awh::dir::DIR * handle, string_view address) noexcept {
 			// Если вложенный каталог валиден
 			if(handle != nullptr)
 				// Выполняем добавление места обхода
@@ -1232,7 +1230,7 @@ namespace awh {
 		 * @return объект дескриптора
 		 *
 		 */
-		HandleDir::operator DIR * () const noexcept {
+		HandleDir::operator awh::dir::DIR * () const noexcept {
 			// Возвращаем объект дескриптора
 			return this->_handle;
 		}
@@ -1251,7 +1249,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		HandleDir::HandleDir(DIR * handle) noexcept :
+		HandleDir::HandleDir(awh::dir::DIR * handle) noexcept :
 		 _repeat(false), _active(false),
 		 _delivered(0), _pendingType(0),
 		 _pending{""}, _address{""},
@@ -1584,11 +1582,10 @@ namespace {
 		 * @brief Функция получения полного пути файла или каталога
 		 *
 		 * @param input входная строка пути
-		 * @param log   объект работы с логами
 		 * @return      полная строка пути
 		 *
 		 */
-		static string fullpath(const string_view input, const log_t * log) noexcept {
+		static string fullpath(const string_view input) noexcept {
 			/**
 			 * Выполняем перехват ошибок
 			 */
@@ -1743,13 +1740,13 @@ namespace {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(input), log_t::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {input}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 			// Возвращаем результат
@@ -1821,23 +1818,23 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 								// Устанавливаем только имя файла
 								else description = ::move(name);
 								// Выполняем установку адреса ярлыка как он есть
-								psl->SetPath(this->_fmk->convert(filename).c_str());
+								psl->SetPath(fmk::convert(filename).c_str());
 								// Если рабочий каталог найден
 								if(!working.empty())
 									// Выполняем установку рабочего каталога
-									psl->SetWorkingDirectory(this->_fmk->convert(working).c_str());
+									psl->SetWorkingDirectory(fmk::convert(working).c_str());
 								// Если название файла получено
 								if(!description.empty())
 									// Выполняем установку описания ярлыка
-									psl->SetDescription(this->_fmk->convert(description).c_str());
+									psl->SetDescription(fmk::convert(description).c_str());
 								// Если расширение ярлыка уже установлено
-								if((second.size() > 4) && this->_fmk->compare(".lnk", second.substr(second.size() - 4)))
+								if((second.size() > 4) && fmk::compare(".lnk", second.substr(second.size() - 4)))
 									// Выполняем установку адреса ярлыка как он есть
 									symlink = this->fullpath(second, true);
 								// Выполняем установку полного пути адреса файла
-								else symlink = this->_fmk->format("%s.lnk", this->fullpath(second, true).c_str());
+								else symlink = fmk::format("%s.lnk", this->fullpath(second, true).c_str());
 								// Выполняем создание ярлыка в файловой системе
-								hres = ppf->Save(this->_fmk->convert(symlink).c_str(), TRUE);
+								hres = ppf->Save(fmk::convert(symlink).c_str(), TRUE);
 							}
 						}
 					}
@@ -1854,13 +1851,13 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -1871,13 +1868,13 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1925,9 +1922,9 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 				// Если адрес на который нужно создать ссылку существует
 				if(this->type(first) != type_t::NONE){
 					// Получаем полный адрес файла, на который ведёт ссылка
-					const wstring & target = this->_fmk->convert(this->fullpath(first, true));
+					const wstring & target = fmk::convert(this->fullpath(first, true));
 					// Получаем полный адрес создаваемой ссылки
-					const wstring & filename = this->_fmk->convert(this->fullpath(second, true));
+					const wstring & filename = fmk::convert(this->fullpath(second, true));
 					// Выполняем создание жёсткой ссылки средствами системы
 					if(!::CreateHardLinkW(filename.c_str(), target.c_str(), nullptr))
 						// Если система жёсткую ссылку завести не смогла - заводим ярлык
@@ -1943,13 +1940,13 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -1960,13 +1957,13 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2003,13 +2000,13 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							HandleDir dir(::_wopendir(this->_fmk->convert(address).c_str()));
+							HandleDir dir(awh::dir::_wopendir(fmk::convert(address).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							HandleDir dir(::opendir(address.c_str()));
+							HandleDir dir(awh::dir::opendir(address.c_str()));
 						#endif
 						// Если каталог открыт
 						if((result = dir.valid())){
@@ -2020,11 +2017,11 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 								// Структура проверка статистики
 								struct _stat info{};
 								// Создаем указатель на содержимое каталога
-								struct _wdirent * ptr = nullptr;
+								awh::dir::_wdirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = ::_wreaddir(dir))){
+								while((ptr = awh::dir::_wreaddir(dir))){
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
@@ -2032,11 +2029,11 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 								// Структура проверка статистики
 								struct stat info{};
 								// Создаем указатель на содержимое каталога
-								struct dirent * ptr = nullptr;
+								awh::dir::dirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = ::readdir(dir))){
+								while((ptr = awh::dir::readdir(dir))){
 							#endif
 									/**
 									 * Для операционной системы MS Windows
@@ -2047,7 +2044,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 											// Выполняем пропуск каталога
 											continue;
 										// Получаем полный путь дочернего элемента из разрешённого адреса каталога
-										const string & child = this->_fmk->format("%s%s%s", address.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+										const string & child = fmk::format("%s%s%s", address.c_str(), AWH_FS_SEPARATOR, fmk::convert(ptr->d_name).c_str());
 									/**
 									 * Для операционной системы не являющейся MS Windows
 									 */
@@ -2057,14 +2054,14 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 											// Выполняем пропуск каталога
 											continue;
 										// Получаем полный путь дочернего элемента из разрешённого адреса каталога
-										const string & child = this->_fmk->format("%s%s%s", address.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
+										const string & child = fmk::format("%s%s%s", address.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 									#endif
 									/**
 									 * Для операционной системы MS Windows
 									 */
 									#if _WIN32 || _WIN64
 										// Конвертируем адрес в формат wstring
-										const wstring & path = this->_fmk->convert(child);
+										const wstring & path = fmk::convert(child);
 										// Если статистика извлечена
 										if(!::_wstat(path.c_str(), &info)){
 											// Если дочерний элемент является директорией
@@ -2107,7 +2104,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 							 */
 							#if _WIN32 || _WIN64
 								// Получаем количество дочерних элементов
-								result = (::_wrmdir(this->_fmk->convert(address).c_str()) == 0);
+								result = (::_wrmdir(fmk::convert(address).c_str()) == 0);
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
@@ -2126,7 +2123,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						 */
 						#if _WIN32 || _WIN64
 							// Выполняем удаление переданного пути
-							result = (::_wunlink(this->_fmk->convert(address).c_str()) == 0);
+							result = (::_wunlink(fmk::convert(address).c_str()) == 0);
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
@@ -2147,7 +2144,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						// Если адрес получен правильный
 						if(!address.empty())
 							// Выполняем удаление переданного пути
-							result = (::_wunlink(this->_fmk->convert(address).c_str()) == 0);
+							result = (::_wunlink(fmk::convert(address).c_str()) == 0);
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
@@ -2166,13 +2163,13 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -2183,13 +2180,13 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2220,7 +2217,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				// Структура проверка статистики
 				struct _stat info{};
 				// Выполняем извлечение актуального значения адреса
-				const wstring & address = this->_fmk->convert(this->fullpath(addr));
+				const wstring & address = fmk::convert(this->fullpath(addr));
 				// Выполняем извлечение данных статистики
 				const int32_t status = (!address.empty() ? ::_wstat(address.c_str(), &info) : -1);
 			/**
@@ -2381,13 +2378,13 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, detectLinks), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, detectLinks}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -2398,13 +2395,13 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, detectLinks), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, detectLinks}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2435,15 +2432,15 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 			// Заполняем буфер нулями
 			::memset(buffer, 0, sizeof(buffer));
 			// Выполняем извлечение адресов из переменных окружений
-			::ExpandEnvironmentStringsW(this->_fmk->convert(addr.data()).c_str(), buffer, ARRAYSIZE(buffer));
+			::ExpandEnvironmentStringsW(fmk::convert(addr.data()).c_str(), buffer, ARRAYSIZE(buffer));
 			// Устанавливаем результат
-			result = this->_fmk->convert(buffer);
+			result = fmk::convert(buffer);
 			// Заполняем буфер нулями
 			::memset(buffer, 0, sizeof(buffer));
 			// Если адрес существует
-			if(::_wfullpath(buffer, this->_fmk->convert(result).c_str(), _MAX_PATH) != nullptr){
+			if(::_wfullpath(buffer, fmk::convert(result).c_str(), _MAX_PATH) != nullptr){
 				// Получаем полный адрес пути
-				result = this->_fmk->convert(buffer);
+				result = fmk::convert(buffer);
 				// Если адрес пути получен
 				if(resolve && !result.empty()){
 					// Создаём объект проверки наличия ярлыка
@@ -2461,7 +2458,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 						// Если объект для проверки файла инициализирован
 						if(SUCCEEDED(hres)){
 							// Выполняем загрузку переданного адреса
-							hres = ppf->Load(this->_fmk->convert(result).c_str(), STGM_READ);
+							hres = ppf->Load(fmk::convert(result).c_str(), STGM_READ);
 							// Если переданный адрес является ярлыком
 							if(SUCCEEDED(hres)){
 								// Выполняем резолвинг ярлыка
@@ -2588,7 +2585,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 				}
 			}
 			// Формируем полный путь как он есть
-			return ::fullpath(addr, this->_log);
+			return ::fullpath(addr);
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -2599,13 +2596,13 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -2616,13 +2613,13 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2649,7 +2646,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Извлекаем все атрибуты файла
-				return static_cast <uint32_t> (::GetFileAttributesW(this->_fmk->convert(address).c_str()));
+				return static_cast <uint32_t> (::GetFileAttributesW(fmk::convert(address).c_str()));
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
@@ -2663,13 +2660,13 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			// Если информационные данные считаны удачно
 			} else result = static_cast <uint32_t> (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO));
@@ -2700,7 +2697,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 			// Если адрес получен правильный
 			if(!address.empty())
 				// Выполняем установку атрибутов файла
-				return ::SetFileAttributesW(this->_fmk->convert(address).c_str(), static_cast <DWORD> (mode));
+				return ::SetFileAttributesW(fmk::convert(address).c_str(), static_cast <DWORD> (mode));
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
@@ -2712,13 +2709,13 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, mode), log_t::flag_t::CRITICAL, ::strerror(errno));
+					log::debug("%s", __PRETTY_FUNCTION__, {addr, mode}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем в лог сообщение
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		#endif
@@ -2759,13 +2756,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {addr, user, group}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем в лог сообщение
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 				}
@@ -2779,9 +2776,9 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 			// Размер SID-а пользователя/группы и домена пользователя
 			DWORD sidSize = 0, domainSize = 0;
 			// Получаем путь к файлу
-			wstring fileName = this->_fmk->convert(addr.data());
+			wstring fileName = fmk::convert(addr.data());
 			// Получаем имя пользователя
-			wstring userName = this->_fmk->convert(user.data());
+			wstring userName = fmk::convert(user.data());
 			// Первый вызов — получаем размеры буферов
 			::LookupAccountNameW(nullptr, userName.c_str(), nullptr, &sidSize, nullptr, &domainSize, &sidType);
 			// Если мы получиши ошибку извлечения размеров буфера
@@ -2795,13 +2792,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+					log::print(L"%s", log::flag_t::CRITICAL, message);
 				#endif
 				// Возвращаем результат
 				return result;
@@ -2848,13 +2845,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+					log::print(L"%s", log::flag_t::CRITICAL, message);
 				#endif
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
@@ -2872,13 +2869,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+					log::print(L"%s", log::flag_t::CRITICAL, message);
 				#endif
 				// Освобождаем дескриптор системы безопасности
 				::LocalFree(sd);
@@ -2898,13 +2895,13 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+					log::print(L"%s", log::flag_t::CRITICAL, message);
 				#endif
 			}
 			// Освобождаем дескриптор системы безопасности
@@ -2972,7 +2969,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 									continue;
 								}
 								// Создаем каталог
-								result = (::_wmkdir(this->_fmk->convert(buffer.c_str()).c_str()) == 0);
+								result = (::_wmkdir(fmk::convert(buffer.c_str()).c_str()) == 0);
 							#endif
 							// Если каталог уже существует
 							if(!result && (errno == EEXIST))
@@ -2997,7 +2994,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 									// Выходим из цикла
 									break;
 								// Создаем каталог
-								result = (::_wmkdir(this->_fmk->convert(buffer.c_str()).c_str()) == 0);
+								result = (::_wmkdir(fmk::convert(buffer.c_str()).c_str()) == 0);
 							#endif
 							// Если каталог уже существует
 							if(!result && (errno == EEXIST))
@@ -3019,13 +3016,13 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Memory allocation error", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL);
+					log::debug("Memory allocation error", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Memory allocation error", log_t::flag_t::CRITICAL);
+					log::print("Memory allocation error", log::flag_t::CRITICAL);
 				#endif
 				// Выходим из приложения
 				::_exit(EXIT_FAILURE);
@@ -3038,13 +3035,13 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			/**
 			 * Если возникает ошибка
@@ -3055,13 +3052,13 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -3108,7 +3105,7 @@ bool awh::Filesystem::mkdir(string_view addr, string_view user, string_view grou
  * @return          признак успешной подмены
  *
  */
-bool awh::Filesystem::replaceAddress(string_view temporary, string_view filename) noexcept {
+bool awh::Filesystem::replaceAddress(string_view temporary, string_view filename) const noexcept {
 	/**
 	 * Для операционной системы, MS Windows не являющейся
 	 */
@@ -3124,7 +3121,7 @@ bool awh::Filesystem::replaceAddress(string_view temporary, string_view filename
 		 *
 		 * @note Зовётся узкий вид, а не широкий: пути ходят здесь `std::string`
 		 */
-		return (::MoveFileExW(this->_fmk->convert(temporary).c_str(), this->_fmk->convert(filename).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
+		return (::MoveFileExW(fmk::convert(temporary).c_str(), fmk::convert(filename).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
 	#endif
 }
 /**
@@ -3180,13 +3177,13 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve, before}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -3197,13 +3194,13 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
+			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve, before}, log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			log::print("%s", log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -3251,7 +3248,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 							 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 							 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 							 */
-							HANDLE file = ::CreateFileW(this->_fmk->convert(path.data()).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+							HANDLE file = ::CreateFileW(fmk::convert(path.data()).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 							// Если файл открыт нормально
 							if(file != INVALID_HANDLE_VALUE){
 								// Объект для хранения размера файла
@@ -3267,13 +3264,13 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, message);
+										log::debug(L"%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+										log::print(L"%s", log::flag_t::CRITICAL, message);
 									#endif
 									// Выполняем закрытие файла
 									::CloseHandle(file);
@@ -3304,13 +3301,13 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 						 */
 						#if _WIN32 || _WIN64
 							// Открываем указанный каталог
-							HandleDir dir(::_wopendir(this->_fmk->convert(path.data()).c_str()));
+							HandleDir dir(awh::dir::_wopendir(fmk::convert(path.data()).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							HandleDir dir(::opendir(path.data()));
+							HandleDir dir(awh::dir::opendir(path.data()));
 						#endif
 						// Если каталог открыт
 						if(dir.valid()){
@@ -3319,21 +3316,21 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 							 */
 							#if _WIN32 || _WIN64
 								// Создаем указатель на содержимое каталога
-								struct _wdirent * ptr = nullptr;
+								awh::dir::_wdirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = ::_wreaddir(dir))){
+								while((ptr = awh::dir::_wreaddir(dir))){
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
 							#else
 								// Создаем указатель на содержимое каталога
-								struct dirent * ptr = nullptr;
+								awh::dir::dirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = ::readdir(dir))){
+								while((ptr = awh::dir::readdir(dir))){
 							#endif
 									/**
 									 * Для операционной системы MS Windows
@@ -3344,7 +3341,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 											// Выполняем пропуск каталога
 											continue;
 										// Получаем полный путь в виде строки
-										const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+										const string & address = fmk::format("%s%s%s", path.data(), AWH_FS_SEPARATOR, fmk::convert(ptr->d_name).c_str());
 									/**
 									 * Для операционной системы не являющейся MS Windows
 									 */
@@ -3354,7 +3351,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 											// Выполняем пропуск каталога
 											continue;
 										// Получаем полный путь в виде строки
-										const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
+										const string & address = fmk::format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
 									#endif
 									/**
 									 * Определяем тип переданного пути
@@ -3374,9 +3371,9 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 												// Получаем обёртку полученного пути
 												string_view path = address;
 												// Получаем расширение файла
-												const string & extension = this->_fmk->format(".%s", ext.data());
+												const string & extension = fmk::format(".%s", ext.data());
 												// Файл учитывается только если его расширение совпадает с фильтром
-												allowed = ((path.size() > extension.size()) && this->_fmk->compare(path.substr(path.size() - extension.size()).data(), extension));
+												allowed = ((path.size() > extension.size()) && fmk::compare(path.substr(path.size() - extension.size()).data(), extension));
 											}
 											// Если файл нужно учесть — получаем его размер напрямую, без повторного резолвинга
 											if(allowed){
@@ -3387,7 +3384,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 													// Структура проверка статистики
 													struct _stat info{};
 													// Если статистика извлечена
-													if(!::_wstat(this->_fmk->convert(address).c_str(), &info))
+													if(!::_wstat(fmk::convert(address).c_str(), &info))
 												/**
 												 * Для операционной системы не являющейся MS Windows
 												 */
@@ -3410,7 +3407,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 												// Структура проверка статистики
 												struct _stat info{};
 												// Если статистика извлечена
-												if(!::_wstat(this->_fmk->convert(address).c_str(), &info))
+												if(!::_wstat(fmk::convert(address).c_str(), &info))
 											/**
 											 * Для операционной системы не являющейся MS Windows
 											 */
@@ -3438,13 +3435,13 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -3455,13 +3452,13 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3497,13 +3494,13 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 				 */
 				#if _WIN32 || _WIN64
 					// Открываем указанный каталог
-					HandleDir dir(::_wopendir(this->_fmk->convert(path.data()).c_str()));
+					HandleDir dir(awh::dir::_wopendir(fmk::convert(path.data()).c_str()));
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем указанный каталог
-					HandleDir dir(::opendir(path.data()));
+					HandleDir dir(awh::dir::opendir(path.data()));
 				#endif
 					// Если каталог открыт
 					if(dir.valid()){
@@ -3512,21 +3509,21 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 						 */
 						#if _WIN32 || _WIN64
 							// Создаем указатель на содержимое каталога
-							struct _wdirent * ptr = nullptr;
+							awh::dir::_wdirent * ptr = nullptr;
 							/**
 							 * Выполняем чтение содержимого каталога
 							 */
-							while((ptr = ::_wreaddir(dir))){
+							while((ptr = awh::dir::_wreaddir(dir))){
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Создаем указатель на содержимое каталога
-							struct dirent * ptr = nullptr;
+							awh::dir::dirent * ptr = nullptr;
 							/**
 							 * Выполняем чтение содержимого каталога
 							 */
-							while((ptr = ::readdir(dir))){
+							while((ptr = awh::dir::readdir(dir))){
 						#endif
 								/**
 								 * Для операционной системы MS Windows
@@ -3537,7 +3534,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 										// Выполняем пропуск каталога
 										continue;
 									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+									const string & address = fmk::format("%s%s%s", path.data(), AWH_FS_SEPARATOR, fmk::convert(ptr->d_name).c_str());
 								/**
 								 * Для операционной системы не являющейся MS Windows
 								 */
@@ -3547,7 +3544,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 										// Выполняем пропуск каталога
 										continue;
 									// Получаем адрес в виде строки
-									const string & address = this->_fmk->format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
+									const string & address = fmk::format("%s%s%s", path.data(), AWH_FS_SEPARATOR, ptr->d_name);
 								#endif
 								/**
 								 * Определяем тип переданного пути
@@ -3565,11 +3562,11 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 											// Получаем обёртку полученного пути
 											string_view path = address;
 											// Получаем расширение файла
-											const string & extension = this->_fmk->format(".%s", ext.data());
+											const string & extension = fmk::format(".%s", ext.data());
 											// Если расширение не выше полного адреса
 											if(path.size() > extension.size()){
 												// Если расширение файла найдено
-												if(this->_fmk->compare(path.substr(path.size() - extension.size()).data(), extension))
+												if(fmk::compare(path.substr(path.size() - extension.size()).data(), extension))
 													// Получаем количество файлов в каталоге
 													result++;
 											}
@@ -3589,13 +3586,13 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -3606,13 +3603,13 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Если переданный адрес не является каталогом
@@ -3622,13 +3619,13 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::WARNING, addr.data());
+			log::debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::WARNING, addr.data());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Address name: \"%s\" is not dir", log_t::flag_t::WARNING, addr.data());
+			log::print("Address name: \"%s\" is not dir", log::flag_t::WARNING, addr.data());
 		#endif
 	}
 	// Возвращаем результат
@@ -3706,7 +3703,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 						 *       пустой файл, а `CREATE_ALWAYS` усекал бы и то, что усекать
 						 *       не велено
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -3732,13 +3729,13 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, message);
+								log::debug(L"%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								log::print(L"%s", log::flag_t::CRITICAL, message);
 							#endif
 						}
 					/**
@@ -3754,13 +3751,13 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, message);
+							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+							log::print(L"%s", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -3789,13 +3786,13 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					/**
@@ -3807,13 +3804,13 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 				#endif
@@ -3827,13 +3824,13 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, length), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -3890,7 +3887,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 * @note Сброс требует права записи: описатель, открытый на одно лишь
 						 *       чтение, `FlushFileBuffers` отвергает отказом ERROR_ACCESS_DENIED
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_WRITE, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						/**
@@ -3919,13 +3916,13 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, message);
+									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									log::print(L"%s", log::flag_t::CRITICAL, message);
 								#endif
 							}
 						}
@@ -3942,13 +3939,13 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, message);
+							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+							log::print(L"%s", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -4015,13 +4012,13 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, ::strerror(errno));
+									log::debug("%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+									log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 							}
 						}
@@ -4034,13 +4031,13 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 				#endif
@@ -4054,13 +4051,13 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, durable), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4093,7 +4090,7 @@ bool awh::Filesystem::append(string_view filename, const T & buffer, const handl
 		// Если тип буфера является строкой символов
 		else if constexpr (is_same_v <T, wstring>) {
 			// Выполняем конвертацию строки
-			const string & data = this->_fmk->convert(buffer);
+			const string & data = fmk::convert(buffer);
 			// Выводим признак того, легли ли данные в файл
 			return this->append(filename, data.c_str(), data.size(), handle);
 		// Если тип буфера является вектором символов
@@ -4168,7 +4165,7 @@ bool awh::Filesystem::append(string_view filename, const wchar_t * buffer, const
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
-		const string & data = this->_fmk->convert(buffer);
+		const string & data = fmk::convert(buffer);
 		// Выводим признак того, легли ли данные в файл
 		return this->append(filename, data.c_str(), data.size(), handle);
 	}
@@ -4236,7 +4233,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), FILE_APPEND_DATA, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Число октетов, легших в файл
@@ -4267,13 +4264,13 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, message);
+							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+							log::print(L"%s", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -4305,13 +4302,13 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт нормально
 					} else {
@@ -4328,13 +4325,13 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					}
@@ -4349,13 +4346,13 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -4366,13 +4363,13 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4482,7 +4479,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -4550,13 +4547,13 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, message);
+									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									log::print(L"%s", log::flag_t::CRITICAL, message);
 								#endif
 							}
 						}
@@ -4578,13 +4575,13 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт удачно
 					} else if(::fstat(file, &info) < 0) {
@@ -4593,13 +4590,13 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если размер файла изменился
 					} else if(static_cast <size_t> (info.st_size) > offset) {
@@ -4651,13 +4648,13 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем в лог сообщение что прочитать файл не удалось
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					}
@@ -4672,13 +4669,13 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -4689,13 +4686,13 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -4769,7 +4766,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Объект для хранения полного размера файла
@@ -4785,13 +4782,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, message);
+								log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								log::print(L"%s", log::flag_t::CRITICAL, message);
 							#endif
 							// Выходим из метода (дескриптор будет закрыт автоматически)
 							return;
@@ -4811,13 +4808,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, message);
+									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									log::print(L"%s", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода (дескрипторы будут закрыты автоматически)
 								return;
@@ -4835,13 +4832,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, message);
+									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									log::print(L"%s", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода (дескрипторы будут закрыты автоматически)
 								return;
@@ -4882,13 +4879,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если получить статистику файла не удалось
 					} else if(::fstat(file, &info) < 0) {
@@ -4897,13 +4894,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл не пустой (пустой файл проецировать в память нельзя)
 					} else if(info.st_size > 0) {
@@ -4918,13 +4915,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						// Если проекция файла создана удачно
 						} else {
@@ -4963,13 +4960,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -4980,13 +4977,13 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5019,7 +5016,7 @@ bool awh::Filesystem::write(string_view filename, const T & buffer, const seek_t
 		// Если тип буфера является строкой символов
 		else if constexpr (is_same_v <T, wstring>) {
 			// Выполняем конвертацию строки
-			const string & data = this->_fmk->convert(buffer);
+			const string & data = fmk::convert(buffer);
 			// Выводим признак того, легли ли данные в файл
 			return this->write(filename, data.c_str(), data.size(), seek, offset, handle);
 		// Если тип буфера является вектором символов
@@ -5098,7 +5095,7 @@ bool awh::Filesystem::write(string_view filename, const wchar_t * buffer, const 
 	// Если буфер данных передан
 	if(!filename.empty() && (buffer != nullptr) && ((* buffer) != L'\0')){
 		// Выполняем конвертацию строки
-		const string & data = this->_fmk->convert(buffer);
+		const string & data = fmk::convert(buffer);
 		// Выводим признак того, легли ли данные в файл
 		return this->write(filename, data.c_str(), data.size(), seek, offset, handle);
 	}
@@ -5178,7 +5175,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 *       лишь `GENERIC_WRITE`, чтение тем же объектом отвечало бы отказом
 						 *       ERROR_ACCESS_DENIED под MS Windows и проходило бы под POSIX
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), (GENERIC_READ | GENERIC_WRITE), (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -5241,13 +5238,13 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+							log::print(L"%s", log::flag_t::CRITICAL, message);
 						#endif
 					}
 				/**
@@ -5271,13 +5268,13 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт нормально
 					} else {
@@ -5314,13 +5311,13 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					}
@@ -5335,13 +5332,13 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -5352,13 +5349,13 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5462,7 +5459,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -5510,13 +5507,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									log::print(L"%s", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода
 								return;
@@ -5546,13 +5543,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+										log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+										log::print(L"%s", log::flag_t::CRITICAL, message);
 									#endif
 									// Выходим из метода
 									return;
@@ -5585,13 +5582,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт удачно
 					} else if(::fstat(file, &info) < 0) {
@@ -5600,13 +5597,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если размер файла изменился
 					} else if(static_cast <size_t> (info.st_size) > offset) {
@@ -5679,13 +5676,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -5696,13 +5693,13 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -5764,7 +5761,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 *       отвечало бы отказом ERROR_SHARING_VIOLATION. Отказ этот молчаливый:
 						 *       дозапись уходила бы мимо файла, а размер выдавался бы нулевым
 						 */
-						file.set(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+						file.set(::CreateFileW(fmk::convert(address).c_str(), GENERIC_READ, (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE), nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
 					// Если файл открыт нормально
 					if(file.valid()){
 						// Создаём объект большого числа
@@ -5812,13 +5809,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+									log::print(L"%s", log::flag_t::CRITICAL, message);
 								#endif
 								// Выходим из метода
 								return;
@@ -5848,13 +5845,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+										log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+										log::print(L"%s", log::flag_t::CRITICAL, message);
 									#endif
 									// Выходим из метода
 									return;
@@ -5887,13 +5884,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если файл открыт удачно
 					} else if(::fstat(file, &info) < 0) {
@@ -5902,13 +5899,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							log::print("%s", log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если размер файла изменился
 					} else if(static_cast <size_t> (info.st_size) > offset) {
@@ -5970,13 +5967,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		/**
 		 * Если возникает ошибка
@@ -5987,13 +5984,13 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				log::print("%s", log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -6048,13 +6045,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					 */
 					#if _WIN32 || _WIN64
 						// Открываем корень обхода
-						dir.set(::_wopendir(this->_fmk->convert(root).c_str()));
+						dir.set(awh::dir::_wopendir(fmk::convert(root).c_str()));
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Открываем корень обхода
-						dir.set(::opendir(root.c_str()));
+						dir.set(awh::dir::opendir(root.c_str()));
 					#endif
 					// Запоминаем адрес, которому объект служит
 					dir.address(root);
@@ -6081,13 +6078,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Directory name: \"%s\" cannot be opened", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, root.c_str());
+						log::debug("Directory name: \"%s\" cannot be opened", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, root.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Directory name: \"%s\" cannot be opened", log_t::flag_t::WARNING, root.c_str());
+						log::print("Directory name: \"%s\" cannot be opened", log::flag_t::WARNING, root.c_str());
 					#endif
 					// Выполняем сброс состояния обхода
 					dir.reset();
@@ -6144,13 +6141,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					 */
 					#if _WIN32 || _WIN64
 						// Выполняем чтение содержимого каталога
-						struct _wdirent * ptr = ::_wreaddir(dir.empty() ? static_cast <_WDIR *> (dir) : dir.top());
+						awh::dir::_wdirent * ptr = awh::dir::_wreaddir(dir.empty() ? static_cast <awh::dir::_WDIR *> (dir) : dir.top());
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Выполняем чтение содержимого каталога
-						struct dirent * ptr = ::readdir(dir.empty() ? static_cast <DIR *> (dir) : dir.top());
+						awh::dir::dirent * ptr = awh::dir::readdir(dir.empty() ? static_cast <awh::dir::DIR *> (dir) : dir.top());
 					#endif
 					// Если содержимое каталога исчерпано
 					if(ptr == nullptr){
@@ -6184,7 +6181,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 							// Выполняем пропуск каталога
 							continue;
 						// Получаем адрес в виде строки
-						const string & address = this->_fmk->format("%s%s%s", base.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+						const string & address = fmk::format("%s%s%s", base.c_str(), AWH_FS_SEPARATOR, fmk::convert(ptr->d_name).c_str());
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
@@ -6194,7 +6191,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 							// Выполняем пропуск каталога
 							continue;
 						// Получаем адрес в виде строки
-						const string & address = this->_fmk->format("%s%s%s", base.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
+						const string & address = fmk::format("%s%s%s", base.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 					#endif
 					// Получаем тип переданного пути
 					const type_t type = this->type(address);
@@ -6211,13 +6208,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 								 */
 								#if _WIN32 || _WIN64
 									// Открываем вложенный каталог
-									_WDIR * nested = ::_wopendir(this->_fmk->convert(address).c_str());
+									awh::dir::_WDIR * nested = awh::dir::_wopendir(fmk::convert(address).c_str());
 								/**
 								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Открываем вложенный каталог
-									DIR * nested = ::opendir(address.c_str());
+									awh::dir::DIR * nested = awh::dir::opendir(address.c_str());
 								#endif
 								// Если вложенный каталог открыт
 								if(nested != nullptr){
@@ -6237,13 +6234,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 							// Если расширение файла передано
 							if(!ext.empty()){
 								// Получаем расширение файла
-								const string & extension = this->_fmk->format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", ext.data());
 								// Если расширение не выше полного адреса
 								if(address.size() > extension.length()){
 									// Получаем хвост адреса длиною в расширение
 									const string & part = address.substr(address.size() - extension.length(), extension.length());
 									// Если расширение файла найдено
-									if(this->_fmk->compare(part, extension))
+									if(fmk::compare(part, extension))
 										// Возвращаем полный путь файла
 										result = callback(type, address);
 								}
@@ -6265,13 +6262,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			/**
 			 * Если возникает ошибка
@@ -6282,13 +6279,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
+					log::debug("%s", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					log::print("%s", log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -6299,13 +6296,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, path.data());
+			log::debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Path name: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+			log::print("Path name: \"%s\" is not found", log::flag_t::WARNING, path.data());
 		#endif
 	}
 	// Выводим результат
@@ -6372,13 +6369,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 							// Если расширение файла передано
 							if(!ext.empty()){
 								// Получаем расширение файла
-								const string & extension = this->_fmk->format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", ext.data());
 								// Если расширение не выше полного адреса
 								if(address.size() > extension.length()){
 									// Получаем хвост адреса длиною в расширение
 									const string_view part = filename.substr(filename.size() - extension.length(), extension.length());
 									// Если расширение файла найдено
-									if(this->_fmk->compare(part, extension)){
+									if(fmk::compare(part, extension)){
 										// Выполняем считывание всех строк текста
 										this->readfile(address, [&](string_view text) noexcept -> void {
 											// Если текст получен и обход велено продолжать
@@ -6436,13 +6433,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
 		#endif
 	}
 	// Выводим результат
@@ -6510,13 +6507,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 							// Если расширение файла передано
 							if(!ext.empty()){
 								// Получаем расширение файла
-								const string & extension = this->_fmk->format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", ext.data());
 								// Если расширение не выше полного адреса
 								if(address.size() > extension.length()){
 									// Получаем хвост адреса длиною в расширение
 									const string_view part = filename.substr(filename.size() - extension.length(), extension.length());
 									// Если расширение файла найдено
-									if(this->_fmk->compare(part, extension)){
+									if(fmk::compare(part, extension)){
 										// Выполняем считывание всех блоков данных
 										this->readfile(address, size, [&](const void * buffer, const size_t size) noexcept -> void {
 											// Если буфер данных получен и обход велено продолжать
@@ -6574,13 +6571,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, size, recurse, resolve), log_t::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
 		#endif
 	}
 	// Выводим результат
@@ -6647,11 +6644,11 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 								// Получаем путь до файла в нижнем регистре
 								string_view path = address;
 								// Получаем расширение файла
-								const string & extension = this->_fmk->format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", ext.data());
 								// Если расширение не выше полного адреса
 								if(path.size() > extension.length()){
 									// Если расширение файла найдено
-									if(this->_fmk->compare(filename.substr(filename.size() - extension.length(), extension.length()).data(), extension)){
+									if(fmk::compare(filename.substr(filename.size() - extension.length(), extension.length()).data(), extension)){
 										// Выполняем считывание всех строк текста
 										this->readfile(path, [&](string_view text) noexcept -> void {
 											// Если текст получен
@@ -6693,13 +6690,13 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
 		#endif
 	}
 }
@@ -6739,11 +6736,11 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 								// Получаем путь до файла в нижнем регистре
 								string_view path = address;
 								// Получаем расширение файла
-								const string & extension = this->_fmk->format(".%s", ext.data());
+								const string & extension = fmk::format(".%s", ext.data());
 								// Если расширение не выше полного адреса
 								if(path.size() > extension.length()){
 									// Если расширение файла найдено
-									if(this->_fmk->compare(filename.substr(filename.size() - extension.length(), extension.length()).data(), extension)){
+									if(fmk::compare(filename.substr(filename.size() - extension.length(), extension.length()).data(), extension)){
 										// Выполняем считывание всех строк текста
 										this->readfile(path, size, [&](const void * buffer, const size_t size) noexcept -> void {
 											// Буфер данных получен успешно
@@ -6785,21 +6782,18 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, size, recurse, resolve), log_t::flag_t::WARNING, path.data());
+			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Address: \"%s\" is not found", log_t::flag_t::WARNING, path.data());
+			log::print("Address: \"%s\" is not found", log::flag_t::WARNING, path.data());
 		#endif
 	}
 }
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::Filesystem::Filesystem(const fmk_t * fmk, const log_t * log) noexcept : _os(log), _fmk(fmk), _log(log) {}
+awh::Filesystem::Filesystem() noexcept : _os() {}

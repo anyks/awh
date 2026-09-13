@@ -34,10 +34,6 @@
  */
 class CryptoFixture : public testing::Test {
 	protected:
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 		// Объект криптографии
 		std::unique_ptr <awh::crypto_t> _crypto;
 	public:

@@ -3640,18 +3640,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param direct направление разбора сообщений
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
 				 * @param direct direction of the parsing of the messages
-				 * @param fmk    object of the framework
-				 * @param log    object for the work with the logs
 				 *
 				 * \~
 				 */
-				explicit Parser_HTTP3(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Parser_HTTP3(const direct_t direct) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

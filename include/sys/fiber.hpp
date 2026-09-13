@@ -71,11 +71,6 @@
 #include <functional>
 
 /**
- * Подключаем наши модули
- */
-#include "log.hpp"
-
-/**
  * Снимаем на время объявлений макросы, чьи имена заняты
  * членами перечислений ниже (возврат в конце файла в конце файла)
  */
@@ -352,7 +347,6 @@ namespace awh {
 		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
 		 *
 		 * @param task функция, выполняемая волокном
-		 * @param log  объект работы с логами
 		 * @return     заведённое волокно, либо nullptr при отказе
 		 *
 		 * \~english
@@ -361,12 +355,11 @@ namespace awh {
 		 * @details The fiber is made SLEEPING: its work begins with the first wake-up.
 		 *
 		 * @param task function performed by the fiber
-		 * @param log  object of the working with logs
 		 * @return     made fiber, or nullptr on failure
 		 *
 		 * \~
 		 */
-		ctx_t * spawn(task_t task, const log_t * log) noexcept;
+		ctx_t * spawn(task_t task) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция заведения волокна
@@ -389,30 +382,6 @@ namespace awh {
 		 * \~
 		 */
 		ctx_t * spawn(task_t task, const size_t size) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция заведения волокна
-		 *
-		 * @details Волокно заводится СПЯЩИМ: работа его начнётся первым пробуждением.
-		 *
-		 * @param task функция, выполняемая волокном
-		 * @param size размер стека волокна в октетах
-		 * @param log  объект работы с логами
-		 * @return     заведённое волокно, либо nullptr при отказе
-		 *
-		 * \~english
-		 * @brief Function of making the fiber
-		 *
-		 * @details The fiber is made SLEEPING: its work begins with the first wake-up.
-		 *
-		 * @param task function performed by the fiber
-		 * @param size size of the fiber stack in octets
-		 * @param log  object of the working with logs
-		 * @return     made fiber, or nullptr on failure
-		 *
-		 * \~
-		 */
-		ctx_t * spawn(task_t task, const size_t size = STACK_SIZE, const log_t * log = nullptr) noexcept;
 	};
 };
 

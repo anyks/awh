@@ -29,12 +29,8 @@
  *
  */
 void FdsFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект работы с файловыми дескрипторами
-	this->_fds = std::make_unique <awh::fds_t> (this->_log.get());
+	this->_fds = std::make_unique <awh::fds_t> ();
 }
 
 /**

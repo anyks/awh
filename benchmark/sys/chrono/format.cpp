@@ -126,7 +126,7 @@ namespace {
 	 */
 	static outcome_t formatting(const char * format) noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель длин сформированных записей даты
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -153,7 +153,7 @@ namespace {
 	 */
 	static outcome_t stripping() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель длин переведённых записей даты
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -178,7 +178,7 @@ namespace {
 	 */
 	static outcome_t zoning() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель длин сформированных обозначений временной зоны
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции

@@ -35,6 +35,7 @@
  */
 #include <regex/grok/grok.hpp>
 #include <num/lexical/lexical.hpp>
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -811,23 +812,18 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 	 */
 	if(!unfolded) {
 		/**
-		 * Если объект журнала событий передан
+		 * Если включён режим отладки
 		 */
-		if(this->_log != nullptr) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, make_tuple(string(pattern), flags), log_t::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Grok pattern \"%s\" could not be expanded", log_t::flag_t::WARNING, string(pattern).c_str());
-			#endif
-		}
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			awh::log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {string(pattern), flags}, awh::log::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			awh::log::print("Grok pattern \"%s\" could not be expanded", awh::log::flag_t::WARNING, string(pattern).c_str());
+		#endif
 		// Выводим собранный шаблон Grok
 		return result;
 	}
@@ -1167,7 +1163,7 @@ namespace {
  */
 awh::grok::json_t awh::Grok::json(const vector <value_t> & values) const noexcept {
 	// Создаём сборщик значения JSON
-	awh::codec::json::builder_t builder(this->_log);
+	awh::codec::json::builder_t builder;
 	// Выполняем открытие объекта значения JSON
 	builder.object();
 	/**
@@ -1325,12 +1321,9 @@ awh::Grok::error_t awh::Grok::error() const noexcept {
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::Grok::Grok(const log_t * log) noexcept :
- _regexp(log), _storage(log), _method(compressor::method_t::NONE), _error(error_t::NONE),
- _log(log) {
+awh::Grok::Grok() noexcept :
+ _regexp(), _storage(), _method(compressor::method_t::NONE), _error(error_t::NONE) {
 	// Выполняем размещение реестра шаблонов
 	this->_patterns.reserve(awh::grok::PATTERNS_COUNT);
 	/**

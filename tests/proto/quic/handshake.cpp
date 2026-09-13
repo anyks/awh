@@ -136,9 +136,9 @@ namespace {
  */
 TEST_F(QuicFixture, HandshakeCompleteTest){
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку эндпоинта клиента
 	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
@@ -167,9 +167,9 @@ TEST_F(QuicFixture, HandshakeCompleteTest){
  */
 TEST_F(QuicFixture, HandshakeAlpnTest){
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку эндпоинта клиента
 	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
@@ -191,9 +191,9 @@ TEST_F(QuicFixture, HandshakeAlpnTest){
  */
 TEST_F(QuicFixture, HandshakeTransportParamsTest){
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку эндпоинта клиента
 	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
@@ -229,9 +229,9 @@ TEST_F(QuicFixture, HandshakeTransportParamsTest){
  */
 TEST_F(QuicFixture, HandshakeKeysTest){
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку эндпоинта клиента
 	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
@@ -297,9 +297,9 @@ TEST_F(QuicFixture, HandshakeAlpnMismatchTest){
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT, context, this->_security->coder(), this->_log.get());
+	handshake_t client(endpoint_t::CLIENT, context, this->_security->coder());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку эндпоинта клиента
 	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
@@ -342,9 +342,9 @@ TEST_F(QuicFixture, HandshakeVerifyFailedTest){
 	// Включаем проверку сертификата удалённого узла без доверенных центров
 	coder.validateServerNameIndication(context, true);
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT, context, coder, this->_log.get());
+	handshake_t client(endpoint_t::CLIENT, context, coder);
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), coder, this->_log.get());
+	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), coder);
 	// Выполняем подготовку эндпоинта клиента
 	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
@@ -368,11 +368,11 @@ TEST_F(QuicFixture, HandshakeVerifyFailedTest){
  */
 TEST_F(QuicFixture, HandshakeMisuseTest){
 	// Создаём эндпоинт клиента без транспортных параметров
-	handshake_t empty(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	handshake_t empty(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Проверяем что начало хендшейка без транспортных параметров невозможно
 	ASSERT_EQ(empty.start(), status_t::ERROR);
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	handshake_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Выполняем подготовку эндпоинта клиента
 	ASSERT_TRUE(::setup(client));
 	// Тестовые данные CRYPTO-фрейма (несуществующий тип сообщения хендшейка TLS)
@@ -384,7 +384,7 @@ TEST_F(QuicFixture, HandshakeMisuseTest){
 	// Проверяем что повторное начало хендшейка невозможно
 	ASSERT_EQ(client.start(), status_t::ERROR);
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	handshake_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку эндпоинта сервера
 	ASSERT_TRUE(::setup(server));
 	// Выполняем начало хендшейка на сервере

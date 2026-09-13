@@ -273,7 +273,7 @@ namespace {
 		// Полезная нагрузка одного обмена
 		static uint8_t payload[ECHO_PAYLOAD] = {0};
 		// Создаём объект асинхронного движка ввода-вывода
-		awh::engine::io_t io(framework(), logger());
+		awh::engine::io_t io;
 		// Получаем свободный порт петлевого интерфейса
 		const uint16_t number = port();
 		// Добавляем новое событие сервера

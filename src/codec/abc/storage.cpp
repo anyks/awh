@@ -28,30 +28,15 @@
  * Подключаем заголовочный файл
  */
 #include <codec/abc/storage.hpp>
+#include <sys/log.hpp>
 
 /**
- * Стандартные заголовочные файлы
+ * @note Заголовков системы здесь нет намеренно: после перехода на модуль файловой системы
+ *       AWH хранилище системных вызовов не делает вовсе. Сброс на носитель, усечение,
+ *       запись и чтение идут через `awh::Filesystem`, а разводку систем - `F_FULLFSYNC`
+ *       у Apple, `fdatasync` где он есть, `FlushFileBuffers` под MS Windows - держит она.
+ *       Возврат этих заголовков означал бы, что хранилище снова полезло к системе само
  */
-#include <cerrno>
-
-/**
- * Заголовочные файлы операционной системы
- *
- * @note Сброс записанного из ядра на носитель зовётся напрямую: у стандартной библиотеки
- *       посредника ему нет
- */
-#if !defined(_WIN32) && !defined(_WIN64)
-	#include <unistd.h>
-	/**
-	 * У систем Apple сброс доводится до пластины лишь особым доводом управления
-	 * описателем, оттого здесь и заголовок его
-	 */
-	#if defined(__APPLE__) || defined(__MACH__)
-		#include <fcntl.h>
-	#endif
-#else
-	#include <io.h>
-#endif
 
 /**
  * Используем стандартное пространство имён
@@ -60,23 +45,6 @@ using namespace std;
 using namespace awh;
 using namespace awh::codec;
 
-/**
- * @brief Конструктор
- *
- * @param log объект для работы с логами
- *
- */
-awh::codec::abc::Storage::Storage(const fmk_t * fmk, const log_t * log) noexcept :
- _fs(fmk, log), _sync(sync_t::FULL), _opened(false),
- _length(0), _error(error_t::NONE), _log(log) {}
-/**
- * @brief Деструктор
- *
- */
-awh::codec::abc::Storage::~Storage() noexcept {
-	// Выполняем закрытие файла контейнера
-	this->close();
-}
 /**
  * @brief Метод объявления отказа работы с носителем
  *
@@ -94,20 +62,20 @@ bool awh::codec::abc::Storage::fail(const error_t error) noexcept {
 	 *          лишь снимает прежний, и донесение о нём наполняло бы журнал записями
 	 *          «no error» на всякий успешный вызов. Проверено на себе
 	 */
-	if((error != error_t::NONE) && (this->_log != nullptr)){
+	if(error != error_t::NONE){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("ABC: %s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (error)),
-			 log_t::flag_t::WARNING, abc::message(error));
+			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
+			 awh::log::flag_t::WARNING, abc::message(error));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("ABC: %s", log_t::flag_t::WARNING, abc::message(error));
+			awh::log::print("ABC: %s", awh::log::flag_t::WARNING, abc::message(error));
 		#endif
 	}
 	// Сообщаем, что работа отвечена отказом
@@ -798,4 +766,19 @@ const string & awh::codec::abc::Storage::filename() const noexcept {
 awh::codec::abc::error_t awh::codec::abc::Storage::error() const noexcept {
 	// Выводим код отказа работы с файлом контейнера
 	return this->_error;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::codec::abc::Storage::Storage() noexcept :
+ _fs(), _sync(sync_t::FULL), _opened(false),
+ _length(0), _error(error_t::NONE) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::codec::abc::Storage::~Storage() noexcept {
+	// Выполняем закрытие файла контейнера
+	this->close();
 }

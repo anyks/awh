@@ -59,6 +59,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <client/socks5.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -129,13 +131,13 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Failed to connect to remote server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING);
+								awh::log::debug("Failed to connect to remote server", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status), static_cast <uint16_t> (index)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
+								awh::log::print("Failed to connect to remote server", awh::log::flag_t::WARNING);
 							#endif
 						}
 					// Если подключение выполнено
@@ -149,13 +151,13 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
+									awh::log::debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status), static_cast <uint16_t> (index)}, awh::log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_id.eid);
+									awh::log::print("This client ID=%u cannot be started", awh::log::flag_t::WARNING, this->_id.eid);
 								#endif
 							}
 						// Если клиент запущен удачно, выполняем функцию обратного вызова
@@ -217,7 +219,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 					// Выполняем разрешение доменного имени
 					if(!this->_dns.client->resolve(this->_dns.id, this->_unit->client.family(this->_id.eid), this->_host, this->_dns.alive.load(std::memory_order_acquire))){
 						// Создаём текст ошибки разрешения доменного имени
-						const string error = this->_fmk->format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
+						const string error = awh::fmk::format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -225,13 +227,13 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING, error.c_str());
+								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status), static_cast <uint16_t> (index)}, awh::log::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
 							#endif
 						// Выполняем функцию обратного вызова
 						} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::NOT_FOUND, error);
@@ -273,13 +275,13 @@ void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, make_tuple(eid, ok), log_t::flag_t::WARNING);
+							awh::log::debug("Failed to send data to remote server", __PRETTY_FUNCTION__, {eid, ok}, awh::log::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+							awh::log::print("Failed to send data to remote server", awh::log::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -363,13 +365,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+									awh::log::debug("TLS decryption data is failed", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("TLS decryption data is failed", log_t::flag_t::WARNING);
+									awh::log::print("TLS decryption data is failed", awh::log::flag_t::WARNING);
 								#endif
 							}
 						}
@@ -392,13 +394,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+											awh::log::debug("TLS decryption data is failed", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("TLS decryption data is failed", log_t::flag_t::WARNING);
+											awh::log::print("TLS decryption data is failed", awh::log::flag_t::WARNING);
 										#endif
 									}
 								}
@@ -417,13 +419,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
 						#endif
 					// Выполняем функцию обратного вызова
 					} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::NOT_FOUND, error);
@@ -466,13 +468,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status).c_str());
+									awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status).c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status).c_str());
+									awh::log::print("%s", awh::log::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status).c_str());
 								#endif
 							// Выполняем функцию обратного вызова
 							} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(this->_ctx.status).c_str());
@@ -598,13 +600,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+												awh::log::debug("Failed to send data to remote server", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+												awh::log::print("Failed to send data to remote server", awh::log::flag_t::WARNING);
 											#endif
 										}
 									// Выходим из функции
@@ -635,7 +637,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												// Выполняем разрешение хоста текущего сервера
 												if(!this->_dns.client->resolve(this->_dns.id, this->_unit->client.family(this->_endpoint.udp.eid), awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain, this->_dns.alive.load(std::memory_order_acquire))){
 													// Создаём текст ошибки разрешения хоста текущего сервера
-													const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain.c_str());
+													const string error = awh::fmk::format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain.c_str());
 													// Если функция обратного вызова не установлена
 													if(!this->_callback.is("error")){
 														/**
@@ -643,13 +645,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														 */
 														#if DEBUG_MODE
 															// Записываем ошибку в лог
-															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
+															awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Записываем ошибку в лог
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															awh::log::print("%s", awh::log::flag_t::WARNING, error.c_str());
 														#endif
 													// Выполняем функцию обратного вызова
 													} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::NOT_FOUND, error);
@@ -662,13 +664,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												 */
 												#if DEBUG_MODE
 													// Записываем ошибку в лог
-													this->_log->debug("This client does not support working with domain names, since the DNS resolver is not found", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+													awh::log::debug("This client does not support working with domain names, since the DNS resolver is not found", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
 													// Записываем ошибку в лог
-													this->_log->print("This client does not support working with domain names, since the DNS resolver is not found", log_t::flag_t::WARNING);
+													awh::log::print("This client does not support working with domain names, since the DNS resolver is not found", awh::log::flag_t::WARNING);
 												#endif
 											}
 											// Выполняем функцию обратного вызова
@@ -700,13 +702,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															 */
 															#if DEBUG_MODE
 																// Записываем ошибку в лог
-																this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+																awh::log::debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Записываем ошибку в лог
-																this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+																awh::log::print("This client ID=%u cannot be started", awh::log::flag_t::WARNING, eid);
 															#endif
 														}
 													}
@@ -719,13 +721,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														 */
 														#if DEBUG_MODE
 															// Записываем ошибку в лог
-															this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+															awh::log::debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Записываем ошибку в лог
-															this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
+															awh::log::print("Client parameters were not committed for node with ID=%u", awh::log::flag_t::WARNING, eid);
 														#endif
 													}
 												}
@@ -738,13 +740,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													 */
 													#if DEBUG_MODE
 														// Записываем ошибку в лог
-														this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+														awh::log::debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Записываем ошибку в лог
-														this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
+														awh::log::print("Port and address of the remote server for connection were not set correctly for node with ID=%u", awh::log::flag_t::WARNING, eid);
 													#endif
 												}
 											}
@@ -804,13 +806,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+												awh::log::debug("TLS handshake is failed", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												this->_log->print("TLS handshake is failed", log_t::flag_t::WARNING);
+												awh::log::print("TLS handshake is failed", awh::log::flag_t::WARNING);
 											#endif
 										}
 									// Выходим из функции
@@ -829,13 +831,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+									awh::log::debug("Client event ID not found", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
+									awh::log::print("Client event ID not found", awh::log::flag_t::WARNING);
 								#endif
 							}
 							// Выполняем функцию обратного вызова
@@ -858,13 +860,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+											awh::log::debug("Failed to send data to remote server", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+											awh::log::print("Failed to send data to remote server", awh::log::flag_t::WARNING);
 										#endif
 									}
 								// Выходим из функции
@@ -883,13 +885,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Failed to parse data from proxy server", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+							awh::log::debug("Failed to parse data from proxy server", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Failed to parse data from proxy server", log_t::flag_t::WARNING);
+							awh::log::print("Failed to parse data from proxy server", awh::log::flag_t::WARNING);
 						#endif
 					// Выполняем функцию обратного вызова
 					} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::CONNECTION_FAIL, "Failed to parse data from proxy server");
@@ -906,13 +908,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -982,13 +984,13 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING);
+												awh::log::debug("TLS handshake is failed", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												this->_log->print("TLS handshake is failed", log_t::flag_t::WARNING);
+												awh::log::print("TLS handshake is failed", awh::log::flag_t::WARNING);
 											#endif
 										}
 									}
@@ -1003,13 +1005,13 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										awh::log::debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										awh::log::print("This client ID=%u cannot be started", awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 									#endif
 								}
 							}
@@ -1022,13 +1024,13 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+									awh::log::debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+									awh::log::print("Client parameters were not committed for node with ID=%u", awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 								#endif
 							}
 						}
@@ -1041,13 +1043,13 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+								awh::log::debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+								awh::log::print("Port and address of the remote server for connection were not set correctly for node with ID=%u", awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 							#endif
 						}
 					}
@@ -1063,13 +1065,13 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1204,13 +1206,13 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+									awh::log::debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), buffer, size}, awh::log::flag_t::WARNING, ::__awh_size__);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+									awh::log::print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", awh::log::flag_t::WARNING, ::__awh_size__);
 								#endif
 								// Выходим из функции
 								return;
@@ -1222,13 +1224,13 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+								awh::log::debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), buffer, size}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
+								awh::log::print("Failed to generate buffer for UDP packet", awh::log::flag_t::WARNING);
 							#endif
 						}
 						// Если буфер полезной нагрузки для отправки не пустой
@@ -1242,13 +1244,13 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+										awh::log::debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), buffer, size}, awh::log::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
+										awh::log::print("Data cannot be sent to the server", awh::log::flag_t::WARNING);
 									#endif
 								}
 							}
@@ -1271,13 +1273,13 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1313,13 +1315,13 @@ bool awh::client::Socks5::pause() noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+					awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+					awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
 				#endif
 			}
 		/**
@@ -1331,13 +1333,13 @@ bool awh::client::Socks5::pause() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1375,13 +1377,13 @@ bool awh::client::Socks5::resume() noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+					awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+					awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
 				#endif
 			}
 		/**
@@ -1393,13 +1395,13 @@ bool awh::client::Socks5::resume() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1454,13 +1456,13 @@ bool awh::client::Socks5::recv() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1595,13 +1597,13 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+							awh::log::debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, ::__awh_size__);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+							awh::log::print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", awh::log::flag_t::WARNING, ::__awh_size__);
 						#endif
 					}
 				// Если извлечение буфера данных запроса не выполнено
@@ -1611,13 +1613,13 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+						awh::log::debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
+						awh::log::print("Failed to generate buffer for UDP packet", awh::log::flag_t::WARNING);
 					#endif
 				}
 			}
@@ -1630,13 +1632,13 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1684,13 +1686,13 @@ bool awh::client::Socks5::bandwidth(const event::limiting_t limiting, string_vie
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+				awh::log::debug("Client is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (limiting), bandwidth}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+				awh::log::print("Client is not initialized", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -1702,13 +1704,13 @@ bool awh::client::Socks5::bandwidth(const event::limiting_t limiting, string_vie
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (limiting), bandwidth}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1792,13 +1794,13 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+											awh::log::debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+											awh::log::print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", awh::log::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
 										#endif
 									}
 								// Если установка опций события выполнена, возвращаем положительный результат
@@ -1812,13 +1814,13 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										awh::log::debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										awh::log::print("Failed to configure client events settings for node with ID=%u", awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 									#endif
 								}
 							}
@@ -1845,13 +1847,13 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+											awh::log::debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+											awh::log::print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", awh::log::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
 										#endif
 									}
 								// Если установка опций события выполнена, возвращаем положительный результат
@@ -1865,13 +1867,13 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										awh::log::debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										awh::log::print("Failed to configure client events settings for node with ID=%u", awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 									#endif
 								}
 							}
@@ -1890,13 +1892,13 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -1949,13 +1951,13 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+												awh::log::debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {addr, port}, awh::log::flag_t::WARNING, addr, this->_endpoint.udp.eid);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+												awh::log::print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", awh::log::flag_t::WARNING, addr, this->_endpoint.udp.eid);
 											#endif
 										}
 									// Если установка опций события выполнена, возвращаем положительный результат
@@ -1969,13 +1971,13 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+											awh::log::debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {addr, port}, awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+											awh::log::print("Failed to configure client events settings for node with ID=%u", awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 										#endif
 									}
 								}
@@ -2000,13 +2002,13 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Записываем ошибку в лог
-												this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+												awh::log::debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {addr, port}, awh::log::flag_t::WARNING, addr, this->_endpoint.udp.eid);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Записываем ошибку в лог
-												this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+												awh::log::print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", awh::log::flag_t::WARNING, addr, this->_endpoint.udp.eid);
 											#endif
 										}
 									// Если установка опций события выполнена, возвращаем положительный результат
@@ -2020,13 +2022,13 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+											awh::log::debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {addr, port}, awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+											awh::log::print("Failed to configure client events settings for node with ID=%u", awh::log::flag_t::WARNING, this->_endpoint.udp.eid);
 										#endif
 									}
 								}
@@ -2046,13 +2048,13 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {addr, port}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2143,13 +2145,13 @@ bool awh::client::Socks5::endpoint(const net::attr_t * attr) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2238,13 +2240,13 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {addr, port}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2254,45 +2256,36 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::client::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
- client_t(fmk, log), _socks5(fmk, log) {}
+awh::client::Socks5::Socks5() noexcept :
+ client_t(), _socks5() {}
 /**
  * @brief Конструктор
  *
  * @param dns объект DNS-резолвера
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  *
  */
-awh::client::Socks5::Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(dns, fmk, log), _socks5(fmk, log) {}
+awh::client::Socks5::Socks5(unit::dns_t * dns) noexcept :
+ client_t(dns), _socks5() {}
 /**
  * @brief Конструктор
  *
  * @param ctl   идентификатор контекста безопасности
  * @param coder объект транспортного уровня безопасности
- * @param fmk   объект фреймворка
- * @param log   объект для работы с логами
  *
  */
-awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(ctl, coder, fmk, log), _socks5(fmk, log) {}
+awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder) noexcept :
+ client_t(ctl, coder), _socks5() {}
 /**
  * @brief Конструктор
  *
  * @param ctl   идентификатор контекста безопасности
  * @param coder объект транспортного уровня безопасности
  * @param dns   объект DNS-резолвера
- * @param fmk   объект фреймворка
- * @param log   объект для работы с логами
  *
  */
-awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(ctl, coder, dns, fmk, log), _socks5(fmk, log) {}
+awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns) noexcept :
+ client_t(ctl, coder, dns), _socks5() {}
 /**
  * @brief Деструктор
  *

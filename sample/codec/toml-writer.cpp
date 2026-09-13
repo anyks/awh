@@ -29,32 +29,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/toml/writer.hpp>
-#include <sys/log.hpp>
-
-/**
- * @brief Пространство имён образца
- *
- */
-namespace {
-	/**
-	 * @brief Функция получения объекта для работы с логами
-	 *
-	 * @details Кодек связку берёт конструктором, а построения образца стоят и вне
-	 *          main(): объект заводится статикою местною, дабы всякое построение
-	 *          образца писало сообщения в один и тот же журнал
-	 *
-	 * @return объект для работы с логами
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект фреймворка
-		static awh::fmk_t fmk;
-		// Объект для работы с логами
-		static awh::log_t log(&fmk);
-		// Выводим объект для работы с логами
-		return &log;
-	}
-}
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -75,7 +50,7 @@ using namespace std;
  */
 static void build(const string & title, const codec::toml::writer_t::settings_t & settings) noexcept {
 	// Создаём объект записи текста настроек
-	codec::toml::writer_t writer(::logger(), settings);
+	codec::toml::writer_t writer(settings);
 	// Выполняем запись примечания
 	writer.comment("собрано приложением");
 	// Выполняем запись имени ключа пары верхнего уровня
@@ -163,6 +138,13 @@ static void build(const string & title, const codec::toml::writer_t::settings_t 
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Блокируем неиспользуемую переменную
 	(void) argc;
 	// Блокируем неиспользуемую переменную
@@ -178,7 +160,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выполняем сборку текста настроек с отступами
 	::build("отступы без пустых строк", settings);
 	// Создаём объект записи текста настроек
-	codec::toml::writer_t writer(::logger());
+	codec::toml::writer_t writer;
 	// Выполняем запись имени ключа пары
 	writer.key("value");
 	/**

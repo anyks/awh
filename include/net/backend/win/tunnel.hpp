@@ -127,7 +127,6 @@
  */
 #include <net/net.hpp>
 #include <net/event.hpp>
-#include <sys/log.hpp>
 
 /**
  * \~russian
@@ -195,7 +194,6 @@ namespace awh {
 			 * @param type   вид заводимого устройства
 			 * @param driver драйвер, каким устройство заводится
 			 * @param name   название заводимого устройства
-			 * @param log    объект ведения журнала
 			 * @return       дескриптор заведённого устройства
 			 *
 			 * \~english
@@ -205,12 +203,11 @@ namespace awh {
 			 * @param type   kind of the started device
 			 * @param driver driver the device is started by
 			 * @param name   name of the started device
-			 * @param log    object of the keeping of the log
 			 * @return       descriptor of the started device
 			 *
 			 * \~
 			 */
-			net::socket_t create(const event::eth_t type, const driver_t driver, string & name, const log_t * log) noexcept;
+			net::socket_t create(const event::eth_t type, const driver_t driver, string & name) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция проверки доступности драйвера туннельных устройств
@@ -252,7 +249,6 @@ namespace awh {
 			 * @param sock   дескриптор туннельного устройства
 			 * @param local  адрес своего конца туннеля
 			 * @param remote адрес встречного конца туннеля
-			 * @param log    объект ведения журнала
 			 * @return       результат выполнения сообщения
 			 *
 			 * \~english
@@ -269,7 +265,6 @@ namespace awh {
 			 * @param sock   descriptor of the tunnel device
 			 * @param local  address of the own end of the tunnel
 			 * @param remote address of the opposite end of the tunnel
-			 * @param log    object of the keeping of the log
 			 * @return       result of the performance of the telling
 			 *
 			 * \~
@@ -297,24 +292,22 @@ namespace awh {
 			 */
 			void threadSafety(const bool mode) noexcept;
 
-			bool configure(const net::socket_t sock, const uint32_t local, const uint32_t remote, const log_t * log) noexcept;
+			bool configure(const net::socket_t sock, const uint32_t local, const uint32_t remote) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция устранения туннельного устройства
 			 *
 			 * @param sock дескриптор устраняемого устройства
-			 * @param log  объект ведения журнала
 			 * @return     результат выполнения устранения
 			 *
 			 * \~english
 			 * @brief Function of eliminating a tunnel device
 			 * @param sock descriptor of the eliminated device
-			 * @param log  object of the keeping of the log
 			 * @return     result of the performance of the elimination
 			 *
 			 * \~
 			 */
-			bool destroy(const net::socket_t sock, const log_t * log) noexcept;
+			bool destroy(const net::socket_t sock) noexcept;
 			/**
 			 * \~russian
 			 * @brief Функция поиска туннельного устройства по его названию

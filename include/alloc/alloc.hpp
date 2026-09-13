@@ -80,7 +80,6 @@
 #include "trace.hpp"
 #include "source.hpp"
 #include "profile.hpp"
-#include "../sys/log.hpp"
 #include "../sys/macro/global.hpp"
 
 /**
@@ -448,18 +447,16 @@ namespace awh {
 				 *       время доводки модуля
 				 *
 				 * @param options настройки распределителя
-				 * @param log     объект журнала
 				 * @return        признак состоявшегося захвата
 				 *
 				 * \~english
 				 * @brief Method of capturing process memory allocation
 				 *
 				 * @param options allocator settings
-				 * @param log     logging object
 				 * @return        flag of the capture having taken place
 				 *
 				 */
-				static bool capture(const options_t & options, const log_t * log) noexcept;
+				static bool capture(const options_t & options) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод снятия захвата выделения памяти процесса

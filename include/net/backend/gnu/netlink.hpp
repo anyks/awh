@@ -102,11 +102,11 @@
  */
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <sys/macro/global.hpp>
 
 /**
  * Наши модули
  */
-#include "../../../sys/log.hpp"
 
 /**
  * \~russian
@@ -160,9 +160,6 @@ namespace awh {
 				 * \~
 				 */
 				using handler_t = function <bool (const struct nlmsghdr *)>;
-			private:
-				// Объект работы с логами
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -302,15 +299,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param log объект работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Netlink(const log_t * log) noexcept : _log(log) {}
+				explicit Netlink() noexcept {}
 				/**
 				 * \~russian
 				 * @brief Деструктор

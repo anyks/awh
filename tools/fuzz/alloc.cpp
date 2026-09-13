@@ -63,12 +63,13 @@
 #include <thread>
 #include <vector>
 #include <atomic>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
 #if !defined(AWH_FUZZ_SYSTEM)
-	#include <sys/log.hpp>
 #endif
 
 /**
@@ -78,7 +79,7 @@
  * путях отказа: подставляем пустое тело вместо связывания со всем деревом
  */
 #if !defined(AWH_FUZZ_SYSTEM)
-	void awh::Logging::print(std::string_view, flag_t, ...) const noexcept {}
+	void awh::log::print(std::string_view, awh::log::flag_t, ...) noexcept {}
 #endif
 
 /**
@@ -734,6 +735,13 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char ** argv) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Определяем зерно прогона
 	::seed = ((argc > 1) ? ::strtoull(argv[1], nullptr, 10) : 1);
 	// Определяем число шагов нагрузки на поток
@@ -767,7 +775,7 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 		 * им, и уступить её нам они не могут. Ворошителю захват и не нужен - он зовёт наши
 		 * входы сам, - а нужен лишь установщик настроек, заводящий кэши потоков
 		 */
-		const bool seized = awh::alloc::Allocator::capture(options, nullptr);
+		const bool seized = awh::alloc::Allocator::capture(options);
 		/**
 		 * Заводим распределитель ПЕРВОЙ выдачей, прежде задания настроек
 		 *

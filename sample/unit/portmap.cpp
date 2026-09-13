@@ -24,6 +24,8 @@
  * Подключаем заголовочный файл проекта
  */
 #include <unit/portmap.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -44,19 +46,20 @@ using namespace placeholders;
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Отключаем неиспользуемые переменные
 	(void) argc;
 	(void) argv;
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект работы с логами
-	log_t log(&fmk);
-	// Устанавливаем объект работы с логами
-	fmk.setLogger(&log);
 	// Устанавливаем название сервиса
-	log.name("Portmap");
+	awh::log::name("Portmap");
 	// Создаём объект модуля перенаправления портов
-	unit::portmap_t portmap(&fmk, &log);
+	unit::portmap_t portmap;
 	/**
 	 * Устанавливаем вид опроса маршрутизатора
 	 *
@@ -194,9 +197,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @param type  договор, по которому вёлся обмен
 	 *
 	 */
-	portmap.on <void (const unit::portmap_t::error_t, const unit::portmap_t::type_t)> ("failure", [&portmap, &log](const unit::portmap_t::error_t error, const unit::portmap_t::type_t type) noexcept -> void {
+	portmap.on <void (const unit::portmap_t::error_t, const unit::portmap_t::type_t)> ("failure", [&portmap](const unit::portmap_t::error_t error, const unit::portmap_t::type_t type) noexcept -> void {
 		// Записываем в лог сообщение об отказе перенаправления
-		log.print("Portmapping failed: code %u (protocol %u)", log_t::flag_t::WARNING, static_cast <uint16_t> (error), static_cast <uint16_t> (type));
+		awh::log::print("Portmapping failed: code %u (protocol %u)", awh::log::flag_t::WARNING, static_cast <uint16_t> (error), static_cast <uint16_t> (type));
 		// Выполняем остановку работы модуля
 		portmap.stop();
 	}, _1, _2);
@@ -208,9 +211,9 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @param description описание ошибки события обмена
 	 *
 	 */
-	portmap.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
+	portmap.on <void (const event::id_t, const event::error_t, const string &)> ("error", [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 		// Записываем в лог сообщение об ошибке события обмена
-		log.print("Event %u error: %s (code %u)", log_t::flag_t::CRITICAL, eid, description.c_str(), static_cast <uint16_t> (error));
+		awh::log::print("Event %u error: %s (code %u)", awh::log::flag_t::CRITICAL, eid, description.c_str(), static_cast <uint16_t> (error));
 	}, _1, _2, _3);
 	/**
 	 * Выполняем запрос внешнего адреса маршрутизатора

@@ -67,6 +67,8 @@
  */
 #include <sys/locker.hpp>
 #include <net/eth/socket.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -233,14 +235,13 @@ namespace {
 	 * @brief Функция получения IPv4-адреса активного сетевого интерфейса по его имени
 	 *
 	 * @param out  переменная для записи найденного IPv4-адреса (сетевой порядок байт)
-	 * @param fmk  объект фреймворка
 	 * @param name имя сетевого интерфейса
 	 * @return     результат поиска IPv4-адреса
 	 *
 	 */
-	static bool resolveIfaceIPv4(uint32_t & out, const fmk_t * fmk, string_view name) noexcept {
+	static bool resolveIfaceIPv4(uint32_t & out, string_view name) noexcept {
 		// Текущая метка времени в миллисекундах
-		const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 		/**
 		 * Выполняем до двух попыток: чтение из кеша и повтор после принудительного обновления
 		 */
@@ -259,7 +260,7 @@ namespace {
 					 */
 					for(const IfaceEntry & entry : ::__awh_iface_cache__.entries){
 						// Если найден активный IPv4-интерфейс с искомым именем
-						if((entry.family == AF_INET) && entry.up && fmk->compare(entry.name, name)){
+						if((entry.family == AF_INET) && entry.up && awh::fmk::compare(entry.name, name)){
 							// Сохраняем найденный IPv4-адрес
 							out = entry.address4;
 							// Сообщаем об успехе
@@ -284,14 +285,13 @@ namespace {
 	/**
 	 * @brief Функция получения индекса сетевого интерфейса по его IPv6-адресу
 	 *
-	 * @param fmk     объект фреймворка
 	 * @param address IPv6-адрес сетевого интерфейса (16 байт)
 	 * @return        индекс сетевого интерфейса (0 - интерфейс не найден)
 	 *
 	 */
-	static uint32_t resolveIfaceIndexIPv6(const fmk_t * fmk, const uint8_t * address) noexcept {
+	static uint32_t resolveIfaceIndexIPv6(const uint8_t * address) noexcept {
 		// Текущая метка времени в миллисекундах
-		const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 		/**
 		 * Выполняем до двух попыток: чтение из кеша и повтор после принудительного обновления
 		 */
@@ -361,10 +361,10 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(sock),
-				log_t::flag_t::CRITICAL,
+				{sock},
+				awh::log::flag_t::CRITICAL,
 				::strerror(errno)
 			);
 		/**
@@ -372,7 +372,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -404,12 +404,12 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event)
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -417,7 +417,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -430,12 +430,12 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event)
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -443,7 +443,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -485,13 +485,13 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event),
 							msec
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -499,7 +499,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -512,13 +512,13 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event),
 							msec
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -526,7 +526,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -601,12 +601,12 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event)
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -614,7 +614,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -629,12 +629,12 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event)
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -642,7 +642,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -675,13 +675,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -689,7 +689,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -705,13 +705,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -719,7 +719,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -732,13 +732,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -746,7 +746,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем результат
 				return result;
@@ -762,13 +762,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"%s", __PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							sock,
 							static_cast <uint16_t> (event),
 							size
-						), log_t::flag_t::CRITICAL,
+						}, awh::log::flag_t::CRITICAL,
 						::strerror(errno)
 					);
 				/**
@@ -776,7 +776,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
@@ -807,27 +807,27 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 				// IPv4-адрес найденного сетевого интерфейса
 				uint32_t address = 0;
 				// Получаем IPv4-адрес активного сетевого интерфейса по его имени (из кеша или через getifaddrs)
-				if(!::resolveIfaceIPv4(address, this->_fmk, ifname)){
+				if(!::resolveIfaceIPv4(address, ifname)){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"Unable to resolve address of network interface",
 							__PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							), log_t::flag_t::WARNING
+							}, awh::log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to resolve address of network interface", log_t::flag_t::WARNING);
+						awh::log::print("Unable to resolve address of network interface", awh::log::flag_t::WARNING);
 					#endif
 					// Возвращаем пустой результат
 					return result;
@@ -843,13 +843,13 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -857,7 +857,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -874,21 +874,21 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"Unable to get index of network interface",
 							__PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							), log_t::flag_t::WARNING
+							}, awh::log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to get index of network interface", log_t::flag_t::WARNING);
+						awh::log::print("Unable to get index of network interface", awh::log::flag_t::WARNING);
 					#endif
 					// Возвращаем пустой результат
 					return result;
@@ -900,13 +900,13 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -914,7 +914,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -926,21 +926,21 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"Interface name is empty",
 				__PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					sock,
 					static_cast <uint16_t> (family),
 					ifname
-				), log_t::flag_t::WARNING
+				}, awh::log::flag_t::WARNING
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Interface name is empty", log_t::flag_t::WARNING);
+			awh::log::print("Interface name is empty", awh::log::flag_t::WARNING);
 		#endif
 	}
 	// Возвращаем результат
@@ -980,12 +980,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					sock, cnt,
 					idle, intvl
-				), log_t::flag_t::WARNING,
+				}, awh::log::flag_t::WARNING,
 				::strerror(errno)
 			);
 		/**
@@ -993,7 +993,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return result;
@@ -1031,12 +1031,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					sock, cnt,
 					idle, intvl
-				), log_t::flag_t::WARNING,
+				}, awh::log::flag_t::WARNING,
 				::strerror(errno)
 			);
 		/**
@@ -1044,7 +1044,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
 		return result;
@@ -1072,12 +1072,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
-					make_tuple(
+					{
 						sock, cnt,
 						idle, intvl
-					), log_t::flag_t::WARNING,
+					}, awh::log::flag_t::WARNING,
 					::strerror(errno)
 				);
 			/**
@@ -1085,7 +1085,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Выходим из функции
 			return result;
@@ -1098,12 +1098,12 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					sock, cnt,
 					idle, intvl
-				), log_t::flag_t::WARNING,
+				}, awh::log::flag_t::WARNING,
 				::strerror(errno)
 			);
 		/**
@@ -1111,7 +1111,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -1147,12 +1147,12 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family)
-							), log_t::flag_t::CRITICAL,
+							}, awh::log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1160,7 +1160,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1173,12 +1173,12 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family)
-							), log_t::flag_t::CRITICAL,
+							}, awh::log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1186,7 +1186,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1241,13 +1241,13 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (dscp)
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1255,7 +1255,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1268,13 +1268,13 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (dscp)
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1282,7 +1282,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1325,12 +1325,12 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family)
-							), log_t::flag_t::CRITICAL,
+							}, awh::log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1338,7 +1338,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1351,12 +1351,12 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family)
-							), log_t::flag_t::CRITICAL,
+							}, awh::log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1364,7 +1364,7 @@ awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net:
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1526,13 +1526,13 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (ecn)
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1540,7 +1540,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1553,13 +1553,13 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (ecn)
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1567,7 +1567,7 @@ bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t soc
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -1622,13 +1622,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -1636,7 +1636,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 				// Тип сокета для определения его семейства
@@ -1650,13 +1650,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							), log_t::flag_t::CRITICAL,
+							}, awh::log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1664,7 +1664,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 				/**
@@ -1705,14 +1705,14 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if DEBUG_MODE
 						// Сообщаем, что класс обслуживания принятых пакетов система не выдаёт
-						this->_log->debug(
+						awh::log::debug(
 							"IP_RECVTOS is unavailable, service class of received packets is not reported",
 							__PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							), log_t::flag_t::INFO
+							}, awh::log::flag_t::INFO
 						);
 					#endif
 				#else
@@ -1723,13 +1723,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1737,7 +1737,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				#endif
@@ -1758,13 +1758,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							), log_t::flag_t::CRITICAL,
+							}, awh::log::flag_t::CRITICAL,
 							::strerror(errno)
 						);
 					/**
@@ -1772,7 +1772,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 				// Если сокет не является RAW-сокетом
@@ -1786,13 +1786,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1800,7 +1800,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 					// Активируем/деактивируем генерацию информации о типе трафика (Traffic Class) в сокете
@@ -1810,13 +1810,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1824,7 +1824,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 					// Активируем/деактивируем генерацию информации о пакете (Packet Info) в сокете
@@ -1834,13 +1834,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -1848,7 +1848,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -1912,14 +1912,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									), log_t::flag_t::WARNING,
+									}, awh::log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -1927,7 +1927,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -2005,14 +2005,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2020,7 +2020,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2112,14 +2112,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2127,7 +2127,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -2140,14 +2140,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2155,7 +2155,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -2167,14 +2167,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2182,7 +2182,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2212,14 +2212,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2227,7 +2227,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2262,14 +2262,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									), log_t::flag_t::WARNING,
+									}, awh::log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -2277,7 +2277,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -2292,14 +2292,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									), log_t::flag_t::WARNING,
+									}, awh::log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -2307,7 +2307,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -2339,14 +2339,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2354,7 +2354,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2466,14 +2466,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2481,7 +2481,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2498,14 +2498,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2513,7 +2513,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Выходим из функции
 					return result;
@@ -2533,14 +2533,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2548,7 +2548,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2564,14 +2564,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2579,7 +2579,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2612,14 +2612,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2627,7 +2627,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2682,14 +2682,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode),
 									option
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -2697,7 +2697,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				/**
@@ -2722,7 +2722,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 */
 				#else
 					// Выводим в журнал сообщение об отсутствии соответствия
-					this->_log->print("Port reuse has no counterpart on this operating system", log_t::flag_t::WARNING);
+					awh::log::print("Port reuse has no counterpart on this operating system", awh::log::flag_t::WARNING);
 					// Отмечаем настройку выставленной, не обращаясь к ядру
 					result = true;
 				#endif
@@ -2738,14 +2738,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2753,7 +2753,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Выходим из функции
 					return result;
@@ -2773,14 +2773,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2788,7 +2788,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2804,14 +2804,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
 											option
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -2819,7 +2819,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						}
@@ -2896,14 +2896,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
 								option
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -2911,7 +2911,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -2959,14 +2959,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									), log_t::flag_t::WARNING,
+									}, awh::log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -2974,7 +2974,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -2987,14 +2987,14 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
 										option
-									), log_t::flag_t::WARNING,
+									}, awh::log::flag_t::WARNING,
 									::strerror(errno)
 								);
 							/**
@@ -3002,7 +3002,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -3024,7 +3024,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			 */
 			default:
 				// Выводим в журнал сообщение о неизвестной настройке
-				this->_log->print("Socket option %u is not supported by this backend", log_t::flag_t::WARNING, static_cast <uint32_t> (option));
+				awh::log::print("Socket option %u is not supported by this backend", awh::log::flag_t::WARNING, static_cast <uint32_t> (option));
 				// Отмечаем обращение успешным, не роняя выставление прочих настроек
 				result = true;
 		}
@@ -3161,13 +3161,13 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -3175,7 +3175,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			/**
@@ -3183,7 +3183,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 			 */
 			#else
 				// Записываем причину отказа в журнал
-				this->_log->print("Per-socket fragmentation control is not supported by the system for IPv4", log_t::flag_t::WARNING);
+				awh::log::print("Per-socket fragmentation control is not supported by the system for IPv4", awh::log::flag_t::WARNING);
 			#endif
 		} break;
 		// Для семейства IPv6
@@ -3199,13 +3199,13 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
-							), log_t::flag_t::WARNING,
+							}, awh::log::flag_t::WARNING,
 							::strerror(errno)
 						);
 					/**
@@ -3213,7 +3213,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			/**
@@ -3221,7 +3221,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 			 */
 			#else
 				// Записываем причину отказа в журнал
-				this->_log->print("Per-socket fragmentation control is not supported by the system for IPv6", log_t::flag_t::WARNING);
+				awh::log::print("Per-socket fragmentation control is not supported by the system for IPv6", awh::log::flag_t::WARNING);
 			#endif
 		} break;
 	}
@@ -3284,13 +3284,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								), log_t::flag_t::CRITICAL,
+								}, awh::log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3298,7 +3298,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -3315,13 +3315,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								), log_t::flag_t::CRITICAL,
+								}, awh::log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3329,7 +3329,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3375,13 +3375,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								), log_t::flag_t::CRITICAL,
+								}, awh::log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3389,7 +3389,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -3408,13 +3408,13 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
-								), log_t::flag_t::CRITICAL,
+								}, awh::log::flag_t::CRITICAL,
 								::strerror(errno)
 							);
 						/**
@@ -3422,7 +3422,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Формируем итоговый результат
@@ -3489,12 +3489,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (hops)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3502,7 +3502,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3515,12 +3515,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (hops)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3528,7 +3528,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3572,12 +3572,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (hops)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3585,7 +3585,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3600,12 +3600,12 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									sock,
 									static_cast <uint16_t> (hops)
-								), log_t::flag_t::WARNING,
+								}, awh::log::flag_t::WARNING,
 								::strerror(errno)
 							);
 						/**
@@ -3613,7 +3613,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
 				} break;
@@ -3643,20 +3643,20 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"It is impossible to work with a multicast group because the address of the group or the source is not initialized",
 				__PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					sock,
 					static_cast <uint16_t> (mode)
-				), log_t::flag_t::CRITICAL
+				}, awh::log::flag_t::CRITICAL
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("It is impossible to work with a multicast group because the address of the group or the source is not initialized", log_t::flag_t::CRITICAL);
+			awh::log::print("It is impossible to work with a multicast group because the address of the group or the source is not initialized", awh::log::flag_t::CRITICAL);
 		#endif
 		// Возвращаем пустой результат
 		return result;
@@ -3692,12 +3692,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (mode)
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3705,7 +3705,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3716,7 +3716,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)
-							mreq.ipv6mr_interface = ::resolveIfaceIndexIPv6(this->_fmk, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0]);
+							mreq.ipv6mr_interface = ::resolveIfaceIndexIPv6(&awh_cast <const net::addr_net_ipv6_t *> (source)->address[0]);
 							// Добавляем новую multicast-группу к сокету
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))))){
 								/**
@@ -3724,12 +3724,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (mode)
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3737,7 +3737,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3764,12 +3764,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (mode)
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3777,7 +3777,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3788,7 +3788,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
 							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)
-							mreq.ipv6mr_interface = ::resolveIfaceIndexIPv6(this->_fmk, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0]);
+							mreq.ipv6mr_interface = ::resolveIfaceIndexIPv6(&awh_cast <const net::addr_net_ipv6_t *> (source)->address[0]);
 							// Удаляем multicast-группу из сокета
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_LEAVE_GROUP, &mreq, sizeof(mreq))))){
 								/**
@@ -3796,12 +3796,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(
+									awh::log::debug(
 										"%s", __PRETTY_FUNCTION__,
-										make_tuple(
+										{
 											sock,
 											static_cast <uint16_t> (mode)
-										), log_t::flag_t::WARNING,
+										}, awh::log::flag_t::WARNING,
 										::strerror(errno)
 									);
 								/**
@@ -3809,7 +3809,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
 						} break;
@@ -3823,20 +3823,20 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"It is impossible to work with a multicast group because the IP address types are different",
 					__PRETTY_FUNCTION__,
-					make_tuple(
+					{
 						sock,
 						static_cast <uint16_t> (mode)
-					), log_t::flag_t::CRITICAL
+					}, awh::log::flag_t::CRITICAL
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("It is impossible to work with a multicast group because the IP address types are different", log_t::flag_t::CRITICAL);
+				awh::log::print("It is impossible to work with a multicast group because the IP address types are different", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -3848,12 +3848,12 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					sock,
 					static_cast <uint16_t> (mode)
-				), log_t::flag_t::CRITICAL,
+				}, awh::log::flag_t::CRITICAL,
 				error.what()
 			);
 		/**
@@ -3861,7 +3861,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -3973,21 +3973,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"A socket for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
-								), log_t::flag_t::WARNING
+								}, awh::log::flag_t::WARNING
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("A socket for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							awh::log::print("A socket for a Unix event cannot be created because it has an invalid initialization type", awh::log::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -4097,21 +4097,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									), log_t::flag_t::WARNING
+									}, awh::log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								awh::log::print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4173,21 +4173,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									), log_t::flag_t::WARNING
+									}, awh::log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								awh::log::print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4253,21 +4253,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									), log_t::flag_t::WARNING
+									}, awh::log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								awh::log::print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4325,21 +4325,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									), log_t::flag_t::WARNING
+									}, awh::log::flag_t::WARNING
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
+								awh::log::print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", awh::log::flag_t::WARNING);
 							#endif
 						}
 					} break;
@@ -4350,21 +4350,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"A socket for an IP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
-								), log_t::flag_t::WARNING
+								}, awh::log::flag_t::WARNING
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("A socket for an IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							awh::log::print("A socket for an IP event cannot be created because it has an invalid initialization type", awh::log::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -4376,21 +4376,21 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug(
+					awh::log::debug(
 						"A socket cannot be created, because family it belongs to is not defined",
 						__PRETTY_FUNCTION__,
-						make_tuple(
+						{
 							static_cast <uint16_t> (family),
 							static_cast <uint16_t> (type),
 							static_cast <uint16_t> (proto)
-						), log_t::flag_t::WARNING
+						}, awh::log::flag_t::WARNING
 					);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("A socket cannot be created, because family it belongs to is not defined", log_t::flag_t::WARNING);
+					awh::log::print("A socket cannot be created, because family it belongs to is not defined", awh::log::flag_t::WARNING);
 				#endif
 			}
 		}
@@ -4403,20 +4403,20 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),
 					static_cast <uint16_t> (proto)
-				), log_t::flag_t::CRITICAL, error.what()
+				}, awh::log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -4491,21 +4491,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (type),
 								static_cast <uint16_t> (proto)
-							),
-							log_t::flag_t::CRITICAL, ::strerror(errno)
+							},
+							awh::log::flag_t::CRITICAL, ::strerror(errno)
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
 			} break;
@@ -4524,21 +4524,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									),
-									log_t::flag_t::CRITICAL, ::strerror(errno)
+									},
+									awh::log::flag_t::CRITICAL, ::strerror(errno)
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -4551,21 +4551,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									),
-									log_t::flag_t::CRITICAL, ::strerror(errno)
+									},
+									awh::log::flag_t::CRITICAL, ::strerror(errno)
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -4578,21 +4578,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(
+								awh::log::debug(
 									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
+									{
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
-									),
-									log_t::flag_t::CRITICAL, ::strerror(errno)
+									},
+									awh::log::flag_t::CRITICAL, ::strerror(errno)
 								);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+								awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
 					} break;
@@ -4603,21 +4603,21 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"An event for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
-								make_tuple(
+								{
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
-								), log_t::flag_t::WARNING
+								}, awh::log::flag_t::WARNING
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
+							awh::log::print("An event for a Unix event cannot be created because it has an invalid initialization type", awh::log::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -4643,20 +4643,20 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
-				make_tuple(
+				{
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),
 					static_cast <uint16_t> (proto)
-				), log_t::flag_t::CRITICAL, error.what()
+				}, awh::log::flag_t::CRITICAL, error.what()
 			);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -4665,11 +4665,8 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Socket::Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+awh::eth::Socket::Socket() noexcept {
 	/**
 	 * Выполняем одноразовую инициализацию мьютексов для кешей IGD и шлюза для всех экземпляров класса Port_Mapping
 	 */

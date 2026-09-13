@@ -7,6 +7,7 @@
 #include "silent.hpp"
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
+#include <sys/fmk.hpp>
 using namespace std;
 using namespace awh;
 using result_t = vector<pair<size_t,size_t>>;
@@ -32,6 +33,10 @@ static bool same(const result_t & a, const result_t & b){
 	return true;
 }
 int main(){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
+	// Отключаем вывод журнала работы стенда
+	verify::silence();
 	mt19937 engine(20260731);
 	// Основа текста и позиции вставки совпадения
 	const string filler = "the quick brown fox jumps over the lazy dog 12345 ";
@@ -60,7 +65,7 @@ int main(){
 				string text = base;
 				const size_t at = ((place == 0) ? 0 : ((place == 1) ? (text.size() / 2) : text.size()));
 				text.insert(at, c.needle);
-				regex::engine_t eng(verify::logger());
+				regex::engine_t eng;
 				if(!eng.build(c.pattern, 0)){ unsupported++; continue; }
 				result_t ours, theirs;
 				const bool a = eng.exec(text, 0, ours);

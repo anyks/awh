@@ -154,6 +154,8 @@
  */
 #include <num/bignum.hpp>
 #include <cryptography/crypto.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Для операционной системы MS Windows
@@ -3783,10 +3785,9 @@ namespace driver {
 	 * @param hash   тип хэш-суммы
 	 * @param format вид записи выработанной хэш-суммы
 	 * @param result результат хэширования
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void hash(const B & buffer, const crypto_t::hash_t hash, const crypto_t::format_t format, A & result, const log_t * log) noexcept {
+	static void hash(const B & buffer, const crypto_t::hash_t hash, const crypto_t::format_t format, A & result) noexcept {
 		/**
 		 * Вид записи, разбору не знакомый, отвергается явно: выбор шёл сличением с
 		 * одной лишь шестнадцатеричной записью, и значение, ни одному из видов не
@@ -3797,7 +3798,7 @@ namespace driver {
 		// Если вид записи разбору не знаком
 		if((format != crypto_t::format_t::HEX) && (format != crypto_t::format_t::RAW)){
 			// Записываем ошибку в лог
-			log->print("Digest format is unsupported", log_t::flag_t::CRITICAL);
+			awh::log::print("Digest format is unsupported", awh::log::flag_t::CRITICAL);
 			// Выходим из функции
 			return;
 		}
@@ -3980,13 +3981,13 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(buffer.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							awh::log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {buffer.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
+							awh::log::print("Unsupported hash type", awh::log::flag_t::CRITICAL);
 						#endif
 					} break;
 				}
@@ -4009,7 +4010,7 @@ namespace driver {
 				// Выполняем затирание и очистку блока с результатом
 				driver::wipe(result);
 				// Записываем ошибку в лог в лог
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			}
 		}
 	}
@@ -4029,10 +4030,9 @@ namespace driver {
 	 * @param hash   тип хэш-суммы
 	 * @param format вид записи выработанной хэш-суммы
 	 * @param result результат хэширования
-	 * @param log    объект для работы с логами
 	 *
 	 */
-	static void hmac(const C & key, const B & buffer, const crypto_t::hash_t hash, const crypto_t::format_t format, A & result, const log_t * log) noexcept {
+	static void hmac(const C & key, const B & buffer, const crypto_t::hash_t hash, const crypto_t::format_t format, A & result) noexcept {
 		/**
 		 * Вид записи, разбору не знакомый, отвергается явно: выбор шёл сличением с
 		 * одной лишь шестнадцатеричной записью, и значение, ни одному из видов не
@@ -4043,7 +4043,7 @@ namespace driver {
 		// Если вид записи разбору не знаком
 		if((format != crypto_t::format_t::HEX) && (format != crypto_t::format_t::RAW)){
 			// Записываем ошибку в лог
-			log->print("Digest format is unsupported", log_t::flag_t::CRITICAL);
+			awh::log::print("Digest format is unsupported", awh::log::flag_t::CRITICAL);
 			// Выходим из функции
 			return;
 		}
@@ -4055,7 +4055,7 @@ namespace driver {
 		// Если длина ключа превышает предел разрядности библиотеки криптографии
 		if(key.size() > static_cast <size_t> (INT32_MAX)){
 			// Записываем ошибку в лог
-			log->print("Key size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+			awh::log::print("Key size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 			// Выходим из функции
 			return;
 		}
@@ -4068,7 +4068,7 @@ namespace driver {
 		// Если ключ подписи не задан
 		if(key.empty() && !buffer.empty()){
 			// Записываем ошибку в лог
-			log->print("Key of the signature is not set", log_t::flag_t::CRITICAL);
+			awh::log::print("Key of the signature is not set", awh::log::flag_t::CRITICAL);
 			// Выходим из функции
 			return;
 		}
@@ -4233,13 +4233,13 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(key.size(), buffer.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							awh::log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {key.size(), buffer.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
+							awh::log::print("Unsupported hash type", awh::log::flag_t::CRITICAL);
 						#endif
 					} break;
 				}
@@ -4255,7 +4255,7 @@ namespace driver {
 				// Выполняем затирание и очистку блока с результатом
 				driver::wipe(result);
 				// Записываем ошибку в лог в лог
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			}
 		}
 	}
@@ -4274,11 +4274,10 @@ namespace driver {
 	 * @param cipher тип шифрования (BASE64, AES128, AES192, AES256)
 	 * @param state  объект стейта шифрования
 	 * @param result строка куда следует положить результат
-	 * @param log    объект для работы с логами
 	 *
 	 * @return       признак успешно выполненной работы
 	 */
-	static bool hash(const char * buffer, const size_t size, const crypto_t::cipher_t cipher, const crypto_t::event_t event, state_t & state, T & result, const log_t * log) noexcept {
+	static bool hash(const char * buffer, const size_t size, const crypto_t::cipher_t cipher, const crypto_t::event_t event, state_t & state, T & result) noexcept {
 		/**
 		 * Предел разрядности довода библиотеки криптографии отвергается явно:
 		 * приведение размера к знаковому 32-битному числу молча обрезало буфер,
@@ -4291,13 +4290,13 @@ namespace driver {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("Buffer size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+				awh::log::debug("Buffer size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("Buffer size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+				awh::log::print("Buffer size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из функции с признаком отказа
 			return false;
@@ -4490,13 +4489,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Ciphertext is too short to carry the initialization vector", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::WARNING);
+									awh::log::debug("Ciphertext is too short to carry the initialization vector", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("Ciphertext is too short to carry the initialization vector", log_t::flag_t::WARNING);
+									awh::log::print("Ciphertext is too short to carry the initialization vector", awh::log::flag_t::WARNING);
 								#endif
 								// Выходим из функции с признаком отказа
 								return false;
@@ -4528,13 +4527,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Error during initialization vector generation", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+										awh::log::debug("Error during initialization vector generation", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("Error during initialization vector generation", log_t::flag_t::CRITICAL);
+										awh::log::print("Error during initialization vector generation", awh::log::flag_t::CRITICAL);
 									#endif
 									// Выходим из функции с признаком отказа
 									return false;
@@ -4552,13 +4551,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Error during AES context creation", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Error during AES context creation", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("Error during AES context creation", log_t::flag_t::CRITICAL);
+									awh::log::print("Error during AES context creation", awh::log::flag_t::CRITICAL);
 								#endif
 								// Выходим из функции с признаком отказа
 								return false;
@@ -4576,13 +4575,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Error during AES context initialization", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("Error during AES context initialization", log_t::flag_t::CRITICAL);
+									awh::log::print("Error during AES context initialization", awh::log::flag_t::CRITICAL);
 								#endif
 								// Выходим из функции с признаком отказа
 								return false;
@@ -4624,13 +4623,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Error cipher update", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Error cipher update", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("Error cipher update", log_t::flag_t::CRITICAL);
+									awh::log::print("Error cipher update", awh::log::flag_t::CRITICAL);
 								#endif
 								// Выходим из функции с признаком отказа
 								return false;
@@ -4654,13 +4653,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Error during authentication tag setup", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+										awh::log::debug("Error during authentication tag setup", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("Error during authentication tag setup", log_t::flag_t::CRITICAL);
+										awh::log::print("Error during authentication tag setup", awh::log::flag_t::CRITICAL);
 									#endif
 									// Выходим из функции с признаком отказа
 									return false;
@@ -4685,13 +4684,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug((((event == crypto_t::event_t::DECODE) && (tagsize > 0)) ? "Authentication of the ciphertext failed" : "Error cipher final"), __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::WARNING);
+									awh::log::debug((((event == crypto_t::event_t::DECODE) && (tagsize > 0)) ? "Authentication of the ciphertext failed" : "Error cipher final"), __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print((((event == crypto_t::event_t::DECODE) && (tagsize > 0)) ? "Authentication of the ciphertext failed" : "Error cipher final"), log_t::flag_t::WARNING);
+									awh::log::print((((event == crypto_t::event_t::DECODE) && (tagsize > 0)) ? "Authentication of the ciphertext failed" : "Error cipher final"), awh::log::flag_t::WARNING);
 								#endif
 								// Выходим из функции с признаком отказа
 								return false;
@@ -4714,13 +4713,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Error during authentication tag retrieval", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+										awh::log::debug("Error during authentication tag retrieval", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("Error during authentication tag retrieval", log_t::flag_t::CRITICAL);
+										awh::log::print("Error during authentication tag retrieval", awh::log::flag_t::CRITICAL);
 									#endif
 									// Выходим из функции с признаком отказа
 									return false;
@@ -4750,13 +4749,13 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("Direction of the stream cipher does not match the one it was initialized with", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Direction of the stream cipher does not match the one it was initialized with", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("Direction of the stream cipher does not match the one it was initialized with", log_t::flag_t::CRITICAL);
+									awh::log::print("Direction of the stream cipher does not match the one it was initialized with", awh::log::flag_t::CRITICAL);
 								#endif
 								// Выходим из функции с признаком отказа
 								return false;
@@ -4811,13 +4810,13 @@ namespace driver {
 										 */
 										#if DEBUG_MODE
 											// Записываем ошибку в лог
-											log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+											awh::log::debug("Error during AES context initialization", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Записываем ошибку в лог
-											log->print("Error during AES context initialization", log_t::flag_t::CRITICAL);
+											awh::log::print("Error during AES context initialization", awh::log::flag_t::CRITICAL);
 										#endif
 										// Выходим из функции с признаком отказа
 										return false;
@@ -4870,13 +4869,13 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("Error cipher update", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+										awh::log::debug("Error cipher update", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("Error cipher update", log_t::flag_t::CRITICAL);
+										awh::log::print("Error cipher update", awh::log::flag_t::CRITICAL);
 									#endif
 									// Выходим из функции с признаком отказа
 									return false;
@@ -4905,13 +4904,13 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("Cipher type is not set", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::WARNING);
+							awh::log::debug("Cipher type is not set", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("Cipher type is not set", log_t::flag_t::WARNING);
+							awh::log::print("Cipher type is not set", awh::log::flag_t::WARNING);
 						#endif
 						// Выходим из функции с признаком отказа
 						return false;
@@ -4962,13 +4961,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 				// Выходим из функции с признаком отказа
 				return false;
@@ -5078,10 +5077,9 @@ namespace driver {
 	 *
 	 * @param key  ввозимый ключ RSA
 	 * @param type род ввозимого ключа
-	 * @param log  объект для работы с логами
 	 *
 	 */
-	static void strength(EVP_PKEY * key, const crypto_t::key_type_t type, const log_t * log) noexcept {
+	static void strength(EVP_PKEY * key, const crypto_t::key_type_t type) noexcept {
 		// Получаем разрядность ввозимого ключа
 		const size_t bits = static_cast <size_t> (::EVP_PKEY_bits(key));
 		// Если разрядность ключа порога достигает
@@ -5095,13 +5093,13 @@ namespace driver {
 			 */
 			#if DEBUG_MODE
 				// Записываем предупреждение в лог
-				log->debug("Private key size %zu bits is below the recommended limit", __PRETTY_FUNCTION__, make_tuple(bits), log_t::flag_t::WARNING, bits);
+				awh::log::debug("Private key size %zu bits is below the recommended limit", __PRETTY_FUNCTION__, {bits}, awh::log::flag_t::WARNING, bits);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем предупреждение в лог
-				log->print("Private key size %zu bits is below the recommended limit", log_t::flag_t::WARNING, bits);
+				awh::log::print("Private key size %zu bits is below the recommended limit", awh::log::flag_t::WARNING, bits);
 			#endif
 			// Выходим из функции
 			return;
@@ -5111,13 +5109,13 @@ namespace driver {
 		 */
 		#if DEBUG_MODE
 			// Записываем предупреждение в лог
-			log->debug("Public key size %zu bits is below the recommended limit", __PRETTY_FUNCTION__, make_tuple(bits), log_t::flag_t::WARNING, bits);
+			awh::log::debug("Public key size %zu bits is below the recommended limit", __PRETTY_FUNCTION__, {bits}, awh::log::flag_t::WARNING, bits);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем предупреждение в лог
-			log->print("Public key size %zu bits is below the recommended limit", log_t::flag_t::WARNING, bits);
+			awh::log::print("Public key size %zu bits is below the recommended limit", awh::log::flag_t::WARNING, bits);
 		#endif
 	}
 	/**
@@ -5135,7 +5133,6 @@ namespace driver {
 	 * @param key     ключ подписи
 	 * @param md      функция хэширования подписи
 	 * @param padding схема дополнения подписи RSA
-	 * @param log     объект для работы с логами
 	 * @return        результат установки схемы дополнения
 	 *
 	 */
@@ -5233,7 +5230,7 @@ namespace driver {
 		// Выводим отсутствие вида подписи
 		return crypto_t::signature_t::NONE;
 	}
-	static bool padding(EVP_PKEY_CTX * pctx, EVP_PKEY * key, const EVP_MD * md, const crypto_t::padding_t padding, const log_t * log) noexcept {
+	static bool padding(EVP_PKEY_CTX * pctx, EVP_PKEY * key, const EVP_MD * md, const crypto_t::padding_t padding) noexcept {
 		// Если ключ подписи устройства RSA не имеет
 		if(::EVP_PKEY_base_id(key) != EVP_PKEY_RSA)
 			// Выводим успех: дополнения у такого ключа нет вовсе
@@ -5252,13 +5249,13 @@ namespace driver {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("Signature padding scheme is not set or is unsupported", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("Signature padding scheme is not set or is unsupported", log_t::flag_t::CRITICAL);
+				awh::log::print("Signature padding scheme is not set or is unsupported", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выводим отказ установки схемы дополнения
 			return false;
@@ -5270,13 +5267,13 @@ namespace driver {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("Error during signature padding setup", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("Error during signature padding setup", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("Error during signature padding setup", log_t::flag_t::CRITICAL);
+				awh::log::print("Error during signature padding setup", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выводим отказ установки схемы дополнения
 			return false;
@@ -5297,13 +5294,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Error during signature mask generation function setup", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					awh::log::debug("Error during signature mask generation function setup", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("Error during signature mask generation function setup", log_t::flag_t::CRITICAL);
+					awh::log::print("Error during signature mask generation function setup", awh::log::flag_t::CRITICAL);
 				#endif
 				// Выводим отказ установки схемы дополнения
 				return false;
@@ -5315,13 +5312,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("Error during signature salt length setup", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					awh::log::debug("Error during signature salt length setup", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("Error during signature salt length setup", log_t::flag_t::CRITICAL);
+					awh::log::print("Error during signature salt length setup", awh::log::flag_t::CRITICAL);
 				#endif
 				// Выводим отказ установки схемы дополнения
 				return false;
@@ -5339,11 +5336,10 @@ namespace driver {
 	 * @param salt   соль для шифрования
 	 * @param rounds количество итераций PBKDF2
 	 * @param state  стейт шифрования AES
-	 * @param log    объект для работы с логами
 	 * @return       результат инициализации
 	 *
 	 */
-	static bool cipher(const crypto_t::cipher_t cipher, const crypto_t::mode_t mode, const crypto_t::hash_t hash, const string & pass, const string & salt, const uint32_t rounds, state_t & state, const log_t * log) noexcept {
+	static bool cipher(const crypto_t::cipher_t cipher, const crypto_t::mode_t mode, const crypto_t::hash_t hash, const string & pass, const string & salt, const uint32_t rounds, state_t & state) noexcept {
 		// Переменная результата
 		bool result = false;
 		// Если пароль для шифрования не пустой
@@ -5401,13 +5397,13 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("Unsupported cipher type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
+							awh::log::debug("Unsupported cipher type", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("Unsupported cipher type", log_t::flag_t::CRITICAL);
+							awh::log::print("Unsupported cipher type", awh::log::flag_t::CRITICAL);
 						#endif
 						/**
 						 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
@@ -5438,13 +5434,13 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Block cipher mode is not set or is unsupported", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
+						awh::log::debug("Block cipher mode is not set or is unsupported", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("Block cipher mode is not set or is unsupported", log_t::flag_t::CRITICAL);
+						awh::log::print("Block cipher mode is not set or is unsupported", awh::log::flag_t::CRITICAL);
 					#endif
 					/**
 					 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
@@ -5518,13 +5514,13 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
+							awh::log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
+							awh::log::print("Unsupported hash type", awh::log::flag_t::CRITICAL);
 						#endif
 						/**
 						 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
@@ -5559,13 +5555,13 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Password or salt size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
+						awh::log::debug("Password or salt size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("Password or salt size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+						awh::log::print("Password or salt size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 					#endif
 					/**
 					 * Стейт сбрасывается на всяком отказе вывода ключа: ключ к этой поре
@@ -5591,13 +5587,13 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Записываем предупреждение в лог
-						log->debug("Key derivation without a salt is vulnerable to precomputed tables", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::WARNING);
+						awh::log::debug("Key derivation without a salt is vulnerable to precomputed tables", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем предупреждение в лог
-						log->print("Key derivation without a salt is vulnerable to precomputed tables", log_t::flag_t::WARNING);
+						awh::log::print("Key derivation without a salt is vulnerable to precomputed tables", awh::log::flag_t::WARNING);
 					#endif
 				}
 				/**
@@ -5636,13 +5632,13 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Generate key and IV failed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL);
+						awh::log::debug("Generate key and IV failed", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("Generate key and IV failed", log_t::flag_t::CRITICAL);
+						awh::log::print("Generate key and IV failed", awh::log::flag_t::CRITICAL);
 					#endif
 				// Если инициализация произошла успешно
 				} else {
@@ -5675,13 +5671,13 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds), log_t::flag_t::CRITICAL, error.what());
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), rounds}, awh::log::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
@@ -5717,13 +5713,13 @@ bool awh::Crypto::ready() const noexcept {
 	 */
 	#if DEBUG_MODE
 		// Записываем ошибку в лог
-		this->_log->debug("Object is not constructed, memory allocation has failed", __PRETTY_FUNCTION__, make_tuple(), log_t::flag_t::CRITICAL);
+		awh::log::debug("Object is not constructed, memory allocation has failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 	/**
 	 * Если режим отладки не включён
 	 */
 	#else
 		// Записываем ошибку в лог
-		this->_log->print("Object is not constructed, memory allocation has failed", log_t::flag_t::CRITICAL);
+		awh::log::print("Object is not constructed, memory allocation has failed", awh::log::flag_t::CRITICAL);
 	#endif
 	// Выводим неготовность объекта к работе
 	return false;
@@ -5759,13 +5755,13 @@ void awh::Crypto::roundAES(const uint32_t round) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Number of PBKDF2 iterations must be within one and the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(round), log_t::flag_t::CRITICAL);
+				awh::log::debug("Number of PBKDF2 iterations must be within one and the limit of the cryptography library", __PRETTY_FUNCTION__, {round}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Number of PBKDF2 iterations must be within one and the limit of the cryptography library", log_t::flag_t::CRITICAL);
+				awh::log::print("Number of PBKDF2 iterations must be within one and the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из функции
 			return;
@@ -5783,13 +5779,13 @@ void awh::Crypto::roundAES(const uint32_t round) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (round)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (round)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5823,13 +5819,13 @@ void awh::Crypto::salt(string_view salt) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Salt size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(salt.size()), log_t::flag_t::CRITICAL);
+				awh::log::debug("Salt size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {salt.size()}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Salt size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+				awh::log::print("Salt size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из функции
 			return;
@@ -5873,13 +5869,13 @@ void awh::Crypto::salt(string_view salt) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(salt.size()), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {salt.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -5913,13 +5909,13 @@ void awh::Crypto::password(string_view password) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Password size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(password.size()), log_t::flag_t::CRITICAL);
+				awh::log::debug("Password size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {password.size()}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Password size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+				awh::log::print("Password size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из функции
 			return;
@@ -5963,13 +5959,13 @@ void awh::Crypto::password(string_view password) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(password.size()), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {password.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6003,13 +5999,13 @@ void awh::Crypto::mode(const mode_t mode) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6078,13 +6074,13 @@ void awh::Crypto::passwordRSA(string_view password) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Private key password size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(password.size()), log_t::flag_t::CRITICAL);
+				awh::log::debug("Private key password size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {password.size()}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Private key password size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+				awh::log::print("Private key password size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из функции
 			return;
@@ -6127,13 +6123,13 @@ void awh::Crypto::passwordRSA(string_view password) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -6180,7 +6176,7 @@ auto awh::Crypto::hash(string_view buffer, const hash_t hash, const format_t for
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hash(buffer, hash, format, result, this->_log);
+		driver::hash(buffer, hash, format, result);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -6188,12 +6184,12 @@ auto awh::Crypto::hash(string_view buffer, const hash_t hash, const format_t for
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"Hashing of the text of %zu octets could not be performed",
-					__PRETTY_FUNCTION__, make_tuple(
+					__PRETTY_FUNCTION__, {
 						buffer.size(),
 						static_cast <uint16_t> (hash)
-					), log_t::flag_t::WARNING,
+					}, awh::log::flag_t::WARNING,
 					buffer.size()
 				);
 			/**
@@ -6201,9 +6197,9 @@ auto awh::Crypto::hash(string_view buffer, const hash_t hash, const format_t for
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(
+				awh::log::print(
 					"Hashing of the text of %zu octets could not be performed",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					buffer.size()
 				);
 			#endif
@@ -6252,7 +6248,7 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash, const format_t forma
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hash(buffer, hash, format, result, this->_log);
+		driver::hash(buffer, hash, format, result);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -6260,12 +6256,12 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash, const format_t forma
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"Hashing of the text of %zu octets could not be performed",
-					__PRETTY_FUNCTION__, make_tuple(
+					__PRETTY_FUNCTION__, {
 						buffer.size(),
 						static_cast <uint16_t> (hash)
-					), log_t::flag_t::WARNING,
+					}, awh::log::flag_t::WARNING,
 					buffer.size()
 				);
 			/**
@@ -6273,9 +6269,9 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash, const format_t forma
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(
+				awh::log::print(
 					"Hashing of the text of %zu octets could not be performed",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					buffer.size()
 				);
 			#endif
@@ -6354,7 +6350,7 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash, c
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, format, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -6362,13 +6358,13 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash, c
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					__PRETTY_FUNCTION__, make_tuple(
+					__PRETTY_FUNCTION__, {
 						key.size(),
 						buffer.size(),
 						static_cast <uint16_t> (hash)
-					), log_t::flag_t::WARNING,
+					}, awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6377,9 +6373,9 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash, c
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(
+				awh::log::print(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6429,7 +6425,7 @@ auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, format, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -6437,13 +6433,13 @@ auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					__PRETTY_FUNCTION__, make_tuple(
+					__PRETTY_FUNCTION__, {
 						key.size(),
 						buffer.size(),
 						static_cast <uint16_t> (hash)
-					), log_t::flag_t::WARNING,
+					}, awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6452,9 +6448,9 @@ auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(
+				awh::log::print(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6505,7 +6501,7 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash, con
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, format, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -6513,13 +6509,13 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash, con
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					__PRETTY_FUNCTION__, make_tuple(
+					__PRETTY_FUNCTION__, {
 						key.size(),
 						buffer.size(),
 						static_cast <uint16_t> (hash)
-					), log_t::flag_t::WARNING,
+					}, awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6528,9 +6524,9 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash, con
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(
+				awh::log::print(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6611,7 +6607,7 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash, 
 	// Если текст передан
 	if(!buffer.empty()){
 		// Выполняем хэширование
-		driver::hmac(key, buffer, hash, format, result, this->_log);
+		driver::hmac(key, buffer, hash, format, result);
 		// Если хэширование не вышло
 		if(result.empty()){
 			/**
@@ -6619,13 +6615,13 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash, 
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(
+				awh::log::debug(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					__PRETTY_FUNCTION__, make_tuple(
+					__PRETTY_FUNCTION__, {
 						key.size(),
 						buffer.size(),
 						static_cast <uint16_t> (hash)
-					), log_t::flag_t::WARNING,
+					}, awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6634,9 +6630,9 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash, 
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(
+				awh::log::print(
 					"Hashing of the text of %zu octets with the key of %zu octets could not be performed",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					buffer.size(),
 					key.size()
 				);
@@ -6747,13 +6743,13 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Ciphertext does not carry the full initialization vector", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+					awh::log::debug("Ciphertext does not carry the full initialization vector", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Ciphertext does not carry the full initialization vector", log_t::flag_t::WARNING);
+					awh::log::print("Ciphertext does not carry the full initialization vector", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return (result = false);
@@ -6775,13 +6771,13 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Ciphertext does not carry the authentication tag", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+						awh::log::debug("Ciphertext does not carry the authentication tag", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Ciphertext does not carry the authentication tag", log_t::flag_t::WARNING);
+						awh::log::print("Ciphertext does not carry the authentication tag", awh::log::flag_t::WARNING);
 					#endif
 					// Выходим из метода
 					return (result = false);
@@ -6797,13 +6793,13 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Error during authentication tag setup", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+						awh::log::debug("Error during authentication tag setup", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Error during authentication tag setup", log_t::flag_t::CRITICAL);
+						awh::log::print("Error during authentication tag setup", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из метода
 					return (result = false);
@@ -6856,13 +6852,13 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug((tampered ? "Authentication of the ciphertext failed" : "Error cipher final"), __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+					awh::log::debug((tampered ? "Authentication of the ciphertext failed" : "Error cipher final"), __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print((tampered ? "Authentication of the ciphertext failed" : "Error cipher final"), log_t::flag_t::WARNING);
+					awh::log::print((tampered ? "Authentication of the ciphertext failed" : "Error cipher final"), awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return result;
@@ -6883,13 +6879,13 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Error during authentication tag retrieval", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+						awh::log::debug("Error during authentication tag retrieval", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Error during authentication tag retrieval", log_t::flag_t::CRITICAL);
+						awh::log::print("Error during authentication tag retrieval", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из метода
 					return result;
@@ -6920,13 +6916,13 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Stream is not initialized", __PRETTY_FUNCTION__, make_tuple(buffer.size()), log_t::flag_t::WARNING);
+				awh::log::debug("Stream is not initialized", __PRETTY_FUNCTION__, {buffer.size()}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Stream is not initialized", log_t::flag_t::WARNING);
+				awh::log::print("Stream is not initialized", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -6950,13 +6946,13 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат работы функции
@@ -7010,13 +7006,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("BASE64 encoding is performed by a single call and has no stream", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+			awh::log::debug("BASE64 encoding is performed by a single call and has no stream", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("BASE64 encoding is performed by a single call and has no stream", log_t::flag_t::CRITICAL);
+			awh::log::print("BASE64 encoding is performed by a single call and has no stream", awh::log::flag_t::CRITICAL);
 		#endif
 		// Выходим из метода
 		return result;
@@ -7060,13 +7056,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					 */
 					#if DEBUG_MODE
 						// Записываем предупреждение в лог
-						this->_log->debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+						awh::log::debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, {static_cast <uint16_t> (event), static_cast <uint16_t> (cipher)}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем предупреждение в лог
-						this->_log->print("Unfinished stream is discarded by the new initialization", log_t::flag_t::WARNING);
+						awh::log::print("Unfinished stream is discarded by the new initialization", awh::log::flag_t::WARNING);
 					#endif
 				}
 				// Определяем, выведен ли ключ теми же приметами
@@ -7080,19 +7076,19 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 				// Выполняем сброс стейта AES-шифрования
 				else state.reset();
 				// Если инициализация ключей не выполнена
-				if(!derived && !driver::cipher(cipher, this->_params.mode, hash, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
+				if(!derived && !driver::cipher(cipher, this->_params.mode, hash, this->_params.password, this->_params.salt, this->_params.rounds, state)){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+						awh::log::debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
+						awh::log::print("Unable to initialize AES cipher for encoding data", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из метода
 					return result;
@@ -7113,13 +7109,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Error during AES context creation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+						awh::log::debug("Error during AES context creation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Error during AES context creation", log_t::flag_t::CRITICAL);
+						awh::log::print("Error during AES context creation", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из метода
 					return result;
@@ -7143,13 +7139,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Error during initialization vector generation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Error during initialization vector generation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Error during initialization vector generation", log_t::flag_t::CRITICAL);
+								awh::log::print("Error during initialization vector generation", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода
 							return result;
@@ -7163,13 +7159,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Error during AES context initialization", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Error during AES context initialization", log_t::flag_t::CRITICAL);
+								awh::log::print("Error during AES context initialization", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода
 							return result;
@@ -7205,13 +7201,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Direction of the stream cipher is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+							awh::log::debug("Direction of the stream cipher is not set", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Direction of the stream cipher is not set", log_t::flag_t::CRITICAL);
+							awh::log::print("Direction of the stream cipher is not set", awh::log::flag_t::CRITICAL);
 						#endif
 						// Выходим из метода
 						return result;
@@ -7238,13 +7234,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Password of the stream cipher is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+				awh::log::debug("Password of the stream cipher is not set", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Password of the stream cipher is not set", log_t::flag_t::CRITICAL);
+				awh::log::print("Password of the stream cipher is not set", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -7265,13 +7261,13 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат работы функции
@@ -7425,13 +7421,13 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, size);
+			awh::log::debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL, size);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+			awh::log::print("Data buffer is not passed while its size is declared as %zu octets", awh::log::flag_t::CRITICAL, size);
 		#endif
 		// Выходим из метода с признаком отказа
 		return outcome;
@@ -7473,7 +7469,7 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 			// Если производится работы с BASE64
 			case static_cast <uint16_t> (cipher_t::BASE64): {
 				// Выполняем кодирование строки BASE64 и получаем признак успеха
-				outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result, this->_log);
+				outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result);
 				/**
 				 * В лог выводится размер поданных данных, а не сами данные: BASE64
 				 * ходит и по открытому тексту, и запись его в лог выносила тайну
@@ -7486,13 +7482,13 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to encrypt string data of %zu octets into BASE64 format", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, size);
+						awh::log::debug("Unable to encrypt string data of %zu octets into BASE64 format", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::WARNING, size);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to encrypt string data of %zu octets into BASE64 format", log_t::flag_t::WARNING, size);
+						awh::log::print("Unable to encrypt string data of %zu octets into BASE64 format", awh::log::flag_t::WARNING, size);
 					#endif
 				}
 			} break;
@@ -7523,26 +7519,26 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 						 */
 						if((state.hash != digest) || (state.cipher != actual) || (state.mode != this->_params.mode) || (state.rounds != this->_params.rounds)){
 							// Если инициализация ключей не выполнена
-							if(!driver::cipher(actual, this->_params.mode, digest, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
+							if(!driver::cipher(actual, this->_params.mode, digest, this->_params.password, this->_params.salt, this->_params.rounds, state)){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Unable to initialize AES cipher for encoding data", log_t::flag_t::CRITICAL);
+									awh::log::print("Unable to initialize AES cipher for encoding data", awh::log::flag_t::CRITICAL);
 								#endif
 								// Выходим из метода с признаком отказа
 								return outcome;
 							}
 						}
 						// Выполняем шифрование данных
-						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::ENCODE, state, result);
 					// Если контекст шифрования уже создан
 					} else {
 						/**
@@ -7570,19 +7566,19 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Cipher of the call does not match the one the stream was initialized with", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Cipher of the call does not match the one the stream was initialized with", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Cipher of the call does not match the one the stream was initialized with", log_t::flag_t::CRITICAL);
+								awh::log::print("Cipher of the call does not match the one the stream was initialized with", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
 						}
 						// Выполняем шифрование данных
-						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, state, result);
 					}
 				/**
 				 * Пустой пароль отвергается своей записью в лог наравне с заведением
@@ -7596,13 +7592,13 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Password of the cipher is not set", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
+						awh::log::debug("Password of the cipher is not set", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Password of the cipher is not set", log_t::flag_t::CRITICAL);
+						awh::log::print("Password of the cipher is not set", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из метода с признаком отказа, причина уже названа
 					return outcome;
@@ -7615,13 +7611,13 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to encrypt data into AES", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
+						awh::log::debug("Unable to encrypt data into AES", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to encrypt data into AES", log_t::flag_t::WARNING);
+						awh::log::print("Unable to encrypt data into AES", awh::log::flag_t::WARNING);
 					#endif
 				}
 			} break;
@@ -7638,13 +7634,13 @@ bool awh::Crypto::encrypt(const void * buffer, const size_t size, T & result, co
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Unable to encrypt data, cipher type is not set", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
+					awh::log::debug("Unable to encrypt data, cipher type is not set", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Unable to encrypt data, cipher type is not set", log_t::flag_t::WARNING);
+					awh::log::print("Unable to encrypt data, cipher type is not set", awh::log::flag_t::WARNING);
 				#endif
 			} break;
 		}
@@ -7866,13 +7862,13 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, size);
+			awh::log::debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL, size);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+			awh::log::print("Data buffer is not passed while its size is declared as %zu octets", awh::log::flag_t::CRITICAL, size);
 		#endif
 		// Выходим из метода с признаком отказа
 		return outcome;
@@ -7914,7 +7910,7 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 			// Если производится работы с BASE64
 			case static_cast <uint16_t> (cipher_t::BASE64): {
 				// Выполняем декодирование строки BASE64 и получаем признак успеха
-				outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result, this->_log);
+				outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result);
 				// Если декодирование не вышло
 				if(!outcome){
 					/**
@@ -7922,13 +7918,13 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to extract data from BASE64 encoded digest of %zu octets", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING, size);
+						awh::log::debug("Unable to extract data from BASE64 encoded digest of %zu octets", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::WARNING, size);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to extract data from BASE64 encoded digest of %zu octets", log_t::flag_t::WARNING, size);
+						awh::log::print("Unable to extract data from BASE64 encoded digest of %zu octets", awh::log::flag_t::WARNING, size);
 					#endif
 				}
 			} break;
@@ -7959,26 +7955,26 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 						 */
 						if((state.hash != digest) || (state.cipher != actual) || (state.mode != this->_params.mode) || (state.rounds != this->_params.rounds)){
 							// Если инициализация ключей не выполнена
-							if(!driver::cipher(actual, this->_params.mode, digest, this->_params.password, this->_params.salt, this->_params.rounds, state, this->_log)){
+							if(!driver::cipher(actual, this->_params.mode, digest, this->_params.password, this->_params.salt, this->_params.rounds, state)){
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Unable to initialize AES cipher for decoding data", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Unable to initialize AES cipher for decoding data", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Unable to initialize AES cipher for decoding data", log_t::flag_t::CRITICAL);
+									awh::log::print("Unable to initialize AES cipher for decoding data", awh::log::flag_t::CRITICAL);
 								#endif
 								// Выходим из метода с признаком отказа
 								return outcome;
 							}
 						}
 						// Выполняем дешифрование данных
-						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, actual, event_t::DECODE, state, result);
 					// Если контекст шифрования уже создан
 					} else {
 						/**
@@ -8006,19 +8002,19 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Cipher of the call does not match the one the stream was initialized with", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Cipher of the call does not match the one the stream was initialized with", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Cipher of the call does not match the one the stream was initialized with", log_t::flag_t::CRITICAL);
+								awh::log::print("Cipher of the call does not match the one the stream was initialized with", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
 						}
 						// Выполняем дешифрование данных
-						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, state, result, this->_log);
+						outcome = driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, state, result);
 					}
 				/**
 				 * Пустой пароль отвергается своей записью в лог наравне с заведением
@@ -8032,13 +8028,13 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Password of the cipher is not set", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL);
+						awh::log::debug("Password of the cipher is not set", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Password of the cipher is not set", log_t::flag_t::CRITICAL);
+						awh::log::print("Password of the cipher is not set", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из метода с признаком отказа, причина уже названа
 					return outcome;
@@ -8051,13 +8047,13 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to decrypt data from AES", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
+						awh::log::debug("Unable to decrypt data from AES", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to decrypt data from AES", log_t::flag_t::WARNING);
+						awh::log::print("Unable to decrypt data from AES", awh::log::flag_t::WARNING);
 					#endif
 				}
 			} break;
@@ -8074,13 +8070,13 @@ bool awh::Crypto::decrypt(const void * buffer, const size_t size, T & result, co
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Unable to decrypt data, cipher type is not set", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)), log_t::flag_t::WARNING);
+					awh::log::debug("Unable to decrypt data, cipher type is not set", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (digest), static_cast <uint16_t> (actual)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Unable to decrypt data, cipher type is not set", log_t::flag_t::WARNING);
+					awh::log::print("Unable to decrypt data, cipher type is not set", awh::log::flag_t::WARNING);
 				#endif
 			} break;
 		}
@@ -8188,13 +8184,13 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Private key size is too small to be secure", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+				awh::log::debug("Private key size is too small to be secure", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Private key size is too small to be secure", log_t::flag_t::CRITICAL);
+				awh::log::print("Private key size is too small to be secure", awh::log::flag_t::CRITICAL);
 			#endif
 			// Выходим из метода
 			return result;
@@ -8208,13 +8204,13 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Private key generation failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("Private key generation failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Private key generation failed", log_t::flag_t::CRITICAL);
+				awh::log::print("Private key generation failed", awh::log::flag_t::CRITICAL);
 			#endif
 			// Возвращаем результат
 			return result;
@@ -8245,13 +8241,13 @@ bool awh::Crypto::generatePrivateKeyRSA(const size_t size) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -8300,13 +8296,13 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Public key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+						awh::log::debug("Public key export failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Public key export failed", log_t::flag_t::CRITICAL);
+						awh::log::print("Public key export failed", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 				// Если выписка ключа удалась
@@ -8329,13 +8325,13 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Public key BIO creation failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					awh::log::debug("Public key BIO creation failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Public key BIO creation failed", log_t::flag_t::CRITICAL);
+					awh::log::print("Public key BIO creation failed", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 		// Если путь к файлу не передан или публичный ключ не загружен
@@ -8345,13 +8341,13 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Public key is not loaded", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				awh::log::debug("Public key is not loaded", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Public key is not loaded", log_t::flag_t::WARNING);
+				awh::log::print("Public key is not loaded", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -8363,13 +8359,13 @@ string awh::Crypto::getPublicKeyRSA() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -8412,7 +8408,7 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 				::BIO_free(bio);
 				// Если публичный ключ получен, оглашаем его разрядность
 				if(pkey != nullptr)
-					driver::strength(pkey, key_type_t::PUBLIC, this->_log);
+					driver::strength(pkey, key_type_t::PUBLIC);
 				// Если публичный ключ получен
 				if(pkey != nullptr){
 					// Получаем ссылку на объект ключа RSA
@@ -8434,13 +8430,13 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Public key import failed", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+						awh::log::debug("Public key import failed", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Public key import failed", log_t::flag_t::CRITICAL);
+						awh::log::print("Public key import failed", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			// Если объект BIO не создан
@@ -8450,13 +8446,13 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Public key BIO import failed", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+					awh::log::debug("Public key BIO import failed", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Public key BIO import failed", log_t::flag_t::CRITICAL);
+					awh::log::print("Public key BIO import failed", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 		/**
@@ -8468,13 +8464,13 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Если ключ пуст либо предел разрядности превышает
@@ -8484,13 +8480,13 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Public key is empty or its size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+			awh::log::debug("Public key is empty or its size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Public key is empty or its size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+			awh::log::print("Public key is empty or its size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 		#endif
 	}
 	// Возвращаем результат
@@ -8533,7 +8529,7 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 				::BIO_free(bio);
 				// Если приватный ключ получен, оглашаем его разрядность
 				if(pkey != nullptr)
-					driver::strength(pkey, key_type_t::PRIVATE, this->_log);
+					driver::strength(pkey, key_type_t::PRIVATE);
 				// Если приватный ключ получен
 				if(pkey != nullptr){
 					// Получаем ссылку на объект ключа RSA
@@ -8555,13 +8551,13 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Private key import failed", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+						awh::log::debug("Private key import failed", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Private key import failed", log_t::flag_t::CRITICAL);
+						awh::log::print("Private key import failed", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			// Если объект BIO не создан
@@ -8571,13 +8567,13 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Private key BIO import failed", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+					awh::log::debug("Private key BIO import failed", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Private key BIO import failed", log_t::flag_t::CRITICAL);
+					awh::log::print("Private key BIO import failed", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 		/**
@@ -8589,13 +8585,13 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	// Если ключ пуст либо предел разрядности превышает
@@ -8605,13 +8601,13 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Private key is empty or its size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, make_tuple(key.size()), log_t::flag_t::CRITICAL);
+			awh::log::debug("Private key is empty or its size exceeds the limit of the cryptography library", __PRETTY_FUNCTION__, {key.size()}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Private key is empty or its size exceeds the limit of the cryptography library", log_t::flag_t::CRITICAL);
+			awh::log::print("Private key is empty or its size exceeds the limit of the cryptography library", awh::log::flag_t::CRITICAL);
 		#endif
 	}
 	// Возвращаем результат
@@ -8665,13 +8661,13 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Private key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+								awh::log::debug("Private key export failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Private key export failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Private key export failed", awh::log::flag_t::CRITICAL);
 							#endif
 						}
 					// Если пароль установлен
@@ -8713,13 +8709,13 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Cipher type is not suitable for private key protection", log_t::flag_t::CRITICAL);
+									awh::log::print("Cipher type is not suitable for private key protection", awh::log::flag_t::CRITICAL);
 								#endif
 						}
 						// Если файл не может быть записан
@@ -8731,13 +8727,13 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Private key export failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+								awh::log::debug("Private key export failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Private key export failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Private key export failed", awh::log::flag_t::CRITICAL);
 							#endif
 						}
 					}
@@ -8779,13 +8775,13 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Private key BIO creation failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+						awh::log::debug("Private key BIO creation failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Private key BIO creation failed", log_t::flag_t::CRITICAL);
+						awh::log::print("Private key BIO creation failed", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			// Если ключ не является приватным
@@ -8795,13 +8791,13 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Key cannot be export because it is not private", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+					awh::log::debug("Key cannot be export because it is not private", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Key cannot be export because it is not private", log_t::flag_t::CRITICAL);
+					awh::log::print("Key cannot be export because it is not private", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 		// Если ключ не загружен
@@ -8811,13 +8807,13 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Private key is not loaded", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				awh::log::debug("Private key is not loaded", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Private key is not loaded", log_t::flag_t::WARNING);
+				awh::log::print("Private key is not loaded", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -8829,13 +8825,13 @@ string awh::Crypto::getPrivateKeyRSA(const cipher_t cipher) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -8868,7 +8864,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 			 */
 			#if _WIN32 || _WIN64
 				// Открываем файл с публичным ключом
-				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"rb");
+				FILE * file = ::_wfopen(awh::fmk::convert(path).c_str(), L"rb");
 				// Если файл открыт удачно
 				if(file != nullptr){
 					// Читаем публичный ключ из файла
@@ -8877,7 +8873,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					::fclose(file);
 					// Если публичный ключ получен, оглашаем его разрядность
 					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PUBLIC, this->_log);
+						driver::strength(pkey, key_type_t::PUBLIC);
 					// Если публичный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA
@@ -8899,13 +8895,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Public key reading failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Public key reading failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Public key reading failed", awh::log::flag_t::CRITICAL);
 						#endif
 					}
 				// Если файл не открыт
@@ -8915,13 +8911,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+						awh::log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+						awh::log::print("Public key file opening failed", awh::log::flag_t::WARNING);
 					#endif
 				}
 			/**
@@ -8945,7 +8941,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					::fclose(file);
 					// Если публичный ключ получен, оглашаем его разрядность
 					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PUBLIC, this->_log);
+						driver::strength(pkey, key_type_t::PUBLIC);
 					// Если публичный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA
@@ -8967,13 +8963,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Public key reading failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Public key reading failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Public key reading failed", awh::log::flag_t::CRITICAL);
 						#endif
 					}
 				// Если файл не открыт
@@ -8983,13 +8979,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+						awh::log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+						awh::log::print("Public key file opening failed", awh::log::flag_t::WARNING);
 					#endif
 				}
 			#endif
@@ -9000,13 +8996,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid path for public key", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid path for public key", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid path for public key", log_t::flag_t::WARNING);
+				awh::log::print("Invalid path for public key", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -9018,13 +9014,13 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9057,7 +9053,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 			 */
 			#if _WIN32 || _WIN64
 				// Открываем файл с приватным ключом
-				FILE * file = ::_wfopen(this->_fmk->convert(path).c_str(), L"rb");
+				FILE * file = ::_wfopen(awh::fmk::convert(path).c_str(), L"rb");
 				// Если файл открыт удачно
 				if(file != nullptr){
 					// Читаем приватный ключ из файла
@@ -9066,7 +9062,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					::fclose(file);
 					// Если приватный ключ получен, оглашаем его разрядность
 					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PRIVATE, this->_log);
+						driver::strength(pkey, key_type_t::PRIVATE);
 					// Если приватный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA
@@ -9088,13 +9084,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Private key reading failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Private key reading failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Private key reading failed", awh::log::flag_t::CRITICAL);
 						#endif
 					}
 				// Если файл не открыт
@@ -9104,13 +9100,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+						awh::log::debug("Private key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+						awh::log::print("Private key file opening failed", awh::log::flag_t::WARNING);
 					#endif
 				}
 			/**
@@ -9134,7 +9130,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					::fclose(file);
 					// Если приватный ключ получен, оглашаем его разрядность
 					if(pkey != nullptr)
-						driver::strength(pkey, key_type_t::PRIVATE, this->_log);
+						driver::strength(pkey, key_type_t::PRIVATE);
 					// Если приватный ключ получен
 					if(pkey != nullptr){
 						// Получаем ссылку на объект ключа RSA
@@ -9156,13 +9152,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Private key reading failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Private key reading failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Private key reading failed", awh::log::flag_t::CRITICAL);
 						#endif
 					}
 				// Если файл не открыт
@@ -9172,13 +9168,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+						awh::log::debug("Private key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+						awh::log::print("Private key file opening failed", awh::log::flag_t::WARNING);
 					#endif
 				}
 			#endif
@@ -9189,13 +9185,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid path for private key", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid path for private key", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid path for private key", log_t::flag_t::WARNING);
+				awh::log::print("Invalid path for private key", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -9207,13 +9203,13 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9248,7 +9244,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 			 */
 			#if _WIN32 || _WIN64
 				// Имя файла открытого ключа в широкой записи
-				const wstring filename = this->_fmk->convert(path);
+				const wstring filename = awh::fmk::convert(path);
 				/**
 				 * Ключ выписывается в отдельный файл, а на место его ставится
 				 * переименованием - тем же порядком и по тем же доводам, что и у
@@ -9272,13 +9268,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Public key saving failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Public key saving failed", awh::log::flag_t::CRITICAL);
 						#endif
 					}
 					// Закрываем файл
@@ -9296,13 +9292,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Public key file renaming failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+								awh::log::debug("Public key file renaming failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Public key file renaming failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Public key file renaming failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Снимаем отдельный файл, на место не ставший
 							::DeleteFileW(temporary.c_str());
@@ -9320,13 +9316,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+						awh::log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+						awh::log::print("Public key file opening failed", awh::log::flag_t::WARNING);
 					#endif
 				}
 			/**
@@ -9359,13 +9355,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Public key saving failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Public key saving failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Public key saving failed", awh::log::flag_t::CRITICAL);
 						#endif
 					}
 					/**
@@ -9379,13 +9375,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Public key file syncing failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Public key file syncing failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Public key file syncing failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Public key file syncing failed", awh::log::flag_t::CRITICAL);
 						#endif
 						// Запоминаем признак отказа работы
 						result = false;
@@ -9401,13 +9397,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Public key file renaming failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+								awh::log::debug("Public key file renaming failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Public key file renaming failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Public key file renaming failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Удаляем файл, на место не ставший
 							::remove(temporary.c_str());
@@ -9420,13 +9416,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Public key folder syncing failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+								awh::log::debug("Public key folder syncing failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Public key folder syncing failed", log_t::flag_t::WARNING);
+								awh::log::print("Public key folder syncing failed", awh::log::flag_t::WARNING);
 							#endif
 						}
 					// Если запись ключа не удалась, снимаем файл, записанный не до конца
@@ -9438,13 +9434,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+						awh::log::debug("Public key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Public key file opening failed", log_t::flag_t::WARNING);
+						awh::log::print("Public key file opening failed", awh::log::flag_t::WARNING);
 					#endif
 				}
 			#endif
@@ -9455,13 +9451,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid path or public key is not loaded", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid path or public key is not loaded", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid path or public key is not loaded", log_t::flag_t::WARNING);
+				awh::log::print("Invalid path or public key is not loaded", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -9473,13 +9469,13 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -9538,13 +9534,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Cipher type is not suitable for private key protection", log_t::flag_t::CRITICAL);
+								awh::log::print("Cipher type is not suitable for private key protection", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return result;
@@ -9556,7 +9552,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 				 */
 				#if _WIN32 || _WIN64
 					// Имя файла приватного ключа в широкой записи
-					const wstring filename = this->_fmk->convert(path);
+					const wstring filename = awh::fmk::convert(path);
 					/**
 					 * Ключ выписывается в отдельный файл, а на место его ставится
 					 * переименованием - тем же порядком и по тем же доводам, что и у
@@ -9584,13 +9580,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+									awh::log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+									awh::log::print("Private key saving failed", awh::log::flag_t::CRITICAL);
 								#endif
 							}
 						// Если пароль установлен
@@ -9632,13 +9628,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+										awh::log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print("Cipher type is not suitable for private key protection", log_t::flag_t::CRITICAL);
+										awh::log::print("Cipher type is not suitable for private key protection", awh::log::flag_t::CRITICAL);
 									#endif
 							}
 							// Если файл не может быть записан
@@ -9648,13 +9644,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+									awh::log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+									awh::log::print("Private key saving failed", awh::log::flag_t::CRITICAL);
 								#endif
 							}
 						}
@@ -9682,13 +9678,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Private key file renaming failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+									awh::log::debug("Private key file renaming failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Private key file renaming failed", log_t::flag_t::CRITICAL);
+									awh::log::print("Private key file renaming failed", awh::log::flag_t::CRITICAL);
 								#endif
 								// Снимаем отдельный файл, на место не ставший
 								::DeleteFileW(temporary.c_str());
@@ -9706,13 +9702,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+							awh::log::debug("Private key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+							awh::log::print("Private key file opening failed", awh::log::flag_t::WARNING);
 						#endif
 					}
 				/**
@@ -9763,13 +9759,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Private key file rights setting failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+							awh::log::debug("Private key file rights setting failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Private key file rights setting failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Private key file rights setting failed", awh::log::flag_t::CRITICAL);
 						#endif
 						// Закрываем заведённый файловый дескриптор
 						::close(fd);
@@ -9804,13 +9800,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+									awh::log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+									awh::log::print("Private key saving failed", awh::log::flag_t::CRITICAL);
 								#endif
 							}
 						// Если пароль установлен
@@ -9852,13 +9848,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+										awh::log::debug("Cipher type is not suitable for private key protection", __PRETTY_FUNCTION__, {static_cast <uint16_t> (cipher)}, awh::log::flag_t::CRITICAL);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										this->_log->print("Cipher type is not suitable for private key protection", log_t::flag_t::CRITICAL);
+										awh::log::print("Cipher type is not suitable for private key protection", awh::log::flag_t::CRITICAL);
 									#endif
 							}
 							// Если файл не может быть записан
@@ -9868,13 +9864,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+									awh::log::debug("Private key saving failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Private key saving failed", log_t::flag_t::CRITICAL);
+									awh::log::print("Private key saving failed", awh::log::flag_t::CRITICAL);
 								#endif
 							}
 						}
@@ -9890,13 +9886,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Private key file syncing failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+								awh::log::debug("Private key file syncing failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Private key file syncing failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Private key file syncing failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Запоминаем признак отказа работы
 							result = false;
@@ -9912,13 +9908,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Private key file renaming failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+									awh::log::debug("Private key file renaming failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Private key file renaming failed", log_t::flag_t::CRITICAL);
+									awh::log::print("Private key file renaming failed", awh::log::flag_t::CRITICAL);
 								#endif
 								// Удаляем файл, на место не ставший
 								::remove(temporary.c_str());
@@ -9931,13 +9927,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Private key folder syncing failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+									awh::log::debug("Private key folder syncing failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Private key folder syncing failed", log_t::flag_t::WARNING);
+									awh::log::print("Private key folder syncing failed", awh::log::flag_t::WARNING);
 								#endif
 							}
 						/**
@@ -9954,13 +9950,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+							awh::log::debug("Private key file opening failed", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Private key file opening failed", log_t::flag_t::WARNING);
+							awh::log::print("Private key file opening failed", awh::log::flag_t::WARNING);
 						#endif
 					}
 				#endif
@@ -9971,13 +9967,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Key cannot be saved because it is not private", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
+					awh::log::debug("Key cannot be saved because it is not private", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Key cannot be saved because it is not private", log_t::flag_t::CRITICAL);
+					awh::log::print("Key cannot be saved because it is not private", awh::log::flag_t::CRITICAL);
 				#endif
 			}
 		// Если путь к файлу не передан или приватный ключ не сгенерирован
@@ -9987,13 +9983,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid path or private key is not generated", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid path or private key is not generated", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid path or private key is not generated", log_t::flag_t::WARNING);
+				awh::log::print("Invalid path or private key is not generated", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -10005,13 +10001,13 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {path}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -10078,13 +10074,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, size);
+			awh::log::debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL, size);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+			awh::log::print("Data buffer is not passed while its size is declared as %zu octets", awh::log::flag_t::CRITICAL, size);
 		#endif
 		// Выходим из метода с признаком отказа
 		return outcome;
@@ -10108,13 +10104,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+						awh::log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+						awh::log::print("Context allocation failed", awh::log::flag_t::CRITICAL);
 					#endif
 				// Если контекст для подписи создан
 				} else {
@@ -10129,13 +10125,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Encrypt init failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+							awh::log::debug("Encrypt init failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Encrypt init failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Encrypt init failed", awh::log::flag_t::CRITICAL);
 						#endif
 						// Выходим из метода с признаком отказа
 						return outcome;
@@ -10167,10 +10163,10 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", __PRETTY_FUNCTION__, make_tuple(width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3)), log_t::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
+							awh::log::debug("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", __PRETTY_FUNCTION__, {width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3)}, awh::log::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", log_t::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
+							awh::log::print("RSA key of %zu octets is too short for OAEP padding, at least %zu octets are required", awh::log::flag_t::CRITICAL, width, static_cast <size_t> ((2 * AWH_CRYPTO_OAEP_HASH_SIZE) + 3));
 						#endif
 						// Выходим из метода с признаком отказа
 						return outcome;
@@ -10188,13 +10184,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", __PRETTY_FUNCTION__, make_tuple(size, limit), log_t::flag_t::CRITICAL, size, limit);
+							awh::log::debug("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", __PRETTY_FUNCTION__, {size, limit}, awh::log::flag_t::CRITICAL, size, limit);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", log_t::flag_t::CRITICAL, size, limit);
+							awh::log::print("Message of %zu octets exceeds the limit of %zu octets for the RSA key in use", awh::log::flag_t::CRITICAL, size, limit);
 						#endif
 						// Выходим из метода с признаком отказа
 						return outcome;
@@ -10211,13 +10207,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Get encrypted data size failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+							awh::log::debug("Get encrypted data size failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Get encrypted data size failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Get encrypted data size failed", awh::log::flag_t::CRITICAL);
 						#endif
 						// Выходим из метода с признаком отказа
 						return outcome;
@@ -10244,13 +10240,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Encrypt data failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+							awh::log::debug("Encrypt data failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Encrypt data failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Encrypt data failed", awh::log::flag_t::CRITICAL);
 						#endif
 						// Выходим из метода с признаком отказа
 						return outcome;
@@ -10271,13 +10267,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Public or private key is not generated", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+					awh::log::debug("Public or private key is not generated", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Public or private key is not generated", log_t::flag_t::WARNING);
+					awh::log::print("Public or private key is not generated", awh::log::flag_t::WARNING);
 				#endif
 			}
 		// Если буфер данных или размер данных переданы неправильно
@@ -10287,13 +10283,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid buffer or size for encryption", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid buffer or size for encryption", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid buffer or size for encryption", log_t::flag_t::WARNING);
+				awh::log::print("Invalid buffer or size for encryption", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -10316,13 +10312,13 @@ bool awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим признак успешно выполненной работы
@@ -10389,13 +10385,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, size);
+			awh::log::debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL, size);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+			awh::log::print("Data buffer is not passed while its size is declared as %zu octets", awh::log::flag_t::CRITICAL, size);
 		#endif
 		// Выходим из метода с признаком отказа
 		return outcome;
@@ -10421,13 +10417,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+							awh::log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Context allocation failed", awh::log::flag_t::CRITICAL);
 						#endif
 					// Если контекст для подписи создан
 					} else {
@@ -10442,13 +10438,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Decrypt init failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+								awh::log::debug("Decrypt init failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Decrypt init failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Decrypt init failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
@@ -10466,13 +10462,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Get decrypted data size failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+								awh::log::debug("Get decrypted data size failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Get decrypted data size failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Get decrypted data size failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
@@ -10499,13 +10495,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Decrypt data failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+								awh::log::debug("Decrypt data failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Decrypt data failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Decrypt data failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
@@ -10526,13 +10522,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to decrypt because the key is not private", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+						awh::log::debug("Unable to decrypt because the key is not private", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to decrypt because the key is not private", log_t::flag_t::CRITICAL);
+						awh::log::print("Unable to decrypt because the key is not private", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			// Если приватный ключ не сгенерирован или не загружен
@@ -10542,13 +10538,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+					awh::log::debug("Private key is not generated", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Private key is not generated", log_t::flag_t::WARNING);
+					awh::log::print("Private key is not generated", awh::log::flag_t::WARNING);
 				#endif
 			}
 		// Если буфер данных или размер данных переданы неправильно
@@ -10558,13 +10554,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid buffer or size for decryption", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid buffer or size for decryption", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid buffer or size for decryption", log_t::flag_t::WARNING);
+				awh::log::print("Invalid buffer or size for decryption", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -10587,13 +10583,13 @@ bool awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим признак успешно выполненной работы
@@ -10662,13 +10658,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, size);
+			awh::log::debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL, size);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+			awh::log::print("Data buffer is not passed while its size is declared as %zu octets", awh::log::flag_t::CRITICAL, size);
 		#endif
 		// Выходим из метода с признаком отказа
 		return outcome;
@@ -10694,13 +10690,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							awh::log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+							awh::log::print("Context allocation failed", awh::log::flag_t::CRITICAL);
 						#endif
 					// Если контекст для подписи создан
 					} else {
@@ -10751,13 +10747,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+									awh::log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
+									awh::log::print("Unsupported hash type", awh::log::flag_t::CRITICAL);
 								#endif
 								// Выходим из метода с признаком отказа
 								return outcome;
@@ -10782,18 +10778,18 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Digest signature init failed", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Digest signature init failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Digest signature init failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Digest signature init failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
 						// Если установка схемы дополнения подписи не удалась, причину называет она сама
-						} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding, this->_log)){
+						} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding)){
 							// Освобождаем контекст для подписи
 							::EVP_MD_CTX_free(ctx);
 							// Снимаем указатель освобождённого контекста
@@ -10812,13 +10808,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Digest signature update failed", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Digest signature update failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Digest signature update failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Digest signature update failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
@@ -10836,13 +10832,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Digest signature final (get length) failed", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Digest signature final (get length) failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Digest signature final (get length) failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Digest signature final (get length) failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
@@ -10869,13 +10865,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Digest signature final (get signature) failed", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Digest signature final (get signature) failed", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Digest signature final (get signature) failed", log_t::flag_t::CRITICAL);
+								awh::log::print("Digest signature final (get signature) failed", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода с признаком отказа
 							return outcome;
@@ -10896,13 +10892,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unable to sign because the key is not private", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+						awh::log::debug("Unable to sign because the key is not private", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to sign because the key is not private", log_t::flag_t::CRITICAL);
+						awh::log::print("Unable to sign because the key is not private", awh::log::flag_t::CRITICAL);
 					#endif
 				}
 			// Если приватный ключ не сгенерирован или не загружен
@@ -10912,13 +10908,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					awh::log::debug("Private key is not generated", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Private key is not generated", log_t::flag_t::WARNING);
+					awh::log::print("Private key is not generated", awh::log::flag_t::WARNING);
 				#endif
 			}
 		// Если буфер данных или размер данных переданы неправильно
@@ -10928,13 +10924,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid buffer or size for signing", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid buffer or size for signing", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid buffer or size for signing", log_t::flag_t::WARNING);
+				awh::log::print("Invalid buffer or size for signing", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -10957,13 +10953,13 @@ bool awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size, static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим признак успешно выполненной работы
@@ -11020,13 +11016,13 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, size);
+			awh::log::debug("Data buffer is not passed while its size is declared as %zu octets", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL, size);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Data buffer is not passed while its size is declared as %zu octets", log_t::flag_t::CRITICAL, size);
+			awh::log::print("Data buffer is not passed while its size is declared as %zu octets", awh::log::flag_t::CRITICAL, size);
 		#endif
 		// Выходим из метода с признаком отказа
 		return result;
@@ -11050,13 +11046,13 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+						awh::log::debug("Context allocation failed", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Context allocation failed", log_t::flag_t::CRITICAL);
+						awh::log::print("Context allocation failed", awh::log::flag_t::CRITICAL);
 					#endif
 				// Если контекст для подписи создан
 				} else {
@@ -11107,13 +11103,13 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								awh::log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unsupported hash type", log_t::flag_t::CRITICAL);
+								awh::log::print("Unsupported hash type", awh::log::flag_t::CRITICAL);
 							#endif
 							// Выходим из метода
 							return result;
@@ -11140,16 +11136,16 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Error during signature verification context setup", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							awh::log::debug("Error during signature verification context setup", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Error during signature verification context setup", log_t::flag_t::CRITICAL);
+							awh::log::print("Error during signature verification context setup", awh::log::flag_t::CRITICAL);
 						#endif
 					// Если схема дополнения подписи не установлена
-					} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding, this->_log)){
+					} else if(!driver::padding(pctx, key.ctx, md, this->_params.padding)){
 						/**
 						 * Причину отказа записала сама установка схемы дополнения
 						 */
@@ -11160,13 +11156,13 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Error during signature verification data update", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							awh::log::debug("Error during signature verification data update", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Error during signature verification data update", log_t::flag_t::CRITICAL);
+							awh::log::print("Error during signature verification data update", awh::log::flag_t::CRITICAL);
 						#endif
 					// Если контекст проверки подписи заведён
 					} else
@@ -11184,13 +11180,13 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Public key is not generated", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					awh::log::debug("Public key is not generated", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Public key is not generated", log_t::flag_t::WARNING);
+					awh::log::print("Public key is not generated", awh::log::flag_t::WARNING);
 				#endif
 			}
 		// Если буфер данных или размер данных переданы неправильно
@@ -11200,13 +11196,13 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Invalid buffer or size for verification signature", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				awh::log::debug("Invalid buffer or size for verification signature", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Invalid buffer or size for verification signature", log_t::flag_t::WARNING);
+				awh::log::print("Invalid buffer or size for verification signature", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -11222,13 +11218,13 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {size, signature.size(), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -11375,13 +11371,13 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Signature key is not generated", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL);
+						awh::log::debug("Signature key is not generated", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Signature key is not generated", log_t::flag_t::CRITICAL);
+						awh::log::print("Signature key is not generated", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из метода
 					return false;
@@ -11404,13 +11400,13 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Signature kind is unsupported", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+					awh::log::debug("Signature kind is unsupported", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Signature kind is unsupported", log_t::flag_t::WARNING);
+					awh::log::print("Signature kind is unsupported", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return outcome;
@@ -11439,13 +11435,13 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Signature key width is below the threshold", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (bits)), log_t::flag_t::WARNING);
+						awh::log::debug("Signature key width is below the threshold", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (bits)}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Signature key width is below the threshold", log_t::flag_t::WARNING);
+						awh::log::print("Signature key width is below the threshold", awh::log::flag_t::WARNING);
 					#endif
 					// Снимаем признак готовности параметров выработки ключа
 					ready = false;
@@ -11471,13 +11467,13 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Generate signature key failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+				awh::log::debug("Generate signature key failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Generate signature key failed", log_t::flag_t::WARNING);
+				awh::log::print("Generate signature key failed", awh::log::flag_t::WARNING);
 			#endif
 		}
 	/**
@@ -11487,7 +11483,7 @@ bool awh::Crypto::generateKey(const string & name, const signature_t type, const
 		// Снимаем признак успешно выполненной работы
 		outcome = false;
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Если контекст выработки ключа подписи заведён
 	if(pctx != nullptr)
@@ -11753,13 +11749,13 @@ string awh::Crypto::getKey(const string & name, const key_type_t type) const noe
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				} else this->_log->debug("Signature key export failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL);
+				} else awh::log::debug("Signature key export failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				} else this->_log->print("Signature key export failed", log_t::flag_t::CRITICAL);
+				} else awh::log::print("Signature key export failed", awh::log::flag_t::CRITICAL);
 			#endif
 			/**
 			 * Память объекта BIO гасится прежде освобождения: в ней лежит запись
@@ -11785,7 +11781,7 @@ string awh::Crypto::getKey(const string & name, const key_type_t type) const noe
 		// Выполняем очистку записи ключа
 		result.clear();
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Выводим полученную запись ключа
 	return result;
@@ -11937,13 +11933,13 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Signature key kind is unsupported", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+					awh::log::debug("Signature key kind is unsupported", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Signature key kind is unsupported", log_t::flag_t::WARNING);
+					awh::log::print("Signature key kind is unsupported", awh::log::flag_t::WARNING);
 				#endif
 				// Освобождаем память прочитанного ключа
 				::EVP_PKEY_free(result);
@@ -11962,7 +11958,7 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 				// Если введённый ключ является ключом RSA
 				if(kind == signature_t::RSA)
 					// Выполняем оглашение разрядности введённого ключа
-					driver::strength(result, type, this->_log);
+					driver::strength(result, type);
 				// Выполняем снятие ключа, лежавшего под этим именем прежде
 				this->removeKey(name);
 				// Получаем запись ключа в связке
@@ -11979,13 +11975,13 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			} else this->_log->debug("Signature key import failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL);
+			} else awh::log::debug("Signature key import failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			} else this->_log->print("Signature key import failed", log_t::flag_t::CRITICAL);
+			} else awh::log::print("Signature key import failed", awh::log::flag_t::CRITICAL);
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -11994,7 +11990,7 @@ bool awh::Crypto::setKey(const string & name, const string & key, const key_type
 		// Снимаем признак успешно выполненной работы
 		outcome = false;
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Выводим признак успешно выполненной работы
 	return outcome;
@@ -12033,13 +12029,13 @@ T awh::Crypto::fingerprint(const string & name, const format_t format) const noe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Fingerprint format is unsupported", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (format)), log_t::flag_t::WARNING);
+			awh::log::debug("Fingerprint format is unsupported", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (format)}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Fingerprint format is unsupported", log_t::flag_t::WARNING);
+			awh::log::print("Fingerprint format is unsupported", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return result;
@@ -12116,13 +12112,13 @@ T awh::Crypto::fingerprint(const string & name, const format_t format) const noe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			} else this->_log->debug("Public key canonical form export failed", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL);
+			} else awh::log::debug("Public key canonical form export failed", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			} else this->_log->print("Public key canonical form export failed", log_t::flag_t::CRITICAL);
+			} else awh::log::print("Public key canonical form export failed", awh::log::flag_t::CRITICAL);
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -12131,7 +12127,7 @@ T awh::Crypto::fingerprint(const string & name, const format_t format) const noe
 		// Выполняем очистку буфера результата
 		driver::wipe(result);
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Выводим полученный отпечаток открытого ключа
 	return result;
@@ -12195,13 +12191,13 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Data buffer for the signature is not passed", __PRETTY_FUNCTION__, make_tuple(name, size), log_t::flag_t::WARNING);
+				awh::log::debug("Data buffer for the signature is not passed", __PRETTY_FUNCTION__, {name, size}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Data buffer for the signature is not passed", log_t::flag_t::WARNING);
+				awh::log::print("Data buffer for the signature is not passed", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12221,13 +12217,13 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+				awh::log::debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+				awh::log::print("Signature key is not found in the keyring", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12252,13 +12248,13 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					awh::log::debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Hash type is inapplicable to the GOST signature", log_t::flag_t::WARNING);
+					awh::log::print("Hash type is inapplicable to the GOST signature", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return outcome;
@@ -12296,13 +12292,13 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Signature is not produced", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+					awh::log::debug("Signature is not produced", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Signature is not produced", log_t::flag_t::WARNING);
+					awh::log::print("Signature is not produced", awh::log::flag_t::WARNING);
 				#endif
 			}
 			// Выходим из метода
@@ -12323,13 +12319,13 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				awh::log::debug(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", log_t::flag_t::WARNING);
+				awh::log::print(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12343,13 +12339,13 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				awh::log::debug("Unsupported hash type", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Unsupported hash type", log_t::flag_t::WARNING);
+				awh::log::print("Unsupported hash type", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12371,7 +12367,7 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 				// Если подпись вырабатывается ключом RSA
 				if(type == signature_t::RSA)
 					// Выполняем установку схемы дополнения подписи
-					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
 				// Если схема дополнения подписи установлена
 				if(ready){
 					// Длина вырабатываемой подписи
@@ -12420,13 +12416,13 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Data signing failed", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type), size), log_t::flag_t::CRITICAL);
+				awh::log::debug("Data signing failed", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type), size}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Data signing failed", log_t::flag_t::CRITICAL);
+				awh::log::print("Data signing failed", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -12438,7 +12434,7 @@ bool awh::Crypto::sign(const string & name, const uint8_t * buffer, const size_t
 		// Затираем и очищаем буфер результата
 		driver::wipe(result);
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Если контекст выработки подписи заведён
 	if(ctx != nullptr)
@@ -12480,13 +12476,13 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Data buffer for the verification is not passed", __PRETTY_FUNCTION__, make_tuple(name, size), log_t::flag_t::WARNING);
+				awh::log::debug("Data buffer for the verification is not passed", __PRETTY_FUNCTION__, {name, size}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Data buffer for the verification is not passed", log_t::flag_t::WARNING);
+				awh::log::print("Data buffer for the verification is not passed", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12515,13 +12511,13 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+				awh::log::debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+				awh::log::print("Signature key is not found in the keyring", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12544,13 +12540,13 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					awh::log::debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Hash type is inapplicable to the GOST signature", log_t::flag_t::WARNING);
+					awh::log::print("Hash type is inapplicable to the GOST signature", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return outcome;
@@ -12567,13 +12563,13 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Signature size does not match the GOST signature kind", __PRETTY_FUNCTION__, make_tuple(name, signature.size()), log_t::flag_t::WARNING);
+					awh::log::debug("Signature size does not match the GOST signature kind", __PRETTY_FUNCTION__, {name, signature.size()}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Signature size does not match the GOST signature kind", log_t::flag_t::WARNING);
+					awh::log::print("Signature size does not match the GOST signature kind", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return outcome;
@@ -12600,13 +12596,13 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				awh::log::debug(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (type), static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", log_t::flag_t::WARNING);
+				awh::log::print(pure ? "Hash type is inapplicable to the Ed25519 signature" : "Hash type is required for the signature kind", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12630,7 +12626,7 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 				// Если подпись проверяется ключом RSA
 				if(type == signature_t::RSA)
 					// Выполняем установку схемы дополнения подписи
-					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+					ready = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
 				// Если схема дополнения подписи установлена
 				if(ready){
 					/**
@@ -12656,7 +12652,7 @@ bool awh::Crypto::verify(const string & name, const uint8_t * buffer, const size
 		// Снимаем признак успешно выполненной работы
 		outcome = false;
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Если контекст проверки подписи заведён
 	if(ctx != nullptr)
@@ -12707,13 +12703,13 @@ bool awh::Crypto::loadKey(const string & name, const string & filename, const ke
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			} else this->_log->debug("Signature key file is not found", __PRETTY_FUNCTION__, make_tuple(name, filename), log_t::flag_t::CRITICAL);
+			} else awh::log::debug("Signature key file is not found", __PRETTY_FUNCTION__, {name, filename}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			} else this->_log->print("Signature key file is not found", log_t::flag_t::CRITICAL);
+			} else awh::log::print("Signature key file is not found", awh::log::flag_t::CRITICAL);
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -12722,7 +12718,7 @@ bool awh::Crypto::loadKey(const string & name, const string & filename, const ke
 		// Снимаем признак успешно выполненной работы
 		outcome = false;
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	/**
 	 * Запись прочитанного ключа гасится: в ней лежит закрытый ключ, а освобождение
@@ -12771,7 +12767,7 @@ bool awh::Crypto::saveKey(const string & name, const string & filename, const ke
 		 */
 		#if _WIN32 || _WIN64
 			// Выполняем заведение файла, доступного одному лишь заводящему
-			FILE * file = ((type == key_type_t::PRIVATE) ? openPrivateFile(this->_fmk->convert(temporary)) : ::_wfopen(this->_fmk->convert(temporary).c_str(), L"wb"));
+			FILE * file = ((type == key_type_t::PRIVATE) ? openPrivateFile(awh::fmk::convert(temporary)) : ::_wfopen(awh::fmk::convert(temporary).c_str(), L"wb"));
 		/**
 		 * Для операционных систем семейства POSIX
 		 */
@@ -12849,7 +12845,7 @@ bool awh::Crypto::saveKey(const string & name, const string & filename, const ke
 					 * заменяет существующий файл, и доводит замену до носителя
 					 */
 					// Выполняем постановку записанного ключа на место
-					outcome = (::MoveFileExW(this->_fmk->convert(temporary).c_str(), this->_fmk->convert(filename).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
+					outcome = (::MoveFileExW(awh::fmk::convert(temporary).c_str(), awh::fmk::convert(filename).c_str(), (MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) != 0);
 				/**
 				 * Для операционных систем семейства POSIX
 				 */
@@ -12882,13 +12878,13 @@ bool awh::Crypto::saveKey(const string & name, const string & filename, const ke
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature key saving failed", __PRETTY_FUNCTION__, make_tuple(name, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL);
+				awh::log::debug("Signature key saving failed", __PRETTY_FUNCTION__, {name, filename, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature key saving failed", log_t::flag_t::CRITICAL);
+				awh::log::print("Signature key saving failed", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -12898,7 +12894,7 @@ bool awh::Crypto::saveKey(const string & name, const string & filename, const ke
 		// Снимаем признак успешно выполненной работы
 		outcome = false;
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	/**
 	 * Запись выписанного ключа гасится: в ней лежит закрытый ключ
@@ -12937,13 +12933,13 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 		 */
 		#if DEBUG_MODE
 			// Записываем предупреждение в лог
-			this->_log->debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, make_tuple(this->_keyring->name, name), log_t::flag_t::WARNING);
+			awh::log::debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, {this->_keyring->name, name}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем предупреждение в лог
-			this->_log->print("Unfinished stream is discarded by the new initialization", log_t::flag_t::WARNING);
+			awh::log::print("Unfinished stream is discarded by the new initialization", awh::log::flag_t::WARNING);
 		#endif
 	}
 	// Выполняем сброс потока, заведённого прежде
@@ -12969,13 +12965,13 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+				awh::log::debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+				awh::log::print("Signature key is not found in the keyring", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -12993,13 +12989,13 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature kind has no streaming mode", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (i->second.type)), log_t::flag_t::WARNING);
+				awh::log::debug("Signature kind has no streaming mode", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (i->second.type)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature kind has no streaming mode", log_t::flag_t::WARNING);
+				awh::log::print("Signature kind has no streaming mode", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -13020,13 +13016,13 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					awh::log::debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Hash type is inapplicable to the GOST signature", log_t::flag_t::WARNING);
+					awh::log::print("Hash type is inapplicable to the GOST signature", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return outcome;
@@ -13057,13 +13053,13 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				awh::log::debug("Hash type is required for the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Hash type is required for the signature kind", log_t::flag_t::WARNING);
+				awh::log::print("Hash type is required for the signature kind", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -13079,7 +13075,7 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 				// Если подпись вырабатывается ключом RSA
 				if(i->second.type == signature_t::RSA)
 					// Выполняем установку схемы дополнения подписи
-					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
 				// Устанавливаем признак успешно выполненной работы
 				else outcome = true;
 			}
@@ -13104,7 +13100,7 @@ bool awh::Crypto::signInitialize(const string & name, const hash_t hash) noexcep
 		// Выполняем сброс потока подписи
 		this->_keyring->reset();
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Выводим признак успешно выполненной работы
 	return outcome;
@@ -13134,13 +13130,13 @@ bool awh::Crypto::signUpdate(const uint8_t * buffer, const size_t size) noexcept
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+			awh::log::debug(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", log_t::flag_t::WARNING);
+			awh::log::print(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
@@ -13187,13 +13183,13 @@ bool awh::Crypto::signUpdate(const uint8_t * buffer, const size_t size) noexcept
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Signature stream update failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+			awh::log::debug("Signature stream update failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Signature stream update failed", log_t::flag_t::CRITICAL);
+			awh::log::print("Signature stream update failed", awh::log::flag_t::CRITICAL);
 		#endif
 	}
 	// Выводим признак успешно выполненной работы
@@ -13220,13 +13216,13 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			awh::log::debug(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", log_t::flag_t::WARNING);
+			awh::log::print(this->_keyring->checking ? "Stream is initialized for the verification, not for the signing" : "Signature stream is not initialized", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
@@ -13259,13 +13255,13 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(this->_keyring->name), log_t::flag_t::WARNING);
+					awh::log::debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, {this->_keyring->name}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+					awh::log::print("Signature key is not found in the keyring", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return outcome;
@@ -13311,13 +13307,13 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature stream finalization failed", __PRETTY_FUNCTION__, make_tuple(this->_keyring->name), log_t::flag_t::CRITICAL);
+				awh::log::debug("Signature stream finalization failed", __PRETTY_FUNCTION__, {this->_keyring->name}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature stream finalization failed", log_t::flag_t::CRITICAL);
+				awh::log::print("Signature stream finalization failed", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -13329,7 +13325,7 @@ bool awh::Crypto::signFinalize(vector <uint8_t> & result) noexcept {
 		// Затираем и очищаем буфер результата
 		driver::wipe(result);
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	/**
 	 * Поток сбрасывается и удачей, и отказом: продолжать завершённый поток нечем -
@@ -13369,13 +13365,13 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 		 */
 		#if DEBUG_MODE
 			// Записываем предупреждение в лог
-			this->_log->debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, make_tuple(this->_keyring->name, name), log_t::flag_t::WARNING);
+			awh::log::debug("Unfinished stream is discarded by the new initialization", __PRETTY_FUNCTION__, {this->_keyring->name, name}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем предупреждение в лог
-			this->_log->print("Unfinished stream is discarded by the new initialization", log_t::flag_t::WARNING);
+			awh::log::print("Unfinished stream is discarded by the new initialization", awh::log::flag_t::WARNING);
 		#endif
 	}
 	// Выполняем сброс потока, заведённого прежде
@@ -13401,13 +13397,13 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+				awh::log::debug("Signature key is not found in the keyring", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature key is not found in the keyring", log_t::flag_t::WARNING);
+				awh::log::print("Signature key is not found in the keyring", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -13424,13 +13420,13 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Signature kind has no streaming mode", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (i->second.type)), log_t::flag_t::WARNING);
+				awh::log::debug("Signature kind has no streaming mode", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (i->second.type)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Signature kind has no streaming mode", log_t::flag_t::WARNING);
+				awh::log::print("Signature kind has no streaming mode", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -13451,13 +13447,13 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					awh::log::debug("Hash type is inapplicable to the GOST signature", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Hash type is inapplicable to the GOST signature", log_t::flag_t::WARNING);
+					awh::log::print("Hash type is inapplicable to the GOST signature", awh::log::flag_t::WARNING);
 				#endif
 				// Выходим из метода
 				return outcome;
@@ -13488,13 +13484,13 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Hash type is required for the signature kind", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				awh::log::debug("Hash type is required for the signature kind", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (hash)}, awh::log::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Hash type is required for the signature kind", log_t::flag_t::WARNING);
+				awh::log::print("Hash type is required for the signature kind", awh::log::flag_t::WARNING);
 			#endif
 			// Выходим из метода
 			return outcome;
@@ -13510,7 +13506,7 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 				// Если подпись проверяется ключом RSA
 				if(i->second.type == signature_t::RSA)
 					// Выполняем установку схемы дополнения подписи
-					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding, this->_log);
+					outcome = driver::padding(pctx, i->second.ctx, md, this->_params.padding);
 				// Устанавливаем признак успешно выполненной работы
 				else outcome = true;
 			}
@@ -13536,7 +13532,7 @@ bool awh::Crypto::verifyInitialize(const string & name, const hash_t hash) noexc
 		// Выполняем сброс потока проверки подписи
 		this->_keyring->reset();
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	// Выводим признак успешно выполненной работы
 	return outcome;
@@ -13565,13 +13561,13 @@ bool awh::Crypto::verifyUpdate(const uint8_t * buffer, const size_t size) noexce
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::WARNING);
+			awh::log::debug((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log_t::flag_t::WARNING);
+			awh::log::print((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
@@ -13614,13 +13610,13 @@ bool awh::Crypto::verifyUpdate(const uint8_t * buffer, const size_t size) noexce
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("Verification stream update failed", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL);
+			awh::log::debug("Verification stream update failed", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Verification stream update failed", log_t::flag_t::CRITICAL);
+			awh::log::print("Verification stream update failed", awh::log::flag_t::CRITICAL);
 		#endif
 	}
 	// Выводим признак успешно выполненной работы
@@ -13645,13 +13641,13 @@ bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			awh::log::debug((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", log_t::flag_t::WARNING);
+			awh::log::print((this->_keyring->live()) ? "Stream is initialized for the signing, not for the verification" : "Verification stream is not initialized", awh::log::flag_t::WARNING);
 		#endif
 		// Выходим из метода
 		return false;
@@ -13705,7 +13701,7 @@ bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 		// Снимаем признак успешно выполненной работы
 		outcome = false;
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 	/**
 	 * Поток сбрасывается и удачей, и отказом: продолжать завершённый поток нечем -
@@ -13726,11 +13722,8 @@ bool awh::Crypto::verifyFinalize(const vector <uint8_t> & signature) noexcept {
 
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _keyring(nullptr), _fmk(fmk), _log(log) {
+awh::Crypto::Crypto() noexcept : _keyring(nullptr) {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -13772,7 +13765,7 @@ awh::Crypto::Crypto(const fmk_t * fmk, const log_t * log) noexcept : _keyring(nu
 			this->_keyring = nullptr;
 		}
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 	}
 }
 /**

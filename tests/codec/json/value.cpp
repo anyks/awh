@@ -58,13 +58,12 @@
  * Подключаем заголовочный файл выдачи пути во временном каталоге системы
  */
 #include "../temporary.hpp"
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/json/json.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -177,54 +176,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта фреймворка проверок
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -250,7 +209,7 @@ namespace {
 	 */
 	static json::value_t produce() noexcept {
 		// Собираемое значение
-		json::value_t result(::framework(), ::logger());
+		json::value_t result;
 		// Выполняем заведение строкового поля
 		result["имя"] = json::value_t("сервер");
 		// Выполняем заведение числового поля
@@ -270,7 +229,7 @@ namespace {
  */
 TEST(CodecJsonValue, Assemble) {
 	// Собираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем проверку неопределённости пустого значения
 	ASSERT_FALSE(value.valid());
 	// Выполняем проверку вида пустого значения
@@ -367,7 +326,7 @@ TEST(CodecJsonValue, Parse) {
 	// Разбираемый текст документа
 	const string text = "{\"a\":1,\"b\":[true,null,\"текст\"],\"c\":{\"d\":1.5}}";
 	// Разбираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(value.parse(text));
 	// Выполняем проверку обратной записи разобранного значения
@@ -379,7 +338,7 @@ TEST(CodecJsonValue, Parse) {
 	// Выполняем проверку извлечённого дробного значения
 	ASSERT_DOUBLE_EQ(real, 1.5);
 	// Значение, разобранное из записи первого
-	json::value_t twin(::framework(), ::logger());
+	json::value_t twin;
 	// Выполняем разбор записи первого значения
 	ASSERT_TRUE(twin.parse(value.dump()));
 	// Выполняем проверку совпадения значений
@@ -392,7 +351,7 @@ TEST(CodecJsonValue, Parse) {
  */
 TEST(CodecJsonValue, ParseFailure) {
 	// Разбираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем разбор искажённого текста документа
 	ASSERT_FALSE(value.parse("{\"a\":}"));
 	// Выполняем проверку того, что значение осталось неопределённым
@@ -408,7 +367,7 @@ TEST(CodecJsonValue, ParseFailure) {
  */
 TEST(CodecJsonValue, Bridge) {
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"вложенный\":{\"ключ\":[1,2,3]}}"));
 	// Выполняем снятие поддерева документа собственной памятью
@@ -427,7 +386,7 @@ TEST(CodecJsonValue, Bridge) {
  */
 TEST(CodecJsonValue, Modify) {
 	// Правимое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(value.parse("{\"a\":1,\"b\":2,\"c\":3}"));
 	// Выполняем перезапись значения занятого поля объекта
@@ -465,7 +424,7 @@ TEST(CodecJsonValue, Modify) {
  */
 TEST(CodecJsonValue, Access) {
 	// Правимое значение
-	json::value_t source(::framework(), ::logger());
+	json::value_t source;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(source.parse("{\"a\":1}"));
 	// Получаем ссылку на значение только для чтения
@@ -495,7 +454,7 @@ TEST(CodecJsonValue, Access) {
  */
 TEST(CodecJsonValue, Place) {
 	// Собираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем заведение значения вглубь по пути
 	value.place("/a/b/2") = json::value_t(static_cast <int64_t> (7));
 	/**
@@ -522,7 +481,7 @@ TEST(CodecJsonValue, Place) {
  */
 TEST(CodecJsonValue, Builder) {
 	// Объект потоковой сборки значения
-	json::builder_t builder(::logger());
+	json::builder_t builder;
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	// Выполняем запись имени поля объекта
@@ -561,7 +520,7 @@ TEST(CodecJsonValue, Builder) {
  */
 TEST(CodecJsonValue, BuilderFailure) {
 	// Объект потоковой сборки значения
-	json::builder_t builder(::logger());
+	json::builder_t builder;
 	// Выполняем проверку отказа закрытия неоткрытого вместилища
 	ASSERT_FALSE(builder.close());
 	// Выполняем открытие объекта
@@ -591,7 +550,7 @@ TEST(CodecJsonValue, BuilderGraft) {
 	// Готовое поддерево, собранное где-то ещё
 	const json::value_t nested = ::produce();
 	// Объект потоковой сборки значения
-	json::builder_t builder(::logger());
+	json::builder_t builder;
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	// Выполняем запись имени поля объекта
@@ -616,7 +575,7 @@ TEST(CodecJsonValue, BuilderGraft) {
  */
 TEST(CodecJsonValue, Extract) {
 	// Разбираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(value.parse("{\"целое\":42,\"знак\":-1,\"дробное\":1.5,\"текст\":\"строка\",\"да\":true}"));
 	// Извлекаемое дробное значение
@@ -702,7 +661,7 @@ TEST(CodecJsonValue, ExtractLimits) {
  */
 TEST(CodecJsonValue, Extended) {
 	// Разбираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(value.parse("{\"огромное\":1e400}"));
 	// Выполняем проверку вида хранения числа
@@ -742,9 +701,9 @@ TEST(CodecJsonValue, Compare) {
 	// Выполняем проверку совпадения целого числа с дробным той же величины
 	ASSERT_TRUE(first == json::value_t(7.));
 	// Первое сличаемое значение
-	json::value_t left(::framework(), ::logger());
+	json::value_t left;
 	// Второе сличаемое значение
-	json::value_t right(::framework(), ::logger());
+	json::value_t right;
 	// Выполняем разбор текста первого значения
 	ASSERT_TRUE(left.parse("{\"a\":1,\"b\":2}"));
 	// Выполняем разбор текста второго значения, разнящегося лишь порядком полей
@@ -785,7 +744,7 @@ TEST(CodecJsonValue, Consistency) {
 		"\"e\":18446744073709551615,\"f\":-9223372036854775808,"
 		"\"g\":-0.0,\"h\":255,\"i\":-128,\"j\":1e400}";
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse(text));
 	// Снятое с документа значение
@@ -842,7 +801,7 @@ TEST(CodecJsonValue, Consistency) {
  */
 TEST(CodecJsonValue, WriteRefusal) {
 	// Собираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем заведение поля числом, стандарту неведомым
 	value["значение"] = json::value_t(::std::numeric_limits <double>::infinity());
 	/**
@@ -866,7 +825,7 @@ TEST(CodecJsonValue, WriteRefusal) {
  */
 TEST(CodecJsonValue, Format) {
 	// Записываемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(value.parse("{\"a\":[1,2]}"));
 	// Выполняем запись значения с отступами
@@ -874,7 +833,7 @@ TEST(CodecJsonValue, Format) {
 	// Выполняем проверку наличия переводов строк в записи
 	ASSERT_NE(text.find('\n'), string::npos);
 	// Значение, разобранное из записи с отступами
-	json::value_t twin(::framework(), ::logger());
+	json::value_t twin;
 	// Выполняем разбор записи с отступами
 	ASSERT_TRUE(twin.parse(text));
 	// Выполняем проверку совпадения значений
@@ -908,11 +867,11 @@ TEST(CodecJsonValue, Clear) {
  */
 TEST(CodecJsonValue, Graft) {
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"a\":1,\"b\":{\"c\":[1,2,3]},\"d\":\"хвост\"}"));
 	// Прививаемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем сборку прививаемого значения
 	value["новое"] = json::value_t(static_cast <int64_t> (7));
 	// Выполняем прививку значения на место вложенного объекта
@@ -940,7 +899,7 @@ TEST(CodecJsonValue, Graft) {
  */
 TEST(CodecJsonValue, GraftPlaces) {
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"list\":[1,{\"x\":0},3]}"));
 	// Выполняем прививку значения на место значения массива
@@ -952,7 +911,7 @@ TEST(CodecJsonValue, GraftPlaces) {
 	// Выполняем проверку перезаписи документа после второй прививки
 	ASSERT_STREQ(document.dump().c_str(), "{\"list\":[true,\"иное\",3]}");
 	// Прививаемое корнем значение
-	json::value_t root(::framework(), ::logger());
+	json::value_t root;
 	// Выполняем разбор текста прививаемого значения
 	ASSERT_TRUE(root.parse("[1,2]"));
 	// Выполняем прививку значения корнем документа
@@ -967,7 +926,7 @@ TEST(CodecJsonValue, GraftPlaces) {
  */
 TEST(CodecJsonValue, GraftFailure) {
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("{\"a\":{\"b\":1}}"));
 	// Выполняем проверку отказа прививки по отсутствующему пути
@@ -991,7 +950,7 @@ TEST(CodecJsonValue, GraftRoundtrip) {
 	// Разбираемый текст документа
 	const string text = "{\"настройки\":{\"порт\":80,\"хост\":\"localhost\"},\"прочее\":[1,2]}";
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем снятие поддерева документа собственной памятью
@@ -1006,7 +965,7 @@ TEST(CodecJsonValue, GraftRoundtrip) {
 	ASSERT_STREQ(document.dump().c_str(),
 		"{\"настройки\":{\"порт\":8080,\"хост\":\"localhost\",\"пределы\":{\"связей\":1024}},\"прочее\":[1,2]}");
 	// Документ, разбирающий перезаписанный текст
-	json::document_t twin(::framework(), ::logger());
+	json::document_t twin;
 	// Выполняем разбор перезаписанного текста
 	ASSERT_TRUE(twin.parse(document.dump())) << json::message(twin.error());
 	// Выполняем проверку совпадения деревьев
@@ -1035,7 +994,7 @@ TEST(CodecJsonValue, GraftIndexed) {
 	// Завершаем сборку текста объекта
 	text.append("}");
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse(text));
 	// Выполняем обращение по имени, заводящее отображение имён полей объекта
@@ -1084,7 +1043,7 @@ TEST(CodecJsonValue, CompareNan) {
 	// Дозволяем запись чисел, стандарту неведомых
 	settings.writer.allowInfinityAndNan = true;
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем установку настроек документа
 	document.settings(settings);
 	// Выполняем разбор текста документа
@@ -1119,7 +1078,7 @@ TEST(CodecJsonValue, CompareDuplicates) {
 	// Затребуем сохранение полей с повторяющимися именами
 	settings.duplicates = json::duplicate_t::KEEP;
 	// Документ, разбирающий текст
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем установку настроек документа
 	document.settings(settings);
 	// Выполняем разбор текста документа с повторяющимся именем поля
@@ -1133,7 +1092,7 @@ TEST(CodecJsonValue, CompareDuplicates) {
 	// Выполняем проверку записи снятого значения
 	ASSERT_STREQ(value.dump().c_str(), "{\"a\":1,\"a\":2}");
 	// Документ, разбирающий иной порядок повторяющихся полей
-	json::document_t twin(::framework(), ::logger());
+	json::document_t twin;
 	// Выполняем установку настроек документа
 	twin.settings(settings);
 	// Выполняем разбор текста документа с иным порядком полей
@@ -1192,7 +1151,7 @@ TEST(CodecJsonValue, Differential) {
 		 */
 		for(auto & sample : samples){
 			// Документ, разбирающий текст
-			json::document_t document(::framework(), ::logger());
+			json::document_t document;
 			// Выполняем установку настроек документа
 			document.settings(settings);
 			// Выполняем разбор текста документа
@@ -1202,7 +1161,7 @@ TEST(CodecJsonValue, Differential) {
 			// Выполняем проверку совпадения записей обоих путей
 			ASSERT_EQ(document.dump(), value.dump(settings.writer)) << sample;
 			// Документ, разбирающий запись снятого значения
-			json::document_t twin(::framework(), ::logger());
+			json::document_t twin;
 			// Выполняем установку настроек документа
 			twin.settings(settings);
 			// Выполняем разбор записи снятого значения
@@ -1251,7 +1210,7 @@ TEST(CodecJsonValue, Append) {
  */
 TEST(CodecJsonValue, BuilderAppend) {
 	// Объект потоковой сборки значения
-	json::builder_t builder(::logger());
+	json::builder_t builder;
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	// Выполняем запись имени поля объекта
@@ -1302,7 +1261,7 @@ TEST(CodecJsonValue, BuilderAppend) {
  */
 TEST(CodecJsonValue, AppendRoundtrip) {
 	// Объект дерева документа
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Получаем настройки разбора текста документа
 	json::document_t::settings_t settings = document.settings();
 	// Устанавливаем удержание повторяющихся имён полей объекта
@@ -1316,7 +1275,7 @@ TEST(CodecJsonValue, AppendRoundtrip) {
 	// Выполняем проверку того, что повторы значением удержаны
 	ASSERT_EQ(value.size(), static_cast <size_t> (2));
 	// Объект потоковой сборки значения
-	json::builder_t builder(::logger());
+	json::builder_t builder;
 	// Выполняем открытие объекта
 	ASSERT_TRUE(builder.object());
 	/**
@@ -1347,7 +1306,7 @@ TEST(CodecJsonValue, AppendRoundtrip) {
  */
 TEST(CodecJsonValue, AppendInvariants) {
 	// Собираемое значение объекта с повторяющимися именами полей
-	json::value_t object(::framework(), ::logger());
+	json::value_t object;
 	// Выполняем добавление полей объекта, из которых два несут одно имя
 	ASSERT_TRUE(object.append("a", json::value_t(static_cast <int64_t> (1))));
 	ASSERT_TRUE(object.append("b", json::value_t(static_cast <int64_t> (2))));
@@ -1377,7 +1336,7 @@ TEST(CodecJsonValue, AppendInvariants) {
 	ASSERT_EQ(object.size(), static_cast <size_t> (1));
 	ASSERT_EQ(object.key(0), "a");
 	// Собираемое значение объекта с двумя полями одного имени
-	json::value_t twice(::framework(), ::logger());
+	json::value_t twice;
 	// Выполняем добавление двух полей объекта одного имени
 	ASSERT_TRUE(twice.append("x", json::value_t(static_cast <int64_t> (1))));
 	ASSERT_TRUE(twice.append("x", json::value_t(static_cast <int64_t> (2))));
@@ -1392,7 +1351,7 @@ TEST(CodecJsonValue, AppendInvariants) {
 	ASSERT_TRUE(twice[static_cast <size_t> (1)].value(number));
 	ASSERT_EQ(number, static_cast <int64_t> (2));
 	// Собираемое значение массива
-	json::value_t array(::framework(), ::logger());
+	json::value_t array;
 	// Выполняем добавление значения в массив
 	ASSERT_TRUE(array.push(json::value_t(static_cast <int64_t> (1))));
 	// Выполняем проверку того, что добавление поля в массив отвергается
@@ -1413,7 +1372,7 @@ TEST(CodecJsonValue, AppendInvariants) {
  */
 TEST(CodecJsonValue, PathIndexOverflow) {
 	// Собираемое значение массива
-	json::value_t array(::framework(), ::logger());
+	json::value_t array;
 	// Выполняем добавление значений в массив
 	ASSERT_TRUE(array.push(json::value_t(static_cast <int64_t> (10))));
 	ASSERT_TRUE(array.push(json::value_t(static_cast <int64_t> (11))));
@@ -1427,7 +1386,7 @@ TEST(CodecJsonValue, PathIndexOverflow) {
 	ASSERT_TRUE(array.at("/1").value(number));
 	ASSERT_EQ(number, static_cast <int64_t> (11));
 	// Собираемое обращением значение дерева
-	json::value_t tree(::framework(), ::logger());
+	json::value_t tree;
 	// Выполняем заведение значения по звену с номером за пределом разрядности
 	tree.place("/18446744073709551617") = json::value_t(static_cast <int64_t> (1));
 	/**
@@ -1455,7 +1414,7 @@ TEST(CodecJsonValue, GrowthLimit) {
 	// Выполняем проверку того, что предел по умолчанию поставлен
 	ASSERT_EQ(json::value_t::limit(), static_cast <size_t> (0x10000));
 	// Собираемое обращением по номеру значение массива
-	json::value_t array(::framework(), ::logger());
+	json::value_t array;
 	// Выполняем обращение по номеру за поставленным пределом
 	array[static_cast <size_t> (0x10000)] = json::value_t(static_cast <int64_t> (1));
 	// Выполняем проверку того, что обращение такое массив не растит вовсе
@@ -1467,7 +1426,7 @@ TEST(CodecJsonValue, GrowthLimit) {
 	// Выполняем установку предела в десяток значений
 	json::value_t::limit(10);
 	// Собираемое заведением по пути значение дерева
-	json::value_t tree(::framework(), ::logger());
+	json::value_t tree;
 	// Выполняем заведение значения по номеру за поставленным пределом
 	tree.place("/10") = json::value_t(static_cast <int64_t> (1));
 	// Выполняем проверку того, что заведение такое вместилища не растит
@@ -1479,7 +1438,7 @@ TEST(CodecJsonValue, GrowthLimit) {
 	// Выполняем снятие предела вовсе
 	json::value_t::limit(0);
 	// Собираемое обращением значение массива без предела
-	json::value_t boundless(::framework(), ::logger());
+	json::value_t boundless;
 	// Выполняем обращение по номеру, прежде отвергавшемуся
 	boundless[static_cast <size_t> (0x10000)] = json::value_t(static_cast <int64_t> (1));
 	// Выполняем проверку того, что снятие предела рост вернуло
@@ -1513,7 +1472,7 @@ TEST(CodecJsonValue, PathNestingLimit) {
 		// Добавляем очередное звено пути
 		path.append("/a");
 	// Собираемое обращением значение дерева
-	json::value_t tree(::framework(), ::logger());
+	json::value_t tree;
 	// Выполняем заведение значения по пути предельной вложенности
 	tree.place(path) = json::value_t(static_cast <int64_t> (1));
 	// Выполняем проверку того, что дерево предельной вложенности заведено
@@ -1523,7 +1482,7 @@ TEST(CodecJsonValue, PathNestingLimit) {
 	// Добавляем к пути звено сверх предела
 	path.append("/a");
 	// Собираемое обращением значение дерева за пределом вложенности
-	json::value_t deeper(::framework(), ::logger());
+	json::value_t deeper;
 	// Выполняем заведение значения по пути за пределом вложенности
 	deeper.place(path) = json::value_t(static_cast <int64_t> (1));
 	// Выполняем проверку того, что дерево за пределом вложенности не заведено вовсе
@@ -1545,7 +1504,7 @@ TEST(CodecJsonValue, UntouchedSurface) {
 	// Сторож временного файла проверки
 	const Scratch scratch1("awh-нет-такого-файла.json");
 	// Собираемое значение дерева
-	json::value_t source(::framework(), ::logger());
+	json::value_t source;
 	// Выполняем заведение поля дерева
 	source["имя"] = json::value_t("значение");
 	// Выполняем проверку наличия заведённого поля
@@ -1555,13 +1514,13 @@ TEST(CodecJsonValue, UntouchedSurface) {
 	// Выполняем запись дерева в файл
 	ASSERT_TRUE(source.save(scratch0.path()));
 	// Значение, читаемое из файла
-	json::value_t loaded(::framework(), ::logger());
+	json::value_t loaded;
 	// Выполняем чтение дерева из файла
 	ASSERT_TRUE(loaded.load(scratch0.path()));
 	// Выполняем проверку того, что прочитанное совпадает с записанным
 	ASSERT_TRUE(loaded == source);
 	// Значение, читаемое из отсутствующего файла
-	json::value_t missing(::framework(), ::logger());
+	json::value_t missing;
 	// Выполняем проверку того, что чтение отсутствующего файла отвергается
 	ASSERT_FALSE(missing.load(scratch1.path()));
 	// Выполняем проверку того, что значение после отказа чтения неопределённо
@@ -1588,7 +1547,7 @@ TEST(CodecJsonValue, UntouchedSurface) {
  */
 TEST(CodecJsonValue, NarrowExtraction) {
 	// Объект владеющего значения документа
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем проверку разбора текста документа
 	ASSERT_TRUE(value.parse("[7,-7,3502.3453,300]"));
 	// Выполняем проверку вида разобранного значения
@@ -1667,7 +1626,7 @@ TEST(CodecJsonValue, NarrowExtraction) {
  */
 TEST(CodecJsonValue, RawNumber) {
 	// Объект владеющего значения документа
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем разбор текста документа с числами разного вида
 	ASSERT_TRUE(value.parse("[1,-2,3.5,1e300,123456789012345678901234567890,0.1]"));
 	// Выполняем проверку выдачи записи целого числа
@@ -1715,7 +1674,7 @@ TEST(CodecJsonValue, RoundTripNormalisation) {
 	 */
 	auto trip = [](const string & text) noexcept -> string {
 		// Объект владеющего значения документа
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Если разбор текста документа выполнить не удалось, выводим пустой текст
 		if(!value.parse(text)) return string();
 		// Выводим текст документа, записанный обратно
@@ -1760,7 +1719,7 @@ TEST(CodecJsonValue, RoundTripNormalisation) {
  */
 TEST(CodecJsonValue, RefusalSurface) {
 	// Выполняем создание объекта владеющего значения
-	json::value_t root(::framework(), ::logger());
+	json::value_t root;
 	// Выполняем разбор текста дерева
 	ASSERT_TRUE(root.parse("{\"a\":{\"b\":[1,2]},\"c\":5}"));
 	/**
@@ -1820,7 +1779,7 @@ TEST(CodecJsonValue, RefusalSurface) {
 	 */
 	{
 		// Выполняем создание объекта пустого значения
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем добавление пары в значение без вида
 		ASSERT_TRUE(value.insert("k", json::value_t(true)));
 		// Выполняем проверку вида полученного значения
@@ -1878,7 +1837,7 @@ TEST(CodecJsonValue, ComparisonAndAssignment) {
 	 */
 	{
 		// Выполняем создание объекта дерева
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем разбор текста дерева
 		ASSERT_TRUE(value.parse("[1,2,3]"));
 		/**
@@ -1906,7 +1865,7 @@ TEST(CodecJsonValue, ComparisonAndAssignment) {
 	 */
 	{
 		// Выполняем создание объекта дерева
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем проверку отклонения чтения несуществующего файла
 		ASSERT_FALSE(value.load(scratch0.path()));
 		// Выполняем разбор текста дерева
@@ -1932,7 +1891,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder(::logger());
+		json::builder_t builder;
 		// Выполняем открытие массива
 		ASSERT_TRUE(builder.array());
 		// Выполняем запись пустого значения
@@ -1964,7 +1923,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder(::logger());
+		json::builder_t builder;
 		// Выполняем запись пустого значения верхнего уровня
 		ASSERT_TRUE(builder.null());
 		// Выполняем проверку отклонения второго значения верхнего уровня
@@ -1977,7 +1936,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder(::logger());
+		json::builder_t builder;
 		// Выполняем проверку отклонения имени пары вне отображения
 		ASSERT_FALSE(builder.key("x"));
 		// Выполняем открытие массива
@@ -1998,7 +1957,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder(::logger());
+		json::builder_t builder;
 		// Выполняем открытие объекта
 		ASSERT_TRUE(builder.object());
 		// Выполняем проверку отклонения значения без имени пары
@@ -2012,7 +1971,7 @@ TEST(CodecJsonValue, BuilderSurface) {
 	 */
 	{
 		// Объект потоковой сборки значения
-		json::builder_t builder(::logger());
+		json::builder_t builder;
 		// Выполняем открытие массива
 		ASSERT_TRUE(builder.array());
 		// Выполняем закрытие массива
@@ -2049,7 +2008,7 @@ TEST(CodecJsonValue, GraftKinds) {
 	 */
 	auto graft = [](const string & text, const string & pointer, const json::value_t & value) noexcept -> string {
 		// Объект дерева документа
-		json::document_t document(::framework(), ::logger());
+		json::document_t document;
 		// Выполняем разбор текста дерева документа
 		if(!document.parse(text))
 			// Выводим признак отказа разбора текста дерева
@@ -2079,7 +2038,7 @@ TEST(CodecJsonValue, GraftKinds) {
 	 */
 	{
 		// Объект приживляемого значения
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем разбор текста числа, за пределы целых видов выходящего
 		ASSERT_TRUE(value.parse("123456789012345678901234567890"));
 		// Выполняем проверку приживления числа записью
@@ -2090,7 +2049,7 @@ TEST(CodecJsonValue, GraftKinds) {
 	 */
 	{
 		// Объект приживляемого значения
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем разбор текста дробного числа с порядком
 		ASSERT_TRUE(value.parse("1.5e3"));
 		// Выполняем проверку приживления числа видом приведённым
@@ -2101,7 +2060,7 @@ TEST(CodecJsonValue, GraftKinds) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::framework(), ::logger());
+		json::document_t document;
 		// Выполняем проверку отклонения пути в дереве, ещё не заведённом
 		ASSERT_FALSE(document.graft("/a", json::value_t(true)));
 		// Выполняем разбор текста дерева перечня
@@ -2133,7 +2092,7 @@ TEST(CodecJsonValue, Rounding) {
 	 */
 	auto extract = [](const string & text) noexcept -> int64_t {
 		// Объект владеющего значения
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем разбор записи дробного числа
 		if(!value.parse(text))
 			// Выводим признак отказа разбора
@@ -2177,7 +2136,7 @@ TEST(CodecJsonValue, Rounding) {
 	 */
 	{
 		// Объект владеющего значения
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем разбор записи числа за пределом целого вида
 		ASSERT_TRUE(value.parse("1e300"));
 		// Извлекаемое целое число
@@ -2239,7 +2198,7 @@ TEST(CodecJsonValue, UncoveredEdges) {
 	 */
 	{
 		// Объект дерева документа, ничего не разобравшего
-		json::document_t document(::framework(), ::logger());
+		json::document_t document;
 		// Объект значения, снятого с корня пустого дерева
 		json::value_t value(document.root());
 		// Выполняем проверку неопределённости снятого значения
@@ -2389,7 +2348,7 @@ TEST(CodecJsonValue, GraftNumbersIntoDocument) {
 		// Выполняем проверку выбранного вида хранения
 		ASSERT_EQ(value.is(json::type_t::FLOAT), item.second) << item.first;
 		// Объект дерева документа
-		json::document_t document(::framework(), ::logger());
+		json::document_t document;
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":1}")) << item.first;
 		// Выполняем прививку числа на место уже занятое
@@ -2409,7 +2368,7 @@ TEST(CodecJsonValue, GraftNumbersIntoDocument) {
 	 */
 	{
 		// Объект дерева документа
-		json::document_t document(::framework(), ::logger());
+		json::document_t document;
 		// Выполняем разбор текста документа
 		ASSERT_TRUE(document.parse("{\"a\":1}"));
 		// Выполняем проверку отказа прививки на отсутствующее место
@@ -2433,7 +2392,7 @@ TEST(CodecJsonValue, IndexedObjectLookup){
 	const size_t count = 64;
 	{
 		// Заводимое значение объекта
-		json::value_t root(::framework(), ::logger());
+		json::value_t root;
 		/**
 		 * Выполняем заведение полей объекта
 		 */
@@ -2477,7 +2436,7 @@ TEST(CodecJsonValue, IndexedObjectErase){
 	 */
 	for(uint8_t kind = 0; kind < 2; kind++){
 		// Заводимое значение объекта
-		json::value_t root(::framework(), ::logger());
+		json::value_t root;
 		/**
 		 * Выполняем заведение полей объекта
 		 */
@@ -2534,7 +2493,7 @@ TEST(CodecJsonValue, IndexedObjectDuplicateNames){
 	// Количество полей объекта, заведомо превышающее порог заведения отображения
 	const size_t count = 64;
 	// Заводимое значение объекта
-	json::value_t root(::framework(), ::logger());
+	json::value_t root;
 	/**
 	 * Выполняем заведение полей объекта
 	 */
@@ -2569,7 +2528,7 @@ TEST(CodecJsonValue, IndexedObjectCopyAndMove){
 	// Количество полей объекта, заведомо превышающее порог заведения отображения
 	const size_t count = 64;
 	// Заводимое значение объекта
-	json::value_t root(::framework(), ::logger());
+	json::value_t root;
 	/**
 	 * Выполняем заведение полей объекта
 	 */
@@ -2590,7 +2549,7 @@ TEST(CodecJsonValue, IndexedObjectCopyAndMove){
 	}
 	{
 		// Заводимое значение объекта, подлежащее перезаписи
-		json::value_t other(::framework(), ::logger());
+		json::value_t other;
 		/**
 		 * Выполняем заведение полей объекта, подлежащего перезаписи
 		 *
@@ -2626,7 +2585,7 @@ TEST(CodecJsonValue, IndexedObjectByPath){
 	// Количество полей объекта, заведомо превышающее порог заведения отображения
 	const size_t count = 64;
 	// Заводимое значение объекта
-	json::value_t root(::framework(), ::logger());
+	json::value_t root;
 	/**
 	 * Выполняем заведение полей объекта
 	 */
@@ -2697,13 +2656,13 @@ TEST(CodecJsonValue, MutationSurvivesRewrite){
 		}}
 	}) {
 		// Собираемое значение
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем правку значения
 		item.second(value);
 		// Выполняем запись значения в текст
 		const string text = value.dump();
 		// Разобранное обратно значение
-		json::value_t back(::framework(), ::logger());
+		json::value_t back;
 		// Выполняем разбор записанного текста
 		ASSERT_TRUE(back.parse(text)) << item.first << ": " << text;
 		// Выполняем сличение записи исходного значения с записью разобранного
@@ -2721,11 +2680,11 @@ TEST(CodecJsonValue, MutationSurvivesRewrite){
 		"\xF0\x9F\x98\x80", string("a\x7f" "b"), ""
 	}) {
 		// Собираемое значение
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем установку строки полем значения
 		value["k"] = json::value_t(item);
 		// Разобранное обратно значение
-		json::value_t back(::framework(), ::logger());
+		json::value_t back;
 		// Выполняем разбор записанного текста
 		ASSERT_TRUE(back.parse(value.dump()));
 		// Выполняем сличение длины строки, пережившей перезапись
@@ -2748,16 +2707,12 @@ TEST(CodecJsonValue, MutationSurvivesRewrite){
  *          содержимое записи, а не одно лишь её наличие
  */
 TEST(CodecJsonValue, LoggerReportsFailures){
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект ведения журнала работы
-	log_t log(&fmk);
 	// Уводим записи журнала целиком в функцию обратного вызова
-	log.mode({log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Собираемые перехваченные записи журнала
-	vector <pair <log_t::flag_t, string>> caught;
+	vector <pair <awh::log::flag_t, string>> caught;
 	// Выполняем подписку на записи журнала работы
-	log.subscribe([&caught](const log_t::flag_t flag, string_view text) noexcept {
+	awh::log::subscribe([&caught](const awh::log::flag_t flag, string_view text) noexcept {
 		// Выполняем сбор очередной перехваченной записи
 		caught.emplace_back(flag, string(text));
 	});
@@ -2766,15 +2721,13 @@ TEST(CodecJsonValue, LoggerReportsFailures){
 	 */
 	{
 		// Собираемое значение
-		json::value_t value(::framework(), ::logger());
-		// Выполняем установку объекта ведения журнала работы
-		value.setLogger(&log);
+		json::value_t value;
 		// Выполняем разбор негодного текста
 		ASSERT_FALSE(value.parse("{\"a\": }"));
 		// Выполняем проверку того, что запись об отказе сделана
 		ASSERT_EQ(caught.size(), static_cast <size_t> (1));
 		// Выполняем проверку важности записи об отказе разбора
-		ASSERT_EQ(caught.front().first, log_t::flag_t::WARNING);
+		ASSERT_EQ(caught.front().first, awh::log::flag_t::WARNING);
 		/**
 		 * Выполняем проверку того, что запись несёт место отказа
 		 *
@@ -2790,9 +2743,7 @@ TEST(CodecJsonValue, LoggerReportsFailures){
 	 */
 	{
 		// Собираемое значение
-		json::value_t value(::framework(), ::logger());
-		// Выполняем установку объекта ведения журнала работы
-		value.setLogger(&log);
+		json::value_t value;
 		// Выполняем разбор годного текста
 		ASSERT_TRUE(value.parse("{\"a\": 1}"));
 		// Выполняем проверку того, что записей об успешном разборе не сделано
@@ -2803,7 +2754,7 @@ TEST(CodecJsonValue, LoggerReportsFailures){
 	 */
 	{
 		// Собираемое значение
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем разбор негодного текста без журнала
 		ASSERT_FALSE(value.parse("{\"a\": }"));
 	}
@@ -2814,7 +2765,7 @@ TEST(CodecJsonValue, LoggerReportsFailures){
 	 */
 	{
 		// Объект записи текста
-		json::writer_t writer(&log);
+		json::writer_t writer;
 		/**
 		 * Выполняем запись имени поля вне объекта
 		 *
@@ -2824,7 +2775,7 @@ TEST(CodecJsonValue, LoggerReportsFailures){
 		// Выполняем проверку того, что запись об отказе сделана
 		ASSERT_FALSE(caught.empty());
 		// Выполняем проверку важности записи об отказе записи
-		ASSERT_EQ(caught.front().first, log_t::flag_t::CRITICAL) << caught.front().second;
+		ASSERT_EQ(caught.front().first, awh::log::flag_t::CRITICAL) << caught.front().second;
 		/**
 		 * Выполняем проверку того, что запись несёт ДОВОД отказа
 		 *
@@ -2851,7 +2802,7 @@ TEST(CodecJsonValue, LoggerReportsFailures){
  */
 TEST(CodecJsonValue, ParseHonoursSettings){
 	// Собираемое владеющее значение JSON
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Разбираемый текст JSON с повторяющимся именем поля
 	const string text(R"({"a":1,"a":2})");
 	/**
@@ -2905,7 +2856,7 @@ TEST(CodecJsonValue, StringExtractionIsKindCheck) {
 	 */
 	for(const Probe & probe : probes){
 		// Владеющее значение документа
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем проверку разбора очередной записи
 		ASSERT_TRUE(value.parse(probe.text)) << probe.text;
 		// Извлекаемое строковое значение
@@ -2941,19 +2892,15 @@ TEST(CodecJsonValue, StringExtractionIsKindCheck) {
 TEST(CodecJsonValue, SaveToMissingDirectoryIsReported) {
 	// Собираемые сообщения журнала
 	vector <string> messages;
-	// Объект журнала с перехватом вывода
-	awh::log_t log(&Silent::framework());
 	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	log.mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем назначение перехвата сообщений журнала
-	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем сбор очередного сообщения журнала
 		messages.push_back(string(text));
 	});
 	// Значение документа
-	json::value_t value(::framework(), ::logger());
-	// Выполняем назначение журнала значению документа
-	value.setLogger(&log);
+	json::value_t value;
 	// Выполняем проверку разбора текста документа
 	ASSERT_TRUE(value.parse("{\"имя\":\"значение\"}"));
 	// Выполняем проверку отказа записи в несуществующий каталог
@@ -2992,20 +2939,16 @@ TEST(CodecJsonValue, SaveToMissingDirectoryIsReported) {
 TEST(CodecJsonValue, AssignmentAdoptsLoggerWhenAbsent) {
 	// Собираемые сообщения журнала
 	vector <string> messages;
-	// Объект журнала с перехватом вывода
-	awh::log_t log(&Silent::framework());
 	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	log.mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем назначение перехвата сообщений журнала
-	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем сбор очередного сообщения журнала
 		messages.push_back(string(text));
 	});
 	{
 		// Значение документа, журналом наделённое
-		json::value_t source(::framework(), ::logger());
-		// Выполняем назначение журнала значению документа
-		source.setLogger(&log);
+		json::value_t source;
 		// Выполняем проверку разбора текста документа
 		ASSERT_TRUE(source.parse("{\"имя\":\"значение\"}"));
 		// Значение документа, журнала не имеющее
@@ -3023,9 +2966,7 @@ TEST(CodecJsonValue, AssignmentAdoptsLoggerWhenAbsent) {
 	}
 	{
 		// Значение документа, журналом наделённое
-		json::value_t source(::framework(), ::logger());
-		// Выполняем назначение журнала значению документа
-		source.setLogger(&log);
+		json::value_t source;
 		// Выполняем проверку разбора текста документа
 		ASSERT_TRUE(source.parse("{\"имя\":\"значение\"}"));
 		// Значение документа, журнала не имеющее
@@ -3043,11 +2984,9 @@ TEST(CodecJsonValue, AssignmentAdoptsLoggerWhenAbsent) {
 	}
 	{
 		// Значение документа, журнала не имеющее
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем проверку разбора текста документа ДО назначения журнала
 		ASSERT_TRUE(value.parse("{\"имя\":{\"вложенное\":1}}"));
-		// Выполняем назначение журнала значению документа
-		value.setLogger(&log);
 		// Очищаем собранные сообщения журнала
 		messages.clear();
 		// Выполняем проверку отказа записи вложенного значения в несуществующий каталог
@@ -3095,12 +3034,10 @@ TEST(CodecJsonValue, AssignmentAdoptsLoggerWhenAbsent) {
 TEST(CodecJsonValue, SaveFailureIsNotSuccess) {
 	// Собираемые сообщения журнала
 	vector <string> messages;
-	// Объект журнала с перехватом вывода
-	awh::log_t log(&Silent::framework());
 	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	log.mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем назначение перехвата сообщений журнала
-	log.subscribe([&messages](const awh::log_t::flag_t, string_view text) noexcept -> void {
+	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем сбор очередного сообщения журнала
 		messages.push_back(string(text));
 	});
@@ -3118,9 +3055,7 @@ TEST(CodecJsonValue, SaveFailureIsNotSuccess) {
 	// Завершаем текст документа
 	text.append("}");
 	// Значение документа
-	json::value_t value(::framework(), ::logger());
-	// Выполняем назначение журнала значению документа
-	value.setLogger(&log);
+	json::value_t value;
 	// Выполняем проверку разбора собранного текста документа
 	ASSERT_TRUE(value.parse(text));
 	/**
@@ -3226,7 +3161,7 @@ TEST(CodecJsonValue, RefusalChannelSpeaks){
 		 */
 		{
 			// Объект владеющего значения документа
-			json::value_t value(::framework(), ::logger());
+			json::value_t value;
 			// Выполняем проверку разбора исходного текста документа
 			ASSERT_TRUE(value.parse("{\"а\":1}"));
 			// Выполняем проверку успеха записи значения в файл
@@ -3250,7 +3185,7 @@ TEST(CodecJsonValue, RefusalChannelSpeaks){
 		 */
 		{
 			// Объект владеющего значения документа
-			json::value_t value(::framework(), ::logger());
+			json::value_t value;
 			// Выполняем проверку чтения файла документа
 			ASSERT_TRUE(value.load(filename));
 			// Выполняем проверку того, что прежнее содержимое сохранено
@@ -3276,9 +3211,8 @@ TEST(CodecJsonValue, RefusalChannelSpeaks){
  */
 TEST(CodecJsonValue, PathSurvivesSiblingsUnlikeReference){
 	// Владеющее значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем установку объекта для работы с логами
-	value.setLogger(::logger());
 	// Выполняем разбор текста значения
 	ASSERT_TRUE(value.parse("{\"a\":\"один\"}"));
 	// Выполняем проверку содержимого узла
@@ -3317,13 +3251,11 @@ TEST(CodecJsonValue, EqualityDoesNotImplyIdenticalText){
 		{"{\"a\":1,\"b\":2}", "{\"b\":2,\"a\":1}"}
 	}) {
 		// Первое сличаемое значение
-		json::value_t first(::framework(), ::logger());
+		json::value_t first;
 		// Второе сличаемое значение
-		json::value_t second(::framework(), ::logger());
+		json::value_t second;
 		// Выполняем установку объекта для работы с логами
-		first.setLogger(::logger());
 		// Выполняем установку объекта для работы с логами
-		second.setLogger(::logger());
 		// Выполняем разбор текста первого значения
 		ASSERT_TRUE(first.parse(probe.first)) << probe.first;
 		// Выполняем разбор текста второго значения
@@ -3338,13 +3270,11 @@ TEST(CodecJsonValue, EqualityDoesNotImplyIdenticalText){
 	 */
 	{
 		// Первое сличаемое значение
-		json::value_t first(::framework(), ::logger());
+		json::value_t first;
 		// Второе сличаемое значение
-		json::value_t second(::framework(), ::logger());
+		json::value_t second;
 		// Выполняем установку объекта для работы с логами
-		first.setLogger(::logger());
 		// Выполняем установку объекта для работы с логами
-		second.setLogger(::logger());
 		// Выполняем разбор текста первого значения
 		ASSERT_TRUE(first.parse("{\"v\":[1,2]}"));
 		// Выполняем разбор текста второго значения
@@ -3518,7 +3448,7 @@ TEST(CodecJsonValue, LiteralsOfEveryWidthAreAccepted){
  */
 TEST(CodecJsonValue, CharAccessIsANameNotAnIndex){
 	// Собираемое значение
-	json::value_t value(::framework(), ::logger());
+	json::value_t value;
 	// Выполняем заведение поля объекта с именем из одного знака
 	value["z"] = 42;
 	// Извлекаемое число
@@ -3534,7 +3464,7 @@ TEST(CodecJsonValue, CharAccessIsANameNotAnIndex){
 	 */
 	{
 		// Собираемый перечень значений
-		json::value_t list(::framework(), ::logger());
+		json::value_t list;
 		// Выполняем заведение первого значения перечня
 		ASSERT_TRUE(list.push(json::value_t(static_cast <int64_t> (10))));
 		// Выполняем заведение второго значения перечня
@@ -3573,7 +3503,7 @@ TEST(CodecJsonValue, CharAccessIsANameNotAnIndex){
  */
 TEST(CodecJsonValue, TakingFromAStaleHandleGivesAnEmptyValue){
 	// Объект документа
-	json::document_t doc(::framework(), ::logger());
+	json::document_t doc;
 	// Выполняем разбор первого текста документа
 	ASSERT_TRUE(doc.parse("{\"a\":42}"));
 	// Выполняем снятие ручки на поле документа
@@ -3630,9 +3560,7 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	// Извлекает число узким видом из заданной записи
 	const auto узко = [](const string & text) noexcept -> uint8_t {
 		// Объект владеющего значения
-		json::value_t value(::framework(), ::logger());
-		// Выполняем установку журнала значения
-		value.setLogger(::logger());
+		json::value_t value;
 		// Выполняем разбор записи числа
 		if(!value.parse(text))
 			// Выводим признак отказа разбора
@@ -3683,9 +3611,7 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 		// Извлекает число широким видом из заданной записи
 		const auto широко = [](const string & text) noexcept -> uint64_t {
 			// Объект владеющего значения
-			json::value_t value(::framework(), ::logger());
-			// Выполняем установку журнала значения
-			value.setLogger(::logger());
+			json::value_t value;
 			// Выполняем разбор записи числа
 			if(!value.parse(text))
 				// Выводим признак отказа разбора
@@ -3741,14 +3667,10 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	{
 		// Объект владеющего значения целой записью
 		json::value_t целое;
-		// Выполняем установку журнала значения
-		целое.setLogger(::logger());
 		// Выполняем разбор целой записи отрицательного числа
 		ASSERT_TRUE(целое.parse("-1"));
 		// Объект владеющего значения дробной записью
 		json::value_t дробное;
-		// Выполняем установку журнала значения
-		дробное.setLogger(::logger());
 		// Выполняем разбор дробной записи отрицательного числа
 		ASSERT_TRUE(дробное.parse("-1.0"));
 		// Извлекаемые числа широкого вида без знака
@@ -3820,17 +3742,17 @@ TEST(CodecJsonValue, EverySettingsDoorIsOpen) {
 		// Выполняем указание предела длины строкового значения
 		settings.reader.maxString = 4;
 		// Значение, разбираемое из текста
-		json::value_t byText(::framework(), ::logger());
+		json::value_t byText;
 		// Выполняем проверку отказа разбора текста
 		EXPECT_FALSE(byText.parse(text, settings));
 		// Значение, разбираемое из файла с настройками
-		json::value_t byFile(::framework(), ::logger());
+		json::value_t byFile;
 		// Выполняем проверку отказа разбора файла
 		EXPECT_FALSE(byFile.load(path, settings));
 		// Выполняем проверку совпадения кода отказа с текстовым входом
 		EXPECT_EQ(byFile.error(), byText.error());
 		// Значение, разбираемое из файла умолчаниями
-		json::value_t byDefault(::framework(), ::logger());
+		json::value_t byDefault;
 		// Выполняем проверку принятия текста умолчательными настройками
 		EXPECT_TRUE(byDefault.load(path));
 	}
@@ -3839,7 +3761,7 @@ TEST(CodecJsonValue, EverySettingsDoorIsOpen) {
 	 */
 	{
 		// Значение, содержащее знак, укладом экранирования затрагиваемый
-		json::value_t value(::framework(), ::logger());
+		json::value_t value;
 		// Выполняем разбор текста значения
 		ASSERT_TRUE(value.parse("{\"a\":\"/\"}"));
 		// Настройки сборки с укладом экранирования косой черты

@@ -101,7 +101,7 @@ namespace {
 	 */
 	static outcome_t matching() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель сопоставленных временных зон
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -122,7 +122,7 @@ namespace {
 	 */
 	static outcome_t shifting() noexcept {
 		// Объект работы с датой и временем
-		awh::chrono_t chrono(framework(), logger());
+		awh::chrono_t chrono;
 		// Накопитель полученных смещений временной зоны
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции

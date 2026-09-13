@@ -28,6 +28,7 @@
  * Подключаем заголовочный файл бенчмарков модуля работы с датой и временем
  */
 #include "chrono.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -97,30 +98,4 @@ volatile uint64_t & awh::benchmark::chrono::checksum() noexcept {
 	static volatile uint64_t result = 0;
 	// Выводим ссылку на контрольную сумму прогонов
 	return result;
-}
-/**
- * @brief Функция получения объекта фреймворка сценариев
- *
- * @return объект фреймворка
- *
- */
-const awh::fmk_t * awh::benchmark::chrono::framework() noexcept {
-	// Объект фреймворка сценариев
-	static awh::fmk_t result;
-	// Выводим объект фреймворка
-	return &result;
-}
-/**
- * @brief Функция получения объекта логирования сценариев
- *
- * @return объект логирования
- *
- */
-const awh::log_t * awh::benchmark::chrono::logger() noexcept {
-	// Объект логирования сценариев
-	static awh::log_t result(framework());
-	// Отключаем логирование на время прогона сценариев
-	const_cast <awh::log_t &> (result).level(awh::log_t::level_t::NONE);
-	// Выводим объект логирования
-	return &result;
 }

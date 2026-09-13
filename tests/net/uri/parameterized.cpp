@@ -25,6 +25,7 @@
  */
 #include "uri.hpp"
 #include <net/uri.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Параметры теста генерации ETag для URI
@@ -139,7 +140,7 @@ TEST_P(UriTestParsingParameterizedFixture, UriParsingTest){
 		// Если параметры URI не пустые, то генерируем контрольную сумму для строки URI и возвращаем её в виде параметра "checksum"
 		if(!this->_parameter.query.empty())
 			// Генерируем контрольную сумму для строки URI и возвращаем её в виде параметра "checksum"
-			return this->_fmk->format("%s=%s", "checksum", uri->etag(uri->print(awh::uri_t::item_t::QUERY)).c_str());
+			return awh::fmk::format("%s=%s", "checksum", uri->etag(uri->print(awh::uri_t::item_t::QUERY)).c_str());
 		// Иначе возвращаем пустую строку
 		return "";
 	});
@@ -1158,7 +1159,7 @@ TEST_P(UriTestMatchParameterizedFixture, UriMatchTest){
 			// Если атрибуты URI адреса являются IPv6-адресом
 			case static_cast <uint8_t> (awh::net::type_t::IPV6): {
 				// Создаем объект сетевого адреса на основе атрибутов URI адреса
-				awh::net_addr_t addr(this->_fmk.get(), this->_log.get());
+				awh::net_addr_t addr;
 				// Выполняем установку IPv6-адреса хоста в объект сетевого адреса на основе атрибутов URI адреса
 				addr.source(awh_cast <const awh::net::attr_net_t *> (attr)->ip.get(), awh::net_addr_t::endian_t::LITTLE);
 				// Выполняем проверку, что порт хоста в атрибутах URI адреса совпадает с ожидаемым портом в параметрах теста

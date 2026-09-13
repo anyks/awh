@@ -702,7 +702,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "fmk.hpp"
+#include "macro/global.hpp"
 
 /**
  * \~russian
@@ -824,7 +824,7 @@ namespace awh {
 	 * @endcode
 	 *
 	 * @code{.cpp}
-	 * awh::chrono_t chrono(&fmk, &log);
+	 * awh::chrono_t chrono;
 	 * // Разбираем запись журнала веб-сервера в штамп времени
 	 * const uint64_t date = chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
 	 * // Формируем ту же дату записью действующего стандарта журнала
@@ -918,7 +918,7 @@ namespace awh {
 	 * @endcode
 	 *
 	 * @code{.cpp}
-	 * awh::chrono_t chrono(&fmk, &log);
+	 * awh::chrono_t chrono;
 	 * // Parsing a record of the log of a web server into a timestamp
 	 * const uint64_t date = chrono.parse("06/Apr/2025:12:37:01 +0000", "%d/%b/%Y:%H:%M:%S %z");
 	 * // Building the same date in the record of the standard of the log in force
@@ -1628,11 +1628,6 @@ namespace awh {
 		private:
 			// Список внутренних временных зон
 			unordered_map <string, int32_t> _timeZones;
-		private:
-			// Объект фреймворка
-			const fmk_t * _fmk;
-			// Объект логера
-			const Logging * _log;
 		public:
 			/**
 			 * \~russian
@@ -2007,7 +2002,6 @@ namespace awh {
 			 *
 			 */
 			void leapSecond(const bool mode) noexcept;
-		public:
 		public:
 			/**
 			 * \~russian
@@ -4968,17 +4962,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param fmk framework object
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Chrono(const fmk_t * fmk, const Logging * log) noexcept;
+			explicit Chrono() noexcept;
 		public:
 			/**
 			 * \~russian

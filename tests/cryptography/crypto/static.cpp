@@ -42,6 +42,7 @@
  * Стандартный заголовочный файл примет файла
  */
 #include <sys/stat.h>
+#include <sys/log.hpp>
 
 /**
  * Для операционной системы MS Windows
@@ -173,7 +174,7 @@ TEST_F(CryptoFixture, ResetAndCreateCryptoTest){
 	// Проверяем, что объект шифрования сброшен
 	ASSERT_TRUE(this->_crypto == nullptr);
 	// Создаём объект шифрования заново
-	this->_crypto = std::make_unique <awh::crypto_t> (this->_fmk.get(), this->_log.get());
+	this->_crypto = std::make_unique <awh::crypto_t> ();
 	// Проверяем, что объект шифрования создан
 	ASSERT_TRUE(this->_crypto != nullptr);
 }
@@ -186,7 +187,7 @@ TEST_F(CryptoFixture, ReCreateCryptoTest){
 	// Проверяем, что объект шифрования создан
 	ASSERT_TRUE(this->_crypto != nullptr);
 	// Создаём объект шифрования заново
-	this->_crypto = std::make_unique <awh::crypto_t> (this->_fmk.get(), this->_log.get());
+	this->_crypto = std::make_unique <awh::crypto_t> ();
 	// Проверяем, что объект шифрования создан
 	ASSERT_TRUE(this->_crypto != nullptr);
 }
@@ -968,7 +969,7 @@ TEST_F(CryptoFixture, Base64SingleRecordCryptoTest){
 	// Количество записей отказа, полученных из лога
 	size_t records = 0;
 	// Подписываемся на получение логов
-	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 		// Снимаем предупреждения о неиспользуемых параметрах
 		(void) flag;
 		(void) text;
@@ -976,13 +977,13 @@ TEST_F(CryptoFixture, Base64SingleRecordCryptoTest){
 		records++;
 	});
 	// Устанавливаем отложенный режим логов, консоль набора не засоряя
-	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Проверяем отказ разбора записи, алфавиту BASE64 не принадлежащей
 	EXPECT_TRUE(this->_crypto->decrypt <std::string> (std::string("!!!!"), awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::BASE64).empty());
 	// Проверяем, что отказ записан в лог единожды
 	EXPECT_EQ(records, static_cast <size_t> (1));
 	// Снимаем режимы логов
-	this->_log->mode({awh::log_t::mode_t::NONE});
+	awh::log::mode({awh::log::mode_t::NONE});
 }
 
 /**
@@ -1529,16 +1530,16 @@ TEST_F(CryptoFixture, ImportKeyStrengthCryptoTest){
 	// Количество предупреждений, полученных из лога
 	size_t records = 0;
 	// Подписываемся на получение логов
-	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 		// Снимаем предупреждение о неиспользуемом параметре
 		(void) text;
 		// Если получено предупреждение
-		if(flag == awh::log_t::flag_t::WARNING)
+		if(flag == awh::log::flag_t::WARNING)
 			// Наращиваем количество полученных предупреждений
 			records++;
 	});
 	// Устанавливаем отложенный режим логов, консоль набора не засоряя
-	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Проверяем приём приватного ключа недостаточной разрядности
 	EXPECT_TRUE(this->_crypto->setPrivateKeyRSA(privateKey));
 	// Проверяем, что разрядность приватного ключа оглашена
@@ -1565,7 +1566,7 @@ TEST_F(CryptoFixture, ImportKeyStrengthCryptoTest){
 	// Проверяем, что разрядность годного ключа не оглашается
 	EXPECT_EQ(records, static_cast <size_t> (2));
 	// Снимаем режимы логов
-	this->_log->mode({awh::log_t::mode_t::NONE});
+	awh::log::mode({awh::log::mode_t::NONE});
 }
 
 /**
@@ -1991,7 +1992,7 @@ TEST_F(CryptoFixture, SignPaddingRecordCryptoTest){
 	// Количество записей отказа, полученных из лога
 	size_t records = 0;
 	// Подписываемся на получение логов
-	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 		// Снимаем предупреждения о неиспользуемых параметрах
 		(void) flag;
 		(void) text;
@@ -1999,7 +2000,7 @@ TEST_F(CryptoFixture, SignPaddingRecordCryptoTest){
 		records++;
 	});
 	// Устанавливаем отложенный режим логов, консоль набора не засоряя
-	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Буфер подписи
 	std::vector <uint8_t> signature;
 	// Проверяем отказ выработки подписи при незаданной схеме дополнения
@@ -2007,7 +2008,7 @@ TEST_F(CryptoFixture, SignPaddingRecordCryptoTest){
 	// Проверяем, что отказ записан в лог единожды
 	EXPECT_EQ(records, static_cast <size_t> (1));
 	// Снимаем режимы логов
-	this->_log->mode({awh::log_t::mode_t::NONE});
+	awh::log::mode({awh::log::mode_t::NONE});
 }
 
 /**
@@ -2844,7 +2845,7 @@ TEST_F(CryptoFixture, TailCapacityCryptoTest){
 		return std::chrono::duration <double> (std::chrono::steady_clock::now() - start).count();
 	};
 	// Объект шифрования, крупных порций не принимавший
-	awh::crypto_t clean(this->_fmk.get(), this->_log.get());
+	awh::crypto_t clean;
 	// Выполняем заведение объекта шифрования, крупных порций не принимавшего
 	prepare(clean);
 	// Выполняем заведение объекта шифрования, крупную порцию принимающего
@@ -3261,7 +3262,7 @@ TEST_F(CryptoFixture, SignatureFingerprintCryptoTest){
 		// Проверяем получение записи открытого ключа
 		ASSERT_FALSE(pem.empty()) << "kind = " << static_cast <uint16_t> (kind);
 		// Объект работы, закрытого ключа не имеющий
-		awh::crypto_t verifier(this->_fmk.get(), this->_log.get());
+		awh::crypto_t verifier;
 		// Выполняем ввод одного лишь открытого ключа
 		ASSERT_TRUE(verifier.setKey("owner", pem, awh::crypto_t::key_type_t::PUBLIC)) << "kind = " << static_cast <uint16_t> (kind);
 		// Проверяем совпадение отпечатка, снятого без закрытого ключа
@@ -3298,7 +3299,7 @@ TEST_F(CryptoFixture, SignaturePublicOnlyCryptoTest){
 		// Проверяем получение записи открытого ключа
 		ASSERT_FALSE(pem.empty()) << "kind = " << static_cast <uint16_t> (kind);
 		// Объект работы, закрытого ключа не имеющий
-		awh::crypto_t verifier(this->_fmk.get(), this->_log.get());
+		awh::crypto_t verifier;
 		// Выполняем ввод одного лишь открытого ключа
 		ASSERT_TRUE(verifier.setKey("owner", pem, awh::crypto_t::key_type_t::PUBLIC)) << "kind = " << static_cast <uint16_t> (kind);
 		// Проверяем вид подписи введённого открытого ключа
@@ -3396,7 +3397,7 @@ TEST_F(CryptoFixture, SignatureKeyStorageCryptoTest){
 			EXPECT_EQ(static_cast <uint32_t> (info.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)), static_cast <uint32_t> (S_IRUSR | S_IWUSR)) << "kind = " << static_cast <uint16_t> (kind);
 		#endif
 		// Объект работы, читающий ключи из файлов
-		awh::crypto_t reader(this->_fmk.get(), this->_log.get());
+		awh::crypto_t reader;
 		// Выполняем чтение закрытого ключа из файла
 		ASSERT_TRUE(reader.loadKey("owner", "sign_private.pem", awh::crypto_t::key_type_t::PRIVATE)) << "kind = " << static_cast <uint16_t> (kind);
 		// Проверяем совпадение отпечатка прочитанного ключа с выработанным
@@ -3659,16 +3660,16 @@ TEST_F(CryptoFixture, SignatureStreamDiscardCryptoTest){
 	// Выполняем выработку ключа подписи
 	ASSERT_TRUE(this->_crypto->generateKey("owner", awh::crypto_t::signature_t::ECDSA));
 	// Выполняем подписку на записи лога
-	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 		// Снимаем предупреждение о неиспользуемом параметре
 		(void) text;
 		// Если получено предупреждение
-		if(flag == awh::log_t::flag_t::WARNING)
+		if(flag == awh::log::flag_t::WARNING)
 			// Наращиваем количество полученных предупреждений
 			records++;
 	});
 	// Устанавливаем отложенный режим логов, консоль набора не засоряя
-	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем заведение потока подписи
 	ASSERT_TRUE(this->_crypto->signInitialize("owner", awh::crypto_t::hash_t::SHA256));
 	// Проверяем, что заведение первого потока предупреждения не даёт
@@ -3718,16 +3719,16 @@ TEST_F(CryptoFixture, SignatureStrengthNoiseCryptoTest){
 		ASSERT_FALSE(keys.back().empty()) << "kind = " << static_cast <uint16_t> (kind);
 	}
 	// Выполняем подписку на записи лога
-	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 		// Снимаем предупреждение о неиспользуемом параметре
 		(void) text;
 		// Если получено предупреждение
-		if(flag == awh::log_t::flag_t::WARNING)
+		if(flag == awh::log::flag_t::WARNING)
 			// Наращиваем количество полученных предупреждений
 			records++;
 	});
 	// Устанавливаем отложенный режим логов, консоль набора не засоряя
-	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	/**
 	 * Выполняем ввод выработанных ключей
 	 */
@@ -4035,16 +4036,16 @@ TEST_F(CryptoFixture, StreamDiscardCryptoTest){
 	// Выполняем установку соли шифрования
 	this->_crypto->salt("j4Hs9Wk2Lp7Qz5Xr");
 	// Выполняем подписку на записи лога
-	this->_log->subscribe([&records](const awh::log_t::flag_t flag, std::string_view text) noexcept -> void {
+	awh::log::subscribe([&records](const awh::log::flag_t flag, std::string_view text) noexcept -> void {
 		// Снимаем предупреждение о неиспользуемом параметре
 		(void) text;
 		// Если получено предупреждение
-		if(flag == awh::log_t::flag_t::WARNING)
+		if(flag == awh::log::flag_t::WARNING)
 			// Наращиваем количество полученных предупреждений
 			records++;
 	});
 	// Устанавливаем отложенный режим логов, консоль набора не засоряя
-	this->_log->mode({awh::log_t::mode_t::DEFERRED});
+	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем заведение потока шифрования
 	ASSERT_TRUE(this->_crypto->initialize(awh::crypto_t::event_t::ENCODE, awh::crypto_t::hash_t::SHA256, awh::crypto_t::cipher_t::AES256));
 	// Проверяем, что заведение первого потока предупреждения не даёт

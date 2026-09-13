@@ -39,11 +39,6 @@
 #include <cstdint>
 
 /**
- * Подключаем заголовочный файл проекта
- */
-#include "log.hpp"
-
-/**
  * Разрешаем сборку под Windows
  */
 #include "macro/global.hpp"
@@ -77,9 +72,6 @@ namespace awh {
 		private:
 			// Данные версии
 			uint32_t _version;
-		private:
-			// Объект логера
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
@@ -139,20 +131,6 @@ namespace awh {
 			 * \~
 			 */
 			void set(const string & version) noexcept;
-		public:
-			/**
-			 * \~russian
-			 * @brief Метод установки объекта логирования
-			 *
-			 * @param log объект работы с логами
-			 *
-			 * \~english
-			 * @brief Method of setting the logging object
-			 * @param log object for working with logs
-			 *
-			 * \~
-			 */
-			void setLogger(const log_t * log) noexcept;
 		public:
 			/**
 			 * \~russian
@@ -348,17 +326,6 @@ namespace awh {
 			 * \~
 			 */
 			explicit Version() noexcept;
-			/**
-			 * \~russian
-			 * @brief Конструктор
-			 *
-			 *
-			 * \~english
-			 * @brief Constructor
-			 *
-			 * \~
-			 */
-			explicit Version(const log_t * log) noexcept;
 			/**
 			 * \~russian
 			 * @brief Конструктор

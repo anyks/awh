@@ -32,6 +32,7 @@
 #include <num/lexical/lexical.hpp>
 #include <codec/csv/writer.hpp>
 #include <codec/csv/encoding.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -897,7 +898,7 @@ bool awh::codec::csv::Writer::refuse(const error_t error) noexcept {
 	// Выполняем учёт занесённого отказа записи
 	this->_refusals++;
 	// Выполняем вывод сообщения об отказе в журнал работы
-	this->_log->print("%s", log_t::flag_t::CRITICAL, message(error));
+	awh::log::print("%s", awh::log::flag_t::CRITICAL, message(error));
 	// Выводим признак отказа записи
 	return false;
 }
@@ -1054,30 +1055,16 @@ void awh::codec::csv::Writer::settings(const settings_t & settings) noexcept {
 	}
 }
 /**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
+ * @brief Конструктор
  *
  */
-void awh::codec::csv::Writer::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-}
+awh::codec::csv::Writer::Writer() noexcept :
+ _origin(0), _started(false), _marked(false), _error(error_t::NONE), _refusals(0) {}
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
- */
-awh::codec::csv::Writer::Writer(const log_t * log) noexcept :
- _log(log), _origin(0), _started(false), _marked(false), _error(error_t::NONE), _refusals(0) {}
-/**
- * @brief Конструктор
- *
- * @param log      объект для работы с логами
  * @param settings настройки записи текста
  *
  */
-awh::codec::csv::Writer::Writer(const log_t * log, const settings_t & settings) noexcept :
- _log(log),
+awh::codec::csv::Writer::Writer(const settings_t & settings) noexcept :
  _settings(settings), _origin(0), _started(false), _marked(false), _error(error_t::NONE), _refusals(0) {}

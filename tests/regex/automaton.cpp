@@ -61,44 +61,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -309,10 +279,8 @@ TEST(Regex, AutomatonRefusal) {
 		{"[a-z]+",   static_cast <uint32_t> (regex::flag_t::UTF), "latin"},
 		{"\\p{L}+",  static_cast <uint32_t> (regex::flag_t::UTF), "буквы"}
 	};
-	// Создаём объект журнала событий
-	log_t log(nullptr);
 	// Создаём объект движка регулярных выражений
-	regex::engine_t engine(&log);
+	regex::engine_t engine;
 	// Создаём объект детерминированного исполнения
 	regex::dfa_t dfa;
 	// Количество выражений, заслоном отвергнутых
@@ -473,7 +441,7 @@ TEST(Regex, AutomatonLeading) {
 	 */
 	for(auto & sample : samples) {
 		// Создаём объект движка регулярных выражений
-		regex::engine_t engine(::logger());
+		regex::engine_t engine;
 		// Создаём собираемое регулярное выражение
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения

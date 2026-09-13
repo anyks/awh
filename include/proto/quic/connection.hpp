@@ -2138,18 +2138,16 @@ namespace awh {
 					 * @param endpoint роль локального эндпоинта на соединении
 					 * @param ctx      идентификатор шаблона контекста безопасности
 					 * @param coder    объект кодера транспортной безопасности
-					 * @param log      объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
 					 * @param endpoint role of the local endpoint on the connection
 					 * @param ctx      identifier of the template of the context of the safety
 					 * @param coder    object of the coder of the transport safety
-					 * @param log      object for the work with the logs
 					 *
 					 * \~
 					 */
-					explicit Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept;
+					explicit Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept;
 				} crypto_t;
 			private:
 				// Основные скаляры состояния соединения
@@ -2190,9 +2188,6 @@ namespace awh {
 			private:
 				// Оценка задержки приёма-передачи (RFC 9002 §5)
 				rtt_t _rtt;
-			private:
-				// Объект для работы с логами
-				const log_t * _log;
 			private:
 				// Идентификатор шаблона контекста безопасности (для кэша билетов возобновления)
 				tls::coder_t::id_t _ctx;
@@ -4568,7 +4563,6 @@ namespace awh {
 				 * @param endpoint роль локального эндпоинта на соединении
 				 * @param ctx      идентификатор шаблона контекста безопасности
 				 * @param coder    объект кодера транспортной безопасности
-				 * @param log      объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
@@ -4580,11 +4574,10 @@ namespace awh {
 				 * @param endpoint role of the local endpoint on the connection
 				 * @param ctx      identifier of the template of the context of the safety
 				 * @param coder    object of the coder of the transport safety
-				 * @param log      object for the work with the logs
 				 *
 				 * \~
 				 */
-				explicit Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept;
+				explicit Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept;
 		} connection_t;
 	};
 };

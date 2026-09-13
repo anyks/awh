@@ -46,6 +46,7 @@
  */
 #include "../../../benchmark/proto/quic/quic.hpp"
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Подписываемся на пространство имён протокола QUIC
@@ -65,18 +66,14 @@ using namespace awh::quic;
  *
  */
 static bool transfer(const size_t streams, rival::transfer_t & output, const size_t sendHigh = 0) noexcept {
-	// Объект фреймворка
-	static awh::fmk_t fmk;
-	// Объект логирования
-	static awh::log_t log(&fmk);
 	// Отключаем вывод логов: замер не должен перемежаться служебными сообщениями
-	log.level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Получаем окружение транспортной безопасности бенчмарка
 	auto & security = awh::benchmark::quic::security();
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT), security.coder(), &log);
+	connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT), security.coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder(), &log);
+	connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder());
 	// Выполняем подготовку соединения клиента
 	awh::benchmark::quic::configure(client);
 	// Ограничиваем стейджинг буфера отправки водяными метками (для честного сравнения
@@ -275,6 +272,13 @@ static void execute(const char * name, const size_t streams, const bool metric, 
  *
  */
 int32_t main(int32_t argc, char ** argv) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Получаем фильтр названий сценариев
 	const char * mask = rival::filter(argc, argv);
 	// Выполняем сценарий передачи по одному потоку

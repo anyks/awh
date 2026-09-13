@@ -47,36 +47,6 @@ using namespace awh::http;
  */
 namespace {
 	/**
-	 * @brief Функция получения объекта фреймворка окружения стенда
-	 *
-	 * @note Объекты окружения создаются при первом обращении: порядок статической
-	 *       инициализации между единицами трансляции не определён, а фреймворк
-	 *       зависит от таблиц чужих модулей
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	static const awh::fmk_t * fmk() noexcept {
-		// Объект фреймворка окружения стенда
-		static awh::fmk_t result;
-		// Выводим объект фреймворка
-		return &result;
-	}
-	/**
-	 * @brief Функция получения объекта логирования окружения стенда
-	 *
-	 * @return объект логирования
-	 *
-	 */
-	static const awh::log_t * logger() noexcept {
-		// Объект логирования окружения стенда
-		static awh::log_t result(::fmk());
-		// Отключаем вывод логов: часть сценариев намеренно упирается в лимиты
-		result.level(awh::log_t::level_t::NONE);
-		// Выводим объект логирования
-		return &result;
-	}
-	/**
 	 * @brief Класс сжатия полей реализацией библиотеки AWH
 	 *
 	 */
@@ -289,7 +259,7 @@ namespace {
 			 *
 			 */
 			explicit Server(const bool requests) noexcept :
-			 _parser(direct_t::REQUEST, ::fmk(), ::logger()), _unistream(3), _handled(0), _accepted(0) {
+			 _parser(direct_t::REQUEST, ::fmk()), _unistream(3), _handled(0), _accepted(0) {
 				// Устанавливаем функцию обратного вызова открытия однонаправленного потока
 				this->_parser.on(parser_http3_t::open_callback_t([this]() noexcept -> int64_t {
 					// Выделяем идентификатор однонаправленного потока
@@ -442,7 +412,7 @@ namespace {
 			 *
 			 */
 			explicit Pair() noexcept :
-			 _client(direct_t::RESPONSE, ::fmk(), ::logger()), _server(direct_t::REQUEST, ::fmk(), ::logger()),
+			 _client(direct_t::RESPONSE, ::fmk()), _server(direct_t::REQUEST, ::fmk()),
 			 _clientUni(2), _serverUni(3), _bidi(0), _completed(0) {
 				// Формируем поля ответа сервера
 				for(const auto & field : rival::response(0))

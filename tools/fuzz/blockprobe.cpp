@@ -22,9 +22,9 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <net/io.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Обработчик сторожевого срока
@@ -71,23 +71,26 @@ static void guard(const uint32_t ms) noexcept {
  */
 int main(int argc, char * argv[]) noexcept {
 	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	/**
 	 * Вид опыта: 0 - настройки по умолчанию, 1 - блокировка снята, 2 - блокировка
 	 * назначена явно
 	 */
 	const int32_t mode = ((argc > 1) ? ::atoi(argv[1]) : 0);
-	// Объект фреймворка
-	static awh::fmk_t fmk;
-	// Объект работы с логами
-	static awh::log_t log(&fmk);
 	/**
 	 * Журнал НЕ глушим
 	 *
 	 * @note Заглушенный журнал прячет и причину отказа, и отладочные сообщения самого
 	 *       движка: за сессию 30.08.2026 это трижды оставляло опыт без объяснения
 	 */
-	log.level(awh::log_t::level_t::ALL);
+	awh::log::level(awh::log::level_t::ALL);
 	// Объект сетевого движка
-	awh::engine::io_t io(&fmk, &log);
+	awh::engine::io_t io;
 	// Выполняем заведение сетевого движка
 	if(!io.initialize()){
 		// Сообщаем, что движок завести не удалось

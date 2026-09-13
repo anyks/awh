@@ -119,7 +119,7 @@ namespace {
 	 */
 	static outcome_t resolving() noexcept {
 		// Объект работы с идентификаторами ресурсов
-		awh::uri_t object(framework(), logger());
+		awh::uri_t object;
 		// Выполняем наполнение объекта разбором образца основы
 		object.parse(SAMPLE_BASE);
 		// Накопитель результатов разрешения ссылки
@@ -148,9 +148,9 @@ namespace {
 	 */
 	static outcome_t origins() noexcept {
 		// Первый объект работы с идентификаторами ресурсов
-		awh::uri_t first(framework(), logger());
+		awh::uri_t first;
 		// Второй объект работы с идентификаторами ресурсов
-		awh::uri_t second(framework(), logger());
+		awh::uri_t second;
 		// Выполняем наполнение первого объекта разбором образца строки URI
 		first.parse(SAMPLE_ORIGIN_FIRST);
 		// Выполняем наполнение второго объекта разбором образца строки URI

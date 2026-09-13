@@ -40,6 +40,7 @@
 #include <proto/quic/varint.hpp>
 #include <proto/quic/packet.hpp>
 #include <proto/quic/connection.hpp>
+#include <sys/log.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -569,11 +570,10 @@ awh::quic::Connection::Cids::Cids() noexcept {}
  * @param endpoint роль локального эндпоинта на соединении
  * @param ctx      идентификатор шаблона контекста безопасности
  * @param coder    объект кодера транспортной безопасности
- * @param log      объект для работы с логами
  *
  */
-awh::quic::Connection::Crypto::Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
- handshake(endpoint, ctx, coder, log) {}
+awh::quic::Connection::Crypto::Crypto(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept :
+ handshake(endpoint, ctx, coder) {}
 
 /**
  * @brief Конструктор
@@ -862,8 +862,8 @@ void awh::quic::Connection::fail(const error_t error) noexcept {
 		 */
 		const string_view name = errorName(error);
 		// Записываем ошибку в лог
-		this->_log->print(
-			"QUIC connection closed by transport error: %s (0x%llx)", log_t::flag_t::CRITICAL,
+		awh::log::print(
+			"QUIC connection closed by transport error: %s (0x%llx)", awh::log::flag_t::CRITICAL,
 			string(name).c_str(), static_cast <unsigned long long> (error)
 		);
 		// Устанавливаем код ошибки транспорта соединения
@@ -1312,7 +1312,7 @@ void awh::quic::Connection::restore() noexcept {
 		// Сбрасываем флаг взведённого таймера детекта потерь
 		item.hasLossTime = false;
 	// Записываем в лог сообщение об отказе удалённого узла в ранних данных
-	this->_log->print("QUIC early data rejected by peer, %zu packet(s) requeued", log_t::flag_t::INFO, count);
+	awh::log::print("QUIC early data rejected by peer, %zu packet(s) requeued", awh::log::flag_t::INFO, count);
 }
 /**
  * @brief Метод проверки пути на поддержку ECN по счётчикам подтверждения (RFC 9000 §13.4.2.1)
@@ -1395,7 +1395,7 @@ bool awh::quic::Connection::validate(const space_t space, const frame::ack_t & f
 		// Устанавливаем флаг непройденной проверки пути
 		this->_marking.failed = true;
 		// Записываем в лог сообщение о непройденной проверке пути
-		this->_log->print("QUIC path does not support ECN, outgoing marking disabled", log_t::flag_t::WARNING);
+		awh::log::print("QUIC path does not support ECN, outgoing marking disabled", awh::log::flag_t::WARNING);
 		// Выводим отрицательный результат - счётчикам перегрузки доверять нельзя
 		return false;
 	}
@@ -1422,7 +1422,7 @@ void awh::quic::Connection::deflate() noexcept {
 	// Обнуляем счётчик детекции чёрной дыры
 	this->_pmtu.blackhole = 0;
 	// Записываем в лог сообщение о понижении размера пути
-	this->_log->print("QUIC path black hole detected, maximum transmission unit lowered to %zu bytes", log_t::flag_t::WARNING, this->_pmtu.size);
+	awh::log::print("QUIC path black hole detected, maximum transmission unit lowered to %zu bytes", awh::log::flag_t::WARNING, this->_pmtu.size);
 	// Начинаем поиск размера пути заново зондированием (RFC 8899 §5.4)
 	this->discover();
 }
@@ -2188,8 +2188,8 @@ void awh::quic::Connection::promote() noexcept {
 		// Выходим из метода - переключение фазы невозможно
 		return;
 	// Записываем в лог сообщение о переключении фазы ключей защиты пакетов
-	this->_log->print(
-		"QUIC key phase switched to %u", log_t::flag_t::INFO,
+	awh::log::print(
+		"QUIC key phase switched to %u", awh::log::flag_t::INFO,
 		static_cast <uint32_t> (!this->_crypto.phase.current)
 	);
 	// Сохраняем текущие ключи чтения для отставших пакетов предыдущей фазы
@@ -2246,7 +2246,7 @@ void awh::quic::Connection::acked(const sent_t & packet) noexcept {
 		// Поднимаем подтверждённый размер исходящей датаграммы до размера зонда
 		this->_pmtu.size = packet.size;
 		// Записываем в лог сообщение о подтверждённом размере пути
-		this->_log->print("QUIC path maximum transmission unit raised to %zu bytes", log_t::flag_t::INFO, this->_pmtu.size);
+		awh::log::print("QUIC path maximum transmission unit raised to %zu bytes", awh::log::flag_t::INFO, this->_pmtu.size);
 		// Продвигаем поиск размера пути
 		this->discover();
 	}
@@ -5763,8 +5763,8 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 			// Запоминаем адрес нового пути соединения
 			this->_path.address = this->_core.address;
 			// Записываем в лог сообщение о миграции соединения на новый путь
-			this->_log->print(
-				"QUIC connection migrated to a new path: %s", log_t::flag_t::INFO,
+			awh::log::print(
+				"QUIC connection migrated to a new path: %s", awh::log::flag_t::INFO,
 				this->_path.address.c_str()
 			);
 			// Выполняем сброс состояния пути соединения со сменой адреса удалённого эндпоинта
@@ -5841,7 +5841,7 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 						// Устанавливаем флаг необходимости отправки фрейма NEW_TOKEN
 						this->_token.queued = true;
 					// Записываем предупреждение в лог - будущие соединения пройдут через пакет Retry
-					else this->_log->print("QUIC address validation token is not issued", log_t::flag_t::WARNING);
+					else awh::log::print("QUIC address validation token is not issued", awh::log::flag_t::WARNING);
 				}
 				// Устанавливаем флаг подтверждения хендшейка (RFC 9001 §4.1.2)
 				this->_core.flags |= flags::CONFIRMED;
@@ -5867,7 +5867,7 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 		 */
 		this->_core.state = state_t::DRAINING;
 		// Записываем в лог сообщение о приёме сброса без сохранения состояния
-		this->_log->print("QUIC connection terminated by stateless reset", log_t::flag_t::WARNING);
+		awh::log::print("QUIC connection terminated by stateless reset", awh::log::flag_t::WARNING);
 		// Выводим положительный результат
 		return status_t::OK;
 	}
@@ -6919,7 +6919,7 @@ void awh::quic::Connection::abandon(const bool revert) noexcept {
 		// Сбрасываем флаг выполняемой проверки предпочтительного адреса
 		this->_path.relocating = false;
 		// Записываем в лог сообщение об отмене переезда на предпочтительный адрес
-		this->_log->print("QUIC preferred address is unreachable, connection stays on the current path", log_t::flag_t::WARNING);
+		awh::log::print("QUIC preferred address is unreachable, connection stays on the current path", awh::log::flag_t::WARNING);
 	/**
 	 * Если проверялась достижимость текущего пути: путь признаётся непригодным,
 	 * но соединение не завершается - непригодность пути его разрывом не является.
@@ -6944,9 +6944,9 @@ void awh::quic::Connection::abandon(const bool revert) noexcept {
 		 */
 		this->_amplify.validated = true;
 		// Записываем в лог сообщение о возврате на последний проверенный адрес
-		this->_log->print(
+		awh::log::print(
 			"QUIC path validation failed, connection reverted to the last validated address: %s",
-			log_t::flag_t::WARNING, this->_path.address.c_str()
+			awh::log::flag_t::WARNING, this->_path.address.c_str()
 		);
 	/**
 	 * Если возвращаться некуда: путь признаётся непригодным, но соединение не
@@ -6954,7 +6954,7 @@ void awh::quic::Connection::abandon(const bool revert) noexcept {
 	 * эндпоинта остаётся неподтверждённым, поэтому объём отправки на него ограничен
 	 * лимитом анти-амплификации (RFC 9000 §8.2.4/§9.3.1)
 	 */
-	} else this->_log->print("QUIC path validation failed, path is considered unusable", log_t::flag_t::WARNING);
+	} else awh::log::print("QUIC path validation failed, path is considered unusable", awh::log::flag_t::WARNING);
 }
 /**
  * @brief Метод получения состояния проверки достижимости пути (RFC 9000 §8.2)
@@ -6994,7 +6994,7 @@ bool awh::quic::Connection::migrate() noexcept {
 	 */
 	if(this->_transport.remote.disableActiveMigration){
 		// Записываем в лог сообщение о запрете активной миграции удалённым узлом
-		this->_log->print("QUIC active migration is disabled by peer", log_t::flag_t::WARNING);
+		awh::log::print("QUIC active migration is disabled by peer", awh::log::flag_t::WARNING);
 		// Выводим отрицательный результат
 		return false;
 	}
@@ -7199,7 +7199,7 @@ void awh::quic::Connection::settle() noexcept {
 	 */
 	this->_path.address.clear();
 	// Записываем в лог сообщение о переезде на предпочтительный адрес
-	this->_log->print("QUIC connection relocated to the server preferred address", log_t::flag_t::INFO);
+	awh::log::print("QUIC connection relocated to the server preferred address", awh::log::flag_t::INFO);
 }
 /**
  * @brief Метод получения адреса удалённого эндпоинта текущего пути (RFC 9000 §9.3)
@@ -7569,10 +7569,10 @@ void awh::quic::Connection::drop([[maybe_unused]] const char * reason) const noe
 	 */
 	#if DEBUG_MODE
 		// Записываем причину отбрасывания пакета в лог
-		this->_log->debug(
+		awh::log::debug(
 			"QUIC packet dropped: %s", __PRETTY_FUNCTION__,
-			make_tuple(static_cast <uint16_t> (this->_core.endpoint), static_cast <uint16_t> (this->_core.state)),
-			log_t::flag_t::WARNING, reason
+			{static_cast <uint16_t> (this->_core.endpoint), static_cast <uint16_t> (this->_core.state)},
+			awh::log::flag_t::WARNING, reason
 		);
 	#endif
 }
@@ -8142,8 +8142,7 @@ const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept
  * @param endpoint роль локального эндпоинта на соединении
  * @param ctx      идентификатор шаблона контекста безопасности
  * @param coder    объект кодера транспортной безопасности
- * @param log      объект для работы с логами
  *
  */
-awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
- _core(endpoint), _amplify(endpoint), _log(log), _ctx(ctx), _persisted(false), _coder(coder), _crypto(endpoint, ctx, coder, log) {}
+awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder) noexcept :
+ _core(endpoint), _amplify(endpoint), _ctx(ctx), _persisted(false), _coder(coder), _crypto(endpoint, ctx, coder) {}

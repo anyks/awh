@@ -124,7 +124,7 @@ namespace {
 	 */
 	static outcome_t printing(const char * sample, const awh::uri_t::item_t item, const size_t rounds) noexcept {
 		// Объект работы с идентификаторами ресурсов
-		awh::uri_t object(framework(), logger());
+		awh::uri_t object;
 		// Выполняем наполнение объекта разбором образца строки URI
 		object.parse(sample);
 		// Накопитель результатов сборки строки URI

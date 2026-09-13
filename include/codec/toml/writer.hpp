@@ -122,7 +122,7 @@ namespace awh {
 			 * запись не вправе
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer(log);
+			 *  writer_t writer();
 			 *
 			 *  writer.comment("собрано автоматически");
 			 *  writer.table("server");
@@ -158,7 +158,7 @@ namespace awh {
 			 * truncate the content
 			 *
 			 *  @code{.cpp}
-			 *  writer_t writer(log);
+			 *  writer_t writer();
 			 *
 			 *  writer.comment("built automatically");
 			 *  writer.table("server");
@@ -182,7 +182,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -1458,30 +1457,25 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log объект для работы с логами
-					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Writer(const log_t * log) noexcept;
+					Writer() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param log      объект для работы с логами
 					 * @param settings настройки записи текста настроек
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the writing of a settings text
 					 *
 					 * \~
 					 */
-					Writer(const log_t * log, const settings_t & settings) noexcept;
+					Writer(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

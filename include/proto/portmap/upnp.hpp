@@ -447,11 +447,6 @@ namespace awh {
 				private:
 					// Объект кодека договора SOAP
 					soap_t _soap;
-				private:
-					// Объект фреймворка
-					const fmk_t * _fmk;
-					// Объект работы с логами
-					const log_t * _log;
 				public:
 					/**
 					 * \~russian
@@ -848,18 +843,13 @@ namespace awh {
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект работы с логами
-					 *
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param fmk framework object
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					UPnP(const fmk_t * fmk, const log_t * log) noexcept : _soap(fmk, log), _fmk(fmk), _log(log) {}
+					UPnP() noexcept : _soap() {}
 			} upnp_t;
 
 			/**

@@ -18,53 +18,56 @@
  * @copyright Copyright © 2025
  *
  */
+#include "log.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "log.hpp"
 
 /**
- * @brief Тесты удаления модуля логов
+ * @brief Проверка состояния модуля логов, единственного на процесс
+ *
+ * @details Прежде эти проверки испытывали заведение и сброс ОБЪЕКТА логирования.
+ *          Объекта не стало: состояние модуля единственно на процесс, и закреплять
+ *          нужно именно это свойство, а не построение
  *
  */
-TEST_F(LogFixture, CreateLogTest){
-	// Проверяем создание объекта логов
-	ASSERT_TRUE(this->_log != nullptr);
-	// Проверяем сброс объекта логов
-	this->_log.reset();
-	// Проверяем успешность сброса объекта логов
-	ASSERT_TRUE(this->_log == nullptr);
+TEST_F(LogFixture, SingleStateLogTest){
+	// Запоминаем набор режимов вывода, заведённый по умолчанию
+	const size_t initial = awh::log::mode().size();
+	// Утверждаем, что состояние заведено само, без построения объекта
+	ASSERT_GT(initial, static_cast <size_t> (0))
+	 << "состояние модуля логов не заведено по первому обращению";
+	// Выполняем установку названия службы
+	awh::log::name("SINGLE-STATE");
+	// Выполняем установку единственного режима вывода
+	awh::log::mode({awh::log::mode_t::CONSOLE});
+	// Утверждаем, что установка видна при следующем обращении
+	ASSERT_EQ(awh::log::mode().size(), static_cast <size_t> (1))
+	 << "состояние модуля логов не сохранилось между обращениями";
+	// Утверждаем, что видна именно установленная настройка
+	ASSERT_TRUE(awh::log::mode().count(awh::log::mode_t::CONSOLE) > 0)
+	 << "сохранился не тот режим вывода, который был установлен";
 }
 
 /**
- * @brief Тесты пересоздания модуля логов
+ * @brief Проверка неизменности состояния модуля логов при повторном заведении
+ *
+ * @details Заведение модуля ленивое и одноразовое: повторное обращение обязано
+ *          отдать УЖЕ настроенное состояние, а не завести его заново с умолчаниями
  *
  */
-TEST_F(LogFixture, ResetAndCreateLogTest){
-	// Проверяем создание объекта логов
-	ASSERT_TRUE(this->_log != nullptr);
-	// Проверяем сброс объекта логов
-	this->_log.reset();
-	// Проверяем успешность сброса объекта логов
-	ASSERT_TRUE(this->_log == nullptr);
-	// Создаём объект логов заново
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
-	// Проверяем создание объекта логов
-	ASSERT_TRUE(this->_log != nullptr);
-}
-
-/**
- * @brief Тесты пересоздания модуля логов
- *
- */
-TEST_F(LogFixture, ReCreateLogTest){
-	// Проверяем создание объекта логов
-	ASSERT_TRUE(this->_log != nullptr);
-	// Создаём объект логов заново
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
-	// Проверяем создание объекта логов
-	ASSERT_TRUE(this->_log != nullptr);
+TEST_F(LogFixture, StateSurvivesLogTest){
+	// Выполняем установку опознаваемого уровня логирования
+	awh::log::level(awh::log::level_t::CRITICAL);
+	// Выполняем установку опознаваемого формата даты
+	awh::log::format("%Y-%m-%d");
+	// Выполняем обращение к иной настройке модуля
+	static_cast <void> (awh::log::mode());
+	// Утверждаем, что установленный формат уцелел
+	ASSERT_EQ(awh::log::format(), std::string{"%Y-%m-%d"})
+	 << "обращение к модулю сбросило ранее установленный формат даты";
 }
 
 /**
@@ -75,24 +78,24 @@ TEST_F(LogFixture, ModeLogTest){
 	/**
 	 * Устанавливаем режимы формирвоания логов
 	 */
-	this->_log->mode({
-		awh::log_t::mode_t::FILE,
-		awh::log_t::mode_t::SYSLOG,
-		awh::log_t::mode_t::CONSOLE,
-		awh::log_t::mode_t::DEFERRED
+	awh::log::mode({
+		awh::log::mode_t::FILE,
+		awh::log::mode_t::SYSLOG,
+		awh::log::mode_t::CONSOLE,
+		awh::log::mode_t::DEFERRED
 	});
 	// Проверяем установленные режимы логов
-	ASSERT_TRUE(this->_log->mode().size() == 4);
+	ASSERT_TRUE(awh::log::mode().size() == 4);
 	/**
 	 * Проверяем корректность установленных режимов логов
 	 */
-	for(auto & mode : this->_log->mode())
+	for(auto & mode : awh::log::mode())
 		// Проверяем корректность режима логов
 		ASSERT_TRUE(
-			(mode == awh::log_t::mode_t::FILE) ||
-			(mode == awh::log_t::mode_t::SYSLOG) ||
-			(mode == awh::log_t::mode_t::CONSOLE) ||
-			(mode == awh::log_t::mode_t::DEFERRED)
+			(mode == awh::log::mode_t::FILE) ||
+			(mode == awh::log::mode_t::SYSLOG) ||
+			(mode == awh::log::mode_t::CONSOLE) ||
+			(mode == awh::log::mode_t::DEFERRED)
 		);
 }
 
@@ -102,9 +105,9 @@ TEST_F(LogFixture, ModeLogTest){
  */
 TEST_F(LogFixture, FormatLogTest){
 	// Устанавливаем формат лога
-	this->_log->format("%a %h %e %Y %H:%M:%S");
+	awh::log::format("%a %h %e %Y %H:%M:%S");
 	// Проверяем установленный формат лога
-	ASSERT_EQ("%a %h %e %Y %H:%M:%S", this->_log->format());
+	ASSERT_EQ("%a %h %e %Y %H:%M:%S", awh::log::format());
 }
 
 /**
@@ -113,21 +116,21 @@ TEST_F(LogFixture, FormatLogTest){
  */
 TEST_F(LogFixture, OtherLogTest){
 	// Активируем асинхронный режим работы логов
-	this->_log->async(true);
+	awh::log::async(true);
 	// Деактивируем асинхронный режим работы логов
-	this->_log->async(false);
+	awh::log::async(false);
 	// Устанавливаем название сервиса для вывода лога
-	this->_log->name("anyks");
+	awh::log::name("anyks");
 	// Устанавливаем максимальный размер файла логов
-	this->_log->maxSize(4096);
+	awh::log::maxSize(4096);
 	// Устанавливаем размер текста для формирования разделителя
-	this->_log->sepSize(1024);
+	awh::log::sepSize(1024);
 	// Устанавливаем уровень логирования
-	this->_log->level(awh::log_t::level_t::ALL);
+	awh::log::level(awh::log::level_t::ALL);
 	// Устанавливаем путь к файлу для сохранения логов
-	this->_log->filename("/tmp/test.log");
+	awh::log::filename("/tmp/test.log");
 	// Устанавливаем разделитель сообщений логирования
-	this->_log->separator(awh::log_t::separator_t::ALWAYS);
+	awh::log::separator(awh::log::separator_t::ALWAYS);
 	// Проверяем успешное выполнение методов
 	ASSERT_TRUE(true);
 }

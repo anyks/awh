@@ -78,6 +78,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <net/eth/gateway.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -952,13 +953,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+								awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Kernel routing table could not be obtained", log_t::flag_t::CRITICAL);
+								awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
 							#endif
 							// Возвращаем результат
 							return result;
@@ -1206,13 +1207,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+								awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Kernel routing table could not be obtained", log_t::flag_t::CRITICAL);
+								awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
 							#endif
 							// Возвращаем результат
 							return result;
@@ -1271,13 +1272,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
+						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unsupported address family", log_t::flag_t::CRITICAL);
+						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -1288,13 +1289,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Gateway address is not initialized", log_t::flag_t::CRITICAL);
+				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -1306,13 +1307,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1364,7 +1365,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				this->_log->print("Route prefix length %u exceeds the limit %u of the %s address", log_t::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return result;
 			}
@@ -1400,13 +1401,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1517,13 +1518,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, route.ifname.c_str());
+								awh::log::debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to find IPv4 address for interface \"%s\"", log_t::flag_t::WARNING, route.ifname.c_str());
+								awh::log::print("Unable to find IPv4 address for interface \"%s\"", awh::log::flag_t::WARNING, route.ifname.c_str());
 							#endif
 						}
 					/**
@@ -1602,13 +1603,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Закрываем сокет
@@ -1625,13 +1626,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -1744,13 +1745,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, route.ifname.c_str());
+								awh::log::debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to find IPv6 address for interface \"%s\"", log_t::flag_t::WARNING, route.ifname.c_str());
+								awh::log::print("Unable to find IPv6 address for interface \"%s\"", awh::log::flag_t::WARNING, route.ifname.c_str());
 							#endif
 						}
 					/**
@@ -1848,13 +1849,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
 					// Закрываем
@@ -1867,13 +1868,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
+						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unsupported address family", log_t::flag_t::CRITICAL);
+						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -1884,13 +1885,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Gateway address is not initialized", log_t::flag_t::CRITICAL);
+				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -1902,13 +1903,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -1960,7 +1961,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			// Если заказанная длина префикса разрядности адреса не отвечает
 			if(route.prefix > limit){
 				// Выводим в журнал сообщение о негодной длине префикса
-				this->_log->print("Route prefix length %u exceeds the limit %u of the %s address", log_t::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
+				awh::log::print("Route prefix length %u exceeds the limit %u of the %s address", awh::log::flag_t::CRITICAL, static_cast <uint32_t> (route.prefix), static_cast <uint32_t> (limit), ((route.destination->size == 16) ? "IPv6" : "IPv4"));
 				// Работать с маршрутом по негодной длине префикса нечем
 				return result;
 			}
@@ -2003,13 +2004,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+							awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Kernel routing table could not be obtained", log_t::flag_t::CRITICAL);
+							awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2025,13 +2026,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2216,13 +2217,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 								// Возвращаем результат
 								return result;
@@ -2256,13 +2257,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+							awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Kernel routing table could not be obtained", log_t::flag_t::CRITICAL);
+							awh::log::print("Kernel routing table could not be obtained", awh::log::flag_t::CRITICAL);
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2278,13 +2279,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Возвращаем результат
 						return result;
@@ -2488,13 +2489,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+									awh::log::print("%s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 								// Возвращаем результат
 								return result;
@@ -2517,13 +2518,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
+						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unsupported address family", log_t::flag_t::CRITICAL);
+						awh::log::print("Unsupported address family", awh::log::flag_t::CRITICAL);
 					#endif
 				} break;
 			}
@@ -2534,13 +2535,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Gateway address is not initialized", log_t::flag_t::CRITICAL);
+				awh::log::print("Gateway address is not initialized", awh::log::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -2552,13 +2553,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем результат
@@ -2567,11 +2568,8 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Gateway::Gateway(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Gateway::Gateway() noexcept {}
 /**
  * @brief Деструктор
  *

@@ -539,7 +539,7 @@ case "$CODEC" in
 	#       собирать его значило бы платить сборкой самой крупной части дерева за
 	#       то, чего ворошитель не зовёт
 	##
-	io|eth|blockprobe|deadlockprobe)
+	io|iodata|eth|blockprobe|deadlockprobe)
 		# Отбираем движок по системе
 		case "$(uname -s)" in
 			# У систем BSD и macOS движком служит kqueue

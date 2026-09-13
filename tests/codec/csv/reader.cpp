@@ -51,54 +51,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта фреймворка проверок
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -129,7 +89,7 @@ namespace {
 	 */
 	static string dump(const string & text, const size_t chunk, const csv::reader_t::settings_t & settings) noexcept {
 		// Чтение текста
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Собранная выдача разбора
 		string result;
 		// Смещение от начала текста
@@ -209,7 +169,7 @@ namespace {
 	 */
 	static string detailed(const string & text, const size_t chunk, const csv::reader_t::settings_t & settings) noexcept {
 		// Чтение текста
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Собранная выдача разбора
 		string result;
 		// Смещение от начала текста
@@ -502,7 +462,7 @@ TEST(CodecCsvReader, LocationAfterFailure) {
 	// Устанавливаем наибольшую допустимую длину записи
 	settings.maxRecord = 6;
 	// Чтение текста
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем подачу текста целиком
 	reader.feed("a,b\r\nccccccccc\r\n");
 	// Выполняем получение первого события разбора
@@ -624,7 +584,7 @@ TEST(CodecCsvReader, HeaderNames) {
 	// Включаем признак наличия заголовка
 	settings.header = csv::header_t::PRESENT;
 	// Чтение текста
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("имя,возраст\r\nАня,30\r\n"));
 	// Имя поля, полученное из события
@@ -832,7 +792,7 @@ TEST(CodecCsvReader, DetectedSeparator) {
 	// Включаем определение разделителя по содержимому
 	settings.separator = '\0';
 	// Чтение текста
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем проверку того, что до определения разделитель не выдаётся
 	ASSERT_EQ(reader.separator(), '\0');
 	// Выполняем подачу текста целиком
@@ -872,7 +832,7 @@ TEST(CodecCsvReader, Limits) {
  */
 TEST(CodecCsvReader, Reset) {
 	// Чтение текста
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем подачу текста, разбор которого прекращается отказом
 	reader.feed("\"abc");
 	// Выполняем проверку отказа разбора
@@ -908,7 +868,7 @@ TEST(CodecCsvReader, Reset) {
  */
 TEST(CodecCsvReader, Location) {
 	// Чтение текста
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("a,b\r\n\"c\r\nd\",e\r\nf\r\n"));
 	// Положения полей в исходном тексте
@@ -947,7 +907,7 @@ TEST(CodecCsvReader, Location) {
  */
 TEST(CodecCsvReader, Flags) {
 	// Чтение текста
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("a,\"b\",\"c\"\"d\"\r\n"));
 	// Признаки заключения полей в кавычки
@@ -992,7 +952,7 @@ TEST(CodecCsvReader, Flags) {
  */
 TEST(CodecCsvReader, Finish) {
 	// Чтение текста
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем подачу текста целиком
 	ASSERT_TRUE(reader.feed("a\r\n"));
 	/**
@@ -1103,7 +1063,7 @@ TEST(CodecCsvReader, FeedAfterLastChunkRefused) {
 	// Устанавливаем знак-разделитель полей
 	settings.separator = ',';
 	// Объект чтения текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Подаваемый текст таблицы
 	const string text = "a,b\r\n";
 	// Проверяем приём текста таблицы целиком
@@ -1142,7 +1102,7 @@ TEST(CodecCsvReader, FieldLimitRefusesWhileParsing) {
 	// Задаём наибольшую допустимую длину поля
 	settings.maxField = 8;
 	// Чтение текста
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем подачу поля, конца не имеющего, кусками по мегабайту
 	const string chunk(1024 * 1024, 'a');
 	// Признак того, что отказ последовал на первом же куске
@@ -1240,7 +1200,7 @@ TEST(CodecCsvReader, DetectionIndependentOfChunking) {
 	 */
 	const auto separator = [&](const size_t chunk) noexcept -> char {
 		// Чтение текста
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		/**
 		 * Если текст подаётся целиком
 		 */
@@ -1297,7 +1257,7 @@ TEST(CodecCsvReader, DetectionIndependentOfChunking) {
  */
 TEST(CodecCsvReader, SettingsMidParseKeepParsing) {
 	// Чтение таблицы
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Прочитанные поля таблицы
 	vector <string> fields;
 	/**
@@ -1396,7 +1356,7 @@ TEST(CodecCsvReader, MalformedEncodingRefused) {
 	 */
 	for(const Probe & probe : probes){
 		// Чтение таблицы
-		csv::reader_t reader(::logger());
+		csv::reader_t reader;
 		// Собранный текст искажённой подачи
 		const string text(reinterpret_cast <const char *> (probe.bytes.data()), probe.bytes.size());
 		// Выполняем подачу искажённого текста целиком
@@ -1437,7 +1397,7 @@ TEST(CodecCsvReader, ForcedEncodingsParseAndRefuse) {
 		// Устанавливаем навязываемую кодировку исходного текста
 		settings.encoding = encoding;
 		// Чтение таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Собранный текст подачи
 		const string text(reinterpret_cast <const char *> (bytes.data()), bytes.size());
 		// Выполняем подачу текста таблицы целиком
@@ -1549,7 +1509,7 @@ TEST(CodecCsvReader, MissingRequestedHeaderRefused) {
 		// Устанавливаем знак начала строки примечания
 		settings.comment = '#';
 		// Чтение таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		/**
 		 * Если текст подаётся целиком
 		 */
@@ -1593,7 +1553,7 @@ TEST(CodecCsvReader, MissingRequestedHeaderRefused) {
 	 */
 	{
 		// Чтение таблицы с умолчательными настройками
-		csv::reader_t reader(::logger());
+		csv::reader_t reader;
 		// Выполняем подачу пустого текста таблицы
 		reader.feed("", 0, true);
 		/**
@@ -1659,7 +1619,7 @@ TEST(CodecCsvReader, EncodingFailureNamesTrueReason) {
 		// Устанавливаем навязываемую кодировку исходного текста
 		settings.encoding = probe.encoding;
 		// Чтение таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Собранный текст подачи
 		const string text(reinterpret_cast <const char *> (probe.bytes.data()), probe.bytes.size());
 		// Выполняем подачу текста таблицы целиком
@@ -1704,7 +1664,7 @@ TEST(CodecCsvReader, EncodingVerdictIndependentOfChunking) {
 		// Устанавливаем навязываемую кодировку исходного текста
 		settings.encoding = encoding;
 		// Чтение таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Собранный текст подачи
 		const string text(reinterpret_cast <const char *> (bytes.data()), bytes.size());
 		/**
@@ -1814,7 +1774,7 @@ TEST(CodecCsvReader, EncodingVerdictIndependentOfChunking) {
  */
 TEST(CodecCsvReader, FieldLimitLoweredMidField) {
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем проверку подачи длинного поля при снятом пределе
 	ASSERT_TRUE(reader.feed("aaaaaaaa", 8, false));
 	// Получаем настройки разбора
@@ -1842,7 +1802,7 @@ TEST(CodecCsvReader, StrictRefusesLoneLineFeed) {
 	// Выполняем указание строгого разбора
 	settings.strict = true;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем проверку отказа разбора текста с одиночным переводом строки
 	ASSERT_FALSE(reader.feed("a,b\nc,d\n"));
 	/**
@@ -1853,7 +1813,7 @@ TEST(CodecCsvReader, StrictRefusesLoneLineFeed) {
 	 */
 	ASSERT_EQ(reader.error(), csv::error_t::BARE_LINE_BREAK);
 	// Чтение текста таблицы знаками конца строки по договору
-	csv::reader_t strict(::logger(), settings);
+	csv::reader_t strict(settings);
 	// Выполняем проверку разбора текста знаками конца строки по договору
 	ASSERT_TRUE(strict.feed("a,b\r\nc,d\r\n"));
 }
@@ -1871,7 +1831,7 @@ TEST(CodecCsvReader, ErrorLocationSurvivesEventDraining) {
 	// Выполняем указание предела длины поля
 	settings.maxField = 3;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем проверку отказа разбора текста таблицы
 	ASSERT_FALSE(reader.feed("ab,cd\r\nloooooong,cd\r\n"));
 	// Запоминаем место обнаружения отказа
@@ -1909,7 +1869,7 @@ TEST(CodecCsvReader, FinishAfterFailureKeepsVerdict) {
 	// Выполняем указание предела длины поля
 	settings.maxField = 2;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем проверку отказа разбора текста таблицы
 	ASSERT_FALSE(reader.feed("looong,b\r\n", 10, false));
 	// Выполняем проверку кода отказа разбора
@@ -1934,7 +1894,7 @@ TEST(CodecCsvReader, RecordLimitAppliesBeforeDetection) {
 	// Выполняем указание предела длины записи
 	settings.maxRecord = 8;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем проверку отказа разбора текста таблицы
 	ASSERT_FALSE(reader.feed("aaaaaaaaaaaaaaaaaaaa,b\r\n"));
 	// Выполняем проверку кода отказа разбора
@@ -1954,7 +1914,7 @@ TEST(CodecCsvReader, RecordLimitAppliesBeforeDetection) {
  */
 TEST(CodecCsvReader, TextWithoutSeparatorParsedAsSingleColumn) {
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем проверку разбора текста таблицы
 	ASSERT_TRUE(reader.feed("один\r\nдва\r\nтри\r\n"));
 	// Выполняем проверку разделителя, названного договором
@@ -1984,7 +1944,7 @@ TEST(CodecCsvReader, TextWithoutSeparatorParsedAsSingleColumn) {
  */
 TEST(CodecCsvReader, EncodingReportedBySignature) {
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Текст таблицы с меткой порядка байтов UTF-8
 	const char text[] = {'\xef', '\xbb', '\xbf', 'a', ',', 'b', '\r', '\n'};
 	// Выполняем проверку разбора текста таблицы
@@ -2017,7 +1977,7 @@ TEST(CodecCsvReader, RecordLimitAppliesToDeferredText) {
 	// Выполняем указание количества записей для определения разделителя
 	settings.detect = 16;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Собираемый текст таблицы
 	string text(40, 'a');
 	// Дописываем тексту таблицы окончание записи
@@ -2052,7 +2012,7 @@ TEST(CodecCsvReader, SeparatorDetectedFromSample) {
 	settings.detect = 2;
 	{
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Собираемый текст таблицы
 		string text;
 		/**
@@ -2070,7 +2030,7 @@ TEST(CodecCsvReader, SeparatorDetectedFromSample) {
 		// Выполняем указание количества записей для определения разделителя
 		settings.detect = 8;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем проверку разбора текста таблицы одною незавершённой записью
 		ASSERT_TRUE(reader.feed("a;b;c"));
 		// Выполняем проверку определённого разделителя полей
@@ -2094,7 +2054,7 @@ TEST(CodecCsvReader, QuotedFieldsWithBackslashEscape) {
 	settings.escape = csv::escape_t::BACKSLASH;
 	{
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем проверку разбора текста таблицы
 		ASSERT_TRUE(reader.feed("\"a\",\"b\"\r\n"));
 		// Собранные поля записи таблицы
@@ -2115,7 +2075,7 @@ TEST(CodecCsvReader, QuotedFieldsWithBackslashEscape) {
 		// Выполняем указание строгого разбора
 		settings.strict = true;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем проверку отказа разбора одиночного перевода строки за полем в кавычках
 		ASSERT_FALSE(reader.feed("\"a\",\"b\"\n"));
 		// Выполняем проверку кода отказа разбора
@@ -2143,7 +2103,7 @@ TEST(CodecCsvReader, DeferredTextReportsFailures) {
 		// Выполняем указание строгого разбора
 		strict.strict = true;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), strict);
+		csv::reader_t reader(strict);
 		// Выполняем проверку отказа разбора отложенного текста таблицы
 		ASSERT_FALSE(reader.feed("a,b\r\nc,\"d\"мусор\r\n"));
 		// Выполняем проверку кода отказа разбора
@@ -2151,7 +2111,7 @@ TEST(CodecCsvReader, DeferredTextReportsFailures) {
 	}
 	{
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Текст таблицы с негодной последовательностью знаков UTF-8
 		const char text[] = {'a', ',', 'b', '\r', '\n', 'c', ',', '\xc2', '\xc2'};
 		// Выполняем проверку отказа разбора отложенного текста таблицы
@@ -2190,7 +2150,7 @@ TEST(CodecCsvReader, DetectionSkipsSeparatorEqualToQuote) {
 	// Выполняем указание знака кавычек, с проверяемым разделителем совпадающего
 	settings.quote = ',';
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем проверку разбора текста таблицы
 	ASSERT_TRUE(reader.feed("a;b;c\r\nd;e;f\r\n"));
 	// Выполняем проверку определённого разделителя полей
@@ -2207,7 +2167,7 @@ TEST(CodecCsvReader, DetectionSkipsSeparatorEqualToQuote) {
 TEST(CodecCsvReader, LimitsRefuseAtQuotedFieldEnd) {
 	{
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger());
+		csv::reader_t reader;
 		// Выполняем проверку подачи поля в кавычках при снятом пределе
 		ASSERT_TRUE(reader.feed("\"aaaaaaaa\"", 10, false));
 		// Получаем настройки разбора
@@ -2223,7 +2183,7 @@ TEST(CodecCsvReader, LimitsRefuseAtQuotedFieldEnd) {
 	}
 	{
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger());
+		csv::reader_t reader;
 		// Выполняем проверку подачи записи с полем в кавычках при снятом пределе
 		ASSERT_TRUE(reader.feed("a,\"bbbbbbbb\"", 12, false));
 		// Получаем настройки разбора
@@ -2255,7 +2215,7 @@ TEST(CodecCsvReader, FieldCountMismatchAtQuotedRecordEnd) {
 	// Выполняем указание отказа при расхождении количества полей
 	settings.ragged = csv::ragged_t::ERROR;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Выполняем проверку отказа разбора текста таблицы
 	ASSERT_FALSE(reader.feed("a,b,c\r\nx,\"y\"\r\n"));
 	// Выполняем проверку кода отказа разбора
@@ -2275,7 +2235,7 @@ TEST(CodecCsvReader, FieldCountMismatchAtQuotedRecordEnd) {
  */
 TEST(CodecCsvReader, ForcedEncodingDroppedWhenUnappliable){
 	// Объект чтения текста таблицы
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем подачу первого куска текста таблицы
 	ASSERT_TRUE(reader.feed("а,б\r\n", 7, false));
 	// Получаем настройки разбора текста
@@ -2301,7 +2261,7 @@ TEST(CodecCsvReader, ForcedEncodingDroppedWhenUnappliable){
 		// Навязываем кодировку исходного текста
 		forced.encoding = csv::encoding_t::UTF16LE;
 		// Объект чтения текста таблицы
-		csv::reader_t fresh(::logger(), forced);
+		csv::reader_t fresh(forced);
 		// Выполняем проверку того, что указание, сбыться способное, сохранено
 		ASSERT_EQ(fresh.settings().encoding, csv::encoding_t::UTF16LE);
 	}
@@ -2348,7 +2308,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем кодировку, метке противоречащую
 		settings.reader.encoding = csv::encoding_t::UTF16LE;
 		// Объект контейнера таблицы
-		csv::document_t doc(::framework(), ::logger(), settings);
+		csv::document_t doc(settings);
 		// Выполняем проверку отказа разбора при противоречии
 		ASSERT_FALSE(doc.parse(BOM8 + "аб,вг\r\n"));
 		// Выполняем проверку кода отказа разбора
@@ -2365,7 +2325,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем кодировку, метке противоречащую
 		settings.reader.encoding = csv::encoding_t::UTF8;
 		// Объект контейнера таблицы
-		csv::document_t doc(::framework(), ::logger(), settings);
+		csv::document_t doc(settings);
 		// Выполняем проверку отказа разбора при противоречии
 		ASSERT_FALSE(doc.parse(BOM16LE + wide));
 		// Выполняем проверку кода отказа разбора
@@ -2380,7 +2340,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем кодировку, метке отвечающую
 		settings.reader.encoding = csv::encoding_t::UTF8;
 		// Объект контейнера таблицы
-		csv::document_t doc(::framework(), ::logger(), settings);
+		csv::document_t doc(settings);
 		// Выполняем проверку успеха разбора текста таблицы
 		ASSERT_TRUE(doc.parse(BOM8 + "аб,вг\r\n"));
 		// Выполняем проверку того, что метка в содержимое поля не легла
@@ -2397,7 +2357,7 @@ TEST(CodecCsvReader, ForcedEncodingAgainstSignature){
 		// Навязываем однобайтовую кодировку, метки не имеющую вовсе
 		settings.reader.encoding = csv::encoding_t::CP1252;
 		// Объект контейнера таблицы
-		csv::document_t doc(::framework(), ::logger(), settings);
+		csv::document_t doc(settings);
 		// Выполняем проверку успеха разбора текста таблицы
 		ASSERT_TRUE(doc.parse("\xE9\x74\xE9,b\r\n"));
 		// Выполняем проверку приведения содержимого поля к UTF-8
@@ -2420,7 +2380,7 @@ TEST(CodecCsvReader, HeaderViewsSurviveFeeding){
 	// Выполняем установку признака наличия заголовка
 	settings.header = csv::header_t::PRESENT;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Первый подаваемый кусок текста таблицы
 	const string first = "имя,возраст\nАня,30\n";
 	// Выполняем подачу первого куска текста таблицы
@@ -2468,7 +2428,7 @@ TEST(CodecCsvReader, FieldViewLifetimesDiffer){
 	// Выполняем установку признака наличия заголовка
 	settings.header = csv::header_t::PRESENT;
 	// Чтение текста таблицы
-	csv::reader_t reader(::logger(), settings);
+	csv::reader_t reader(settings);
 	// Первый подаваемый кусок текста таблицы
 	const string first = "имя,возраст\nАня,30\n";
 	// Выполняем подачу первого куска текста таблицы
@@ -2533,7 +2493,7 @@ TEST(CodecCsvReader, MidTextSettingsHaveTwoExceptions){
 		// Настройки чтения текста таблицы
 		csv::reader_t::settings_t settings;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Первый подаваемый кусок текста таблицы
 		const string first = "a,b\n1,";
 		// Выполняем подачу первого куска текста таблицы
@@ -2573,7 +2533,7 @@ TEST(CodecCsvReader, MidTextSettingsHaveTwoExceptions){
 		// Настройки чтения текста таблицы
 		csv::reader_t::settings_t settings;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Первый подаваемый кусок текста таблицы
 		const string first = "a,b\n1,";
 		// Выполняем подачу первого куска текста таблицы
@@ -2617,7 +2577,7 @@ TEST(CodecCsvReader, CopyRebasesItsViews){
 	// Выполняем установку признака наличия заголовка
 	settings.header = csv::header_t::PRESENT;
 	// Чтение текста таблицы
-	csv::reader_t source(::logger(), settings);
+	csv::reader_t source(settings);
 	// Подаваемый текст таблицы
 	const string text = "имястолбца,второй\nАня,30\n";
 	// Выполняем подачу текста таблицы
@@ -2830,7 +2790,7 @@ TEST(CodecCsvReader, LimitsAreExactAndCountBytes) {
 	 */
 	const auto accepts = [](const string & text, const csv::reader_t::settings_t & settings) noexcept -> bool {
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
 		// Выполняем перебор всех событий разбора
@@ -2957,7 +2917,7 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		// Выполняем указание предела длины поля
 		settings.maxField = 4;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста, разбор которого прекращается отказом
 		reader.feed("слишкомдлинное,а\r\n");
 		// Выполняем снятие всех событий, собранных до отказа
@@ -2986,7 +2946,7 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		// Выполняем указание предела длины поля
 		settings.maxField = 4;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Текст, отказ которого наступает далеко от начала
 		const string first = "аб,вг,деё,очень-длинное-поле\r\n";
 		// Выполняем подачу первого текста таблицы
@@ -3021,7 +2981,7 @@ TEST(CodecCsvReader, RefusalSurvivesFeedingAndResetClearsAll) {
 		// Запоминаем наличие заголовка у текста
 		settings.header = csv::header_t::PRESENT;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу первого текста таблицы
 		reader.feed("альфа,бета\r\n1,2\r\n");
 		// Выполняем снятие всех событий разбора
@@ -3086,7 +3046,7 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 		// Запоминаем количество записей просмотра
 		settings.detect = detect;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
 		// Собранная выдача разбора
@@ -3196,7 +3156,7 @@ TEST(CodecCsvReader, SeparatorDetectionContract) {
 			// Снимаем разделитель, чтобы он определялся сам
 			settings.separator = '\0';
 			// Чтение текста таблицы
-			csv::reader_t reader(::logger(), settings);
+			csv::reader_t reader(settings);
 			// Выполняем подачу текста таблицы целиком
 			reader.feed(text.data(), text.size(), true);
 			// Собранная выдача разбора
@@ -3251,7 +3211,7 @@ TEST(CodecCsvReader, ZeroMeansNoLimitForEveryLimit) {
 	 */
 	const auto accepts = [](const csv::reader_t::settings_t & settings, const string & text) noexcept -> bool {
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
 		// Выполняем перебор всех событий разбора
@@ -3341,7 +3301,7 @@ TEST(CodecCsvReader, ZeroMeansNoLimitForEveryLimit) {
  */
 TEST(CodecCsvReader, LimitsRaiseTheirOwnCodes) {
 	const auto code = [](const string & text, const csv::reader_t::settings_t & settings) noexcept -> uint32_t {
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		reader.feed(text.data(), text.size(), true);
 		while(reader.next()) ;
 		return static_cast <uint32_t> (reader.error());
@@ -3402,7 +3362,7 @@ TEST(CodecCsvReader, ErrorLocationIsIndependentOfChunking) {
 		// Выполняем указание предела длины поля
 		settings.maxField = 8;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Если подача идёт текстом целиком
 		if(step == 0)
 			// Выполняем подачу текста таблицы целиком
@@ -3497,7 +3457,7 @@ TEST(CodecCsvReader, SeparatorJudgeIsNarrowerThanTheParsing) {
 		// Устанавливаем проверяемый знак-разделитель полей
 		settings.separator = separator;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		/**
 		 * Разбираемый текст из двух ПУСТЫХ полей
 		 *
@@ -3626,7 +3586,7 @@ TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
 		// Устанавливаем проверяемый знак кавычек
 		settings.quote = quote;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
 		// Выполняем перебор всех событий разбора
@@ -3656,7 +3616,7 @@ TEST(CodecCsvReader, ContradictorySettingsAreHandledDeliberately) {
 		// Устанавливаем знак кавычек, разделителю равный
 		settings.quote = '"';
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Разбираемый текст таблицы
 		const string text = "а\"б\r\n";
 		// Выполняем подачу текста таблицы целиком
@@ -3746,7 +3706,7 @@ TEST(CodecCsvReader, HeaderCannotBeGuessedFromTheText) {
 		// Устанавливаем проверяемое положение признака наличия заголовка
 		settings.header = header;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста таблицы целиком
 		reader.feed(text.data(), text.size(), true);
 		// Собранное описание разобранных событий
@@ -3835,7 +3795,7 @@ TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 		// Задаём правило снятия обвязки поля
 		settings.trim = trim;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		/**
 		 * Если текст подаётся одним куском
 		 */
@@ -3915,7 +3875,7 @@ TEST(CodecCsvReader, FieldLimitIsExactAtTheBoundary) {
 		 */
 		const auto lowered = [](const string & text, const uint32_t limit) noexcept -> csv::error_t {
 			// Чтение текста таблицы
-			csv::reader_t reader(::logger());
+			csv::reader_t reader;
 			// Выполняем подачу содержимого поля при пределе умолчания
 			reader.feed(text.data(), text.size(), false);
 			// Получаем настройки разбора
@@ -3971,7 +3931,7 @@ TEST(CodecCsvReader, RecordsAccumulatedBeforeRefusalAreDelivered) {
 	// Дописываем негодную последовательность байтов
 	text.append("\xFF\xFE\r\n");
 	// Объект потокового чтения текста таблицы
-	csv::reader_t reader(::logger());
+	csv::reader_t reader;
 	// Выполняем подачу текста таблицы чтению целиком
 	reader.feed(text.data(), text.size(), true);
 	// Количество полученных событий разбора
@@ -4032,7 +3992,7 @@ TEST(CodecCsvReader, TrimmingKeepsOnlyTheSignificantPart) {
 		// Устанавливаем обращение с обвязкой вокруг поля
 		settings.trim = trim;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Собираемый итог разбора
 		string result;
 		// Количество собранных полей
@@ -4114,7 +4074,7 @@ TEST(CodecCsvReader, FieldLimitIsMeasuredAgainstTheSignificantPart) {
 		// Устанавливаем предел длины поля таблицы
 		settings.maxField = maxField;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выводим признак годности разобранного текста
 		return reader.feed(text.data(), text.size(), true);
 	};
@@ -4153,7 +4113,7 @@ TEST(CodecCsvReader, FieldLimitIsMeasuredAgainstTheSignificantPart) {
 		// Устанавливаем предел длины поля таблицы
 		settings.maxField = 3;
 		// Чтение текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Содержимое разбираемого текста с длинным полем в обвязке
 		const string text = "  " + string(40, 'a') + "  ,x\r\n";
 		// Выполняем проверку отказа разбора текста
@@ -4178,16 +4138,14 @@ TEST(CodecCsvReader, FieldLimitIsMeasuredAgainstTheSignificantPart) {
  *
  */
 TEST(CodecCsvReader, StateFollowsTheSharedContract) {
-	// Выполняем создание объекта журнала проверок
-	awh::log_t log(&Silent::framework());
 	// Выполняем отключение вывода журнала работы
-	log.mode({});
+	awh::log::mode({});
 	/**
 	 * Выполняем проверку состояния до всякой подачи
 	 */
 	{
 		// Выполняем создание объекта потокового чтения таблицы
-		csv::reader_t reader(&log);
+		csv::reader_t reader;
 		// Выполняем проверку голода при отсутствии поданного текста
 		ASSERT_EQ(reader.state(), csv::state_t::HUNGRY);
 	}
@@ -4196,7 +4154,7 @@ TEST(CodecCsvReader, StateFollowsTheSharedContract) {
 	 */
 	{
 		// Выполняем создание объекта потокового чтения таблицы
-		csv::reader_t reader(&log);
+		csv::reader_t reader;
 		// Выполняем подачу куска исходного текста, последним не объявленного
 		ASSERT_TRUE(reader.feed("a,b\n1,2", 7, false));
 		// Выполняем выборку всех собранных событий разбора
@@ -4225,7 +4183,7 @@ TEST(CodecCsvReader, StateFollowsTheSharedContract) {
 	 */
 	{
 		// Выполняем создание объекта потокового чтения таблицы
-		csv::reader_t reader(&log);
+		csv::reader_t reader;
 		// Выполняем подачу исходного текста целиком
 		ASSERT_TRUE(reader.feed("a,b\n1,2\n"));
 		// Выполняем проверку доступности события к чтению
@@ -4258,7 +4216,7 @@ TEST(CodecCsvReader, StateAfterARefusalIsFailed) {
 		// Назначаем строгий разбор конца записи
 		settings.strict = true;
 		// Объект чтения текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста с одиночным переводом строки при строгом разборе
 		reader.feed("а,б\nв,г\n", 12, true);
 		// Выполняем перебор всех событий разбора
@@ -4280,7 +4238,7 @@ TEST(CodecCsvReader, StateAfterARefusalIsFailed) {
 	 */
 	{
 		// Объект чтения текста таблицы
-		csv::reader_t reader(::logger());
+		csv::reader_t reader;
 		// Выполняем подачу годного текста таблицы
 		ASSERT_TRUE(reader.feed("а,б\r\n", 7, true));
 		// Выполняем проверку отсутствия отказа
@@ -4315,7 +4273,7 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		// Назначаем предел длины поля в один знак
 		settings.maxField = 1;
 		// Объект чтения текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста, предел длины поля превышающего, с парою в конце записи
 		reader.feed("аб\r\n", 6, true);
 		// Выполняем перебор всех событий разбора
@@ -4352,7 +4310,7 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		 */
 		settings.strict = true;
 		// Объект чтения текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		/**
 		 * Выполняем подачу записи из двух полей с парою в конце
 		 *
@@ -4383,7 +4341,7 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		// Назначаем отказ на записи неравной длины
 		settings.ragged = csv::ragged_t::ERROR;
 		// Объект чтения текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		/**
 		 * Выполняем подачу двух записей неравной длины с парою в конце каждой
 		 *
@@ -4408,7 +4366,7 @@ TEST(CodecCsvReader, FieldLimitIsObservedOnTheCarriageReturnPair) {
 		// Назначаем предел длины поля в четыре знака
 		settings.maxField = 4;
 		// Объект чтения текста таблицы
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Выполняем подачу текста, предела не превышающего, с парою в конце записи
 		ASSERT_TRUE(reader.feed("аб\r\n", 6, true)) << csv::message(reader.error());
 		// Выполняем перебор всех событий разбора
@@ -4450,7 +4408,7 @@ TEST(CodecCsvReader, FeedDoesNotReportSuccessWhenTheFinishRefuses){
 		// Устанавливаем способ задания разделителя полей
 		settings.separator = separator;
 		// Объект чтения текста
-		csv::reader_t reader(::logger(), settings);
+		csv::reader_t reader(settings);
 		// Разбираемый текст с незакрытым полем в кавычках
 		const string text = "\"abc";
 		// Выполняем проверку отказа подачи текста единственным куском
@@ -4485,7 +4443,7 @@ TEST(CodecCsvReader, BothEscapingWaysAreUnderstoodAtOnce) {
 	// Устанавливаем уклад, признающий оба способа отмены
 	settings.reader.escape = csv::escape_t::BOTH;
 	// Объект таблицы
-	csv::document_t document(::framework(), ::logger());
+	csv::document_t document;
 	// Выполняем установку настроек разбора
 	document.settings(settings);
 	// Разбираемый текст с обоими способами отмены разом

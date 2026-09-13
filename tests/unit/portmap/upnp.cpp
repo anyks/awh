@@ -79,7 +79,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpMapping) {
 	// Выполняем запуск поддельного шлюза
 	igd.start();
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный шлюз
 	::setup(portmap);
 	// Выполняем ожидание итога обращения к устройству
@@ -116,7 +116,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpExternal) {
 	// Выполняем запуск поддельного шлюза
 	igd.start();
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный шлюз
 	::setup(portmap);
 	// Выполняем ожидание итога обращения к устройству
@@ -190,7 +190,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpFailures) {
 		// Выполняем запуск поддельного шлюза
 		igd.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный шлюз
 		::setup(portmap);
 		// Выполняем ожидание итога обращения к устройству
@@ -228,7 +228,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpCloseAndRenew) {
 		// Выполняем запуск поддельного шлюза
 		igd.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный шлюз
 		::setup(portmap);
 		// Выполняем ожидание итога обращения к устройству
@@ -271,7 +271,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpList) {
 		// Выполняем запуск поддельного шлюза
 		igd.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный шлюз
 		::setup(portmap);
 		// Выполняем ожидание итога обращения к устройству
@@ -343,7 +343,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpRefusal) {
 		// Выполняем запуск поддельного шлюза
 		igd.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный шлюз
 		::setup(portmap);
 		// Выполняем ожидание итога обращения к устройству
@@ -381,7 +381,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpRepeat) {
 	// Выполняем запуск поддельного шлюза
 	igd.start();
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный шлюз
 	::setup(portmap);
 	// Выполняем ожидание итога обращения к устройству
@@ -437,7 +437,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpPinhole) {
 	// Выполняем запуск поддельного шлюза
 	igd.start();
 	// Создаём объект модуля перенаправления портов
-	awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+	awh::unit::portmap_t portmap;
 	// Выполняем настройку модуля на поддельный шлюз сетью IPv6
 	::setup6(portmap);
 	// Выполняем ожидание итога обращения к устройству
@@ -477,7 +477,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpPinholeCloseAndRenew) {
 		// Выполняем запуск поддельного шлюза
 		igd.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный шлюз сетью IPv6
 		::setup6(portmap);
 		// Выполняем ожидание итога обращения к устройству
@@ -534,7 +534,7 @@ TEST_F(PortmapUnitFixture, PortmapUpnpFirewall) {
 		// Выполняем запуск поддельного шлюза
 		igd.start();
 		// Создаём объект модуля перенаправления портов
-		awh::unit::portmap_t portmap(this->_fmk.get(), this->_log.get());
+		awh::unit::portmap_t portmap;
 		// Выполняем настройку модуля на поддельный шлюз сетью IPv6
 		::setup6(portmap);
 		// Выполняем ожидание итога обращения к устройству

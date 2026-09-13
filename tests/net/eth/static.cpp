@@ -82,7 +82,7 @@ TEST_F(EthFixture, ResetAndCreateEthTest){
 	// Проверяем, что объект работы с Ethernet сброшен
 	ASSERT_TRUE(this->_eth == nullptr);
 	// Создаём объект работы с Ethernet заново
-	this->_eth = std::make_unique <awh::eth_t> (this->_fmk.get(), this->_log.get());
+	this->_eth = std::make_unique <awh::eth_t> ();
 	// Проверяем, что объект работы с Ethernet создан
 	ASSERT_TRUE(this->_eth != nullptr);
 }
@@ -95,7 +95,7 @@ TEST_F(EthFixture, ReCreateEthTest){
 	// Проверяем, что объект работы с Ethernet создан
 	ASSERT_TRUE(this->_eth != nullptr);
 	// Создаём объект работы с Ethernet заново
-	this->_eth = std::make_unique <awh::eth_t> (this->_fmk.get(), this->_log.get());
+	this->_eth = std::make_unique <awh::eth_t> ();
 	// Проверяем, что объект работы с Ethernet создан
 	ASSERT_TRUE(this->_eth != nullptr);
 }

@@ -22,6 +22,7 @@
  * Подключаем заголовочный файл
  */
 #include "abc.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -34,32 +35,6 @@ using namespace awh::benchmark::binary;
  *
  */
 namespace {
-	/**
-	 * @brief Функция извлечения объекта журнала замеров
-	 *
-	 * @details Журнал гасится: замер меряет работу кодека, а не вывод записей, и
-	 *          сценарии отказа портили бы и вывод, и время
-	 *
-	 * @return объект журнала замеров
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект фреймворка замеров
-		static awh::fmk_t fmk;
-		// Объект журнала замеров
-		static awh::log_t log(& fmk);
-		// Признак выполненной настройки журнала
-		static const bool ready = [](){
-			// Выполняем гашение вывода журнала замеров
-			log.level(awh::log_t::level_t::NONE);
-			// Выводим признак выполненной настройки
-			return true;
-		}();
-		// Снимаем неиспользуемый признак настройки
-		(void) ready;
-		// Выводим объект журнала замеров
-		return & log;
-	}
 	/**
 	 * @brief Количество собираемых записей ответа службы
 	 *
@@ -150,7 +125,7 @@ namespace {
 	 */
 	static uint64_t compose(const size_t count) noexcept {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer(::logger());
+		awh::codec::abc::writer_t writer;
 		// Если открыть массив однородных отображений не удалось
 		if(!writer.arrayBegin(static_cast <uint64_t> (count)))
 			// Выводим нулевой размер собранной записи
@@ -185,7 +160,7 @@ namespace {
 	 */
 	static uint64_t tiny() noexcept {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer(::logger());
+		awh::codec::abc::writer_t writer;
 		// Выполняем укладку ответа службы
 		if(!(writer.mapBegin(static_cast <uint64_t> (6)) &&
 		     writer.text("active") && writer.boolean(true) &&
@@ -209,7 +184,7 @@ namespace {
 	 */
 	static uint64_t textual(const bool validate) noexcept {
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer(::logger());
+		awh::codec::abc::writer_t writer;
 		// Выполняем получение настроек сборки записи
 		awh::codec::abc::writer_t::settings_t settings = writer.settings();
 		// Выполняем установку признака проверки строк на соответствие кодировке
@@ -249,7 +224,7 @@ namespace {
 		// Укладываемое крупное значение записи
 		static const vector <uint8_t> value(REFERENCE_SIZE, 0x5A);
 		// Сборка бинарной записи
-		awh::codec::abc::writer_t writer(::logger());
+		awh::codec::abc::writer_t writer;
 		// Выполняем получение настроек сборки записи
 		awh::codec::abc::writer_t::settings_t settings = writer.settings();
 		// Выполняем установку порога укладки содержимого ссылкой

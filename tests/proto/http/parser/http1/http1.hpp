@@ -61,11 +61,6 @@ class ParserFixture : public testing::Test {
 			// Собранные события границ чанков (фаза, размер, расширения)
 			std::vector <std::tuple <awh::http::parser_t::phase_t, uint64_t, std::string>> chunks;
 		} events_t;
-	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения

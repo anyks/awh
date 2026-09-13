@@ -24,6 +24,8 @@
  */
 #include <sys/macro/lib.hpp>
 #include <proto/portmap/ssdp.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -118,13 +120,13 @@ string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (delay), group), log_t::flag_t::WARNING, message(error_t::MISSING_TARGET));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (delay), group}, awh::log::flag_t::WARNING, message(error_t::MISSING_TARGET));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, message(error_t::MISSING_TARGET));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error_t::MISSING_TARGET));
 		#endif
 		// Выводим пустой текст запроса
 		return result;
@@ -138,7 +140,7 @@ string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t
 	 */
 	if(!::printable(target) || !::printable(group)){
 		// Записываем ошибку в лог
-		this->_log->print("%s", log_t::flag_t::WARNING, "search target or group is not printable");
+		awh::log::print("%s", awh::log::flag_t::WARNING, "search target or group is not printable");
 		// Выводим пустой текст запроса
 		return result;
 	}
@@ -226,7 +228,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text.length()), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -242,7 +244,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text.length()), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -257,67 +259,67 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 	 */
 	const bool response = ((text.length() > 5) && (text.compare(0, 5, "HTTP/") == 0));
 	// Создаём объект разбора сообщения договора HTTP
-	http::parser_http_t parser((response ? http::direct_t::RESPONSE : http::direct_t::REQUEST), this->_fmk, this->_log);
+	http::parser_http_t parser((response ? http::direct_t::RESPONSE : http::direct_t::REQUEST));
 	/**
 	 * Устанавливаем обработчик полей заголовка сообщения
 	 *
 	 * @note Поля разбираются готовым разборщиком договора HTTP: договор SSDP им и
 	 *       построен, и заводить под него собственный разбор незачем
 	 */
-	parser.on(http::parser_http_t::header_callback_t([&answer, this](const uint32_t, const string_view name, const string_view value, const http::parser_t::part_t) noexcept -> bool {
+	parser.on(http::parser_http_t::header_callback_t([&answer](const uint32_t, const string_view name, const string_view value, const http::parser_t::part_t) noexcept -> bool {
 		/**
 		 * Если полем является обозначение искомой службы
 		 *
 		 * @note Обозначение службы приходит в разных полях: в ответе оно записано
 		 *       полем искомого, а в оповещении - полем сообщаемого
 		 */
-		if(this->_fmk->compare(name, "ST") || this->_fmk->compare(name, "NT"))
+		if(awh::fmk::compare(name, "ST") || awh::fmk::compare(name, "NT"))
 			// Запоминаем обозначение службы, о которой сообщает устройство
 			answer.target.assign(value);
 		/**
 		 * Если полем является обозначение самого устройства
 		 */
-		else if(this->_fmk->compare(name, "USN"))
+		else if(awh::fmk::compare(name, "USN"))
 			// Запоминаем обозначение самого устройства и его службы
 			answer.usn.assign(value);
 		/**
 		 * Если полем является адрес описания устройства
 		 */
-		else if(this->_fmk->compare(name, "LOCATION"))
+		else if(awh::fmk::compare(name, "LOCATION"))
 			// Запоминаем адрес описания устройства
 			answer.location.assign(value);
 		/**
 		 * Если полем являются сведения об устройстве
 		 */
-		else if(this->_fmk->compare(name, "SERVER"))
+		else if(awh::fmk::compare(name, "SERVER"))
 			// Запоминаем сведения об устройстве и его встроенной программе
 			answer.server.assign(value);
 		/**
 		 * Если полем является вид оповещения устройства
 		 */
-		else if(this->_fmk->compare(name, "NTS")) {
+		else if(awh::fmk::compare(name, "NTS")) {
 			/**
 			 * Если устройство объявилось в сети
 			 */
-			if(this->_fmk->compare(value, "ssdp:alive"))
+			if(awh::fmk::compare(value, "ssdp:alive"))
 				// Запоминаем вид оповещения устройства
 				answer.notice = notice_t::ALIVE;
 			/**
 			 * Если устройство покидает сеть
 			 */
-			else if(this->_fmk->compare(value, "ssdp:byebye"))
+			else if(awh::fmk::compare(value, "ssdp:byebye"))
 				// Запоминаем вид оповещения устройства
 				answer.notice = notice_t::BYEBYE;
 			/**
 			 * Если устройство сменило свои сведения
 			 */
-			else if(this->_fmk->compare(value, "ssdp:update"))
+			else if(awh::fmk::compare(value, "ssdp:update"))
 				// Запоминаем вид оповещения устройства
 				answer.notice = notice_t::UPDATE;
 		/**
 		 * Если полем является срок годности полученных сведений
 		 */
-		} else if(this->_fmk->compare(name, "CACHE-CONTROL")) {
+		} else if(awh::fmk::compare(name, "CACHE-CONTROL")) {
 			// Выполняем поиск указания срока годности сведений
 			const size_t pos = value.find('=');
 			/**
@@ -336,7 +338,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 					// Выполняем переход к следующему знаку указания
 					life.remove_prefix(1);
 				// Получаем указанный срок годности сведений
-				const uint32_t maxAge = this->_fmk->atoi <uint32_t> (life);
+				const uint32_t maxAge = awh::fmk::atoi <uint32_t> (life);
 				/**
 				 * Если указанный срок годности сведений разобран
 				 *
@@ -364,7 +366,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (parser.error())), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (parser.error())}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -380,7 +382,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text.length()), log_t::flag_t::WARNING, message(error));
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		#endif
 		// Выводим признак неудачного разбора
 		return false;
@@ -405,7 +407,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <const http::response_t *> (parser.message().provider.get())->code), log_t::flag_t::WARNING, message(error));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <const http::response_t *> (parser.message().provider.get())->code}, awh::log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;
@@ -447,7 +449,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (static_cast <const http::request_t *> (parser.message().provider.get())->method)), log_t::flag_t::WARNING, message(error));
+					awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (static_cast <const http::request_t *> (parser.message().provider.get())->method)}, awh::log::flag_t::WARNING, message(error));
 				#endif
 				// Выводим признак неудачного разбора
 				return false;
@@ -472,7 +474,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(answer.usn), log_t::flag_t::WARNING, message(error));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {answer.usn}, awh::log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;
@@ -491,7 +493,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(answer.target), log_t::flag_t::WARNING, message(error));
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {answer.target}, awh::log::flag_t::WARNING, message(error));
 			#endif
 			// Выводим признак неудачного разбора
 			return false;
@@ -540,7 +542,7 @@ bool awh::proto::portmap::SSDP::suitable(const answer_t & answer, const string_v
 	 *       записывают вольно, а отвергать маршрутизатор из-за разницы в написании
 	 *       незачем
 	 */
-	return this->_fmk->compare(answer.target, target);
+	return awh::fmk::compare(answer.target, target);
 }
 /**
  * @brief Метод получения описания кода причины отказа кодека SSDP

@@ -48,12 +48,9 @@ using namespace awh::args;
  *
  */
 TEST(ArgsSchema, Creation) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём описание ожидаемых параметров запуска
-	schema_t schema(&fmk, &log);
+	schema_t schema;
 	// Выполняем проверку пустоты нового описания
 	ASSERT_TRUE(schema.empty());
 	// Выполняем заведение описания ожидаемого параметра
@@ -90,12 +87,9 @@ TEST(ArgsSchema, Creation) {
  *
  */
 TEST(ArgsSchema, Replacement) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём описание ожидаемых параметров запуска
-	schema_t schema(&fmk, &log);
+	schema_t schema;
 	// Выполняем заведение описания ожидаемого параметра
 	ASSERT_TRUE(schema.add("port", 'p', schema_t::value_t::REQUIRED));
 	// Выполняем заведение описания с тем же длинным именем и иным коротким
@@ -118,12 +112,9 @@ TEST(ArgsSchema, Replacement) {
  *
  */
 TEST(ArgsSchema, Cluster) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём описание ожидаемых параметров запуска
-	schema_t schema(&fmk, &log);
+	schema_t schema;
 	// Выполняем заведение описаний признаков, значений не принимающих
 	ASSERT_TRUE(schema.add("verbose", 'v', schema_t::value_t::NONE));
 	// Выполняем заведение второго описания признака
@@ -162,12 +153,9 @@ TEST(ArgsSchema, Cluster) {
  *
  */
 TEST(ArgsSchema, ParsingByDescription) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем заведение описания ожидаемого параметра
 	ASSERT_TRUE(args.schema().add("verbose", 'v', schema_t::value_t::NONE));
 	// Выполняем заведение описания параметра, значение требующего
@@ -190,12 +178,9 @@ TEST(ArgsSchema, ParsingByDescription) {
  *
  */
 TEST(ArgsSchema, ClusterParsing) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем заведение описаний признаков, значений не принимающих
 	ASSERT_TRUE(args.schema().add("verbose", 'v', schema_t::value_t::NONE));
 	// Выполняем заведение второго описания признака
@@ -213,12 +198,9 @@ TEST(ArgsSchema, ClusterParsing) {
  *
  */
 TEST(ArgsSchema, StrictParsing) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем заведение описания ожидаемого параметра
 	ASSERT_TRUE(args.schema().add("port", 'p', schema_t::value_t::REQUIRED));
 	/**
@@ -245,12 +227,9 @@ TEST(ArgsSchema, StrictParsing) {
  *
  */
 TEST(ArgsSchema, ValueNeeds) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Выполняем заведение описания признака, значений не принимающего
 	ASSERT_TRUE(args.schema().add("verbose", 'v', schema_t::value_t::NONE));
 	// Выполняем заведение описания параметра, значение требующего
@@ -285,12 +264,9 @@ TEST(ArgsSchema, ValueNeeds) {
  *
  */
 TEST(ArgsSchema, Duplicate) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Создаём описание ожидаемого параметра
 	schema_t::param_t param;
 	// Устанавливаем длинное имя параметра
@@ -320,12 +296,9 @@ TEST(ArgsSchema, Duplicate) {
  *
  */
 TEST(ArgsSchema, Verification) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Создаём описание обязательного параметра
 	schema_t::param_t required;
 	// Устанавливаем длинное имя обязательного параметра
@@ -372,12 +345,9 @@ TEST(ArgsSchema, Verification) {
  *
  */
 TEST(ArgsSchema, Usage) {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
 	// Создаём объект работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска
-	args_t args(&fmk, &log);
+	args_t args;
 	// Устанавливаем название приложения для справки
 	args.schema().application("application", "Служба, отдающая настройки");
 	// Выполняем заведение описания признака
@@ -434,12 +404,9 @@ TEST(ArgsSchema, Usage) {
  *
  */
 TEST(ArgsSchema, ReplacementKeepsShortNamesConsistent){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект работы с логами
-	log_t log(&fmk);
 	// Создаём описание ожидаемых параметров запуска
-	schema_t schema(&fmk, &log);
+	schema_t schema;
 	// Выполняем заведение двух описаний с разными короткими именами
 	ASSERT_TRUE(schema.add("host", 'h', schema_t::value_t::REQUIRED));
 	ASSERT_TRUE(schema.add("port", 'p', schema_t::value_t::REQUIRED));

@@ -146,30 +146,6 @@ const vector <uint8_t> & awh::benchmark::crypto::buffer() noexcept {
 	return result;
 }
 /**
- * @brief Функция получения объекта фреймворка
- *
- * @return объект фреймворка
- *
- */
-const awh::fmk_t * awh::benchmark::crypto::framework() noexcept {
-	// Объект фреймворка
-	static const awh::fmk_t result;
-	// Выводим объект фреймворка
-	return &result;
-}
-/**
- * @brief Функция получения объекта работы с логами
- *
- * @return объект работы с логами
- *
- */
-const awh::log_t * awh::benchmark::crypto::logger() noexcept {
-	// Объект работы с логами
-	static const awh::log_t result(framework());
-	// Выводим объект работы с логами
-	return &result;
-}
-/**
  * @brief Функция получения эталонного объекта криптографии
  *
  * @return эталонный объект криптографии
@@ -182,7 +158,7 @@ awh::crypto_t & awh::benchmark::crypto::engine() noexcept {
 	 * вместо самой измеряемой работы. Цена вывода измеряется отдельным сценарием
 	 */
 	// Эталонный объект криптографии
-	static awh::crypto_t result(framework(), logger());
+	static awh::crypto_t result;
 	// Признак выполненного заведения объекта криптографии
 	static const bool ready = []() noexcept -> bool {
 		// Устанавливаем пароль шифрования

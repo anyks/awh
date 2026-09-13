@@ -39,6 +39,7 @@
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -84,9 +85,9 @@ bool awh::codec::syslog::Writer::fail(const error_t error, const string_view nam
 	// Запоминаем код ошибки записи
 	this->_error = error;
 	// Выводим в лог сообщение об ошибке записи
-	this->_log->print(
+	awh::log::print(
 		"SysLog writing failed: %s at the field \"%s\"",
-		log_t::flag_t::CRITICAL,
+		awh::log::flag_t::CRITICAL,
 		awh::codec::syslog::message(error),
 		string(name).c_str()
 	);
@@ -1030,11 +1031,9 @@ bool awh::codec::syslog::Writer::write(const abc::value_t & value, string & resu
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  */
-awh::codec::syslog::Writer::Writer(const fmk_t * fmk, const log_t * log) noexcept :
- _error(error_t::NONE), _standard(standard_t::AUTO), _chrono(fmk, log), _fmk(fmk), _log(log) {}
+awh::codec::syslog::Writer::Writer() noexcept :
+ _error(error_t::NONE), _standard(standard_t::AUTO), _chrono() {}
 
 /**
  * Возвращаем имена, системными макросами занятые

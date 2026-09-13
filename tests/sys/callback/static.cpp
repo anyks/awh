@@ -116,7 +116,7 @@ TEST_F(CallbackFixture, ClearTest){
  */
 TEST_F(CallbackFixture, SwapTest){
 	// Создаем второй контейнер
-	awh::callback_t callback2(this->_fmk.get(), this->_log.get());
+	awh::callback_t callback2;
 
 	// Регистрируем функцию в первом контейнере
 	this->_callback->on <int32_t()> ("test1", []() -> int32_t { return 1; });
@@ -309,8 +309,8 @@ TEST_F(CallbackFixture, ThreadSafetyStressTest){
  */
 TEST_F(CallbackFixture, ThreadSafetySwapStressTest){
 	// Создаём два контейнера функций обратного вызова
-	awh::callback_t a(this->_fmk.get(), this->_log.get());
-	awh::callback_t b(this->_fmk.get(), this->_log.get());
+	awh::callback_t a;
+	awh::callback_t b;
 
 	// Включаем режим потокобезопасности для обоих контейнеров
 	a.threadSafety(true);
@@ -370,7 +370,7 @@ TEST_F(CallbackFixture, ThreadSafetySwapStressTest){
  */
 TEST_F(CallbackFixture, ThreadSafetyCrossSetStressTest){
 	// Создаём сторонний контейнер-источник функций обратного вызова
-	awh::callback_t storage(this->_fmk.get(), this->_log.get());
+	awh::callback_t storage;
 
 	// Включаем режим потокобезопасности для обоих контейнеров
 	this->_callback->threadSafety(true);

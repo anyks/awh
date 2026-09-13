@@ -497,7 +497,7 @@ TEST_F(ZoneFixture, ExecutionZoneAfterAlienWordChronoTest){
  */
 TEST_F(ZoneFixture, ExecutionZoneRegistryInRecordChronoTest){
 	// Объект работы с датой и временем со своим обозначением зоны
-	awh::chrono_t chrono(this->_fmk.get(), this->_log.get());
+	awh::chrono_t chrono;
 	// Заводим собственное обозначение временной зоны
 	chrono.addTimeZone("ANYKS", 5 * 3600 + 1800);
 	// Обозначение своего реестра обязано опознаваться в записи наравне с таблицей модуля

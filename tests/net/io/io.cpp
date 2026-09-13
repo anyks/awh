@@ -29,20 +29,16 @@
  *
  */
 void IoFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект асинхронного движка ввода-вывода
-	this->_io = std::make_unique <awh::engine::io_t> (this->_fmk.get(), this->_log.get());
+	this->_io = std::make_unique <awh::engine::io_t> ();
 	// Создаём объект транспортного уровня безопасности
-	this->_coder = std::make_unique <awh::tls::coder_t> (this->_fmk.get(), this->_log.get());
+	this->_coder = std::make_unique <awh::tls::coder_t> ();
 	/**
 	 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 	 */
 	#if __linux__ || __FreeBSD__ || __sun
 		// Объект управления SCTP протоколом
-		this->_sctp = std::make_unique <awh::engine::sctp_t> (this->_fmk.get(), this->_log.get());
+		this->_sctp = std::make_unique <awh::engine::sctp_t> ();
 	#endif
 }
 

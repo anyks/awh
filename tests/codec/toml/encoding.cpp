@@ -45,44 +45,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -104,7 +74,7 @@ using namespace awh::codec;
  */
 static bool convert(const string & text, const size_t chunk, const toml::encoding_t encoding, string & result) noexcept {
 	// Объект приведения исходного текста к кодировке UTF-8
-	toml::decoder_t decoder(::logger());
+	toml::decoder_t decoder;
 	// Выполняем очистку приведённого текста
 	result.clear();
 	// Выполняем установку навязываемой кодировки исходного текста
@@ -262,7 +232,7 @@ TEST(CodecTomlEncoding, Signature) {
 	// Приведённый текст настроек
 	string result;
 	// Объект приведения исходного текста к кодировке UTF-8
-	toml::decoder_t decoder(::logger());
+	toml::decoder_t decoder;
 	// Текст настроек с меткой порядка байтов кодировки UTF-8
 	const string text = string("\xEF\xBB\xBF") + "k = 1\n";
 	// Выполняем проверку того, что приведение текста удалось
@@ -282,7 +252,7 @@ TEST(CodecTomlEncoding, Signature) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t reader(::logger());
+		toml::decoder_t reader;
 		// Текст настроек с меткой порядка байтов кодировки UTF-32
 		const string source = string("\xFF\xFE\x00\x00" "k\x00\x00\x00", 8);
 		// Выполняем очистку приведённого текста
@@ -301,7 +271,7 @@ TEST(CodecTomlEncoding, Signature) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t reader(::logger());
+		toml::decoder_t reader;
 		// Текст настроек с меткой порядка байтов кодировки UTF-32
 		const string source = string("\x00\x00\xFE\xFF" "\x00\x00\x00k", 8);
 		// Выполняем очистку приведённого текста
@@ -419,7 +389,7 @@ TEST(CodecTomlEncoding, SingleByte) {
  */
 TEST(CodecTomlEncoding, Utf32ForbiddenCharacter) {
 	// Объект приведения исходного текста к кодировке UTF-8
-	toml::decoder_t decoder(::logger());
+	toml::decoder_t decoder;
 	// Приведённый текст настроек
 	string result;
 	// Выполняем проверку отказа приведения текста с управляющим знаком области C0
@@ -473,7 +443,7 @@ TEST(CodecTomlEncoding, SingleByteForbiddenCharacter) {
  */
 TEST(CodecTomlEncoding, HeldByteSurvivesEmptyChunk) {
 	// Объект приведения исходного текста к кодировке UTF-8
-	toml::decoder_t decoder(::logger());
+	toml::decoder_t decoder;
 	// Приведённый текст настроек
 	string result;
 	// Выполняем навязывание кодировки исходного текста
@@ -722,7 +692,7 @@ TEST(CodecTomlEncoding, DecoderContract) {
 	 */
 	for(const bool big : {true, false}){
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Метка порядка байтов проверяемого порядка
 		const string mark(big ? "\xFE\xFF" : "\xFF\xFE", 2);
 		// Текст настроек с меткой порядка байтов кодировки UTF-16
@@ -743,7 +713,7 @@ TEST(CodecTomlEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем проверку отказа приведения негодного текста
@@ -764,7 +734,7 @@ TEST(CodecTomlEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем проверку того, что кодировка навязана до начала приведения
@@ -781,7 +751,7 @@ TEST(CodecTomlEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем проверку отказа приведения негодного текста
@@ -802,7 +772,7 @@ TEST(CodecTomlEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Выполняем проверку того, что кодировка навязана до начала приведения
 		ASSERT_TRUE(decoder.encoding(toml::encoding_t::UTF16BE));
 		// Выполняем сброс объекта приведения
@@ -837,7 +807,7 @@ TEST(CodecTomlEncoding, InvalidCharacterRefused) {
 	// Приведённый текст настроек
 	string result;
 	// Объект приведения исходного текста к кодировке UTF-8
-	toml::decoder_t decoder(::logger());
+	toml::decoder_t decoder;
 	// Текст настроек с управляющим знаком области C0
 	const string text = string("k = \"a\x01", 7) + "b\"\n";
 	// Выполняем проверку отказа приведения текста
@@ -863,7 +833,7 @@ TEST(CodecTomlEncoding, TruncatedTailAtEndRefused) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Выполняем проверку отказа приведения куска с оборванным хвостом
 		ASSERT_FALSE(decoder.convert("k=\xD0", 3, true, result));
 		// Выполняем проверку выданного кода ошибки приведения
@@ -877,7 +847,7 @@ TEST(CodecTomlEncoding, TruncatedTailAtEndRefused) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Задаём кодировку исходного текста
@@ -895,7 +865,7 @@ TEST(CodecTomlEncoding, TruncatedTailAtEndRefused) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		toml::decoder_t decoder(::logger());
+		toml::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем проверку приведения куска, знак посередине разрезающего

@@ -29,12 +29,8 @@
  *
  */
 void NetFixture::SetUp(){
-	// Инициализируем объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Инициализируем объект логирования
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Инициализируем объект сетевого адреса
-	this->_addr = std::make_unique <awh::net_addr_t> (this->_fmk.get(), this->_log.get());
+	this->_addr = std::make_unique <awh::net_addr_t> ();
 }
 
 /**

@@ -1156,15 +1156,6 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
 					 * Объект фреймворка
 					 *
 					 * @note Рамка нужна работам с файловой системой: `fs_t` обращает пути в
@@ -1176,20 +1167,25 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const fmk_t * _fmk;
-					const log_t * _log;
+					/**
+					 * \~russian
+					 * Объект для работы с логами
+					 *
+					 * \~english
+					 * Object for working with logs
+					 *
+					 * \~
+					 */
 					/**
 					 * \~russian
 					 * Объект работы с файловой системой
-					 *
-					 * @note Держится изменяемым: запись ведётся из связки постоянной
 					 *
 					 * \~english
 					 * Object of the work with the filesystem
 					 *
 					 * \~
 					 */
-					mutable fs_t _fs;
+					fs_t _fs;
 				private:
 					// Настройки разбора документа
 					settings_t _settings;
@@ -2509,51 +2505,27 @@ namespace awh {
 				public:
 					/**
 					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @details Ход этот общий у всех семи кодеков рамки: журнал ставится не одним
-					 *          лишь доводом построения, но и после него - потребитель, дерево
-					 *          получивший готовым, иначе не имел бы способа направить его отчёты
-					 *          в свой журнал вовсе
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of setting the object of the keeping of the log of the work
-					 * @param log object of the keeping of the log of the work
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
 					 * @brief Конструктор
-					 *
-					 * @param log объект для работы с логами
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log object for working with logs
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log) noexcept;
+					Document() noexcept;
 					/**
 					 * \~russian
 					 * @brief Конструктор
 					 *
-					 * @param fmk      объект фреймворка
-					 * @param log      объект для работы с логами
 					 * @param settings настройки разбора документа
 					 *
 					 * \~english
 					 * @brief Constructor
-					 * @param log      object for working with logs
 					 * @param settings settings of the parsing of a document
 					 *
 					 * \~
 					 */
-					Document(const fmk_t * fmk, const log_t * log, const settings_t & settings) noexcept;
+					Document(const settings_t & settings) noexcept;
 			} document_t;
 		};
 	};

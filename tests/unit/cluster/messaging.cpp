@@ -43,6 +43,7 @@
  */
 #include "../../main.hpp"
 #include "../../../include/unit/cluster.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -54,14 +55,11 @@ using namespace awh;
  *
  */
 TEST(ClusterMessagingFixture, ClusterWorkerMessagingTest){
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Отключаем вывод журнала: обе роли пишут в один поток
-	log.mode({});
+	awh::log::mode({});
 	// Создаём объект кластера
-	unit::cluster_t cluster(&fmk, &log);
+	unit::cluster_t cluster;
 	// Признак того, что мастер получил ответ работника
 	std::atomic_bool answered{false};
 	/**

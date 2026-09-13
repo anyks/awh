@@ -18,11 +18,11 @@
  * @copyright Copyright © 2026
  *
  */
+#include "syslog.hpp"
 
 /**
  * Подключаем заголовочные файлы бенчмарков
  */
-#include "syslog.hpp"
 
 /**
  * Стандартные заголовочные файлы

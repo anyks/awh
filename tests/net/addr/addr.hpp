@@ -31,10 +31,6 @@
  */
 class NetFixture : public testing::Test {
 	protected:
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект для работы с логами
-		std::unique_ptr <awh::log_t> _log;
 		// Объект сетевого адреса
 		std::unique_ptr <awh::net_addr_t> _addr;
 	public:

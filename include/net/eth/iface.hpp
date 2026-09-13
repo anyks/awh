@@ -38,8 +38,7 @@
  * Наши модули
  */
 #include "../net.hpp"
-#include "../../sys/fmk.hpp"
-#include "../../sys/log.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -144,10 +143,6 @@ namespace awh {
 					};
 			#endif
 			private:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
 			/**
 			 * Для операционной системы MS Windows
 			 */
@@ -768,17 +763,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk framework object
-				 * @param log object for working with logs
 				 *
 				 * \~
 				 */
-				explicit Interface(const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Interface() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

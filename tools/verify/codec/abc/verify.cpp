@@ -31,6 +31,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sys/fmk.hpp>
 
 /**
  * Устанавливаем пространство имён
@@ -581,6 +582,13 @@ static void report(const string & title, const tally_t & tally) noexcept {
  * @return     код выхода из приложения
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Глубина исчерпания последовательностей в октетах
 	size_t depth = 3;
 	/**

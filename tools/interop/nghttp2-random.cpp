@@ -43,6 +43,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include <proto/http/parser/http2/hpack.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh;
 using namespace awh::http;
@@ -73,6 +74,13 @@ static constexpr size_t RESIZE_PERIOD = 500;
  *
  */
 int32_t main() noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Генератор псевдослучайной последовательности
 	std::mt19937 gen(RANDOM_SEED);
 	// Объект кодера заголовков библиотеки

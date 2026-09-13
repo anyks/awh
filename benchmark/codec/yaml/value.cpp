@@ -56,44 +56,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -246,7 +216,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект дерева документа
-		awh::codec::yaml::document_t doc(::logger());
+		awh::codec::yaml::document_t doc;
 		/**
 		 * Если сборка дерева документа завершилась отказом
 		 */
@@ -372,7 +342,7 @@ namespace {
 		// Получаем эталонный текст настроек
 		const string & text = large();
 		// Объект дерева документа
-		awh::codec::yaml::document_t doc(::logger());
+		awh::codec::yaml::document_t doc;
 		/**
 		 * Если сборка дерева документа завершилась отказом
 		 */
@@ -414,7 +384,7 @@ namespace {
 		// Получаем эталонный текст настроек
 		const string & text = large();
 		// Объект дерева документа
-		awh::codec::yaml::document_t doc(::logger());
+		awh::codec::yaml::document_t doc;
 		/**
 		 * Если сборка дерева документа завершилась отказом
 		 */
@@ -452,7 +422,7 @@ namespace {
 		// Получаем эталонный текст настроек
 		const string & text = service();
 		// Объект дерева документа
-		awh::codec::yaml::document_t doc(::logger());
+		awh::codec::yaml::document_t doc;
 		/**
 		 * Если сборка дерева документа завершилась отказом
 		 */

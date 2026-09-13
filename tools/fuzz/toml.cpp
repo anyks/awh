@@ -38,6 +38,7 @@
  */
 #include <codec/toml/toml.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -57,44 +58,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -800,9 +771,9 @@ namespace {
 		 *       обязано по сбросу прочесть следующий ровно так же, как прочло бы его
 		 *       чтение свежее. Остаток прежней подачи обязан быть сброшен целиком
 		 */
-		static toml::reader_t reused(::logger());
+		static toml::reader_t reused;
 		// Создаём объект чтения текста настроек
-		toml::reader_t fresh(::logger(), settings);
+		toml::reader_t fresh(settings);
 		/**
 		 * Если чтение ведётся объектом, прежней подачей занятым
 		 */
@@ -1562,7 +1533,7 @@ namespace {
 		// Устанавливаем настройки разбора текста настроек
 		settings.reader = reading;
 		// Создаём объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document;
 		// Признак успешности разбора текста настроек
 		const bool parsed = document.parse(text, settings);
 		/**
@@ -1593,7 +1564,7 @@ namespace {
 			 text.substr(0, (text.size() - (((text.size() > 1) && (text.at(text.size() - 2) == '\r')) ? 2 : 1))) :
 			 (text + "\n"));
 			// Дерево настроек, написание иное разбирающее
-			toml::document_t tailed(::logger());
+			toml::document_t tailed;
 			// Выполняем разбор написания иного
 			const bool taken = tailed.parse(written, settings);
 			/**
@@ -1659,7 +1630,7 @@ namespace {
 		 */
 		{
 			// Дерево настроек, от прохода к проходу живущее
-			static toml::document_t recycled(::logger());
+			static toml::document_t recycled;
 			// Выполняем разбор того же текста деревом, прежним разбором занятым
 			const bool again = recycled.parse(text, settings);
 			/**
@@ -1722,7 +1693,7 @@ namespace {
 		// Выполняем учёт выполненной перезаписи дерева
 		totals.rewrites++;
 		// Создаём объект дерева настроек для разбора перезаписи
-		toml::document_t reread(::logger());
+		toml::document_t reread;
 		/**
 		 * Если разбор перезаписи дерева настроек не удался
 		 *
@@ -1846,7 +1817,7 @@ namespace {
 				// Снимаем предел длины имени ключа
 				unbound.reader.maxKey = limits.maxKey;
 				// Создаём объект дерева настроек для разбора перезаписи
-				toml::document_t reshaped(::logger());
+				toml::document_t reshaped;
 				/**
 				 * Если разобрать перезапись иного оформления не удалось
 				 */
@@ -1976,7 +1947,7 @@ namespace {
 			// Выводим результат проверки дерева настроек
 			return true;
 		// Создаём объект дерева настроек для разбора перезаписи правленого дерева
-		toml::document_t after(::logger());
+		toml::document_t after;
 		/**
 		 * Если разбор перезаписи правленого дерева не удался
 		 */
@@ -2258,7 +2229,7 @@ namespace {
 			 */
 			if(!taken.empty()){
 				// Собираемое дерево настроек перезаписи снятого значения
-				toml::document_t rebuilt(::logger(), document.settings());
+				toml::document_t rebuilt(document.settings());
 				/**
 				 * Если перезапись снятого значения разобрана
 				 */
@@ -2288,7 +2259,7 @@ namespace {
 			}
 		}
 		// Собираемое дерево настроек, куда переносится значение
-		toml::document_t target(::logger());
+		toml::document_t target;
 		/**
 		 * Если разобрать пустой текст настроек не удалось
 		 */
@@ -2376,7 +2347,7 @@ namespace {
 		// Выбираемая ограда записи строкового значения
 		const toml::string_t quoting = static_cast <toml::string_t> (engine() % 4);
 		// Создаём объект дерева настроек
-		toml::document_t document(::logger());
+		toml::document_t document;
 		/**
 		 * Если установка враждебного значения не удалась
 		 */
@@ -2392,7 +2363,7 @@ namespace {
 			// Выводим результат проверки кругового хода
 			return true;
 		// Создаём объект дерева настроек для разбора перезаписи
-		toml::document_t reread(::logger());
+		toml::document_t reread;
 		/**
 		 * Если разбор перезаписи дерева настроек не удался
 		 */
@@ -2459,6 +2430,13 @@ namespace {
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество выполняемых проходов генератора
 	uint64_t count = 3000;
 	/**
@@ -2929,13 +2907,13 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			// Устанавливаем предел числа частей имени ключа
 			writing.maxParts = (((engine() % 8) == 0) ? (1 + (engine() % 8)) : 0);
 			// Объект записи, живущий от прохода к проходу
-			static toml::writer_t reused(::logger());
+			static toml::writer_t reused;
 			// Выполняем очистку объекта записи от прежней подачи
 			reused.clear();
 			// Устанавливаем настройки записи объекту, прежней подачей занятому
 			reused.settings(writing);
 			// Создаём свежий объект записи для той же самой череды вызовов
-			toml::writer_t fresh(::logger(), writing);
+			toml::writer_t fresh(writing);
 			// Исходы вызовов у свежего объекта записи
 			vector <bool> first;
 			// Исходы вызовов у объекта записи, прежней подачей занятого

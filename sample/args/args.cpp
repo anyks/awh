@@ -33,8 +33,8 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <args/args.hpp>
-#include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -60,12 +60,16 @@ using namespace awh::args;
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
-	// Создаём объект фреймворка
-	const fmk_t fmk;
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Создаём объект для работы с логами
-	const log_t log(&fmk);
 	// Создаём объект сбора параметров запуска приложения
-	args_t args(&fmk, &log);
+	args_t args;
 	/**
 	 * Выполняем описание ожидаемых параметров запуска
 	 *
@@ -86,7 +90,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		// Выполняем перебор всех отказов разбора
 		for(auto & error : args.errors())
 			// Выводим сообщение об отказе разбора
-			log.print("%s", log_t::flag_t::WARNING, message(error.first));
+			awh::log::print("%s", awh::log::flag_t::WARNING, message(error.first));
 		// Выводим подсказку по запуску приложения
 		cout << args.usage() << endl;
 		// Выходим из приложения с кодом отказа
@@ -114,7 +118,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 */
 		if(!args.filename(args.get <string> ("config")))
 			// Выводим сообщение об отказе чтения файла настроек
-			log.print("Файл настроек прочитать не удалось", log_t::flag_t::WARNING);
+			awh::log::print("Файл настроек прочитать не удалось", awh::log::flag_t::WARNING);
 	}
 	// Выполняем проверку обязательных параметров запуска
 	if(!args.verify()){

@@ -44,9 +44,9 @@
 #include "common.hpp"
 #include "schema.hpp"
 #include "../sys/fs.hpp"
-#include "../sys/fmk.hpp"
 #include "../codec/bridge.hpp"
 #include "../codec/abc/value.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -180,11 +180,6 @@ namespace awh {
 			private:
 				// Отказы, случившиеся при последнем разборе
 				vector <pair <error_t, location_t>> _errors;
-			private:
-				// Объект фреймворка
-				const fmk_t * _fmk;
-				// Объект работы с логами
-				const log_t * _log;
 			private:
 				/**
 				 * \~russian
@@ -759,17 +754,12 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
-				 *
 				 * \~english
 				 * @brief Constructor
-				 * @param fmk object of the framework
-				 * @param log object for working with the logs
 				 *
 				 * \~
 				 */
-				Args(const fmk_t * fmk, const log_t * log) noexcept;
+				Args() noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

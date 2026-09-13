@@ -420,9 +420,6 @@ namespace awh {
 			// Код ошибки разбора шаблона
 			mutable error_t _error;
 		private:
-			// Объект журнала событий
-			const log_t * _log;
-		private:
 			// Реестр именованных шаблонов
 			unordered_map <string, string> _patterns;
 		private:
@@ -944,8 +941,6 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param log объект для работы с логами
-			 *
 			 * @details Журналом сообщается отказ сборки шаблона: имя неизвестное,
 			 *          ссылка круговая либо вложенность чрезмерная. Ошибки самого
 			 *          регулярного выражения сообщает фасад выражений, каким
@@ -953,11 +948,10 @@ namespace awh {
 			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Grok(const log_t * log) noexcept;
+			explicit Grok() noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

@@ -32,6 +32,7 @@
 #include <encoding/ascii.hpp>
 #include <num/lexical/api.hpp>
 #include <codec/xml/reader.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -692,39 +693,31 @@ bool awh::codec::xml::Reader::refuse(const error_t error) noexcept {
  */
 void awh::codec::xml::Reader::report(const error_t error, const location_t & location) const noexcept {
 	/**
-	 * Если объект ведения журнала работы установлен
+	 * Выполняем запись об отказе разбора в журнал
 	 *
-	 * @note Сличение стоит здесь одно на весь разбор: разнеси его по местам отказа - и
-	 *       часть их разошлась бы с ним при первой же правке
+	 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
+	 *       приложения он не рушит. Оттого запись идёт предупреждением
 	 */
-	if(this->_log != nullptr){
-		/**
-		 * Выполняем запись об отказе разбора в журнал
-		 *
-		 * @note Отказ разбора беда не критическая: негодный текст приходит извне, и работы
-		 *       приложения он не рушит. Оттого запись идёт предупреждением
-		 */
-		/**
-		 * @warning Место отказа кладётся в ТЕКСТ записи обеими ветвями, а не одним лишь
-		 *          доводом отладочной. Довод отладочная выдаёт особою строкою «Arguments
-		 *          function», и запись выходила бы РАЗНОЮ по виду сборки - читающему же
-		 *          журнал до вида сборки дела нет. Нашлось Николаем 23.08.2026: проверки
-		 *          мои шли отдельным стендом, а он собирается без «DEBUG_MODE», и оттого
-		 *          расхождение это у меня было зелено, а в общей сборке падало
-		 */
-		#if DEBUG_MODE
-			// Записываем отказ разбора в журнал работы
-			this->_log->debug("XML parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
-			                  ::std::make_tuple(location.line, location.column), log_t::flag_t::WARNING,
-			                  static_cast <unsigned long long> (location.line),
-			                  static_cast <unsigned long long> (location.column), message(error));
-		#else
-			// Записываем отказ разбора в журнал работы
-			this->_log->print("XML parsing failed at line %llu column %llu: %s", log_t::flag_t::WARNING,
-			                  static_cast <unsigned long long> (location.line),
-			                  static_cast <unsigned long long> (location.column), message(error));
-		#endif
-	}
+	/**
+	 * @warning Место отказа кладётся в ТЕКСТ записи обеими ветвями, а не одним лишь
+	 *          доводом отладочной. Довод отладочная выдаёт особою строкою «Arguments
+	 *          function», и запись выходила бы РАЗНОЮ по виду сборки - читающему же
+	 *          журнал до вида сборки дела нет. Нашлось Николаем 23.08.2026: проверки
+	 *          мои шли отдельным стендом, а он собирается без «DEBUG_MODE», и оттого
+	 *          расхождение это у меня было зелено, а в общей сборке падало
+	 */
+	#if DEBUG_MODE
+		// Записываем отказ разбора в журнал работы
+		awh::log::debug("XML parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
+		                  {location.line, location.column}, awh::log::flag_t::WARNING,
+		                  static_cast <unsigned long long> (location.line),
+		                  static_cast <unsigned long long> (location.column), message(error));
+	#else
+		// Записываем отказ разбора в журнал работы
+		awh::log::print("XML parsing failed at line %llu column %llu: %s", awh::log::flag_t::WARNING,
+		                  static_cast <unsigned long long> (location.line),
+		                  static_cast <unsigned long long> (location.column), message(error));
+	#endif
 }
 /**
  * @brief Метод получения положения в исходном тексте
@@ -2668,6 +2661,82 @@ bool awh::codec::xml::Reader::subsetAttribute(size_t & offset, const size_t end,
 	}
 }
 /**
+ * @brief Метод переноса признака разметки по вложенным ссылкам сущностей
+ *
+ * @details Значение сущности вправе ссылаться на другую сущность, и подставляется такая
+ * ссылка не при объявлении, а при обращении. Оттого сущность, сама знака начала разметки
+ * не несущая, приносит разметку той, на которую ссылается: `outer` со значением
+ * `x&inner;y` при `inner` равном `<b/>` даёт содержимому узел разметки. Признак потому
+ * переносится по ссылкам, иначе подстановка пошла бы путём значения атрибута и
+ * завершилась бы отказом там, где разбирается содержимое узла
+ *
+ * @note Перенос ведётся до неподвижности, а не одним проходом: ссылки образуют цепочки
+ * любой длины, и объявлять их договор дозволяет в произвольном порядке - сущность вправе
+ * ссылаться на объявленную ниже. Число обходов ограничено числом самих объявлений:
+ * каждый обход, не выставивший ни одного признака, оказывается последним
+ *
+ */
+void awh::codec::xml::Reader::inherit() noexcept {
+	/**
+	 * Если объявленных сущностей нет
+	 */
+	if(this->_entities.empty())
+		// Завершаем перенос признака разметки
+		return;
+	/**
+	 * Выполняем перенос признака разметки до неподвижности
+	 */
+	for(size_t pass = 0; pass < this->_entities.size(); pass++){
+		// Признак того, что обход выставил хотя бы один признак разметки
+		bool changed = false;
+		/**
+		 * Выполняем перебор всех объявленных сущностей
+		 */
+		for(auto & item : this->_entities){
+			// Если значение сущности разметку уже несёт, переносить нечего
+			if(item.second.markup)
+				// Выполняем переход к следующей сущности
+				continue;
+			// Получаем значение разбираемой сущности
+			const string & value = item.second.value;
+			/**
+			 * Выполняем перебор всех ссылок в значении сущности
+			 */
+			for(size_t offset = value.find('&'); offset != string::npos; offset = value.find('&', offset + 1)){
+				// Выполняем поиск конца ссылки на сущность
+				const size_t stop = value.find(';', offset + 1);
+				// Если конец ссылки не обнаружен, перебор прекращается
+				if(stop == string::npos)
+					// Выходим из перебора ссылок значения
+					break;
+				// Получаем имя сущности, на которую указывает ссылка
+				const string name(value.data() + offset + 1, stop - (offset + 1));
+				// Если ссылка является числовой, она подставлена при объявлении
+				if(name.empty() || (name.front() == '#'))
+					// Выполняем переход к следующей ссылке значения
+					continue;
+				// Выполняем поиск объявления сущности, на которую указывает ссылка
+				auto i = this->_entities.find(name);
+				// Если сущность не объявлена либо её значение разметки не несёт
+				if((i == this->_entities.end()) || !i->second.markup)
+					// Выполняем переход к следующей ссылке значения
+					continue;
+				// Запоминаем, что значение сущности приносит разметку
+				item.second.markup = true;
+				// Запоминаем, что обход выставил признак разметки
+				changed = true;
+				// Выходим из перебора ссылок значения
+				break;
+			}
+		}
+		// Если обход не выставил ни одного признака, перенос завершён
+		if(!changed)
+			// Завершаем перенос признака разметки
+			return;
+	}
+}
+
+/**
  * @brief Метод разбора внутреннего подмножества описания типа документа
  *
  * @details Построение объявлений внутреннего подмножества проверяется наравне с
@@ -3411,81 +3480,6 @@ bool awh::codec::xml::Reader::parseSubset(size_t offset, const size_t end) noexc
 	}
 	// Выводим положительный результат выполнения операции
 	return true;
-}
-/**
- * @brief Метод переноса признака разметки по вложенным ссылкам сущностей
- *
- * @details Значение сущности вправе ссылаться на другую сущность, и подставляется такая
- * ссылка не при объявлении, а при обращении. Оттого сущность, сама знака начала разметки
- * не несущая, приносит разметку той, на которую ссылается: `outer` со значением
- * `x&inner;y` при `inner` равном `<b/>` даёт содержимому узел разметки. Признак потому
- * переносится по ссылкам, иначе подстановка пошла бы путём значения атрибута и
- * завершилась бы отказом там, где разбирается содержимое узла
- *
- * @note Перенос ведётся до неподвижности, а не одним проходом: ссылки образуют цепочки
- * любой длины, и объявлять их договор дозволяет в произвольном порядке - сущность вправе
- * ссылаться на объявленную ниже. Число обходов ограничено числом самих объявлений:
- * каждый обход, не выставивший ни одного признака, оказывается последним
- *
- */
-void awh::codec::xml::Reader::inherit() noexcept {
-	/**
-	 * Если объявленных сущностей нет
-	 */
-	if(this->_entities.empty())
-		// Завершаем перенос признака разметки
-		return;
-	/**
-	 * Выполняем перенос признака разметки до неподвижности
-	 */
-	for(size_t pass = 0; pass < this->_entities.size(); pass++){
-		// Признак того, что обход выставил хотя бы один признак разметки
-		bool changed = false;
-		/**
-		 * Выполняем перебор всех объявленных сущностей
-		 */
-		for(auto & item : this->_entities){
-			// Если значение сущности разметку уже несёт, переносить нечего
-			if(item.second.markup)
-				// Выполняем переход к следующей сущности
-				continue;
-			// Получаем значение разбираемой сущности
-			const string & value = item.second.value;
-			/**
-			 * Выполняем перебор всех ссылок в значении сущности
-			 */
-			for(size_t offset = value.find('&'); offset != string::npos; offset = value.find('&', offset + 1)){
-				// Выполняем поиск конца ссылки на сущность
-				const size_t stop = value.find(';', offset + 1);
-				// Если конец ссылки не обнаружен, перебор прекращается
-				if(stop == string::npos)
-					// Выходим из перебора ссылок значения
-					break;
-				// Получаем имя сущности, на которую указывает ссылка
-				const string name(value.data() + offset + 1, stop - (offset + 1));
-				// Если ссылка является числовой, она подставлена при объявлении
-				if(name.empty() || (name.front() == '#'))
-					// Выполняем переход к следующей ссылке значения
-					continue;
-				// Выполняем поиск объявления сущности, на которую указывает ссылка
-				auto i = this->_entities.find(name);
-				// Если сущность не объявлена либо её значение разметки не несёт
-				if((i == this->_entities.end()) || !i->second.markup)
-					// Выполняем переход к следующей ссылке значения
-					continue;
-				// Запоминаем, что значение сущности приносит разметку
-				item.second.markup = true;
-				// Запоминаем, что обход выставил признак разметки
-				changed = true;
-				// Выходим из перебора ссылок значения
-				break;
-			}
-		}
-		// Если обход не выставил ни одного признака, перенос завершён
-		if(!changed)
-			// Завершаем перенос признака разметки
-			return;
-	}
 }
 /**
  * @brief Метод разбора текстового содержимого узла
@@ -7336,28 +7330,16 @@ awh::codec::xml::standalone_t awh::codec::xml::Reader::standalone() const noexce
 	return this->_standalone;
 }
 /**
- * @brief Метод установки объекта ведения журнала работы
- *
- * @param log объект ведения журнала работы
- *
- */
-void awh::codec::xml::Reader::setLogger(const log_t * log) noexcept {
-	// Устанавливаем объект ведения журнала работы
-	this->_log = log;
-	// Выполняем установку объекта ведения журнала приведению исходного текста
-	this->_decoder.setLogger(log);
-}
-/**
  * @brief Конструктор
  *
  */
-awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
- _decoder(log), _final(false), _root(false), _declared(false), _doctype(false),
+awh::codec::xml::Reader::Reader() noexcept :
+ _decoder(), _final(false), _root(false), _declared(false), _doctype(false),
  _foreign(false), _incomplete(false), _overlong(false), _empty(false),
  _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false),
  _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _state(state_t::HUNGRY),
- _event(event_t::NONE), _error(error_t::NONE), _log(log), _decoding(error_t::NONE), _deferred(error_t::NONE), _postponed(0), _encoding(encoding_t::NONE),
+ _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _deferred(error_t::NONE), _postponed(0), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _tokenized(false) {
 	this->reset();
 }
@@ -7365,16 +7347,15 @@ awh::codec::xml::Reader::Reader(const log_t * log) noexcept :
  * @brief Конструктор
  *
  * @param settings настройки разбора текста разметки
- * @param log      объект ведения журнала работы
  *
  */
-awh::codec::xml::Reader::Reader(const log_t * log, const settings_t & settings) noexcept :
- _decoder(log), _final(false), _root(false), _declared(false), _doctype(false),
+awh::codec::xml::Reader::Reader(const settings_t & settings) noexcept :
+ _decoder(), _final(false), _root(false), _declared(false), _doctype(false),
  _foreign(false), _incomplete(false), _overlong(false), _empty(false),
  _closing(false), _cdata(false), _partial(false), _carried(false), _section(0), _dirty(false),
  _offset(0), _consumed(0), _line(1), _column(1),
  _depth(0), _truncate(string::npos), _expansion(0), _settings(settings), _state(state_t::HUNGRY),
- _event(event_t::NONE), _error(error_t::NONE), _log(log), _decoding(error_t::NONE), _deferred(error_t::NONE), _postponed(0), _encoding(encoding_t::NONE),
+ _event(event_t::NONE), _error(error_t::NONE), _decoding(error_t::NONE), _deferred(error_t::NONE), _postponed(0), _encoding(encoding_t::NONE),
  _standalone(standalone_t::NONE), _space(space_t::DEFAULT), _tokenized(false) {
 	this->reset();
 }

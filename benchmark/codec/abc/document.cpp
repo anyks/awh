@@ -22,6 +22,7 @@
  * Подключаем заголовочный файл
  */
 #include "abc.hpp"
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -34,32 +35,6 @@ using namespace awh::benchmark::binary;
  *
  */
 namespace {
-	/**
-	 * @brief Функция извлечения объекта журнала замеров
-	 *
-	 * @details Журнал гасится: замер меряет работу кодека, а не вывод записей, и
-	 *          сценарии отказа портили бы и вывод, и время
-	 *
-	 * @return объект журнала замеров
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект фреймворка замеров
-		static awh::fmk_t fmk;
-		// Объект журнала замеров
-		static awh::log_t log(& fmk);
-		// Признак выполненной настройки журнала
-		static const bool ready = [](){
-			// Выполняем гашение вывода журнала замеров
-			log.level(awh::log_t::level_t::NONE);
-			// Выводим признак выполненной настройки
-			return true;
-		}();
-		// Снимаем неиспользуемый признак настройки
-		(void) ready;
-		// Выводим объект журнала замеров
-		return & log;
-	}
 	/**
 	 * @brief Количество собираемых деревьев крупной записи
 	 *
@@ -141,7 +116,7 @@ namespace {
 	 */
 	static uint64_t build(const vector <uint8_t> & record) noexcept {
 		// Дерево документа
-		awh::codec::abc::document_t document(::logger());
+		awh::codec::abc::document_t document;
 		// Если разобрать запись в дерево документа не удалось
 		if(!document.parse(record.data(), record.size()))
 			// Выводим нулевое количество узлов дерева
@@ -194,7 +169,7 @@ namespace {
 		// Разбираемая запись
 		const vector <uint8_t> & record = large();
 		// Дерево документа
-		awh::codec::abc::document_t document(::logger());
+		awh::codec::abc::document_t document;
 		/**
 		 * Если разобрать запись в дерево документа не удалось
 		 */
@@ -230,7 +205,7 @@ namespace {
 		// Разбираемая запись
 		const vector <uint8_t> & record = large();
 		// Дерево документа
-		awh::codec::abc::document_t document(::logger());
+		awh::codec::abc::document_t document;
 		/**
 		 * Если разобрать запись в дерево документа не удалось
 		 */
@@ -245,7 +220,7 @@ namespace {
 		// Выполняем прогон измеряемой операции
 		const outcome_t outcome = measure(record.size(), LARGE_ROUNDS, [&document]() noexcept {
 			// Сборка перезаписываемой записи
-			awh::codec::abc::writer_t writer(::logger());
+			awh::codec::abc::writer_t writer;
 			// Если перезаписать дерево документа не удалось
 			if(!document.build(writer))
 				// Выводим нулевой размер перезаписанной записи

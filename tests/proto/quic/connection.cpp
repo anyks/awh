@@ -372,9 +372,9 @@ namespace {
  */
 TEST_F(QuicFixture, ConnectionEstablishTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -409,7 +409,7 @@ TEST_F(QuicFixture, ConnectionEstablishTest){
  */
 TEST_F(QuicFixture, ConnectionInitialPaddingTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем начало соединения клиентом
@@ -430,9 +430,9 @@ TEST_F(QuicFixture, ConnectionInitialPaddingTest){
  */
 TEST_F(QuicFixture, ConnectionPeerParamsTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -469,9 +469,9 @@ TEST_F(QuicFixture, ConnectionPeerParamsTest){
  */
 TEST_F(QuicFixture, ConnectionCloseTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -514,9 +514,9 @@ TEST_F(QuicFixture, ConnectionCloseTest){
  */
 TEST_F(QuicFixture, ConnectionCloseTrailingFrameTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -560,9 +560,9 @@ TEST_F(QuicFixture, ConnectionCloseTrailingFrameTest){
  */
 TEST_F(QuicFixture, ConnectionCloseCoalescedPacketTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -625,9 +625,9 @@ TEST_F(QuicFixture, ConnectionCloseCoalescedPacketTest){
  */
 TEST_F(QuicFixture, ConnectionStopSendingCollectTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -695,9 +695,9 @@ TEST_F(QuicFixture, ConnectionStopSendingCollectTest){
  */
 TEST_F(QuicFixture, ConnectionClientAmplificationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -765,9 +765,9 @@ TEST_F(QuicFixture, ConnectionClientAmplificationTest){
  */
 TEST_F(QuicFixture, ConnectionPathRevertTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -872,9 +872,9 @@ TEST_F(QuicFixture, ConnectionPathRevertTest){
  */
 TEST_F(QuicFixture, ConnectionPathChainTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -967,9 +967,9 @@ TEST_F(QuicFixture, ConnectionPathChainTest){
  */
 TEST_F(QuicFixture, ConnectionAmplificationTimerTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1074,9 +1074,9 @@ TEST_F(QuicFixture, ConnectionAmplificationTimerTest){
  */
 TEST_F(QuicFixture, ConnectionEcnMigrationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1146,9 +1146,9 @@ TEST_F(QuicFixture, ConnectionEcnMigrationTest){
  */
 TEST_F(QuicFixture, ConnectionMigrateCongestionResetTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1225,9 +1225,9 @@ TEST_F(QuicFixture, ConnectionMigrateCongestionResetTest){
  */
 TEST_F(QuicFixture, ConnectionAckDelayTimeoutTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1274,9 +1274,9 @@ TEST_F(QuicFixture, ConnectionAckDelayTimeoutTest){
  */
 TEST_F(QuicFixture, ConnectionPathResponseQueueTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1328,9 +1328,9 @@ TEST_F(QuicFixture, ConnectionPathResponseQueueTest){
  */
 TEST_F(QuicFixture, ConnectionPathValidationPaddingTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1384,9 +1384,9 @@ TEST_F(QuicFixture, ConnectionPathValidationPaddingTest){
  */
 TEST_F(QuicFixture, ConnectionCryptoOverlapMismatchTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1454,9 +1454,9 @@ TEST_F(QuicFixture, ConnectionCryptoOverlapMismatchTest){
  */
 TEST_F(QuicFixture, ConnectionMaxStreamsBoundTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1497,9 +1497,9 @@ TEST_F(QuicFixture, ConnectionMaxStreamsBoundTest){
  */
 TEST_F(QuicFixture, ConnectionStreamOverlapMismatchTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1553,9 +1553,9 @@ TEST_F(QuicFixture, ConnectionStreamOverlapMismatchTest){
  */
 TEST_F(QuicFixture, ConnectionStreamFragmentLimitTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1625,9 +1625,9 @@ TEST_F(QuicFixture, ConnectionStreamFragmentLimitTest){
  */
 TEST_F(QuicFixture, ConnectionIdleRestartOnSendTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем таймаут простоя соединения в миллисекундах
@@ -1694,9 +1694,9 @@ TEST_F(QuicFixture, ConnectionIdleRestartOnSendTest){
  */
 TEST_F(QuicFixture, ConnectionClosingPeriodTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1752,9 +1752,9 @@ TEST_F(QuicFixture, ConnectionClosingPeriodTest){
  */
 TEST_F(QuicFixture, ConnectionCloseAbortedByResetTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -1827,9 +1827,9 @@ TEST_F(QuicFixture, ConnectionCloseAbortedByResetTest){
  */
 TEST_F(QuicFixture, ConnectionDuplicateTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1862,9 +1862,9 @@ TEST_F(QuicFixture, ConnectionDuplicateTest){
  */
 TEST_F(QuicFixture, ConnectionGarbageTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1895,13 +1895,13 @@ TEST_F(QuicFixture, ConnectionGarbageTest){
  */
 TEST_F(QuicFixture, ConnectionMisuseTest){
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения сервера
 	::setup(server);
 	// Проверяем что сервер не может начать соединение методом connect()
 	ASSERT_EQ(server.connect(), status_t::ERROR);
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Тестовые данные датаграммы
@@ -1924,9 +1924,9 @@ TEST_F(QuicFixture, ConnectionMisuseTest){
  */
 TEST_F(QuicFixture, ConnectionLossFirstFlightTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -1968,9 +1968,9 @@ TEST_F(QuicFixture, ConnectionLossFirstFlightTest){
  */
 TEST_F(QuicFixture, ConnectionLossServerFlightTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2048,9 +2048,9 @@ TEST_F(QuicFixture, ConnectionLossServerFlightTest){
  */
 TEST_F(QuicFixture, ConnectionTimerIdleTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2083,9 +2083,9 @@ TEST_F(QuicFixture, ConnectionTimerIdleTest){
  */
 TEST_F(QuicFixture, StreamEchoTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2144,9 +2144,9 @@ TEST_F(QuicFixture, StreamEchoTest){
  */
 TEST_F(QuicFixture, StreamDataSourceTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2214,9 +2214,9 @@ TEST_F(QuicFixture, StreamDataSourceTest){
  */
 TEST_F(QuicFixture, StreamBackpressureTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2274,9 +2274,9 @@ TEST_F(QuicFixture, StreamBackpressureTest){
  */
 TEST_F(QuicFixture, StreamCoalescedHandshakeTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2329,9 +2329,9 @@ TEST_F(QuicFixture, StreamCoalescedHandshakeTest){
  */
 TEST_F(QuicFixture, StreamLargeTransferTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2377,9 +2377,9 @@ TEST_F(QuicFixture, StreamLargeTransferTest){
  */
 TEST_F(QuicFixture, StreamUnidirectionalTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2437,9 +2437,9 @@ TEST_F(QuicFixture, StreamLimitTest){
 	// Устанавливаем лимит в один двунаправленный поток
 	params.initialMaxStreamsBidi = 1;
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединений с ограниченными параметрами
 	::configure(client, params);
 	::configure(server, params);
@@ -2486,9 +2486,9 @@ TEST_F(QuicFixture, StreamFlowControlTest){
 	// Устанавливаем лимит числа двунаправленных потоков
 	params.initialMaxStreamsBidi = 100;
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединений с ограниченными параметрами
 	::configure(client, params);
 	::configure(server, params);
@@ -2539,9 +2539,9 @@ TEST_F(QuicFixture, StreamFlowControlTest){
  */
 TEST_F(QuicFixture, StreamResetTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2583,9 +2583,9 @@ TEST_F(QuicFixture, StreamResetTest){
  */
 TEST_F(QuicFixture, StreamStopSendingTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2624,9 +2624,9 @@ TEST_F(QuicFixture, StreamStopSendingTest){
  */
 TEST_F(QuicFixture, StreamLossTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2671,9 +2671,9 @@ TEST_F(QuicFixture, StreamLossTest){
  */
 TEST_F(QuicFixture, ConnectionIdleTimeoutTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем таймаут простоя соединения в миллисекундах
@@ -2720,9 +2720,9 @@ TEST_F(QuicFixture, ConnectionIdleTimeoutTest){
  */
 TEST_F(QuicFixture, ConnectionCloseRetransmitTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2763,9 +2763,9 @@ TEST_F(QuicFixture, ConnectionCloseRetransmitTest){
  */
 TEST_F(QuicFixture, VersionNegotiationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2833,9 +2833,9 @@ TEST_F(QuicFixture, VersionNegotiationTest){
  */
 TEST_F(QuicFixture, RetryTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -2890,9 +2890,9 @@ TEST_F(QuicFixture, RetryTest){
  */
 TEST_F(QuicFixture, ConnectionLostHandshakeFlightTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -3012,9 +3012,9 @@ TEST_F(QuicFixture, ConnectionLostHandshakeFlightTest){
  */
 TEST_F(QuicFixture, ConnectionRetireRetransmitTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -3164,9 +3164,9 @@ TEST_F(QuicFixture, ConnectionAckIntegrityTest){
 	 */
 	for(size_t trial = 0; trial < 24; trial++){
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -3268,9 +3268,9 @@ TEST_F(QuicFixture, ConnectionAckIntegrityTest){
  */
 TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -3371,9 +3371,9 @@ TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
  */
 TEST_F(QuicFixture, ConnectionHandshakeReorderTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -3467,9 +3467,9 @@ TEST_F(QuicFixture, ConnectionHandshakeReorderTest){
  */
 TEST_F(QuicFixture, ConnectionLossyControlTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	/**
@@ -3626,9 +3626,9 @@ TEST_F(QuicFixture, ConnectionLossyControlTest){
  */
 TEST_F(QuicFixture, ConnectionLossyPathTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -3772,9 +3772,9 @@ TEST_F(QuicFixture, ConnectionLossyPathTest){
  */
 TEST_F(QuicFixture, KeyUpdateReorderTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -3871,9 +3871,9 @@ TEST_F(QuicFixture, KeyUpdateReorderTest){
  */
 TEST_F(QuicFixture, KeyUpdatePreviousDiscardTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -3960,9 +3960,9 @@ TEST_F(QuicFixture, KeyUpdatePreviousDiscardTest){
  */
 TEST_F(QuicFixture, KeyUpdateTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4015,9 +4015,9 @@ TEST_F(QuicFixture, KeyUpdateTest){
  */
 TEST_F(QuicFixture, AeadConfidentialityUpdateTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4091,9 +4091,9 @@ TEST_F(QuicFixture, AeadConfidentialityUpdateTest){
  */
 TEST_F(QuicFixture, AeadConfidentialityLimitTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4140,9 +4140,9 @@ TEST_F(QuicFixture, AeadConfidentialityLimitTest){
  */
 TEST_F(QuicFixture, AeadIntegrityLimitTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4171,9 +4171,9 @@ TEST_F(QuicFixture, AeadIntegrityLimitTest){
  */
 TEST_F(QuicFixture, ConnectionIdRotationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4217,9 +4217,9 @@ TEST_F(QuicFixture, ConnectionIdRotationTest){
  */
 TEST_F(QuicFixture, CongestionControlTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4258,9 +4258,9 @@ TEST_F(QuicFixture, CongestionControlTest){
  */
 TEST_F(QuicFixture, AntiAmplificationLimitTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4319,9 +4319,9 @@ TEST_F(QuicFixture, AntiAmplificationLimitTest){
  */
 TEST_F(QuicFixture, AntiAmplificationResumeTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4390,9 +4390,9 @@ TEST_F(QuicFixture, AntiAmplificationResumeTest){
  */
 TEST_F(QuicFixture, DatagramSizeBudgetTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4528,9 +4528,9 @@ TEST_F(QuicFixture, DatagramSizeBudgetTest){
  */
 TEST_F(QuicFixture, StreamStopSendingBeforeFinCreditTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры с лимитом в один двунаправленный поток
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -4596,9 +4596,9 @@ TEST_F(QuicFixture, StreamStopSendingBeforeFinCreditTest){
  */
 TEST_F(QuicFixture, StreamStopSendingAfterFinCreditTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры с лимитом в один двунаправленный поток
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -4658,9 +4658,9 @@ TEST_F(QuicFixture, StreamStopSendingAfterFinCreditTest){
  */
 TEST_F(QuicFixture, StreamRoundRobinTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4736,9 +4736,9 @@ TEST_F(QuicFixture, StreamRoundRobinTest){
  */
 TEST_F(QuicFixture, StreamCollectTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4819,9 +4819,9 @@ TEST_F(QuicFixture, StreamCollectTest){
  */
 TEST_F(QuicFixture, ConnectionReplayWindowTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -4909,9 +4909,9 @@ TEST_F(QuicFixture, ConnectionReplayWindowTest){
  */
 TEST_F(QuicFixture, CongestionPersistentTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5020,9 +5020,9 @@ TEST_F(QuicFixture, CongestionPersistentReorderTest){
 		// Признак доставки внутреннего пакета (подтверждения внутри серии потерь)
 		const bool interior = (pass == 1);
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -5127,9 +5127,9 @@ TEST_F(QuicFixture, ConnectionAckDelayTest){
 		// Задержка подтверждения сервером в миллисекундах
 		const uint64_t delay = ((pass == 0) ? 0 : 90);
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Транспортные параметры с расширенной максимальной задержкой подтверждения
 		params::params_t params;
 		// Устанавливаем лимит данных соединения
@@ -5229,9 +5229,9 @@ TEST_F(QuicFixture, ConnectionAckDelayTest){
  */
 TEST_F(QuicFixture, ConnectionClosingIgnoresFramesTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5294,9 +5294,9 @@ TEST_F(QuicFixture, ConnectionClosingIgnoresFramesTest){
  */
 TEST_F(QuicFixture, ConnectionStatelessResetTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -5373,9 +5373,9 @@ TEST_F(QuicFixture, ConnectionStatelessResetTest){
  */
 TEST_F(QuicFixture, ConnectionForeignResetTokenTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5415,9 +5415,9 @@ TEST_F(QuicFixture, ConnectionForeignResetTokenTest){
  */
 TEST_F(QuicFixture, RetryTokenAddressBindingTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5455,7 +5455,7 @@ TEST_F(QuicFixture, RetryTokenAddressBindingTest){
 	 * Создаём соединение стороннего сервера с тем же режимом проверки адреса,
 	 * но с другим адресом клиента: перехваченный токен обязан быть отвергнут
 	 */
-	connection_t foreign(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t foreign(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения стороннего сервера
 	::setup(foreign);
 	// Устанавливаем другой адрес клиента на стороннем соединении
@@ -5471,7 +5471,7 @@ TEST_F(QuicFixture, RetryTokenAddressBindingTest){
 	 * Тот же пакет для сервера с совпадающим адресом клиента: токен принимается
 	 * без сохранения состояния выдачи
 	 */
-	connection_t accepting(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t accepting(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку принимающего соединения
 	::setup(accepting);
 	// Устанавливаем адрес клиента, которому выдавался токен
@@ -5494,9 +5494,9 @@ TEST_F(QuicFixture, RetryTokenAddressBindingTest){
  */
 TEST_F(QuicFixture, RetryTokenExpiryTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5532,7 +5532,7 @@ TEST_F(QuicFixture, RetryTokenExpiryTest){
 	 * Создаём принимающее соединение и продвигаем его часы далеко за срок
 	 * годности токена
 	 */
-	connection_t expired(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t expired(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку принимающего соединения
 	::setup(expired);
 	// Устанавливаем адрес клиента, которому выдавался токен
@@ -5560,9 +5560,9 @@ TEST_F(QuicFixture, ConnectionVerifyWithCaTest){
 	// Проверяем что шаблон контекста создан
 	ASSERT_NE(context, 0u);
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, context, this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, context, this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5609,9 +5609,9 @@ TEST_F(QuicFixture, ConnectionVerifyWithoutCaTest){
 	// Включаем проверку сертификата удалённого узла без доверенных центров
 	coder.validateServerNameIndication(context, true);
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, context, coder, this->_log.get());
+	connection_t client(endpoint_t::CLIENT, context, coder);
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), coder, this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), coder);
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5646,16 +5646,12 @@ TEST_F(QuicFixture, ConnectionVerifyWithoutCaTest){
  *
  */
 TEST_F(QuicFixture, ConnectionExternalContextTest){
-	// Объект фреймворка
-	awh::fmk_t fmk;
-	// Объект логирования
-	awh::log_t log(&fmk);
 	// Отдельное окружение транспортной безопасности с собственным кодером
-	QuicSecurity security(&fmk, &log);
+	QuicSecurity security;
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT), security.coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, security.context(endpoint_t::CLIENT), security.coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, security.context(endpoint_t::SERVER), security.coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5700,9 +5696,9 @@ TEST_F(QuicFixture, ConnectionExternalContextTest){
  */
 TEST_F(QuicFixture, ConnectionPathValidationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5745,9 +5741,9 @@ TEST_F(QuicFixture, ConnectionPathValidationTest){
  */
 TEST_F(QuicFixture, ConnectionMigrationDetectTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5823,9 +5819,9 @@ TEST_F(QuicFixture, ConnectionMigrationDetectTest){
  */
 TEST_F(QuicFixture, ConnectionMigrationSpoofGuardTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5894,9 +5890,9 @@ TEST_F(QuicFixture, ConnectionMigrationSpoofGuardTest){
  */
 TEST_F(QuicFixture, ConnectionMigrationRoamingDisabledTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -5946,9 +5942,9 @@ TEST_F(QuicFixture, ConnectionMigrationRoamingDisabledTest){
  */
 TEST_F(QuicFixture, ConnectionStreamsBlockedTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с тесным лимитом двунаправленных потоков
@@ -6034,9 +6030,9 @@ TEST_F(QuicFixture, ConnectionStreamsBlockedTest){
  */
 TEST_F(QuicFixture, ConnectionStreamsBlockedRaiseTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с тесным лимитом двунаправленных потоков
@@ -6137,9 +6133,9 @@ TEST_F(QuicFixture, ConnectionStreamsBlockedRaiseTest){
  */
 TEST_F(QuicFixture, ConnectionCloseHandshakeSpacesTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -6199,9 +6195,9 @@ TEST_F(QuicFixture, ConnectionCloseHandshakeSpacesTest){
  */
 TEST_F(QuicFixture, ConnectionMigrateTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -6285,9 +6281,9 @@ TEST_F(QuicFixture, ConnectionMigrateTest){
  */
 TEST_F(QuicFixture, ConnectionEcnEchoTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -6344,11 +6340,11 @@ TEST_F(QuicFixture, ConnectionEcnCongestionTest){
 	 * @return    окно перегрузки отправителя по завершении прогона
 	 *
 	 */
-	auto run = [](QuicSecurity * security, awh::log_t * log, const awh::event::ecn_t ecn) noexcept -> uint64_t {
+	auto run = [](QuicSecurity * security, const awh::event::ecn_t ecn) noexcept -> uint64_t {
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, security->context(endpoint_t::CLIENT), security->coder(), log);
+		connection_t client(endpoint_t::CLIENT, security->context(endpoint_t::CLIENT), security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, security->context(endpoint_t::SERVER), security->coder(), log);
+		connection_t server(endpoint_t::SERVER, security->context(endpoint_t::SERVER), security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -6399,9 +6395,9 @@ TEST_F(QuicFixture, ConnectionEcnCongestionTest){
 		return client.cwnd();
 	};
 	// Выполняем прогон передачи с маркировкой поддержки ECN
-	const uint64_t supported = run(this->_security.get(), this->_log.get(), awh::event::ecn_t::ECT0);
+	const uint64_t supported = run(this->_security.get(), awh::event::ecn_t::ECT0);
 	// Выполняем прогон передачи с маркировкой перегрузки пути
-	const uint64_t congested = run(this->_security.get(), this->_log.get(), awh::event::ecn_t::CE);
+	const uint64_t congested = run(this->_security.get(), awh::event::ecn_t::CE);
 	// Проверяем что прогон без перегрузки состоялся
 	ASSERT_GT(supported, 12000u);
 	/**
@@ -6428,9 +6424,9 @@ TEST_F(QuicFixture, ConnectionSessionResumeTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -6466,9 +6462,9 @@ TEST_F(QuicFixture, ConnectionSessionResumeTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -6531,9 +6527,9 @@ TEST_F(QuicFixture, ConnectionSessionResumeTest){
  */
 TEST_F(QuicFixture, ConnectionIssuedCidsTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -6615,9 +6611,9 @@ TEST_F(QuicFixture, ConnectionEarlyDataTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -6649,9 +6645,9 @@ TEST_F(QuicFixture, ConnectionEarlyDataTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -6730,9 +6726,9 @@ TEST_F(QuicFixture, ConnectionEarlyDataRejectTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -6764,9 +6760,9 @@ TEST_F(QuicFixture, ConnectionEarlyDataRejectTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Транспортные параметры сервера с изменёнными лимитами
@@ -6847,9 +6843,9 @@ TEST_F(QuicFixture, ConnectionEarlyDataRejectTest){
  */
 TEST_F(QuicFixture, ConnectionEcnValidationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -6893,9 +6889,9 @@ TEST_F(QuicFixture, ConnectionEcnValidationTest){
  */
 TEST_F(QuicFixture, ConnectionEcnValidationPassTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -6952,9 +6948,9 @@ TEST_F(QuicFixture, ConnectionEcnValidationPassTest){
  */
 TEST_F(QuicFixture, ConnectionEcnValidationPartialTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -7018,9 +7014,9 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -7081,9 +7077,9 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
 	 */
 	{
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -7146,9 +7142,9 @@ TEST_F(QuicFixture, ConnectionNewTokenTest){
  */
 TEST_F(QuicFixture, ConnectionNewTokenRejectTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -7208,9 +7204,9 @@ TEST_F(QuicFixture, ConnectionNewTokenRejectTest){
  */
 TEST_F(QuicFixture, ConnectionPreferredAddressTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с предпочтительным адресом
@@ -7358,9 +7354,9 @@ TEST_F(QuicFixture, ConnectionPreferredAddressTest){
  */
 TEST_F(QuicFixture, ConnectionPathValidationTimeoutTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с предпочтительным адресом
@@ -7514,9 +7510,9 @@ TEST_F(QuicFixture, ConnectionPathValidationTimeoutTest){
  */
 TEST_F(QuicFixture, ConnectionSoakTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -7661,9 +7657,9 @@ TEST_F(QuicFixture, ConnectionSoakTest){
  */
 TEST_F(QuicFixture, ConnectionCollectReferencedTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры эндпоинтов
 	params::params_t params;
 	// Устанавливаем лимит данных соединения
@@ -7783,7 +7779,7 @@ TEST_F(QuicFixture, ConnectionFuzzUnauthenticatedTest){
 	 */
 	for(size_t round = 0; round < 300; round++){
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения сервера
 		::setup(server);
 		// Устанавливаем адрес отправителя датаграмм
@@ -7911,9 +7907,9 @@ TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
 	 */
 	for(size_t round = 0; round < 200; round++){
 		// Создаём соединение клиента
-		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+		connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 		// Создаём соединение сервера
-		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+		connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 		// Выполняем подготовку соединения клиента
 		::setup(client);
 		// Выполняем подготовку соединения сервера
@@ -7998,9 +7994,9 @@ TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
 	// Проверяем что нагрузки соединением действительно обрабатывались
 	ASSERT_GE(processed, static_cast <size_t> (200));
 	// Создаём соединение клиента для фазы порчи готовых датаграмм
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера для фазы порчи готовых датаграмм
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -8084,9 +8080,9 @@ TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
  */
 TEST_F(QuicFixture, ConnectionMigrateGuardTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -8140,9 +8136,9 @@ TEST_F(QuicFixture, ConnectionMigrateGuardTest){
  */
 TEST_F(QuicFixture, ConnectionMigrateReservedOnlyTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с предпочтительным адресом
@@ -8249,9 +8245,9 @@ TEST_F(QuicFixture, ConnectionMigrateReservedOnlyTest){
  */
 TEST_F(QuicFixture, ConnectionForcedRetireCidTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры клиента
 	params::params_t settings;
 	// Устанавливаем лимит данных соединения
@@ -8405,9 +8401,9 @@ TEST_F(QuicFixture, ConnectionForcedRetireCidTest){
  */
 TEST_F(QuicFixture, ConnectionPreferredCidReservedTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры клиента
 	params::params_t settings;
 	// Устанавливаем лимит данных соединения
@@ -8541,9 +8537,9 @@ TEST_F(QuicFixture, ConnectionPreferredCidReservedTest){
  */
 TEST_F(QuicFixture, ConnectionRelocationProbingTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с предпочтительным адресом
@@ -8712,9 +8708,9 @@ TEST_F(QuicFixture, ConnectionDatagramTest){
 		return result;
 	};
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента с поддержкой датаграмм
 	::configure(client, options(1200));
 	// Выполняем подготовку соединения сервера с поддержкой датаграмм
@@ -8772,9 +8768,9 @@ TEST_F(QuicFixture, ConnectionDatagramTest){
  */
 TEST_F(QuicFixture, ConnectionDatagramUnsupportedTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента без поддержки датаграмм
 	::setup(client);
 	// Выполняем подготовку соединения сервера без поддержки датаграмм
@@ -8813,9 +8809,9 @@ TEST_F(QuicFixture, ConnectionStatelessResetKeyTest){
 	// Проверяем что общий ключ не пустой
 	ASSERT_FALSE(key.empty());
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -8878,9 +8874,9 @@ TEST_F(QuicFixture, ConnectionStatelessResetForeignTest){
 	ASSERT_TRUE(awh::quic::resetKey(key));
 	ASSERT_TRUE(awh::quic::resetKey(foreign));
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -8969,9 +8965,9 @@ TEST_F(QuicFixture, ConnectionStatelessResetBoundsTest){
  */
 TEST_F(QuicFixture, ConnectionDisableActiveMigrationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с запретом активной миграции
@@ -9051,9 +9047,9 @@ TEST_F(QuicFixture, ConnectionDisableActiveMigrationTest){
  */
 TEST_F(QuicFixture, ConnectionPmtuDiscoveryTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -9111,9 +9107,9 @@ TEST_F(QuicFixture, ConnectionPmtuDiscoveryTest){
  */
 TEST_F(QuicFixture, ConnectionPmtuLimitMigrationTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -9186,9 +9182,9 @@ TEST_F(QuicFixture, ConnectionPmtuLimitMigrationTest){
  */
 TEST_F(QuicFixture, ConnectionPmtuNarrowPathTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -9259,9 +9255,9 @@ TEST_F(QuicFixture, ConnectionPmtuNarrowPathTest){
  */
 TEST_F(QuicFixture, ConnectionPmtuCongestionTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -9324,9 +9320,9 @@ TEST_F(QuicFixture, ConnectionPmtuCongestionTest){
  */
 TEST_F(QuicFixture, ConnectionPmtuBlackHoleTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры с широким окном для полноразмерной передачи
 	params::params_t params;
 	// Устанавливаем широкий лимит данных соединения
@@ -9429,9 +9425,9 @@ TEST_F(QuicFixture, ConnectionPmtuBlackHoleTest){
  */
 TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры с широкими лимитами потоков
 	params::params_t params;
 	// Устанавливаем широкий лимит данных соединения
@@ -9549,9 +9545,9 @@ TEST_F(QuicFixture, ConnectionStreamResurrectionGuardTest){
  */
 TEST_F(QuicFixture, ConnectionStreamAdvertisedCapTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры сервера с абсурдным лимитом однонаправленных потоков
 	params::params_t params;
 	// Устанавливаем широкий лимит данных соединения
@@ -9616,9 +9612,9 @@ TEST_F(QuicFixture, ConnectionStreamAdvertisedCapTest){
  */
 TEST_F(QuicFixture, ConnectionStreamCapConfigurableTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Транспортные параметры сервера с лимитом однонаправленных потоков выше заданной границы
 	params::params_t params;
 	// Устанавливаем широкий лимит данных соединения
@@ -9686,9 +9682,9 @@ TEST_F(QuicFixture, ConnectionStreamCapConfigurableTest){
  */
 TEST_F(QuicFixture, ConnectionRetireFloodGuardTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Выполняем подготовку соединения сервера
@@ -9758,9 +9754,9 @@ TEST_F(QuicFixture, ConnectionRetireFloodGuardTest){
  */
 TEST_F(QuicFixture, ConnectionStreamBlockedOnceTest){
 	// Создаём соединение клиента
-	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder(), this->_log.get());
+	connection_t client(endpoint_t::CLIENT, this->_security->context(endpoint_t::CLIENT), this->_security->coder());
 	// Создаём соединение сервера
-	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder(), this->_log.get());
+	connection_t server(endpoint_t::SERVER, this->_security->context(endpoint_t::SERVER), this->_security->coder());
 	// Выполняем подготовку соединения клиента
 	::setup(client);
 	// Транспортные параметры сервера с узким окном приёма потока

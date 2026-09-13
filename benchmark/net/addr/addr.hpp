@@ -122,16 +122,6 @@ namespace awh {
 			 *
 			 */
 			using io::collect;
-			/**
-			 * @brief Функция получения объекта фреймворка сценариев
-			 *
-			 */
-			using io::framework;
-			/**
-			 * @brief Функция получения объекта логирования сценариев
-			 *
-			 */
-			using io::logger;
 		};
 	};
 };

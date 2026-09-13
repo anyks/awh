@@ -127,7 +127,7 @@ namespace {
 	 */
 	static outcome_t hosting(const char * sample, const size_t rounds) noexcept {
 		// Объект работы с идентификаторами ресурсов
-		awh::uri_t object(framework(), logger());
+		awh::uri_t object;
 		// Выполняем наполнение объекта разбором образца строки URI
 		object.parse(sample);
 		// Накопитель результатов извлечения хоста
@@ -155,7 +155,7 @@ namespace {
 	 */
 	static outcome_t setting() noexcept {
 		// Объект работы с идентификаторами ресурсов
-		awh::uri_t object(framework(), logger());
+		awh::uri_t object;
 		// Накопитель результатов установки хоста
 		uint64_t summary = 0;
 		// Выполняем прогон измеряемой операции
@@ -184,9 +184,9 @@ namespace {
 	 */
 	static outcome_t comparison() noexcept {
 		// Первый объект работы с идентификаторами ресурсов
-		awh::uri_t first(framework(), logger());
+		awh::uri_t first;
 		// Второй объект работы с идентификаторами ресурсов
-		awh::uri_t second(framework(), logger());
+		awh::uri_t second;
 		// Выполняем наполнение первого объекта разбором образца строки URI
 		first.parse(SAMPLE_FQDN);
 		// Выполняем наполнение второго объекта разбором того же образца

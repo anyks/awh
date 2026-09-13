@@ -28,6 +28,8 @@
  * Подключаем заголовочный файл
  */
 #include "procre.hpp"
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Тест создания объекта резольвера процессов
@@ -142,11 +144,11 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 				// Устанавливаем IP-адрес источника процесса
 				this->_addr->source(info.addresses.src.get());
 				// Извлекаем IP-адрес источника процесса
-				source = this->_fmk->format("[%s]", static_cast <std::string> (* this->_addr.get()).c_str());
+				source = awh::fmk::format("[%s]", static_cast <std::string> (* this->_addr.get()).c_str());
 				// Устанавливаем IP-адрес назначения процесса
 				this->_addr->source(info.addresses.dst.get());
 				// Извлекаем IP-адрес назначения процесса
-				destination = this->_fmk->format("[%s]", static_cast <std::string> (* this->_addr.get()).c_str());
+				destination = awh::fmk::format("[%s]", static_cast <std::string> (* this->_addr.get()).c_str());
 			} break;
 			// Для семейства UDS
 			case static_cast <uint8_t> (awh::event::family_t::UDS): {
@@ -210,17 +212,17 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 		// Если порты процесса определены
 		if((info.ports.dst > 0) && (info.ports.src > 0)){
 			// Формируем адрес источника процесса с портом
-			source = this->_fmk->format("%s:%u", source.c_str(), info.ports.src);
+			source = awh::fmk::format("%s:%u", source.c_str(), info.ports.src);
 			// Формируем адрес назначения процесса с портом
-			destination = this->_fmk->format("%s:%u", destination.c_str(), info.ports.dst);
+			destination = awh::fmk::format("%s:%u", destination.c_str(), info.ports.dst);
 		// Если только порт назначения процесса определён
 		} else if(info.ports.dst > 0)
 			// Формируем адрес назначения процесса с портом
-			destination = this->_fmk->format("%s:%u", destination.c_str(), info.ports.dst);
+			destination = awh::fmk::format("%s:%u", destination.c_str(), info.ports.dst);
 		// Если только порт источника процесса определён
 		else if(info.ports.src > 0)
 			// Формируем адрес источника процесса с портом
-			source = this->_fmk->format("%s:%u", source.c_str(), info.ports.src);
+			source = awh::fmk::format("%s:%u", source.c_str(), info.ports.src);
 		// Если адрес источника процесса определён
 		if(!source.empty()){
 			// Проверяем что адрес источника процесса не пустой
@@ -230,8 +232,8 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 				// Проверяем что адрес назначения процесса не пустой
 				ASSERT_FALSE(destination.empty());
 				// Записываем в лог информацию о процессе
-				this->_log->print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
-					awh::log_t::flag_t::INFO,
+				awh::log::print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
+					awh::log::flag_t::INFO,
 					this->_procre->name(pid).c_str(),
 					source.c_str(),
 					destination.c_str(),
@@ -241,8 +243,8 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			// Если адрес назначения процесса не определён
 			} else {
 				// Записываем в лог информацию о процессе
-				this->_log->print("Process Resolver: NAME=%s, SOURCE=%s, FAMILY=%s, PROTOCOL=%s",
-					awh::log_t::flag_t::INFO,
+				awh::log::print("Process Resolver: NAME=%s, SOURCE=%s, FAMILY=%s, PROTOCOL=%s",
+					awh::log::flag_t::INFO,
 					this->_procre->name(pid).c_str(),
 					source.c_str(),
 					family.c_str(),
@@ -254,8 +256,8 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			// Проверяем что адрес назначения процесса не пустой
 			ASSERT_FALSE(destination.empty());
 			// Записываем в лог информацию о процессе
-			this->_log->print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
-				awh::log_t::flag_t::INFO,
+			awh::log::print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
+				awh::log::flag_t::INFO,
 				this->_procre->name(pid).c_str(),
 				destination.c_str(),
 				family.c_str(),

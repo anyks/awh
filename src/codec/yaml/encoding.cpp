@@ -24,6 +24,7 @@
  * Подключаем заголовочные файлы модуля
  */
 #include <codec/yaml/encoding.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -536,11 +537,9 @@ bool awh::codec::yaml::printable(const uint32_t code) noexcept {
 /**
  * @brief Конструктор
  *
- * @param log объект для работы с логами
- *
  */
-awh::codec::yaml::Decoder::Decoder(const log_t * log) noexcept :
- _log(log), _encoding(encoding_t::NONE), _error(error_t::NONE), _sniffed(false),
+awh::codec::yaml::Decoder::Decoder() noexcept :
+ _encoding(encoding_t::NONE), _error(error_t::NONE), _sniffed(false),
  _signature(false), _forced(false), _leading(true), _surrogate(0) {}
 /**
  * @brief Метод вывода сообщения об отказе в лог
@@ -550,9 +549,8 @@ void awh::codec::yaml::Decoder::report() const noexcept {
 	/**
 	 * Если объект для работы с логами установлен
 	 */
-	if(this->_log != nullptr)
 		// Выполняем вывод сообщения об отказе приведения кодировки
-		this->_log->print("YAML encoding failed: %s", log_t::flag_t::CRITICAL, awh::codec::yaml::message(this->_error));
+		awh::log::print("YAML encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error));
 }
 /**
  * @brief Метод сброса состояния приведения кодировки

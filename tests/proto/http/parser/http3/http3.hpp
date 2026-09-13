@@ -111,11 +111,6 @@ class ParserHttp3Fixture : public testing::Test {
 				 */
 				explicit Endpoint() noexcept : unistream(0), bistream(0), refuse(false) {}
 		} endpoint_t;
-	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения

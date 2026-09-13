@@ -40,6 +40,7 @@
 #include <nghttp3/nghttp3.h>
 
 #include <proto/http/parser/http3/http.hpp>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
@@ -780,6 +781,13 @@ static size_t serverAgainstReference() noexcept {
  *
  */
 int32_t main() noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Количество обнаруженных расхождений
 	size_t failures = 0;
 	// Выполняем сверку нашего клиента с сессией сервера эталонной реализации

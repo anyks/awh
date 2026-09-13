@@ -42,6 +42,8 @@
  */
 #include <encoding/ascii.hpp>
 #include <proto/http/auth/digest.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -302,13 +304,13 @@ string awh::http::Digest::response(const string & user, const string & pass) con
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user, pass), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {user, pass}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим в лог сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -347,9 +349,9 @@ bool awh::http::Digest::check() noexcept {
 			// В строгом режиме legacy RFC 2069 (без qop) не допускается (RFC 7616)
 			if(!digest.mode.qop){
 				// Пишем диагностический лог об отклонении legacy-режима без qop
-				this->_log->print(
+				awh::log::print(
 					"Digest auth legacy mode without qop rejected in strict mode for user \"%s\" [nonce=\"%s\"]",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					this->_params.user.c_str(),
 					digest.nonce.c_str()
 				);
@@ -359,9 +361,9 @@ bool awh::http::Digest::check() noexcept {
 			// В строгом режиме при использовании qop обязателен ключ клиента cnonce (RFC 7616)
 			if(digest.cnonce.empty()){
 				// Пишем диагностический лог об отсутствии cnonce
-				this->_log->print(
+				awh::log::print(
 					"Digest auth missing cnonce rejected in strict mode for user \"%s\" [nonce=\"%s\"]",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					this->_params.user.c_str(),
 					digest.nonce.c_str()
 				);
@@ -371,9 +373,9 @@ bool awh::http::Digest::check() noexcept {
 			// В строгом режиме обязателен временный ключ сессии opaque
 			if(digest.opaque.empty()){
 				// Пишем диагностический лог об отсутствии opaque
-				this->_log->print(
+				awh::log::print(
 					"Digest auth missing opaque rejected in strict mode for user \"%s\" [nonce=\"%s\"]",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					this->_params.user.c_str(),
 					digest.nonce.c_str()
 				);
@@ -383,9 +385,9 @@ bool awh::http::Digest::check() noexcept {
 			// В строгом режиме алгоритм из учётных данных должен совпадать с настроенным (защита от подмены алгоритма)
 			if(this->_params.hash != this->_params.scheme){
 				// Пишем диагностический лог о несовпадении алгоритма
-				this->_log->print(
+				awh::log::print(
 					"Digest auth algorithm downgrade rejected in strict mode for user \"%s\" [algorithm=%s]",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					this->_params.user.c_str(),
 					this->algorithm().c_str()
 				);
@@ -400,9 +402,9 @@ bool awh::http::Digest::check() noexcept {
 			// Если формат nc некорректен, nc равен нулю или переполнен
 			if(!::nc::parse(digest.nc, nc) || (nc == 0) || (nc >= 0xFFFFFFFF)){
 				// Пишем диагностический лог о некорректном счётчике
-				this->_log->print(
+				awh::log::print(
 					"Digest auth invalid nc for user \"%s\": nc=\"%s\" [nonce=\"%s\"]",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					this->_params.user.c_str(),
 					digest.nc.c_str(),
 					digest.nonce.c_str()
@@ -432,9 +434,9 @@ bool awh::http::Digest::check() noexcept {
 		 */
 		if(digest.mode.qop && (nc <= last)){
 			// Пишем диагностический лог о повторном воспроизведении запроса
-			this->_log->print(
+			awh::log::print(
 				"Digest auth replay detected for user \"%s\": received nc=\"%s\", last accepted nc=\"%s\" [nonce=\"%s\"]",
-				log_t::flag_t::WARNING,
+				awh::log::flag_t::WARNING,
 				this->_params.user.c_str(),
 				digest.nc.c_str(),
 				lastNc.c_str(),
@@ -450,9 +452,9 @@ bool awh::http::Digest::check() noexcept {
 		 */
 		if(!digest.issued.empty() && !secureCompare(digest.nonce, digest.issued)){
 			// Пишем диагностический лог о несовпадении выданного и полученного ключа сервера
-			this->_log->print(
+			awh::log::print(
 				"Digest auth nonce mismatch for user \"%s\": expected nonce=\"%s\", received nonce=\"%s\"",
-				log_t::flag_t::WARNING,
+				awh::log::flag_t::WARNING,
 				this->_params.user.c_str(),
 				digest.issued.c_str(),
 				digest.nonce.c_str()
@@ -468,13 +470,13 @@ bool awh::http::Digest::check() noexcept {
 		 */
 		if((digest.mode.stamp > 0) && (this->_params.mode.nonceMaxAge > 0)){
 			// Получаем текущий штамп времени в секундах
-			const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+			const uint64_t now = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 			// Если срок жизни выданного сервером nonce истёк
 			if((now > digest.mode.stamp) && ((now - digest.mode.stamp) >= this->_params.mode.nonceMaxAge)){
 				// Пишем диагностический лог об истечении срока жизни выданного ключа сервера
-				this->_log->print(
+				awh::log::print(
 					"Digest auth stale nonce for user \"%s\": nonce age=%llu s exceeds TTL=%llu s [nonce=\"%s\"]",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					this->_params.user.c_str(),
 					static_cast <unsigned long long> (now - digest.mode.stamp),
 					static_cast <unsigned long long> (this->_params.mode.nonceMaxAge),
@@ -490,9 +492,9 @@ bool awh::http::Digest::check() noexcept {
 		 */
 		if(!digest.issuedOpaque.empty() && !secureCompare(digest.opaque, digest.issuedOpaque)){
 			// Пишем диагностический лог о несовпадении opaque
-			this->_log->print(
+			awh::log::print(
 				"Digest auth opaque mismatch for user \"%s\": expected opaque=\"%s\", received opaque=\"%s\"",
-				log_t::flag_t::WARNING,
+				awh::log::flag_t::WARNING,
 				this->_params.user.c_str(),
 				digest.issuedOpaque.c_str(),
 				digest.opaque.c_str()
@@ -509,10 +511,10 @@ bool awh::http::Digest::check() noexcept {
 			 * часто указывает на некорректную реализацию клиента (известны баги Safari/WebKit
 			 * с формированием nc/cnonce/qop). Лог помогает быстро определить сторону ошибки.
 			 */
-			this->_log->print(
+			awh::log::print(
 				"Digest auth mismatch for user \"%s\": expected response=\"%s\", received=\"%s\" "
 				"[algorithm=%s, realm=\"%s\", qop=\"%s\", nonce=\"%s\", cnonce=\"%s\", nc=\"%s\", uri=\"%s\", method=\"%s\"]",
-				log_t::flag_t::WARNING,
+				awh::log::flag_t::WARNING,
 				this->_params.user.c_str(),
 				response.c_str(),
 				digest.response.c_str(),
@@ -543,13 +545,13 @@ bool awh::http::Digest::check() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим в лог сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Сообщаем о неудачной проверке
@@ -588,7 +590,7 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 				// Сообщаем о неудачном разборе
 				return result;
 			// Разбираем параметры Digest с учётом кавычек и запятых внутри значений
-			const unordered_multimap <string, string> params = this->_fmk->kv(digest, ",", "=");
+			const unordered_multimap <string, string> params = awh::fmk::kv(digest, ",", "=");
 			// Если список параметров получен
 			if((result = !params.empty())){
 				// Флаг несовпадения realm с настроенным значением сервера
@@ -602,11 +604,11 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 					// Извлекаем и очищаем значение параметра
 					string value = item.second;
 					// Удаляем крайние пробелы у ключа
-					this->_fmk->transform(key, fmk_t::transform_t::TRIM);
+					awh::fmk::transform(key, awh::fmk::transform_t::TRIM);
 					// Удаляем крайние пробелы у значения
-					this->_fmk->transform(value, fmk_t::transform_t::TRIM);
+					awh::fmk::transform(value, awh::fmk::transform_t::TRIM);
 					// Приводим ключ параметра к нижнему регистру (RFC 7616)
-					this->_fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
+					awh::fmk::transform(key, awh::fmk::transform_t::LOWER_CASE);
 					// Если значение обёрнуто в кавычки - удаляем их
 					if((value.length() > 1) && (value.front() == '"') && (value.back() == '"'))
 						// Снимаем обрамляющие кавычки
@@ -677,7 +679,7 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 					// Если параметр является алгоритмом хэширования
 					} else if(key.compare("algorithm") == 0) {
 						// Приводим название алгоритма к нижнему регистру
-						this->_fmk->transform(value, fmk_t::transform_t::LOWER_CASE);
+						awh::fmk::transform(value, awh::fmk::transform_t::LOWER_CASE);
 						// Определяем режим сессионного алгоритма (-sess)
 						if((value.size() >= 5) && (value.compare(value.size() - 5, 5, "-sess") == 0)){
 							// Включаем сессионный режим
@@ -687,7 +689,7 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 						// Отключаем сессионный режим
 						} else this->_params.digest.mode.sess = false;
 						// Удаляем разделитель из названия алгоритма (SHA-256 -> sha256)
-						value = this->_fmk->replace(value, "-", "");
+						value = awh::fmk::replace(value, "-", "");
 						// Если алгоритм является MD5
 						if(value.compare("md5") == 0)
 							// Устанавливаем алгоритм MD5
@@ -732,13 +734,13 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(header), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {header}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим в лог сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -772,7 +774,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 					// Если используется qop и ключ клиента ещё не сгенерирован
 					if(digest.mode.qop && digest.cnonce.empty()){
 						// Получаем текущий штамп времени в секундах
-						const uint64_t stamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+						const uint64_t stamp = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 						// Генерируем непредсказуемый ключ клиента (штамп времени + энтропия + логин)
 						digest.cnonce = this->_crypto->hash <string> (::to_string(stamp) + ::nc::entropy() + this->_params.user, this->_params.hash);
 						// Обрезаем ключ клиента до 16 символов
@@ -789,7 +791,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 							// Завершаем формирование заголовка
 							break;
 						// Формируем счётчик запросов в виде 8 шестнадцатеричных цифр (nonce count)
-						digest.nc = this->_fmk->format("%08x", nc + 1);
+						digest.nc = awh::fmk::format("%08x", nc + 1);
 					}
 					// Выполняем расчёт ответа клиента
 					digest.response = this->response(this->_params.user, this->_params.pass);
@@ -800,7 +802,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 						// Формируем значение заголовка авторизации
 						if(digest.mode.qop)
 							// Формат RFC 7616 с qop, nc и cnonce
-							result = this->_fmk->format(
+							result = awh::fmk::format(
 								"Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", qop=%s, nc=%s, cnonce=\"%s\", response=\"%s\", opaque=\"%s\", algorithm=%s",
 								this->_params.user.c_str(),
 								digest.realm.c_str(),
@@ -816,7 +818,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 						// Если qop не используется (legacy RFC 2069)
 						else {
 							// Legacy-формат RFC 2069 без qop, nc и cnonce
-							result = this->_fmk->format(
+							result = awh::fmk::format(
 								"Digest username=\"%s\", realm=\"%s\", nonce=\"%s\", uri=\"%s\", response=\"%s\", opaque=\"%s\", algorithm=%s",
 								this->_params.user.c_str(),
 								digest.realm.c_str(),
@@ -830,7 +832,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 						// Если требуется вывести заголовок вместе с его именем
 						if(full)
 							// Дополняем результат именем заголовка
-							result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
+							result = awh::fmk::format("%s: %s\r\n", this->name().c_str(), result.c_str());
 					}
 				}
 			} break;
@@ -841,7 +843,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 				// Флаг создания нового ключа nonce
 				bool createNonce = false;
 				// Получаем текущий штамп времени в секундах
-				const uint64_t stamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+				const uint64_t stamp = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::SECONDS);
 				// Сервер всегда объявляет qop в современном вызове авторизации
 				digest.mode.qop = true;
 				// Если nonce не создан или истёк срок его жизни (при включённом ограничении возраста)
@@ -874,7 +876,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 				// Кэшируем имя алгоритма для формирования вызова
 				const string & algorithm = this->algorithm();
 				// Формируем значение вызова авторизации
-				result = this->_fmk->format(
+				result = awh::fmk::format(
 					"Digest realm=\"%s\", qop=\"%s\", stale=%s, algorithm=%s, nonce=\"%s\", opaque=\"%s\"",
 					digest.realm.c_str(),
 					digest.qop.c_str(),
@@ -886,7 +888,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 				// Если требуется вывести заголовок вместе с его именем
 				if(full)
 					// Дополняем результат именем заголовка
-					result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
+					result = awh::fmk::format("%s: %s\r\n", this->name().c_str(), result.c_str());
 			} break;
 		}
 	/**
@@ -898,13 +900,13 @@ string awh::http::Digest::header(const bool full) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(full), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {full}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим в лог сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -916,12 +918,10 @@ string awh::http::Digest::header(const bool full) noexcept {
  * @param owner  сторона работы (клиент/сервер)
  * @param params общие параметры авторизации
  * @param crypto объект криптографии
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
  *
  */
-awh::http::Digest::Digest(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto, const fmk_t * fmk, const log_t * log) noexcept :
- auth_t::scheme_t(owner, params, crypto, fmk, log) {}
+awh::http::Digest::Digest(const auth_t::owner_t owner, auth_t::params_t & params, const crypto_t * crypto) noexcept :
+ auth_t::scheme_t(owner, params, crypto) {}
 /**
  * @brief Деструктор
  *

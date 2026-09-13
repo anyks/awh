@@ -117,7 +117,6 @@
 /**
  * Подключаем заголовочные файлы модулей
  */
-#include "../sys/log.hpp"
 
 /**
  * Подавляем системные макросы, занявшие имена членов перечислений ниже:
@@ -617,7 +616,6 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				const log_t * _log;
 			public:
 				/**
 				 * \~russian
@@ -1231,7 +1229,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				explicit Emitter(const log_t * log) noexcept;
+				explicit Emitter() noexcept;
 		} emitter_t;
 	};
 };
@@ -1241,5 +1239,6 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../sys/macro/restore.hpp"
+#include <sys/macro/global.hpp>
 
 #endif // __AWH_REGEX_EMITTER__

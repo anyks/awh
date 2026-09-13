@@ -89,11 +89,6 @@ class ParserHttp2Fixture : public testing::Test {
 			// Разобранный из провайдера статус-код ответа сервера
 			uint16_t code = 0;
 		} events_t;
-	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения

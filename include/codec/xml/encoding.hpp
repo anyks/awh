@@ -42,13 +42,13 @@
 /**
  * Подключаем заголовочные файлы модуля
  */
-#include <sys/log.hpp>
 #include <encoding/charset/charset.hpp>
 
 /**
  * Подключаем заголовочные файлы модуля
  */
 #include "common.hpp"
+#include <sys/macro/global.hpp>
 
 /**
  * \~russian
@@ -295,7 +295,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					const log_t * _log = nullptr;
 				private:
 					/**
 					 * \~russian
@@ -489,21 +488,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Decoder(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
+					explicit Decoder() noexcept;
 			} decoder_t;
 		};
 	};

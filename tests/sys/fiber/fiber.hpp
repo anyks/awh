@@ -32,11 +32,6 @@
  *
  */
 class FiberFixture : public testing::Test {
-	protected:
-		// Объект фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект работы с логами
-		std::unique_ptr <awh::log_t> _log;
 	public:
 		/**
 		 * @brief Метод настройки тестовой фикстуры

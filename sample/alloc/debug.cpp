@@ -35,10 +35,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <sys/macro/lib.hpp>
 #include <alloc/alloc.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Разбор искажённых имён
@@ -163,14 +163,18 @@ static void leaking(const size_t count, const size_t size) noexcept {
  */
 int32_t main() noexcept {
 	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
+	/**
 	 * Заводим фреймворк
 	 *
 	 * Захват выдачи памяти процесса делает САМ конструктор фреймворка, единожды за
 	 * процесс
 	 */
-	fmk_t fmk;
-	// Заводим объект работы с журналом
-	log_t log(&fmk, AWH_SHORT_NAME);
 	/**
 	 * Спрашиваем, состоялся ли захват
 	 *
@@ -181,7 +185,7 @@ int32_t main() noexcept {
 	 */
 	if(!alloc::Allocator::captured()){
 		// Записываем отказ захвата в журнал
-		log.print("Выдача памяти процесса не захвачена: средства разбора недоступны", log_t::flag_t::WARNING);
+		awh::log::print("Выдача памяти процесса не захвачена: средства разбора недоступны", awh::log::flag_t::WARNING);
 		// Выводим успешный код выхода: это не дефект приложения
 		return EXIT_SUCCESS;
 	}

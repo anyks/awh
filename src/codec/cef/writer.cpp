@@ -37,6 +37,7 @@
  * Подавляем системные макросы, занявшие имена членов перечислений ниже
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -80,9 +81,9 @@ bool awh::codec::cef::Writer::fail(const error_t error, const string_view name) 
 	// Запоминаем код ошибки записи
 	this->_error = error;
 	// Выводим в лог сообщение об ошибке записи
-	this->_log->print(
+	awh::log::print(
 		"CEF writing failed: %s at the field \"%s\"",
-		log_t::flag_t::CRITICAL,
+		awh::log::flag_t::CRITICAL,
 		awh::codec::cef::message(error),
 		string(name).c_str()
 	);
@@ -511,11 +512,9 @@ bool awh::codec::cef::Writer::write(const abc::value_t & value, string & result)
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
  */
-awh::codec::cef::Writer::Writer(const fmk_t * fmk, const log_t * log) noexcept :
- _error(error_t::NONE), _fmk(fmk), _log(log) {}
+awh::codec::cef::Writer::Writer() noexcept :
+ _error(error_t::NONE) {}
 
 /**
  * Возвращаем имена, системными макросами занятые

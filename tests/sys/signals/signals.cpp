@@ -30,7 +30,7 @@
  */
 void SignalsFixture::SetUp(){
 	// Создаём объект для работы с сигналами
-	this->_signals = std::make_unique <awh::signals_t> (nullptr, nullptr);
+	this->_signals = std::make_unique <awh::signals_t> ();
 }
 
 /**

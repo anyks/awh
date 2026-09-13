@@ -31,11 +31,11 @@
  * Подключаем заголовочные файлы бенчмарков
  */
 #include "cef.hpp"
+#include <sys/log.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён сценариев этого файла
@@ -49,17 +49,13 @@ namespace {
 	 *
 	 */
 	struct SilentCefDocument {
-		// Объект фреймворка сценариев
-		awh::fmk_t fmk;
-		// Объект журнала сценариев
-		awh::log_t log;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentCefDocument() noexcept : log(&this->fmk) {
+		SilentCefDocument() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 	/**
@@ -216,7 +212,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект события CEF
-		awh::codec::cef::document_t doc(&::documentEnvironment().fmk, &::documentEnvironment().log);
+		awh::codec::cef::document_t doc;
 		// Получаем эталонную запись обнаружения вторжений
 		const std::string & text = awh::benchmark::event::detection();
 		// Если эталонная запись сценарию непригодна
@@ -250,7 +246,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект события CEF
-		awh::codec::cef::document_t doc(&::documentEnvironment().fmk, &::documentEnvironment().log);
+		awh::codec::cef::document_t doc;
 		// Получаем эталонную запись надзора за системой
 		const std::string & text = awh::benchmark::event::audit();
 		// Если эталонная запись сценарию непригодна
@@ -284,7 +280,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект события CEF
-		awh::codec::cef::document_t doc(&::documentEnvironment().fmk, &::documentEnvironment().log);
+		awh::codec::cef::document_t doc;
 		// Получаем эталонную запись наименьшей длины
 		const std::string & text = awh::benchmark::event::minimal();
 		// Выполняем замер укладки эталонной записи в дерево
@@ -318,7 +314,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект события CEF
-		awh::codec::cef::document_t doc(&::documentEnvironment().fmk, &::documentEnvironment().log);
+		awh::codec::cef::document_t doc;
 		// Настройки разбора записей
 		awh::codec::cef::reader_t::settings_t settings;
 		// Получаем эталонную запись обнаружения вторжений
@@ -364,7 +360,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект события CEF
-		awh::codec::cef::document_t doc(&::documentEnvironment().fmk, &::documentEnvironment().log);
+		awh::codec::cef::document_t doc;
 		// Получаем эталонную запись обнаружения вторжений
 		const std::string & text = awh::benchmark::event::detection();
 		// Если эталонная запись сценарию непригодна, обратной сборки не выдерживая
@@ -402,7 +398,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект события CEF
-		awh::codec::cef::document_t doc(&::documentEnvironment().fmk, &::documentEnvironment().log);
+		awh::codec::cef::document_t doc;
 		// Получаем эталонную запись обнаружения вторжений
 		const std::string & text = awh::benchmark::event::detection();
 		// Если эталонная запись сценарию непригодна

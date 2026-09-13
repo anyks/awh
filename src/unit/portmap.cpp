@@ -28,6 +28,8 @@
  */
 #include <sys/macro/lib.hpp>
 #include <unit/portmap.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -472,13 +474,13 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -866,7 +868,7 @@ bool awh::unit::Portmap::discover() noexcept {
 		 */
 		if(this->_addr.type() != ((this->_family == family_t::IPV6) ? net_addr_t::type_t::IPV6 : net_addr_t::type_t::IPV4)){
 			// Записываем в лог сообщение о непригодном адресе маршрутизатора
-			this->_log->print("Router address \"%s\" does not match the network family in use", log_t::flag_t::WARNING, this->_router.c_str());
+			awh::log::print("Router address \"%s\" does not match the network family in use", awh::log::flag_t::WARNING, this->_router.c_str());
 			// Выводим отрицательный результат отыскания маршрутизатора
 			return false;
 		}
@@ -993,7 +995,7 @@ bool awh::unit::Portmap::local(const string & host) noexcept {
 	 */
 	if(!this->_addr.parse(host) || (this->_addr.own() != net_addr_t::own_t::LAN)){
 		// Записываем в лог сообщение о непригодном адресе устройства
-		this->_log->print("Device address \"%s\" does not belong to the local network", log_t::flag_t::WARNING, host.c_str());
+		awh::log::print("Device address \"%s\" does not belong to the local network", awh::log::flag_t::WARNING, host.c_str());
 		// Выводим признак того, что адрес локальной сети не принадлежит
 		return false;
 	}
@@ -1017,9 +1019,9 @@ string awh::unit::Portmap::authority(const string & host, const uint16_t port) c
 	 */
 	if(host.find(':') != string::npos)
 		// Выводим узел записью IPv6, взятой в квадратные скобки
-		return this->_fmk->format("[%s]:%u", host.c_str(), port);
+		return awh::fmk::format("[%s]:%u", host.c_str(), port);
 	// Выводим узел обычной записью
-	return this->_fmk->format("%s:%u", host.c_str(), port);
+	return awh::fmk::format("%s:%u", host.c_str(), port);
 }
 /**
  * @brief Метод отыскания устройства UPnP рассылкой SSDP
@@ -1226,7 +1228,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 */
 		if(!this->membership(target, six))
 			// Записываем в лог сообщение о неудавшемся вступлении в группу обнаружения
-			this->_log->print("Joining the discovery group \"%s\" failed, awaiting the unicast answer", log_t::flag_t::WARNING, target.c_str());
+			awh::log::print("Joining the discovery group \"%s\" failed, awaiting the unicast answer", awh::log::flag_t::WARNING, target.c_str());
 		/**
 		 * Если запустить событие рассылки не удалось
 		 */
@@ -1266,13 +1268,13 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(group), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {group}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат начала отыскания устройства
@@ -1399,13 +1401,13 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(address, port), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {address, port}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат заведения потокового события обмена
@@ -1622,13 +1624,13 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1680,7 +1682,7 @@ bool awh::unit::Portmap::describe() noexcept {
 		// Устанавливаем путь запроса описания устройства по умолчанию
 		path.assign(1, '/');
 	// Выполняем сборку запроса описания устройства
-	this->_request = this->_fmk->format(
+	this->_request = awh::fmk::format(
 		"GET %s HTTP/1.1\r\n"
 		"Host: %s\r\n"
 		"Connection: keep-alive\r\n"
@@ -1744,7 +1746,7 @@ void awh::unit::Portmap::described() noexcept {
 		 */
 		if(service == nullptr){
 			// Записываем в лог сообщение об отсутствии службы заслона IPv6
-			this->_log->print("Device does not provide the IPv6 firewall service", log_t::flag_t::WARNING);
+			awh::log::print("Device does not provide the IPv6 firewall service", awh::log::flag_t::WARNING);
 			// Выполняем завершение обмена отказом
 			this->failure(type_t::UPNP, error_t::NOT_SUPPORTED);
 			// Завершаем разбор описания устройства
@@ -1954,7 +1956,7 @@ bool awh::unit::Portmap::control() noexcept {
 				 */
 				if(this->_mapping.pinhole == 0){
 					// Записываем в лог сообщение о незаданном опознавателе пробоя
-					this->_log->print("Firewall pinhole identifier is missing", log_t::flag_t::WARNING);
+					awh::log::print("Firewall pinhole identifier is missing", awh::log::flag_t::WARNING);
 					// Выводим отрицательный результат начала вызова действия службы
 					return false;
 				}
@@ -2013,7 +2015,7 @@ bool awh::unit::Portmap::control() noexcept {
 		// Устанавливаем путь вызова действия службы по умолчанию
 		path.assign(1, '/');
 	// Выполняем сборку вызова действия службы
-	this->_request = this->_fmk->format(
+	this->_request = awh::fmk::format(
 		"POST %s HTTP/1.1\r\n"
 		"Host: %s\r\n"
 		"Connection: keep-alive\r\n"
@@ -2174,7 +2176,7 @@ void awh::unit::Portmap::controlled() noexcept {
 		 */
 		if(this->_index >= MAX_MAPPINGS){
 			// Записываем в лог сообщение о превышении предельной длины перечня
-			this->_log->print("Port mappings list exceeded the limit of %u entries", log_t::flag_t::WARNING, MAX_MAPPINGS);
+			awh::log::print("Port mappings list exceeded the limit of %u entries", awh::log::flag_t::WARNING, MAX_MAPPINGS);
 			// Выполняем завершение обмена по этому договору
 			this->complete(type_t::UPNP);
 			// Выполняем функцию обратного вызова
@@ -2245,8 +2247,8 @@ void awh::unit::Portmap::controlled() noexcept {
 		 */
 		if(!enabled || !allowed){
 			// Записываем в лог сообщение о недоступности пробоев заслона IPv6
-			this->_log->print(
-				"IPv6 firewall is %s", log_t::flag_t::WARNING,
+			awh::log::print(
+				"IPv6 firewall is %s", awh::log::flag_t::WARNING,
 				(enabled ? "enabled but inbound pinholes are not allowed" : "disabled")
 			);
 			// Выполняем завершение обмена отказом
@@ -2410,13 +2412,13 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат заведения события обмена
@@ -2586,13 +2588,13 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат отправки просьбы
@@ -2747,7 +2749,7 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 	// Отсчёт времени работы маршрутизатора по нужному договору
 	epoch_t & record = ((type == type_t::PCP) ? this->_epochPCP : this->_epochNATPMP);
 	// Получаем время получения ответа по часам этой машины
-	const uint64_t stamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+	const uint64_t stamp = awh::fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
 	/**
 	 * Если отсчёт получен впервые
 	 *
@@ -2808,11 +2810,11 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 			 */
 			#if DEBUG_MODE
 				// Записываем сообщение в лог
-				this->_log->debug(
+				awh::log::debug(
 					"Router has lost its port mapping state (protocol: %u)",
 					__PRETTY_FUNCTION__,
-					make_tuple(static_cast <uint16_t> (type)),
-					log_t::flag_t::WARNING,
+					{static_cast <uint16_t> (type)},
+					awh::log::flag_t::WARNING,
 					static_cast <uint16_t> (type)
 				);
 			/**
@@ -2820,7 +2822,7 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 			 */
 			#else
 				// Записываем сообщение в лог
-				this->_log->print("Router has lost its port mapping state (protocol: %u)", log_t::flag_t::WARNING, static_cast <uint16_t> (type));
+				awh::log::print("Router has lost its port mapping state (protocol: %u)", awh::log::flag_t::WARNING, static_cast <uint16_t> (type));
 			#endif
 		}
 	}
@@ -3086,13 +3088,13 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {mode}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим отрицательный результат включения приёма объявлений
@@ -3171,11 +3173,11 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug(
+			awh::log::debug(
 				"Port mapping failed (protocol: %u, reason: %u)",
 				__PRETTY_FUNCTION__,
-				make_tuple(static_cast <uint16_t> (type), static_cast <uint16_t> (error)),
-				log_t::flag_t::WARNING,
+				{static_cast <uint16_t> (type), static_cast <uint16_t> (error)},
+				awh::log::flag_t::WARNING,
 				static_cast <uint16_t> (type), static_cast <uint16_t> (error)
 			);
 		/**
@@ -3183,7 +3185,7 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("Port mapping failed (protocol: %u, reason: %u)", log_t::flag_t::WARNING, static_cast <uint16_t> (type), static_cast <uint16_t> (error));
+			awh::log::print("Port mapping failed (protocol: %u, reason: %u)", awh::log::flag_t::WARNING, static_cast <uint16_t> (type), static_cast <uint16_t> (error));
 		#endif
 	}
 }
@@ -3479,7 +3481,7 @@ bool awh::unit::Portmap::renew(const mapping_t & mapping) noexcept {
 	 */
 	if((this->_family == family_t::IPV6) && (this->_type == type_t::UPNP) && (mapping.pinhole == 0)){
 		// Записываем в лог сообщение о незаданном опознавателе пробоя
-		this->_log->print("Firewall pinhole identifier is missing", log_t::flag_t::WARNING);
+		awh::log::print("Firewall pinhole identifier is missing", awh::log::flag_t::WARNING);
 		// Выполняем завершение обмена отказом
 		this->failure(this->_type, error_t::MALFORMED);
 		// Выводим отрицательный результат отправки просьбы
@@ -3491,17 +3493,14 @@ bool awh::unit::Portmap::renew(const mapping_t & mapping) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::unit::Portmap::Portmap(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _type(type_t::AUTO), _family(family_t::IPV4), _action(action_t::NONE),
+awh::unit::Portmap::Portmap() noexcept :
+ unit_t(), _type(type_t::AUTO), _family(family_t::IPV4), _action(action_t::NONE),
  _attempts(::DEFAULT_ATTEMPTS), _delay(::DEFAULT_DELAY), _index(0),
  _probe(false), _announcer(0), _stage(stage_t::NONE), _stream(0), _location{""}, _control{""}, _service{""},
- _parser(http::direct_t::RESPONSE, fmk, log), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(fmk, log), _router{""},
- _iface{""}, _hops(event::hops_t::NETWORK), _address(nullptr), _addr(fmk, log), _ifaces(fmk, log), _gateway(fmk, log), _pcp(fmk, log),
- _ssdp(fmk, log), _soap(fmk, log), _upnp(fmk, log), _device(fmk, log), _natpmp(fmk, log) {}
+ _parser(http::direct_t::RESPONSE), _request{""}, _payload{""}, _complete(false), _connected(false), _uri(), _router{""},
+ _iface{""}, _hops(event::hops_t::NETWORK), _address(nullptr), _addr(), _ifaces(), _gateway(), _pcp(),
+ _ssdp(), _soap(), _upnp(), _device(), _natpmp() {}
 /**
  * @brief Деструктор
  *

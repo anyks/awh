@@ -59,40 +59,14 @@ namespace {
 	 */
 	struct SilentCef {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentCef() noexcept : log(&SilentCef::framework()) {
+		SilentCef() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * cefLogger() noexcept {
-		// Объект журнала проверок
-		static SilentCef silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -115,10 +89,8 @@ using namespace awh::codec;
  *
  */
 static string dumpCef(const string & text, const cef::reader_t::settings_t & settings, const size_t step = 0) noexcept {
-	// Объект фреймворка проверок
-	static const awh::fmk_t & fmk = SilentCef::framework();
 	// Объект потокового чтения записей
-	cef::reader_t reader(&fmk, ::cefLogger());
+	cef::reader_t reader;
 	// Устанавливаем настройки разбора записей
 	reader.settings(settings);
 	// Собираемый слепок потока событий разбора
@@ -376,10 +348,8 @@ TEST(CodecCefReader, Failures) {
  *
  */
 TEST(CodecCefReader, HeaderFields) {
-	// Объект фреймворка проверок
-	static const awh::fmk_t & fmk = SilentCef::framework();
 	// Объект потокового чтения записей
-	cef::reader_t reader(&fmk, ::cefLogger());
+	cef::reader_t reader;
 	// Выполняем подачу записи целиком
 	ASSERT_TRUE(reader.feed("CEF:0|InfoTeCS|IDS|2.4.3|1:905590:7|ET POLICY|7|src=1.2.3.4"));
 	// Ожидаемые значения полей заголовка записи
@@ -417,10 +387,8 @@ TEST(CodecCefReader, HeaderFields) {
  *
  */
 TEST(CodecCefReader, StreamFinishIsDeliveredAsAnEvent) {
-	// Объект фреймворка проверок
-	static const awh::fmk_t & fmk = SilentCef::framework();
 	// Объект потокового чтения записей
-	cef::reader_t reader(&fmk, ::cefLogger());
+	cef::reader_t reader;
 	// Выполняем подачу записи целиком с признаком конца подачи
 	ASSERT_TRUE(reader.feed("CEF:0|InfoTeCS|IDS|2.4.3|1:905590:7|ET POLICY|7|src=1.2.3.4"));
 	// Количество выданных событий окончания текста
@@ -478,10 +446,8 @@ TEST(CodecCefReader, StreamFinishIsDeliveredAsAnEvent) {
 TEST(CodecCefReader, FeedContract) {
 	// Годная запись событий безопасности
 	constexpr string_view RECORD = "CEF:0|security|threatmanager|1.0|100|detected|10|src=10.0.0.1\n";
-	// Объект фреймворка проверок
-	static const awh::fmk_t & fmk = SilentCef::framework();
 	// Объект потокового чтения записей
-	cef::reader_t reader(&fmk, ::cefLogger());
+	cef::reader_t reader;
 	// Настройки разбора записей
 	cef::reader_t::settings_t settings;
 	// Выполняем проверку того, что настройки принимаются до начала разбора
@@ -506,7 +472,7 @@ TEST(CodecCefReader, FeedContract) {
 	 */
 	constexpr string_view BROKEN = "НЕ CEF ВОВСЕ|security|threatmanager\n";
 	// Объект потокового чтения записей, отказом останавливаемый
-	cef::reader_t failed(&fmk, ::cefLogger());
+	cef::reader_t failed;
 	// Выполняем подачу записи, описанию не отвечающей
 	ASSERT_TRUE(failed.feed(BROKEN.data(), BROKEN.size(), false));
 	/**
@@ -518,7 +484,7 @@ TEST(CodecCefReader, FeedContract) {
 	// Выполняем проверку отказа подачи текста чтению, отказом остановленному
 	EXPECT_FALSE(failed.feed(RECORD.data(), RECORD.size(), false));
 	// Объект потокового чтения записей для уплотнения хранилища
-	cef::reader_t compact(&fmk, ::cefLogger());
+	cef::reader_t compact;
 	// Количество прочтённых записей событий безопасности
 	size_t records = 0;
 	/**

@@ -28,8 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/log.hpp>
 #include <cryptography/crypto.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -79,15 +79,19 @@ static void print(const string & title, const vector <uint8_t> & data) noexcept 
  *
  */
 int32_t main(int32_t argc, char * argv[]){
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Снимаем предупреждения о неиспользуемых параметрах
 	(void) argc;
 	(void) argv;
-	// Создаём объект фреймворка
-	fmk_t fmk;
 	// Создаём объект для работы с логами
-	log_t log(&fmk);
 	// Создаём объект для работы с криптографией
-	crypto_t crypto(&fmk, &log);
+	crypto_t crypto;
 	// Подписываемые данные
 	const string data = "ANYKS Framework, электронная подпись";
 	/**
@@ -165,7 +169,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Получаем запись открытого ключа владельца
 		const string & key = crypto.getKey("ed25519", crypto_t::key_type_t::PUBLIC);
 		// Создаём объект проверяющей стороны
-		crypto_t verifier(&fmk, &log);
+		crypto_t verifier;
 		// Выполняем ввод одного лишь открытого ключа
 		if(verifier.setKey("owner", key, crypto_t::key_type_t::PUBLIC)){
 			// Выводим отпечаток введённого открытого ключа
@@ -236,7 +240,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выполняем запись закрытого ключа в файл
 	if(crypto.saveKey("ed25519", "signature_private.pem", crypto_t::key_type_t::PRIVATE)){
 		// Создаём объект, читающий ключ из файла
-		crypto_t reader(&fmk, &log);
+		crypto_t reader;
 		// Устанавливаем пароль защиты закрытого ключа
 		reader.passwordRSA("password");
 		// Выполняем чтение закрытого ключа из файла

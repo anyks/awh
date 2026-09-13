@@ -18,19 +18,17 @@
  * @copyright Copyright © 2025
  *
  */
+#include "fmk.hpp"
 
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "fmk.hpp"
 
 /**
  * @brief Метод настройки тестовой фикстуры
  *
  */
 void FmkFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
 }
 
 /**

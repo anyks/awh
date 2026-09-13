@@ -64,8 +64,6 @@ TEST_P(BufferParameterizedFixture, BufferTest){
 	this->_buffer->reserve(1024);
 	// Устанавливаем максимальный размер потребляемой памяти
 	this->_buffer->setMaxMemory(1024);
-	// Устанавливаем объект логов
-	this->_buffer->setLogger(this->_log.get());
 	/**
 	 * Переход по всем данным для добавления в буфер
 	 */
@@ -124,7 +122,7 @@ TEST_P(BufferParameterizedFixture, BufferTest){
 	// Проверяем что первые данные буфера совпадают с исходными данными
 	ASSERT_EQ(static_cast <const uint8_t *> (* this->_buffer.get()), static_cast <const std::vector <uint8_t> &> (* this->_buffer.get()).data() + static_cast <size_t> (* this->_buffer.get()));
 	// Инициализируем ещё одну копию буфера
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Переход по всем числам для добавления в буфер
 	buffer.swap(* this->_buffer.get());
 	// Выполняем сброс буфера
@@ -192,7 +190,7 @@ class FrameBufferParameterizedFixture : public BufferFixture, public ::testing::
  */
 TEST_P(FrameBufferParameterizedFixture, StreamFramesTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Список ожидаемых фреймов
 	std::vector <std::string> expected;
 	/**
@@ -233,7 +231,7 @@ TEST_P(FrameBufferParameterizedFixture, StreamFramesTest){
  */
 TEST_P(FrameBufferParameterizedFixture, ZeroCopyWriteFramesTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Ожидаемое итоговое содержимое буфера
 	std::string expected;
 	/**
@@ -275,7 +273,7 @@ TEST_P(FrameBufferParameterizedFixture, ZeroCopyWriteFramesTest){
  */
 TEST_P(FrameBufferParameterizedFixture, ChunkedPrepareCommitTest){
 	// Создаём буфер данных
-	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
+	awh::buffer_t buffer;
 	// Собираем все данные в одну строку
 	std::string source;
 	/**

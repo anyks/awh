@@ -43,6 +43,8 @@
 #include <sys/time.h>
 
 #include <proto/http/parser/http2/http.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh;
 using namespace awh::http;
@@ -96,6 +98,13 @@ static void trace(const char * prefix, const void * buffer, const size_t size) n
 }
 
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Порт прослушивания сервера
 	const uint16_t port = static_cast <uint16_t> ((argc > 1) ? ::atoi(argv[1]) : 8080);
 	// Признак трассировки кадров
@@ -105,12 +114,8 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * в произвольный момент, а запись в закрытый сокет иначе снимет процесс
 	 */
 	::signal(SIGPIPE, SIG_IGN);
-	// Создаём объект фреймворка
-	std::unique_ptr <awh::fmk_t> fmk(new awh::fmk_t());
-	// Создаём объект для работы с логами
-	std::unique_ptr <awh::log_t> log(new awh::log_t(fmk.get()));
 	// Отключаем вывод логов: набор проверок намеренно шлёт некорректный трафик
-	log->level(awh::log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Создаём сокет прослушивания
 	const int listener = ::socket(AF_INET, SOCK_STREAM, 0);
 	// Если сокет создать не удалось
@@ -162,7 +167,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 * соединения одно за другим и не всегда закрывает предыдущее, а обработка
 		 * по очереди задержала бы следующую проверку до истечения таймаута
 		 */
-		std::thread([fd, tracing, &fmk, &log]() noexcept {
+		std::thread([fd, tracing]() noexcept {
 			// Отключаем алгоритм Нейгла: ответы обязаны уходить немедленно
 			const int nodelay = 1;
 			// Применяем параметр сокета
@@ -176,7 +181,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			// Применяем таймаут чтения
 			::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 			// Создаём объект парсера сервера
-			parser_http2_t server(direct_t::REQUEST, fmk.get(), log.get());
+			parser_http2_t server(direct_t::REQUEST);
 			// Признак разрыва соединения
 			bool closed = false;
 			// Устанавливаем функцию обратного вызова записи исходящих байт

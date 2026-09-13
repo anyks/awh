@@ -195,70 +195,6 @@ namespace awh {
 						string uri;
 					} namespace_t;
 				private:
-					// Вид хранимого узла
-					kind_t _kind;
-				private:
-					/**
-					 * \~russian
-					 * Префикс пространства имён имени узла
-					 *
-					 * @note Префикс удерживается наравне с обозначением пространства имён, хотя
-					 * сличению имён он и не подлежит: без него запись выданного текста
-					 * разошлась бы с записью исходного, а отвечающие по UPnP ставят
-					 * префиксы всякий по-своему
-					 *
-					 * \~english
-					 * Prefix of the namespace of the name of the node
-					 * @note The prefix is retained on a par with the designation of the namespace, although
-					 * it is not subject to the comparison of the names: without it the record of the issued text
-					 * would diverge from the record of the source one, while those answering by UPnP put
-					 * the prefixes each in its own way
-					 *
-					 * \~
-					 */
-					string _prefix;
-				private:
-					/**
-					 * \~russian
-					 * Местное имя узла разметки, а у указания обработчику - цель его
-					 *
-					 * \~english
-					 * Local name of a markup node, and for a processing instruction — its target
-					 *
-					 * \~
-					 */
-					string _local;
-				private:
-					// Обозначение пространства имён узла разметки
-					string _uri;
-				private:
-					/**
-					 * \~russian
-					 * Собственное содержимое узла
-					 *
-					 * @details Содержимым владеют узлы текстовые, дословные разделы, примечания,
-					 * указания обработчику и описание типа документа. У узла разметки
-					 * собственного содержимого нет вовсе: содержимое его лежит вложенными узлами
-					 *
-					 * \~english
-					 * Own content of the node
-					 * @details The content is owned by the text nodes, the literal sections, the comments,
-					 * the processing instructions and the description of the type of the document. A markup node
-					 * has no own content at all: its content lies in the nested nodes
-					 *
-					 * \~
-					 */
-					string _text;
-				private:
-					// Свойства узла разметки в порядке их следования
-					vector <property_t> _attributes;
-				private:
-					// Связывания префиксов, объявленные узлом разметки
-					vector <namespace_t> _bindings;
-				private:
-					// Вложенные узлы в порядке их следования
-					vector <Value> _items;
-				private:
 					/**
 					 * \~russian
 					 * @brief Запись отображения имён: первый узел с именем и число одноимённых
@@ -296,7 +232,62 @@ namespace awh {
 						 */
 						Entry(const size_t first = 0) noexcept : first(first), count(1) {}
 					} entry_t;
-				private:
+					// Вид хранимого узла
+					kind_t _kind;
+					/**
+					 * \~russian
+					 * Префикс пространства имён имени узла
+					 *
+					 * @note Префикс удерживается наравне с обозначением пространства имён, хотя
+					 * сличению имён он и не подлежит: без него запись выданного текста
+					 * разошлась бы с записью исходного, а отвечающие по UPnP ставят
+					 * префиксы всякий по-своему
+					 *
+					 * \~english
+					 * Prefix of the namespace of the name of the node
+					 * @note The prefix is retained on a par with the designation of the namespace, although
+					 * it is not subject to the comparison of the names: without it the record of the issued text
+					 * would diverge from the record of the source one, while those answering by UPnP put
+					 * the prefixes each in its own way
+					 *
+					 * \~
+					 */
+					string _prefix;
+					/**
+					 * \~russian
+					 * Местное имя узла разметки, а у указания обработчику - цель его
+					 *
+					 * \~english
+					 * Local name of a markup node, and for a processing instruction — its target
+					 *
+					 * \~
+					 */
+					string _local;
+					// Обозначение пространства имён узла разметки
+					string _uri;
+					/**
+					 * \~russian
+					 * Собственное содержимое узла
+					 *
+					 * @details Содержимым владеют узлы текстовые, дословные разделы, примечания,
+					 * указания обработчику и описание типа документа. У узла разметки
+					 * собственного содержимого нет вовсе: содержимое его лежит вложенными узлами
+					 *
+					 * \~english
+					 * Own content of the node
+					 * @details The content is owned by the text nodes, the literal sections, the comments,
+					 * the processing instructions and the description of the type of the document. A markup node
+					 * has no own content at all: its content lies in the nested nodes
+					 *
+					 * \~
+					 */
+					string _text;
+					// Свойства узла разметки в порядке их следования
+					vector <property_t> _attributes;
+					// Связывания префиксов, объявленные узлом разметки
+					vector <namespace_t> _bindings;
+					// Вложенные узлы в порядке их следования
+					vector <Value> _items;
 					/**
 					 * \~russian
 					 * Отображение местных имён вложенных узлов на их номера, заводимое по требованию
@@ -349,7 +340,6 @@ namespace awh {
 					 * \~
 					 */
 					mutable unordered_map <string, entry_t> _index;
-				private:
 					/**
 					 * \~russian
 					 * Признак заведённости отображения имён вложенных узлов
@@ -364,7 +354,88 @@ namespace awh {
 					 * \~
 					 */
 					mutable bool _indexed;
-				private:
+					/**
+					 * \~russian
+					 * Отображение имён свойств узла на их номера, заводимое по требованию
+					 *
+					 * @details Ключ двухуровневый - местное имя, а под ним обозначение пространства
+					 * имён, - и составного ключа отсюда не собирается нигде. Ключ, склеенный из
+					 * двух имён, требовал бы выделения памяти на ВСЯКОМ розыске, тогда как
+					 * розыск обязан обходиться без выделений вовсе
+					 *
+					 * @note Отображение это отвечает ТОЧНО, в отличие от отображения вложенных
+					 *       узлов: сличение свойств идёт по паре имени и пространства имён, и
+					 *       двух свойств с одинаковой парой у узла не бывает - установка
+					 *       перезаписывает такое свойство на его же месте. Оттого отката к
+					 *       перебору здесь нет ни на одном пути
+					 *
+					 * \~english
+					 * Mapping of the names of the node properties onto their numbers, built on demand
+					 *
+					 * \~
+					 */
+					mutable unordered_map <string, unordered_map <string, size_t>> _properties;
+					/**
+					 * \~russian
+					 * Признак заведённости отображения имён свойств узла
+					 *
+					 * @note Признак отдельный от пустоты отображения обязателен по той же причине,
+					 *       что и у отображения вложенных узлов: у узла без свойств отображение
+					 *       выходит пустым, и сличение размеров велело бы заводить его снова
+					 *       на всяком обращении
+					 *
+					 * \~english
+					 * Flag of the readiness of the mapping of the names of the node properties
+					 *
+					 * \~
+					 */
+					mutable bool _propertied;
+					/**
+					 * \~russian
+					 * Объект ведения журнала работы
+					 *
+					 * @note Умолчание стоит прямо в объявлении намеренно: конструкторы копии и
+					 *       переноса логгера не принимают, и без умолчания поле у них осталось
+					 *       бы неопределённым. Сами они логгер СНИМАЮТ С ИСТОЧНИКА, но лишь
+					 *       когда своего у цели ещё нет: настроенная цель своего не отдаёт
+					 *
+					 * \~english
+					 * Object of the keeping of the work log
+					 *
+					 * \~
+					 */
+					/**
+					 * \~russian
+					 * @brief Код отказа последней работы над значением
+					 *
+					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
+					 * неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
+					 * от значения пустого
+					 *
+					 * \~english
+					 * @brief Code of the refusal of the last operation over the value
+					 * @details The field is mutable deliberately: the issuance of the text of a value
+					 * is a constant operation, while it is obliged to report a refusal — otherwise
+					 * an empty text is indistinguishable from an empty value
+					 * \~
+					 */
+					mutable error_t _error = error_t::NONE;
+					/**
+					 * \~russian
+					 * Объект фреймворка
+					 *
+					 * @note Держится ради работы с файловой системой: приведение пути к широкому
+					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
+					 *       узким, а кириллический адрес ложился бы на диск искажённым
+					 *
+					 * @warning Пустым он остаётся у значений, какому его не задавали, и сохранение
+					 *          у такого значения отвечает отказом, а не пишет узким ходом молча
+					 *
+					 * \~english
+					 * Framework object
+					 *
+					 * \~
+					 */
 					/**
 					 * \~russian
 					 * @brief Метод розыска номера вложенного узла разметки по местному имени
@@ -462,94 +533,6 @@ namespace awh {
 					 * \~
 					 */
 					uint32_t roots() const noexcept;
-				private:
-					/**
-					 * \~russian
-					 * Отображение имён свойств узла на их номера, заводимое по требованию
-					 *
-					 * @details Ключ двухуровневый - местное имя, а под ним обозначение пространства
-					 * имён, - и составного ключа отсюда не собирается нигде. Ключ, склеенный из
-					 * двух имён, требовал бы выделения памяти на ВСЯКОМ розыске, тогда как
-					 * розыск обязан обходиться без выделений вовсе
-					 *
-					 * @note Отображение это отвечает ТОЧНО, в отличие от отображения вложенных
-					 *       узлов: сличение свойств идёт по паре имени и пространства имён, и
-					 *       двух свойств с одинаковой парой у узла не бывает - установка
-					 *       перезаписывает такое свойство на его же месте. Оттого отката к
-					 *       перебору здесь нет ни на одном пути
-					 *
-					 * \~english
-					 * Mapping of the names of the node properties onto their numbers, built on demand
-					 *
-					 * \~
-					 */
-					mutable unordered_map <string, unordered_map <string, size_t>> _properties;
-				private:
-					/**
-					 * \~russian
-					 * Признак заведённости отображения имён свойств узла
-					 *
-					 * @note Признак отдельный от пустоты отображения обязателен по той же причине,
-					 *       что и у отображения вложенных узлов: у узла без свойств отображение
-					 *       выходит пустым, и сличение размеров велело бы заводить его снова
-					 *       на всяком обращении
-					 *
-					 * \~english
-					 * Flag of the readiness of the mapping of the names of the node properties
-					 *
-					 * \~
-					 */
-					mutable bool _propertied;
-				private:
-					/**
-					 * \~russian
-					 * Объект ведения журнала работы
-					 *
-					 * @note Умолчание стоит прямо в объявлении намеренно: конструкторы копии и
-					 *       переноса логгера не принимают, и без умолчания поле у них осталось
-					 *       бы неопределённым. Сами они логгер СНИМАЮТ С ИСТОЧНИКА, но лишь
-					 *       когда своего у цели ещё нет: настроенная цель своего не отдаёт
-					 *
-					 * \~english
-					 * Object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
-					 * @brief Код отказа последней работы над значением
-					 *
-					 * @details Поле изменчиво нарочно: выдача текста значения идёт работой
-					 * неизменной, а сообщать отказ обязана - иначе пустой текст неотличим
-					 * от значения пустого
-					 *
-					 * \~english
-					 * @brief Code of the refusal of the last operation over the value
-					 * @details The field is mutable deliberately: the issuance of the text of a value
-					 * is a constant operation, while it is obliged to report a refusal — otherwise
-					 * an empty text is indistinguishable from an empty value
-					 * \~
-					 */
-					mutable error_t _error = error_t::NONE;
-					const log_t * _log = nullptr;
-					/**
-					 * \~russian
-					 * Объект фреймворка
-					 *
-					 * @note Держится ради работы с файловой системой: приведение пути к широкому
-					 *       виду живёт в нём, и без него всякий путь под MS Windows уходил бы
-					 *       узким, а кириллический адрес ложился бы на диск искажённым
-					 *
-					 * @warning Пустым он остаётся у значений, какому его не задавали, и сохранение
-					 *          у такого значения отвечает отказом, а не пишет узким ходом молча
-					 *
-					 * \~english
-					 * Framework object
-					 *
-					 * \~
-					 */
-					const fmk_t * _fmk = nullptr;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод розыска номера свойства узла по имени и пространству имён
@@ -600,7 +583,6 @@ namespace awh {
 					 * \~
 					 */
 					void propertied(const string & local, const string & uri) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Шаблонный метод извлечения числа затребованным видом
@@ -619,7 +601,6 @@ namespace awh {
 					 */
 					template <typename T>
 					bool extract(T & result) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод записи значения в поток записи
@@ -642,7 +623,6 @@ namespace awh {
 					 * \~
 					 */
 					bool compose(writer_t & writer, const bool preserve = false) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод снятия значения с узла дерева разметки
@@ -669,7 +649,6 @@ namespace awh {
 					 * \~
 					 */
 					bool absorb(const node_t & node, const uint32_t depth = 0) noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод сбора содержимого вложенных текстовых узлов
@@ -683,7 +662,6 @@ namespace awh {
 					 * \~
 					 */
 					void gather(string & result) const noexcept;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения значения неопределённого
@@ -778,7 +756,6 @@ namespace awh {
 					 * \~
 					 */
 					static void limit(const size_t value) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод проверки определённости значения
@@ -848,7 +825,6 @@ namespace awh {
 					 * \~
 					 */
 					bool is(const kind_t kind) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения количества вложенных узлов
@@ -885,7 +861,6 @@ namespace awh {
 					 * \~
 					 */
 					void clear() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения имени узла
@@ -960,7 +935,6 @@ namespace awh {
 					 * \~
 					 */
 					void name(const string & local, const string & uri = "", const string & prefix = "") noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения содержимого узла
@@ -1003,7 +977,6 @@ namespace awh {
 					 * \~
 					 */
 					bool text(const string & text) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения свойств узла разметки
@@ -1099,7 +1072,6 @@ namespace awh {
 					 * \~
 					 */
 					bool detach(const string & local, const string & uri = "") noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения связываний префиксов, объявленных узлом
@@ -1130,7 +1102,6 @@ namespace awh {
 					 * \~
 					 */
 					bool binding(const string & prefix, const string & uri) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод проверки наличия вложенного узла разметки с указанным именем
@@ -1233,7 +1204,6 @@ namespace awh {
 					 * \~
 					 */
 					Value & place(const string & path) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод обращения к вложенному узлу разметки по местному имени
@@ -1411,7 +1381,6 @@ namespace awh {
 					template <typename T>
 					typename std::enable_if <std::is_same <T, char>::value, Value &>::type
 					operator [] (const T name) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод добавления узла в конец перечня вложенных
@@ -1493,7 +1462,6 @@ namespace awh {
 					 * \~
 					 */
 					bool erase(const size_t index) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения логического значения
@@ -1621,7 +1589,6 @@ namespace awh {
 					 * \~
 					 */
 					bool value(string & result) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод разбора текста разметки во владеющее значение
@@ -1791,7 +1758,6 @@ namespace awh {
 					 * \~
 					 */
 					bool save(const string & filename, const writer_t::settings_t & settings) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод сличения значений
@@ -1849,7 +1815,6 @@ namespace awh {
 					 * \~
 					 */
 					bool operator != (const Value & value) const noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Оператор присваивания копированием
@@ -1864,62 +1829,6 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта ведения журнала работы
-					 *
-					 * @details Привязка поздняя нужна там, где значение заведено копией либо
-					 * переносом: логгера они не принимают, и снять его с источника выходит лишь
-					 * когда у источника он есть
-					 *
-					 * @param log объект ведения журнала работы
-					 *
-					 * \~english
-					 * @brief Method of the setting of the object of the keeping of the work log
-					 *
-					 * @param log the object of the keeping of the work log
-					 *
-					 * \~
-					 */
-					void setLogger(const log_t * log) noexcept;
-					/**
-					 * \~russian
-					 * @brief Метод установки объекта фреймворка
-					 *
-					 * @details Объект уходит вглубь наравне с журналом: значение владеет вложенными
-					 * целиком, и работа с файловой системой у них общая
-					 *
-					 * @param fmk объект фреймворка
-					 *
-					 * \~english
-					 * @brief Method of the setting of the framework object
-					 *
-					 * @param fmk framework object
-					 *
-					 * \~
-					 */
-					void setFramework(const fmk_t * fmk) noexcept;
-				public:
-					/**
-					 * \~russian
-					 * @brief Конструктор
-					 *
-					 * @details Вид этот и есть общий у всех кодеков рамки: работа с файловой
-					 * системой требует обоих объектов, и значение, заведённое без них, сохранять
-					 * себя в файл не умеет
-					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 *
-					 * \~english
-					 * @brief Constructor
-					 *
-					 * @param fmk framework object
-					 * @param log object for working with logs
-					 *
-					 * \~
-					 */
-					Value(const fmk_t * fmk, const log_t * log) noexcept;
 					/**
 					 * \~russian
 					 * @brief Оператор присваивания копией
@@ -1951,10 +1860,13 @@ namespace awh {
 					 * \~
 					 */
 					Value & operator = (Value && value) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
+					 *
+					 * @details Вид этот и есть общий у всех кодеков рамки: работа с файловой
+					 * системой требует обоих объектов, и значение, заведённое без них, сохранять
+					 * себя в файл не умеет
 					 *
 					 * \~english
 					 * @brief Constructor
@@ -2085,10 +1997,8 @@ namespace awh {
 				private:
 					// Собираемое значение
 					value_t _result;
-				private:
 					// Стек указаний на открытые узлы разметки
 					vector <value_t *> _nesting;
-				private:
 					/**
 					 * \~russian
 					 * @brief Метод помещения собранного узла на своё место
@@ -2257,7 +2167,6 @@ namespace awh {
 					 * \~
 					 */
 					bool value(const value_t & value) noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Метод извлечения текущей глубины вложенности
@@ -2306,7 +2215,6 @@ namespace awh {
 					 * \~
 					 */
 					value_t finish() noexcept;
-				public:
 					/**
 					 * \~russian
 					 * @brief Конструктор
@@ -2316,10 +2224,7 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					explicit Builder(const log_t * log) noexcept {
-						// Выполняем установку объекта ведения журнала собираемому значению
-						this->_result.setLogger(log);
-					}
+					explicit Builder() noexcept;
 					/**
 					 * \~russian
 					 * @brief Деструктор

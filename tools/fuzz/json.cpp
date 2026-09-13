@@ -36,8 +36,9 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <sys/log.hpp>
 #include <codec/json/json.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -57,44 +58,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -722,7 +693,7 @@ namespace {
 		// Итог разбора текста документа
 		Outcome result;
 		// Объект чтения текста документа
-		json::reader_t reader(::logger());
+		json::reader_t reader;
 		// Выполняем установку настроек разбора текста
 		reader.settings(settings);
 		// Получаем размер куска, каким подаётся текст документа
@@ -1061,7 +1032,7 @@ namespace {
 		// Увеличиваем счёт перезаписей дерева документа
 		totals.rewrites++;
 		// Объект дерева перезаписанного документа
-		json::document_t rewritten(::logger());
+		json::document_t rewritten;
 		// Получаем настройки разбора перезаписанного документа
 		json::document_t::settings_t rules = rewritten.settings();
 		/**
@@ -1146,7 +1117,7 @@ namespace {
 				return true;
 		}
 		// Объект записи текста документа
-		json::writer_t writer(::logger());
+		json::writer_t writer;
 		// Получаем настройки записи текста документа
 		json::writer_t::settings_t rules = writer.settings();
 		// Разрешаем запись значения верхнего уровня
@@ -1163,7 +1134,7 @@ namespace {
 			return false;
 		}
 		// Объект дерева записанного документа
-		json::document_t document(::logger());
+		json::document_t document;
 		/**
 		 * Если разбор записанного числа завершился отказом
 		 */
@@ -1366,7 +1337,7 @@ namespace {
 			// Выводим признак сохранности кругового хода
 			return true;
 		// Объект потокового сборщика владеющего значения
-		json::builder_t builder(::logger());
+		json::builder_t builder;
 		/**
 		 * Если пересборка значения потоковым сборщиком завершилась отказом
 		 */
@@ -1393,7 +1364,7 @@ namespace {
 		 * @note Прививаемое место обязано существовать: прививка заменяет поддерево,
 		 *       а не заводит новое поле, — оттого поле в принимающем дереве и заведено
 		 */
-		json::document_t host(::logger());
+		json::document_t host;
 		/**
 		 * Если заведение принимающего прививку дерева завершилось успехом
 		 */
@@ -1483,7 +1454,7 @@ namespace {
 			// Выводим признак сохранности кругового хода
 			return true;
 		// Объект дерева документа, записанного значением
-		json::document_t written(::logger());
+		json::document_t written;
 		// Получаем настройки разбора записанного значением документа
 		json::document_t::settings_t rules = written.settings();
 		// Устанавливаем разрешение записей нечисла и бесконечности
@@ -1530,7 +1501,7 @@ namespace {
 		// Описи документов, собранных потоковой выдачей
 		vector <string> streamed;
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document;
 		// Выполняем установку настроек разбора текста документа
 		document.settings(settings);
 		// Выполняем разбор текста документа с потоковой выдачей
@@ -1556,7 +1527,7 @@ namespace {
 			// Выводим признак совпадения путей разбора
 			return true;
 		// Объект дерева документа, собираемого целиком
-		json::document_t whole(::logger());
+		json::document_t whole;
 		// Выполняем установку настроек разбора текста документа
 		whole.settings(settings);
 		// Получаем признак успешности сборки текста документа целиком
@@ -1639,6 +1610,13 @@ namespace {
  *
  */
 int main(int argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Получаем количество проходов генератора
 	const uint64_t count = ((argc > 1) ? static_cast <uint64_t> (::atoll(argv[1])) : 3000);
 	// Получаем зерно источника случайных чисел
@@ -1734,7 +1712,7 @@ int main(int argc, char * argv[]) noexcept {
 			}
 		}
 		// Объект дерева документа
-		json::document_t document(::logger());
+		json::document_t document;
 		// Выполняем установку настроек разбора текста документа
 		document.settings(settings);
 		/**

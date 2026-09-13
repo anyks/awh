@@ -18,6 +18,7 @@
  * @copyright Copyright © 2026
  *
  */
+#include <codec/syslog/syslog.hpp>
 
 /**
  * Стандартные заголовочные файлы
@@ -31,7 +32,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/syslog/syslog.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -42,6 +42,7 @@
  * Подавляем системные макросы, занявшие имена членов перечислений AWH
  */
 #include <sys/macro/suppress.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Внутренние служебные объекты
@@ -58,41 +59,15 @@ namespace {
 	 */
 	struct SilentSysLogDocument {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		SilentSysLogDocument() noexcept : log(&SilentSysLogDocument::framework()) {
+		SilentSysLogDocument() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
 
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * documentLogger() noexcept {
-		// Объект журнала проверок
-		static SilentSysLogDocument silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -127,7 +102,7 @@ static string flatten(const abc::value_t & value) noexcept {
  */
 TEST(CodecSysLogDocument, Layout) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(document.parse(
 		"<165>1 2003-10-11T22:14:15.003Z myhostname myapp 1234 ID47 "
@@ -171,7 +146,7 @@ TEST(CodecSysLogDocument, Layout) {
  */
 TEST(CodecSysLogDocument, Traversal) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(document.parse(
 		"<165>1 2003-10-11T22:14:15.003Z host app - ID47 "
@@ -216,7 +191,7 @@ TEST(CodecSysLogDocument, Traversal) {
  */
 TEST(CodecSysLogDocument, ResetAgainstErase) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(document.parse("<165>1 2003-10-11T22:14:15.003Z host app 1234 ID47 - Message"));
 	// Выполняем проверку постановки значения дерева по пути
@@ -271,7 +246,7 @@ TEST(CodecSysLogDocument, Roundtrip) {
 	 */
 	for(auto & sample : SAMPLES){
 		// Объект события первого разбора
-		syslog::document_t one(&SilentSysLogDocument::framework(), ::documentLogger());
+		syslog::document_t one;
 		// Выполняем проверку успешности разбора исходной записи
 		ASSERT_TRUE(one.parse(sample)) << "запись: " << sample
 		                               << ", отказ: " << syslog::message(one.error());
@@ -281,7 +256,7 @@ TEST(CodecSysLogDocument, Roundtrip) {
 		ASSERT_FALSE(built.empty()) << "запись: " << sample
 		                            << ", отказ: " << syslog::message(one.error());
 		// Объект события повторного разбора
-		syslog::document_t two(&SilentSysLogDocument::framework(), ::documentLogger());
+		syslog::document_t two;
 		// Выполняем проверку успешности повторного разбора собранной записи
 		ASSERT_TRUE(two.parse(built)) << "исходная: " << sample << ", собранная: " << built
 		                              << ", отказ: " << syslog::message(two.error());
@@ -300,7 +275,7 @@ TEST(CodecSysLogDocument, Roundtrip) {
  */
 TEST(CodecSysLogDocument, Timestamps) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	/**
 	 * Выполняем проверку успешности разбора записи с датой БЕЗ ЗОНЫ
 	 *
@@ -345,7 +320,7 @@ TEST(CodecSysLogDocument, Timestamps) {
  */
 TEST(CodecSysLogDocument, TimestampRefusal) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Настройки разбора записей без сличения
 	syslog::reader_t::settings_t settings;
 	// Выключаем сличение разбираемой записи с описанием
@@ -369,7 +344,7 @@ TEST(CodecSysLogDocument, TimestampRefusal) {
  */
 TEST(CodecSysLogDocument, Naming) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(document.parse("<165>Oct 22 10:52:01 host app: Message"));
 	// Выполняем проверку источника сообщения: 165 / 8 = 20
@@ -396,7 +371,7 @@ TEST(CodecSysLogDocument, Naming) {
  */
 TEST(CodecSysLogDocument, PriorityIsNotInvented) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи без приставки приоритета
 	ASSERT_TRUE(document.parse("Oct 22 10:52:01 host app: Message"));
 	// Выполняем сборку записи из дерева события
@@ -417,7 +392,7 @@ TEST(CodecSysLogDocument, PriorityIsNotInvented) {
  */
 TEST(CodecSysLogDocument, SettingsPairing) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Настройки разбора записей без снятия отмены знаков
 	syslog::reader_t::settings_t settings;
 	// Выключаем снятие отмены знаков со значений структурированных данных
@@ -433,7 +408,7 @@ TEST(CodecSysLogDocument, SettingsPairing) {
 	// Выполняем проверку успешности сборки записи
 	ASSERT_FALSE(built.empty());
 	// Объект события повторного разбора
-	syslog::document_t two(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t two;
 	// Выполняем установку тех же настроек разбора записей
 	ASSERT_TRUE(two.settings(settings));
 	// Выполняем проверку успешности повторного разбора собранной записи
@@ -453,7 +428,7 @@ TEST(CodecSysLogDocument, SettingsPairing) {
  */
 TEST(CodecSysLogDocument, Clear) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(document.parse("<165>1 2003-10-11T22:14:15.003Z host app - - [a@1 b=\"c\"] Message"));
 	// Выполняем проверку наличия блоков структурированных данных
@@ -474,7 +449,7 @@ TEST(CodecSysLogDocument, Clear) {
  */
 TEST(CodecSysLogDocument, Failure) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Настройки разбора записей строгим сличением
 	syslog::reader_t::settings_t settings;
 	// Устанавливаем строгое сличение разбираемой записи с описанием
@@ -510,7 +485,7 @@ TEST(CodecSysLogDocument, Failure) {
  */
 TEST(CodecSysLogDocument, OversizedPathIndexIsRefused) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Перечень из двух значений, в дерево ставимый
 	abc::value_t list(abc::kind_t::ARRAY);
 	// Ставим первое значение в перечень
@@ -563,7 +538,7 @@ TEST(CodecSysLogDocument, OversizedPathIndexIsRefused) {
  */
 TEST(CodecSysLogDocument, EscapedStructureIdentifiers) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем разбор записи с опознавателями, несущими знаки разделителя пути
 	ASSERT_TRUE(document.parse("<34>1 2003-10-11T22:14:15.003Z host - - - [a/b@1 k=\"v\"][c~d@2 m=\"w\"] текст"));
 	// Выполняем проверку числа разобранных блоков структурированных данных
@@ -613,7 +588,7 @@ TEST(CodecSysLogDocument, EscapedStructureIdentifiers) {
  */
 TEST(CodecSysLogDocument, SettingsOverloads) {
 	// Объект события, удерживаемого целиком
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Настройки чтения записей, документу устанавливаемые
 	syslog::reader_t::settings_t reader;
 	// Устанавливаем описание записи современным
@@ -653,7 +628,7 @@ TEST(CodecSysLogDocument, SettingsOverloads) {
  */
 TEST(CodecSysLogDocument, FileRoundtrip) {
 	// Объект события, записываемого в файл
-	syslog::document_t source(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t source;
 	// Выполняем проверку успешности разбора записи
 	ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
 	// Адрес временного файла оборота
@@ -661,7 +636,7 @@ TEST(CodecSysLogDocument, FileRoundtrip) {
 	// Выполняем проверку успешности записи события в файл
 	ASSERT_TRUE(source.save(filename));
 	// Объект события, из файла читаемого
-	syslog::document_t target(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t target;
 	// Выполняем проверку успешности чтения события из файла
 	ASSERT_TRUE(target.load(filename));
 	// Выполняем проверку того, что оборот через файл дал то же дерево
@@ -689,7 +664,7 @@ TEST(CodecSysLogDocument, FileRoundtrip) {
  */
 TEST(CodecSysLogDocument, EmptyDocumentQueries) {
 	// Объект работы с деревом события
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку того, что описание пустого дерева неопределённо
 	EXPECT_EQ(document.standard(), syslog::standard_t::AUTO);
 	// Выполняем проверку того, что приоритет пустого дерева нулевой
@@ -720,7 +695,7 @@ TEST(CodecSysLogDocument, EmptyDocumentQueries) {
  */
 TEST(CodecSysLogDocument, PathEdges) {
 	// Объект работы с деревом события
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку отказа постановки значения пустым путём
 	EXPECT_FALSE(document.set("", abc::value_t(string("value"))));
 	// Выполняем проверку кода отказа постановки значения
@@ -794,7 +769,7 @@ TEST(CodecSysLogDocument, PathEdges) {
  */
 TEST(CodecSysLogDocument, FailurePaths) {
 	// Объект работы с деревом события
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Ставим имя узла знаками в дерево события
 	ASSERT_TRUE(document.set("/header/hostname", abc::value_t(string("host"))));
 	/**
@@ -869,7 +844,7 @@ TEST(CodecSysLogDocument, DirectoryIsRefused) {
 	// Выполняем заведение каталога подачи
 	ASSERT_EQ(::mkdir(directory.c_str(), 0755), 0);
 	// Объект работы с деревом события
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку отказа чтения каталога, поданного вместо файла
 	EXPECT_FALSE(document.load(directory));
 	// Выполняем проверку того, что отказ назван кодом чтения файла
@@ -881,13 +856,13 @@ TEST(CodecSysLogDocument, DirectoryIsRefused) {
 	// Адрес заводимого файла записи системного журнала
 	const string filename = "./syslog-directory-probe.log";
 	// Объект работы с деревом события для записи в файл
-	syslog::document_t source(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t source;
 	// Выполняем чтение записи системного журнала деревом события
 	ASSERT_TRUE(source.parse("<165>Oct 22 10:52:01 host app: Message"));
 	// Выполняем запись события в файл
 	ASSERT_TRUE(source.save(filename));
 	// Объект работы с деревом события для чтения из файла
-	syslog::document_t target(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t target;
 	// Выполняем проверку успешности чтения годного файла
 	ASSERT_TRUE(target.load(filename)) << static_cast <uint32_t> (target.error());
 	// Выполняем проверку того, что имя узла из файла прочтено
@@ -909,7 +884,7 @@ TEST(CodecSysLogDocument, DirectoryIsRefused) {
  */
 TEST(CodecSysLogDocument, SetThroughScalarDeepPath) {
 	// Объект события syslog
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Ставим значение скаляром звеном будущего пути
 	ASSERT_TRUE(document.set("/header/hostname", abc::value_t(string("host"))));
 	// Выполняем проверку отказа постановки значения сквозь скаляр в середине пути
@@ -930,7 +905,7 @@ TEST(CodecSysLogDocument, SetThroughScalarDeepPath) {
  */
 TEST(CodecSysLogDocument, ArrayKeys) {
 	// Объект события syslog
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Заводим значение перечнем
 	abc::value_t items(abc::kind_t::ARRAY);
 	// Добавляем первое значение перечня
@@ -967,7 +942,7 @@ TEST(CodecSysLogDocument, ArrayKeys) {
  */
 TEST(CodecSysLogDocument, DuplicateNames) {
 	// Объект события syslog
-	syslog::document_t document(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t document;
 	// Выполняем проверку успешности разбора записи с повтором имени поля блока
 	ASSERT_TRUE(document.parse("<34>1 2003-10-11T22:14:15Z host app - - [a@1 k=\"первое\" k=\"второе\"] текст"));
 	// Выполняем проверку того, что в дереве осталось последнее значение поля
@@ -1008,7 +983,7 @@ TEST(CodecSysLogDocument, SaveOverLongerFile) {
 	// Адрес временного файла сохранения
 	const string filename = "/tmp/awh-syslog-overwrite.log";
 	// Объект события, записываемого длинной записью
-	syslog::document_t before(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t before;
 	// Выполняем разбор длинной записи системного журнала
 	ASSERT_TRUE(before.parse("<34>1 2003-10-11T22:14:15.003Z hostname application 1 ID47 [a@1 k=\"v\" m=\"w\"] длинное сообщение системного журнала"));
 	// Величина собранной длинной записи
@@ -1016,7 +991,7 @@ TEST(CodecSysLogDocument, SaveOverLongerFile) {
 	// Выполняем проверку успешности записи длинной записи в файл
 	ASSERT_TRUE(before.save(filename));
 	// Объект события, записываемого короткой записью
-	syslog::document_t after(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t after;
 	// Выполняем разбор короткой записи системного журнала
 	ASSERT_TRUE(after.parse("<13>1 2023-04-11T23:29:33Z host app - - - m"));
 	// Выполняем проверку того, что короткая запись длинной короче
@@ -1024,7 +999,7 @@ TEST(CodecSysLogDocument, SaveOverLongerFile) {
 	// Выполняем проверку успешности записи короткой записи поверх длинной
 	ASSERT_TRUE(after.save(filename));
 	// Объект события, из файла читаемого
-	syslog::document_t target(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t target;
 	// Выполняем проверку успешности чтения события из файла
 	ASSERT_TRUE(target.load(filename));
 	// Выполняем проверку того, что в файле осталась одна лишь короткая запись
@@ -1069,7 +1044,7 @@ TEST(CodecSysLogDocument, UnreadableFileIsRefused) {
 	// Адрес временного файла проверки
 	const string filename = "/tmp/awh-syslog-unreadable.log";
 	// Объект события, записываемого в файл
-	syslog::document_t source(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t source;
 	// Выполняем разбор годной записи системного журнала
 	ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
 	// Выполняем проверку успешности записи события в файл
@@ -1077,7 +1052,7 @@ TEST(CodecSysLogDocument, UnreadableFileIsRefused) {
 	// Выполняем отнятие всех прав у файла проверки
 	ASSERT_EQ(::chmod(filename.c_str(), 0), 0);
 	// Объект события, из файла читаемого
-	syslog::document_t target(&SilentSysLogDocument::framework(), ::documentLogger());
+	syslog::document_t target;
 	// Выполняем проверку отказа чтения файла, для чтения недоступного
 	EXPECT_FALSE(target.load(filename));
 	// Выполняем проверку того, что отказ назван кодом чтения файла
@@ -1086,4 +1061,101 @@ TEST(CodecSysLogDocument, UnreadableFileIsRefused) {
 	ASSERT_EQ(::chmod(filename.c_str(), 0600), 0);
 	// Выполняем снос временного файла проверки
 	::remove(filename.c_str());
+}
+
+
+/**
+ * @brief Проверка чтения записи по символьной ссылке
+ *
+ * @details Ссылка на файл читается ровно как файл: тот, кто её открывает, разницы не
+ *          видит, и `ifstream`, стоявший здесь до переезда на `sys/fs`, открывал её без
+ *          всякой оговорки. Договор кодека обязан остаться тем же
+ *
+ * @note Заведено 13.09.2026 по РЕГРЕССИИ, внесённой переездом: ход `fs_t::type` по
+ *       умолчанию ссылку ОТЛИЧАЕТ от файла, отвечая `LINK`, и первая редакция заслона
+ *       отвергала всякую ссылку кодом `FILE_NOT_OPENED`. Прочесть её `fs_t` при этом
+ *       давал без единой жалобы - отказ был выдуман кодеком, а не системой
+ *
+ */
+TEST(CodecSysLogDocument, SymlinkIsReadAsFile) {
+	// Адрес файла записи
+	const string filename = "/tmp/awh-syslog-symlink-target.log";
+	// Адрес символьной ссылки на файл записи
+	const string linkname = "/tmp/awh-syslog-symlink.log";
+	// Объект события, записываемого в файл
+	syslog::document_t source;
+	// Выполняем разбор годной записи системного журнала
+	ASSERT_TRUE(source.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
+	// Выполняем проверку успешности записи события в файл
+	ASSERT_TRUE(source.save(filename));
+	// Выполняем снос ссылки, прежним прогоном оставленной
+	::remove(linkname.c_str());
+	// Выполняем заведение символьной ссылки на файл записи
+	ASSERT_EQ(::symlink(filename.c_str(), linkname.c_str()), 0);
+	// Объект события, по ссылке читаемого
+	syslog::document_t target;
+	// Выполняем проверку успешности чтения события по символьной ссылке
+	ASSERT_TRUE(target.load(linkname)) << "код отказа: " << static_cast <uint32_t> (target.error());
+	// Выполняем проверку того, что чтение по ссылке дало то же дерево
+	EXPECT_EQ(source.root(), target.root());
+	// Выполняем снос символьной ссылки
+	::remove(linkname.c_str());
+	// Выполняем снос файла записи
+	::remove(filename.c_str());
+}
+
+/**
+ * @brief Проверка отклонения символьной ссылки на каталог
+ *
+ * @details Ссылка на каталог есть тот же каталог для того, кто его открывает, и отвечаться
+ *          обязана тем же кодом, что и каталог поданный прямо
+ *
+ */
+TEST(CodecSysLogDocument, SymlinkToDirectoryIsRefused) {
+	// Адрес символьной ссылки на каталог
+	const string linkname = "/tmp/awh-syslog-dirlink";
+	// Выполняем снос ссылки, прежним прогоном оставленной
+	::remove(linkname.c_str());
+	// Выполняем заведение символьной ссылки на каталог
+	ASSERT_EQ(::symlink("/tmp", linkname.c_str()), 0);
+	// Объект события syslog
+	syslog::document_t document;
+	// Выполняем проверку отказа чтения по ссылке на каталог
+	EXPECT_FALSE(document.load(linkname));
+	// Выполняем проверку того, что отказ назван кодом чтения файла
+	EXPECT_EQ(document.error(), syslog::error_t::FILE_NOT_READ);
+	// Выполняем снос символьной ссылки
+	::remove(linkname.c_str());
+}
+
+/**
+ * @brief Проверка отказа сохранения там, где писать нельзя
+ *
+ * @details Отказ записи опознаётся ПРИЗНАКОМ самого хода `fs_t::write`: с переделки
+ *          `sys/fs` все восемь работ записи отвечают вызывающему, а не одному лишь
+ *          журналу. Ветвь эта прежде проверками затронута не была вовсе - карта покрытия
+ *          держала её пустой, - и отказ сохранения был неотличим от успеха
+ *
+ * @note Два негодных адреса и оба взяты из живых ошибок потребителя: путь в несуществующий
+ *       каталог и путь, каталогом ЯВЛЯЮЩИЙСЯ
+ *
+ */
+TEST(CodecSysLogDocument, SaveFailureIsReported) {
+	// Объект события, записываемого в файл
+	syslog::document_t document;
+	// Выполняем разбор годной записи системного журнала
+	ASSERT_TRUE(document.parse("<34>1 2003-10-11T22:14:15.003Z host app 1 ID47 [a@1 k=\"v\"] текст"));
+	// Выполняем проверку отказа сохранения в несуществующий каталог
+	EXPECT_FALSE(document.save("/tmp/awh-syslog-нет-такого-каталога/событие.log"));
+	// Выполняем проверку отказа сохранения по адресу, каталогом являющемуся
+	EXPECT_FALSE(document.save("/tmp"));
+	/**
+	 * Объект события, записи не несущего
+	 *
+	 * @note Сбор записи из пустого дерева отвечается пустотою, и сохранять тогда нечего:
+	 *       заведись файл, потребитель получил бы пустой файл вместо отказа
+	 */
+	syslog::document_t empty;
+	// Выполняем проверку отказа сохранения события, записи не несущего
+	EXPECT_FALSE(empty.save("/tmp/awh-syslog-empty.log"));
 }

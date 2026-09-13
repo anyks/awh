@@ -55,6 +55,8 @@
 #include <sys/os.hpp>
 #include <net/fds.hpp>
 #include <net/eth/eth.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -76,19 +78,16 @@ namespace options {
 	 *       задаются порознь - общий потолок в `net.core`, а пределы самого TCP
 	 *       набором из трёх чисел в `net.ipv4.tcp_rmem` и `net.ipv4.tcp_wmem`
 	 *
-	 * @param fmk объект фреймворка
-	 * @param log объект работы с логами
-	 *
 	 */
-	static void netboost([[maybe_unused]] const awh::fmk_t * fmk, const awh::log_t * log) noexcept {
+	static void netboost() noexcept {
 		/**
 		 * Выполняем перехват ошибок
 		 */
 		try {
 			// Выполняем инициализацию объекта работы с операционной системы
-			awh::os_t os(log);
+			awh::os_t os;
 			// Выполняем инициализацию объекта работы с файловыми дескрипторами
-			awh::fds_t fds(log);
+			awh::fds_t fds;
 			/**
 			 * Выполняем установку нужного нам количества файловых дескрипторов
 			 */
@@ -133,13 +132,13 @@ namespace options {
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
+						awh::log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("Root privileges are required to apply network optimizations", awh::log_t::flag_t::WARNING);
+						awh::log::print("Root privileges are required to apply network optimizations", awh::log::flag_t::WARNING);
 					#endif
 				// Если права суперпользователя получены
 				} else {
@@ -201,15 +200,15 @@ namespace options {
 					// Если выбран лучший доступны алгоритм
 					if(!algorithm.empty()){
 						// Если найден алгоритм bbr
-						if(fmk->exists("bbr", algorithm))
+						if(awh::fmk::exists("bbr", algorithm))
 							// Активируем выбранный нами алгоритм
 							os.sysctl("net.ipv4.tcp_congestion_control", "bbr");
 						// Если же найден алгоритм cubic
-						else if(fmk->exists("cubic", algorithm))
+						else if(awh::fmk::exists("cubic", algorithm))
 							// Активируем выбранный нами алгоритм
 							os.sysctl("net.ipv4.tcp_congestion_control", "cubic");
 						// Если же найден алгоритм htcp
-						else if(fmk->exists("htcp", algorithm))
+						else if(awh::fmk::exists("htcp", algorithm))
 							// Активируем выбранный нами алгоритм
 							os.sysctl("net.ipv4.tcp_congestion_control", "htcp");
 					}
@@ -224,13 +223,13 @@ namespace options {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -242,13 +241,10 @@ namespace options {
  * @note Протокол с управлением потоком у Linux есть, и объект работы с ним
  *       создаётся здесь наравне с прочими
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
- addr(fmk, log), iface(fmk, log), sctp(fmk, log), socket(fmk, log),
- gateway(fmk, log), _fmk(fmk), _log(log) {
+awh::Ethernet::Ethernet() noexcept :
+ addr(), iface(), sctp(), socket(),
+ gateway() {
 	/**
 	 * Связываем объект работы с адресами с объектом управления шлюзами: исходящий
 	 * адрес определяется подбором маршрута, а подбор ведёт объект шлюзов
@@ -257,7 +253,7 @@ awh::Ethernet::Ethernet(const fmk_t * fmk, const log_t * log) noexcept :
 	/**
 	 * Выполняем настройку сетевых параметров
 	 */
-	::options::netboost(fmk, log);
+	::options::netboost();
 }
 /**
  * @brief Деструктор

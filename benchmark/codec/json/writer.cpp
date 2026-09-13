@@ -23,6 +23,7 @@
  * Подключаем заголовочный файл модуля
  */
 #include "json.hpp"
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён замеров этого файла
@@ -42,44 +43,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка замеров
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка замеров
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка замеров
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка замеров
-			return fmk;
-		}
-		// Объект журнала замеров
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала замеров
-	 *
-	 * @return объект журнала замеров
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала замеров
-		static Silent silent;
-		// Выводим объект журнала замеров
-		return &silent.log;
-	}
 }
 
 /**
@@ -341,7 +312,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект записи текста документа
-		awh::codec::json::writer_t writer(::logger());
+		awh::codec::json::writer_t writer;
 		// Получаем размер собираемого текста документа
 		const size_t bytes = static_cast <size_t> (::compose(writer));
 		// Выполняем прогон измеряемой операции
@@ -366,7 +337,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект записи текста документа
-		awh::codec::json::writer_t writer(::logger());
+		awh::codec::json::writer_t writer;
 		// Получаем размер собираемого текста документа
 		const size_t bytes = static_cast <size_t> (::digits(writer));
 		// Выполняем прогон измеряемой операции
@@ -391,7 +362,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект записи текста документа
-		awh::codec::json::writer_t writer(::logger());
+		awh::codec::json::writer_t writer;
 		// Получаем размер собираемого текста документа
 		const size_t bytes = static_cast <size_t> (::escaped(writer));
 		// Выполняем прогон измеряемой операции
@@ -416,7 +387,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект записи текста документа
-		awh::codec::json::writer_t writer(::logger());
+		awh::codec::json::writer_t writer;
 		// Получаем настройки записи текста документа
 		awh::codec::json::writer_t::settings_t settings = writer.settings();
 		// Устанавливаем человекочитаемый вид записи
@@ -451,7 +422,7 @@ namespace {
 		// Результат измерения
 		awh::benchmark::result_t result;
 		// Объект записи текста документа
-		awh::codec::json::writer_t writer(::logger());
+		awh::codec::json::writer_t writer;
 		// Получаем размер собираемого текста документа
 		const size_t bytes = static_cast <size_t> (::compose(writer));
 		// Выполняем прогон измеряемой операции

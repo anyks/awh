@@ -35,6 +35,8 @@
 #include <nghttp2/nghttp2.h>
 
 #include <proto/http/parser/http2/http.hpp>
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 using namespace awh;
 using namespace awh::http;
@@ -174,12 +176,15 @@ static int onError(nghttp2_session *, int, const char * msg, size_t len, void *)
 }
 
 int main(){
-	// Объект фреймворка
-	fmk_t fmk;
-	// Объект логов
-	log_t log(&fmk);
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	// Отключаем вывод логов
-	log.level(log_t::level_t::NONE);
+	awh::log::level(awh::log::level_t::NONE);
 	// Объект состояния проверки
 	state_t state;
 	// Формируем тело запроса заведомо больше окна управления потоком
@@ -199,7 +204,7 @@ int main(){
 		// Заполняем очередной байт тела ответа
 		responseBody[i] = static_cast <char> ((i * 17 + 3) & 0xFF);
 	// Создаём объект парсера нашего сервера
-	parser_http2_t server(direct_t::REQUEST, &fmk, &log);
+	parser_http2_t server(direct_t::REQUEST);
 	// Устанавливаем функцию обратного вызова записи исходящих байт
 	server.on(parser_http2_t::write_callback_t([&](const void * buffer, const size_t size) noexcept {
 		// Накапливаем байты для клиента nghttp2

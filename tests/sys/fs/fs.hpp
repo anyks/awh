@@ -36,10 +36,6 @@ class FSFixture : public testing::Test {
 	protected:
 		// Объект работы с файловой системой
 		std::unique_ptr <awh::fs_t> _fs;
-		// Объекты фреймворка
-		std::unique_ptr <awh::fmk_t> _fmk;
-		// Объект логов
-		std::unique_ptr <awh::log_t> _log;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения

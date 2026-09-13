@@ -29,12 +29,8 @@
  *
  */
 void QueueFixture::SetUp(){
-	// Создаём объекты фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект очереди
-	this->_queue = std::make_unique <awh::queue_t> (this->_fmk.get(), this->_log.get());
+	this->_queue = std::make_unique <awh::queue_t> ();
 }
 
 /**

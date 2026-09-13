@@ -54,44 +54,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -113,7 +83,7 @@ using namespace awh::codec;
  */
 static bool convert(const string & input, const size_t step, string & result, ini::error_t & error, ini::encoding_t & enc) noexcept {
 	// Объект приведения исходного текста к кодировке UTF-8
-	ini::decoder_t decoder(::logger());
+	ini::decoder_t decoder;
 	// Выполняем очистку приведённого текста
 	result.clear();
 	/**
@@ -368,7 +338,7 @@ TEST(CodecIniEncoding, Utf32ForbiddenCharacter) {
  */
 TEST(CodecIniEncoding, HeldByteSurvivesEmptyChunk) {
 	// Объект приведения исходного текста к кодировке UTF-8
-	ini::decoder_t decoder(::logger());
+	ini::decoder_t decoder;
 	// Приведённый к кодировке UTF-8 текст
 	string result;
 	// Выполняем навязывание кодировки исходного текста
@@ -392,7 +362,7 @@ TEST(CodecIniEncoding, HeldByteSurvivesEmptyChunk) {
  */
 TEST(CodecIniEncoding, Latin1) {
 	// Объект приведения исходного текста к кодировке UTF-8
-	ini::decoder_t decoder(::logger());
+	ini::decoder_t decoder;
 	// Приведённый к кодировке UTF-8 текст
 	string result;
 	// Выполняем навязывание кодировки исходного текста
@@ -458,7 +428,7 @@ TEST(CodecIniEncoding, Malformed) {
  */
 TEST(CodecIniEncoding, Reset) {
 	// Объект приведения исходного текста к кодировке UTF-8
-	ini::decoder_t decoder(::logger());
+	ini::decoder_t decoder;
 	// Приведённый к кодировке UTF-8 текст
 	string result;
 	// Выполняем навязывание кодировки исходного текста
@@ -495,7 +465,7 @@ TEST(CodecIniEncoding, Windows1252) {
 	// Устанавливаем кодировку исходного текста
 	settings.encoding = ini::encoding_t::CP1252;
 	// Объект потокового чтения текста настроек
-	ini::reader_t reader(::logger(), settings);
+	ini::reader_t reader(settings);
 	// Собираемый текст настроек
 	string text = "[a]\nk = ";
 	// Выполняем добавление денежного знака евро
@@ -524,7 +494,7 @@ TEST(CodecIniEncoding, Windows1252) {
 	ASSERT_TRUE(received);
 	{
 		// Объект потокового чтения текста настроек
-		ini::reader_t reader(::logger(), settings);
+		ini::reader_t reader(settings);
 		// Собираемый текст настроек
 		string text = "[a]\nk = ";
 		// Выполняем добавление неопределённого в кодировке значения
@@ -562,7 +532,7 @@ TEST(CodecIniEncoding, SingleByte) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(ini::encoding_t::ASCII));
 		// Выполняем проверку того, что приведение годного текста удалось
@@ -575,7 +545,7 @@ TEST(CodecIniEncoding, SingleByte) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(ini::encoding_t::ASCII));
 		// Выполняем очистку приведённого текста
@@ -590,7 +560,7 @@ TEST(CodecIniEncoding, SingleByte) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(ini::encoding_t::ASCII));
 		// Выполняем очистку приведённого текста
@@ -605,7 +575,7 @@ TEST(CodecIniEncoding, SingleByte) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(ini::encoding_t::LATIN1));
 		// Выполняем очистку приведённого текста
@@ -624,7 +594,7 @@ TEST(CodecIniEncoding, SingleByte) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем навязывание кодировки исходного текста
 		ASSERT_TRUE(decoder.encoding(ini::encoding_t::CP1252));
 		// Выполняем очистку приведённого текста
@@ -673,7 +643,7 @@ TEST(CodecIniEncoding, BrokenSurrogates) {
 		 */
 		for(const size_t chunk : {static_cast <size_t> (0), static_cast <size_t> (1)}){
 			// Объект приведения исходного текста к кодировке UTF-8
-			ini::decoder_t decoder(::logger());
+			ini::decoder_t decoder;
 			// Выполняем навязывание кодировки исходного текста
 			ASSERT_TRUE(decoder.encoding(ini::encoding_t::UTF16BE)) << item.second;
 			// Признак успеха приведения негодного текста
@@ -717,7 +687,7 @@ TEST(CodecIniEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Текст настроек с меткой порядка байтов кодировки UTF-8
 		const string text = string("\xEF\xBB\xBF") + "k = 1\n";
 		// Выполняем проверку того, что приведение текста удалось
@@ -732,7 +702,7 @@ TEST(CodecIniEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем проверку того, что приведение текста удалось
@@ -745,7 +715,7 @@ TEST(CodecIniEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем проверку отказа приведения негодного текста
@@ -758,7 +728,7 @@ TEST(CodecIniEncoding, DecoderContract) {
 	 */
 	{
 		// Объект приведения исходного текста к кодировке UTF-8
-		ini::decoder_t decoder(::logger());
+		ini::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем проверку того, что кодировка навязана до начала приведения

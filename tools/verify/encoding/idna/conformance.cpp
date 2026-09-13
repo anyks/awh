@@ -18,6 +18,7 @@
 #include <fstream>
 #include <encoding/idna/idna.hpp>
 #include <encoding/unicode/utf8.hpp>
+#include <sys/fmk.hpp>
 
 using namespace std;
 using namespace awh;
@@ -72,6 +73,8 @@ static bool failing(const string & text){
 }
 
 int main(int argc, char ** argv){
+	// Выполняем заведение модуля ядра первым делом
+	awh::fmk::initialize();
 	const char * path = ((argc > 1) ? argv[1] : "submodules/libidn2/tests/IdnaTest.txt");
 	ifstream file(path);
 	if(!file.is_open()){

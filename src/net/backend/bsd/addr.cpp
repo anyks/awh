@@ -95,6 +95,8 @@
 #include <sys/locker.hpp>
 #include <net/eth/addr.hpp>
 #include <net/eth/gateway.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -588,7 +590,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не совпадающие имена интерфейсов
-					if((ifa->ifa_name == nullptr) || !this->_fmk->compare(ifa->ifa_name, source.iface))
+					if((ifa->ifa_name == nullptr) || !awh::fmk::compare(ifa->ifa_name, source.iface))
 						// Переходим к следующему интерфейсу
 						continue;
 					// Ищем MAC-адрес интерфейса
@@ -641,13 +643,13 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::WARNING);
+								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -665,7 +667,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 								// Пропускаем неактивные интерфейсы
 								continue;
 							// Если имя интерфейса совпадает
-							if(this->_fmk->compare(ifa->ifa_name, source.iface)){
+							if(awh::fmk::compare(ifa->ifa_name, source.iface)){
 								// Копируем IP-адрес в результат
 								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr.s_addr;
 								// Выходим из цикла
@@ -689,13 +691,13 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::WARNING);
+								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -728,7 +730,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 								// Пропускаем неактивные интерфейсы
 								continue;
 							// Если имя интерфейса совпадает
-							if(this->_fmk->compare(ifa->ifa_name, source.iface)){
+							if(awh::fmk::compare(ifa->ifa_name, source.iface)){
 								// Получаем адрес сетевого интерфейса
 								const struct sockaddr_in6 * addr = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
 								// Если адрес является канальным, откладываем его на крайний случай
@@ -780,13 +782,13 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -842,17 +844,17 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug(
+							awh::log::debug(
 								"Network address %u is not aligned to prefix %u", __PRETTY_FUNCTION__,
-								make_tuple(htonl(network->address), static_cast <uint16_t> (network->prefix)),
-								log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix)
+								{htonl(network->address), static_cast <uint16_t> (network->prefix)},
+								awh::log::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix)
 							);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Записываем ошибку в лог
-							this->_log->print("Network address %u is not aligned to prefix %u", log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix));
+							awh::log::print("Network address %u is not aligned to prefix %u", awh::log::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix));
 						#endif
 						// Выходим из функции
 						return;
@@ -869,19 +871,19 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Буфер временных данных для генерации IP-адреса
 						char buffer[INET_ADDRSTRLEN];
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								::inet_ntop(AF_INET, &network->address, buffer, sizeof(buffer)),
 								static_cast <uint16_t> (network->prefix)
-							), log_t::flag_t::WARNING
+							}, awh::log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+						awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
 					#endif
 					// Выходим из функции
 					return;
@@ -952,19 +954,19 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Буфер временных данных для генерации IP-адреса
 						char buffer[INET6_ADDRSTRLEN];
 						// Записываем ошибку в лог
-						this->_log->debug(
+						awh::log::debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
-							make_tuple(
+							{
 								::inet_ntop(AF_INET6, &network->address[0], buffer, sizeof(buffer)),
 								static_cast <uint16_t> (network->prefix)
-							), log_t::flag_t::WARNING
+							}, awh::log::flag_t::WARNING
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+						awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
 					#endif
 					// Выходим из функции
 					return;
@@ -1036,13 +1038,13 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1209,13 +1211,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Route sysctl estimate", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								awh::log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Route sysctl estimate", log_t::flag_t::WARNING);
+								awh::log::print("Route sysctl estimate", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1229,13 +1231,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								awh::log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Actual retrieval of routing table", log_t::flag_t::WARNING);
+								awh::log::print("Actual retrieval of routing table", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1343,13 +1345,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Route sysctl estimate", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								awh::log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Route sysctl estimate", log_t::flag_t::WARNING);
+								awh::log::print("Route sysctl estimate", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1363,13 +1365,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								awh::log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Actual retrieval of routing table", log_t::flag_t::WARNING);
+								awh::log::print("Actual retrieval of routing table", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1523,13 +1525,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1611,13 +1613,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+								awh::log::print("Unable to get list of network interfaces", awh::log::flag_t::WARNING);
 							#endif
 							// Выходим из функции
 							return;
@@ -1731,13 +1733,13 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node), static_cast <uint16_t> (source.ip->size)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node), static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
@@ -1784,13 +1786,13 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip, net, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {ip, net, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1858,13 +1860,13 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second, static_cast <uint16_t> (length)), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {first, second, static_cast <uint16_t> (length)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Возвращаем значение по умолчанию
@@ -1920,13 +1922,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						this->_log->debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
+						awh::log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unsupported protocol for checksum calculation", log_t::flag_t::CRITICAL);
+						awh::log::print("Unsupported protocol for checksum calculation", awh::log::flag_t::CRITICAL);
 					#endif
 					// Выходим из функции
 					return result;
@@ -2034,13 +2036,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
+					awh::log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Unsupported address family for checksum calculation", log_t::flag_t::CRITICAL);
+					awh::log::print("Unsupported address family for checksum calculation", awh::log::flag_t::CRITICAL);
 				#endif
 				// Выходим из функции
 				return result;
@@ -2066,13 +2068,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
@@ -2081,9 +2083,6 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 }
 /**
  * @brief Конструктор
- *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
  *
  */
 /**
@@ -2099,12 +2098,9 @@ void awh::eth::Network_Address::gateway(const Gateway * gateway) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект работы с логами
- *
  */
-awh::eth::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
- _iface(fmk, log), _gateway(nullptr), _fmk(fmk), _log(log) {
+awh::eth::Network_Address::Network_Address() noexcept :
+ _iface(), _gateway(nullptr) {
 	/**
 	 * Выполняем одноразовую настройку блокировки для всех экземпляров класса
 	 */

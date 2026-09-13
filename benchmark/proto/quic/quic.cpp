@@ -202,12 +202,9 @@ awh::tls::Coder::id_t awh::benchmark::quic::Security::context(const awh::quic::e
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::benchmark::quic::Security::Security(const awh::fmk_t * fmk, const awh::log_t * log) noexcept :
- _client(0), _server(0), _coder(fmk, log) {
+awh::benchmark::quic::Security::Security() noexcept :
+ _client(0), _server(0), _coder() {
 	// Сертификат узла бенчмарка в формате PEM
 	std::string certificate = "";
 	// Приватный ключ узла бенчмарка в формате PEM
@@ -274,12 +271,8 @@ awh::benchmark::quic::Security::~Security() noexcept {
  *
  */
 awh::benchmark::quic::Security & awh::benchmark::quic::security() noexcept {
-	// Объект фреймворка окружения
-	static awh::fmk_t fmk;
-	// Объект логирования окружения
-	static awh::log_t log(&fmk);
 	// Окружение транспортной безопасности бенчмарка
-	static Security result(&fmk, &log);
+	static Security result;
 	// Выводим окружение транспортной безопасности бенчмарка
 	return result;
 }

@@ -30,6 +30,7 @@
  */
 #include <gtest/gtest.h>
 #include <codec/json/json.hpp>
+#include <sys/log.hpp>
 
 /**
  * @brief Пространство имён проверок этого файла
@@ -49,54 +50,14 @@ namespace {
 	 */
 	struct Silent {
 		/**
-		 * @brief Функция получения объекта фреймворка проверок
-		 *
-		 * @details Объект заводится статикою местною, а не общею файла: заведение его
-		 *          порядком построения статики оканчивается падением ещё до входа в
-		 *          проверки, ибо фреймворк сам опирается на статику из библиотеки
-		 *
-		 * @return объект фреймворка проверок
-		 *
-		 */
-		static const awh::fmk_t & framework() noexcept {
-			// Объект фреймворка проверок
-			static awh::fmk_t fmk;
-			// Выводим объект фреймворка проверок
-			return fmk;
-		}
-		// Объект журнала проверок
-		awh::log_t log;
-		/**
 		 * @brief Конструктор
 		 *
 		 */
-		Silent() noexcept : log(&Silent::framework()) {
+		Silent() noexcept {
 			// Выполняем отключение вывода логов
-			this->log.mode({});
+			awh::log::mode({});
 		}
 	};
-	/**
-	 * @brief Функция получения объекта фреймворка проверок
-	 *
-	 * @return объект фреймворка проверок
-	 *
-	 */
-	const awh::fmk_t * framework() noexcept {
-		// Выводим объект фреймворка проверок
-		return &Silent::framework();
-	}
-	/**
-	 * @brief Функция получения объекта журнала проверок
-	 *
-	 * @return объект журнала проверок
-	 *
-	 */
-	const awh::log_t * logger() noexcept {
-		// Объект журнала проверок
-		static Silent silent;
-		// Выводим объект журнала проверок
-		return &silent.log;
-	}
 }
 
 /**
@@ -119,7 +80,7 @@ static string convert(const string & text, const size_t chunk, json::error_t & e
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	json::decoder_t decoder(::logger());
+	json::decoder_t decoder;
 	/**
 	 * Выполняем подачу исходного текста кусками заданного размера
 	 */
@@ -240,7 +201,7 @@ TEST(CodecJsonEncoding, Bulk) {
 			// Устанавливаем проверяемый знак в заданное положение
 			text[offset] = static_cast <char> (letter);
 			// Объект приведения исходного текста
-			json::decoder_t decoder(::logger());
+			json::decoder_t decoder;
 			// Результат приведения исходного текста
 			string result = "";
 			// Выполняем проверку того, что проход отвечает проверке знака
@@ -270,7 +231,7 @@ TEST(CodecJsonEncoding, Bulk) {
 			// Устанавливаем второй знак пары
 			text[1] = static_cast <char> (second);
 			// Объект приведения исходного текста
-			json::decoder_t decoder(::logger());
+			json::decoder_t decoder;
 			// Результат приведения исходного текста
 			string result = "";
 			// Выполняем проверку того, что проход отвечает проверке знаков пары
@@ -309,7 +270,7 @@ TEST(CodecJsonEncoding, Signature) {
 	// Код ошибки приведения исходного текста
 	json::error_t error = json::error_t::NONE;
 	// Объект приведения исходного текста
-	json::decoder_t decoder(::logger());
+	json::decoder_t decoder;
 	// Результат приведения исходного текста
 	string result = "";
 	// Выполняем приведение текста с меткой порядка байтов
@@ -403,7 +364,7 @@ TEST(CodecJsonEncoding, Forced) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	json::decoder_t decoder(::logger());
+	json::decoder_t decoder;
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(json::encoding_t::LATIN1));
 	// Выполняем приведение текста в навязанной кодировке
@@ -424,7 +385,7 @@ TEST(CodecJsonEncoding, Cp1252) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	json::decoder_t decoder(::logger());
+	json::decoder_t decoder;
 	// Выполняем навязывание кодировки исходного текста
 	ASSERT_TRUE(decoder.encoding(json::encoding_t::CP1252));
 	// Выполняем приведение текста в навязанной кодировке
@@ -460,7 +421,7 @@ TEST(CodecJsonEncoding, Reset) {
 	// Результат приведения исходного текста
 	string result = "";
 	// Объект приведения исходного текста
-	json::decoder_t decoder(::logger());
+	json::decoder_t decoder;
 	// Выполняем приведение текста с меткой порядка байтов
 	ASSERT_TRUE(decoder.convert(string("\xFF\xFE" "a\0", 4).data(), 4, true, result));
 	// Выполняем проверку определённой кодировки исходного текста
@@ -519,7 +480,7 @@ TEST(CodecJsonEncoding, Utf8Sequences) {
 		 */
 		for(size_t chunk = 1; chunk <= 8; chunk++){
 			// Объект потокового чтения текста
-			json::reader_t reader(::logger());
+			json::reader_t reader;
 			// Признак успешности разбора текста
 			bool result = true;
 			/**
@@ -564,13 +525,13 @@ TEST(CodecJsonEncoding, TruncatedAndAscii) {
 	// Добавляем начало знака кириллицы без хвоста его
 	text.push_back('\xD0');
 	// Дерево документа JSON
-	json::document_t document(::framework(), ::logger());
+	json::document_t document;
 	// Выполняем проверку того, что текст с оборванным знаком отвергается
 	ASSERT_FALSE(document.parse(text));
 	// Выполняем проверку того, что отказ вынесен по кодировке
 	ASSERT_EQ(document.error(), json::error_t::INVALID_ENCODING);
 	// Дерево документа, разбираемого в US-ASCII
-	json::document_t ascii(::framework(), ::logger());
+	json::document_t ascii;
 	// Получаем настройки дерева документа
 	json::document_t::settings_t settings = ascii.settings();
 	// Устанавливаем кодировку исходного текста US-ASCII
@@ -580,7 +541,7 @@ TEST(CodecJsonEncoding, TruncatedAndAscii) {
 	// Выполняем проверку того, что текст латиницей разбирается
 	ASSERT_TRUE(ascii.parse("{\"a\":\"b\"}"));
 	// Дерево документа с текстом, за US-ASCII выходящим
-	json::document_t beyond(::framework(), ::logger());
+	json::document_t beyond;
 	// Выполняем установку настроек дерева документа
 	beyond.settings(settings);
 	// Выполняем проверку того, что текст с кириллицей отвергается
@@ -673,7 +634,7 @@ TEST(CodecJsonEncoding, ForcedSingleByte) {
 	 */
 	auto forced = [](const json::encoding_t encoding, const string & text, string & result, json::error_t & error) noexcept -> bool {
 		// Объект приведения исходного текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Выполняем очистку приведённого текста
 		result.clear();
 		// Выполняем навязывание кодировки исходного текста
@@ -753,7 +714,7 @@ TEST(CodecJsonEncoding, PendingAcrossChunks) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу куска с оборванной последовательностью знака
@@ -768,7 +729,7 @@ TEST(CodecJsonEncoding, PendingAcrossChunks) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу двух байтов четырёхбайтовой последовательности знака
@@ -783,7 +744,7 @@ TEST(CodecJsonEncoding, PendingAcrossChunks) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Кусок проверенного текста
 		json::decoder_t::chunk_t chunk;
 		// Выполняем подачу куска с оборванной последовательностью знака
@@ -795,7 +756,7 @@ TEST(CodecJsonEncoding, PendingAcrossChunks) {
 	}
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Кусок проверенного текста
 		json::decoder_t::chunk_t chunk;
 		// Выполняем подачу двух байтов четырёхбайтовой последовательности знака
@@ -813,7 +774,7 @@ TEST(CodecJsonEncoding, PendingAcrossChunks) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу куска с оборванной последовательностью знака
@@ -844,7 +805,7 @@ TEST(CodecJsonEncoding, DecoderState) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу текста с хвостовым байтом без ведущего
@@ -859,7 +820,7 @@ TEST(CodecJsonEncoding, DecoderState) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Кусок проверенного текста
 		json::decoder_t::chunk_t chunk;
 		// Выполняем подачу текста с хвостовым байтом без ведущего
@@ -877,7 +838,7 @@ TEST(CodecJsonEncoding, DecoderState) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу куска с оборванной последовательностью знака
@@ -893,7 +854,7 @@ TEST(CodecJsonEncoding, DecoderState) {
 	}
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Кусок проверенного текста
 		json::decoder_t::chunk_t chunk;
 		// Выполняем подачу куска с оборванной последовательностью знака
@@ -913,7 +874,7 @@ TEST(CodecJsonEncoding, DecoderState) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем навязывание кодировки исходного текста
@@ -943,7 +904,7 @@ TEST(CodecJsonEncoding, HeldSequence) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу куска, оборванного посреди знака
@@ -963,7 +924,7 @@ TEST(CodecJsonEncoding, HeldSequence) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу куска, оборванного посреди знака
@@ -982,7 +943,7 @@ TEST(CodecJsonEncoding, HeldSequence) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу куска, оборванного посреди знака
@@ -997,7 +958,7 @@ TEST(CodecJsonEncoding, HeldSequence) {
 	 */
 	{
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Текст, к которому приводится исходный
 		string result = "";
 		// Выполняем подачу куска, оборванного посреди знака
@@ -1025,7 +986,7 @@ TEST(CodecJsonEncoding, DirectRefusals) {
 	 */
 	auto once = [](const string & text) noexcept -> json::error_t {
 		// Выполняем создание объекта приведения текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Кусок проверенного текста
 		json::decoder_t::chunk_t chunk;
 		// Выполняем подачу текста единственным куском
@@ -1067,7 +1028,7 @@ TEST(CodecJsonEncoding, Utf16PendingAcrossChunks) {
 	 */
 	for(uint32_t kind = 0; kind < 3; kind++){
 		// Объект приведения кодировки исходного текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Приведённый текст
 		string result;
 		// Собираем первый кусок, оборванный посреди пары байтов
@@ -1114,7 +1075,7 @@ TEST(CodecJsonEncoding, DirectPathSelection){
 	 */
 	{
 		// Объект приведения исходного текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Выполняем проверку того, что кодировка не определена
 		ASSERT_EQ(decoder.encoding(), json::encoding_t::NONE);
 	}
@@ -1123,7 +1084,7 @@ TEST(CodecJsonEncoding, DirectPathSelection){
 	 */
 	{
 		// Объект приведения исходного текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Результат приведения исходного текста
 		string result;
 		// Выполняем приведение текста в кодировке UTF-8
@@ -1141,7 +1102,7 @@ TEST(CodecJsonEncoding, DirectPathSelection){
 	 */
 	{
 		// Объект приведения исходного текста
-		json::decoder_t decoder(::logger());
+		json::decoder_t decoder;
 		// Результат приведения исходного текста
 		string result;
 		/**
@@ -1213,11 +1174,11 @@ TEST(CodecJsonEncoding, DirectPathSelection){
 		// Код ошибки разбора
 		json::error_t error = json::error_t::NONE;
 		// Дерево документа, разбирающее текст в кодировке UTF-8
-		json::document_t narrow(::framework(), ::logger());
+		json::document_t narrow;
 		// Выполняем разбор документа в кодировке UTF-8
 		ASSERT_TRUE(narrow.parse(sample)) << json::message(narrow.error());
 		// Дерево документа, разбирающее текст в кодировке UTF-16
-		json::document_t broad(::framework(), ::logger());
+		json::document_t broad;
 		// Выполняем разбор документа в кодировке UTF-16
 		ASSERT_TRUE(broad.parse(wide)) << json::message(broad.error());
 		// Выполняем сличение выдачи обоих способов чтения

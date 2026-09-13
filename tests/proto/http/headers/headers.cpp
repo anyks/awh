@@ -29,12 +29,8 @@
  *
  */
 void HeadersFixture::SetUp(){
-	// Создаём объект фреймворка
-	this->_fmk = std::make_unique <awh::fmk_t> ();
-	// Создаём объект логгера
-	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
 	// Создаём объект контейнера HTTP-заголовков
-	this->_headers = std::make_unique <awh::http::headers_t> (this->_fmk.get(), this->_log.get());
+	this->_headers = std::make_unique <awh::http::headers_t> ();
 }
 
 /**

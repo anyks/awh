@@ -33,6 +33,7 @@
  */
 #include <sys/macro/lib.hpp>
 #include <proto/http/parser/http1/http.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -2084,9 +2085,9 @@ bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view va
 			 * ради одного сообщения означала бы аллокацию на каждый отброшенный трейлер,
 			 * то есть на пути, который атакующая сторона наполняет по своему желанию
 			 */
-			this->_log->print(
+			awh::log::print(
 				"HTTP/1.x trailer field is not allowed and has been dropped: %.*s",
-				log_t::flag_t::WARNING, static_cast <int32_t> (name.size()), name.data()
+				awh::log::flag_t::WARNING, static_cast <int32_t> (name.size()), name.data()
 			);
 			// Продолжаем разбор
 			return true;
@@ -2181,13 +2182,13 @@ bool awh::http::Parser_HTTP::commitHeader(const string_view name, string_view va
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 			// Фиксируем внутреннюю ошибку
 			this->_error = error_t::INTERNAL;
@@ -2563,9 +2564,9 @@ void awh::http::Parser_HTTP::fail(const error_t error) noexcept {
 	 * сообщения означала бы аллокацию на каждую ошибку разбора, то есть на пути,
 	 * который атакующая сторона наполняет по своему желанию
 	 */
-	this->_log->print(
+	awh::log::print(
 		"HTTP/1.x %s parsing failed: %.*s",
-		log_t::flag_t::WARNING,
+		awh::log::flag_t::WARNING,
 		(this->_direct == direct_t::REQUEST ? "request" : "response"),
 		static_cast <int32_t> (name.size()), name.data()
 	);
@@ -2612,13 +2613,13 @@ void awh::http::Parser_HTTP::flush() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 			/**
 			 * Возвращаем неотданные байты обратно в выходной буфер: они ещё не попали
@@ -2688,9 +2689,9 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 		// Удаляем источник данных (сообщение осталось незавершённым - соединение следует закрыть)
 		this->_sender.source = nullptr;
 		// Записываем сообщение об отброшенном источнике тела в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/1.x outgoing message accepts no body: the pull data source has been dropped",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 		// Выводим результат
 		return result;
@@ -2768,13 +2769,13 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 		}
 		// Если источник сообщил об ошибке данных либо нарушил контракт (записал больше ёмкости)
@@ -2834,9 +2835,9 @@ size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
 				// Удаляем источник данных тела (сообщение осталось незавершённым)
 				this->_sender.source = nullptr;
 				// Записываем сообщение о преждевременном завершении тела источником в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x pull data source ended the body shorter than the announced Content-Length: %llu byte(s) left, the message is left unfinished",
-					log_t::flag_t::CRITICAL,
+					awh::log::flag_t::CRITICAL,
 					static_cast <unsigned long long> (this->_sender.remaining)
 				);
 			// Для остальных способов кадрирования конец тела источника завершает тело
@@ -3055,13 +3056,13 @@ bool awh::http::Parser_HTTP::firePhase(const phase_t phase, const part_t part) n
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (phase), static_cast <uint16_t> (part)), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (phase), static_cast <uint16_t> (part)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 			// Фиксируем внутреннюю ошибку
 			this->_error = error_t::INTERNAL;
@@ -3117,13 +3118,13 @@ bool awh::http::Parser_HTTP::fireChunk(const phase_t phase, const uint64_t size)
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (phase), size), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (phase), size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 			// Фиксируем внутреннюю ошибку
 			this->_error = error_t::INTERNAL;
@@ -3179,13 +3180,13 @@ bool awh::http::Parser_HTTP::fireProvider(const provider_t * provider, const boo
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(endStream), log_t::flag_t::CRITICAL, error.what());
+				awh::log::debug("%s", __PRETTY_FUNCTION__, {endStream}, awh::log::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 			#endif
 			// Фиксируем внутреннюю ошибку
 			this->_error = error_t::INTERNAL;
@@ -3551,9 +3552,9 @@ void awh::http::Parser_HTTP::clear() noexcept {
 	 */
 	if(this->_sender.sourceRunning){
 		// Записываем сообщение об отказе очистить объект в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/1.x parser cannot be cleared from within a pull data source call: the request has been dropped",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 		// Выходим из метода
 		return;
@@ -3574,10 +3575,6 @@ void awh::http::Parser_HTTP::clear() noexcept {
 	this->_callbacks = callbacks_t();
 	// Полностью сбрасываем состояние отправки (включая выходной буфер и пороги)
 	this->_sender = sender_t();
-	// Восстанавливаем объект логирования буфера исходящих байтов
-	this->_sender.output.setLogger(this->_log);
-	// Восстанавливаем объект логирования буфера передачи в сетевой слой
-	this->_sender.flushing.setLogger(this->_log);
 	// Восстанавливаем согласованность лимита памяти смартбуферов с порогами по умолчанию
 	this->sendWaterMarks(SEND_HIGH_WATER, SEND_LOW_WATER);
 }
@@ -3743,9 +3740,9 @@ void awh::http::Parser_HTTP::proto(const proto_t proto) noexcept {
 		 * указание молча означало бы оставить вызывающую сторону в уверенности, что
 		 * оно учтено
 		 */
-		default: this->_log->print(
+		default: awh::log::print(
 			"HTTP/1.x parser speaks HTTP/1.0 and HTTP/1.1 only: the protocol has not been changed",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 	}
 }
@@ -3766,7 +3763,7 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP::clone() const noexcept 
 	 */
 	try {
 		// Создаём новый объект парсера с теми же направлением трафика и объектами фреймворка
-		unique_ptr <parser_http_t> parser = make_unique <parser_http_t> (this->_direct, this->_fmk, this->_log);
+		unique_ptr <parser_http_t> parser = make_unique <parser_http_t> (this->_direct);
 		// Копируем настроенные лимиты безопасности
 		parser->_limits = this->_limits;
 		// Копируем метод запроса, которому соответствует ожидаемый ответ
@@ -3802,13 +3799,13 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP::clone() const noexcept 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Выводим результат
@@ -5858,13 +5855,13 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 		// Фиксируем внутреннюю ошибку разбора
 		this->fail(error_t::INTERNAL);
@@ -6041,9 +6038,9 @@ bool awh::http::Parser_HTTP::checkOutgoingFields(const headers_t & headers) cons
 		// Если название поля не является непустым токеном
 		if(!::isSendableName(header.name)){
 			// Записываем сообщение о непригодном названии поля в лог
-			this->_log->print(
+			awh::log::print(
 				"HTTP/1.x outgoing field name is not a valid token: message dropped",
-				log_t::flag_t::CRITICAL
+				awh::log::flag_t::CRITICAL
 			);
 			// Выводим результат проверки
 			return false;
@@ -6055,9 +6052,9 @@ bool awh::http::Parser_HTTP::checkOutgoingFields(const headers_t & headers) cons
 			 * управляющие символы, а запись их в журнал переносит расщепление строки
 			 * из соединения в журнал
 			 */
-			this->_log->print(
+			awh::log::print(
 				"HTTP/1.x outgoing field value contains control characters: message dropped (field \"%s\")",
-				log_t::flag_t::CRITICAL, header.name.c_str()
+				awh::log::flag_t::CRITICAL, header.name.c_str()
 			);
 			// Выводим результат проверки
 			return false;
@@ -6096,9 +6093,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 			 */
 			if(!::isSendableName(awh::http::methodName(request))){
 				// Записываем сообщение о непригодном методе запроса в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing request method is empty or is not a valid token: message dropped",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 				// Выводим результат проверки
 				return false;
@@ -6110,9 +6107,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 				 * разделитель, а CR или LF расщепляет её на две: получатель прочитал
 				 * бы остаток как отдельный запрос
 				 */
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing request target is empty or contains spaces or control characters: message dropped",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 				// Выводим результат проверки
 				return false;
@@ -6128,9 +6125,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 			 */
 			if((request->version == version_t::HTTP1_1) && !headers.has("Host")){
 				// Записываем сообщение об отсутствующем заголовке Host в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing HTTP/1.1 request has no Host field: message dropped",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 				// Выводим результат проверки
 				return false;
@@ -6156,9 +6153,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 				 */
 				if(values.size() > 1){
 					// Записываем сообщение о повторном заголовке Host в лог
-					this->_log->print(
+					awh::log::print(
 						"HTTP/1.x outgoing request declares the Host field more than once: message dropped",
-						log_t::flag_t::CRITICAL
+						awh::log::flag_t::CRITICAL
 					);
 					// Выводим результат проверки
 					return false;
@@ -6180,9 +6177,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 						// Если внутри значения обнаружен пробельный символ
 						if((* current == ' ') || (* current == '\t')){
 							// Записываем сообщение о непригодном заголовке Host в лог
-							this->_log->print(
+							awh::log::print(
 								"HTTP/1.x outgoing Host field contains whitespace inside its value: message dropped",
-								log_t::flag_t::CRITICAL
+								awh::log::flag_t::CRITICAL
 							);
 							// Выводим результат проверки
 							return false;
@@ -6199,9 +6196,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 					 */
 					if((this->_proto == proto_t::PROXY1) && !::authorityMatches(request->uri, hb, he)){
 						// Записываем сообщение о расхождении адресатов в лог
-						this->_log->print(
+						awh::log::print(
 							"HTTP/1.x outgoing Host field does not match the authority of the request target: message dropped",
-							log_t::flag_t::CRITICAL
+							awh::log::flag_t::CRITICAL
 						);
 						// Выводим результат проверки
 						return false;
@@ -6221,9 +6218,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 			 */
 			if((response->code < 100) || (response->code > 999)){
 				// Записываем сообщение о недопустимом коде состояния в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing status code is not a three-digit number: message dropped (%u)",
-					log_t::flag_t::CRITICAL, static_cast <uint32_t> (response->code)
+					awh::log::flag_t::CRITICAL, static_cast <uint32_t> (response->code)
 				);
 				// Выводим результат проверки
 				return false;
@@ -6235,9 +6232,9 @@ bool awh::http::Parser_HTTP::checkOutgoingStartLine(const headers_t & headers) c
 				 * стартовой строки, и CR или LF внутри него дописывает получателю
 				 * произвольные поля заголовков
 				 */
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing reason phrase contains control characters: message dropped",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 				// Выводим результат проверки
 				return false;
@@ -6272,18 +6269,18 @@ void awh::http::Parser_HTTP::resetSender() noexcept {
 	 */
 	if(this->_sender.sourceRunning){
 		// Записываем сообщение об отказе подготовить отправитель в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/1.x sender cannot be reset from within a pull data source call: the request has been dropped",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 		// Выходим из метода
 		return;
 	}
 	if(this->_sender.headersSent && !this->_sender.endSent){
 		// Записываем сообщение об отказе подготовить отправитель в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/1.x outgoing message is not finished: the sender has not been reset, the connection must be closed",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 		// Выходим из метода
 		return;
@@ -6319,9 +6316,9 @@ void awh::http::Parser_HTTP::dataSource(data_source_callback_t source) noexcept 
 	 */
 	if(this->_sender.sourceRunning){
 		// Записываем сообщение об отказе назначить источник в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/1.x pull data source cannot be replaced from within its own call: the new source has been dropped",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 		// Выходим из метода
 		return;
@@ -6414,9 +6411,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				 */
 				if((this->_sender.source != nullptr) && !this->_sender.sourceEof){
 					// Записываем сообщение об отброшенном блоке трейлеров в лог
-					this->_log->print(
+					awh::log::print(
 						"HTTP/1.x trailers are incompatible with an unfinished pull data source: block dropped",
-						log_t::flag_t::CRITICAL
+						awh::log::flag_t::CRITICAL
 					);
 					// Выходим из метода
 					return;
@@ -6454,9 +6451,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				// Если запрещённые поля обнаружены
 				if(dropped > 0)
 					// Записываем сообщение об отброшенных полях трейлеров в лог
-					this->_log->print(
+					awh::log::print(
 						"HTTP/1.x outgoing trailer fields are not allowed and have been dropped: %zu field(s)",
-						log_t::flag_t::WARNING, dropped
+						awh::log::flag_t::WARNING, dropped
 					);
 				// Завершаем тело последним (нулевым) чанком без пустой строки
 				this->_sender.output.push("0\r\n", 3);
@@ -6478,9 +6475,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			 */
 			if(!this->_sender.endSent){
 				// Записываем сообщение об отказе отправить блок заголовков в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x previous outgoing message is not finished: the headers block has been dropped",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 				// Выходим из метода
 				return;
@@ -6500,9 +6497,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		 */
 		if(headers.provider() == nullptr){
 			// Записываем сообщение об отброшенном блоке трейлеров в лог
-			this->_log->print(
+			awh::log::print(
 				"HTTP/1.x trailers are only allowed inside an unfinished chunked message: block dropped",
-				log_t::flag_t::CRITICAL
+				awh::log::flag_t::CRITICAL
 			);
 			// Выходим из метода
 			return;
@@ -6597,9 +6594,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				// Помечаем заголовок к вычистке из блока
 				dropLength = true;
 				// Записываем сообщение о несовместимом заголовке Content-Length в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing request declares Content-Length without a body and it has been dropped: %s",
-					log_t::flag_t::CRITICAL, length.c_str()
+					awh::log::flag_t::CRITICAL, length.c_str()
 				);
 			}
 		}
@@ -6621,9 +6618,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				 */
 				dropLength = true;
 				// Записываем сообщение о некорректном заголовке Content-Length в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing Content-Length is not a valid number and has been dropped: %s",
-					log_t::flag_t::CRITICAL, length.c_str()
+					awh::log::flag_t::CRITICAL, length.c_str()
 				);
 			}
 		}
@@ -6659,17 +6656,17 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				// Если хотя бы один заголовок кадрирования подлежит вычистке
 				if(dropLength || dropFraming)
 					// Записываем сообщение о недопустимых в таком ответе заголовках в лог
-					this->_log->print(
+					awh::log::print(
 						"HTTP/1.x outgoing %u response must not declare Content-Length or Transfer-Encoding: the field(s) have been dropped",
-						log_t::flag_t::WARNING, static_cast <uint32_t> (code)
+						awh::log::flag_t::WARNING, static_cast <uint32_t> (code)
 					);
 			}
 			// Если вызывающая сторона всё же собиралась отдать тело
 			if(!endStream)
 				// Записываем сообщение о невозможности отправить тело в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing response cannot carry a body and it is not accepted: the body would be read as the next response",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 		}
 		/**
@@ -6691,9 +6688,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			// Если хотя бы один заголовок кадрирования подлежит вычистке
 			if(dropLength || dropFraming)
 				// Записываем сообщение о недопустимых в таком ответе заголовках в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing protocol switching response must not declare Content-Length or Transfer-Encoding: the field(s) have been dropped",
-					log_t::flag_t::WARNING
+					awh::log::flag_t::WARNING
 				);
 		}
 		// Если сообщение завершается заголовками - тела не будет
@@ -6781,9 +6778,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				 */
 				this->_sender.source = nullptr;
 				// Записываем сообщение о невозможности кадрировать тело запроса в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing HTTP/1.0 request declares no valid Content-Length: the body cannot be framed and is not accepted",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 			// Тело ответа сервера кадрируется закрытием соединения
 			} else this->_sender.framing = sender_t::framing_t::RAW;
@@ -6850,9 +6847,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 				// Возвращаем кадрирование тела в исходное состояние
 				this->_sender.framing = sender_t::framing_t::NONE;
 				// Записываем сообщение о недопустимых параметрах кодирования в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing Transfer-Encoding declares chunked with parameters: message dropped",
-					log_t::flag_t::CRITICAL
+					awh::log::flag_t::CRITICAL
 				);
 				// Выходим из метода
 				return;
@@ -6868,9 +6865,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 						// Возвращаем кадрирование тела в исходное состояние
 						this->_sender.framing = sender_t::framing_t::NONE;
 						// Записываем сообщение о неисправимом объявлении кодирования в лог
-						this->_log->print(
+						awh::log::print(
 							"HTTP/1.x outgoing Transfer-Encoding declares chunked not as the final coding: message dropped",
-							log_t::flag_t::CRITICAL
+							awh::log::flag_t::CRITICAL
 						);
 						// Выходим из метода
 						return;
@@ -6903,9 +6900,9 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 			// Возвращаем кадрирование тела в исходное состояние
 			this->_sender.framing = sender_t::framing_t::NONE;
 			// Записываем сообщение о несовместимом с переключением протокола теле в лог
-			this->_log->print(
+			awh::log::print(
 				"HTTP/1.x outgoing request asks for a protocol upgrade and cannot carry a body: message dropped",
-				log_t::flag_t::CRITICAL
+				awh::log::flag_t::CRITICAL
 			);
 			// Выходим из метода
 			return;
@@ -6919,13 +6916,13 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		// Если необходимо вычистить конфликтующий заголовок Transfer-Encoding
 		if(dropEncoding){
 			// Записываем сообщение о конфликте кадрирования исходящего сообщения в лог
-			this->_log->print("HTTP/1.x outgoing message declares both Content-Length and Transfer-Encoding: the latter has been dropped", log_t::flag_t::WARNING);
+			awh::log::print("HTTP/1.x outgoing message declares both Content-Length and Transfer-Encoding: the latter has been dropped", awh::log::flag_t::WARNING);
 			// Удаляем конфликтующий заголовок из сериализованного блока
 			::dropHeaderLine(block, "transfer-encoding");
 		// Если необходимо вычистить заголовок Transfer-Encoding, недопустимый в HTTP/1.0
 		} else if(dropLegacyEncoding) {
 			// Записываем сообщение о недопустимом в HTTP/1.0 кадрировании исходящего сообщения в лог
-			this->_log->print("HTTP/1.x outgoing HTTP/1.0 message declares Transfer-Encoding and it has been dropped", log_t::flag_t::WARNING);
+			awh::log::print("HTTP/1.x outgoing HTTP/1.0 message declares Transfer-Encoding and it has been dropped", awh::log::flag_t::WARNING);
 			// Удаляем недопустимый в HTTP/1.0 заголовок из сериализованного блока
 			::dropHeaderLine(block, "transfer-encoding");
 		// Если необходимо вычистить заголовок Transfer-Encoding из ответа, не несущего кадрированного тела
@@ -6967,13 +6964,13 @@ void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool e
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(endStream), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {endStream}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Передаём исходящие байты сетевому слою
@@ -7021,9 +7018,9 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
 	 */
 	if((this->_sender.source != nullptr) && !this->_sender.sourceEof){
 		// Записываем сообщение об отброшенной порции тела в лог
-		this->_log->print(
+		awh::log::print(
 			"HTTP/1.x outgoing body is produced by the pull data source: the data passed to sendData has been dropped",
-			log_t::flag_t::CRITICAL
+			awh::log::flag_t::CRITICAL
 		);
 		// Выводим число принятых байт
 		return result;
@@ -7064,9 +7061,9 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
 			// Если потребитель объявил конец тела, не выдав анонсированный объём
 			else if(endStream && (result == size))
 				// Записываем сообщение о преждевременном завершении тела в лог
-				this->_log->print(
+				awh::log::print(
 					"HTTP/1.x outgoing body is shorter than the announced Content-Length: %llu byte(s) left, end of stream ignored",
-					log_t::flag_t::WARNING,
+					awh::log::flag_t::WARNING,
 					static_cast <unsigned long long> (this->_sender.remaining)
 				);
 		// Для остальных способов кадрирования тело завершается по принятому финальному фрагменту
@@ -7086,13 +7083,13 @@ size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, 
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, endStream), log_t::flag_t::CRITICAL, error.what());
+			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, endStream}, awh::log::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			awh::log::print("%s", awh::log::flag_t::CRITICAL, error.what());
 		#endif
 	}
 	// Передаём исходящие байты сетевому слою
@@ -7221,17 +7218,11 @@ void awh::http::Parser_HTTP::on(writable_callback_t callback) noexcept {
  * @brief Конструктор
  *
  * @param direct направление трафика (запрос/ответ)
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
  *
  */
-awh::http::Parser_HTTP::Parser_HTTP(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
- parser_t(direct, fmk, log), _error(error_t::NONE), _recycled(false),
+awh::http::Parser_HTTP::Parser_HTTP(const direct_t direct) noexcept :
+ parser_t(direct), _error(error_t::NONE), _recycled(false),
  _state(static_cast <uint8_t> (S_START)), _method(method_t::NONE), _proto(proto_t::HTTP1) {
-	// Устанавливаем объект логирования буферу исходящих байтов
-	this->_sender.output.setLogger(log);
-	// Устанавливаем объект логирования буферу передачи в сетевой слой
-	this->_sender.flushing.setLogger(log);
 	// Согласуем лимит памяти смартбуферов с порогами выходного буфера по умолчанию
 	this->sendWaterMarks(SEND_HIGH_WATER, SEND_LOW_WATER);
 	/**

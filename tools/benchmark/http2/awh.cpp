@@ -47,36 +47,6 @@ using namespace awh::http;
  */
 namespace {
 	/**
-	 * @brief Функция получения объекта фреймворка окружения стенда
-	 *
-	 * @note Объекты окружения создаются при первом обращении: порядок статической
-	 *       инициализации между единицами трансляции не определён, а фреймворк
-	 *       зависит от таблиц чужих модулей
-	 *
-	 * @return объект фреймворка
-	 *
-	 */
-	static const awh::fmk_t * fmk() noexcept {
-		// Объект фреймворка окружения стенда
-		static awh::fmk_t result;
-		// Выводим объект фреймворка
-		return &result;
-	}
-	/**
-	 * @brief Функция получения объекта логирования окружения стенда
-	 *
-	 * @return объект логирования
-	 *
-	 */
-	static const awh::log_t * logger() noexcept {
-		// Объект логирования окружения стенда
-		static awh::log_t result(::fmk());
-		// Отключаем вывод логов: часть сценариев намеренно упирается в лимиты
-		result.level(awh::log_t::level_t::NONE);
-		// Выводим объект логирования
-		return &result;
-	}
-	/**
 	 * @brief Класс сжатия заголовков реализацией библиотеки AWH
 	 *
 	 */
@@ -243,7 +213,7 @@ namespace {
 			 *
 			 */
 			explicit Server(const bool answering) noexcept :
-			 _server(direct_t::REQUEST, ::fmk(), ::logger()), _handled(0), _accepted(0) {
+			 _server(direct_t::REQUEST, ::fmk()), _handled(0), _accepted(0) {
 				// Дописываем псевдо-заголовок статуса ответа
 				this->_answer.emplace_back(":status", "200");
 				// Дописываем заголовок длины содержимого
@@ -379,7 +349,7 @@ namespace {
 			 *
 			 */
 			explicit Pair() noexcept :
-			 _client(direct_t::RESPONSE, ::fmk(), ::logger()), _server(direct_t::REQUEST, ::fmk(), ::logger()), _completed(0) {
+			 _client(direct_t::RESPONSE, ::fmk()), _server(direct_t::REQUEST, ::fmk()), _completed(0) {
 				// Формируем заголовки ответа сервера
 				for(const auto & field : rival::response(0))
 					// Дописываем очередной заголовок ответа

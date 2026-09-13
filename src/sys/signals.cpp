@@ -75,6 +75,7 @@
  * Подключаем заголовочный файл проекта
  */
 #include <sys/signals.hpp>
+#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -673,23 +674,23 @@ void awh::Signals::disarm() noexcept {
 		 * блока. Разбор же адреса до блока памяти - с его размером и историей выдачи -
 		 * возможен лишь распределителю, который эту память выдавал
 		 */
-		if(::signals::faulty(sig) && (this->_log != nullptr)){
+		if(::signals::faulty(sig)){
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Записываем в лог адрес обращения, вызвавшего сбой
-				this->_log->debug("Fault detected at address %p", __PRETTY_FUNCTION__, make_tuple(sig, pid, uid), awh::log_t::flag_t::CRITICAL, addr);
+				awh::log::debug("Fault detected at address %p", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::CRITICAL, addr);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем в лог адрес обращения, вызвавшего сбой
-				this->_log->print("Fault detected at address %p", awh::log_t::flag_t::CRITICAL, addr);
+				awh::log::print("Fault detected at address %p", awh::log::flag_t::CRITICAL, addr);
 			#endif
 		}
-		// Если произошло убийство приложения и установлен объект логирования
-		if((sig == SIGTERM) && (this->_log != nullptr)){
+		// Если произошло убийство приложения
+		if(sig == SIGTERM){
 			// Буфер для данных
 			long size = ::sysconf(_SC_GETPW_R_SIZE_MAX);
 			// Если размер буфера не определён
@@ -711,7 +712,7 @@ void awh::Signals::disarm() noexcept {
 				// Устанавливаем название пользователя
 				user = result->pw_name;
 			// Создаём объект дознавателя
-			awh::procre_t procre(this->_log);
+			awh::procre_t procre;
 			// Выполняем получение названия процесса
 			const string & name = procre.name(pid);
 			// Если название приложения получено
@@ -723,13 +724,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем в лог сообщение в лог
-						this->_log->debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, make_tuple(sig, pid, uid), awh::log_t::flag_t::WARNING, name.c_str(), user);
+						awh::log::debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, name.c_str(), user);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						this->_log->print("Killer detected APP=%s, USER=%s", awh::log_t::flag_t::WARNING, name.c_str(), user);
+						awh::log::print("Killer detected APP=%s, USER=%s", awh::log::flag_t::WARNING, name.c_str(), user);
 					#endif
 				// Если имя пользователя не получено
 				} else {
@@ -738,13 +739,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем в лог сообщение в лог
-						this->_log->debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, make_tuple(sig, pid, uid), awh::log_t::flag_t::WARNING, name.c_str(), uid);
+						awh::log::debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, name.c_str(), uid);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						this->_log->print("Killer detected APP=%s, UID=%u", awh::log_t::flag_t::WARNING, name.c_str(), uid);
+						awh::log::print("Killer detected APP=%s, UID=%u", awh::log::flag_t::WARNING, name.c_str(), uid);
 					#endif
 				}
 			// Если название приложения не получено
@@ -756,13 +757,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем в лог сообщение в лог
-						this->_log->debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, make_tuple(sig, pid, uid), awh::log_t::flag_t::WARNING, pid, user);
+						awh::log::debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, pid, user);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						this->_log->print("Killer detected PID=%u, USER=%s", awh::log_t::flag_t::WARNING, pid, user);
+						awh::log::print("Killer detected PID=%u, USER=%s", awh::log::flag_t::WARNING, pid, user);
 					#endif
 				// Если имя пользователя не получено
 				} else {
@@ -771,13 +772,13 @@ void awh::Signals::disarm() noexcept {
 					 */
 					#if DEBUG_MODE
 						// Записываем в лог сообщение в лог
-						this->_log->debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, make_tuple(sig, pid, uid), awh::log_t::flag_t::WARNING, pid, uid);
+						awh::log::debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, pid, uid);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем в лог сообщение в лог
-						this->_log->print("Killer detected PID=%u, UID=%u", awh::log_t::flag_t::WARNING, pid, uid);
+						awh::log::print("Killer detected PID=%u, UID=%u", awh::log::flag_t::WARNING, pid, uid);
 					#endif
 				}
 			}
@@ -1048,9 +1049,8 @@ void awh::Signals::start() noexcept {
 			// Создаём самопайп для передачи сигналов рабочему потоку
 			if(::pipe(this->_pipe) != 0){
 				// Если создать самопайп не удалось, выводим сообщение об ошибке
-				if(this->_log != nullptr)
 					// Записываем в лог сообщение об ошибке
-					this->_log->print("Signal pipe creation failed: %s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					awh::log::print("Signal pipe creation failed: %s", awh::log::flag_t::CRITICAL, ::strerror(errno));
 				// Прекращаем дальнейшую работу
 				return;
 			}
@@ -1323,12 +1323,9 @@ void awh::Signals::on(function <void (const int32_t)> callback) noexcept {
 /**
  * @brief Конструктор
  *
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- *
  */
-awh::Signals::Signals(const fmk_t * fmk, const log_t * log) noexcept :
- _mode(false), _exit(false), _fmk(fmk), _log(log), _callback(nullptr) {
+awh::Signals::Signals() noexcept :
+ _mode(false), _exit(false), _callback(nullptr) {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */

@@ -45,9 +45,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include "log.hpp"
 #include "../net/net.hpp"
 #include "../net/event.hpp"
+#include "macro/global.hpp"
 
 /**
  * \~russian
@@ -190,9 +190,6 @@ namespace awh {
 			 * \~
 			 */
 			function <void (const pid_t, const info_t &)> _callback;
-		private:
-			// Объект работы с логами
-			const log_t * _log;
 		public:
 			/**
 			 * \~russian
@@ -239,15 +236,12 @@ namespace awh {
 			 * \~russian
 			 * @brief Конструктор
 			 *
-			 * @param log объект для работы с логами
-			 *
 			 * \~english
 			 * @brief Constructor
-			 * @param log object for working with logs
 			 *
 			 * \~
 			 */
-			explicit Process_Resolver(const log_t * log) noexcept;
+			explicit Process_Resolver() noexcept;
 			/**
 			 * \~russian
 			 * @brief Деструктор

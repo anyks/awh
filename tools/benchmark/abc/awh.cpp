@@ -22,8 +22,6 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 #include <codec/abc/writer.hpp>
 #include <codec/abc/document.hpp>
 
@@ -31,6 +29,8 @@
  * Подключаем общее окружение эталонных стендов
  */
 #include "common.hpp"
+#include <sys/log.hpp>
+#include <sys/fmk.hpp>
 
 /**
  * @brief Признак снятия проверки строк на соответствие кодировке UTF-8
@@ -38,26 +38,6 @@
  */
 static bool relaxed = false;
 
-/**
- * @brief Функция получения объекта для работы с логами
- *
- * @details Кодек связку берёт конструктором, и журнал ему обязателен. Замерам он не
- *          нужен вовсе, оттого вывод записей здесь снят целиком: работа журнала при
- *          отказе исказила бы замер, а отказов на замерах и не бывает
- *
- * @return объект для работы с логами
- *
- */
-static const awh::log_t * logger() noexcept {
-	// Объект фреймворка
-	static awh::fmk_t fmk;
-	// Объект для работы с логами
-	static awh::log_t log(& fmk);
-	// Снимаем вывод записей журнала
-	log.level(awh::log_t::level_t::NONE);
-	// Выводим объект для работы с логами
-	return & log;
-}
 
 /**
  * @brief Функция сборки ветви образца с глубокой вложенностью
@@ -187,7 +167,7 @@ static bool tiny(awh::codec::abc::writer_t & writer) noexcept {
  */
 static bool writing(const rival::scene_t scene, std::string & record) noexcept {
 	// Сборка бинарной записи
-	awh::codec::abc::writer_t writer(::logger());
+	awh::codec::abc::writer_t writer;
 	/**
 	 * Если проверка строк на соответствие кодировке снята.
 	 *
@@ -418,7 +398,7 @@ static bool reading(const rival::scene_t scene, const std::string & record) noex
 	// Разновидность сценария стенда работе разбора безразлична
 	(void) scene;
 	// Дерево документа
-	awh::codec::abc::document_t document(::logger());
+	awh::codec::abc::document_t document;
 	/**
 	 * Если разобрать запись не удалось
 	 */
@@ -439,6 +419,13 @@ static bool reading(const rival::scene_t scene, const std::string & record) noex
  *
  */
 int32_t main(int32_t argc, char * argv[]) noexcept {
+	/**
+	 * Выполняем заведение модуля ядра первым делом
+	 *
+	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
+	 *       ДО всякой выдачи и ДО порождения потоков
+	 */
+	awh::fmk::initialize();
 	/**
 	 * Выполняем перебор всех параметров запуска
 	 */
