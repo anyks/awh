@@ -33,6 +33,11 @@
 #define __AWH_PROTO_SOCKS5_SERVER__
 
 /**
+ * Стандартный заголовочный файл
+ */
+#include <functional>
+
+/**
  * Подключаем заголовочный файл проекта
  */
 #include "socks5.hpp"

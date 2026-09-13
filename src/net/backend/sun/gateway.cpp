@@ -62,6 +62,7 @@
  *       mib2 - подробности у пространства имён mib
  *
  */
+#include <unistd.h>
 #include <stropts.h>
 #include <sys/stream.h>
 #include <sys/tihdr.h>
@@ -75,10 +76,10 @@
 #include <netinet/ip6.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <net/eth/gateway.hpp>
 #include <sys/log.hpp>
+#include <net/eth/gateway.hpp>
 
 /**
  * Используем стандартное пространство имён

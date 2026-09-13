@@ -38,7 +38,15 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <functional>
+
+/**
+ * Если сборка выполняется не оснасткою Visual Studio
+ */
 #if !defined(_MSC_VER)
+	/**
+	 * Стандартный заголовочный файл
+	 */
 	#include <unistd.h>
 #endif
 

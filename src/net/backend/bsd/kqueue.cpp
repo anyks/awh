@@ -12033,10 +12033,10 @@ namespace io {
 										}
 										// Если мы получили уведомления SCTP
 										if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
-											// Обрабатываем события SCTP
 											// Признак завершения связи, выставляемый разбором известия
 											bool finish = false;
-											::sctp::events(peer, ::__awh_buffer__, bytes, log, &finish);
+											// Обрабатываем события SCTP
+											::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
 											/**
 											 * Если связь завершена известием
 											 *
@@ -12182,10 +12182,10 @@ namespace io {
 									}
 									// Если мы получили уведомления SCTP
 									if(peer->transfer.sctp.use().flags & MSG_NOTIFICATION){
-										// Обрабатываем события SCTP
 										// Признак завершения связи, выставляемый разбором известия
 										bool finish = false;
-										::sctp::events(peer, ::__awh_buffer__, bytes, log, &finish);
+										// Обрабатываем события SCTP
+										::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
 										/**
 										 * Если связь завершена известием
 										 *
@@ -15110,10 +15110,10 @@ namespace io {
 											}
 											// Если мы получили уведомления SCTP
 											if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
-												// Обрабатываем события SCTP
 												// Признак завершения связи, выставляемый разбором известия
 												bool finish = false;
-												::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+												// Обрабатываем события SCTP
+												::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 												/**
 												 * Если связь завершена известием
 												 *
@@ -15287,10 +15287,10 @@ namespace io {
 										}
 										// Если мы получили уведомления SCTP
 										if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
-											// Обрабатываем события SCTP
 											// Признак завершения связи, выставляемый разбором известия
 											bool finish = false;
-											::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+											// Обрабатываем события SCTP
+											::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 											/**
 											 * Если связь завершена известием
 											 *
@@ -15475,10 +15475,10 @@ namespace io {
 											}
 											// Если мы получили уведомления SCTP
 											if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
-												// Обрабатываем события SCTP
 												// Признак завершения связи, выставляемый разбором известия
 												bool finish = false;
-												::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+												// Обрабатываем события SCTP
+												::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 												/**
 												 * Если связь завершена известием
 												 *
@@ -15665,10 +15665,10 @@ namespace io {
 										}
 										// Если мы получили уведомления SCTP
 										if(client->transfer.sctp.use().flags & MSG_NOTIFICATION){
-											// Обрабатываем события SCTP
 											// Признак завершения связи, выставляемый разбором известия
 											bool finish = false;
-											::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+											// Обрабатываем события SCTP
+											::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 											/**
 											 * Если связь завершена известием
 											 *

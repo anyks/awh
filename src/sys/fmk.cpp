@@ -38,16 +38,16 @@
  * Стандартные заголовочные файлы
  */
 #include <cmath>
+#include <mutex>
 #include <locale>
 #include <atomic>
-#include <clocale>
 #include <bitset>
 #include <chrono>
 #include <memory>
 #include <random>
-#include <mutex>
 #include <thread>
 #include <limits>
+#include <clocale>
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
@@ -72,13 +72,13 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <net/nwt.hpp>
+#include <sys/fmk.hpp>
+#include <sys/log.hpp>
 #include <sys/macro/lib.hpp>
 #include <alloc/alloc.hpp>
 #include <encoding/ascii.hpp>
 #include <encoding/unicode/utf8.hpp>
 #include <encoding/charset/charset.hpp>
-#include <sys/fmk.hpp>
-#include <sys/log.hpp>
 
 /**
  * Используем стандартное пространство имён
