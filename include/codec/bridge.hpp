@@ -366,7 +366,6 @@ namespace awh {
 				// Код отказа последнего перевода
 				error_t _error;
 			private:
-				// Объект работы с логами
 				// Объект фреймворка
 				const fmk_t * _fmk;
 				// Объект для работы с логами
@@ -920,15 +919,17 @@ namespace awh {
 				 * \~russian
 				 * @brief Конструктор
 				 *
+				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 *
 				 * \~english
 				 * @brief Constructor
+				 * @param fmk object of the framework
 				 * @param log object for working with the logs
 				 *
 				 * \~
 				 */
-				Bridge(const fmk_t * fmk, const log_t * log) noexcept : _error(error_t::NONE), _fmk(fmk), _log(log) {}
+				explicit Bridge(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

@@ -313,6 +313,153 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
 }
 
 /**
+ * @brief Метод слияния дерева значений с деревом настроек
+ *
+ * @param value  сливаемое дерево значений
+ * @param path   путь звеньями оси хранения, уже пройденный слиянием
+ * @param source источник сливаемых значений
+ * @return       результат слияния
+ *
+ */
+bool awh::args::Args::merge(const codec::abc::value_t & value, const string & path, const source_t source) noexcept {
+	// Если сливаемое значение недействительно вовсе
+	if(!value.valid())
+		// Выходим из метода, сливать нечего
+		return false;
+	// Если сливаемое значение является отображением
+	if(value.is(codec::abc::type_t::MAP)){
+		// Признак успешности слияния полей отображения
+		bool result = true;
+		// Выполняем перебор всех полей отображения
+		for(size_t i = 0; i < value.size(); i++){
+			// Извлекаемое имя поля отображения
+			string name = "";
+			// Если имя поля отображения знаками не выражается
+			if(!value.key(i).value(name))
+				// Продолжаем перебор полей отображения дальше
+				continue;
+			/**
+			 * Выполняем слияние поля отображения вглубь: отображения сливаются
+			 * звено за звеном, а вместимые и одиночные значения ложатся целиком
+			 */
+			result = (this->merge(value[i], (path.empty() ? name : this->_fmk->format("%s/%s", path.c_str(), name.c_str())), source) && result);
+		}
+		// Выводим результат слияния полей отображения
+		return result;
+	}
+	// Выполняем укладку сливаемого значения целиком
+	return this->lay(path, codec::abc::value_t(value), source);
+}
+
+/**
+ * @brief Метод укладки разобранной лексемы по описанию ожидаемых
+ *
+ * @param lexeme разобранная лексема
+ * @param source источник поданного значения
+ * @return       результат укладки
+ *
+ */
+bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noexcept {
+	/**
+	 * Если описания ожидаемых параметров нет вовсе, лексема ложится КАК ЕСТЬ:
+	 * описание необязательно, и без него разбор принимает всякий поданный параметр
+	 */
+	if(this->_schema.empty()){
+		// Если значение параметру не подано вовсе
+		if(!lexeme.assigned)
+			// Выполняем укладку взведённого признака
+			return this->lay(this->route(lexeme.key), codec::abc::value_t(true), source);
+		// Выполняем укладку выведенного значения параметра
+		return this->lay(this->route(lexeme.key), this->derive(lexeme.value), source);
+	}
+	// Выполняем поиск описания по длинному имени параметра
+	const schema_t::param_t * param = this->_schema.get(lexeme.key);
+	// Если описание по длинному имени не найдено
+	if(param == nullptr){
+		/**
+		 * Если имя состоит из одного знака, оно спрашивается КОРОТКИМ: запись «-v»
+		 * есть короткое имя, а не длинное имя об одном знаке
+		 */
+		if(lexeme.key.length() == 1)
+			// Выполняем поиск описания по короткому имени параметра
+			param = this->_schema.get(lexeme.key.front());
+		// Если описание не найдено и по короткому имени
+		if(param == nullptr){
+			// Контейнер длинных имён, разобранных из склейки коротких
+			vector <string> names;
+			/**
+			 * Пробуем разобрать имя склейкой коротких имён: запись «-abc» есть три
+			 * признака лишь тогда, когда ВСЕ знаки её описанию известны
+			 */
+			if(!lexeme.assigned && this->_schema.cluster(lexeme.key, names)){
+				// Признак успешности укладки разобранных признаков
+				bool result = true;
+				// Выполняем перебор всех разобранных длинных имён
+				for(auto & name : names)
+					// Выполняем укладку взведённого признака
+					result = (this->lay(this->route(name), codec::abc::value_t(true), source) && result);
+				// Выводим результат укладки разобранных признаков
+				return result;
+			}
+			/**
+			 * Если строгость взведена настройкой, имя, описанию неизвестное,
+			 * отвечается ОТКАЗОМ; иначе оно ложится как есть - приложению,
+			 * принимающему настройки сверх описанных, отказ мешал бы
+			 */
+			if(this->_settings.strict){
+				// Выполняем запоминание отказа разбора вместе с его положением
+				this->_errors.emplace_back(error_t::UNKNOWN, lexeme.location);
+				// Выводим в лог сообщение об имени, описанию неизвестном
+				this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
+				// Выходим из метода, укладка отвечена отказом
+				return false;
+			}
+			// Если значение параметру не подано вовсе
+			if(!lexeme.assigned)
+				// Выполняем укладку взведённого признака
+				return this->lay(this->route(lexeme.key), codec::abc::value_t(true), source);
+			// Выполняем укладку выведенного значения параметра
+			return this->lay(this->route(lexeme.key), this->derive(lexeme.value), source);
+		}
+	}
+	// Если значение параметру подано, а описание его не принимает вовсе
+	if(lexeme.assigned && (param->value == schema_t::value_t::NONE)){
+		// Выполняем запоминание отказа разбора вместе с его положением
+		this->_errors.emplace_back(error_t::ODD_VALUE, lexeme.location);
+		// Выводим в лог сообщение о значении, параметру не потребном
+		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
+		// Выходим из метода, укладка отвечена отказом
+		return false;
+	}
+	// Если значение параметру не подано, а описание его требует непременно
+	if(!lexeme.assigned && (param->value == schema_t::value_t::REQUIRED)){
+		// Выполняем запоминание отказа разбора вместе с его положением
+		this->_errors.emplace_back(error_t::NO_VALUE, lexeme.location);
+		// Выводим в лог сообщение об отсутствии потребного значения
+		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
+		// Выходим из метода, укладка отвечена отказом
+		return false;
+	}
+	// Выполняем перевод длинного имени параметра в путь оси хранения
+	const string & path = this->route(param->name);
+	// Если параметр подан повторно, а описание повтора не дозволяет
+	if(!param->multiple && (this->_origins.count(path) > 0) && (this->_origins.at(path) == source)){
+		// Выполняем запоминание отказа разбора вместе с его положением
+		this->_errors.emplace_back(error_t::DUPLICATE, lexeme.location);
+		// Выводим в лог сообщение о повторной подаче параметра
+		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
+		// Выходим из метода, укладка отвечена отказом
+		return false;
+	}
+	// Если значение параметру не подано вовсе
+	if(!lexeme.assigned)
+		// Выполняем укладку взведённого признака
+		return this->lay(path, codec::abc::value_t(true), source);
+	// Выполняем укладку выведенного значения параметра
+	return this->lay(path, this->derive(lexeme.value), source);
+}
+
+/**
  * @brief Метод очистки собранных параметров запуска
  *
  */
@@ -559,153 +706,6 @@ bool awh::args::Args::env() noexcept {
 bool awh::args::Args::fallback(const string_view key, const string_view value) noexcept {
 	// Выполняем укладку значения по умолчанию
 	return this->lay(this->route(key), this->derive(value), source_t::DEFAULT);
-}
-
-/**
- * @brief Метод слияния дерева значений с деревом настроек
- *
- * @param value  сливаемое дерево значений
- * @param path   путь звеньями оси хранения, уже пройденный слиянием
- * @param source источник сливаемых значений
- * @return       результат слияния
- *
- */
-bool awh::args::Args::merge(const codec::abc::value_t & value, const string & path, const source_t source) noexcept {
-	// Если сливаемое значение недействительно вовсе
-	if(!value.valid())
-		// Выходим из метода, сливать нечего
-		return false;
-	// Если сливаемое значение является отображением
-	if(value.is(codec::abc::type_t::MAP)){
-		// Признак успешности слияния полей отображения
-		bool result = true;
-		// Выполняем перебор всех полей отображения
-		for(size_t i = 0; i < value.size(); i++){
-			// Извлекаемое имя поля отображения
-			string name = "";
-			// Если имя поля отображения знаками не выражается
-			if(!value.key(i).value(name))
-				// Продолжаем перебор полей отображения дальше
-				continue;
-			/**
-			 * Выполняем слияние поля отображения вглубь: отображения сливаются
-			 * звено за звеном, а вместимые и одиночные значения ложатся целиком
-			 */
-			result = (this->merge(value[i], (path.empty() ? name : this->_fmk->format("%s/%s", path.c_str(), name.c_str())), source) && result);
-		}
-		// Выводим результат слияния полей отображения
-		return result;
-	}
-	// Выполняем укладку сливаемого значения целиком
-	return this->lay(path, codec::abc::value_t(value), source);
-}
-
-/**
- * @brief Метод укладки разобранной лексемы по описанию ожидаемых
- *
- * @param lexeme разобранная лексема
- * @param source источник поданного значения
- * @return       результат укладки
- *
- */
-bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noexcept {
-	/**
-	 * Если описания ожидаемых параметров нет вовсе, лексема ложится КАК ЕСТЬ:
-	 * описание необязательно, и без него разбор принимает всякий поданный параметр
-	 */
-	if(this->_schema.empty()){
-		// Если значение параметру не подано вовсе
-		if(!lexeme.assigned)
-			// Выполняем укладку взведённого признака
-			return this->lay(this->route(lexeme.key), codec::abc::value_t(true), source);
-		// Выполняем укладку выведенного значения параметра
-		return this->lay(this->route(lexeme.key), this->derive(lexeme.value), source);
-	}
-	// Выполняем поиск описания по длинному имени параметра
-	const schema_t::param_t * param = this->_schema.get(lexeme.key);
-	// Если описание по длинному имени не найдено
-	if(param == nullptr){
-		/**
-		 * Если имя состоит из одного знака, оно спрашивается КОРОТКИМ: запись «-v»
-		 * есть короткое имя, а не длинное имя об одном знаке
-		 */
-		if(lexeme.key.length() == 1)
-			// Выполняем поиск описания по короткому имени параметра
-			param = this->_schema.get(lexeme.key.front());
-		// Если описание не найдено и по короткому имени
-		if(param == nullptr){
-			// Контейнер длинных имён, разобранных из склейки коротких
-			vector <string> names;
-			/**
-			 * Пробуем разобрать имя склейкой коротких имён: запись «-abc» есть три
-			 * признака лишь тогда, когда ВСЕ знаки её описанию известны
-			 */
-			if(!lexeme.assigned && this->_schema.cluster(lexeme.key, names)){
-				// Признак успешности укладки разобранных признаков
-				bool result = true;
-				// Выполняем перебор всех разобранных длинных имён
-				for(auto & name : names)
-					// Выполняем укладку взведённого признака
-					result = (this->lay(this->route(name), codec::abc::value_t(true), source) && result);
-				// Выводим результат укладки разобранных признаков
-				return result;
-			}
-			/**
-			 * Если строгость взведена настройкой, имя, описанию неизвестное,
-			 * отвечается ОТКАЗОМ; иначе оно ложится как есть - приложению,
-			 * принимающему настройки сверх описанных, отказ мешал бы
-			 */
-			if(this->_settings.strict){
-				// Выполняем запоминание отказа разбора вместе с его положением
-				this->_errors.emplace_back(error_t::UNKNOWN, lexeme.location);
-				// Выводим в лог сообщение об имени, описанию неизвестном
-				this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::UNKNOWN), string(lexeme.key).c_str());
-				// Выходим из метода, укладка отвечена отказом
-				return false;
-			}
-			// Если значение параметру не подано вовсе
-			if(!lexeme.assigned)
-				// Выполняем укладку взведённого признака
-				return this->lay(this->route(lexeme.key), codec::abc::value_t(true), source);
-			// Выполняем укладку выведенного значения параметра
-			return this->lay(this->route(lexeme.key), this->derive(lexeme.value), source);
-		}
-	}
-	// Если значение параметру подано, а описание его не принимает вовсе
-	if(lexeme.assigned && (param->value == schema_t::value_t::NONE)){
-		// Выполняем запоминание отказа разбора вместе с его положением
-		this->_errors.emplace_back(error_t::ODD_VALUE, lexeme.location);
-		// Выводим в лог сообщение о значении, параметру не потребном
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::ODD_VALUE), param->name.c_str());
-		// Выходим из метода, укладка отвечена отказом
-		return false;
-	}
-	// Если значение параметру не подано, а описание его требует непременно
-	if(!lexeme.assigned && (param->value == schema_t::value_t::REQUIRED)){
-		// Выполняем запоминание отказа разбора вместе с его положением
-		this->_errors.emplace_back(error_t::NO_VALUE, lexeme.location);
-		// Выводим в лог сообщение об отсутствии потребного значения
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::NO_VALUE), param->name.c_str());
-		// Выходим из метода, укладка отвечена отказом
-		return false;
-	}
-	// Выполняем перевод длинного имени параметра в путь оси хранения
-	const string & path = this->route(param->name);
-	// Если параметр подан повторно, а описание повтора не дозволяет
-	if(!param->multiple && (this->_origins.count(path) > 0) && (this->_origins.at(path) == source)){
-		// Выполняем запоминание отказа разбора вместе с его положением
-		this->_errors.emplace_back(error_t::DUPLICATE, lexeme.location);
-		// Выводим в лог сообщение о повторной подаче параметра
-		this->_log->print("Args: %s \"%s\"", log_t::flag_t::WARNING, args::message(error_t::DUPLICATE), param->name.c_str());
-		// Выходим из метода, укладка отвечена отказом
-		return false;
-	}
-	// Если значение параметру не подано вовсе
-	if(!lexeme.assigned)
-		// Выполняем укладку взведённого признака
-		return this->lay(path, codec::abc::value_t(true), source);
-	// Выполняем укладку выведенного значения параметра
-	return this->lay(path, this->derive(lexeme.value), source);
 }
 
 /**

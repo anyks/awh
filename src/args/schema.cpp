@@ -369,3 +369,19 @@ void awh::args::Schema::application(const string_view application, const string_
 	// Устанавливаем описание назначения приложения
 	this->_description.assign(description);
 }
+/**
+ * \~russian
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ *
+ * \~english
+ * @brief Constructor
+ * @param fmk object of the framework
+ * @param log object for working with the logs
+ *
+ * \~
+ */
+awh::args::Schema::Schema(const fmk_t * fmk, const log_t * log) noexcept :
+ _application{""}, _description{""}, _fmk(fmk), _log(log) {}

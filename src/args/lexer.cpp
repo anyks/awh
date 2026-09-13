@@ -414,3 +414,18 @@ void awh::args::Lexer::settings(const settings_t & settings) noexcept {
 	// Устанавливаем настройки разбора параметров
 	this->_settings = settings;
 }
+/**
+ * \~russian
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ *
+ * \~english
+ * @brief Constructor
+ * @param fmk object of the framework
+ * @param log object for working with the logs
+ *
+ * \~
+ */
+awh::args::Lexer::Lexer(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}

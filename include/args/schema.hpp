@@ -384,8 +384,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Schema(const fmk_t * fmk, const log_t * log) noexcept :
-				 _application{""}, _description{""}, _fmk(fmk), _log(log) {}
+				explicit Schema(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор

@@ -302,7 +302,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Lexer(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+				explicit Lexer(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * \~russian
 				 * @brief Деструктор
