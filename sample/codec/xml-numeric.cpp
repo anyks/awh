@@ -27,8 +27,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/xml/document.hpp>
 #include <sys/fmk.hpp>
+#include <codec/xml/document.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -76,7 +76,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Ответ службы, каким его отдаёт устройство по договору UPnP
 	const string data =
 		"<?xml version=\"1.0\"?>"

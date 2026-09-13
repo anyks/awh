@@ -457,16 +457,6 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Объект ведения журнала работы
-					 *
-					 * \~english
-					 * Object of the keeping of the work log
-					 *
-					 * \~
-					 */
-				private:
-					/**
-					 * \~russian
 					 * @brief Метод отказа приведения с сообщением о нём в журнал
 					 *
 					 * @details Способ этот стоит ГОРЛОМ: всякий отказ приведения обязан идти

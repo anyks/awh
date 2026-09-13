@@ -546,11 +546,8 @@ awh::codec::yaml::Decoder::Decoder() noexcept :
  *
  */
 void awh::codec::yaml::Decoder::report() const noexcept {
-	/**
-	 * Если объект для работы с логами установлен
-	 */
-		// Выполняем вывод сообщения об отказе приведения кодировки
-		awh::log::print("YAML encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error));
+	// Выполняем вывод сообщения об отказе приведения кодировки
+	awh::log::print("YAML encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error));
 }
 /**
  * @brief Метод сброса состояния приведения кодировки

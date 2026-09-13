@@ -30,8 +30,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <compressor/block.hpp>
 #include <sys/fmk.hpp>
+#include <compressor/block.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -51,23 +51,23 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Создаём объект компрессии данных (используется как фабрика потоковых сессий)
-	awh::compressor::block_t compressor;
+	compressor::block_t compressor;
 	// Строка для компрессии данных
 	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
 	// Методы компрессии, поддерживающие потоковый режим
-	const std::vector <std::pair <std::string, awh::compressor::method_t>> methods = {
-		{"GZIP", awh::compressor::method_t::GZIP},
-		{"DEFLATE", awh::compressor::method_t::DEFLATE},
-		{"ZLIB", awh::compressor::method_t::ZLIB},
-		{"ZSTD", awh::compressor::method_t::ZSTD},
-		{"BROTLI", awh::compressor::method_t::BROTLI},
-		{"LZMA", awh::compressor::method_t::LZMA},
-		{"BZIP2", awh::compressor::method_t::BZIP2},
-		{"LZ4", awh::compressor::method_t::LZ4},
-		{"LIZARD", awh::compressor::method_t::LIZARD}
+	const std::vector <std::pair <std::string, compressor::method_t>> methods = {
+		{"GZIP", compressor::method_t::GZIP},
+		{"DEFLATE", compressor::method_t::DEFLATE},
+		{"ZLIB", compressor::method_t::ZLIB},
+		{"ZSTD", compressor::method_t::ZSTD},
+		{"BROTLI", compressor::method_t::BROTLI},
+		{"LZMA", compressor::method_t::LZMA},
+		{"BZIP2", compressor::method_t::BZIP2},
+		{"LZ4", compressor::method_t::LZ4},
+		{"LIZARD", compressor::method_t::LIZARD}
 	};
 	// Размер порции данных для потоковой обработки
 	const size_t chunk = 16;
@@ -80,7 +80,7 @@ int32_t main(){
 		// Буфер готового выхода порции
 		string part = "";
 		// Создаём потоковую сессию компрессии
-		awh::compressor::stream_t encoder = compressor.stream(item.second, awh::compressor::event_t::ENCODE);
+		compressor::stream_t encoder = compressor.stream(item.second, compressor::event_t::ENCODE);
 		// Результат компрессии
 		string compressed = "";
 		/**
@@ -99,7 +99,7 @@ int32_t main(){
 		// Добавляем хвост в результат
 		compressed.append(part);
 		// Создаём потоковую сессию декомпрессии
-		awh::compressor::stream_t decoder = compressor.stream(item.second, awh::compressor::event_t::DECODE);
+		compressor::stream_t decoder = compressor.stream(item.second, compressor::event_t::DECODE);
 		// Результат декомпрессии
 		string restored = "";
 		/**

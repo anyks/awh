@@ -36,21 +36,45 @@
  */
 namespace {
 	/**
-	 * @brief Объект журнала проверок с отключённым выводом
+	 * \~russian
+	 * @brief Ограда подписки на отчёты журнала
 	 *
-	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
-	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 * @details Журнал с 13.09.2026 есть пространство ходов статических, и подписка живёт
+	 *          в переменных ПРОЦЕССА, переживая ту область, где заведён её сборник. Отчёт,
+	 *          пришедший по выходе из области, писал бы в память разрушенную
 	 *
+	 * @warning Снятие ведётся деструктором, а не зовом в конце проверки: `ASSERT_*`
+	 *          выходит возвратом, и хвостовой зов при КРАСНОЙ проверке пропускается -
+	 *          подписка оставалась бы висеть, и одна краснота плодила бы порчу у соседей
+	 *
+	 * @note Доказано щупом 13.09.2026: санитайзер даёт `stack-use-after-scope` на первом
+	 *       же отчёте, поданном по выходе из области подписки
+	 *
+	 * \~english
+	 * @brief Guard of the subscription to the reports of the log
+	 *
+	 * \~
 	 */
-	struct Silent {
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept {
-			// Выполняем отключение вывода логов
-			awh::log::mode({});
-		}
+	class Subscription {
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param callback функция приёма отчётов журнала
+			 *
+			 */
+			explicit Subscription(::std::function <void (const awh::log::flag_t, ::std::string_view)> callback) noexcept {
+				// Выполняем подписку на отчёты журнала
+				awh::log::subscribe(::std::move(callback));
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Subscription() noexcept {
+				// Выполняем снятие подписки на отчёты журнала
+				awh::log::subscribe(nullptr);
+			}
 	};
 }
 
@@ -3981,7 +4005,7 @@ TEST(CodecYamlReader, FailureReachesTheLog) {
 	// Выполняем разрешение выдачи логов в функцию обратного вызова
 	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем установку функции перехвата сообщений журнала
-	awh::log::subscribe([&caught, &flag](const awh::log::flag_t received, string_view text) noexcept -> void {
+	const Subscription subscription1([&caught, &flag](const awh::log::flag_t received, string_view text) noexcept -> void {
 		// Запоминаем вид полученного сообщения
 		flag = received;
 		// Запоминаем полученное сообщение

@@ -51,7 +51,7 @@
 #include <iostream>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <net/io.hpp>
 #include <sys/log.hpp>
@@ -254,7 +254,7 @@ static void feed(engine::io_t & io, engine::sctp_t & sctp, const event::id_t eid
 	// Запоминаем, что весь файл принят к отправке
 	__sending__.queued = true;
 	// Выводим сообщение о том, что файл принят к отправке целиком
-	awh::log::print("Файл принят к отправке целиком: %zu октетов", awh::log::flag_t::INFO, total);
+	log::print("Файл принят к отправке целиком: %zu октетов", log::flag_t::INFO, total);
 }
 
 /**
@@ -272,7 +272,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Если вид сокета либо адрес файла не названы
 	if(argc < 3){
 		// Выводим порядок запуска
@@ -304,7 +304,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если прочитать отправляемый файл не удалось
 	if(!load(argv[2], __sending__.payload) || __sending__.payload.empty()){
 		// Выводим сообщение об ошибке
-		awh::log::print("Файл прочитать не удалось либо он пуст: %s", awh::log::flag_t::CRITICAL, argv[2]);
+		log::print("Файл прочитать не удалось либо он пуст: %s", log::flag_t::CRITICAL, argv[2]);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -321,7 +321,7 @@ int32_t main(int32_t argc, char * argv[]){
 		? (__sending__.bounds ? 1 : 0)
 		: ((total + __sending__.chunk - 1) / __sending__.chunk));
 	// Выводим сведения об отправляемом файле
-	awh::log::print("ФАЙЛ: октетов=%zu записей=%zu сумма=%016llX", awh::log::flag_t::INFO,
+	log::print("ФАЙЛ: октетов=%zu записей=%zu сумма=%016llX", log::flag_t::INFO,
 		total, records, static_cast <unsigned long long> (digest(__sending__.payload.data(), total)));
 	// Объект асинхронного движка ввода-вывода
 	engine::io_t io;
@@ -338,7 +338,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если завести движок не удалось
 	if(!io.initialize()){
 		// Выводим сообщение об ошибке
-		awh::log::print("Движок завести не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Движок завести не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -350,14 +350,14 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если установить локальный адрес не удалось
 	if(!io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
 		// Выводим сообщение об ошибке
-		awh::log::print("Локальный адрес установить не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Локальный адрес установить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если установить адрес удалённого сервера не удалось
 	if(!io.setTarget(eid, target)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Адрес удалённого сервера установить не удалось: %s", awh::log::flag_t::CRITICAL, target.c_str());
+		log::print("Адрес удалённого сервера установить не удалось: %s", log::flag_t::CRITICAL, target.c_str());
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -366,12 +366,12 @@ int32_t main(int32_t argc, char * argv[]){
 		// Если подключиться не удалось
 		if(!ok){
 			// Выводим сообщение об ошибке
-			awh::log::print("Подключиться к серверу не удалось", awh::log::flag_t::CRITICAL);
+			log::print("Подключиться к серверу не удалось", log::flag_t::CRITICAL);
 			// Выходим из функции
 			return;
 		}
 		// Выводим сообщение об установленном подключении
-		awh::log::print("Подключение установлено", awh::log::flag_t::INFO);
+		log::print("Подключение установлено", log::flag_t::INFO);
 		/**
 		 * Если границы записи затребованы, а система их не несёт - об этом надо сказать
 		 *
@@ -381,7 +381,7 @@ int32_t main(int32_t argc, char * argv[]){
 		 */
 		if(__sending__.stream && __sending__.bounds && !sctp.partialSupported(eid))
 			// Выводим предупреждение
-			awh::log::print("Границы записи система не поддерживает: файл уйдёт несколькими записями", awh::log::flag_t::WARNING);
+			log::print("Границы записи система не поддерживает: файл уйдёт несколькими записями", log::flag_t::WARNING);
 		// Запоминаем свободное место очереди при пустой очереди
 		__sending__.capacity = io.available(eid);
 		// Запоминаем идентификатор события отправки
@@ -398,7 +398,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Если очередь отправки переполнилась
 			case static_cast <uint8_t> (event::status_t::QUEUE_OVERFLOW):
 				// Выводим сообщение о переполнении очереди
-				awh::log::print("Очередь отправки переполнена: отправлено %zu из %zu", awh::log::flag_t::INFO,
+				log::print("Очередь отправки переполнена: отправлено %zu из %zu", log::flag_t::INFO,
 					__sending__.offset, __sending__.payload.size());
 			break;
 			// Если в очереди отправки освободилось место
@@ -411,21 +411,21 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если зафиксировать настройки события не удалось
 	if(!io.commit(eid)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Настройки события зафиксировать не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Настройки события зафиксировать не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если подключиться к серверу не удалось
 	if(!io.connect(eid)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Подключение к серверу выполнить не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Подключение к серверу выполнить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если запустить событие не удалось
 	if(!io.launch(eid)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Событие запустить не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Событие запустить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -441,7 +441,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Продолжаем оборот цикла
 			continue;
 		// Выводим сообщение о завершении отправки
-		awh::log::print("Отправка завершена, выдерживаем %u мс перед закрытием", awh::log::flag_t::INFO, __linger__);
+		log::print("Отправка завершена, выдерживаем %u мс перед закрытием", log::flag_t::INFO, __linger__);
 		/**
 		 * Выдерживаем время перед закрытием подключения
 		 *

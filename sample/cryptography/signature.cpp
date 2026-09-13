@@ -28,8 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <cryptography/crypto.hpp>
 #include <sys/fmk.hpp>
+#include <cryptography/crypto.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -85,7 +85,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Снимаем предупреждения о неиспользуемых параметрах
 	(void) argc;
 	(void) argv;

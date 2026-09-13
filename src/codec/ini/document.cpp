@@ -3134,12 +3134,9 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		this->_error = ((this->_fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
 		static_cast <void> (this->_fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -3159,12 +3156,9 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
 		static_cast <void> (this->_fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -3180,7 +3174,7 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		// Выполняем снятие временного файла, целью не ставшего
 		static_cast <void> (this->_fs.unlink(temporary));
 		/**
-		 * Если объект ведения журнала работы установлен
+		 * Выполняем оглашение отказа в журнал
 		 *
 		 * @warning Отказ обязан быть ОГЛАШЁН, а не проглочен молча: потребитель, ложь без
 		 *          слова получивший, не узнает ни места отказа, ни рода его
@@ -3193,9 +3187,9 @@ bool awh::codec::ini::Document::save(const string & filename) const noexcept {
 		 *          был НЕМ: замерено подачею пути в каталог, отказ приходил при коде НОЛЬ,
 		 *          тогда как JSON, XML и CSV называли причину
 		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("INI document failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -3387,11 +3381,8 @@ bool awh::codec::ini::Document::fault(const error_t error) const noexcept {
  *
  */
 void awh::codec::ini::Document::report() const noexcept {
-	/**
-	 * Если объект для работы с логами установлен
-	 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("INI document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
+	// Выполняем вывод сообщения об отказе
+	awh::log::print("INI document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error), this->_errorLocation.line, this->_errorLocation.column);
 }
 /**
  * @brief Конструктор

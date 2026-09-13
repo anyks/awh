@@ -487,11 +487,8 @@ awh::codec::yaml::Document::Document(const settings_t & settings) noexcept :
  *
  */
 void awh::codec::yaml::Document::report() const noexcept {
-	/**
-	 * Если объект для работы с логами установлен
-	 */
-		// Выполняем вывод сообщения об отказе построения дерева документа
-		awh::log::print("YAML document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error), this->_location.line, this->_location.column);
+	// Выполняем вывод сообщения об отказе построения дерева документа
+	awh::log::print("YAML document failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(this->_error), this->_location.line, this->_location.column);
 }
 /**
  * @brief Метод получения настроек разбора документа
@@ -7308,12 +7305,9 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		this->_error = ((this->_fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
 		static_cast <void> (this->_fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
-			 ::awh::codec::yaml::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
+		 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -7329,12 +7323,9 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
 		static_cast <void> (this->_fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
-			 ::awh::codec::yaml::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
+		 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}
@@ -7352,12 +7343,9 @@ bool awh::codec::yaml::Document::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
 		static_cast <void> (this->_fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
-			 ::awh::codec::yaml::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("%s document failed: %s", awh::log::flag_t::CRITICAL, "YAML",
+		 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи настроек
 		return false;
 	}

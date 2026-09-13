@@ -170,21 +170,45 @@ namespace {
 		return ((dot == ::std::string::npos) ? (name + "-" + pid) : (name.substr(0, dot) + "-" + pid + name.substr(dot)));
 	}
 	/**
-	 * @brief Объект журнала проверок с отключённым выводом
+	 * \~russian
+	 * @brief Ограда подписки на отчёты журнала
 	 *
-	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
-	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 * @details Журнал с 13.09.2026 есть пространство ходов статических, и подписка живёт
+	 *          в переменных ПРОЦЕССА, переживая ту область, где заведён её сборник. Отчёт,
+	 *          пришедший по выходе из области, писал бы в память разрушенную
 	 *
+	 * @warning Снятие ведётся деструктором, а не зовом в конце проверки: `ASSERT_*`
+	 *          выходит возвратом, и хвостовой зов при КРАСНОЙ проверке пропускается -
+	 *          подписка оставалась бы висеть, и одна краснота плодила бы порчу у соседей
+	 *
+	 * @note Доказано щупом 13.09.2026: санитайзер даёт `stack-use-after-scope` на первом
+	 *       же отчёте, поданном по выходе из области подписки
+	 *
+	 * \~english
+	 * @brief Guard of the subscription to the reports of the log
+	 *
+	 * \~
 	 */
-	struct Silent {
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept {
-			// Выполняем отключение вывода логов
-			awh::log::mode({});
-		}
+	class Subscription {
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param callback функция приёма отчётов журнала
+			 *
+			 */
+			explicit Subscription(::std::function <void (const awh::log::flag_t, ::std::string_view)> callback) noexcept {
+				// Выполняем подписку на отчёты журнала
+				awh::log::subscribe(::std::move(callback));
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Subscription() noexcept {
+				// Выполняем снятие подписки на отчёты журнала
+				awh::log::subscribe(nullptr);
+			}
 	};
 }
 
@@ -3346,7 +3370,7 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	// Разрешаем отложенный вывод: подписка кормится именно им
 	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на отчёты журнала
-	awh::log::subscribe([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
+	const Subscription subscription1([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем добавление очередного отчёта журнала
 		reports.push_back(string(text));
 	});
@@ -3434,8 +3458,8 @@ TEST(CodecIniDocument, FailedSaveKeepsThePreviousContent){
 	ASSERT_FALSE(reports.empty());
 	// Выполняем проверку того, что оглашение отказ называет
 	// Розыск ведётся по ВСЕМ отчётам: с переходом на `sys/fs` отказ оглашает и
-		// нижний слой, и наш отчёт уже не первый и не последний
-		ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("failed") != string::npos) return true; return false; }()) << reports.back();
+	// нижний слой, и наш отчёт уже не первый и не последний
+	ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("failed") != string::npos) return true; return false; }()) << reports.back();
 	// Содержимое файла после отказавшего сохранения
 	string current;
 	{
@@ -3999,7 +4023,7 @@ TEST(CodecIniDocument, EveryFailedSaveIsAnnounced){
 	// Разрешаем отложенный вывод: подписка кормится именно им
 	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на отчёты журнала
-	awh::log::subscribe([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
+	const Subscription subscription2([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем добавление очередного отчёта журнала
 		reports.push_back(string(text));
 	});
@@ -4094,32 +4118,32 @@ TEST(CodecIniDocument, EveryFailedSaveIsAnnounced){
 }
 
 /**
- * @brief Проверка установки журнала после построения дерева
+ * @brief Проверка того, что отказ разбора доходит до журнала
  *
- * @details Ход `setLogger()` общий у всех семи кодеков рамки: журнал ставится не одним
- *          лишь доводом построения, но и после него - потребитель, дерево получивший
- *          готовым, иначе не имел бы способа направить его отчёты в свой журнал вовсе
+ * @details Дерево, journal при построении не получавшее, всё равно обязано огласить
+ *          отказ: с 13.09.2026 журнал есть пространство ходов статических, и брать его
+ *          дереву неоткуда и незачем - он просто есть
  *
- * @warning Поверяется ПРИХОД отчёта, а не то, что вызов не упал: проверка «поставили и
- *          не упало» не проверяет ход вовсе - подмена тела `setLogger()` пустышкою её
- *          не роняла бы. Здесь же отчёт обязан ПРИЙТИ
+ * @warning Поверяется ПРИХОД отчёта, а не то, что вызов не упал: проверка «разобрали и
+ *          не упало» оглашения не проверяет вовсе - снятие вывода её не роняло бы.
+ *          Здесь же отчёт обязан ПРИЙТИ и обязан отказ НАЗЫВАТЬ
  *
- * @note Пробел открыло объединённое покрытие набора с ворошителем: тело `setLogger()`
- *       у дерева не задето было ни разу. У кодека YAML такая проверка стоит давно -
- *       `CodecYamlDocument.CommonHandlesOfTheFramework`, - а у этого её не было
+ * @note Прежде проверка звалась `LoggerSetAfterBuildingIsUsed` и мерила ход
+ *       `setLogger()`. Хода того больше нет, и имя лгало о предмете: измеряемое
+ *       осталось верным, а название - нет
  *
  */
-TEST(CodecIniDocument, LoggerSetAfterBuildingIsUsed){
+TEST(CodecIniDocument, TheRefusalOfTheParsingReachesTheLog){
 	// Собранные отчёты журнала
 	vector <string> reports;
 	// Разрешаем отложенный вывод: подписка кормится именно им
 	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на отчёты журнала
-	awh::log::subscribe([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
+	const Subscription subscription3([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем добавление очередного отчёта журнала
 		reports.push_back(string(text));
 	});
-	// Объект дерева настроек, журнала при построении НЕ получивший
+	// Объект дерева настроек, заведомо негодный текст разбирающий
 	ini::document_t broken;
 	// Выполняем проверку того, что журнал пуст до всякой работы
 	ASSERT_TRUE(reports.empty());
@@ -4128,14 +4152,14 @@ TEST(CodecIniDocument, LoggerSetAfterBuildingIsUsed){
 	/**
 	 * Выполняем проверку того, что отчёт об отказе ПРИШЁЛ в поставленный журнал
 	 *
-	 * @note Ровно это и есть предмет проверки: без работающего `setLogger()` отчёт
-	 *       ушёл бы в никуда, а разбор всё так же отвечал бы ложью
+	 * @note Ровно это и есть предмет проверки: без оглашения отчёт ушёл бы в никуда,
+	 *       а разбор всё так же отвечал бы ложью
 	 */
 	ASSERT_FALSE(reports.empty());
 	// Выполняем проверку того, что отчёт отказ называет
 	// Розыск ведётся по ВСЕМ отчётам: с переходом на `sys/fs` отказ оглашает и
-		// нижний слой, и наш отчёт уже не первый и не последний
-		ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("failed") != string::npos) return true; return false; }()) << reports.back();
+	// нижний слой, и наш отчёт уже не первый и не последний
+	ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("failed") != string::npos) return true; return false; }()) << reports.back();
 	// Выполняем проверку того, что отказ назван кодом своим
 	ASSERT_NE(broken.error(), ini::error_t::NONE);
 }

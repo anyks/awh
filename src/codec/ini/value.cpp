@@ -1958,21 +1958,26 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 	 */
 	if(text.empty() && !this->_items.empty()){
 		/**
-		 * Если объект ведения журнала работы установлен
+		 * Выполняем оглашение отказа в журнал
 		 *
 		 * @warning Отказ обязан быть ОГЛАШЁН, а не проглочен молча: потребитель, ложь без
 		 *          слова получивший, не узнает ни места отказа, ни рода его. Прежде запись
 		 *          владеющего значения не оглашала НИ ОДНОГО из четырёх своих отказов, тогда
 		 *          как кодеки JSON, XML и CSV оглашают все. Здесь берётся их же порядок
 		 *
-		 * @note Код отказа при том НЕ запоминается: запись объявлена постоянной, и правка
-		 *       кода означала бы правку значения при записи его
+		 * @note Код отказа запоминается вместе с оглашением: поле его объявлено
+		 *       `mutable`, и постоянность записи правке кода не мешает. Прежде здесь
+		 *       стоял довод обратный - «запись объявлена постоянной, потому код не
+		 *       ставится», - и он был ЛОЖЕН по слову: отказ выдавался при коде НОЛЬ, а
+		 *       потребитель, спросив `error()`, узнавал `NONE`
 		 *
 		 * @note Нашло пробел объединённое покрытие набора с ворошителем
 		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(error_t::FILE_NOT_WRITTEN));
+		// Запоминаем код отказа записи файла настроек
+		this->_error = error_t::FILE_NOT_WRITTEN;
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2016,12 +2021,9 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		this->_error = ((fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
 		static_cast <void> (fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2037,12 +2039,9 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
 		static_cast <void> (fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2054,12 +2053,9 @@ bool awh::codec::ini::Value::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
 		static_cast <void> (fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::ini::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("INI value failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::ini::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}

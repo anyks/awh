@@ -790,11 +790,8 @@ void awh::codec::yaml::Writer::spaced() noexcept {
 bool awh::codec::yaml::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
-	/**
-	 * Если объект для работы с логами установлен
-	 */
-		// Выполняем вывод сообщения об отказе записи текста
-		awh::log::print("YAML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error));
+	// Выполняем вывод сообщения об отказе записи текста
+	awh::log::print("YAML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error));
 	// Выводим признак отказа для выхода из записи
 	return false;
 }

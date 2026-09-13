@@ -25,11 +25,11 @@
 #include <cinttypes>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <server/server.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <server/server.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -58,7 +58,7 @@ class Executor {
 		 */
 		void write([[maybe_unused]] const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
-			awh::log::print("Client write event: %zu bytes", awh::log::flag_t::INFO, size);
+			log::print("Client write event: %zu bytes", log::flag_t::INFO, size);
 		}
 		/**
 		 * @brief Метод обработки событий чтения данных клиентом
@@ -73,13 +73,13 @@ class Executor {
 			// Если данные получены
 			if(size > 0)
 				// Записываем данные в лог
-				awh::log::print("%s", awh::log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
+				log::print("%s", log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
-			else awh::log::print("No data received", awh::log::flag_t::WARNING);
+			else log::print("No data received", log::flag_t::WARNING);
 			// Отправляем данные обратно клиенту
 			if(server->send(eid, data, size) == 0)
 				// Записываем ошибку в лог отправки данных клиентом на сервер
-				awh::log::print("Failed to send data to client", awh::log::flag_t::WARNING);
+				log::print("Failed to send data to client", log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки событий изменения статуса сервера
@@ -98,14 +98,14 @@ class Executor {
 					// Выполняем прослушивание сервера на порту
 					if(!server->listen(100))
 						// Записываем ошибку в лог
-						awh::log::print("Failed to listen on port %d", awh::log::flag_t::WARNING, server->getPort());
+						log::print("Failed to listen on port %d", log::flag_t::WARNING, server->getPort());
 					// Если подключение выполнено, то выводим сообщение об успешном прослушивании порта
-					else awh::log::print("Successfully listening on port %d", awh::log::flag_t::INFO, server->getPort());
+					else log::print("Successfully listening on port %d", log::flag_t::INFO, server->getPort());
 				} break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события сервера
-					awh::log::print("Server destroyed", awh::log::flag_t::INFO);
+					log::print("Server destroyed", log::flag_t::INFO);
 				break;
 			}
 		}
@@ -135,7 +135,7 @@ class Executor {
 				cout << "CRL Info: " << tls->certificateRevocationListInfo(tid) << endl << endl;
 				cout << "Certificate Validation: " << (tls->validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
 				// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-				awh::log::print("TLS handshake complete: ID=%" PRIu64 ", ALPN protocol=%d", awh::log::flag_t::INFO, tid, tls->alpn(tid));
+				log::print("TLS handshake complete: ID=%" PRIu64 ", ALPN protocol=%d", log::flag_t::INFO, tid, tls->alpn(tid));
 			}
 		}
 		/**
@@ -149,7 +149,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
-			awh::log::print("Server is ready to accept connections: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
+			log::print("Server is ready to accept connections: %s (%s)", log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок сервера
@@ -161,7 +161,7 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("Server error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("Server error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок транспортного уровня безопасности TLS
@@ -173,7 +173,7 @@ class Executor {
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог TLS
-			awh::log::print("TLS error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("TLS error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 		/**
 		 * @brief Метод обработки TLS fingerprint клиента
@@ -186,7 +186,7 @@ class Executor {
 		 */
 		void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
 			// Записываем в лог информацию о браузере клиента, который подключился к серверу
-			awh::log::print("TLS fingerprint: ID=%" PRIu64 ", Event ID=%u, Browser=%s", awh::log::flag_t::INFO, id, eid, fgp->print(browser).c_str());
+			log::print("TLS fingerprint: ID=%" PRIu64 ", Event ID=%u, Browser=%s", log::flag_t::INFO, id, eid, fgp->print(browser).c_str());
 		}
 	public:
 		/**
@@ -209,7 +209,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor;
 	// Создаём объект отпечатка браузера

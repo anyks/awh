@@ -113,11 +113,8 @@ awh::codec::toml::Writer::Settings::Settings() noexcept :
 bool awh::codec::toml::Writer::refuse(const error_t error) noexcept {
 	// Запоминаем код ошибки записи
 	this->_error = error;
-	/**
-	 * Если объект для работы с логами установлен
-	 */
-		// Выполняем вывод сообщения об отказе записи текста
-		awh::log::print("TOML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error));
+	// Выполняем вывод сообщения об отказе записи текста
+	awh::log::print("TOML writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error));
 	/**
 	 * Если отказ застал строку незавершённой
 	 */

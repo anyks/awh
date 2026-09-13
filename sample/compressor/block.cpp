@@ -27,8 +27,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <compressor/block.hpp>
 #include <sys/fmk.hpp>
+#include <compressor/block.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -48,20 +48,20 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Создаём объект для блочной компрессии данных
-	awh::compressor::block_t compressor;
+	compressor::block_t compressor;
 	// Строка для компрессии данных
 	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
 	// Печатаем заголовок в отладочный вывод компрессии LZ4
 	cout << " ======== LZ4 ======== " << endl << flush;
 	// Выполняем компрессию данных
-	string compressed = compressor.compress <string> (data, awh::compressor::method_t::LZ4);
+	string compressed = compressor.compress <string> (data, compressor::method_t::LZ4);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data LZ4: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	string decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::LZ4);
+	string decompressed = compressor.decompress <string> (compressed, compressor::method_t::LZ4);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data LZ4: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -69,11 +69,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии LZMA
 	cout << " ======== LZMA ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::LZMA);
+	compressed = compressor.compress <string> (data, compressor::method_t::LZMA);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data LZMA: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::LZMA);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::LZMA);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data LZMA: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -81,11 +81,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии ZSTD
 	cout << " ======== ZSTD ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::ZSTD);
+	compressed = compressor.compress <string> (data, compressor::method_t::ZSTD);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data ZSTD: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::ZSTD);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::ZSTD);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data ZSTD: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -93,11 +93,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии GZIP
 	cout << " ======== GZIP ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::GZIP);
+	compressed = compressor.compress <string> (data, compressor::method_t::GZIP);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data GZIP: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::GZIP);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::GZIP);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data GZIP: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -105,11 +105,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии BZIP2
 	cout << " ======== BZIP2 ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::BZIP2);
+	compressed = compressor.compress <string> (data, compressor::method_t::BZIP2);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data BZIP2: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::BZIP2);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::BZIP2);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data BZIP2: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -117,11 +117,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии BROTLI
 	cout << " ======== BROTLI ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::BROTLI);
+	compressed = compressor.compress <string> (data, compressor::method_t::BROTLI);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data BROTLI: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::BROTLI);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::BROTLI);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data BROTLI: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -129,11 +129,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии LIZARD
 	cout << " ======== LIZARD ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::LIZARD);
+	compressed = compressor.compress <string> (data, compressor::method_t::LIZARD);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data LIZARD: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::LIZARD);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::LIZARD);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data LIZARD: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -141,11 +141,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии SNAPPY
 	cout << " ======== SNAPPY ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::SNAPPY);
+	compressed = compressor.compress <string> (data, compressor::method_t::SNAPPY);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data SNAPPY: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::SNAPPY);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::SNAPPY);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data SNAPPY: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -153,11 +153,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии DEFLATE
 	cout << " ======== DEFLATE ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::DEFLATE);
+	compressed = compressor.compress <string> (data, compressor::method_t::DEFLATE);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data DEFLATE: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::DEFLATE);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::DEFLATE);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data DEFLATE: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку
@@ -165,11 +165,11 @@ int32_t main(){
 	// Печатаем заголовок в отладочный вывод компрессии DENSITY
 	cout << " ======== DENSITY ======== " << endl << flush;
 	// Выполняем компрессию данных
-	compressed = compressor.compress <string> (data, awh::compressor::method_t::DENSITY);
+	compressed = compressor.compress <string> (data, compressor::method_t::DENSITY);
 	// Возвращаем результат работы компрессора
 	cout << "Compressed data DENSITY: " << compressed << ", SIZE=" << compressed.size() << endl << flush;
 	// Выполняем декомпрессию данных
-	decompressed = compressor.decompress <string> (compressed, awh::compressor::method_t::DENSITY);
+	decompressed = compressor.decompress <string> (compressed, compressor::method_t::DENSITY);
 	// Возвращаем результат работы компрессора
 	cout << "Decompressed data DENSITY: " << decompressed << ", SIZE=" << decompressed.size() << endl << flush;
 	// Возвращаем пустую строку

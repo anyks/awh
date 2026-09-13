@@ -23,10 +23,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <sys/fiber.hpp>
 #include <net/io.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <sys/fiber.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -79,7 +79,7 @@ class Executor {
 			// Отправляем запрос серверу
 			if(this->_io->send(this->_client, message.data(), message.size()) == 0){
 				// Записываем ошибку в лог
-				awh::log::print("Запрос отправить не удалось", awh::log::flag_t::CRITICAL);
+				log::print("Запрос отправить не удалось", log::flag_t::CRITICAL);
 				// Выводим пустой ответ
 				return "";
 			}
@@ -122,7 +122,7 @@ class Executor {
 			// Если подключение не выполнено
 			if(!ok){
 				// Записываем ошибку в лог
-				awh::log::print("Подключиться к серверу не удалось", awh::log::flag_t::CRITICAL);
+				log::print("Подключиться к серверу не удалось", log::flag_t::CRITICAL);
 				// Выходим из функции обработки
 				return;
 			}
@@ -136,13 +136,13 @@ class Executor {
 				// Выполняем первый обмен
 				const std::string first = this->request("SELECT 1");
 				// Записываем ответ в лог
-				awh::log::print("Первый ответ: %s", awh::log::flag_t::INFO, first.c_str());
+				log::print("Первый ответ: %s", log::flag_t::INFO, first.c_str());
 				// Выполняем второй обмен, опираясь на итог первого
 				const std::string second = this->request("SELECT " + std::to_string(first.size()));
 				// Записываем ответ в лог
-				awh::log::print("Второй ответ: %s", awh::log::flag_t::INFO, second.c_str());
+				log::print("Второй ответ: %s", log::flag_t::INFO, second.c_str());
 				// Записываем в лог сообщение о завершении обменов
-				awh::log::print("Оба обмена выполнены последовательно, цикл при этом не стоял", awh::log::flag_t::INFO);
+				log::print("Оба обмена выполнены последовательно, цикл при этом не стоял", log::flag_t::INFO);
 				// Отмечаем работу выполненной
 				this->_done = true;
 			});
@@ -182,7 +182,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io;
 	// Порт, на котором работает встроенный эхо-сервер образца
@@ -203,7 +203,7 @@ int32_t main(){
 	// Инициализируем движок
 	if(!io.initialize()){
 		// Записываем ошибку в лог
-		awh::log::print("Движок инициализировать не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Движок инициализировать не удалось", log::flag_t::CRITICAL);
 		// Выходим из приложения
 		return EXIT_FAILURE;
 	}
@@ -221,7 +221,7 @@ int32_t main(){
 	 */
 	io.on(server, static_cast <engine::callback::accept_t> ([&io]([[maybe_unused]] const event::id_t sid, const event::id_t cid) noexcept -> void {
 		// Записываем в лог сообщение о принятом подключении
-		awh::log::print("Сервер принял подключение", awh::log::flag_t::INFO);
+		log::print("Сервер принял подключение", log::flag_t::INFO);
 		// Устанавливаем функцию обратного вызова на чтение данных сервером
 		io.on(cid, [&io](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Возвращаем принятое обратно отправителю

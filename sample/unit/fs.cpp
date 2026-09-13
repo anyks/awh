@@ -49,7 +49,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект узла файловой системы
 	unit::fs_t fs;
 	// Создаём новое событие работы с каталогом
@@ -59,14 +59,14 @@ int32_t main(){
 	// Устанавливаем функцию обратного вызова на запись в событие
 	fs.on <void (const event::id_t, const size_t)> ("write", [](const event::id_t eid, const size_t size) noexcept -> void {
 		// Записываем в лог сообщение о записи в событие
-		awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
+		log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на чтение из события
 	fs.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Записываем в лог сообщение о чтении из события
-		awh::log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log::flag_t::INFO, eid, size, message.c_str());
+		log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, size, message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния ноды файловой системы
 	fs.on <void (const event::id_t, const event::status_t)> ("state", [&fs](const event::id_t eid, const event::status_t status) noexcept -> void {
@@ -77,49 +77,49 @@ int32_t main(){
 			// Если статус принятия
 			case static_cast <uint8_t> (event::status_t::ACCEPTED):
 				// Записываем в лог сообщение о принятии события
-				awh::log::print("Событие принято: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие принято: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус уничтожения
 			case static_cast <uint8_t> (event::status_t::DESTROYED):
 				// Записываем в лог сообщение об уничтожении события
-				awh::log::print("Событие подлежит уничтожению: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие подлежит уничтожению: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус инициализации
 			case static_cast <uint8_t> (event::status_t::INITIAL):
 				// Записываем в лог сообщение об инициализации события
-				awh::log::print("Событие инициализировано: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие инициализировано: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус запуска события
 			case static_cast <uint8_t> (event::status_t::LAUNCHED):
 				// Записываем в лог сообщение о запуске события
-				awh::log::print("Событие запущено: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие запущено: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус паузы события
 			case static_cast <uint8_t> (event::status_t::PAUSED):
 				// Записываем в лог сообщение о паузе события
-				awh::log::print("Событие на паузе: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие на паузе: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус возобновления события
 			case static_cast <uint8_t> (event::status_t::RESUMED):
 				// Записываем в лог сообщение о возобновлении события
-				awh::log::print("Событие возобновлено: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие возобновлено: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус успешного выполнения события
 			case static_cast <uint8_t> (event::status_t::SUCCESS):
 				// Записываем в лог сообщение о успешном выполнении события
-				awh::log::print("Событие успешно выполнено: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие успешно выполнено: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус неудачного выполнения события
 			case static_cast <uint8_t> (event::status_t::FAILURE):
 				// Записываем в лог сообщение о неудачном выполнении события
-				awh::log::print("Событие выполнено с ошибкой: ID=%u", awh::log::flag_t::CRITICAL, eid);
+				log::print("Событие выполнено с ошибкой: ID=%u", log::flag_t::CRITICAL, eid);
 			break;
 			// Если статус выполнения события в ожидании
 			case static_cast <uint8_t> (event::status_t::PENDING): {
 				// Если тип узла события является файлом
 				if(fs.type(eid) == unit::fs_t::type_t::FILE){
 					// Записываем в лог сообщение о выполнении события в ожидании
-					awh::log::print("Событие в ожидании: ID=%u", awh::log::flag_t::INFO, eid);
+					log::print("Событие в ожидании: ID=%u", log::flag_t::INFO, eid);
 					// Устанавливаем смещение в файле
 					// fs.setSeek(eid, event::seek_t::BEGIN, 1024);
 					// Отправляем тестовое сообщение в файл
@@ -129,22 +129,22 @@ int32_t main(){
 			// Если статус подключения события
 			case static_cast <uint8_t> (event::status_t::CONNECTED):
 				// Записываем в лог сообщение о подключении события
-				awh::log::print("Событие подключено: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие подключено: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус отмены события
 			case static_cast <uint8_t> (event::status_t::CANCELLED):
 				// Записываем в лог сообщение об отмене события
-				awh::log::print("Событие отменено: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие отменено: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус переподключения события
 			case static_cast <uint8_t> (event::status_t::RECONNECTED):
 				// Записываем в лог сообщение о переподключении события
-				awh::log::print("Событие переподключено: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие переподключено: ID=%u", log::flag_t::INFO, eid);
 			break;
 			// Если статус прослушивания события
 			case static_cast <uint8_t> (event::status_t::LISTENING):
 				// Записываем в лог сообщение о прослушивании события
-				awh::log::print("Событие прослушивается: ID=%u", awh::log::flag_t::INFO, eid);
+				log::print("Событие прослушивается: ID=%u", log::flag_t::INFO, eid);
 			break;
 		}
 	}, placeholders::_1, placeholders::_2);
@@ -157,7 +157,7 @@ int32_t main(){
 			// Если тип узла не определён
 			case static_cast <uint8_t> (event::vnode_t::NONE):
 				// Записываем в лог сообщение о типе узла события
-				awh::log::print("Тип узла события: Не определён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+				log::print("Тип узла события: Не определён, Путь=%s", log::flag_t::INFO, path.c_str());
 			break;
 			case static_cast <uint8_t> (event::vnode_t::CHR): {
 				/**
@@ -167,12 +167,12 @@ int32_t main(){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
 						// Записываем в лог сообщение о изменении события
-						awh::log::print("Тип узла события: Символьный узел устройства добавлен, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Символьный узел устройства добавлен, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
 						// Записываем в лог сообщение об удалении события
-						awh::log::print("Тип узла события: Символьный узел устройства удалён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Символьный узел устройства удалён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 				}
 			} break;
@@ -184,12 +184,12 @@ int32_t main(){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
 						// Записываем в лог сообщение о изменении события
-						awh::log::print("Тип узла события: Блочный узел устройства добавлен, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Блочный узел устройства добавлен, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
 						// Записываем в лог сообщение об удалении события
-						awh::log::print("Тип узла события: Блочный узел устройства удалён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Блочный узел устройства удалён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 				}
 			} break;
@@ -202,12 +202,12 @@ int32_t main(){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
 						// Записываем в лог сообщение о изменении события
-						awh::log::print("Тип узла события: Канал FIFO добавлен, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Канал FIFO добавлен, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
 						// Записываем в лог сообщение об удалении события
-						awh::log::print("Тип узла события: Канал FIFO удалён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Канал FIFO удалён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 				}
 			} break;
@@ -220,12 +220,12 @@ int32_t main(){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
 						// Записываем в лог сообщение о изменении события
-						awh::log::print("Тип узла события: Сокет добавлен, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Сокет добавлен, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
 						// Записываем в лог сообщение об удалении события
-						awh::log::print("Тип узла события: Сокет удалён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Сокет удалён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 				}
 			} break;
@@ -238,32 +238,32 @@ int32_t main(){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
 						// Записываем в лог сообщение о изменении события
-						awh::log::print("Тип узла события: Файл добавлен, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Файл добавлен, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
 						// Записываем в лог сообщение об удалении события
-						awh::log::print("Тип узла события: Файл удалён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Файл удалён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является переименованием
 					case static_cast <uint8_t> (event::action_t::RENAME):
 						// Записываем в лог сообщение о переименовании события
-						awh::log::print("Тип узла события: Файл переименован, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Файл переименован, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением атрибутов
 					case static_cast <uint8_t> (event::action_t::ATTRIB):
 						// Записываем в лог сообщение об изменении атрибутов события
-						awh::log::print("Тип узла события: Файл атрибуты изменены, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Файл атрибуты изменены, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является отзывом доступа
 					case static_cast <uint8_t> (event::action_t::REVOKE):
 						// Записываем в лог сообщение об отзыве доступа к событию
-						awh::log::print("Тип узла события: Файл доступ отозван, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Файл доступ отозван, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением счётчика жёстких ссылок
 					case static_cast <uint8_t> (event::action_t::HDLINK):
 						// Записываем в лог сообщение об изменении счётчика жёстких ссылок
-						awh::log::print("Тип узла события: Файл счётчик жёстких ссылок изменён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Файл счётчик жёстких ссылок изменён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 				}
 			} break;
@@ -276,32 +276,32 @@ int32_t main(){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
 						// Записываем в лог сообщение о изменении события
-						awh::log::print("Тип узла события: Каталог добавлен, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Каталог добавлен, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
 						// Записываем в лог сообщение о типе узла события
-						awh::log::print("Тип узла события: Каталог удалён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Каталог удалён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является переименованием
 					case static_cast <uint8_t> (event::action_t::RENAME):
 						// Записываем в лог сообщение о переименовании события
-						awh::log::print("Тип узла события: Каталог переименован, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Каталог переименован, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением атрибутов
 					case static_cast <uint8_t> (event::action_t::ATTRIB):
 						// Записываем в лог сообщение об изменении атрибутов события
-						awh::log::print("Тип узла события: Каталог атрибуты изменены, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Каталог атрибуты изменены, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является отзывом доступа
 					case static_cast <uint8_t> (event::action_t::REVOKE):
 						// Записываем в лог сообщение об отзыве доступа к событию
-						awh::log::print("Тип узла события: Каталог доступ отозван, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Каталог доступ отозван, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением счётчика жёстких ссылок
 					case static_cast <uint8_t> (event::action_t::HDLINK):
 						// Записываем в лог сообщение об изменении счётчика жёстких ссылок
-						awh::log::print("Тип узла события: Каталог счётчик жёстких ссылок изменён, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Каталог счётчик жёстких ссылок изменён, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 				}
 			} break;
@@ -314,12 +314,12 @@ int32_t main(){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
 						// Записываем в лог сообщение о изменении события
-						awh::log::print("Тип узла события: Символическая ссылка добавлена, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Символическая ссылка добавлена, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
 						// Записываем в лог сообщение о типе узла события
-						awh::log::print("Тип узла события: Символическая ссылка удалена, Путь=%s", awh::log::flag_t::INFO, path.c_str());
+						log::print("Тип узла события: Символическая ссылка удалена, Путь=%s", log::flag_t::INFO, path.c_str());
 					break;
 				}
 			} break;

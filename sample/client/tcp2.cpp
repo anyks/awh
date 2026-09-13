@@ -20,11 +20,11 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <client/client.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <client/client.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -52,7 +52,7 @@ class Executor {
 		 */
 		void write(const size_t size) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
-			awh::log::print("Client write event: %zu bytes", awh::log::flag_t::INFO, size);
+			log::print("Client write event: %zu bytes", log::flag_t::INFO, size);
 		}
 		/**
 		 * @brief Метод обработки событий чтения данных клиентом
@@ -66,9 +66,9 @@ class Executor {
 			// Если данные получены
 			if(size > 0)
 				// Записываем данные в лог
-				awh::log::print("%s", awh::log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
+				log::print("%s", log::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
-			else awh::log::print("No data received", awh::log::flag_t::WARNING);
+			else log::print("No data received", log::flag_t::WARNING);
 			// Останавливаем событие клиента
 			client->stop();
 		}
@@ -89,14 +89,14 @@ class Executor {
 					// Выполняем подключение клиента к удалённому серверу
 					if(!client->connect())
 						// Записываем ошибку в лог
-						awh::log::print("Failed to connect to remote server", awh::log::flag_t::WARNING);
+						log::print("Failed to connect to remote server", log::flag_t::WARNING);
 					// Если подключение выполнено, то выводим сообщение об успешном подключении клиента к удалённому серверу
-					else awh::log::print("Successfully connected to remote server", awh::log::flag_t::INFO);
+					else log::print("Successfully connected to remote server", log::flag_t::INFO);
 				} break;
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события клиента
-					awh::log::print("TCP client destroyed", awh::log::flag_t::INFO);
+					log::print("TCP client destroyed", log::flag_t::INFO);
 				break;
 			}
 		}
@@ -120,9 +120,9 @@ class Executor {
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(request.c_str(), request.size()) == 0)
 					// Записываем ошибку в лог отправки данных клиентом на сервер
-					awh::log::print("Failed to send data to remote server", awh::log::flag_t::WARNING);
+					log::print("Failed to send data to remote server", log::flag_t::WARNING);
 			// Если подключение не выполнено, то выводим сообщение об ошибке подключения клиента к удалённому серверу
-			} else awh::log::print("Failed to connect to remote server", awh::log::flag_t::WARNING);
+			} else log::print("Failed to connect to remote server", log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки событий готовности клиента к работе
@@ -134,7 +134,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
-			awh::log::print("Client is ready to connect to remote server: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
+			log::print("Client is ready to connect to remote server: %s (%s)", log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок клиента
@@ -145,7 +145,7 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("Client error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("Client error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
@@ -168,7 +168,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor;
 	// Создаём объект DNS-резолвера

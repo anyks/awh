@@ -28,8 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/json/json.hpp>
 #include <sys/fmk.hpp>
+#include <codec/json/json.hpp>
 
 /**
  * Используем стандартное пространство имён

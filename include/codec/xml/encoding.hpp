@@ -288,16 +288,6 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Объект ведения журнала работы
-					 *
-					 * \~english
-					 * Object of the keeping of the work log
-					 *
-					 * \~
-					 */
-				private:
-					/**
-					 * \~russian
 					 * Таблица однобайтовой кодировки, взятая у общего модуля кодировок
 					 *
 					 * @details Указание это непусто лишь при виде кодировки `SINGLE`. Таблица

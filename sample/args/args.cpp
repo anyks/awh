@@ -66,7 +66,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Создаём объект сбора параметров запуска приложения
 	args_t args;
@@ -90,7 +90,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		// Выполняем перебор всех отказов разбора
 		for(auto & error : args.errors())
 			// Выводим сообщение об отказе разбора
-			awh::log::print("%s", awh::log::flag_t::WARNING, message(error.first));
+			log::print("%s", log::flag_t::WARNING, message(error.first));
 		// Выводим подсказку по запуску приложения
 		cout << args.usage() << endl;
 		// Выходим из приложения с кодом отказа
@@ -118,7 +118,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 */
 		if(!args.filename(args.get <string> ("config")))
 			// Выводим сообщение об отказе чтения файла настроек
-			awh::log::print("Файл настроек прочитать не удалось", awh::log::flag_t::WARNING);
+			log::print("Файл настроек прочитать не удалось", log::flag_t::WARNING);
 	}
 	// Выполняем проверку обязательных параметров запуска
 	if(!args.verify()){

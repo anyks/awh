@@ -31,9 +31,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <proto/http/parser/http2/http.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <proto/http/parser/http2/http.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -567,15 +567,15 @@ int32_t main(int32_t count, char * params[]) noexcept {
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Не используемые параметры
 	(void) count;
 	(void) params;
 	// Создаём объект для работы с логами
 	// Устанавливаем название сервиса
-	awh::log::name("Parser HTTP2");
+	log::name("Parser HTTP2");
 	// Устанавливаем формат даты
-	awh::log::format("%H:%M:%S %d.%m.%Y");
+	log::format("%H:%M:%S %d.%m.%Y");
 	// Выполняем демонстрацию рукопожатия соединения
 	sampleHandshake();
 	// Выполняем демонстрацию полного обмена запросом и ответом

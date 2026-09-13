@@ -30,8 +30,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <cryptography/hash.hpp>
 #include <sys/fmk.hpp>
+#include <cryptography/hash.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -56,7 +56,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект хэширования данных
 	hash_t hash;
 	// Текст для хэширования

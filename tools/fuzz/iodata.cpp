@@ -96,7 +96,11 @@ static struct Totals {
 	uint64_t unbounded;
 	// Число оборотов опроса
 	uint64_t polls;
-} totals = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	// Число кругов с непривязанной встречной стороной
+	uint64_t anonymous;
+	// Число кругов, где непривязанной стороне движок не отдал ничего
+	uint64_t refused;
+} totals = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 /**
  * @brief Срок одного оборота опроса, за какой движок обязан вернуть управление
@@ -389,6 +393,34 @@ int main(int argc, char * argv[]) noexcept {
 		 *          Найдено первым же прогоном: щуп встал в `send`, а не движок
 		 */
 		static_cast <void> (::fcntl(peer, F_SETFL, (::fcntl(peer, F_GETFL, 0) | O_NONBLOCK)));
+		/**
+		 * Дейтаграммная встречная сторона изредка остаётся НЕПРИВЯЗАННОЙ
+		 *
+		 * @details Настоящий клиент привязывает себе путь: без него серверу отвечать некуда.
+		 *          Но непривязанный отправитель законен, и системы отдают его адрес
+		 *          по-разному: Linux не отдаёт вовсе (длина 0), BSD и Solaris отдают пустой
+		 *          путь длиной 16. Движок оттого ведёт себя врозь, и круги эти считаются
+		 *          ОТДЕЛЬНО: находкой они не объявляются, покуда поведение не сведено к одному
+		 */
+		const bool anonymous = (!stream && ((random() % 8) == 0));
+		// Путь встречной стороны дейтаграммного круга
+		const string self = (uds + ".peer");
+		// Если встречная сторона привязывается своим путём
+		if(!stream && !anonymous){
+			// Убираем путь, оставшийся от прошлого круга
+			::unlink(self.c_str());
+			// Адрес встречной стороны
+			struct sockaddr_un source{};
+			// Заполняем адрес встречной стороны
+			source.sun_family = AF_UNIX;
+			// Копируем путь встречной стороны
+			::strncpy(source.sun_path, self.c_str(), sizeof(source.sun_path) - 1);
+			// Выполняем привязку встречной стороны своим путём
+			static_cast <void> (::bind(peer, reinterpret_cast <struct sockaddr *> (&source), sizeof(source)));
+		// Если встречная сторона остаётся непривязанной, считаем такой круг
+		} else if(anonymous)
+			// Считаем круг с непривязанной встречной стороной
+			::totals.anonymous++;
 		// Если подключиться к узлу движка не удалось, круг пропускается
 		if(::connect(peer, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
 			// Считаем круг пропущенным
@@ -577,7 +609,15 @@ int main(int argc, char * argv[]) noexcept {
 		 * @note Обрыв посреди разбора из сличения ИСКЛЮЧАЕТСЯ: там потеря хвоста законна,
 		 *       и требовать полноты от оборванной связи значило бы ловить несуществующее
 		 */
-		if(!abrupt){
+		if(!abrupt && anonymous && (delivered == 0)){
+			/**
+			 * Непривязанной стороне движок не отдал ничего
+			 *
+			 * @note Это НЕ находка, а наблюдение: у Linux адрес отправителя не приходит
+			 *       вовсе, и сессию завести не по чему. Считается отдельно
+			 */
+			::totals.refused++;
+		} else if(!abrupt){
 			// Если объём отданного разошёлся с объёмом посланного
 			if(delivered != written){
 				// Считаем круг расхождения объёма
@@ -637,8 +677,9 @@ int main(int argc, char * argv[]) noexcept {
 	}
 	// Сворачиваем движок
 	static_cast <void> (io.deinitialize());
-	// Убираем путь узла движка
+	// Убираем путь узла движка и путь встречной стороны
 	::unlink(uds.c_str());
+	::unlink((uds + ".peer").c_str());
 	// Снимаем перечень описателей после работы ворошителя
 	const set <int32_t> after = ::descriptors();
 	// Число описателей, переживших работу ворошителя
@@ -648,9 +689,32 @@ int main(int argc, char * argv[]) noexcept {
 	 */
 	for(auto & fd : after){
 		// Если описатель прежде открыт не был, считаем его утёкшим
-		if(before.count(fd) == 0)
+		if(before.count(fd) == 0){
 			// Считаем утёкший описатель
 			leaked++;
+			/**
+			 * Называем утёкший описатель поимённо
+			 *
+			 * @note Одно лишь ЧИСЛО утёкших описателей находкой не делает: чинить её
+			 *       нельзя, не зная, что именно осталось открытым. У систем с `/proc`
+			 *       имя берётся оттуда, у прочих остаётся один номер
+			 */
+			#if defined(__linux__) || defined(__sun)
+				// Имя, на какое указывает описатель
+				char link[256] = {0};
+				// Путь к описателю в файловой системе процессов
+				char entry[64] = {0};
+				// Собираем путь к описателю
+				::snprintf(entry, sizeof(entry), "/proc/self/%s/%d", ((::access("/proc/self/fd", F_OK) == 0) ? "fd" : "path"), fd);
+				// Снимаем имя, на какое указывает описатель
+				const ssize_t size = ::readlink(entry, link, sizeof(link) - 1);
+				// Выводим утёкший описатель поимённо
+				::printf("  утёк описатель %d → %s\n", fd, ((size > 0) ? link : "имя снять не удалось"));
+			#else
+				// Выводим номер утёкшего описателя
+				::printf("  утёк описатель %d\n", fd);
+			#endif
+		}
 	}
 	// Выводим итоги работы ворошителя
 	::printf("\nИТОГИ ворошителя данных (зерно %llu)\n", static_cast <unsigned long long> (seed));
@@ -664,6 +728,8 @@ int main(int argc, char * argv[]) noexcept {
 	 static_cast <unsigned long long> (::totals.mismatched), static_cast <unsigned long long> (::totals.corrupted),
 	 static_cast <unsigned long long> (::totals.unbounded));
 	::printf("  описателей утекло: %llu\n", static_cast <unsigned long long> (leaked));
+	::printf("  кругов с непривязанной стороной: %llu, из них движок отверг: %llu\n",
+	 static_cast <unsigned long long> (::totals.anonymous), static_cast <unsigned long long> (::totals.refused));
 	// Число находок ворошителя
 	const uint64_t found = (::totals.mismatched + ::totals.corrupted + ::totals.unbounded + leaked);
 	// Выводим итог работы ворошителя

@@ -28,8 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/yaml/reader.hpp>
 #include <sys/fmk.hpp>
+#include <codec/yaml/reader.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -77,7 +77,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Блокируем неиспользуемую переменную
 	(void) argc;
 	// Блокируем неиспользуемую переменную

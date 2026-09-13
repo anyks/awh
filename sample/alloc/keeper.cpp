@@ -213,12 +213,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Параметры приложения здесь не нужны
 	static_cast <void> (argc);
 	static_cast <void> (argv);
 	// Устанавливаем название приложения журналу
-	awh::log::name(AWH_SHORT_NAME);
+	log::name(AWH_SHORT_NAME);
 	// Показываем прямую выдачу укрытой памяти
 	::direct();
 	// Показываем хранилища языка на укрытой памяти

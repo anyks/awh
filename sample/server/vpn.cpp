@@ -25,13 +25,13 @@
 #include <netinet/in.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <server/server.hpp>
-#include <unit/tunnel.hpp>
-#include <unit/mediator.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <unit/tunnel.hpp>
+#include <unit/mediator.hpp>
+#include <server/server.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -135,17 +135,17 @@ class Executor {
 				// Если статус уничтожения
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об уничтожении события
-					awh::log::print("Tunnel event destroyed: ID=%u", awh::log::flag_t::INFO, eid);
+					log::print("Tunnel event destroyed: ID=%u", log::flag_t::INFO, eid);
 				break;
 				// Если статус инициализации
 				case static_cast <uint8_t> (event::status_t::INITIAL):
 					// Записываем в лог сообщение об инициализации события
-					awh::log::print("Tunnel event initialized: ID=%u", awh::log::flag_t::INFO, eid);
+					log::print("Tunnel event initialized: ID=%u", log::flag_t::INFO, eid);
 				break;
 				// Если статус запуска события
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
 					// Записываем в лог сообщение о запуске события
-					awh::log::print("Tunnel event launched: ID=%u", awh::log::flag_t::INFO, eid);
+					log::print("Tunnel event launched: ID=%u", log::flag_t::INFO, eid);
 				break;
 			}
 		}
@@ -176,7 +176,7 @@ class Executor {
 				// Отправляем данные обратно клиенту
 				if(server->send(eid, &response[0], response.size()) == 0)
 					// Записываем ошибку в лог отправки данных клиентом на сервер
-					awh::log::print("Failed to send data to client", awh::log::flag_t::WARNING);
+					log::print("Failed to send data to client", log::flag_t::WARNING);
 			}
 		}
 		/**
@@ -189,7 +189,7 @@ class Executor {
 		 */
 		void errorVPN([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("Tunnel error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("Tunnel error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
@@ -201,7 +201,7 @@ class Executor {
 		 */
 		void write([[maybe_unused]] const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
-			awh::log::print("Client write event: %zu bytes", awh::log::flag_t::INFO, size);
+			log::print("Client write event: %zu bytes", log::flag_t::INFO, size);
 		}
 		/**
 		 * @brief Метод обработки событий чтения данных клиентом
@@ -233,9 +233,9 @@ class Executor {
 							// Отправляем данные в туннель
 							if(this->_tunnel->send(tid, data + offset, record.size))
 								// Если данные успешно отправлены
-								awh::log::print("Sent to tunnel: ID=%u, %zu bytes", awh::log::flag_t::INFO, tid, record.size);
+								log::print("Sent to tunnel: ID=%u, %zu bytes", log::flag_t::INFO, tid, record.size);
 							// Если данные не отправлены
-							else awh::log::print("Failed to send to tunnel: ID=%u", awh::log::flag_t::CRITICAL, tid);
+							else log::print("Failed to send to tunnel: ID=%u", log::flag_t::CRITICAL, tid);
 						}
 					} break;
 					// Если действие является рукопожатием
@@ -253,7 +253,7 @@ class Executor {
 						// Отправляем данные обратно клиенту
 						if(server->send(eid, &response[0], response.size()) == 0)
 							// Записываем ошибку в лог отправки данных клиентом на сервер
-							awh::log::print("Failed to send data to client", awh::log::flag_t::WARNING);
+							log::print("Failed to send data to client", log::flag_t::WARNING);
 						// Если данные успешно отправлены
 						else {
 							// Устанавливаем IP-адрес клиента в объект работы с сетевыми адресами
@@ -272,11 +272,11 @@ class Executor {
 					// Если действие не определено
 					default:
 						// Записываем в лог сообщение о неизвестном действии
-						awh::log::print("Received unknown action from client: %d", awh::log::flag_t::WARNING, static_cast <uint16_t> (record.action));
+						log::print("Received unknown action from client: %d", log::flag_t::WARNING, static_cast <uint16_t> (record.action));
 					break;
 				}
 			// Если данные не получены или мусор
-			} else awh::log::print("No data received or invalid data", awh::log::flag_t::WARNING);
+			} else log::print("No data received or invalid data", log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки событий изменения статуса сервера
@@ -293,12 +293,12 @@ class Executor {
 				// Если событие сервера запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
 					// Записываем в лог сообщение об успешном запуске события сервера
-					awh::log::print("Server event successfully launched on port %d", awh::log::flag_t::INFO, server->getPort());
+					log::print("Server event successfully launched on port %d", log::flag_t::INFO, server->getPort());
 				break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события сервера
-					awh::log::print("Server event destroyed", awh::log::flag_t::INFO);
+					log::print("Server event destroyed", log::flag_t::INFO);
 				break;
 			}
 		}
@@ -326,17 +326,17 @@ class Executor {
 						this->_clientToTunnelMap.erase(i);
 					}
 					// Записываем в лог сообщение об уничтожении клиента
-					awh::log::print("Client destroyed: ID=%u", awh::log::flag_t::INFO, eid);
+					log::print("Client destroyed: ID=%u", log::flag_t::INFO, eid);
 				} break;
 				// Если статус инициализации
 				case static_cast <uint8_t> (event::status_t::INITIAL):
 					// Записываем в лог сообщение об инициализации клиента
-					awh::log::print("Client initialized: ID=%u", awh::log::flag_t::INFO, eid);
+					log::print("Client initialized: ID=%u", log::flag_t::INFO, eid);
 				break;
 				// Если статус запуска клиента
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
 					// Записываем в лог сообщение о запуске клиента
-					awh::log::print("Client launched: ID=%u", awh::log::flag_t::INFO, eid);
+					log::print("Client launched: ID=%u", log::flag_t::INFO, eid);
 				break;
 			}
 		}
@@ -363,7 +363,7 @@ class Executor {
 		 */
 		void launch(const string & address, const uint16_t port, [[maybe_unused]] server_t * server) noexcept {
 			// Записываем в лог сообщение о запуске сервера
-			awh::log::print("Server is launching to %s:%d", awh::log::flag_t::INFO, address.c_str(), port);
+			log::print("Server is launching to %s:%d", log::flag_t::INFO, address.c_str(), port);
 		}
 		/**
 		 * @brief Метод обработки событий готовности сервера к работе
@@ -376,7 +376,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
-			awh::log::print("Server is ready to accept connections: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
+			log::print("Server is ready to accept connections: %s (%s)", log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок сервера
@@ -388,7 +388,7 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("Server error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("Server error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
@@ -415,7 +415,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект тоннеля
 	unit::tunnel_t tunnel;
 	// Создаём объект посредника между сервером и туннелем

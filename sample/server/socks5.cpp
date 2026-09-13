@@ -20,11 +20,11 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <server/socks5.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <server/socks5.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -54,7 +54,7 @@ class Executor {
 		 */
 		void launch(const event::id_t eid, const string & host, const uint16_t port) noexcept {
 			// Записываем в лог информацию о событии запуска клиента
-			awh::log::print("Launched socks5 (EID=%u, Host=%s, Port=%u)", awh::log::flag_t::INFO, eid, host.c_str(), port);
+			log::print("Launched socks5 (EID=%u, Host=%s, Port=%u)", log::flag_t::INFO, eid, host.c_str(), port);
 		}
 		/**
 		 * @brief Метод обработки событий записи данных клиентом
@@ -65,7 +65,7 @@ class Executor {
 		 */
 		void write([[maybe_unused]] const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
-			awh::log::print("Client write event: %zu bytes", awh::log::flag_t::INFO, size);
+			log::print("Client write event: %zu bytes", log::flag_t::INFO, size);
 		}
 		/**
 		 * @brief Метод обработки событий аутентификации клиента
@@ -77,7 +77,7 @@ class Executor {
 		 */
 		bool auth(const string & username, const string & password) noexcept {
 			// Записываем в лог информацию о событии аутентификации клиента
-			awh::log::print("Client authentication event: username=%s, password=%s", awh::log::flag_t::INFO, username.c_str(), password.c_str());
+			log::print("Client authentication event: username=%s, password=%s", log::flag_t::INFO, username.c_str(), password.c_str());
 			// Возвращаем результат аутентификации
 			return true;
 		}
@@ -98,14 +98,14 @@ class Executor {
 					// Выполняем прослушивание сервера на порту
 					if(!server->listen(100))
 						// Записываем ошибку в лог
-						awh::log::print("Failed to listen on port %d", awh::log::flag_t::WARNING, server->getPort());
+						log::print("Failed to listen on port %d", log::flag_t::WARNING, server->getPort());
 					// Если подключение выполнено, то выводим сообщение об успешном прослушивании порта
-					else awh::log::print("Successfully listening on port %d", awh::log::flag_t::INFO, server->getPort());
+					else log::print("Successfully listening on port %d", log::flag_t::INFO, server->getPort());
 				} break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события сервера
-					awh::log::print("Server destroyed", awh::log::flag_t::INFO);
+					log::print("Server destroyed", log::flag_t::INFO);
 				break;
 			}
 		}
@@ -135,7 +135,7 @@ class Executor {
 		 */
 		void ready(const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip, server::socks5_t * server) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
-			awh::log::print("Server is ready to accept connections: %s (%s:%d)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str(), server->getTargetPort(eid));
+			log::print("Server is ready to accept connections: %s (%s:%d)", log::flag_t::INFO, domain.c_str(), ip.c_str(), server->getTargetPort(eid));
 		}
 		/**
 		 * @brief Метод обработки ошибок сервера
@@ -147,7 +147,7 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("Server error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("Server error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
@@ -170,7 +170,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor;
 	// Создаём объект DNS-резолвера

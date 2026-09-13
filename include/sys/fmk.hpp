@@ -1,5 +1,5 @@
 /**
- * @file framework.hpp
+ * @file fmk.hpp
  * @date 2026-09-13
  *
  * @license{LicenseRef-AWH-1.0}
@@ -418,6 +418,765 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ uint32_t identifier() noexcept;
 		/**
 		 * \~russian
+		 * @brief Шаблон функции получения штампа времени в указанных единицах измерения
+		 *
+		 * @tparam T тип данных в котором извлекаются данные
+		 *
+		 * \~english
+		 * @brief Template of the function of getting a timestamp in the specified units of the measurement
+		 *
+		 * @tparam T type of the data the data is extracted in
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция получения штампа времени в указанных единицах измерения
+		 *
+		 * @details Штамп снимается с системных часов. Числовой тип получает время,
+		 *          прошедшее с начала эпохи в заданных единицах измерения, тогда как
+		 *          строковый тип получает запись даты и времени, доведённую до
+		 *          заданного разряда.
+		 *
+		 * @note Целый тип, в который штамп не помещается, получает его старшие
+		 *       разряды, тогда как дробный тип получает штамп целиком, но с
+		 *       точностью своей мантиссы: у «float» её 24 разряда, чего не хватает
+		 *       для точной записи счётчика наносекунд. Требуется точность —
+		 *       снимайте штамп типом «uint64_t»
+		 *
+		 * @warning Дробные типы обрабатываются отдельной ветвью шаблона, а не общим
+		 *          разбором по размеру буфера: тот писан для целых видов и записал бы
+		 *          в дробный тип двоичное представление целого вместо самого числа.
+		 *          Закреплено тестом «FmkTimestampRealMatchesIntegerTest»
+		 *
+		 * @param type тип формируемого штампа времени
+		 * @return     сгенерированный штамп времени
+		 *
+		 * @code{.cpp}
+		 * fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+		 * fmk::timestamp <string> (awh::fmk::chrono_t::SECONDS);
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of getting a timestamp in the specified units of the measurement
+		 *
+		 * @details The timestamp is taken from the system clock. A numeric type receives the time
+		 *          elapsed since the beginning of the epoch in the given units of the measurement, while
+		 *          a string type receives a record of the date and the time brought up to
+		 *          the given digit.
+		 *
+		 * @note An integer type the timestamp does not fit into receives its higher
+		 *       digits, while a fractional type receives the timestamp entirely, but with
+		 *       the precision of its mantissa: «float» has 24 digits of it, which is not enough
+		 *       for an exact record of a counter of the nanoseconds. If the precision is required —
+		 *       take the timestamp by the «uint64_t» type
+		 *
+		 * @warning The fractional types are handled by a separate branch of the template, and not by the common
+		 *          resolution by the size of the buffer: that one is written for the integer kinds and would write
+		 *          into a fractional type the binary representation of an integer instead of the number itself.
+		 *          Fixed by the «FmkTimestampRealMatchesIntegerTest» test
+		 *
+		 * @param type type of the built timestamp
+		 * @return     the generated timestamp
+		 *
+		 * @code{.cpp}
+		 * fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
+		 * fmk::timestamp <string> (awh::fmk::chrono_t::SECONDS);
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ T timestamp(const chrono_t type) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертирования строки в строку utf-8
+		 *
+		 * @details Узкая строка разбирается как запись в кодировке UTF-8 и выводится
+		 *          строкой широких символов. Обратное действие выполняется одноимённым
+		 *          методом, принимающим строку широких символов.
+		 *
+		 * @note Разрядность широкого символа задаётся операционной системой: на
+		 *       MS Windows он двухбайтовый, и символы за пределами основной плоскости
+		 *       записываются суррогатной парой, тогда как на прочих системах он
+		 *       четырёхбайтовый и хранит кодовое значение целиком
+		 *
+		 * @note Текст, записью UTF-8 не являющийся, выводится пустой строкой,
+		 *       а ошибка записывается в лог
+		 *
+		 * @param str строка для конвертирования
+		 * @return    строка в utf-8
+		 *
+		 * @code{.cpp}
+		 * const wstring wide = fmk::convert(string{"Привет"});
+		 * const string text = fmk::convert(wide);
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of converting a string into a utf-8 string
+		 *
+		 * @details A narrow string is parsed as a record in the UTF-8 encoding and is yielded
+		 *          as a string of wide characters. The reverse action is performed by the method of the same name
+		 *          taking a string of wide characters.
+		 *
+		 * @note The width of a wide character is set by the operating system: on
+		 *       MS Windows it is a two-byte one, and the characters beyond the basic plane
+		 *       are written by a surrogate pair, while on the other systems it is
+		 *       a four-byte one and holds the code value entirely
+		 *
+		 * @note A text that is not a UTF-8 record is yielded as an empty string,
+		 *       and the error is written into the log
+		 *
+		 * @param str string to convert
+		 * @return    string in utf-8
+		 *
+		 * @code{.cpp}
+		 * const wstring wide = fmk::convert(string{"Привет"});
+		 * const string text = fmk::convert(wide);
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ wstring convert(string_view str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертирования строки utf-8 в строку
+		 *
+		 * @param str строка utf-8 для конвертирования
+		 * @return    обычная строка
+		 *
+		 * \~english
+		 * @brief Function of converting a utf-8 string into a string
+		 *
+		 * @param str utf-8 string to convert
+		 * @return    ordinary string
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string convert(wstring_view str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертирования строки в строку utf-8
+		 *
+		 * @param str строка для конвертирования
+		 * @return    строка в utf-8
+		 *
+		 * \~english
+		 * @brief Function of converting a string into a utf-8 string
+		 *
+		 * @param str string to convert
+		 * @return    string in utf-8
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ wstring convert(const char * str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертирования строки utf-8 в строку
+		 *
+		 * @param str строка utf-8 для конвертирования
+		 * @return    обычная строка
+		 *
+		 * \~english
+		 * @brief Function of converting a utf-8 string into a string
+		 *
+		 * @param str utf-8 string to convert
+		 * @return    ordinary string
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string convert(const wchar_t * str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертирования строки в строку utf-8
+		 *
+		 * @param str строка для конвертирования
+		 * @return    строка в utf-8
+		 *
+		 * \~english
+		 * @brief Function of converting a string into a utf-8 string
+		 *
+		 * @param str string to convert
+		 * @return    string in utf-8
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ wstring convert(const string & str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертирования строки utf-8 в строку
+		 *
+		 * @param str строка utf-8 для конвертирования
+		 * @return    обычная строка
+		 *
+		 * \~english
+		 * @brief Function of converting a utf-8 string into a string
+		 *
+		 * @param str utf-8 string to convert
+		 * @return    ordinary string
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string convert(const wstring & str) noexcept;
+		/**
+		 * \~russian
+		 * @brief функции определения точного размера, сколько занимает число байт
+		 *
+		 * @tparam T тип данных с которым работает функция
+		 *
+		 * \~english
+		 * @brief functions of determining the exact size of how many bytes a number occupies
+		 *
+		 * @tparam T type of the data the function works with
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция определения точного размера, сколько занимает число байт
+		 *
+		 * @details Выводится количество байт, которым число записывается без потери
+		 *          значения, а не размер его типа. Метод служит сжатию записи чисел
+		 *          в двоичных протоколах.
+		 *
+		 * @param num число для проверки
+		 * @return    фактический размер занимаемым числом байт
+		 *
+		 * @code{.cpp}
+		 * fmk::size <uint64_t> (255);    // 1
+		 * fmk::size <uint64_t> (256);    // 2
+		 * fmk::size <uint64_t> (0);      // 0
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of determining the exact size of how many bytes a number occupies
+		 *
+		 * @details What is yielded is the number of the bytes a number is written by without a loss of
+		 *          the value, and not the size of its type. The method serves the compression of the record of the numbers
+		 *          in the binary protocols.
+		 *
+		 * @param num number to check
+		 * @return    actual size of the bytes occupied by the number
+		 *
+		 * @code{.cpp}
+		 * fmk::size <uint64_t> (255);    // 1
+		 * fmk::size <uint64_t> (256);    // 2
+		 * fmk::size <uint64_t> (0);      // 0
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ size_t size(const T num) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция определения точного размера, сколько занимают данные (в байтах) в буфере
+		 *
+		 * @details Выводится размер буфера за вычетом нулевых байтов, лежащих в его
+		 *          конце. Буфер, заполненный нулями целиком, даёт нулевой размер.
+		 *
+		 * @warning Порядок байт числа при этом не учитывается: на машине с прямым
+		 *          порядком байт старший разряд числа лежит в конце буфера, и метод
+		 *          пригоден лишь для буферов, записанных обратным порядком
+		 *
+		 * @param value значение бинарного буфера для проверки
+		 * @param size  общий размер бинарного буфера
+		 * @return      фактический размер буфера занимаемый данными
+		 *
+		 * \~english
+		 * @brief Function of determining the exact size of how much data (in bytes) occupies in a buffer
+		 *
+		 * @details What is yielded is the size of the buffer minus the zero bytes lying at its
+		 *          end. A buffer filled with zeroes entirely gives a zero size.
+		 *
+		 * @warning The order of the bytes of a number is at that not taken into account: on a machine with the direct
+		 *          order of the bytes the higher digit of a number lies at the end of the buffer, and the method
+		 *          is suitable only for the buffers written in the reverse order
+		 *
+		 * @param value value of the binary buffer to check
+		 * @param size  total size of the binary buffer
+		 * @return      actual size of the buffer occupied by the data
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t size(const void * value, const size_t size) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция перевода римских цифр в арабские
+		 *
+		 * @details Запись разбирается без учёта регистра.
+		 *
+		 * @note Запись, римским числом не являющаяся, выводится нулевым значением
+		 *
+		 * @see arabic2rome
+		 *
+		 * @param word римское число
+		 * @return     арабское число
+		 *
+		 * @code{.cpp}
+		 * fmk::rome2arabic("XIV");   // 14
+		 * fmk::rome2arabic("mcmxc"); // 1990
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of converting the Roman numerals into the Arabic ones
+		 *
+		 * @details The record is parsed without the case taken into account.
+		 *
+		 * @note A record that is not a Roman number is yielded as a zero value
+		 *
+		 * @see arabic2rome
+		 *
+		 * @param word Roman number
+		 * @return     Arabic number
+		 *
+		 * @code{.cpp}
+		 * fmk::rome2arabic("XIV");   // 14
+		 * fmk::rome2arabic("mcmxc"); // 1990
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ uint16_t rome2arabic(string_view word) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция перевода римских цифр в арабские
+		 *
+		 * @param word римское число
+		 * @return     арабское число
+		 *
+		 * \~english
+		 * @brief Function of converting the Roman numerals into the Arabic ones
+		 *
+		 * @param word Roman number
+		 * @return     Arabic number
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ uint16_t rome2arabic(wstring_view word) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция перевода арабских чисел в римские
+		 *
+		 * @details Запись выводится прописными буквами.
+		 *
+		 * @note Число вне пределов от 1 до 4999 выводится пустой строкой: римская
+		 *       запись больших чисел требует надчёркивания, записи не имеющего
+		 *
+		 * @see rome2arabic
+		 *
+		 * @param number арабское число от 1 до 4999
+		 * @return       римское число
+		 *
+		 * @code{.cpp}
+		 * fmk::arabic2rome(14);    // «XIV»
+		 * fmk::arabic2rome(1990);  // «MCMXC»
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of converting the Arabic numbers into the Roman ones
+		 *
+		 * @details The record is yielded in the capital letters.
+		 *
+		 * @note A number outside the limits from 1 to 4999 is yielded as an empty string: the Roman
+		 *       record of the large numbers requires an overline, which the record does not have
+		 *
+		 * @see rome2arabic
+		 *
+		 * @param number Arabic number from 1 to 4999
+		 * @return       Roman number
+		 *
+		 * @code{.cpp}
+		 * fmk::arabic2rome(14);    // «XIV»
+		 * fmk::arabic2rome(1990);  // «MCMXC»
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ wstring arabic2rome(const uint32_t number) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция перевода арабских чисел в римские
+		 *
+		 * @param word арабское число от 1 до 4999
+		 * @return     римское число
+		 *
+		 * \~english
+		 * @brief Function of converting the Arabic numbers into the Roman ones
+		 *
+		 * @param word Arabic number from 1 to 4999
+		 * @return     Roman number
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string arabic2rome(string_view word) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция перевода арабских чисел в римские
+		 *
+		 * @param word арабское число от 1 до 4999
+		 * @return     римское число
+		 *
+		 * \~english
+		 * @brief Function of converting the Arabic numbers into the Roman ones
+		 *
+		 * @param word Arabic number from 1 to 4999
+		 * @return     Roman number
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ wstring arabic2rome(wstring_view word) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции инверсии бита в указанной позиции
+		 *
+		 * @tparam T тип данных с которым работает функция
+		 *
+		 * \~english
+		 * @brief Template of the function of the inversion of a bit at the specified position
+		 *
+		 * @tparam T type of the data the function works with
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция инверсии бита в указанной позиции
+		 *
+		 * @param pos позиция для инверсии
+		 * @param num число в бинарном виде для инверсии бита
+		 * @return    итоговое значение числа после инверсии
+		 *
+		 * \~english
+		 * @brief Function of the inversion of a bit at the specified position
+		 *
+		 * @param pos position for the inversion
+		 * @param num number in the binary form to invert the bit of
+		 * @return    resulting value of the number after the inversion
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ T flipBit(const T pos, const T num) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции сброса бита в указанной позиции
+		 *
+		 * @tparam T тип данных с которым работает функция
+		 *
+		 * \~english
+		 * @brief Template of the function of the reset of a bit at the specified position
+		 *
+		 * @tparam T type of the data the function works with
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция сброса бита в указанной позиции
+		 *
+		 * @param pos позиция для сброса
+		 * @param num число в бинарном виде для сброса бита
+		 * @return    итоговое значение числа после сброса бита
+		 *
+		 * \~english
+		 * @brief Function of the reset of a bit at the specified position
+		 *
+		 * @param pos position for the reset
+		 * @param num number in the binary form to reset the bit of
+		 * @return    resulting value of the number after the reset of the bit
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ T resetBit(const T pos, const T num) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции устанвки бита в указанную позицию
+		 *
+		 * @tparam T тип данных с которым работает функция
+		 *
+		 * \~english
+		 * @brief Template of the function of the setting of a bit at the specified position
+		 *
+		 * @tparam T type of the data the function works with
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция устанвки бита в указанную позицию
+		 *
+		 * @param pos позиция для установки бита
+		 * @param num начальное значение бита
+		 * @return    итоговое значение числа после установки бита
+		 *
+		 * \~english
+		 * @brief Function of the setting of a bit at the specified position
+		 *
+		 * @param pos position for the setting of the bit
+		 * @param num initial value of the bit
+		 * @return    resulting value of the number after the setting of the bit
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ T setBit(const T pos, const T num = 0) noexcept;
+		/**
+		 * \~russian
+		 * @brief Шаблон функции проверки установлен ли бит в указанной позиции
+		 *
+		 * @tparam T тип данных с которым работает функция
+		 *
+		 * \~english
+		 * @brief Template of the function of checking whether a bit is set at the specified position
+		 *
+		 * @tparam T type of the data the function works with
+		 *
+		 * \~
+		 */
+		template <typename T>
+		/**
+		 * \~russian
+		 * @brief Функция проверки установлен ли бит в указанной позиции
+		 *
+		 * @details Разряды отсчитываются от младшего, начиная с нуля.
+		 *
+		 * @warning Позиция, разрядность типа превышающая, поведения не задаёт:
+		 *          проверять её следует вызывающей стороне
+		 *
+		 * @param pos позиция для проверки
+		 * @param num число в бинарном виде для проверки бита
+		 * @return    результат проверки
+		 *
+		 * @code{.cpp}
+		 * fmk::isBit <uint8_t> (0, 0b00000101);    // истина
+		 * fmk::setBit <uint8_t> (3, 0b00000001);   // 0b00001001
+		 * fmk::resetBit <uint8_t> (0, 0b00000101); // 0b00000100
+		 * fmk::flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of checking whether a bit is set at the specified position
+		 *
+		 * @details The digits are counted from the lowest one, starting from zero.
+		 *
+		 * @warning A position exceeding the width of the type does not set the behaviour:
+		 *          it should be checked by the calling side
+		 *
+		 * @param pos position to check
+		 * @param num number in the binary form to check the bit of
+		 * @return    result of the check
+		 *
+		 * @code{.cpp}
+		 * fmk::isBit <uint8_t> (0, 0b00000101);    // true
+		 * fmk::setBit <uint8_t> (3, 0b00000001);   // 0b00001001
+		 * fmk::resetBit <uint8_t> (0, 0b00000101); // 0b00000100
+		 * fmk::flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ bool isBit(const T pos, const T num) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения иконки
+		 *
+		 * @details Выводится случайно выбранный знак из набора: один набор отведён
+		 *          началу работы, другой — её завершению. Метод служит выводу в
+		 *          консоль и содержательной нагрузки не несёт.
+		 *
+		 * @param end флаг завершения работы
+		 * @return    иконка напутствия работы
+		 *
+		 * \~english
+		 * @brief Function of getting an icon
+		 *
+		 * @details What is yielded is a randomly chosen sign from a set: one set is given over to
+		 *          the beginning of the work, another one — to its completion. The method serves the output into
+		 *          the console and carries no meaningful load.
+		 *
+		 * @param end flag of the completion of the work
+		 * @return    icon of the parting word of the work
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ string icon(const bool end = false) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения количества байт в секунду из строки
+		 *
+		 * @details Пропускная способность сети задаётся в битах, а выводится в байтах:
+		 *          разобранное значение делится на восемь. Приставки при этом задают
+		 *          степени числа 1000, а не 1024, как принято для пропускной
+		 *          способности сети.
+		 *
+		 * @note Приставки размера буфера, выводимого методом «bytes», задают степени
+		 *       числа 1024: единицы измерения этих двух методов не совпадают намеренно
+		 *
+		 * @see bpsBuffer
+		 *
+		 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
+		 * @return    количество байт в секунду
+		 *
+		 * @code{.cpp}
+		 * fmk::bpsSize("8bps");     // 1
+		 * fmk::bpsSize("1Kbps");    // 125
+		 * fmk::bpsSize("1.5Mbps");  // 187500
+		 * fmk::bpsSize("100Mbps");  // 12500000
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of getting the number of the bytes per second from a string
+		 *
+		 * @details The bandwidth of a network is set in bits, and is yielded in bytes:
+		 *          the parsed value is divided by eight. The prefixes at that set
+		 *          the powers of the number 1000, and not of 1024, as it is accepted for the bandwidth
+		 *          of a network.
+		 *
+		 * @note The prefixes of the size of a buffer, yielded by the «bytes» method, set the powers
+		 *       of the number 1024: the units of the measurement of these two methods do not coincide deliberately
+		 *
+		 * @see bpsBuffer
+		 *
+		 * @param str bandwidth of the network (bps, kbps, Mbps, Gbps)
+		 * @return    number of the bytes per second
+		 *
+		 * @code{.cpp}
+		 * fmk::bpsSize("8bps");     // 1
+		 * fmk::bpsSize("1Kbps");    // 125
+		 * fmk::bpsSize("1.5Mbps");  // 187500
+		 * fmk::bpsSize("100Mbps");  // 12500000
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ size_t bpsSize(const string_view str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения размера буфера в байтах
+		 *
+		 * @details Выводится размер приёмного либо передающего буфера сокета,
+		 *          отвечающий заданной пропускной способности сети.
+		 *
+		 * @see bpsSize
+		 *
+		 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
+		 * @return    размер буфера в байтах
+		 *
+		 * \~english
+		 * @brief Function of getting the size of a buffer in bytes
+		 *
+		 * @details What is yielded is the size of the receiving or of the transmitting buffer of a socket,
+		 *          answering the given bandwidth of the network.
+		 *
+		 * @see bpsSize
+		 *
+		 * @param str bandwidth of the network (bps, kbps, Mbps, Gbps)
+		 * @return    size of the buffer in bytes
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t bpsBuffer(const string_view str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция получения размера в байтах из строки
+		 *
+		 * @details Единица измерения сличается без учёта регистра и может отделяться
+		 *          от числа пробелом. Приставки задают степени числа 1024, а не 1000.
+		 *
+		 * @note Запись, не начинающаяся цифрой, выводится нулевым значением
+		 *
+		 * @note Единица измерения обязательна: задача метода — получить точное число
+		 *       байт из записи размерности, а не разобрать число. Запись из одних
+		 *       цифр выводится нулевым значением, и разбирать её следует модулем
+		 *       лексического разбора чисел
+		 *
+		 * @see bytes(const double, const bool)
+		 *
+		 * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
+		 * @return    размер в байтах
+		 *
+		 * @code{.cpp}
+		 * fmk::bytes("1Kb");        // 1024
+		 * fmk::bytes("1 Kb");       // 1024
+		 * fmk::bytes("1.5 Mb");     // 1572864
+		 * fmk::bytes("100 Gb");     // 107374182400
+		 * fmk::bytes("1024 bytes"); // 1024
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of getting the size in bytes from a string
+		 *
+		 * @details The unit of the measurement is matched without the case taken into account and may be separated
+		 *          from the number by a space. The prefixes set the powers of the number 1024, and not of 1000.
+		 *
+		 * @note A record not beginning with a digit is yielded as a zero value
+		 *
+		 * @note The unit of the measurement is obligatory: the task of the method is to obtain the exact number
+		 *       of the bytes from a record of a dimension, and not to parse a number. A record of the digits
+		 *       alone is yielded as a zero value, and it should be parsed by the module
+		 *       of the lexical parsing of the numbers
+		 *
+		 * @see bytes(const double, const bool)
+		 *
+		 * @param str string of the designation of the dimension (b, Kb, Mb, Gb, Tb)
+		 * @return    size in bytes
+		 *
+		 * @code{.cpp}
+		 * fmk::bytes("1Kb");        // 1024
+		 * fmk::bytes("1 Kb");       // 1024
+		 * fmk::bytes("1.5 Mb");     // 1572864
+		 * fmk::bytes("100 Gb");     // 107374182400
+		 * fmk::bytes("1024 bytes"); // 1024
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ double bytes(const string_view str) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертации байт в строку
+		 *
+		 * @details Единица измерения подбирается наибольшей из тех, при которой число
+		 *          остаётся не меньше единицы. Запись числа выполняется методом «noexp»
+		 *          и от установленной локали не зависит.
+		 *
+		 * @note Запись, выводимая этим методом, разбирается обратно одноимённым
+		 *       методом до того же значения
+		 *
+		 * @see bytes(const string_view)
+		 *
+		 * @param value   количество байт
+		 * @param onlyNum выводить только числа
+		 * @return        полученная строка
+		 *
+		 * @code{.cpp}
+		 * fmk::bytes(1024.);     // «1 Kb»
+		 * fmk::bytes(1572864.);  // «1.5 Mb»
+		 * fmk::bytes(512.);      // «512 bytes»
+		 * fmk::bytes(0.);        // «0 bytes»
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of the conversion of the bytes into a string
+		 *
+		 * @details The unit of the measurement is picked the largest of those at which the number
+		 *          remains not less than one. The record of the number is performed by the «noexp» method
+		 *          and does not depend on the set locale.
+		 *
+		 * @note The record yielded by this method is parsed back by the method of the same
+		 *       name up to the same value
+		 *
+		 * @see bytes(const string_view)
+		 *
+		 * @param value   number of the bytes
+		 * @param onlyNum output only the numbers
+		 * @return        the obtained string
+		 *
+		 * @code{.cpp}
+		 * fmk::bytes(1024.);     // «1 Kb»
+		 * fmk::bytes(1572864.);  // «1.5 Mb»
+		 * fmk::bytes(512.);      // «512 bytes»
+		 * fmk::bytes(0.);        // «0 bytes»
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ string bytes(const double value, const bool onlyNum = false) noexcept;
+		/**
+		 * \~russian
 		 * @brief Функция проверки текста на соответствие флагу
 		 *
 		 * @param letter текст для проверки
@@ -517,6 +1276,48 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ bool is(wstring_view text, const check_t flag) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция проверки существования слова в тексте
+		 *
+		 * @details Слово ищется как часть текста, границы слова при этом не
+		 *          проверяются: слово «код» обнаруживается в тексте «кодировка».
+		 *
+		 * @param word слово для проверки
+		 * @param text текст в котором выполнения проверка
+		 * @return     результат выполнения проверки
+		 *
+		 * \~english
+		 * @brief Function of checking the existence of a word in a text
+		 *
+		 * @details The word is searched for as a part of the text, the boundaries of the word are at that not
+		 *          checked: the word «code» is found in the text «codepage».
+		 *
+		 * @param word word to check
+		 * @param text text the check is performed in
+		 * @return     result of the performance of the check
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool exists(string_view word, string_view text) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция проверки существования слова в тексте
+		 *
+		 * @param word слово для проверки
+		 * @param text текст в котором выполнения проверка
+		 * @return     результат выполнения проверки
+		 *
+		 * \~english
+		 * @brief Function of checking the existence of a word in a text
+		 *
+		 * @param word word to check
+		 * @param text text the check is performed in
+		 * @return     result of the performance of the check
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool exists(wstring_view word, wstring_view text) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция сравнения двух строк без учёта регистра
@@ -620,130 +1421,219 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool compare(const wchar_t * first, const wchar_t * second) noexcept;
 		/**
 		 * \~russian
-		 * @brief Шаблон функции получения штампа времени в указанных единицах измерения
+		 * @brief Шаблон функции проверки больше первое число второго или нет (бинарным методом)
 		 *
-		 * @tparam T тип данных в котором извлекаются данные
+		 * @tparam T тип данных с которым работает функция
 		 *
 		 * \~english
-		 * @brief Template of the function of getting a timestamp in the specified units of the measurement
+		 * @brief Template of the function of checking whether the first number is greater than the second one or not (by the binary method)
 		 *
-		 * @tparam T type of the data the data is extracted in
+		 * @tparam T type of the data the function works with
 		 *
 		 * \~
 		 */
 		template <typename T>
 		/**
 		 * \~russian
-		 * @brief Функция получения штампа времени в указанных единицах измерения
+		 * @brief Функция проверки больше первое число второго или нет (бинарным методом)
 		 *
-		 * @details Штамп снимается с системных часов. Числовой тип получает время,
-		 *          прошедшее с начала эпохи в заданных единицах измерения, тогда как
-		 *          строковый тип получает запись даты и времени, доведённую до
-		 *          заданного разряда.
-		 *
-		 * @note Целый тип, в который штамп не помещается, получает его старшие
-		 *       разряды, тогда как дробный тип получает штамп целиком, но с
-		 *       точностью своей мантиссы: у «float» её 24 разряда, чего не хватает
-		 *       для точной записи счётчика наносекунд. Требуется точность —
-		 *       снимайте штамп типом «uint64_t»
-		 *
-		 * @warning Дробные типы обрабатываются отдельной ветвью шаблона, а не общим
-		 *          разбором по размеру буфера: тот писан для целых видов и записал бы
-		 *          в дробный тип двоичное представление целого вместо самого числа.
-		 *          Закреплено тестом «FmkTimestampRealMatchesIntegerTest»
-		 *
-		 * @param type тип формируемого штампа времени
-		 * @return     сгенерированный штамп времени
-		 *
-		 * @code{.cpp}
-		 * fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
-		 * fmk::timestamp <string> (awh::fmk::chrono_t::SECONDS);
-		 * @endcode
+		 * @param num1 значение первого числа в бинарном виде
+		 * @param num2 значение второго числа в бинарном виде
+		 * @return     результат проверки
 		 *
 		 * \~english
-		 * @brief Function of getting a timestamp in the specified units of the measurement
+		 * @brief Function of checking whether the first number is greater than the second one or not (by the binary method)
 		 *
-		 * @details The timestamp is taken from the system clock. A numeric type receives the time
-		 *          elapsed since the beginning of the epoch in the given units of the measurement, while
-		 *          a string type receives a record of the date and the time brought up to
-		 *          the given digit.
+		 * @param num1 value of the first number in the binary form
+		 * @param num2 value of the second number in the binary form
+		 * @return     result of the check
 		 *
-		 * @note An integer type the timestamp does not fit into receives its higher
-		 *       digits, while a fractional type receives the timestamp entirely, but with
-		 *       the precision of its mantissa: «float» has 24 digits of it, which is not enough
-		 *       for an exact record of a counter of the nanoseconds. If the precision is required —
-		 *       take the timestamp by the «uint64_t» type
-		 *
-		 * @warning The fractional types are handled by a separate branch of the template, and not by the common
-		 *          resolution by the size of the buffer: that one is written for the integer kinds and would write
-		 *          into a fractional type the binary representation of an integer instead of the number itself.
-		 *          Fixed by the «FmkTimestampRealMatchesIntegerTest» test
-		 *
-		 * @param type type of the built timestamp
-		 * @return     the generated timestamp
-		 *
-		 * @code{.cpp}
-		 * fmk::timestamp <uint64_t> (awh::fmk::chrono_t::MILLISECONDS);
-		 * fmk::timestamp <string> (awh::fmk::chrono_t::SECONDS);
-		 * @endcode
-		 *
+		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ T timestamp(const chrono_t type) noexcept;
+		__AWH_SHARED_EXPORT__ bool isGreater(const T num1, const T num2) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования текста из одной кодировки в другую
+		 * @brief Функция проверки больше первое число второго или нет (бинарным методом)
 		 *
-		 * @details Отказ конвертирования выводится пустым текстом и записывается
-		 *          в лог. Кодировки задаются обозначением, полученным разбором имени
-		 *          методом «codepage» либо определением кодировки методом «detect».
+		 * @details Сличаются **числа**, лежащие в памяти так, как их кладёт сама
+		 *          машина. Перебор идёт с последнего байта: на машине с обратным
+		 *          порядком байт старший разряд числа лежит именно там. Так и
+		 *          задумано, и разворачивать перебор не следует - иначе метод
+		 *          перестанет сличать числа.
 		 *
-		 * @note Совпадение кодировок отказом не является: текст выводится без изменений
+		 * @warning Двоичный буфер, числом не являющийся, сличать этим методом
+		 *          **нельзя**: сетевой адрес, аппаратный адрес, отпечаток - всё
+		 *          это лежит в своём порядке, старшим байтом вперёд, и порядок их
+		 *          даёт побайтное сличение `memcmp`, а не этот метод
 		 *
-		 * @param text    текст для конвертирования
-		 * @param from    кодировка, в которой записан текст
-		 * @param to      кодировка, в которую требуется сконвертировать текст
-		 * @param replace порядок обращения с символами, кодировке не представимыми
-		 * @return        сконвертированный текст в требуемой кодировке
+		 * @param value1 значение первого числа в бинарном виде
+		 * @param value2 значение второго числа в бинарном виде
+		 * @param size   размер бинарного буфера числа
+		 * @return       результат проверки
+		 *
+		 * \~english
+		 * @brief Function of checking whether the first number is greater than the second one or not (by the binary method)
+		 *
+		 * @details What is matched are the **numbers** lying in the memory the way the machine itself
+		 *          puts them. The traversal goes from the last byte: on a machine with the reverse
+		 *          order of the bytes the higher digit of a number lies exactly there. It is
+		 *          intended so, and the traversal should not be turned around — otherwise the method
+		 *          will stop matching numbers.
+		 *
+		 * @warning A binary buffer that is not a number **must not** be matched by this
+		 *          method: a network address, a hardware address, a fingerprint — all
+		 *          of this lies in its own order, the higher byte first, and their order
+		 *          is given by the byte by byte matching `memcmp`, and not by this method
+		 *
+		 * @param value1 value of the first number in the binary form
+		 * @param value2 value of the second number in the binary form
+		 * @param size   size of the binary buffer of the number
+		 * @return       result of the check
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ bool isGreater(const void * value1, const void * value2, const size_t size) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки системной локали
+		 *
+		 * @details Локаль ставится всему приложению, а не одному объекту Framework:
+		 *          метод обращается к системной установке локали. Locale по умолчанию
+		 *          ставится конструктором и задана значением «AWH_LOCALE».
+		 *
+		 * @note Разбор протокольных данных от локали не зависит: она влияет на
+		 *       действия над текстом широких символов и на вывод в консоль
+		 *
+		 * @warning Метод меняет состояние приложения целиком: вызывать его следует
+		 *          однажды при запуске, до начала работы модулей
+		 *
+		 * @param locale локализация приложения
+		 *
+		 * \~english
+		 * @brief Function of setting the system locale
+		 *
+		 * @details The locale is set to the whole application, and not to one Framework object:
+		 *          the method addresses the system setting of the locale. The locale by default
+		 *          is set by the constructor and is set by the «AWH_LOCALE» value.
+		 *
+		 * @note The parsing of the protocol data does not depend on the locale: it influences
+		 *       the actions over the text of wide characters and the output into the console
+		 *
+		 * @warning The method changes the state of the whole application: it should be called
+		 *          once at the startup, before the beginning of the work of the modules
+		 *
+		 * @param locale localization of the application
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void setLocale(string_view locale = "") noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция извлечения списка пользовательских зон интернета
+		 *
+		 * @return список доменных зон
+		 *
+		 * \~english
+		 * @brief Function of extracting the list of the user zones of the internet
+		 *
+		 * @return list of the domain zones
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ const unordered_set <string> & domainZones() noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки пользовательской зоны
+		 *
+		 * @details Набор доменных зон применяется разбором адресов: зона, набору не
+		 *          принадлежащая, адресом не признаётся. Framework везёт набор зон
+		 *          общего пользования, а метод пополняет его зонами частными.
+		 *
+		 * @warning Метод меняет состояние объекта: вызывать его следует до начала
+		 *          работы модулей, обращающихся к разбору адресов
+		 * @param zone пользовательская зона
 		 *
 		 * @code{.cpp}
-		 * // Приведение тела ответа к UTF-8 по заголовку Content-Type
-		 * const auto codepage = fmk::codepage("windows-1251");
-		 * const string body = fmk::transcode(payload, codepage, awh::fmk::codepage_t::UTF8);
-		 *
-		 * // Замена символов, кодировке не представимых, знаком вопроса
-		 * fmk::transcode("Привет", awh::fmk::codepage_t::UTF8,
-		 *               awh::fmk::codepage_t::ISO8859_1,
-		 *               awh::fmk::replace_t::REPLACE);           // «??????»
+		 * fmk::domainZone("local");
+		 * fmk::is("http://server.local", awh::fmk::check_t::URL);  // истина
 		 * @endcode
 		 *
 		 * \~english
-		 * @brief Function of converting a text from one encoding into another
+		 * @brief Function of setting a user zone
 		 *
-		 * @details A refusal of the conversion is yielded as an empty text and is written
-		 *          into the log. The encodings are set by a designation obtained by the parsing of a name
-		 *          by the «codepage» method or by the determination of the encoding by the «detect» method.
+		 * @details The set of the domain zones is applied by the parsing of the addresses: a zone not belonging
+		 *          to the set is not recognized as an address. Framework carries the set of the zones
+		 *          of the common use, and the method supplements it with the private zones.
 		 *
-		 * @note A coincidence of the encodings is not a refusal: the text is yielded unchanged
+		 * @warning The method changes the state of the object: it should be called before the beginning of
+		 *          the work of the modules addressing the parsing of the addresses
 		 *
-		 * @param text    text to convert
-		 * @param from    encoding the text is written in
-		 * @param to      encoding the text is required to be converted into
-		 * @param replace order of dealing with the characters not representable in the encoding
-		 * @return        the converted text in the required encoding
+		 * @param zone user zone
 		 *
 		 * @code{.cpp}
-		 * // The conversion of the body of an answer to UTF-8 by the Content-Type header
-		 * const auto codepage = fmk::codepage("windows-1251");
-		 * const string body = fmk::transcode(payload, codepage, awh::fmk::codepage_t::UTF8);
-		 *
-		 * // The replacement of the characters not representable in the encoding by a question mark
-		 * fmk::transcode("Привет", awh::fmk::codepage_t::UTF8,
-		 *               awh::fmk::codepage_t::ISO8859_1,
-		 *               awh::fmk::replace_t::REPLACE);           // «??????»
+		 * fmk::domainZone("local");
+		 * fmk::is("http://server.local", awh::fmk::check_t::URL);  // true
 		 * @endcode
 		 *
 		 */
-		__AWH_SHARED_EXPORT__ string transcode(string_view text, const codepage_t from, const codepage_t to, const replace_t replace = replace_t::STRICT) noexcept;
+		__AWH_SHARED_EXPORT__ void domainZone(const string_view zone) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция установки списка пользовательских зон
+		 *
+		 * @param zones список доменных зон интернета
+		 *
+		 * \~english
+		 * @brief Function of setting the list of the user zones
+		 *
+		 * @param zones list of the domain zones of the internet
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void domainZones(const unordered_set <string> & zones) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция извлечения координат url адресов в строке
+		 *
+		 * @details Выводится набор пар «начало-конец» размещения каждого обнаруженного
+		 *          адреса, а не сами адреса: по ним текст размечается либо разбирается
+		 *          дальше без повторного поиска.
+		 *
+		 * @note Распознание адреса опирается на набор доменных зон, пополняемый
+		 *       методом «domainZone»
+		 *
+		 * @see domainZone
+		 *
+		 * @param text текст для извлечения url адресов
+		 * @return     список координат с url адресами
+		 *
+		 * @code{.cpp}
+		 * for(auto & item : fmk::urls("см. https://anyks.com и ftp://a.b"))
+		 *     const string url = text.substr(item.first, item.second - item.first);
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of extracting the coordinates of the url addresses in a string
+		 *
+		 * @details What is yielded is a set of the «beginning-end» pairs of the placement of every found
+		 *          address, and not the addresses themselves: by them the text is marked up or parsed
+		 *          further without a repeated search.
+		 *
+		 * @note The recognition of an address relies on the set of the domain zones supplemented
+		 *       by the «domainZone» method
+		 *
+		 * @see domainZone
+		 *
+		 * @param text text to extract the url addresses from
+		 * @return     list of the coordinates with the url addresses
+		 *
+		 * @code{.cpp}
+		 * for(auto & item : fmk::urls("see https://anyks.com and ftp://a.b"))
+		 *     const string url = text.substr(item.first, item.second - item.first);
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ unordered_map <size_t, size_t> urls(string_view text) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция разбора имени кодировки
@@ -846,6 +1736,108 @@ namespace awh {
 		 *
 		 */
 		__AWH_SHARED_EXPORT__ codepage_t detect(string_view text, const codepage_t fallback = codepage_t::CP1251) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция конвертирования текста из одной кодировки в другую
+		 *
+		 * @details Отказ конвертирования выводится пустым текстом и записывается
+		 *          в лог. Кодировки задаются обозначением, полученным разбором имени
+		 *          методом «codepage» либо определением кодировки методом «detect».
+		 *
+		 * @note Совпадение кодировок отказом не является: текст выводится без изменений
+		 *
+		 * @param text    текст для конвертирования
+		 * @param from    кодировка, в которой записан текст
+		 * @param to      кодировка, в которую требуется сконвертировать текст
+		 * @param replace порядок обращения с символами, кодировке не представимыми
+		 * @return        сконвертированный текст в требуемой кодировке
+		 *
+		 * @code{.cpp}
+		 * // Приведение тела ответа к UTF-8 по заголовку Content-Type
+		 * const auto codepage = fmk::codepage("windows-1251");
+		 * const string body = fmk::transcode(payload, codepage, awh::fmk::codepage_t::UTF8);
+		 *
+		 * // Замена символов, кодировке не представимых, знаком вопроса
+		 * fmk::transcode("Привет", awh::fmk::codepage_t::UTF8,
+		 *               awh::fmk::codepage_t::ISO8859_1,
+		 *               awh::fmk::replace_t::REPLACE);           // «??????»
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of converting a text from one encoding into another
+		 *
+		 * @details A refusal of the conversion is yielded as an empty text and is written
+		 *          into the log. The encodings are set by a designation obtained by the parsing of a name
+		 *          by the «codepage» method or by the determination of the encoding by the «detect» method.
+		 *
+		 * @note A coincidence of the encodings is not a refusal: the text is yielded unchanged
+		 *
+		 * @param text    text to convert
+		 * @param from    encoding the text is written in
+		 * @param to      encoding the text is required to be converted into
+		 * @param replace order of dealing with the characters not representable in the encoding
+		 * @return        the converted text in the required encoding
+		 *
+		 * @code{.cpp}
+		 * // The conversion of the body of an answer to UTF-8 by the Content-Type header
+		 * const auto codepage = fmk::codepage("windows-1251");
+		 * const string body = fmk::transcode(payload, codepage, awh::fmk::codepage_t::UTF8);
+		 *
+		 * // The replacement of the characters not representable in the encoding by a question mark
+		 * fmk::transcode("Привет", awh::fmk::codepage_t::UTF8,
+		 *               awh::fmk::codepage_t::ISO8859_1,
+		 *               awh::fmk::replace_t::REPLACE);           // «??????»
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ string transcode(string_view text, const codepage_t from, const codepage_t to, const replace_t replace = replace_t::STRICT) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция подсчёта количества указанной буквы в слове
+		 *
+		 * @details Подсчёт ведётся с учётом регистра.
+		 *
+		 * @param word   слово в котором нужно подсчитать букву
+		 * @param letter букву которую нужно подсчитать
+		 * @return       результат подсчёта
+		 *
+		 * @code{.cpp}
+		 * fmk::countLetter("example.com", L'.');  // 1
+		 * @endcode
+		 *
+		 * \~english
+		 * @brief Function of counting the number of the specified letter in a word
+		 *
+		 * @details The counting is performed with the case taken into account.
+		 *
+		 * @param word   word the letter needs to be counted in
+		 * @param letter letter that needs to be counted
+		 * @return       result of the counting
+		 *
+		 * @code{.cpp}
+		 * fmk::countLetter("example.com", L'.');  // 1
+		 * @endcode
+		 *
+		 */
+		__AWH_SHARED_EXPORT__ size_t countLetter(string_view word, const wchar_t letter) noexcept;
+		/**
+		 * \~russian
+		 * @brief Функция подсчёта количества указанной буквы в слове
+		 *
+		 * @param word   слово в котором нужно подсчитать букву
+		 * @param letter букву которую нужно подсчитать
+		 * @return       результат подсчёта
+		 *
+		 * \~english
+		 * @brief Function of counting the number of the specified letter in a word
+		 *
+		 * @param word   word the letter needs to be counted in
+		 * @param letter letter that needs to be counted
+		 * @return       result of the counting
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ size_t countLetter(wstring_view word, const wchar_t letter) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция трансформации одного символа
@@ -1131,288 +2123,84 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ vector <wstring> & split(wstring_view text, wstring_view delim, vector <wstring> & container) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки в строку utf-8
+		 * @brief Функция порверки на сколько процентов (A > B) или (A < B)
 		 *
-		 * @details Узкая строка разбирается как запись в кодировке UTF-8 и выводится
-		 *          строкой широких символов. Обратное действие выполняется одноимённым
-		 *          методом, принимающим строку широких символов.
+		 * @details Выводится отклонение первого числа от второго в процентах от
+		 *          второго. Превышение выводится положительным значением, недостача —
+		 *          отрицательным.
 		 *
-		 * @note Разрядность широкого символа задаётся операционной системой: на
-		 *       MS Windows он двухбайтовый, и символы за пределами основной плоскости
-		 *       записываются суррогатной парой, тогда как на прочих системах он
-		 *       четырёхбайтовый и хранит кодовое значение целиком
+		 * @note Нулевое второе число даёт нулевой результат: делить на него нельзя
 		 *
-		 * @note Текст, записью UTF-8 не являющийся, выводится пустой строкой,
-		 *       а ошибка записывается в лог
-		 *
-		 * @param str строка для конвертирования
-		 * @return    строка в utf-8
+		 * @param a первое число
+		 * @param b второе число
+		 * @return  результат расчёта
 		 *
 		 * @code{.cpp}
-		 * const wstring wide = fmk::convert(string{"Привет"});
-		 * const string text = fmk::convert(wide);
+		 * fmk::rate(150.f, 100.f);  // 50
+		 * fmk::rate(50.f, 100.f);   // -50
 		 * @endcode
 		 *
 		 * \~english
-		 * @brief Function of converting a string into a utf-8 string
+		 * @brief Function of checking by how many percent (A > B) or (A < B)
 		 *
-		 * @details A narrow string is parsed as a record in the UTF-8 encoding and is yielded
-		 *          as a string of wide characters. The reverse action is performed by the method of the same name
-		 *          taking a string of wide characters.
+		 * @details What is yielded is the deviation of the first number from the second one in percent of
+		 *          the second one. An excess is yielded as a positive value, a shortage —
+		 *          as a negative one.
 		 *
-		 * @note The width of a wide character is set by the operating system: on
-		 *       MS Windows it is a two-byte one, and the characters beyond the basic plane
-		 *       are written by a surrogate pair, while on the other systems it is
-		 *       a four-byte one and holds the code value entirely
+		 * @note A zero second number gives a zero result: it is impossible to divide by it
 		 *
-		 * @note A text that is not a UTF-8 record is yielded as an empty string,
-		 *       and the error is written into the log
-		 *
-		 * @param str string to convert
-		 * @return    string in utf-8
+		 * @param a first number
+		 * @param b second number
+		 * @return  result of the computation
 		 *
 		 * @code{.cpp}
-		 * const wstring wide = fmk::convert(string{"Привет"});
-		 * const string text = fmk::convert(wide);
+		 * fmk::rate(150.f, 100.f);  // 50
+		 * fmk::rate(50.f, 100.f);   // -50
 		 * @endcode
 		 *
 		 */
-		__AWH_SHARED_EXPORT__ wstring convert(string_view str) noexcept;
+		__AWH_SHARED_EXPORT__ float rate(const float a, const float b) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки utf-8 в строку
+		 * @brief Функция приведения количества символов после запятой к указанному количества
 		 *
-		 * @param str строка utf-8 для конвертирования
-		 * @return    обычная строка
+		 * @details Дробная часть отсекается, а не округляется: число приводится
+		 *          к ближайшему меньшему.
 		 *
-		 * \~english
-		 * @brief Function of converting a utf-8 string into a string
+		 * @note Округление выполняется методом «noexp», выводящим запись числа
 		 *
-		 * @param str utf-8 string to convert
-		 * @return    ordinary string
+		 * @see noexp
 		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ string convert(wstring_view str) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция конвертирования строки в строку utf-8
-		 *
-		 * @param str строка для конвертирования
-		 * @return    строка в utf-8
-		 *
-		 * \~english
-		 * @brief Function of converting a string into a utf-8 string
-		 *
-		 * @param str string to convert
-		 * @return    string in utf-8
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ wstring convert(const char * str) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция конвертирования строки utf-8 в строку
-		 *
-		 * @param str строка utf-8 для конвертирования
-		 * @return    обычная строка
-		 *
-		 * \~english
-		 * @brief Function of converting a utf-8 string into a string
-		 *
-		 * @param str utf-8 string to convert
-		 * @return    ordinary string
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ string convert(const wchar_t * str) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция конвертирования строки в строку utf-8
-		 *
-		 * @param str строка для конвертирования
-		 * @return    строка в utf-8
-		 *
-		 * \~english
-		 * @brief Function of converting a string into a utf-8 string
-		 *
-		 * @param str string to convert
-		 * @return    string in utf-8
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ wstring convert(const string & str) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция конвертирования строки utf-8 в строку
-		 *
-		 * @param str строка utf-8 для конвертирования
-		 * @return    обычная строка
-		 *
-		 * \~english
-		 * @brief Function of converting a utf-8 string into a string
-		 *
-		 * @param str utf-8 string to convert
-		 * @return    ordinary string
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ string convert(const wstring & str) noexcept;
-		/**
-		 * \~russian
-		 * @brief функции определения точного размера, сколько занимает число байт
-		 *
-		 * @tparam T тип данных с которым работает функция
-		 *
-		 * \~english
-		 * @brief functions of determining the exact size of how many bytes a number occupies
-		 *
-		 * @tparam T type of the data the function works with
-		 *
-		 * \~
-		 */
-		template <typename T>
-		/**
-		 * \~russian
-		 * @brief Функция определения точного размера, сколько занимает число байт
-		 *
-		 * @details Выводится количество байт, которым число записывается без потери
-		 *          значения, а не размер его типа. Метод служит сжатию записи чисел
-		 *          в двоичных протоколах.
-		 *
-		 * @param num число для проверки
-		 * @return    фактический размер занимаемым числом байт
+		 * @param x число для приведения
+		 * @param n количество символов после запятой
+		 * @return  сформированное число
 		 *
 		 * @code{.cpp}
-		 * fmk::size <uint64_t> (255);    // 1
-		 * fmk::size <uint64_t> (256);    // 2
-		 * fmk::size <uint64_t> (0);      // 0
+		 * fmk::floor(3.14159, 2);  // 3.14
+		 * fmk::floor(3.999, 2);    // 3.99
 		 * @endcode
 		 *
 		 * \~english
-		 * @brief Function of determining the exact size of how many bytes a number occupies
+		 * @brief Function of bringing the number of the characters after the decimal point to the specified number
 		 *
-		 * @details What is yielded is the number of the bytes a number is written by without a loss of
-		 *          the value, and not the size of its type. The method serves the compression of the record of the numbers
-		 *          in the binary protocols.
+		 * @details The fractional part is cut off, and not rounded: the number is brought
+		 *          to the nearest smaller one.
 		 *
-		 * @param num number to check
-		 * @return    actual size of the bytes occupied by the number
+		 * @note The rounding is performed by the «noexp» method, yielding the record of a number
+		 *
+		 * @see noexp
+		 *
+		 * @param x number to bring
+		 * @param n number of the characters after the decimal point
+		 * @return  the built number
 		 *
 		 * @code{.cpp}
-		 * fmk::size <uint64_t> (255);    // 1
-		 * fmk::size <uint64_t> (256);    // 2
-		 * fmk::size <uint64_t> (0);      // 0
+		 * fmk::floor(3.14159, 2);  // 3.14
+		 * fmk::floor(3.999, 2);    // 3.99
 		 * @endcode
 		 *
 		 */
-		__AWH_SHARED_EXPORT__ size_t size(const T num) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция определения точного размера, сколько занимают данные (в байтах) в буфере
-		 *
-		 * @details Выводится размер буфера за вычетом нулевых байтов, лежащих в его
-		 *          конце. Буфер, заполненный нулями целиком, даёт нулевой размер.
-		 *
-		 * @warning Порядок байт числа при этом не учитывается: на машине с прямым
-		 *          порядком байт старший разряд числа лежит в конце буфера, и метод
-		 *          пригоден лишь для буферов, записанных обратным порядком
-		 *
-		 * @param value значение бинарного буфера для проверки
-		 * @param size  общий размер бинарного буфера
-		 * @return      фактический размер буфера занимаемый данными
-		 *
-		 * \~english
-		 * @brief Function of determining the exact size of how much data (in bytes) occupies in a buffer
-		 *
-		 * @details What is yielded is the size of the buffer minus the zero bytes lying at its
-		 *          end. A buffer filled with zeroes entirely gives a zero size.
-		 *
-		 * @warning The order of the bytes of a number is at that not taken into account: on a machine with the direct
-		 *          order of the bytes the higher digit of a number lies at the end of the buffer, and the method
-		 *          is suitable only for the buffers written in the reverse order
-		 *
-		 * @param value value of the binary buffer to check
-		 * @param size  total size of the binary buffer
-		 * @return      actual size of the buffer occupied by the data
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ size_t size(const void * value, const size_t size) noexcept;
-		/**
-		 * \~russian
-		 * @brief Шаблон функции проверки больше первое число второго или нет (бинарным методом)
-		 *
-		 * @tparam T тип данных с которым работает функция
-		 *
-		 * \~english
-		 * @brief Template of the function of checking whether the first number is greater than the second one or not (by the binary method)
-		 *
-		 * @tparam T type of the data the function works with
-		 *
-		 * \~
-		 */
-		template <typename T>
-		/**
-		 * \~russian
-		 * @brief Функция проверки больше первое число второго или нет (бинарным методом)
-		 *
-		 * @param num1 значение первого числа в бинарном виде
-		 * @param num2 значение второго числа в бинарном виде
-		 * @return     результат проверки
-		 *
-		 * \~english
-		 * @brief Function of checking whether the first number is greater than the second one or not (by the binary method)
-		 *
-		 * @param num1 value of the first number in the binary form
-		 * @param num2 value of the second number in the binary form
-		 * @return     result of the check
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ bool isGreater(const T num1, const T num2) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция проверки больше первое число второго или нет (бинарным методом)
-		 *
-		 * @details Сличаются **числа**, лежащие в памяти так, как их кладёт сама
-		 *          машина. Перебор идёт с последнего байта: на машине с обратным
-		 *          порядком байт старший разряд числа лежит именно там. Так и
-		 *          задумано, и разворачивать перебор не следует - иначе метод
-		 *          перестанет сличать числа.
-		 *
-		 * @warning Двоичный буфер, числом не являющийся, сличать этим методом
-		 *          **нельзя**: сетевой адрес, аппаратный адрес, отпечаток - всё
-		 *          это лежит в своём порядке, старшим байтом вперёд, и порядок их
-		 *          даёт побайтное сличение `memcmp`, а не этот метод
-		 *
-		 * @param value1 значение первого числа в бинарном виде
-		 * @param value2 значение второго числа в бинарном виде
-		 * @param size   размер бинарного буфера числа
-		 * @return       результат проверки
-		 *
-		 * \~english
-		 * @brief Function of checking whether the first number is greater than the second one or not (by the binary method)
-		 *
-		 * @details What is matched are the **numbers** lying in the memory the way the machine itself
-		 *          puts them. The traversal goes from the last byte: on a machine with the reverse
-		 *          order of the bytes the higher digit of a number lies exactly there. It is
-		 *          intended so, and the traversal should not be turned around — otherwise the method
-		 *          will stop matching numbers.
-		 *
-		 * @warning A binary buffer that is not a number **must not** be matched by this
-		 *          method: a network address, a hardware address, a fingerprint — all
-		 *          of this lies in its own order, the higher byte first, and their order
-		 *          is given by the byte by byte matching `memcmp`, and not by this method
-		 *
-		 * @param value1 value of the first number in the binary form
-		 * @param value2 value of the second number in the binary form
-		 * @param size   size of the binary buffer of the number
-		 * @return       result of the check
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ bool isGreater(const void * value1, const void * value2, const size_t size) noexcept;
+		__AWH_SHARED_EXPORT__ double floor(const double x, const uint8_t n) noexcept;
 		/**
 		 * \~russian
 		 * @brief Шаблон функции конвертации чисел в указанную систему счисления
@@ -1952,408 +2740,6 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ string grouped(const T number, const char separator = ',', const uint8_t size = 3) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция порверки на сколько процентов (A > B) или (A < B)
-		 *
-		 * @details Выводится отклонение первого числа от второго в процентах от
-		 *          второго. Превышение выводится положительным значением, недостача —
-		 *          отрицательным.
-		 *
-		 * @note Нулевое второе число даёт нулевой результат: делить на него нельзя
-		 *
-		 * @param a первое число
-		 * @param b второе число
-		 * @return  результат расчёта
-		 *
-		 * @code{.cpp}
-		 * fmk::rate(150.f, 100.f);  // 50
-		 * fmk::rate(50.f, 100.f);   // -50
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of checking by how many percent (A > B) or (A < B)
-		 *
-		 * @details What is yielded is the deviation of the first number from the second one in percent of
-		 *          the second one. An excess is yielded as a positive value, a shortage —
-		 *          as a negative one.
-		 *
-		 * @note A zero second number gives a zero result: it is impossible to divide by it
-		 *
-		 * @param a first number
-		 * @param b second number
-		 * @return  result of the computation
-		 *
-		 * @code{.cpp}
-		 * fmk::rate(150.f, 100.f);  // 50
-		 * fmk::rate(50.f, 100.f);   // -50
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ float rate(const float a, const float b) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция приведения количества символов после запятой к указанному количества
-		 *
-		 * @details Дробная часть отсекается, а не округляется: число приводится
-		 *          к ближайшему меньшему.
-		 *
-		 * @note Округление выполняется методом «noexp», выводящим запись числа
-		 *
-		 * @see noexp
-		 *
-		 * @param x число для приведения
-		 * @param n количество символов после запятой
-		 * @return  сформированное число
-		 *
-		 * @code{.cpp}
-		 * fmk::floor(3.14159, 2);  // 3.14
-		 * fmk::floor(3.999, 2);    // 3.99
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of bringing the number of the characters after the decimal point to the specified number
-		 *
-		 * @details The fractional part is cut off, and not rounded: the number is brought
-		 *          to the nearest smaller one.
-		 *
-		 * @note The rounding is performed by the «noexp» method, yielding the record of a number
-		 *
-		 * @see noexp
-		 *
-		 * @param x number to bring
-		 * @param n number of the characters after the decimal point
-		 * @return  the built number
-		 *
-		 * @code{.cpp}
-		 * fmk::floor(3.14159, 2);  // 3.14
-		 * fmk::floor(3.999, 2);    // 3.99
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ double floor(const double x, const uint8_t n) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция перевода римских цифр в арабские
-		 *
-		 * @details Запись разбирается без учёта регистра.
-		 *
-		 * @note Запись, римским числом не являющаяся, выводится нулевым значением
-		 *
-		 * @see arabic2rome
-		 *
-		 * @param word римское число
-		 * @return     арабское число
-		 *
-		 * @code{.cpp}
-		 * fmk::rome2arabic("XIV");   // 14
-		 * fmk::rome2arabic("mcmxc"); // 1990
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of converting the Roman numerals into the Arabic ones
-		 *
-		 * @details The record is parsed without the case taken into account.
-		 *
-		 * @note A record that is not a Roman number is yielded as a zero value
-		 *
-		 * @see arabic2rome
-		 *
-		 * @param word Roman number
-		 * @return     Arabic number
-		 *
-		 * @code{.cpp}
-		 * fmk::rome2arabic("XIV");   // 14
-		 * fmk::rome2arabic("mcmxc"); // 1990
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ uint16_t rome2arabic(string_view word) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция перевода римских цифр в арабские
-		 *
-		 * @param word римское число
-		 * @return     арабское число
-		 *
-		 * \~english
-		 * @brief Function of converting the Roman numerals into the Arabic ones
-		 *
-		 * @param word Roman number
-		 * @return     Arabic number
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ uint16_t rome2arabic(wstring_view word) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция перевода арабских чисел в римские
-		 *
-		 * @details Запись выводится прописными буквами.
-		 *
-		 * @note Число вне пределов от 1 до 4999 выводится пустой строкой: римская
-		 *       запись больших чисел требует надчёркивания, записи не имеющего
-		 *
-		 * @see rome2arabic
-		 *
-		 * @param number арабское число от 1 до 4999
-		 * @return       римское число
-		 *
-		 * @code{.cpp}
-		 * fmk::arabic2rome(14);    // «XIV»
-		 * fmk::arabic2rome(1990);  // «MCMXC»
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of converting the Arabic numbers into the Roman ones
-		 *
-		 * @details The record is yielded in the capital letters.
-		 *
-		 * @note A number outside the limits from 1 to 4999 is yielded as an empty string: the Roman
-		 *       record of the large numbers requires an overline, which the record does not have
-		 *
-		 * @see rome2arabic
-		 *
-		 * @param number Arabic number from 1 to 4999
-		 * @return       Roman number
-		 *
-		 * @code{.cpp}
-		 * fmk::arabic2rome(14);    // «XIV»
-		 * fmk::arabic2rome(1990);  // «MCMXC»
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ wstring arabic2rome(const uint32_t number) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция перевода арабских чисел в римские
-		 *
-		 * @param word арабское число от 1 до 4999
-		 * @return     римское число
-		 *
-		 * \~english
-		 * @brief Function of converting the Arabic numbers into the Roman ones
-		 *
-		 * @param word Arabic number from 1 to 4999
-		 * @return     Roman number
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ string arabic2rome(string_view word) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция перевода арабских чисел в римские
-		 *
-		 * @param word арабское число от 1 до 4999
-		 * @return     римское число
-		 *
-		 * \~english
-		 * @brief Function of converting the Arabic numbers into the Roman ones
-		 *
-		 * @param word Arabic number from 1 to 4999
-		 * @return     Roman number
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ wstring arabic2rome(wstring_view word) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция подсчёта количества указанной буквы в слове
-		 *
-		 * @details Подсчёт ведётся с учётом регистра.
-		 *
-		 * @param word   слово в котором нужно подсчитать букву
-		 * @param letter букву которую нужно подсчитать
-		 * @return       результат подсчёта
-		 *
-		 * @code{.cpp}
-		 * fmk::countLetter("example.com", L'.');  // 1
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of counting the number of the specified letter in a word
-		 *
-		 * @details The counting is performed with the case taken into account.
-		 *
-		 * @param word   word the letter needs to be counted in
-		 * @param letter letter that needs to be counted
-		 * @return       result of the counting
-		 *
-		 * @code{.cpp}
-		 * fmk::countLetter("example.com", L'.');  // 1
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ size_t countLetter(string_view word, const wchar_t letter) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция подсчёта количества указанной буквы в слове
-		 *
-		 * @param word   слово в котором нужно подсчитать букву
-		 * @param letter букву которую нужно подсчитать
-		 * @return       результат подсчёта
-		 *
-		 * \~english
-		 * @brief Function of counting the number of the specified letter in a word
-		 *
-		 * @param word   word the letter needs to be counted in
-		 * @param letter letter that needs to be counted
-		 * @return       result of the counting
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ size_t countLetter(wstring_view word, const wchar_t letter) noexcept;
-		/**
-		 * \~russian
-		 * @brief Шаблон функции проверки установлен ли бит в указанной позиции
-		 *
-		 * @tparam T тип данных с которым работает функция
-		 *
-		 * \~english
-		 * @brief Template of the function of checking whether a bit is set at the specified position
-		 *
-		 * @tparam T type of the data the function works with
-		 *
-		 * \~
-		 */
-		template <typename T>
-		/**
-		 * \~russian
-		 * @brief Функция проверки установлен ли бит в указанной позиции
-		 *
-		 * @details Разряды отсчитываются от младшего, начиная с нуля.
-		 *
-		 * @warning Позиция, разрядность типа превышающая, поведения не задаёт:
-		 *          проверять её следует вызывающей стороне
-		 *
-		 * @param pos позиция для проверки
-		 * @param num число в бинарном виде для проверки бита
-		 * @return    результат проверки
-		 *
-		 * @code{.cpp}
-		 * fmk::isBit <uint8_t> (0, 0b00000101);    // истина
-		 * fmk::setBit <uint8_t> (3, 0b00000001);   // 0b00001001
-		 * fmk::resetBit <uint8_t> (0, 0b00000101); // 0b00000100
-		 * fmk::flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of checking whether a bit is set at the specified position
-		 *
-		 * @details The digits are counted from the lowest one, starting from zero.
-		 *
-		 * @warning A position exceeding the width of the type does not set the behaviour:
-		 *          it should be checked by the calling side
-		 *
-		 * @param pos position to check
-		 * @param num number in the binary form to check the bit of
-		 * @return    result of the check
-		 *
-		 * @code{.cpp}
-		 * fmk::isBit <uint8_t> (0, 0b00000101);    // true
-		 * fmk::setBit <uint8_t> (3, 0b00000001);   // 0b00001001
-		 * fmk::resetBit <uint8_t> (0, 0b00000101); // 0b00000100
-		 * fmk::flipBit <uint8_t> (1, 0b00000101);  // 0b00000111
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ bool isBit(const T pos, const T num) noexcept;
-		/**
-		 * \~russian
-		 * @brief Шаблон функции инверсии бита в указанной позиции
-		 *
-		 * @tparam T тип данных с которым работает функция
-		 *
-		 * \~english
-		 * @brief Template of the function of the inversion of a bit at the specified position
-		 *
-		 * @tparam T type of the data the function works with
-		 *
-		 * \~
-		 */
-		template <typename T>
-		/**
-		 * \~russian
-		 * @brief Функция инверсии бита в указанной позиции
-		 *
-		 * @param pos позиция для инверсии
-		 * @param num число в бинарном виде для инверсии бита
-		 * @return    итоговое значение числа после инверсии
-		 *
-		 * \~english
-		 * @brief Function of the inversion of a bit at the specified position
-		 *
-		 * @param pos position for the inversion
-		 * @param num number in the binary form to invert the bit of
-		 * @return    resulting value of the number after the inversion
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ T flipBit(const T pos, const T num) noexcept;
-		/**
-		 * \~russian
-		 * @brief Шаблон функции сброса бита в указанной позиции
-		 *
-		 * @tparam T тип данных с которым работает функция
-		 *
-		 * \~english
-		 * @brief Template of the function of the reset of a bit at the specified position
-		 *
-		 * @tparam T type of the data the function works with
-		 *
-		 * \~
-		 */
-		template <typename T>
-		/**
-		 * \~russian
-		 * @brief Функция сброса бита в указанной позиции
-		 *
-		 * @param pos позиция для сброса
-		 * @param num число в бинарном виде для сброса бита
-		 * @return    итоговое значение числа после сброса бита
-		 *
-		 * \~english
-		 * @brief Function of the reset of a bit at the specified position
-		 *
-		 * @param pos position for the reset
-		 * @param num number in the binary form to reset the bit of
-		 * @return    resulting value of the number after the reset of the bit
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ T resetBit(const T pos, const T num) noexcept;
-		/**
-		 * \~russian
-		 * @brief Шаблон функции устанвки бита в указанную позицию
-		 *
-		 * @tparam T тип данных с которым работает функция
-		 *
-		 * \~english
-		 * @brief Template of the function of the setting of a bit at the specified position
-		 *
-		 * @tparam T type of the data the function works with
-		 *
-		 * \~
-		 */
-		template <typename T>
-		/**
-		 * \~russian
-		 * @brief Функция устанвки бита в указанную позицию
-		 *
-		 * @param pos позиция для установки бита
-		 * @param num начальное значение бита
-		 * @return    итоговое значение числа после установки бита
-		 *
-		 * \~english
-		 * @brief Function of the setting of a bit at the specified position
-		 *
-		 * @param pos position for the setting of the bit
-		 * @param num initial value of the bit
-		 * @return    resulting value of the number after the setting of the bit
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ T setBit(const T pos, const T num = 0) noexcept;
-		/**
-		 * \~russian
 		 * @brief Шаблон функции реализации функции формирования форматированной строки
 		 *
 		 * @tparam Args типы доводов функции
@@ -2512,48 +2898,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ wstring format(wstring_view format, const vector <wstring> & items) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция проверки существования слова в тексте
-		 *
-		 * @details Слово ищется как часть текста, границы слова при этом не
-		 *          проверяются: слово «код» обнаруживается в тексте «кодировка».
-		 *
-		 * @param word слово для проверки
-		 * @param text текст в котором выполнения проверка
-		 * @return     результат выполнения проверки
-		 *
-		 * \~english
-		 * @brief Function of checking the existence of a word in a text
-		 *
-		 * @details The word is searched for as a part of the text, the boundaries of the word are at that not
-		 *          checked: the word «code» is found in the text «codepage».
-		 *
-		 * @param word word to check
-		 * @param text text the check is performed in
-		 * @return     result of the performance of the check
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ bool exists(string_view word, string_view text) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция проверки существования слова в тексте
-		 *
-		 * @param word слово для проверки
-		 * @param text текст в котором выполнения проверка
-		 * @return     результат выполнения проверки
-		 *
-		 * \~english
-		 * @brief Function of checking the existence of a word in a text
-		 *
-		 * @param word word to check
-		 * @param text text the check is performed in
-		 * @return     result of the performance of the check
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ bool exists(wstring_view word, wstring_view text) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция замены в тексте слово на другое слово
@@ -2799,350 +3143,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void kv(const uint64_t sid, wstring_view text, wstring_view delim, function <void (const uint64_t, const wstring_view, const wstring_view)> callback, wstring_view separator = L"=", const vector <wstring> & escaping = detail::escapingWide()) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция установки пользовательской зоны
-		 *
-		 * @details Набор доменных зон применяется разбором адресов: зона, набору не
-		 *          принадлежащая, адресом не признаётся. Framework везёт набор зон
-		 *          общего пользования, а метод пополняет его зонами частными.
-		 *
-		 * @warning Метод меняет состояние объекта: вызывать его следует до начала
-		 *          работы модулей, обращающихся к разбору адресов
-		 * @param zone пользовательская зона
-		 *
-		 * @code{.cpp}
-		 * fmk::domainZone("local");
-		 * fmk::is("http://server.local", awh::fmk::check_t::URL);  // истина
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of setting a user zone
-		 *
-		 * @details The set of the domain zones is applied by the parsing of the addresses: a zone not belonging
-		 *          to the set is not recognized as an address. Framework carries the set of the zones
-		 *          of the common use, and the method supplements it with the private zones.
-		 *
-		 * @warning The method changes the state of the object: it should be called before the beginning of
-		 *          the work of the modules addressing the parsing of the addresses
-		 *
-		 * @param zone user zone
-		 *
-		 * @code{.cpp}
-		 * fmk::domainZone("local");
-		 * fmk::is("http://server.local", awh::fmk::check_t::URL);  // true
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ void domainZone(const string_view zone) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция установки списка пользовательских зон
-		 *
-		 * @param zones список доменных зон интернета
-		 *
-		 * \~english
-		 * @brief Function of setting the list of the user zones
-		 *
-		 * @param zones list of the domain zones of the internet
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ void domainZones(const unordered_set <string> & zones) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция извлечения списка пользовательских зон интернета
-		 *
-		 * @return список доменных зон
-		 *
-		 * \~english
-		 * @brief Function of extracting the list of the user zones of the internet
-		 *
-		 * @return list of the domain zones
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ const unordered_set <string> & domainZones() noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция установки системной локали
-		 *
-		 * @details Локаль ставится всему приложению, а не одному объекту Framework:
-		 *          метод обращается к системной установке локали. Locale по умолчанию
-		 *          ставится конструктором и задана значением «AWH_LOCALE».
-		 *
-		 * @note Разбор протокольных данных от локали не зависит: она влияет на
-		 *       действия над текстом широких символов и на вывод в консоль
-		 *
-		 * @warning Метод меняет состояние приложения целиком: вызывать его следует
-		 *          однажды при запуске, до начала работы модулей
-		 *
-		 * @param locale локализация приложения
-		 *
-		 * \~english
-		 * @brief Function of setting the system locale
-		 *
-		 * @details The locale is set to the whole application, and not to one Framework object:
-		 *          the method addresses the system setting of the locale. The locale by default
-		 *          is set by the constructor and is set by the «AWH_LOCALE» value.
-		 *
-		 * @note The parsing of the protocol data does not depend on the locale: it influences
-		 *       the actions over the text of wide characters and the output into the console
-		 *
-		 * @warning The method changes the state of the whole application: it should be called
-		 *          once at the startup, before the beginning of the work of the modules
-		 *
-		 * @param locale localization of the application
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ void setLocale(string_view locale = "") noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция извлечения координат url адресов в строке
-		 *
-		 * @details Выводится набор пар «начало-конец» размещения каждого обнаруженного
-		 *          адреса, а не сами адреса: по ним текст размечается либо разбирается
-		 *          дальше без повторного поиска.
-		 *
-		 * @note Распознание адреса опирается на набор доменных зон, пополняемый
-		 *       методом «domainZone»
-		 *
-		 * @see domainZone
-		 *
-		 * @param text текст для извлечения url адресов
-		 * @return     список координат с url адресами
-		 *
-		 * @code{.cpp}
-		 * for(auto & item : fmk::urls("см. https://anyks.com и ftp://a.b"))
-		 *     const string url = text.substr(item.first, item.second - item.first);
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of extracting the coordinates of the url addresses in a string
-		 *
-		 * @details What is yielded is a set of the «beginning-end» pairs of the placement of every found
-		 *          address, and not the addresses themselves: by them the text is marked up or parsed
-		 *          further without a repeated search.
-		 *
-		 * @note The recognition of an address relies on the set of the domain zones supplemented
-		 *       by the «domainZone» method
-		 *
-		 * @see domainZone
-		 *
-		 * @param text text to extract the url addresses from
-		 * @return     list of the coordinates with the url addresses
-		 *
-		 * @code{.cpp}
-		 * for(auto & item : fmk::urls("see https://anyks.com and ftp://a.b"))
-		 *     const string url = text.substr(item.first, item.second - item.first);
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ unordered_map <size_t, size_t> urls(string_view text) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция получения иконки
-		 *
-		 * @details Выводится случайно выбранный знак из набора: один набор отведён
-		 *          началу работы, другой — её завершению. Метод служит выводу в
-		 *          консоль и содержательной нагрузки не несёт.
-		 *
-		 * @param end флаг завершения работы
-		 * @return    иконка напутствия работы
-		 *
-		 * \~english
-		 * @brief Function of getting an icon
-		 *
-		 * @details What is yielded is a randomly chosen sign from a set: one set is given over to
-		 *          the beginning of the work, another one — to its completion. The method serves the output into
-		 *          the console and carries no meaningful load.
-		 *
-		 * @param end flag of the completion of the work
-		 * @return    icon of the parting word of the work
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ string icon(const bool end = false) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция получения размера в байтах из строки
-		 *
-		 * @details Единица измерения сличается без учёта регистра и может отделяться
-		 *          от числа пробелом. Приставки задают степени числа 1024, а не 1000.
-		 *
-		 * @note Запись, не начинающаяся цифрой, выводится нулевым значением
-		 *
-		 * @note Единица измерения обязательна: задача метода — получить точное число
-		 *       байт из записи размерности, а не разобрать число. Запись из одних
-		 *       цифр выводится нулевым значением, и разбирать её следует модулем
-		 *       лексического разбора чисел
-		 *
-		 * @see bytes(const double, const bool)
-		 *
-		 * @param str строка обозначения размерности (b, Kb, Mb, Gb, Tb)
-		 * @return    размер в байтах
-		 *
-		 * @code{.cpp}
-		 * fmk::bytes("1Kb");        // 1024
-		 * fmk::bytes("1 Kb");       // 1024
-		 * fmk::bytes("1.5 Mb");     // 1572864
-		 * fmk::bytes("100 Gb");     // 107374182400
-		 * fmk::bytes("1024 bytes"); // 1024
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of getting the size in bytes from a string
-		 *
-		 * @details The unit of the measurement is matched without the case taken into account and may be separated
-		 *          from the number by a space. The prefixes set the powers of the number 1024, and not of 1000.
-		 *
-		 * @note A record not beginning with a digit is yielded as a zero value
-		 *
-		 * @note The unit of the measurement is obligatory: the task of the method is to obtain the exact number
-		 *       of the bytes from a record of a dimension, and not to parse a number. A record of the digits
-		 *       alone is yielded as a zero value, and it should be parsed by the module
-		 *       of the lexical parsing of the numbers
-		 *
-		 * @see bytes(const double, const bool)
-		 *
-		 * @param str string of the designation of the dimension (b, Kb, Mb, Gb, Tb)
-		 * @return    size in bytes
-		 *
-		 * @code{.cpp}
-		 * fmk::bytes("1Kb");        // 1024
-		 * fmk::bytes("1 Kb");       // 1024
-		 * fmk::bytes("1.5 Mb");     // 1572864
-		 * fmk::bytes("100 Gb");     // 107374182400
-		 * fmk::bytes("1024 bytes"); // 1024
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ double bytes(const string_view str) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция конвертации байт в строку
-		 *
-		 * @details Единица измерения подбирается наибольшей из тех, при которой число
-		 *          остаётся не меньше единицы. Запись числа выполняется методом «noexp»
-		 *          и от установленной локали не зависит.
-		 *
-		 * @note Запись, выводимая этим методом, разбирается обратно одноимённым
-		 *       методом до того же значения
-		 *
-		 * @see bytes(const string_view)
-		 *
-		 * @param value   количество байт
-		 * @param onlyNum выводить только числа
-		 * @return        полученная строка
-		 *
-		 * @code{.cpp}
-		 * fmk::bytes(1024.);     // «1 Kb»
-		 * fmk::bytes(1572864.);  // «1.5 Mb»
-		 * fmk::bytes(512.);      // «512 bytes»
-		 * fmk::bytes(0.);        // «0 bytes»
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of the conversion of the bytes into a string
-		 *
-		 * @details The unit of the measurement is picked the largest of those at which the number
-		 *          remains not less than one. The record of the number is performed by the «noexp» method
-		 *          and does not depend on the set locale.
-		 *
-		 * @note The record yielded by this method is parsed back by the method of the same
-		 *       name up to the same value
-		 *
-		 * @see bytes(const string_view)
-		 *
-		 * @param value   number of the bytes
-		 * @param onlyNum output only the numbers
-		 * @return        the obtained string
-		 *
-		 * @code{.cpp}
-		 * fmk::bytes(1024.);     // «1 Kb»
-		 * fmk::bytes(1572864.);  // «1.5 Mb»
-		 * fmk::bytes(512.);      // «512 bytes»
-		 * fmk::bytes(0.);        // «0 bytes»
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ string bytes(const double value, const bool onlyNum = false) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция получения количества байт в секунду из строки
-		 *
-		 * @details Пропускная способность сети задаётся в битах, а выводится в байтах:
-		 *          разобранное значение делится на восемь. Приставки при этом задают
-		 *          степени числа 1000, а не 1024, как принято для пропускной
-		 *          способности сети.
-		 *
-		 * @note Приставки размера буфера, выводимого методом «bytes», задают степени
-		 *       числа 1024: единицы измерения этих двух методов не совпадают намеренно
-		 *
-		 * @see bpsBuffer
-		 *
-		 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
-		 * @return    количество байт в секунду
-		 *
-		 * @code{.cpp}
-		 * fmk::bpsSize("8bps");     // 1
-		 * fmk::bpsSize("1Kbps");    // 125
-		 * fmk::bpsSize("1.5Mbps");  // 187500
-		 * fmk::bpsSize("100Mbps");  // 12500000
-		 * @endcode
-		 *
-		 * \~english
-		 * @brief Function of getting the number of the bytes per second from a string
-		 *
-		 * @details The bandwidth of a network is set in bits, and is yielded in bytes:
-		 *          the parsed value is divided by eight. The prefixes at that set
-		 *          the powers of the number 1000, and not of 1024, as it is accepted for the bandwidth
-		 *          of a network.
-		 *
-		 * @note The prefixes of the size of a buffer, yielded by the «bytes» method, set the powers
-		 *       of the number 1024: the units of the measurement of these two methods do not coincide deliberately
-		 *
-		 * @see bpsBuffer
-		 *
-		 * @param str bandwidth of the network (bps, kbps, Mbps, Gbps)
-		 * @return    number of the bytes per second
-		 *
-		 * @code{.cpp}
-		 * fmk::bpsSize("8bps");     // 1
-		 * fmk::bpsSize("1Kbps");    // 125
-		 * fmk::bpsSize("1.5Mbps");  // 187500
-		 * fmk::bpsSize("100Mbps");  // 12500000
-		 * @endcode
-		 *
-		 */
-		__AWH_SHARED_EXPORT__ size_t bpsSize(const string_view str) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция получения размера буфера в байтах
-		 *
-		 * @details Выводится размер приёмного либо передающего буфера сокета,
-		 *          отвечающий заданной пропускной способности сети.
-		 *
-		 * @see bpsSize
-		 *
-		 * @param str пропускная способность сети (bps, kbps, Mbps, Gbps)
-		 * @return    размер буфера в байтах
-		 *
-		 * \~english
-		 * @brief Function of getting the size of a buffer in bytes
-		 *
-		 * @details What is yielded is the size of the receiving or of the transmitting buffer of a socket,
-		 *          answering the given bandwidth of the network.
-		 *
-		 * @see bpsSize
-		 *
-		 * @param str bandwidth of the network (bps, kbps, Mbps, Gbps)
-		 * @return    size of the buffer in bytes
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ size_t bpsBuffer(const string_view str) noexcept;
 	}
 };
 

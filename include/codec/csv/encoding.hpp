@@ -454,16 +454,6 @@ namespace awh {
 					 */
 					void report() const noexcept;
 				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
-				private:
 					// Определённая кодировка исходного текста
 					encoding_t _encoding;
 				private:

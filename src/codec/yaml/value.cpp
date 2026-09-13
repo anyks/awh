@@ -2342,11 +2342,8 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 	 *          файл в 38 байт обращался в нуль, а save() выдавал истину
 	 */
 	if(!this->valid()){
-		/**
-		 * Если объект для работы с логами установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи недействительного значения
-			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error_t::INVALID_PATH));
+		// Выполняем вывод сообщения об отказе записи недействительного значения
+		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL, awh::codec::yaml::message(error_t::INVALID_PATH));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2392,12 +2389,9 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		this->_error = ((fs.type(temporary, false) == fs_t::type_t::FILE) ? error_t::FILE_NOT_WRITTEN : error_t::FILE_NOT_OPENED);
 		// Выполняем снятие временного файла, записи не принявшего
 		static_cast <void> (fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::yaml::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2413,12 +2407,9 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, на носитель не легшего
 		static_cast <void> (fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::yaml::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}
@@ -2430,12 +2421,9 @@ bool awh::codec::yaml::Value::save(const string & filename) const noexcept {
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снятие временного файла, целью не ставшего
 		static_cast <void> (fs.unlink(temporary));
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
-			// Выполняем вывод сообщения об отказе записи
-			awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
-			 ::awh::codec::yaml::message(this->_error));
+		// Выполняем вывод сообщения об отказе записи
+		awh::log::print("YAML value failed: %s", awh::log::flag_t::CRITICAL,
+		 ::awh::codec::yaml::message(this->_error));
 		// Выводим признак неудачной записи
 		return false;
 	}

@@ -1801,11 +1801,8 @@ void awh::codec::ini::Writer::clear() noexcept {
  *
  */
 void awh::codec::ini::Writer::report() const noexcept {
-	/**
-	 * Если объект для работы с логами установлен
-	 */
-		// Выполняем вывод сообщения об отказе
-		awh::log::print("INI writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
+	// Выполняем вывод сообщения об отказе
+	awh::log::print("INI writing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::ini::message(this->_error));
 }
 /**
  * @brief Конструктор

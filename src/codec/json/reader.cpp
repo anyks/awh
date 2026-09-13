@@ -739,9 +739,6 @@ bool awh::codec::json::Reader::feed(const void * buffer, const size_t size, cons
 	if(this->_last && (size > 0)){
 		// Запоминаем код отказа разбора
 		this->_error = error_t::TEXT_ALREADY_ENDED;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем вывод сообщения об отказе
 		awh::log::print("JSON parsing failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
 		// Выводим признак неудачного разбора

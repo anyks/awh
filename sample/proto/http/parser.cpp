@@ -28,8 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <proto/http/parser/http1/http.hpp>
 #include <sys/fmk.hpp>
+#include <proto/http/parser/http1/http.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -295,7 +295,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Демонстрируем разбор простого HTTP-запроса клиента
 	sampleRequest();

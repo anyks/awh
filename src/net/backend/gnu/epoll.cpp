@@ -273,6 +273,7 @@
 #include <pwd.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/locker.hpp>
 #include <sys/dirent.hpp>
 #include <limits.h>
 #include <sys/un.h>
@@ -4537,7 +4538,6 @@ namespace kernel {
 			::kernel::pending.push_back(sock);
 		}
 		// Выводим успешный результат: согласование выполнит само обращение к ядру
-		(void) log;
 		// Выводим результат применения записи
 		return true;
 	}
@@ -7812,7 +7812,6 @@ namespace timer {
 			 *       снимается она наравне с прочим при снятии очереди
 			 */
 			(void) rate;
-			(void) log;
 			// Если структура дедлайнов пуста, запоминать нечего
 			if(__awh_heap__.empty())
 				// Выходим из функции
@@ -7989,7 +7988,7 @@ namespace timer {
 					 * не будет. Прежде тот же отсев делался здесь по признаку "снимается
 					 * корень очереди", и он пропускал случай, когда ядро не взведено вовсе
 					 */
-					__rearm__(event::rate_t::INSTANT, nullptr);
+					__rearm__(event::rate_t::INSTANT);
 				// Если таймер не найден в lookup, снимаем только локальный статус
 				} else tm.status = event::status_t::NONE;
 			}
@@ -9443,7 +9442,6 @@ namespace timer {
 			 *       снимается она наравне с прочим при снятии очереди
 			 */
 			(void) rate;
-			(void) log;
 			// Если структура дедлайнов пуста, запоминать нечего
 			if(__awh_heap__.empty())
 				// Выходим из функции
@@ -9695,7 +9693,7 @@ namespace timer {
 				 * отсев делался здесь по признаку "снимается корень кучи", и он пропускал
 				 * случай, когда ядро не взведено вовсе
 				 */
-				__rearm__(event::rate_t::INSTANT, nullptr);
+				__rearm__(event::rate_t::INSTANT);
 			}
 		}
 
@@ -12465,7 +12463,7 @@ namespace io {
 										// Обрабатываем события SCTP
 										// Признак завершения связи, выставляемый разбором известия
 										bool finish = false;
-										::sctp::events(peer, ::__awh_buffer__, bytes, log, &finish);
+										::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
 										/**
 										 * Если связь завершена известием
 										 *
@@ -12614,7 +12612,7 @@ namespace io {
 									// Обрабатываем события SCTP
 									// Признак завершения связи, выставляемый разбором известия
 									bool finish = false;
-									::sctp::events(peer, ::__awh_buffer__, bytes, log, &finish);
+									::sctp::events(peer, ::__awh_buffer__, bytes, &finish);
 									/**
 									 * Если связь завершена известием
 									 *
@@ -15502,7 +15500,7 @@ namespace io {
 											// Обрабатываем события SCTP
 											// Признак завершения связи, выставляемый разбором известия
 											bool finish = false;
-											::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+											::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 											/**
 											 * Если связь завершена известием
 											 *
@@ -15663,7 +15661,7 @@ namespace io {
 										// Обрабатываем события SCTP
 										// Признак завершения связи, выставляемый разбором известия
 										bool finish = false;
-										::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+										::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 										/**
 										 * Если связь завершена известием
 										 *
@@ -15829,7 +15827,7 @@ namespace io {
 											// Обрабатываем события SCTP
 											// Признак завершения связи, выставляемый разбором известия
 											bool finish = false;
-											::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+											::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 											/**
 											 * Если связь завершена известием
 											 *
@@ -15997,7 +15995,7 @@ namespace io {
 										// Обрабатываем события SCTP
 										// Признак завершения связи, выставляемый разбором известия
 										bool finish = false;
-										::sctp::events(client, ::__awh_buffer__, bytes, log, &finish);
+										::sctp::events(client, ::__awh_buffer__, bytes, &finish);
 										/**
 										 * Если связь завершена известием
 										 *

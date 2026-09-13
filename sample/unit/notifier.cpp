@@ -22,9 +22,9 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <unit/notifier.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <unit/notifier.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -49,7 +49,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект узла уведомителя
 	unit::notifier_t notifier;
 	// Создаём новое событие уведомителя
@@ -57,14 +57,14 @@ int32_t main(){
 	// Устанавливаем функцию обратного вызова на запись в событие
 	notifier.on <void (const event::id_t, const size_t)> ("trigger", [](const event::id_t eid, const size_t size) noexcept -> void {
 		// Записываем в лог сообщение о записи данных в событие
-		awh::log::print("Записано: ID=%u, %zu байт", awh::log::flag_t::INFO, eid, size);
+		log::print("Записано: ID=%u, %zu байт", log::flag_t::INFO, eid, size);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на чтение из события
 	notifier.on <void (const event::id_t, const uint8_t *, const size_t)> ("notify", [](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
 		// Записываем в лог сообщение о чтении из события
-		awh::log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", awh::log::flag_t::INFO, eid, size, message.c_str());
+		log::print("Прочитано: ID=%u, %zu байт, сообщение: %s", log::flag_t::INFO, eid, size, message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Запускаем дочерний поток для уведомления события
 	std::thread([&notifier](const event::id_t eid) noexcept -> void {

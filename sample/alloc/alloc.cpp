@@ -114,7 +114,7 @@ int32_t main() noexcept {
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	/**
 	 * Заводим фреймворк
 	 *
@@ -165,7 +165,7 @@ int32_t main() noexcept {
 	 */
 	alloc::Allocator::onLarge([](const void * addr, const size_t size) noexcept -> void {
 		// Записываем доклад о крупной выдаче в журнал
-		awh::log::print("Крупная выдача: %zu байт по адресу %p", awh::log::flag_t::INFO, size, addr);
+		log::print("Крупная выдача: %zu байт по адресу %p", log::flag_t::INFO, size, addr);
 	});
 	/**
 	 * Ставим отклик упора в потолок кучи
@@ -174,7 +174,7 @@ int32_t main() noexcept {
 	 */
 	alloc::Allocator::onLimit([](const size_t taken) noexcept -> void {
 		// Записываем доклад об упоре в потолок в журнал
-		awh::log::print("Куча упёрлась в потолок: взято %zu байт", awh::log::flag_t::WARNING, taken);
+		log::print("Куча упёрлась в потолок: взято %zu байт", log::flag_t::WARNING, taken);
 	});
 	/**
 	 * Занимаем память и смотрим, как меняется расход

@@ -245,14 +245,14 @@ bool awh::codec::toml::Reader::failure(const error_t error, const size_t offset)
 		// Запоминаем место обнаружения ошибки разбора
 		this->_errorLocation = this->locate(offset);
 		/**
-		 * Если объект для работы с логами установлен
+		 * Выполняем оглашение отказа в журнал
 		 *
 		 * @note Код отказа остаётся доступен через error(), а место его - через
 		 *       location(): журнал есть оповещение, а не единственный способ узнать
 		 *       о случившемся
 		 */
-			// Выполняем вывод сообщения об отказе разбора текста
-			awh::log::print("TOML parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
+		// Выполняем вывод сообщения об отказе разбора текста
+		awh::log::print("TOML parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::toml::message(error), this->_errorLocation.line, this->_errorLocation.column);
 	}
 	// Запоминаем состояние прекращения разбора ошибкой
 	this->_state = state_t::FAILED;

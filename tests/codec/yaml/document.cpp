@@ -161,21 +161,45 @@ namespace {
 		return ((dot == ::std::string::npos) ? (name + "-" + pid) : (name.substr(0, dot) + "-" + pid + name.substr(dot)));
 	}
 	/**
-	 * @brief Объект журнала проверок с отключённым выводом
+	 * \~russian
+	 * @brief Ограда подписки на отчёты журнала
 	 *
-	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
-	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
+	 * @details Журнал с 13.09.2026 есть пространство ходов статических, и подписка живёт
+	 *          в переменных ПРОЦЕССА, переживая ту область, где заведён её сборник. Отчёт,
+	 *          пришедший по выходе из области, писал бы в память разрушенную
 	 *
+	 * @warning Снятие ведётся деструктором, а не зовом в конце проверки: `ASSERT_*`
+	 *          выходит возвратом, и хвостовой зов при КРАСНОЙ проверке пропускается -
+	 *          подписка оставалась бы висеть, и одна краснота плодила бы порчу у соседей
+	 *
+	 * @note Доказано щупом 13.09.2026: санитайзер даёт `stack-use-after-scope` на первом
+	 *       же отчёте, поданном по выходе из области подписки
+	 *
+	 * \~english
+	 * @brief Guard of the subscription to the reports of the log
+	 *
+	 * \~
 	 */
-	struct Silent {
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept {
-			// Выполняем отключение вывода логов
-			awh::log::mode({});
-		}
+	class Subscription {
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param callback функция приёма отчётов журнала
+			 *
+			 */
+			explicit Subscription(::std::function <void (const awh::log::flag_t, ::std::string_view)> callback) noexcept {
+				// Выполняем подписку на отчёты журнала
+				awh::log::subscribe(::std::move(callback));
+			}
+			/**
+			 * @brief Деструктор
+			 *
+			 */
+			~Subscription() noexcept {
+				// Выполняем снятие подписки на отчёты журнала
+				awh::log::subscribe(nullptr);
+			}
 	};
 }
 
@@ -221,9 +245,10 @@ using namespace awh::codec;
 /**
  * @brief Проверка ходов, общих у кодеков рамки
  *
- * @details Три хода заведены ради согласования семи кодеков: `has()` был лишь у YAML в
- *          недостатке, `errorLocation()` звался тут `location()`, а `setLogger()`
- *          отсутствовал у трёх моих кодеков вовсе
+ * @details Два хода заведены ради согласования семи кодеков: `has()` был лишь у YAML в
+ *          недостатке, а `errorLocation()` звался тут `location()`. Третьим стоял
+ *          `setLogger()`, но журнал с 13.09.2026 есть пространство ходов статических,
+ *          и хода того нет вовсе - осталось оглашение отказа, его и меряем
  *
  * @note Прежнее имя `location()` оставлено ПОСРЕДНИКОМ и не снесено: снос задел бы
  *       потребителей, а согласование имён того не требует. Проверка держит оба имени,
@@ -231,7 +256,7 @@ using namespace awh::codec;
  *
  */
 TEST(CodecYamlDocument, CommonHandlesOfTheFramework){
-	// Объект дерева документа, журнала при построении не получивший
+	// Объект дерева документа, разбираемый текст держащий
 	yaml::document_t document;
 	// Выполняем разбор текста документа
 	ASSERT_TRUE(document.parse("a: 1\nb:\n  c: 2\n"));
@@ -242,21 +267,20 @@ TEST(CodecYamlDocument, CommonHandlesOfTheFramework){
 	/**
 	 * Объект журнала, отчёты СОБИРАЮЩИЙ
 	 *
-	 * @note Собственный журнал заведён затем, чтобы `setLogger()` проверялся ВЗАПРАВДУ.
-	 *       Проверка «поставили и не упало» его не проверяет вовсе: отчёт об отказе
-	 *       пустоту сторожит и молча её пропускает, - подмена тела `setLogger()`
-	 *       пустышкою такую проверку не роняла. Здесь же отчёт обязан ПРИЙТИ
+	 * @note Отчёты собираются затем, чтобы оглашение проверялось ВЗАПРАВДУ. Проверка
+	 *       «разобрали и не упало» его не проверяет вовсе - снятие вывода её не роняло
+	 *       бы. Здесь же отчёт обязан ПРИЙТИ
 	 */
 	// Собранные отчёты журнала
 	vector <string> reports;
 	// Разрешаем отложенный вывод: подписка кормится именно им
 	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на отчёты журнала
-	awh::log::subscribe([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
+	const Subscription subscription1([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем добавление очередного отчёта журнала
 		reports.push_back(string(text));
 	});
-	// Объект дерева документа, журнала при построении НЕ получивший
+	// Объект дерева документа, заведомо негодный текст разбирающий
 	yaml::document_t broken;
 	// Выполняем разбор заведомо негодного текста
 	ASSERT_FALSE(broken.parse("a: 1\n\t b: 2\n"));
@@ -3023,7 +3047,7 @@ TEST(CodecYamlDocument, FileRoundTrip) {
 		// Выполняем назначение приёмника вывода в функцию обратного вызова
 		awh::log::mode({awh::log::mode_t::DEFERRED});
 		// Выполняем назначение перехвата сообщений журнала
-		awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
+		const Subscription subscription2([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
 			// Выполняем сбор очередного сообщения журнала
 			messages.push_back(string(text));
 		});
@@ -5545,7 +5569,7 @@ TEST(CodecYamlDocument, FailedSaveKeepsThePreviousContent){
 	// Разрешаем отложенный вывод: подписка кормится именно им
 	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на отчёты журнала
-	awh::log::subscribe([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
+	const Subscription subscription3([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем добавление очередного отчёта журнала
 		reports.push_back(string(text));
 	});
@@ -5619,8 +5643,8 @@ TEST(CodecYamlDocument, FailedSaveKeepsThePreviousContent){
 	ASSERT_FALSE(reports.empty());
 	// Выполняем проверку того, что оглашение отказ называет
 	// Розыск ведётся по ВСЕМ отчётам: с переходом на `sys/fs` отказ оглашает и
-		// нижний слой, и наш отчёт уже не первый и не последний
-		ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("failed") != string::npos) return true; return false; }()) << reports.back();
+	// нижний слой, и наш отчёт уже не первый и не последний
+	ASSERT_TRUE([&]() noexcept -> bool { for(const auto & line : reports) if(line.find("failed") != string::npos) return true; return false; }()) << reports.back();
 	// Содержимое файла после отказавшего сохранения
 	string current;
 	{
@@ -7125,7 +7149,7 @@ TEST(CodecYamlDocument, EveryFailedSaveIsAnnounced){
 	// Разрешаем отложенный вывод: подписка кормится именно им
 	awh::log::mode({awh::log::mode_t::DEFERRED});
 	// Выполняем подписку на отчёты журнала
-	awh::log::subscribe([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
+	const Subscription subscription4([& reports](const awh::log::flag_t, string_view text) noexcept -> void {
 		// Выполняем добавление очередного отчёта журнала
 		reports.push_back(string(text));
 	});

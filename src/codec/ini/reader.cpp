@@ -702,14 +702,14 @@ bool awh::codec::ini::Reader::fail(const error_t error, const size_t offset, con
 	// Выполняем сброс вида текущего события разбора
 	this->_event = event_t::NONE;
 	/**
-	 * Если объект для работы с логами установлен
+	 * Выполняем оглашение отказа в журнал
 	 *
 	 * @note Код отказа остаётся доступен через error(), а место его - через
 	 *       errorLocation(): журнал есть оповещение, а не единственный способ узнать
 	 *       о случившемся
 	 */
-		// Выполняем вывод сообщения об отказе разбора текста настроек
-		awh::log::print("INI parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::ini::message(error), line, column);
+	// Выполняем вывод сообщения об отказе разбора текста настроек
+	awh::log::print("INI parsing failed: %s at line %u column %u", awh::log::flag_t::CRITICAL, awh::codec::ini::message(error), line, column);
 	// Выводим признак отказа для передачи вызывающему
 	return false;
 }

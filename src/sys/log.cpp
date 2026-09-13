@@ -1,6 +1,6 @@
 /**
- * @file logger.cpp
- * @date 2025-10-25
+ * @file log.cpp
+ * @date 2026-09-13
  *
  * @license{LicenseRef-AWH-1.0}
  *
@@ -16,7 +16,7 @@
  *        асинхронная доставка в приёмники вывода (консоль, файл, SysLog, функция обратного вызова),
  *        ротация файлов и удаление устаревших архивов
  *
- * @copyright Copyright © 2025
+ * @copyright Copyright © 2026
  *
  */
 

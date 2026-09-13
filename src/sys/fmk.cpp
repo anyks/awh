@@ -1,6 +1,6 @@
 /**
- * @file framework.cpp
- * @date 2025-10-25
+ * @file fmk.cpp
+ * @date 2026-09-13
  *
  * @license{LicenseRef-AWH-1.0}
  *
@@ -15,7 +15,7 @@
  * @brief Реализация ядра фреймворка — базовые утилиты библиотеки: работа со строками и кодировками,
  *        смена регистра с учётом локали, форматирование, конвертация типов, проверка форматов данных и разбор чисел
  *
- * @copyright Copyright © 2025
+ * @copyright Copyright © 2026
  *
  */
 
@@ -45,6 +45,7 @@
 #include <chrono>
 #include <memory>
 #include <random>
+#include <mutex>
 #include <thread>
 #include <limits>
 #include <cstring>

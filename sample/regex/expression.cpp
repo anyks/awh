@@ -29,10 +29,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <regex/regex.hpp>
-#include <regex/storage.hpp>
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
+#include <regex/regex.hpp>
+#include <regex/storage.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -404,7 +404,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект работы с регулярными выражениями
 	regexp_t regexp;
 	// Выполняем пример проверки соответствия текста выражению

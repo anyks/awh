@@ -28,9 +28,9 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <regex/grok/grok.hpp>
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
+#include <regex/grok/grok.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -170,7 +170,7 @@ static void encoding(const grok_t & grok) noexcept {
 		// Выходим из примера
 		return;
 	// Разобранный текст значением кодека JSON
-	awh::grok::json_t result;
+	grok::json_t result;
 	/**
 	 * Если разбор текста выполнен
 	 *
@@ -182,7 +182,7 @@ static void encoding(const grok_t & grok) noexcept {
 	 */
 	if(grok.json("10.0.0.7 GET /index.html?a=1 200", exp, result))
 		// Выводим разобранный текст в виде JSON
-		cout << result.dump(awh::codec::json::format_t::PRETTY) << endl;
+		cout << result.dump(codec::json::format_t::PRETTY) << endl;
 	// Выводим разделитель примеров
 	cout << endl;
 }
@@ -323,7 +323,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект разбора текста по шаблонам Grok
 	grok_t grok;
 	// Выводим количество шаблонов реестра

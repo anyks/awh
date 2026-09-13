@@ -25,11 +25,11 @@
 #include <cinttypes>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
-#include <client/client.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <client/client.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -119,7 +119,7 @@ class Executor {
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события клиента
-					awh::log::print("QUIC client destroyed", awh::log::flag_t::INFO);
+					log::print("QUIC client destroyed", log::flag_t::INFO);
 				break;
 			}
 		}
@@ -133,7 +133,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
-			awh::log::print("QUIC client is ready: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
+			log::print("QUIC client is ready: %s (%s)", log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки события подключения к серверу
@@ -146,12 +146,12 @@ class Executor {
 			// Если подключение к серверу не выполнено
 			if(!ok){
 				// Записываем ошибку в лог
-				awh::log::print("QUIC connection failed", awh::log::flag_t::CRITICAL);
+				log::print("QUIC connection failed", log::flag_t::CRITICAL);
 				// Выходим из метода
 				return;
 			}
 			// Записываем в лог сообщение об установленном соединении
-			awh::log::print("QUIC connection established", awh::log::flag_t::INFO);
+			log::print("QUIC connection established", log::flag_t::INFO);
 			// Формируем осмысленную полезную нагрузку и сохраняем её как эталон для верификации
 			this->_sent = this->makePayload();
 			// Очищаем накопитель эхо-ответа перед началом обмена
@@ -161,7 +161,7 @@ class Executor {
 			// Если поток приложения открыть не удалось
 			if(this->_sid == quic::connection_t::INVALID_STREAM){
 				// Записываем ошибку в лог
-				awh::log::print("Failed to open QUIC stream", awh::log::flag_t::CRITICAL);
+				log::print("Failed to open QUIC stream", log::flag_t::CRITICAL);
 				// Выходим из метода
 				return;
 			}
@@ -171,13 +171,13 @@ class Executor {
 			 */
 			if(client->send(this->_sid, this->_sent.data(), this->_sent.size(), true) > 0){
 				// Записываем в лог сообщение об отправке нагрузки
-				awh::log::print("Sent payload: Stream=%" PRIu64 ", %zu bytes", awh::log::flag_t::INFO, this->_sid, this->_sent.size());
+				log::print("Sent payload: Stream=%" PRIu64 ", %zu bytes", log::flag_t::INFO, this->_sid, this->_sent.size());
 				// Печатаем отправленную полезную нагрузку, чтобы видеть её содержимое
 				cout << endl << "==== SENT REQUEST (" << this->_sent.size() << " bytes) ====" << endl
 				     << this->_sent
 				     << "==== END OF REQUEST ====" << endl;
 			// Если отправка нагрузки не выполнена
-			} else awh::log::print("Failed to send payload to server", awh::log::flag_t::WARNING);
+			} else log::print("Failed to send payload to server", log::flag_t::WARNING);
 			/**
 			 * Дополнительно отправляем датаграмму приложения (RFC 9221): ненадёжная
 			 * доставка вне потока (без гарантий, без ретрансмита) - применяется для
@@ -191,7 +191,7 @@ class Executor {
 				// Отправляем датаграмму приложения серверу
 				if(client->datagram(this->_datagram.data(), this->_datagram.size())){
 					// Записываем в лог сообщение об отправке датаграммы
-					awh::log::print("Sent datagram: %zu bytes", awh::log::flag_t::INFO, this->_datagram.size());
+					log::print("Sent datagram: %zu bytes", log::flag_t::INFO, this->_datagram.size());
 					// Печатаем отправленную датаграмму, чтобы видеть её содержимое
 					cout << endl << "==== SENT DATAGRAM (" << this->_datagram.size() << " bytes) ====" << endl
 					     << this->_datagram << endl
@@ -199,14 +199,14 @@ class Executor {
 				// Если отправка датаграммы не выполнена - не ожидаем её эхо
 				} else {
 					// Записываем ошибку в лог
-					awh::log::print("Failed to send datagram to server", awh::log::flag_t::WARNING);
+					log::print("Failed to send datagram to server", log::flag_t::WARNING);
 					// Помечаем обмен датаграммой завершённым
 					this->_datagramDone = true;
 				}
 			// Если датаграммы удалённым сервером не поддерживаются - не ожидаем её эхо
 			} else {
 				// Записываем в лог сообщение об отсутствии поддержки датаграмм
-				awh::log::print("QUIC datagrams are not supported by the peer, skipping", awh::log::flag_t::WARNING);
+				log::print("QUIC datagrams are not supported by the peer, skipping", log::flag_t::WARNING);
 				// Помечаем обмен датаграммой завершённым
 				this->_datagramDone = true;
 			}
@@ -224,7 +224,7 @@ class Executor {
 			// Накапливаем принятый от сервера эхо-ответ (поток может прийти частями)
 			this->_received.append(data);
 			// Записываем в лог сведения о принятой части эхо-ответа
-			awh::log::print("Echo chunk: Stream=%" PRIu64 ", %zu bytes (total %zu / %zu)", awh::log::flag_t::INFO, sid, data.size(), this->_received.size(), this->_sent.size());
+			log::print("Echo chunk: Stream=%" PRIu64 ", %zu bytes (total %zu / %zu)", log::flag_t::INFO, sid, data.size(), this->_received.size(), this->_sent.size());
 			// Пока поток не завершён удалённым сервером - ждём остальные части
 			if(!fin)
 				// Выходим из метода
@@ -240,13 +240,13 @@ class Executor {
 			// Если принятые данные побайтово совпадают с отправленной нагрузкой
 			if(this->_received == this->_sent){
 				// Записываем в лог сообщение об успешной верификации эхо-ответа
-				awh::log::print("ECHO VERIFIED: %zu bytes returned intact, payload matches byte-for-byte", awh::log::flag_t::INFO, this->_received.size());
+				log::print("ECHO VERIFIED: %zu bytes returned intact, payload matches byte-for-byte", log::flag_t::INFO, this->_received.size());
 				// Печатаем итог проверки
 				cout << endl << ">>> ECHO VERIFIED: payload matches byte-for-byte <<<" << endl << endl;
 			// Если принятые данные не совпали с отправленными
 			} else {
 				// Записываем ошибку в лог
-				awh::log::print("ECHO MISMATCH: sent %zu bytes, received %zu bytes - payload corrupted", awh::log::flag_t::CRITICAL, this->_sent.size(), this->_received.size());
+				log::print("ECHO MISMATCH: sent %zu bytes, received %zu bytes - payload corrupted", log::flag_t::CRITICAL, this->_sent.size(), this->_received.size());
 				// Печатаем итог проверки
 				cout << endl << ">>> ECHO MISMATCH: payload corrupted <<<" << endl << endl;
 			}
@@ -270,13 +270,13 @@ class Executor {
 			// Если принятая датаграмма побайтово совпадает с отправленной
 			if(data == this->_datagram){
 				// Записываем в лог сообщение об успешной верификации эхо-датаграммы
-				awh::log::print("DATAGRAM VERIFIED: %zu bytes returned intact", awh::log::flag_t::INFO, data.size());
+				log::print("DATAGRAM VERIFIED: %zu bytes returned intact", log::flag_t::INFO, data.size());
 				// Печатаем итог проверки
 				cout << endl << ">>> DATAGRAM VERIFIED: payload matches byte-for-byte <<<" << endl << endl;
 			// Если принятая датаграмма не совпала с отправленной
 			} else {
 				// Записываем ошибку в лог
-				awh::log::print("DATAGRAM MISMATCH: sent %zu bytes, received %zu bytes", awh::log::flag_t::CRITICAL, this->_datagram.size(), data.size());
+				log::print("DATAGRAM MISMATCH: sent %zu bytes, received %zu bytes", log::flag_t::CRITICAL, this->_datagram.size(), data.size());
 				// Печатаем итог проверки
 				cout << endl << ">>> DATAGRAM MISMATCH <<<" << endl << endl;
 			}
@@ -294,7 +294,7 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("QUIC client error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("QUIC client error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
@@ -319,7 +319,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor;
 	// Создаём объект транспортного уровня безопасности
@@ -329,7 +329,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Если шаблон контекста безопасности не создан
 	if(cts == 0){
 		// Записываем в лог сообщение об ошибке
-		awh::log::print("QUIC security context is not created", awh::log::flag_t::CRITICAL);
+		log::print("QUIC security context is not created", log::flag_t::CRITICAL);
 		// Выходим из приложения с ошибкой
 		return EXIT_FAILURE;
 	}

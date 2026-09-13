@@ -28,16 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/syslog/reader.hpp>
 #include <sys/fmk.hpp>
-
-/**
- * @brief Пространство имён образца
- *
- */
-namespace {
-
-}
+#include <codec/syslog/reader.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -110,7 +102,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Отключаем неиспользуемые переменные
 	(void) argc;
 	(void) argv;

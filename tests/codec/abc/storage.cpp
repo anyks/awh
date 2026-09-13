@@ -65,6 +65,7 @@
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
 
+
 /**
  * Используем стандартное пространство имён
  */

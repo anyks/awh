@@ -1337,6 +1337,7 @@ TEST_F(ContainerFixture, LayoutOffsetsFollowBody) {
  */
 #include <sys/macro/restore.hpp>
 
+
 /**
  * @brief Проверка отказа внесения пустой записи в собираемый контейнер
  *

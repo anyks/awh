@@ -41,7 +41,7 @@
 #include <iostream>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <net/io.hpp>
 #include <sys/log.hpp>
@@ -124,7 +124,7 @@ static void report(const event::id_t eid) noexcept {
 		// Выходим из функции
 		return;
 	// Выводим итог приёма
-	awh::log::print("ИТОГ: подключение=%u октетов=%zu записей=%zu сумма=%016llX", awh::log::flag_t::INFO,
+	log::print("ИТОГ: подключение=%u октетов=%zu записей=%zu сумма=%016llX", log::flag_t::INFO,
 		eid, i->second.bytes, i->second.records, static_cast <unsigned long long> (i->second.hash));
 	// Снимаем учёт по завершённому подключению
 	__counters__.erase(i);
@@ -145,7 +145,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Если вид сокета не назван
 	if(argc < 2){
 		// Выводим порядок запуска
@@ -174,7 +174,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если завести движок не удалось
 	if(!io.initialize()){
 		// Выводим сообщение об ошибке
-		awh::log::print("Движок завести не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Движок завести не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
@@ -198,14 +198,14 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если установить адрес прослушивания не удалось
 	if(!io.setAddress(eid, event::address_t::IPV4, address)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Адрес прослушивания установить не удалось: %s", awh::log::flag_t::CRITICAL, address.c_str());
+		log::print("Адрес прослушивания установить не удалось: %s", log::flag_t::CRITICAL, address.c_str());
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Устанавливаем отклик принятия подключения
 	io.on(eid, static_cast <engine::callback::accept_t> ([&io, &sctp](const event::id_t sid, const event::id_t cid) noexcept -> void {
 		// Выводим сообщение о принятом подключении
-		awh::log::print("Принято подключение: %u", awh::log::flag_t::INFO, cid);
+		log::print("Принято подключение: %u", log::flag_t::INFO, cid);
 		// Заводим учёт по принятому подключению
 		__counters__.emplace(cid, counter_t());
 		// Устанавливаем опции принятого подключения
@@ -271,26 +271,26 @@ int32_t main(int32_t argc, char * argv[]){
 	// Если зафиксировать настройки события не удалось
 	if(!io.commit(eid)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Настройки события зафиксировать не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Настройки события зафиксировать не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если включить прослушивание не удалось
 	if(!io.listen(eid, 64)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Прослушивание включить не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Прослушивание включить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Если запустить событие не удалось
 	if(!io.launch(eid)){
 		// Выводим сообщение об ошибке
-		awh::log::print("Событие запустить не удалось", awh::log::flag_t::CRITICAL);
+		log::print("Событие запустить не удалось", log::flag_t::CRITICAL);
 		// Выходим с ошибкой
 		return EXIT_FAILURE;
 	}
 	// Выводим сообщение о запуске
-	awh::log::print("Сервер запущен: %s:%u вид сокета %s", awh::log::flag_t::INFO,
+	log::print("Сервер запущен: %s:%u вид сокета %s", log::flag_t::INFO,
 		address.c_str(), port, (stream ? "STREAM" : "SEQPACKET"));
 	// Крутим цикл событий
 	while(io.poll());

@@ -106,9 +106,6 @@ using namespace awh;
  *
  */
 void awh::codec::csv::Document::report() const noexcept {
-	/**
-	 * Если объект для работы с логами установлен
-	 */
 	// Выполняем вывод сообщения об отказе
 	awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 }
@@ -605,9 +602,6 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 	if(type == fs_t::type_t::DIR){
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем вывод сообщения об отказе
 		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
@@ -692,9 +686,6 @@ bool awh::codec::csv::Document::load(const string & filename) noexcept {
 		this->clear();
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем вывод сообщения об отказе
 		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
@@ -797,9 +788,6 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	if(type == fs_t::type_t::DIR){
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем вывод сообщения об отказе
 		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
@@ -904,9 +892,6 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 		this->clear();
 		// Запоминаем код отказа чтения файла таблицы
 		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем вывод сообщения об отказе
 		awh::log::print("CSV document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 		// Выводим признак неудачного чтения
@@ -1129,14 +1114,9 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       оглашает отказ кодом `FILE_NOT_OPENED`
 	 */
 	if(!::writable(this->_fs, temporary)){
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Запоминаем код отказа открытия файла таблицы
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
-		 * Если объект для работы с логами установлен
-		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: прежде
 		 *          код стоял в этом месте ДВАЖДЫ - в сообщении и в поле, - и половины
 		 *          эти могли разойтись молча. Замерено щупом по местам отказа
@@ -1288,16 +1268,11 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       файловой системы буфера за собою не держит, и сличать можно сразу
 	 */
 	if(!written){
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем снос недописанного временного файла таблицы
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Запоминаем код отказа записи файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
-		 * Если объект для работы с логами установлен
-		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду: код, записанный в месте
 		 *          отказа дважды, разошёлся бы молча, а проверка, сличающая сообщение,
 		 *          подмены кода в поле не увидела бы вовсе
@@ -1327,16 +1302,11 @@ bool awh::codec::csv::Document::save(const string & filename) const noexcept {
 	 *       либо становится новой таблицей целиком, а половины её не видно никогда
 	 */
 	if(!this->_fs.replaceAddress(temporary, filename)){
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем снос временного файла таблицы
 		static_cast <void> (this->_fs.unlink(temporary));
 		// Запоминаем код отказа переименования временного файла таблицы
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		/**
-		 * Если объект для работы с логами установлен
-		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду по доводу, изложенному
 		 *          у места отказа записи выше
 		 */

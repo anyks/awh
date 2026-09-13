@@ -1,5 +1,5 @@
 /**
- * @file logger.hpp
+ * @file log.hpp
  * @date 2026-09-13
  *
  * @license{LicenseRef-AWH-1.0}
@@ -59,7 +59,7 @@
 #include <unordered_set>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include "macro/global.hpp"
 
@@ -132,6 +132,20 @@ namespace awh {
 		};
 		/**
 		 * \~russian
+		 * @brief Флаги разделителя формирования логов
+		 *
+		 * \~english
+		 * @brief Flags of the separator of the building of the logs
+		 *
+		 * \~
+		 */
+		enum class separator_t : uint8_t {
+			NONE   = 0x00, // Разделитель отключён
+			SMART  = 0x01, // Умный разделитель по длине сообщения
+			ALWAYS = 0x02  // Отображать разделитель всегда
+		};
+		/**
+		 * \~russian
 		 * @brief Флаги работы логов
 		 *
 		 * \~english
@@ -145,20 +159,6 @@ namespace awh {
 			SYSLOG   = 0x02, // Разрешено отправлять логи в SysLog
 			CONSOLE  = 0x03, // Разрешено выводить логи в консоль
 			DEFERRED = 0x04  // Разрешено выводить логи в функцию обратного вызова
-		};
-		/**
-		 * \~russian
-		 * @brief Флаги разделителя формирования логов
-		 *
-		 * \~english
-		 * @brief Flags of the separator of the building of the logs
-		 *
-		 * \~
-		 */
-		enum class separator_t : uint8_t {
-			NONE   = 0x00, // Разделитель отключён
-			SMART  = 0x01, // Умный разделитель по длине сообщения
-			ALWAYS = 0x02  // Отображать разделитель всегда
 		};
 		/**
 		 * \~russian
@@ -179,6 +179,17 @@ namespace awh {
 			INFO_CRITICAL    = 0x05, // Разрешено выводить логи информационные и критические
 			WARNING_CRITICAL = 0x06  // Разрешено выводить логи предупреждения и критические
 		};
+
+		/**
+		 * \~russian
+		 * @brief Функция обратного вызова для подписки на генерацию логов
+		 *
+		 * \~english
+		 * @brief Callback function for subscribing to log generation
+		 *
+		 * \~
+		 */
+		using callback_t = function <void (const flag_t, string_view)>;
 
 		/**
 		 * \~russian
@@ -240,14 +251,14 @@ namespace awh {
 				 */
 				enum class kind_t : uint8_t {
 					NONE     = 0x00, // Довод не уложен
-					BOOLEAN  = 0x01, // Довод логический
-					SYMBOL   = 0x02, // Довод символьный
-					SIGNED   = 0x03, // Довод числовой со знаком
-					UNSIGNED = 0x04, // Довод числовой без знака
-					REAL     = 0x05, // Довод числовой дробный
-					TEXT     = 0x06, // Довод строковый узкий
-					WTEXT    = 0x07, // Довод строковый широкий
-					POINTER  = 0x08  // Довод указателем
+					REAL     = 0x01, // Довод числовой дробный
+					TEXT     = 0x02, // Довод строковый узкий
+					WTEXT    = 0x03, // Довод строковый широкий
+					SYMBOL   = 0x04, // Довод символьный
+					POINTER  = 0x05, // Довод указателем
+					BOOLEAN  = 0x06, // Довод логический
+					SIGNED   = 0x07, // Довод числовой со знаком
+					UNSIGNED = 0x08  // Довод числовой без знака
 				};
 			private:
 				// Вид уложенного довода
@@ -271,14 +282,22 @@ namespace awh {
 				 * \~
 				 */
 				union {
-					char _symbol;          // Символьный тип данных
-					double _real;          // Числовой тип данных с плавающей точкой
-					bool _boolean;         // Булевый тип данных
-					int64_t _signed;       // Знаковый тип данных
-					uint64_t _unsigned;    // Беззнаковый тип данных
-					string_view _text;     // Строковый тип данных
-					wstring_view _wtext;   // Тип данных широкой строки
-					const void * _pointer; // Тип данных указателя
+					// Символьный тип данных
+					char _symbol;
+					// Числовой тип данных с плавающей точкой
+					double _real;
+					// Булевый тип данных
+					bool _boolean;
+					// Знаковый тип данных
+					int64_t _signed;
+					// Беззнаковый тип данных
+					uint64_t _unsigned;
+					// Строковый тип данных
+					string_view _text;
+					// Тип данных широкой строки
+					wstring_view _wtext;
+					// Тип данных указателя
+					const void * _pointer;
 				};
 			public:
 				/**
@@ -315,7 +334,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				Argument(std::nullptr_t) noexcept;
+				Argument(nullptr_t) noexcept;
 				/**
 				 * \~russian
 				 * @brief Конструктор заведения довода по видам его значения
@@ -666,7 +685,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				template <typename T, typename = typename std::enable_if <std::is_enum <T>::value>::type>
+				template <typename T, typename = typename enable_if <is_enum <T>::value>::type>
 				/**
 				 * \~russian
 				 * @brief Конструктор заведения довода перечислением
@@ -901,6 +920,20 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void maxFiles(const size_t count) noexcept;
 		/**
 		 * \~russian
+		 * @brief Функция подписки на события логов
+		 *
+		 * @param callback функция обратного вызова
+		 *
+		 * \~english
+		 * @brief Function of subscribing to the log events
+		 *
+		 * @param callback callback function
+		 *
+		 * \~
+		 */
+		__AWH_SHARED_EXPORT__ void subscribe(callback_t callback) noexcept;
+		/**
+		 * \~russian
 		 * @brief Функция установки файла для сохранения логов
 		 *
 		 * @param filename путь к файлу для сохранения логов
@@ -941,20 +974,6 @@ namespace awh {
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ void overflow(const overflow_t overflow) noexcept;
-		/**
-		 * \~russian
-		 * @brief Функция подписки на события логов
-		 *
-		 * @param callback функция обратного вызова
-		 *
-		 * \~english
-		 * @brief Function of subscribing to the log events
-		 *
-		 * @param callback callback function
-		 *
-		 * \~
-		 */
-		__AWH_SHARED_EXPORT__ void subscribe(function <void (const flag_t, string_view)> callback) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функция вывода текстовой информации в консоль или файл
@@ -1054,7 +1073,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ void debug(string_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, ...) noexcept;
+		__AWH_SHARED_EXPORT__ void debug(string_view format, string_view method, initializer_list <arg_t> params, flag_t flag, ...) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функции вывода отладочной информации в консоль или файл
@@ -1086,7 +1105,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ void debug(wstring_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, ...) noexcept;
+		__AWH_SHARED_EXPORT__ void debug(wstring_view format, string_view method, initializer_list <arg_t> params, flag_t flag, ...) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функции вывода отладочной информации в консоль или файл
@@ -1118,7 +1137,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ void debug(string_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, const vector <string> & args) noexcept;
+		__AWH_SHARED_EXPORT__ void debug(string_view format, string_view method, initializer_list <arg_t> params, flag_t flag, const vector <string> & args) noexcept;
 		/**
 		 * \~russian
 		 * @brief Функции вывода отладочной информации в консоль или файл
@@ -1150,7 +1169,7 @@ namespace awh {
 		 *
 		 * \~
 		 */
-		__AWH_SHARED_EXPORT__ void debug(wstring_view format, string_view method, std::initializer_list <arg_t> params, flag_t flag, const vector <wstring> & args) noexcept;
+		__AWH_SHARED_EXPORT__ void debug(wstring_view format, string_view method, initializer_list <arg_t> params, flag_t flag, const vector <wstring> & args) noexcept;
 	}
 };
 

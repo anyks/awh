@@ -27,10 +27,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <client/client.hpp>
-#include <unit/timer.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <unit/timer.hpp>
+#include <client/client.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -104,7 +104,7 @@ class Executor {
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события клиента
-					awh::log::print("QUIC proxy client destroyed", awh::log::flag_t::INFO);
+					log::print("QUIC proxy client destroyed", log::flag_t::INFO);
 				break;
 			}
 		}
@@ -118,7 +118,7 @@ class Executor {
 		 */
 		void ready([[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности клиента к работе
-			awh::log::print("QUIC proxy client is ready: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
+			log::print("QUIC proxy client is ready: %s (%s)", log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки события подключения к серверу
@@ -131,12 +131,12 @@ class Executor {
 			// Если подключение к серверу не выполнено
 			if(!ok){
 				// Записываем ошибку в лог
-				awh::log::print("QUIC proxy connection failed", awh::log::flag_t::CRITICAL);
+				log::print("QUIC proxy connection failed", log::flag_t::CRITICAL);
 				// Выходим из метода
 				return;
 			}
 			// Записываем в лог сообщение об установленном соединении
-			awh::log::print("QUIC proxy connection established", awh::log::flag_t::INFO);
+			log::print("QUIC proxy connection established", log::flag_t::INFO);
 			/**
 			 * Откладываем отправку нагрузки коротким таймаутом: у прокси исходящее
 			 * соединение к бэкенду устанавливается асинхронно после приёма нашей сессии,
@@ -166,7 +166,7 @@ class Executor {
 			// Если поток приложения открыть не удалось
 			if(sid == quic::connection_t::INVALID_STREAM){
 				// Записываем ошибку в лог
-				awh::log::print("Failed to open QUIC stream", awh::log::flag_t::CRITICAL);
+				log::print("Failed to open QUIC stream", log::flag_t::CRITICAL);
 				// Выходим из метода
 				return;
 			}
@@ -176,13 +176,13 @@ class Executor {
 			 */
 			if(client->send(sid, this->_sent.data(), this->_sent.size(), true) > 0){
 				// Записываем в лог сообщение об отправке нагрузки
-				awh::log::print("Sent payload: Stream=%" PRIu64 ", %zu bytes", awh::log::flag_t::INFO, sid, this->_sent.size());
+				log::print("Sent payload: Stream=%" PRIu64 ", %zu bytes", log::flag_t::INFO, sid, this->_sent.size());
 				// Печатаем отправленную полезную нагрузку, чтобы видеть её содержимое
 				cout << endl << "==== SENT REQUEST (" << this->_sent.size() << " bytes) ====" << endl
 				     << this->_sent
 				     << "==== END OF REQUEST ====" << endl;
 			// Если отправка нагрузки не выполнена
-			} else awh::log::print("Failed to send payload to proxy", awh::log::flag_t::WARNING);
+			} else log::print("Failed to send payload to proxy", log::flag_t::WARNING);
 		}
 		/**
 		 * @brief Метод обработки собранных данных потока приложения QUIC (эхо-ответ через прокси)
@@ -201,7 +201,7 @@ class Executor {
 			// Накапливаем принятый от прокси эхо-ответ (обратный путь идёт туннельным потоком)
 			this->_received.append(data);
 			// Записываем в лог сведения о принятой части эхо-ответа
-			awh::log::print("Echo chunk: Stream=%" PRIu64 ", %zu bytes (total %zu / %zu)", awh::log::flag_t::INFO, sid, data.size(), this->_received.size(), this->_sent.size());
+			log::print("Echo chunk: Stream=%" PRIu64 ", %zu bytes (total %zu / %zu)", log::flag_t::INFO, sid, data.size(), this->_received.size(), this->_sent.size());
 			// Пока накоплено меньше отправленного - ждём остальные части
 			if(this->_received.size() < this->_sent.size())
 				// Выходим из метода
@@ -215,13 +215,13 @@ class Executor {
 			// Если принятые данные побайтово совпадают с отправленной нагрузкой
 			if(this->_received == this->_sent){
 				// Записываем в лог сообщение об успешной верификации эхо-ответа через прокси
-				awh::log::print("PROXY ECHO VERIFIED: %zu bytes relayed through QUIC splice intact", awh::log::flag_t::INFO, this->_received.size());
+				log::print("PROXY ECHO VERIFIED: %zu bytes relayed through QUIC splice intact", log::flag_t::INFO, this->_received.size());
 				// Печатаем итог проверки
 				cout << endl << ">>> PROXY ECHO VERIFIED: payload matches byte-for-byte <<<" << endl << endl;
 			// Если принятые данные не совпали с отправленными
 			} else {
 				// Записываем ошибку в лог
-				awh::log::print("PROXY ECHO MISMATCH: sent %zu bytes, received %zu bytes", awh::log::flag_t::CRITICAL, this->_sent.size(), this->_received.size());
+				log::print("PROXY ECHO MISMATCH: sent %zu bytes, received %zu bytes", log::flag_t::CRITICAL, this->_sent.size(), this->_received.size());
 				// Печатаем итог проверки
 				cout << endl << ">>> PROXY ECHO MISMATCH: payload corrupted <<<" << endl << endl;
 			}
@@ -237,7 +237,7 @@ class Executor {
 		 */
 		void error([[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("QUIC proxy client error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("QUIC proxy client error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
@@ -264,7 +264,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект таймера для отложенной отправки нагрузки
 	unit::timer_t timer;
 	// Создаём объект исполнителя для обработки событий клиента
@@ -276,7 +276,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Если шаблон контекста безопасности не создан
 	if(cts == 0){
 		// Записываем в лог сообщение об ошибке
-		awh::log::print("QUIC security context is not created", awh::log::flag_t::CRITICAL);
+		log::print("QUIC security context is not created", log::flag_t::CRITICAL);
 		// Выходим из приложения с ошибкой
 		return EXIT_FAILURE;
 	}

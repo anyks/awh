@@ -155,16 +155,6 @@ namespace awh {
 			 *
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Writer {
-				private:
-					/**
-					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * \~english
-					 * Object for working with logs
-					 *
-					 * \~
-					 */
 				public:
 					/**
 					 * \~russian

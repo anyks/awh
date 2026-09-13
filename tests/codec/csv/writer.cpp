@@ -42,23 +42,6 @@
  *
  */
 namespace {
-	/**
-	 * @brief Объект журнала проверок с отключённым выводом
-	 *
-	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
-	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
-	 *
-	 */
-	struct Silent {
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept {
-			// Выполняем отключение вывода логов
-			awh::log::mode({});
-		}
-	};
 }
 
 /**
@@ -1545,13 +1528,7 @@ TEST(CodecCsvWriter, EmptyRecordRefusedWithoutQuoting){
 		// Объект записи текста
 		csv::writer_t writer(settings);
 		// Выполняем проверку отказа записи из единственного пустого поля
-		{
-		// Объект записи текста, отказов ещё не знавший
-		csv::writer_t fresh(settings);
-		// Выводим итог записи из одного пустого поля у чистого писателя
-		std::cout << "ЩУП: чистый=" << fresh.record(vector <string> {""}) << " код=" << int(fresh.error()) << std::endl;
-	}
-	std::cout << "ЩУП: после отказа=" << writer.record(vector <string> {""}) << " код=" << int(writer.error()) << std::endl;
+		ASSERT_FALSE(writer.record(vector <string> {""}));
 		// Выполняем проверку кода отказа записи
 		ASSERT_EQ(writer.error(), csv::error_t::UNWRITABLE_FIELD);
 		// Выполняем проверку того, что собранного текста не осталось

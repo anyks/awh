@@ -126,24 +126,6 @@ namespace awh {
 				private:
 					/**
 					 * \~russian
-					 * Объект для работы с логами
-					 *
-					 * @details Держится указателем, пустоту допускающим: значение владеющее
-					 * заводится и числом, и строкою, и связку в такие построители не заведёшь.
-					 * Журнал назначается извне вызовом setLogger(), и пока он не назначен, отказы
-					 * выдаются одним лишь кодом
-					 *
-					 * \~english
-					 * Object for working with logs
-					 * @details It is held by a pointer that admits emptiness: an owning value is created
-					 * both from a number and from a string, and the pair cannot be put into such builders.
-					 * The log is assigned from the outside by a call of setLogger(), and until it is assigned,
-					 * the refusals are given away by a code alone
-					 *
-					 * \~
-					 */
-					/**
-					 * \~russian
 					 * Код отказа последней работы над владеющим значением
 					 *
 					 * @details Держится он ради того, чтобы отказ НАЗЫВАЛ ПРИЧИНУ: запись
@@ -161,20 +143,6 @@ namespace awh {
 					 * \~
 					 */
 					mutable error_t _error = error_t::NONE;
-					/**
-					 * \~russian
-					 * Объект фреймворка
-					 *
-					 * @note Рамка нужна работам с файловой системой: `fs_t` обращает пути в
-					 *       широкую запись ходом `convert()`. Назначается извне вызовом
-					 *       `setFramework()` наравне с журналом, и покуда не назначена -
-					 *       запись и чтение файла отвечают отказом с названной причиной
-					 *
-					 * \~english
-					 * Object of the framework
-					 *
-					 * \~
-					 */
 				private:
 					// Вид хранимого значения
 					kind_t _kind;

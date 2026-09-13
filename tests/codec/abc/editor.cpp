@@ -30,6 +30,7 @@
 #include <codec/abc/abc.hpp>
 #include <sys/log.hpp>
 
+
 /**
  * Используем стандартное пространство имён
  */
@@ -5041,6 +5042,15 @@ TEST_F(EditorFixture, ChunkLengthBeyondTheBodyStopsTheWasteWalk) {
  *
  */
 TEST_F(EditorFixture, TheRefusalFunnelReportsItsCauseToTheJournal) {
+	/**
+	 * Возвращаем уровень записей, гашение снимая.
+	 *
+	 * @warning Поверке этой журнал НУЖЕН, и она обязана заявить нужду свою САМА:
+	 *          сторож гашения своего набора глушит журнал у всякой его проверки,
+	 *          а полагаться на состояние, оставленное соседями, значило бы городить
+	 *          поверку, чей исход зависит от порядка запуска
+	 */
+	awh::log::level(awh::log::level_t::ALL);
 	// Носитель, несущий правимый контейнер
 	Medium medium;
 	// Выполняем сборку контейнера о двух записях

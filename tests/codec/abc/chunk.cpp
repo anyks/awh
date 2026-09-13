@@ -29,6 +29,7 @@
 #include <cryptography/hash.hpp>
 #include <sys/log.hpp>
 
+
 /**
  * Используем стандартное пространство имён
  */
@@ -1347,6 +1348,15 @@ TEST_F(ChunkFixture, CorruptedCompressedContentIsRefused) {
  *
  */
 TEST_F(ChunkFixture, ThePackerFunnelReportsItsCauseToTheJournal) {
+	/**
+	 * Возвращаем уровень записей, гашение снимая.
+	 *
+	 * @warning Поверке этой журнал НУЖЕН, и она обязана заявить нужду свою САМА:
+	 *          сторож гашения своего набора глушит журнал у всякой его проверки,
+	 *          а полагаться на состояние, оставленное соседями, значило бы городить
+	 *          поверку, чей исход зависит от порядка запуска
+	 */
+	awh::log::level(awh::log::level_t::ALL);
 	// Донесения, снятые с журнала подпискою
 	vector <string> journal;
 	// Разрешаем отложенный вывод: подписка кормится именно им

@@ -30,8 +30,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <proto/http/auth/auth.hpp>
 #include <sys/fmk.hpp>
+#include <proto/http/auth/auth.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -304,7 +304,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Демонстрируем схему BASIC-авторизации
 	sampleBasic();

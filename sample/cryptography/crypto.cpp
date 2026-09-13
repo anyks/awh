@@ -27,8 +27,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <cryptography/crypto.hpp>
 #include <sys/fmk.hpp>
+#include <cryptography/crypto.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -48,7 +48,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Создаём объект для работы с криптографией
 	crypto_t crypto;

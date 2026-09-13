@@ -20,7 +20,7 @@
  */
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <net/uri.hpp>
 #include <sys/fmk.hpp>
@@ -43,8 +43,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
-	// Создаём объект для работы с логами
+	fmk::initialize();
 	// Выполняем создание объекта URI
 	uri_t uri;
 	// Генерируем ETag для строки "Hello, World!" и выводим его
@@ -52,7 +51,7 @@ int32_t main(){
 	// Устанавливаем функцию обратного вызова для генерации параметра URI (например, для генерации контрольной суммы)
 	uri.callback([](const uri_t * uri) -> string {
 		// Генерируем контрольную сумму для строки URI и возвращаем её в виде параметра "checksum"
-		return awh::fmk::format("%s=%s", "checksum", uri->etag(uri->print(uri_t::item_t::QUERY)).c_str());
+		return fmk::format("%s=%s", "checksum", uri->etag(uri->print(uri_t::item_t::QUERY)).c_str());
 	});
 
 	cout << endl << endl;

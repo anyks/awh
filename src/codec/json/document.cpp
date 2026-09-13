@@ -1868,9 +1868,6 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 	if(type == fs_t::type_t::DIR){
 		// Запоминаем код отказа чтения файла документа
 		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем вывод сообщения об отказе
 		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
 		// Выводим признак неудачного разбора
@@ -1892,8 +1889,6 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		//
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
-		 * Если объект для работы с логами установлен
-		 *
 		 * @note Отказ этот идёт мимо чтения, а вывод в лог ведёт именно оно: без
 		 *       настоящего вывода открытие файла отказывало бы молча, тогда как отказ
 		 *       разбора того же файла в лог уходит
@@ -2026,9 +2021,6 @@ bool awh::codec::json::Document::load(const string & filename) noexcept {
 		this->clear();
 		// Запоминаем код отказа чтения файла документа
 		this->_error = error_t::FILE_NOT_READ;
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Выполняем вывод сообщения об отказе
 		awh::log::print("JSON document failed: %s", awh::log::flag_t::CRITICAL, awh::codec::json::message(this->_error));
 		// Выводим признак неудачного разбора
@@ -2444,14 +2436,9 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 * Если записанного файла на месте не оказалось
 	 */
 	if(!::writable(this->_fs, temporary)){
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Запоминаем код отказа открытия файла документа
 		this->_error = error_t::FILE_NOT_OPENED;
 		/**
-		 * Если объект для работы с логами установлен
-		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
@@ -2473,16 +2460,11 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 *       файле испорченном, - и держалась лишь потому, что иной не было
 	 */
 	if(!written){
-		/**
-		 * Если объект для работы с логами установлен
-		 */
 		// Запоминаем код отказа записи файла документа
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос недописанного временного файла
 		static_cast <void> (this->_fs.unlink(temporary));
 		/**
-		 * Если объект для работы с логами установлен
-		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.
@@ -2513,16 +2495,11 @@ bool awh::codec::json::Document::save(const string & filename, const format_t fo
 	 *       либо становится новым текстом целиком, а половины её не видно никогда
 	 */
 	if(!this->_fs.replaceAddress(temporary, filename)){
-		/**
-		 * Если объект ведения журнала работы установлен
-		 */
 		// Запоминаем код отказа переноса временного файла на место цели
 		this->_error = error_t::FILE_NOT_WRITTEN;
 		// Выполняем снос временного файла
 		static_cast <void> (this->_fs.unlink(temporary));
 		/**
-		 * Если объект для работы с логами установлен
-		 *
 		 * @warning Сообщение выводится ПО ЗАПОМНЕННОМУ коду, а не по литералу: код,
 		 *          в месте отказа записанный ДВАЖДЫ, разошёлся бы молча, а проверка,
 		 *          сличающая сообщение, подмены кода в поле не увидела бы вовсе.

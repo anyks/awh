@@ -27,9 +27,9 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <unit/timer.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <unit/timer.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -54,7 +54,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект узла таймера
 	unit::timer_t timer;
 	// Добавляем новое событие таймера
@@ -70,7 +70,7 @@ int32_t main(){
 		// Замеряем время начала работы для интервала времени
 		auto shift = chrono::system_clock::now();
 		// Записываем в лог сообщение о срабатывании таймера
-		awh::log::print("Таймер сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
+		log::print("Таймер сработал: ID=%u, %u seconds", log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
 	}, placeholders::_1);
 	// Количество срабатываний интервала
 	uint8_t count = 0;
@@ -79,7 +79,7 @@ int32_t main(){
 		// Замеряем время начала работы для интервала времени
 		auto shift = chrono::system_clock::now();
 		// Записываем в лог сообщение о срабатывании интервала
-		awh::log::print("Интервал сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
+		log::print("Интервал сработал: ID=%u, %u seconds", log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
 		// Замеряем время начала работы для интервала времени
 		is = ::move(shift);
 		// Если таймер отработал 10 раз, выходим

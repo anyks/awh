@@ -56,7 +56,7 @@ int32_t main(){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io;
 	// Устанавливаем тип таймера как простой
@@ -88,7 +88,7 @@ int32_t main(){
 			// Если статус события успешен
 			if(status == event::status_t::SUCCESS)
 				// Записываем в лог сообщение о срабатывании таймера
-				awh::log::print("Таймер сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
+				log::print("Таймер сработал: ID=%u, %u seconds", log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
 		});
 		// Количество срабатываний интервала
 		uint8_t count = 0;
@@ -99,7 +99,7 @@ int32_t main(){
 			// Если статус события успешен
 			if(status == event::status_t::SUCCESS){
 				// Записываем в лог сообщение о срабатывании интервала
-				awh::log::print("Интервал сработал: ID=%u, %u seconds", awh::log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
+				log::print("Интервал сработал: ID=%u, %u seconds", log::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
 				// Замеряем время начала работы для интервала времени
 				is = ::move(shift);
 				// Если таймер отработал 10 раз, выходим

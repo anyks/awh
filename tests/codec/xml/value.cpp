@@ -57,6 +57,7 @@
 /**
  * Подключаем заголовочный файл выдачи пути во временном каталоге системы
  */
+#include "../journal.hpp"
 #include "../temporary.hpp"
 
 /**
@@ -166,23 +167,6 @@ namespace {
 				// Выполняем снос временного файла проверки
 				::remove(this->_path.c_str());
 			}
-	};
-	/**
-	 * @brief Объект журнала проверок с отключённым выводом
-	 *
-	 * @details Вывод отключается назначением пустого перечня приёмников: отказы
-	 *          разбора проверки наводят намеренно, и журнал их засорял бы выдачу
-	 *
-	 */
-	struct Silent {
-		/**
-		 * @brief Конструктор
-		 *
-		 */
-		Silent() noexcept {
-			// Выполняем отключение вывода логов
-			awh::log::mode({});
-		}
 	};
 }
 
@@ -3479,15 +3463,10 @@ TEST(CodecXmlValue, IndexSurvivesErase){
  *          же записи разметки идёт критическим - там негодное собрало само приложение
  */
 TEST(CodecXmlValue, LoggerReportsFailures){
-	// Уводим записи журнала целиком в функцию обратного вызова
-	awh::log::mode({awh::log::mode_t::DEFERRED});
+	// Сторож подписки на журнал, снимающий её деструктором
+	Journal journal;
 	// Собираемые перехваченные записи журнала
-	vector <pair <awh::log::flag_t, string>> caught;
-	// Выполняем подписку на записи журнала работы
-	awh::log::subscribe([&caught](const awh::log::flag_t flag, string_view text) noexcept {
-		// Выполняем сбор очередной перехваченной записи
-		caught.emplace_back(flag, string(text));
-	});
+	const vector <pair <awh::log::flag_t, string>> & caught = journal.records();
 	/**
 	 * Выполняем проверку сообщения об отказе разбора
 	 */
@@ -3510,8 +3489,8 @@ TEST(CodecXmlValue, LoggerReportsFailures){
 		// Выполняем проверку того, что запись несёт довод отказа
 		ASSERT_NE(caught.front().second.find("end tag"), string::npos) << caught.front().second;
 	}
-	// Выполняем очистку собранных записей журнала
-	caught.clear();
+	// Выполняем очистку собранных сообщений журнала
+	journal.clear();
 	/**
 	 * Выполняем проверку молчания при успешном разборе
 	 */
@@ -3524,19 +3503,18 @@ TEST(CodecXmlValue, LoggerReportsFailures){
 		ASSERT_TRUE(caught.empty()) << caught.front().second;
 	}
 	/**
-	 * Выполняем проверку работы без объекта ведения журнала
+	 * Выполняем проверку отказа разбора негодного текста
 	 *
-	 * @note Указание на журнал вправе быть пустым, и отказ разбора при том обязан
-	 *       возвращаться кодом, ничего не роняя
+	 * @note Отказ разбора обязан возвращаться кодом, ничего не роняя
 	 */
 	{
 		// Собираемое значение
 		xml::value_t value;
-		// Выполняем разбор негодного текста разметки без журнала
+		// Выполняем разбор негодного текста разметки
 		ASSERT_FALSE(value.parse("<a><b></a>"));
 	}
-	// Выполняем очистку собранных записей журнала
-	caught.clear();
+	// Выполняем очистку собранных сообщений журнала
+	journal.clear();
 	/**
 	 * Выполняем проверку сообщения об отказе записи разметки
 	 */
@@ -3747,15 +3725,10 @@ TEST(CodecXmlValue, WritingPathsAgree) {
  *
  */
 TEST(CodecXmlValue, MissingFileIsReported) {
+	// Сторож подписки на журнал, снимающий её деструктором
+	Journal journal;
 	// Собираемые сообщения журнала
-	vector <string> messages;
-	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	awh::log::mode({awh::log::mode_t::DEFERRED});
-	// Выполняем назначение перехвата сообщений журнала
-	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
-		// Выполняем сбор очередного сообщения журнала
-		messages.push_back(string(text));
-	});
+	const vector <string> & messages = journal.messages();
 	// Значение разметки
 	xml::value_t value;
 	// Выполняем проверку отказа разбора несуществующего файла
@@ -4051,15 +4024,10 @@ TEST(CodecXmlValue, NumberExtractionRefusesNonNumeric) {
  *
  */
 TEST(CodecXmlValue, SaveToMissingDirectoryIsReported) {
+	// Сторож подписки на журнал, снимающий её деструктором
+	Journal journal;
 	// Собираемые сообщения журнала
-	vector <string> messages;
-	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	awh::log::mode({awh::log::mode_t::DEFERRED});
-	// Выполняем назначение перехвата сообщений журнала
-	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
-		// Выполняем сбор очередного сообщения журнала
-		messages.push_back(string(text));
-	});
+	const vector <string> & messages = journal.messages();
 	// Значение разметки
 	xml::value_t value;
 	// Выполняем проверку разбора текста разметки
@@ -4073,57 +4041,58 @@ TEST(CodecXmlValue, SaveToMissingDirectoryIsReported) {
 }
 
 /**
- * @brief Проверка перенимания журнала присваиванием значения
+ * @brief Проверка оглашения отказа у копии, переноса и вложенного значения
  *
- * @details Значение, журнала не имеющее, перенимает его у источника: беды переносимого
- * содержимого иначе оглашать было бы некуда. Настроенная цель своего журнала НЕ отдаёт.
- * Обе ветви покрытием пройдены не были
+ * @details Журнал переделан владельцем в пространство имён и заведён единственным на
+ * процесс: перенимать его у источника больше нечего, и присваивание им не занято вовсе.
+ * Утверждения проверки от того не обесценились - она мерит, что об отказе своей работы
+ * докладывает и копия, и перенос, и значение вложенное, а код отказа держит ТО САМОЕ
+ * значение, какое отказало
+ *
+ * @note Прежде проверка звалась `AssignmentAdoptsLoggerWhenAbsent` и мерила перенятие
+ *       журнала присваиванием. Предмет тот снят переводом журнала, имя приведено к тому,
+ *       что проверка утверждает на деле. Кодек JSON правлен тем же порядком
  *
  */
-TEST(CodecXmlValue, AssignmentAdoptsLoggerWhenAbsent) {
+TEST(CodecXmlValue, FailureOfACopyMoveAndNestedValueIsReported) {
+	// Сторож подписки на журнал, снимающий её деструктором
+	Journal journal;
 	// Собираемые сообщения журнала
-	vector <string> messages;
-	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	awh::log::mode({awh::log::mode_t::DEFERRED});
-	// Выполняем назначение перехвата сообщений журнала
-	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
-		// Выполняем сбор очередного сообщения журнала
-		messages.push_back(string(text));
-	});
+	const vector <string> & messages = journal.messages();
 	{
-		// Значение разметки, журналом наделённое
+		// Значение разметки, служащее источником
 		xml::value_t source;
 		// Выполняем проверку разбора текста разметки
 		ASSERT_TRUE(source.parse("<r>значение</r>"));
-		// Значение разметки, журнала не имеющее
+		// Значение разметки, служащее целью
 		xml::value_t target;
 		// Выполняем копирование значения разметки
 		target = source;
 		// Выполняем проверку переноса содержимого
 		ASSERT_EQ(target.size(), source.size());
-		// Очищаем собранные сообщения журнала
-		messages.clear();
+		// Выполняем очистку собранных сообщений журнала
+		journal.clear();
 		// Выполняем проверку отказа записи копии в несуществующий каталог
 		ASSERT_FALSE(target.save("/несуществующий/каталог/разметка.xml"));
-		// Выполняем проверку оглашения отказа перенятым журналом
+		// Выполняем проверку оглашения отказа в журнале
 		ASSERT_FALSE(messages.empty());
 	}
 	{
-		// Значение разметки, журналом наделённое
+		// Значение разметки, служащее источником
 		xml::value_t source;
 		// Выполняем проверку разбора текста разметки
 		ASSERT_TRUE(source.parse("<r>значение</r>"));
-		// Значение разметки, журнала не имеющее
+		// Значение разметки, служащее целью
 		xml::value_t target;
 		// Выполняем перенос значения разметки
 		target = ::std::move(source);
 		// Выполняем проверку переноса содержимого
 		ASSERT_EQ(target.size(), static_cast <size_t> (1));
-		// Очищаем собранные сообщения журнала
-		messages.clear();
+		// Выполняем очистку собранных сообщений журнала
+		journal.clear();
 		// Выполняем проверку отказа записи переноса в несуществующий каталог
 		ASSERT_FALSE(target.save("/несуществующий/каталог/разметка.xml"));
-		// Выполняем проверку оглашения отказа перенятым журналом
+		// Выполняем проверку оглашения отказа в журнале
 		ASSERT_FALSE(messages.empty());
 	}
 }
@@ -4181,32 +4150,30 @@ TEST(CodecXmlValue, TrailingEraseUpdatesIndex) {
 }
 
 /**
- * @brief Проверка установки журнала, вглубь уходящей
+ * @brief Проверка оглашения отказа вложенным узлом значения
  *
  * @details Значение владеет вложенными узлами целиком, и сообщать о бедах они обязаны
- * туда же, куда и родитель. Ветвь эта покрытием пройдена не была: журнал назначался
- * значению пустому, у которого вложенных узлов ещё нет
+ * туда же, куда и родитель, - в журнал, единственный на процесс
+ *
+ * @note Прежде проверка звалась `LoggerDescendsIntoNestedNodes` и мерила установку
+ *       журнала, вглубь уходящую. Предмет тот снят переводом журнала в пространство
+ *       имён, утверждение же осталось прежним: отказ вложенного узла оглашается
  *
  */
-TEST(CodecXmlValue, LoggerDescendsIntoNestedNodes) {
+TEST(CodecXmlValue, FailureOfANestedNodeIsReported) {
+	// Сторож подписки на журнал, снимающий её деструктором
+	Journal journal;
 	// Собираемые сообщения журнала
-	vector <string> messages;
-	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	awh::log::mode({awh::log::mode_t::DEFERRED});
-	// Выполняем назначение перехвата сообщений журнала
-	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
-		// Выполняем сбор очередного сообщения журнала
-		messages.push_back(string(text));
-	});
+	const vector <string> & messages = journal.messages();
 	// Значение разметки
 	xml::value_t value;
-	// Выполняем проверку разбора текста разметки ДО назначения журнала
+	// Выполняем проверку разбора текста разметки
 	ASSERT_TRUE(value.parse("<r><a>1</a></r>"));
-	// Очищаем собранные сообщения журнала
-	messages.clear();
+	// Выполняем очистку собранных сообщений журнала
+	journal.clear();
 	// Выполняем проверку отказа записи вложенного узла в несуществующий каталог
 	ASSERT_FALSE(value[0][0].save("/несуществующий/каталог/разметка.xml"));
-	// Выполняем проверку оглашения отказа журналом, вглубь ушедшим
+	// Выполняем проверку оглашения отказа вложенного значения в журнале
 	ASSERT_FALSE(messages.empty());
 	// Выполняем проверку упоминания причины отказа в сообщении
 	ASSERT_NE(messages.back().find(xml::message(xml::error_t::FILE_NOT_OPENED)), string::npos) << messages.back();
@@ -4237,15 +4204,10 @@ TEST(CodecXmlValue, LoggerDescendsIntoNestedNodes) {
  *
  */
 TEST(CodecXmlValue, SaveFailureIsNotSuccess) {
+	// Сторож подписки на журнал, снимающий её деструктором
+	Journal journal;
 	// Собираемые сообщения журнала
-	vector <string> messages;
-	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	awh::log::mode({awh::log::mode_t::DEFERRED});
-	// Выполняем назначение перехвата сообщений журнала
-	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
-		// Выполняем сбор очередного сообщения журнала
-		messages.push_back(string(text));
-	});
+	const vector <string> & messages = journal.messages();
 	// Собираемый текст разметки
 	string text("<корень>");
 	/**

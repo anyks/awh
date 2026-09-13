@@ -27,10 +27,10 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <server/server.hpp>
-#include <unit/client.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <unit/client.hpp>
+#include <server/server.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -93,14 +93,14 @@ class Proxy {
 					// Переводим сервер в режим прослушивания входящих соединений
 					if(!this->_server->listen(100))
 						// Записываем ошибку в лог
-						awh::log::print("Failed to listen on port %d", awh::log::flag_t::WARNING, this->_server->getPort());
+						log::print("Failed to listen on port %d", log::flag_t::WARNING, this->_server->getPort());
 					// Если прослушивание успешно запущено
-					else awh::log::print("QUIC proxy is listening on port %d (backend %s:%d)", awh::log::flag_t::INFO, this->_server->getPort(), this->_host.c_str(), this->_port);
+					else log::print("QUIC proxy is listening on port %d (backend %s:%d)", log::flag_t::INFO, this->_server->getPort(), this->_host.c_str(), this->_port);
 				} break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Записываем в лог сообщение об остановке события сервера
-					awh::log::print("QUIC proxy destroyed", awh::log::flag_t::INFO);
+					log::print("QUIC proxy destroyed", log::flag_t::INFO);
 				break;
 			}
 		}
@@ -114,20 +114,20 @@ class Proxy {
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, [[maybe_unused]] const tls::coder_t::id_t tid) noexcept {
 			// Записываем в лог сообщение об установленном соединении QUIC
-			awh::log::print("QUIC connection established: ID=%u, Address=%s", awh::log::flag_t::INFO, cid, this->_server->getAddress(cid, event::address_t::IPV4).c_str());
+			log::print("QUIC connection established: ID=%u, Address=%s", log::flag_t::INFO, cid, this->_server->getAddress(cid, event::address_t::IPV4).c_str());
 			// Открываем исходящее TCP-соединение к бэкенду для этой сессии QUIC
 			const event::id_t bid = this->_client->issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 			// Если событие бэкенда создать не удалось
 			if(bid == 0){
 				// Записываем ошибку в лог
-				awh::log::print("Failed to create backend connection for session ID=%u", awh::log::flag_t::CRITICAL, cid);
+				log::print("Failed to create backend connection for session ID=%u", log::flag_t::CRITICAL, cid);
 				// Выходим из метода
 				return;
 			}
 			// Устанавливаем опции события бэкенда (неблокирующий сокет обязателен для событийной модели)
 			if(!this->_client->setOptions(bid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 				// Записываем ошибку в лог
-				awh::log::print("Failed to set backend options for session ID=%u", awh::log::flag_t::CRITICAL, cid);
+				log::print("Failed to set backend options for session ID=%u", log::flag_t::CRITICAL, cid);
 				// Уничтожаем событие бэкенда
 				this->_client->destroy(bid);
 				// Выходим из метода
@@ -136,7 +136,7 @@ class Proxy {
 			// Устанавливаем адрес и порт хоста бэкенда
 			if(!(this->_client->setTarget(bid, this->_host) && this->_client->setTargetPort(bid, this->_port))){
 				// Записываем ошибку в лог
-				awh::log::print("Failed to set backend target for session ID=%u", awh::log::flag_t::CRITICAL, cid);
+				log::print("Failed to set backend target for session ID=%u", log::flag_t::CRITICAL, cid);
 				// Уничтожаем событие бэкенда
 				this->_client->destroy(bid);
 				// Выходим из метода
@@ -165,7 +165,7 @@ class Proxy {
 			 */
 			if(!(this->_client->commit(bid) && this->_client->connect(bid) && this->_client->launch(bid))){
 				// Записываем ошибку в лог
-				awh::log::print("Failed to connect backend %s:%d for session ID=%u", awh::log::flag_t::CRITICAL, this->_host.c_str(), this->_port, cid);
+				log::print("Failed to connect backend %s:%d for session ID=%u", log::flag_t::CRITICAL, this->_host.c_str(), this->_port, cid);
 				// Снимаем сопоставления и уничтожаем событие бэкенда
 				this->closeBackend(bid);
 			}
@@ -179,7 +179,7 @@ class Proxy {
 		 */
 		void disconnect(const event::id_t cid, const quic::error_t error) noexcept {
 			// Записываем в лог сообщение о завершении соединения QUIC
-			awh::log::print("QUIC connection closed: ID=%u, Error=%s", awh::log::flag_t::INFO, cid, quic::errorName(error).data());
+			log::print("QUIC connection closed: ID=%u, Error=%s", log::flag_t::INFO, cid, quic::errorName(error).data());
 			// Выполняем поиск события бэкенда, связанного с этой сессией QUIC
 			auto i = this->_sessionToBackend.find(cid);
 			// Если событие бэкенда найдено
@@ -205,7 +205,7 @@ class Proxy {
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
-			awh::log::print("QUIC proxy is ready: %s (%s)", awh::log::flag_t::INFO, domain.c_str(), ip.c_str());
+			log::print("QUIC proxy is ready: %s (%s)", log::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
 		 * @brief Метод обработки ошибок QUIC-сервера
@@ -217,7 +217,7 @@ class Proxy {
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("QUIC proxy error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("QUIC proxy error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	public:
 		/**
@@ -239,7 +239,7 @@ class Proxy {
 			// Если подключение к бэкенду не выполнено
 			if(!ok){
 				// Записываем ошибку в лог
-				awh::log::print("Backend connection failed for session ID=%u", awh::log::flag_t::CRITICAL, cid);
+				log::print("Backend connection failed for session ID=%u", log::flag_t::CRITICAL, cid);
 				// Снимаем сопоставления и уничтожаем событие бэкенда
 				this->closeBackend(bid);
 				// Выходим из метода
@@ -250,7 +250,7 @@ class Proxy {
 			 * поэтому здесь только фиксируем факт установленного соединения. Данные,
 			 * перенаправленные в очередь отправки бэкенда до его подключения, уходят сейчас
 			 */
-			awh::log::print("Backend connected for session ID=%u: %s:%d", awh::log::flag_t::INFO, cid, this->_host.c_str(), this->_port);
+			log::print("Backend connected for session ID=%u: %s:%d", log::flag_t::INFO, cid, this->_host.c_str(), this->_port);
 		}
 		/**
 		 * @brief Метод обработки событий изменения статуса бэкенда
@@ -283,7 +283,7 @@ class Proxy {
 		 */
 		void errorBackend([[maybe_unused]] const event::id_t bid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
 			// Записываем ошибку в лог
-			awh::log::print("Backend error: %s", awh::log::flag_t::CRITICAL, message.c_str());
+			log::print("Backend error: %s", log::flag_t::CRITICAL, message.c_str());
 		}
 	private:
 		/**
@@ -334,7 +334,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект отпечатка браузера
 	tls::fgp_t fgp;
 	// Создаём объект транспортного уровня безопасности
@@ -344,7 +344,7 @@ int32_t main([[maybe_unused]] int32_t argc, [[maybe_unused]] char * argv[]){
 	// Если шаблон контекста безопасности не создан
 	if(cts == 0){
 		// Записываем в лог сообщение об ошибке
-		awh::log::print("QUIC security context is not created", awh::log::flag_t::CRITICAL);
+		log::print("QUIC security context is not created", log::flag_t::CRITICAL);
 		// Выходим из приложения с ошибкой
 		return EXIT_FAILURE;
 	}

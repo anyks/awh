@@ -1154,9 +1154,6 @@ void awh::codec::csv::Decoder::reset() noexcept {
  *
  */
 void awh::codec::csv::Decoder::report() const noexcept {
-	/**
-	 * Если объект для работы с логами установлен
-	 */
 	// Выполняем вывод сообщения об отказе
 	awh::log::print("CSV encoding failed: %s", awh::log::flag_t::CRITICAL, awh::codec::csv::message(this->_error));
 }

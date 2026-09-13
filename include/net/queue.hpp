@@ -37,6 +37,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <cstdint>
 #include <cstddef>
 #include <cstring>
 #include <sys/macro/global.hpp>

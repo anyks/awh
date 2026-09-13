@@ -91,20 +91,6 @@ namespace awh {
 		namespace abc {
 			/**
 			 * \~russian
-			 * @brief Владеющее значение кодека ABC
-			 *
-			 * @note Объявлено оно здесь ради дружества: значение перенимает у дерева объект
-			 *       фреймворка и объект журнала, взять их иначе ему НЕГДЕ - конструктор их
-			 *       не принимает. Само оно живёт в `codec/abc/value.hpp`
-			 *
-			 * \~english
-			 * @brief Owning value of the ABC codec
-			 *
-			 * \~
-			 */
-			class Value;
-			/**
-			 * \~russian
 			 * @brief Класс дерева документа
 			 *
 			 * @details Дерево лежит одним вместилищем узлов подряд: дети стоят сразу за
@@ -473,17 +459,6 @@ namespace awh {
 					 * \~
 					 */
 					typedef class __AWH_SHARED_EXPORT__ Value {
-						public:
-							/**
-							 * \~russian
-							 * Владеющее значение перенимает у дерева объект фреймворка и объект журнала
-							 *
-							 * \~english
-							 * An owning value takes over the object of the framework and the object of the logging from the tree
-							 *
-							 * \~
-							 */
-							friend class awh::codec::abc::Value;
 						private:
 							// Документ, которому значение принадлежит
 							const Document * _doc;
@@ -911,21 +886,6 @@ namespace awh {
 							Value(const Document * doc, const uint32_t index, const uint32_t bound) noexcept :
 							 _doc(doc), _index(index), _bound(bound) {}
 					} value_t;
-				public:
-					/**
-					 * \~russian
-					 * Владеющее значение перенимает у дерева объект фреймворка и объект журнала
-					 *
-					 * @note Имя ЗДЕСЬ пишется полным намеренно: без пространства имён оно легло бы
-					 *       на вложенную ссылку `Document::Value`, а той дружество не нужно вовсе -
-					 *       вложенный класс достаёт до закрытого у окружающего и без него
-					 *
-					 * \~english
-					 * An owning value takes over the object of the framework and the object of the logging from the tree
-					 *
-					 * \~
-					 */
-					friend class awh::codec::abc::Value;
 				private:
 					// Вместилище узлов дерева документа
 					vector <node_t> _nodes;

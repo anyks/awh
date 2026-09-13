@@ -83,6 +83,11 @@
 #include <sys/log.hpp>
 
 /**
+ * Подключаем заголовочные файлы помощников проверок
+ */
+#include "../journal.hpp"
+
+/**
  * @brief Пространство имён проверок этого файла
  *
  * @note Держится оно безымянным намеренно: проверки кодеков собираются одной
@@ -597,15 +602,10 @@ TEST(CodecCsvValue, Load) {
  *
  */
 TEST(CodecCsvValue, SaveRefusalIsAnnouncedInTheLog) {
+	// Сторож подписки на журнал, снимающий её деструктором
+	Journal journal;
 	// Собираемые сообщения журнала
-	vector <string> messages;
-	// Выполняем назначение приёмника вывода в функцию обратного вызова
-	awh::log::mode({awh::log::mode_t::DEFERRED});
-	// Выполняем назначение перехвата сообщений журнала
-	awh::log::subscribe([&messages](const awh::log::flag_t, string_view text) noexcept -> void {
-		// Выполняем сбор очередного сообщения журнала
-		messages.push_back(string(text));
-	});
+	const vector <string> & messages = journal.messages();
 	// Владеющее значение таблицы с назначенным журналом
 	csv::value_t value;
 	// Выполняем разбор таблицы об одной записи

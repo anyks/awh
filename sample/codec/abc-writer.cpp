@@ -28,8 +28,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <codec/abc/abc.hpp>
 #include <sys/fmk.hpp>
+#include <codec/abc/abc.hpp>
 
 /**
  * @brief Пространство имён образца

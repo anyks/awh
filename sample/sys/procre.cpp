@@ -20,13 +20,17 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Стандартные модули
  */
 #include <cstdint>
+
+/**
+ * Подключаем заголовочные файлы проекта
+ */
 #include <net/addr.hpp>
-#include <sys/procre.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <sys/procre.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -47,24 +51,24 @@ int32_t main(int32_t argc, char * argv[]){
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Создаём объект для работы с логами
 	// Создаём объект резольвера процессов
 	procre_t procre;
 	// Объект работы с сетевыми адресами
 	net_addr_t addr;
 	// Устанавливаем название сервиса
-	awh::log::name("Process Resolver");
+	log::name("Process Resolver");
 	// Устанавливаем формат времени
-	awh::log::format("%H:%M:%S %d.%m.%Y");
+	log::format("%H:%M:%S %d.%m.%Y");
 	// Если количество параметров больше одного
 	if(argc > 1){
 		// Выполняем получение пида
 		const pid_t pid = static_cast <pid_t> (::stoi(argv[1]));
 		// Записываем в лог название приложения
-		awh::log::print("Process Resolver: NAME=%s", awh::log::flag_t::INFO, procre.name(pid).c_str());
+		log::print("Process Resolver: NAME=%s", log::flag_t::INFO, procre.name(pid).c_str());
 	// Записываем в лог название текущего проекта
-	} else awh::log::print("Process Resolver: NAME=%s", awh::log::flag_t::INFO, procre.name().c_str());
+	} else log::print("Process Resolver: NAME=%s", log::flag_t::INFO, procre.name().c_str());
 	// Устанавливаем функцию обратного вызова для получения информации о процессе
 	procre.on([&addr, &procre](const pid_t pid, const procre_t::info_t & info){
 		// Семейство адресов процесса
@@ -115,11 +119,11 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устанавливаем IP-адрес источника процесса
 				addr.source(info.addresses.src.get());
 				// Извлекаем IP-адрес источника процесса
-				source = awh::fmk::format("[%s]", static_cast <string> (addr).c_str());
+				source = fmk::format("[%s]", static_cast <string> (addr).c_str());
 				// Устанавливаем IP-адрес назначения процесса
 				addr.source(info.addresses.dst.get());
 				// Извлекаем IP-адрес назначения процесса
-				destination = awh::fmk::format("[%s]", static_cast <string> (addr).c_str());
+				destination = fmk::format("[%s]", static_cast <string> (addr).c_str());
 			} break;
 			// Для семейства UDS
 			case static_cast <uint8_t> (event::family_t::UDS): {
@@ -169,24 +173,24 @@ int32_t main(int32_t argc, char * argv[]){
 		// Если порты процесса определены
 		if((info.ports.dst > 0) && (info.ports.src > 0)){
 			// Формируем адрес источника процесса с портом
-			source = awh::fmk::format("%s:%u", source.c_str(), info.ports.src);
+			source = fmk::format("%s:%u", source.c_str(), info.ports.src);
 			// Формируем адрес назначения процесса с портом
-			destination = awh::fmk::format("%s:%u", destination.c_str(), info.ports.dst);
+			destination = fmk::format("%s:%u", destination.c_str(), info.ports.dst);
 		// Если только порт назначения процесса определён
 		} else if(info.ports.dst > 0)
 			// Формируем адрес назначения процесса с портом
-			destination = awh::fmk::format("%s:%u", destination.c_str(), info.ports.dst);
+			destination = fmk::format("%s:%u", destination.c_str(), info.ports.dst);
 		// Если только порт источника процесса определён
 		else if(info.ports.src > 0)
 			// Формируем адрес источника процесса с портом
-			source = awh::fmk::format("%s:%u", source.c_str(), info.ports.src);
+			source = fmk::format("%s:%u", source.c_str(), info.ports.src);
 		// Если адрес источника процесса определён
 		if(!source.empty()){
 			// Если адрес источника процесса не определён а адрес назначения процесса определён
 			if(!destination.empty()){
 				// Записываем в лог информацию о процессе
-				awh::log::print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
-					awh::log::flag_t::INFO,
+				log::print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
+					log::flag_t::INFO,
 					procre.name(pid).c_str(),
 					source.c_str(),
 					destination.c_str(),
@@ -196,8 +200,8 @@ int32_t main(int32_t argc, char * argv[]){
 			// Если адрес назначения процесса не определён
 			} else {
 				// Записываем в лог информацию о процессе
-				awh::log::print("Process Resolver: NAME=%s, SOURCE=%s, FAMILY=%s, PROTOCOL=%s",
-					awh::log::flag_t::INFO,
+				log::print("Process Resolver: NAME=%s, SOURCE=%s, FAMILY=%s, PROTOCOL=%s",
+					log::flag_t::INFO,
 					procre.name(pid).c_str(),
 					source.c_str(),
 					family.c_str(),
@@ -207,8 +211,8 @@ int32_t main(int32_t argc, char * argv[]){
 		// Если адрес источника процесса не определён а адрес назначения процесса определён
 		} else if(!destination.empty()) {
 			// Записываем в лог информацию о процессе
-			awh::log::print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
-				awh::log::flag_t::INFO,
+			log::print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
+				log::flag_t::INFO,
 				procre.name(pid).c_str(),
 				destination.c_str(),
 				family.c_str(),

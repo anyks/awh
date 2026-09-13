@@ -75,9 +75,9 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <unit/portmap.hpp>
 #include <sys/log.hpp>
 #include <sys/fmk.hpp>
+#include <unit/portmap.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -138,12 +138,12 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 * @note Заведение захватывает выдачу памяти процесса и обязано идти
 	 *       ДО всякой выдачи и ДО порождения потоков
 	 */
-	awh::fmk::initialize();
+	fmk::initialize();
 	// Отключаем неиспользуемые переменные
 	(void) argc;
 	(void) argv;
 	// Устанавливаем название сервиса
-	awh::log::name("Watchdog");
+	log::name("Watchdog");
 	// Создаём объект модуля перенаправления портов
 	unit::portmap_t portmap;
 	/**
@@ -188,7 +188,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	if(!portmap.announce(true))
 		// Записываем в лог сообщение о недоступности приёма объявлений
-		awh::log::print("Router announcements are unavailable: falling back to epoch checks only", awh::log::flag_t::WARNING);
+		log::print("Router announcements are unavailable: falling back to epoch checks only", log::flag_t::WARNING);
 	/**
 	 * Устанавливаем функцию обратного вызова на утрату состояния маршрутизатором
 	 *
@@ -208,7 +208,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	portmap.on <void (const unit::portmap_t::type_t)> ("reset", [&portmap, &mapping](const unit::portmap_t::type_t type) noexcept -> void {
 		// Записываем в лог сообщение об утрате состояния маршрутизатором
-		awh::log::print("Router has lost its state (protocol %u): re-creating port mappings", awh::log::flag_t::WARNING, static_cast <uint16_t> (type));
+		log::print("Router has lost its state (protocol %u): re-creating port mappings", log::flag_t::WARNING, static_cast <uint16_t> (type));
 		// Выполняем заведение перенаправления порта заново
 		portmap.open(mapping);
 	}, _1);
@@ -256,7 +256,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	portmap.on <void (const unit::portmap_t::error_t, const unit::portmap_t::type_t)> ("failure", [](const unit::portmap_t::error_t error, const unit::portmap_t::type_t type) noexcept -> void {
 		// Записываем в лог сообщение об отказе перенаправления
-		awh::log::print("Portmapping failed: code %u (protocol %u)", awh::log::flag_t::WARNING, static_cast <uint16_t> (error), static_cast <uint16_t> (type));
+		log::print("Portmapping failed: code %u (protocol %u)", log::flag_t::WARNING, static_cast <uint16_t> (error), static_cast <uint16_t> (type));
 	}, _1, _2);
 	/**
 	 * Устанавливаем функцию обратного вызова на получение ошибок событий обмена
@@ -268,7 +268,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	 */
 	portmap.on <void (const event::id_t, const event::error_t, const string &)> ("error", [](const event::id_t eid, const event::error_t error, const string & description) noexcept -> void {
 		// Записываем в лог сообщение об ошибке события обмена
-		awh::log::print("Event %u error: %s (code %u)", awh::log::flag_t::CRITICAL, eid, description.c_str(), static_cast <uint16_t> (error));
+		log::print("Event %u error: %s (code %u)", log::flag_t::CRITICAL, eid, description.c_str(), static_cast <uint16_t> (error));
 	}, _1, _2, _3);
 	/**
 	 * Выполняем заведение перенаправления порта
