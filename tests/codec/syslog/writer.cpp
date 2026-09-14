@@ -1339,3 +1339,56 @@ TEST(CodecSysLogWriter, ModernVersionAndEmptyStructures) {
 	// Выполняем проверку кода отказа сборки записи
 	EXPECT_EQ(writer.error(), syslog::error_t::UNSUPPORTED_VERSION);
 }
+
+/**
+ * @brief Проверка отказа записи текстом сообщения, запись разрывающим
+ *
+ * @details Запись оканчивается переводом строки, и он же ей границею служит. Текст
+ *          сообщения, перевод строки несущий, разрывал запись надвое: писатель отвечал
+ *          УСПЕХОМ, а оборот битой записи отвечал INCOMPLETE_HEADER и возвращал
+ *          сообщение из восьми байтов тремя
+ *
+ * @note Возврат каретки В КОНЦЕ текста проверяется здесь же, и беда его хуже: разбор
+ *       снимает его как часть границы записи, оборот отказа НЕ даёт вовсе, а сообщение
+ *       возвращается короче записанного на один байт - утрата не опознаётся ничем.
+ *       Внутри текста возврат каретки допустим: границы он там не образует
+ *
+ */
+TEST(CodecSysLogWriter, MessageBreakingTheRecord) {
+	// Настройки записи событий
+	syslog::writer_t::settings_t settings;
+	// Устанавливаем сборку записи нынешним описанием
+	settings.standard = syslog::standard_t::RFC5424;
+	// Собранная запись системного журнала
+	string result = "";
+	/**
+	 * @brief Метод сборки дерева события с заданным текстом сообщения
+	 *
+	 * @param message текст сообщения события
+	 * @return        дерево собираемого события
+	 */
+	const auto tree = [](const string & message) noexcept -> abc::value_t {
+		// Дерево собираемого события
+		abc::value_t value(abc::kind_t::MAP);
+		// Ставим приоритет записи в дерево события
+		value.place("/priority") = abc::value_t(static_cast <uint64_t> (13));
+		// Ставим номер описания записи в дерево события
+		value.place("/header/version") = abc::value_t(static_cast <uint64_t> (1));
+		// Ставим дату сообщения в дерево события
+		value.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+		// Ставим имя узла отправителя в дерево события
+		value.place("/header/hostname") = abc::value_t(string("host"));
+		// Ставим текст сообщения в дерево события
+		value.place("/message") = abc::value_t(message);
+		// Выводим дерево собираемого события
+		return value;
+	};
+	// Выполняем проверку успешности сборки записи годным текстом сообщения
+	EXPECT_TRUE(::build(tree("Message"), settings, result));
+	// Выполняем проверку отказа сборки записи текстом с переводом строки
+	EXPECT_FALSE(::build(tree("Mes\nsage"), settings, result));
+	// Выполняем проверку отказа сборки записи текстом с возвратом каретки в конце
+	EXPECT_FALSE(::build(tree("Message\r"), settings, result));
+	// Выполняем проверку успешности сборки записи возвратом каретки ВНУТРИ текста
+	EXPECT_TRUE(::build(tree("Mes\rsage"), settings, result));
+}

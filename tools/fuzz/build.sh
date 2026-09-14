@@ -397,6 +397,14 @@ case "$(uname -s)" in
 	#       там знаки эти приходят иным путём, — оттого довода и не было
 	##
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32 -liphlpapi -pthread" ;;
+	##
+	# Цель macOS
+	#
+	# @note Основа «Foundation» потребна слою файловой системы: «src/sys/fs.cpp» зовёт
+	#       там «NSFileManager», и без неё связывание отвечает отсутствием знаков
+	#       Objective-C. Кодекам, слоя того не трогающим, надбавка безвредна
+	##
+	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
 	SunOS) SYSTEM_LIBS="-lsocket -lnsl -ldladm" ;;
 	##
 	# @warning У NetBSD и OpenBSD «backtrace» и «backtrace_symbols_fd» лежат в
@@ -776,7 +784,7 @@ SHARED="$ROOT/src/codec/numeric.cpp $ROOT/src/codec/replace.cpp"
 DEPENDS=""
 case "$CODEC_DIR" in
 	# Кодек CEF стоит на дереве ABC, а проверку адресов сети ведёт «net_addr_t»
-	cef) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp) $ROOT/src/net/addr.cpp $ROOT/src/net/net.cpp" ;;
+	cef) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp) $ROOT/src/net/addr.cpp $ROOT/src/net/net.cpp $ROOT/src/sys/fs.cpp $ROOT/src/sys/os.cpp" ;;
 	##
 	# Кодек SysLog стоит на дереве ABC; сетей он не разбирает вовсе, и «net_addr_t» ему не нужен
 	#
@@ -790,7 +798,7 @@ case "$CODEC_DIR" in
 	#          «libdependence.a», а её на отладочных машинах нет и собирается она
 	#          десятками минут. Без третьей стороны ворошитель кодека собирается всюду
 	#
-	syslog) DEPENDS="$ROOT/src/codec/abc/common.cpp $ROOT/src/codec/abc/encoding.cpp $ROOT/src/codec/abc/reader.cpp $ROOT/src/codec/abc/writer.cpp $ROOT/src/codec/abc/document.cpp $ROOT/src/codec/abc/value.cpp $ROOT/src/codec/abc/header.cpp $ROOT/src/codec/abc/schedule.cpp $ROOT/src/cryptography/hash.cpp $ROOT/src/num/bignum.cpp" ;;
+	syslog) DEPENDS="$ROOT/src/codec/abc/common.cpp $ROOT/src/codec/abc/encoding.cpp $ROOT/src/codec/abc/reader.cpp $ROOT/src/codec/abc/writer.cpp $ROOT/src/codec/abc/document.cpp $ROOT/src/codec/abc/value.cpp $ROOT/src/codec/abc/header.cpp $ROOT/src/codec/abc/schedule.cpp $ROOT/src/cryptography/hash.cpp $ROOT/src/num/bignum.cpp $ROOT/src/sys/fs.cpp $ROOT/src/sys/os.cpp" ;;
 	##
 	# Мост стоит на ВСЕХ кодеках разом
 	#
@@ -824,8 +832,21 @@ for PART in $SHARED $([ -d "$ROOT/src/codec/$CODEC_DIR" ] && echo "$ROOT/src/cod
 	#          (замер 04.09.2026, цель «cef»)
 	##
 	NAME="codec-$(basename "$(dirname "$PART")")-$(basename "$PART" .cpp)"
-	# Выполняем сборку очередной части кодека
-	$COMPILER $OPTIONS -c "$PART" -o "$OUTPUT/$NAME.o"
+	##
+	# Слой файловой системы у macOS написан на Objective-C++
+	#
+	# @details «src/sys/fs.cpp» зовёт там «NSFileManager», и обычным C++ он не
+	#          собирается вовсе: приходит «stray @ in program». Прочим системам ключи эти
+	#          не нужны и вредны, оттого ветвь по «uname», а не общий довод
+	##
+	if [ "$(basename "$PART")" = "fs.cpp" ] && [ "$(uname -s)" = "Darwin" ]; then
+		# Выполняем сборку слоя файловой системы средствами Objective-C++
+		$COMPILER $OPTIONS -x objective-c++ -fobjc-arc -c "$PART" -o "$OUTPUT/$NAME.o"
+	# Иначе собираем часть обычным образом
+	else
+		# Выполняем сборку очередной части кодека
+		$COMPILER $OPTIONS -c "$PART" -o "$OUTPUT/$NAME.o"
+	fi
 	# Добавляем собранное к перечню объектных файлов
 	OBJECTS="$OBJECTS $OUTPUT/$NAME.o"
 done

@@ -784,3 +784,67 @@ TEST(CodecCefWriter, UnrepresentableSyslogPrefix) {
 	// Выполняем проверку того, что приставка предшествует слову «CEF:»
 	EXPECT_LT(result.find("key"), result.find(cef::SIGNATURE)) << result;
 }
+
+/**
+ * @brief Проверка отказа записи значением, запись разрывающим
+ *
+ * @details Запись CEF оканчивается переводом строки, и он же ей границею служит. Отмену
+ *          знаков заголовок знает лишь для прямой черты и обратной косой, а приставка
+ *          syslog не знает вовсе: значение с переводом строки разрывало запись надвое.
+ *          Писатель отвечал при этом УСПЕХОМ, а оборот битой записи - INCOMPLETE_HEADER
+ *
+ * @note Расширение записи проверяется здесь же обратным случаем: там перевод строки
+ *       отменяется последовательностью «\n» и запись остаётся целой - отказывать в нём
+ *       было бы неверно
+ *
+ */
+TEST(CodecCefWriter, ValueBreakingTheRecord) {
+	// Объект записи событий
+	cef::writer_t writer;
+	// Собранная запись CEF
+	string result = "";
+	/**
+	 * @brief Метод сборки дерева события с заданным значением поставщика
+	 *
+	 * @param vendor значение поля поставщика
+	 * @param prefix приставка syslog записи
+	 * @param value  значение пары расширения
+	 * @return       дерево собираемого события
+	 */
+	const auto tree = [](const string & vendor, const string & prefix, const string & value) noexcept -> abc::value_t {
+		// Дерево собираемого события
+		abc::value_t root(abc::kind_t::MAP);
+		// Ставим номер редакции записи в дерево события
+		root.place("/header/version") = abc::value_t(static_cast <uint64_t> (0));
+		// Ставим поставщика устройства в дерево события
+		root.place("/header/vendor") = abc::value_t(vendor);
+		// Ставим название устройства в дерево события
+		root.place("/header/product") = abc::value_t(string("P"));
+		// Ставим редакцию устройства в дерево события
+		root.place("/header/release") = abc::value_t(string("1"));
+		// Ставим опознаватель события в дерево события
+		root.place("/header/signature") = abc::value_t(string("S"));
+		// Ставим название события в дерево события
+		root.place("/header/name") = abc::value_t(string("N"));
+		// Ставим важность события в дерево события
+		root.place("/header/severity") = abc::value_t(static_cast <uint64_t> (1));
+		// Ставим пару расширения в дерево события
+		root.place("/extension/msg") = abc::value_t(value);
+		// Если приставка syslog задана
+		if(!prefix.empty())
+			// Ставим приставку syslog в дерево события
+			root.place("/syslog") = abc::value_t(prefix);
+		// Выводим дерево собираемого события
+		return root;
+	};
+	// Выполняем проверку успешности сборки записи годными значениями
+	EXPECT_TRUE(writer.write(tree("Vendor", "", "text"), result));
+	// Выполняем проверку отказа сборки записи полем заголовка с переводом строки
+	EXPECT_FALSE(writer.write(tree("Ven\ndor", "", "text"), result));
+	// Выполняем проверку отказа сборки записи приставкой syslog с переводом строки
+	EXPECT_FALSE(writer.write(tree("Vendor", "Feb 17\n15:30:15 host", "text"), result));
+	// Выполняем проверку успешности сборки записи значением расширения с переводом строки
+	EXPECT_TRUE(writer.write(tree("Vendor", "", "te\nxt"), result));
+	// Выполняем проверку того, что перевод строки в расширении отменён последовательностью
+	EXPECT_NE(result.find("te\\nxt"), string::npos);
+}
