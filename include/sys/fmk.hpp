@@ -488,7 +488,7 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ T timestamp(const chrono_t type) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки в строку utf-8
+		 * @brief Функция конвертирования строки UTF-8 в строку широких символов
 		 *
 		 * @details Узкая строка разбирается как запись в кодировке UTF-8 и выводится
 		 *          строкой широких символов. Обратное действие выполняется одноимённым
@@ -499,11 +499,13 @@ namespace awh {
 		 *       записываются суррогатной парой, тогда как на прочих системах он
 		 *       четырёхбайтовый и хранит кодовое значение целиком
 		 *
-		 * @note Текст, записью UTF-8 не являющийся, выводится пустой строкой,
-		 *       а ошибка записывается в лог
+		 * @note Текст, записью UTF-8 не являющийся, выводится пустой строкой МОЛЧА:
+		 *       разбор записи UTF-8 отказа не оглашает вовсе, оттого пустой вывод
+		 *       неотличим от пустого ввода. Требуется различать - проверяйте текст
+		 *       ходом `is` с признаком `UTF8` до перевода
 		 *
-		 * @param str строка для конвертирования
-		 * @return    строка в utf-8
+		 * @param str строка UTF-8 для конвертирования
+		 * @return    строка широких символов
 		 *
 		 * @code{.cpp}
 		 * const wstring wide = fmk::convert(string{"Привет"});
@@ -511,7 +513,7 @@ namespace awh {
 		 * @endcode
 		 *
 		 * \~english
-		 * @brief Function of converting a string into a utf-8 string
+		 * @brief Function of converting a UTF-8 string into a wide-character string
 		 *
 		 * @details A narrow string is parsed as a record in the UTF-8 encoding and is yielded
 		 *          as a string of wide characters. The reverse action is performed by the method of the same name
@@ -522,11 +524,13 @@ namespace awh {
 		 *       are written by a surrogate pair, while on the other systems it is
 		 *       a four-byte one and holds the code value entirely
 		 *
-		 * @note A text that is not a UTF-8 record is yielded as an empty string,
-		 *       and the error is written into the log
+		 * @note A text that is not a UTF-8 record is yielded as an empty string SILENTLY:
+		 *       the parsing of a UTF-8 record does not announce a refusal at all, therefore an empty
+		 *       yielded value is indistinguishable from an empty input. If the distinction is required,
+		 *       check the text by the `is` function with the `UTF8` flag before the conversion
 		 *
-		 * @param str string to convert
-		 * @return    string in utf-8
+		 * @param str UTF-8 string to convert
+		 * @return    wide-character string
 		 *
 		 * @code{.cpp}
 		 * const wstring wide = fmk::convert(string{"Привет"});
@@ -537,80 +541,80 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ wstring convert(string_view str) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки utf-8 в строку
+		 * @brief Функция конвертирования строки широких символов в строку UTF-8
 		 *
-		 * @param str строка utf-8 для конвертирования
-		 * @return    обычная строка
+		 * @param str строка широких символов для конвертирования
+		 * @return    строка в кодировке UTF-8
 		 *
 		 * \~english
-		 * @brief Function of converting a utf-8 string into a string
+		 * @brief Function of converting a wide-character string into a UTF-8 string
 		 *
-		 * @param str utf-8 string to convert
-		 * @return    ordinary string
+		 * @param str wide-character string to convert
+		 * @return    string in the UTF-8 encoding
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string convert(wstring_view str) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки в строку utf-8
+		 * @brief Функция конвертирования строки UTF-8 в строку широких символов
 		 *
-		 * @param str строка для конвертирования
-		 * @return    строка в utf-8
+		 * @param str строка UTF-8 для конвертирования
+		 * @return    строка широких символов
 		 *
 		 * \~english
-		 * @brief Function of converting a string into a utf-8 string
+		 * @brief Function of converting a UTF-8 string into a wide-character string
 		 *
-		 * @param str string to convert
-		 * @return    string in utf-8
+		 * @param str UTF-8 string to convert
+		 * @return    wide-character string
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ wstring convert(const char * str) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки utf-8 в строку
+		 * @brief Функция конвертирования строки широких символов в строку UTF-8
 		 *
-		 * @param str строка utf-8 для конвертирования
-		 * @return    обычная строка
+		 * @param str строка широких символов для конвертирования
+		 * @return    строка в кодировке UTF-8
 		 *
 		 * \~english
-		 * @brief Function of converting a utf-8 string into a string
+		 * @brief Function of converting a wide-character string into a UTF-8 string
 		 *
-		 * @param str utf-8 string to convert
-		 * @return    ordinary string
+		 * @param str wide-character string to convert
+		 * @return    string in the UTF-8 encoding
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ string convert(const wchar_t * str) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки в строку utf-8
+		 * @brief Функция конвертирования строки UTF-8 в строку широких символов
 		 *
-		 * @param str строка для конвертирования
-		 * @return    строка в utf-8
+		 * @param str строка UTF-8 для конвертирования
+		 * @return    строка широких символов
 		 *
 		 * \~english
-		 * @brief Function of converting a string into a utf-8 string
+		 * @brief Function of converting a UTF-8 string into a wide-character string
 		 *
-		 * @param str string to convert
-		 * @return    string in utf-8
+		 * @param str UTF-8 string to convert
+		 * @return    wide-character string
 		 *
 		 * \~
 		 */
 		__AWH_SHARED_EXPORT__ wstring convert(const string & str) noexcept;
 		/**
 		 * \~russian
-		 * @brief Функция конвертирования строки utf-8 в строку
+		 * @brief Функция конвертирования строки широких символов в строку UTF-8
 		 *
-		 * @param str строка utf-8 для конвертирования
-		 * @return    обычная строка
+		 * @param str строка широких символов для конвертирования
+		 * @return    строка в кодировке UTF-8
 		 *
 		 * \~english
-		 * @brief Function of converting a utf-8 string into a string
+		 * @brief Function of converting a wide-character string into a UTF-8 string
 		 *
-		 * @param str utf-8 string to convert
-		 * @return    ordinary string
+		 * @param str wide-character string to convert
+		 * @return    string in the UTF-8 encoding
 		 *
 		 * \~
 		 */
@@ -671,9 +675,11 @@ namespace awh {
 		 * @details Выводится размер буфера за вычетом нулевых байтов, лежащих в его
 		 *          конце. Буфер, заполненный нулями целиком, даёт нулевой размер.
 		 *
-		 * @warning Порядок байт числа при этом не учитывается: на машине с прямым
-		 *          порядком байт старший разряд числа лежит в конце буфера, и метод
-		 *          пригоден лишь для буферов, записанных обратным порядком
+		 * @warning Метод пригоден лишь для буферов, записанных ОБРАТНЫМ порядком байт
+		 *          (little-endian), где старший разряд числа лежит в конце буфера:
+		 *          именно оттуда и отсекаются нулевые байты. Прямой порядок байт
+		 *          (big-endian) не поддержан - там старший разряд лежит в начале, и
+		 *          отсечение съело бы значащие байты числа
 		 *
 		 * @param value значение бинарного буфера для проверки
 		 * @param size  общий размер бинарного буфера
@@ -685,9 +691,11 @@ namespace awh {
 		 * @details What is yielded is the size of the buffer minus the zero bytes lying at its
 		 *          end. A buffer filled with zeroes entirely gives a zero size.
 		 *
-		 * @warning The order of the bytes of a number is at that not taken into account: on a machine with the direct
-		 *          order of the bytes the higher digit of a number lies at the end of the buffer, and the method
-		 *          is suitable only for the buffers written in the reverse order
+		 * @warning The method is suitable only for the buffers written in the REVERSE order of the
+		 *          bytes (little-endian), where the higher digit of a number lies at the end of the buffer:
+		 *          it is from there that the zero bytes are cut off. The direct order of the bytes
+		 *          (big-endian) is not supported - there the higher digit lies at the beginning, and
+		 *          the cutting off would eat the significant bytes of the number
 		 *
 		 * @param value value of the binary buffer to check
 		 * @param size  total size of the binary buffer
@@ -1496,9 +1504,10 @@ namespace awh {
 		 * \~russian
 		 * @brief Функция установки системной локали
 		 *
-		 * @details Локаль ставится всему приложению, а не одному объекту Framework:
-		 *          метод обращается к системной установке локали. Locale по умолчанию
-		 *          ставится конструктором и задана значением «AWH_LOCALE».
+		 * @details Локаль ставится всему приложению, а не одному его объекту: функция
+		 *          обращается к системной установке локали. Локаль по умолчанию задана
+		 *          значением «AWH_LOCALE» и ставится заведением модуля - ходом
+		 *          `initialize()` либо первым же обращением к модулю.
 		 *
 		 * @note Разбор протокольных данных от локали не зависит: она влияет на
 		 *       действия над текстом широких символов и на вывод в консоль
@@ -1511,9 +1520,10 @@ namespace awh {
 		 * \~english
 		 * @brief Function of setting the system locale
 		 *
-		 * @details The locale is set to the whole application, and not to one Framework object:
-		 *          the method addresses the system setting of the locale. The locale by default
-		 *          is set by the constructor and is set by the «AWH_LOCALE» value.
+		 * @details The locale is set to the whole application, and not to one of its objects: the function
+		 *          addresses the system setting of the locale. The locale by default is set by the
+		 *          «AWH_LOCALE» value and is established by the starting of the module - by the
+		 *          `initialize()` function or by the very first appeal to the module.
 		 *
 		 * @note The parsing of the protocol data does not depend on the locale: it influences
 		 *       the actions over the text of wide characters and the output into the console
@@ -1545,11 +1555,14 @@ namespace awh {
 		 * @brief Функция установки пользовательской зоны
 		 *
 		 * @details Набор доменных зон применяется разбором адресов: зона, набору не
-		 *          принадлежащая, адресом не признаётся. Framework везёт набор зон
-		 *          общего пользования, а метод пополняет его зонами частными.
+		 *          принадлежащая, адресом не признаётся. Модуль везёт набор зон
+		 *          общего пользования, а функция пополняет его зонами частными.
 		 *
-		 * @warning Метод меняет состояние объекта: вызывать его следует до начала
+		 * @warning Функция меняет состояние ПРОЦЕССА, а не отдельного объекта: набор
+		 *          зон один на всё приложение, и зона, добавленная одним потребителем,
+		 *          меняет разбор адресов у всех остальных. Звать её следует до начала
 		 *          работы модулей, обращающихся к разбору адресов
+		 *
 		 * @param zone пользовательская зона
 		 *
 		 * @code{.cpp}
@@ -1561,10 +1574,12 @@ namespace awh {
 		 * @brief Function of setting a user zone
 		 *
 		 * @details The set of the domain zones is applied by the parsing of the addresses: a zone not belonging
-		 *          to the set is not recognized as an address. Framework carries the set of the zones
+		 *          to the set is not recognized as an address. The module carries the set of the zones
 		 *          of the common use, and the method supplements it with the private zones.
 		 *
-		 * @warning The method changes the state of the object: it should be called before the beginning of
+		 * @warning The function changes the state of the PROCESS, and not of a separate object: the set of
+		 *          the zones is one for the whole application, and a zone added by one consumer changes
+		 *          the parsing of the addresses for all the others. It should be called before the beginning of
 		 *          the work of the modules addressing the parsing of the addresses
 		 *
 		 * @param zone user zone
@@ -1879,8 +1894,12 @@ namespace awh {
 		 *
 		 * @details Строка изменяется на месте и выводится ссылкой на неё же.
 		 *
-		 * @note Перегрузки, принимающие строку доводом-значением либо ссылкой на
-		 *       постоянную строку, исходную строку не меняют, а выводят изменённую
+		 * @note Перегрузка, принимающая строку доводом-значением (`string_view`), исходной
+		 *       записи не меняет, а выводит изменённую копию. Перегрузка же, принимающая
+		 *       ссылку на постоянную строку, меняет поданную запись НА МЕСТЕ - так же,
+		 *       как эта: постоянство снимается намеренно, чтобы править можно было
+		 *       строку любого вида, а отвечает за это вызывающий. Предмет, заведённый
+		 *       постоянным, подавать туда нельзя
 		 *
 		 * @param text текст для трансформации
 		 * @param flag флаг трансформации
@@ -1897,8 +1916,12 @@ namespace awh {
 		 *
 		 * @details The string is changed in place and is yielded as a reference to itself.
 		 *
-		 * @note The overloads taking a string as an argument by value or as a reference to
-		 *       a constant string do not change the original string, but yield the changed one
+		 * @note The overload taking a string as an argument by value (`string_view`) does not change
+		 *       the original record, but yields a changed copy. The overload taking a reference to
+		 *       a constant string, however, changes the submitted record IN PLACE - the same way as
+		 *       this one: the constancy is removed deliberately, so that a string of any kind could be
+		 *       changed, and the caller answers for that. An object declared constant must not be
+		 *       submitted there
 		 *
 		 * @param text text to transform
 		 * @param flag flag of the transformation
@@ -2310,8 +2333,11 @@ namespace awh {
 		 *          не зависит: разделителем дробной части всегда служит точка.
 		 *          Тип разбираемого числа задаётся доводом шаблона.
 		 *
-		 * @note Запись, числом не являющаяся, выводится нулевым значением; запись,
-		 *       выходящую за пределы типа, метод обрезает по его границе
+		 * @note Запись, числом не являющаяся, выводится нулевым значением. Тем же
+		 *       нулём выводится и запись, за пределы типа выходящая: разбор её
+		 *       отвергает, а иного значения у метода нет. Отличить «не число» от
+		 *       «слишком велико» по выводу нельзя - требуется различать, разбирайте
+		 *       модулем лексического разбора чисел
 		 *
 		 * @note Часть строки разбирается её представлением, а не парой из указателя
 		 *       и длины
@@ -2339,8 +2365,11 @@ namespace awh {
 		 *          the separator of the fractional part is always a dot.
 		 *          The type of the parsed number is set by the argument of the template.
 		 *
-		 * @note A record that is not a number is yielded as a zero value; a record
-		 *       going beyond the limits of the type the method truncates by its boundary
+		 * @note A record that is not a number is yielded as a zero value. By the same
+		 *       zero is yielded also a record going beyond the limits of the type: the parsing
+		 *       rejects it, and another value the method does not have. To tell «not a number»
+		 *       from «too large» by the yielded value is impossible - if the distinction is
+		 *       required, parse by the module of the lexical parsing of the numbers
 		 *
 		 * @note A part of a string is parsed by its view, and not by a pair of a pointer
 		 *       and a length
