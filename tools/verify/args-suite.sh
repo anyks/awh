@@ -94,12 +94,27 @@ NET="src/sys/fs.cpp src/sys/os.cpp"
 TESTS="tests/main.cpp tests/args/args.cpp tests/args/lexer.cpp tests/args/schema.cpp tests/codec/bridge.cpp"
 # Розыск gtest: путь его от системы к системе разный, а по умолчанию виден не везде
 GT=""
-for D in /opt/homebrew /usr/local /usr /usr/pkg /opt/local /opt/csw /mingw64; do
+# У MSYS2 оснастка своя у каждого окружения: под ARM64 набор берётся «/clangarm64»,
+# и без него стенд отвечал «gtest не найден» на машине, где gtest стоит. Замерено
+# 14.09.2026 на стенде Windows ARM64
+for D in /opt/homebrew /usr/local /usr /usr/pkg /opt/local /opt/csw /mingw64 /clangarm64 /ucrt64 /mingw32; do
 	if [ -f "$D/include/gtest/gtest.h" ]; then GT="-I$D/include -L$D/lib"; break; fi
 done
 [ -n "$GT" ] || { echo "gtest не найден: набор собрать нечем" >&2; exit 3; }
 LIBS="-lgmock -lgmock_main -lgtest -lpthread"
 case "$SYS" in SunOS) LIBS="$LIBS -lsocket -lnsl" ;; MINGW*|MSYS*|CYGWIN*) LIBS="-lgmock -lgmock_main -lgtest -lws2_32 -liphlpapi -lbcrypt -lole32 -luuid -lshlwapi -lshell32 -ladvapi32" ;; esac
+# Потоки у MS Windows: libdependence с BoringSSL внутри собран бывает НА PTHREAD, и
+# тогда связывание требует «-lpthread» - без неё стенд отвечает десятком неведомых
+# имён вида «pthread_rwlock_rdlock». Отбираем её пробою, а не по имени системы: у
+# сборок, того не требующих, лишняя библиотека безвредна. Замерено 14.09.2026 на
+# стенде Windows ARM64 (окружение CLANGARM64)
+case "$SYS" in
+	MINGW*|MSYS*|CYGWIN*)
+		for D in /clangarm64/lib /mingw64/lib /ucrt64/lib /mingw32/lib /usr/lib; do
+			if [ -f "$D/libpthread.a" ] || [ -f "$D/libwinpthread.a" ]; then LIBS="$LIBS -lpthread"; break; fi
+		done
+	;;
+esac
 # Шифрование: у одних систем оно берётся из libdependence, у других требует
 # библиотек системы; отбираем их пробою, а не по имени системы
 SSL=""

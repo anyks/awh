@@ -579,11 +579,19 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод извлечения числа значений вместимого параметра
 				 *
+				 * @details Значение, вместимым не являющееся, считается ОДНИМ значением:
+				 *          параметр, поданный единожды, и параметр, поданный дважды,
+				 *          потребителю вместимого различаться не должны. Ноль означает,
+				 *          что параметр не уложен вовсе
+				 *
 				 * @param key имя параметра с разделителем звеньев
 				 * @return    число значений вместимого
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the number of the values of a container parameter
+				 * @details A value that is not a container is counted as ONE value: a parameter submitted
+				 *          once and a parameter submitted twice must not differ for the consumer of a container.
+				 *          A zero means that the parameter is not laid at all
 				 * @param key name of a parameter with the separator of the links
 				 * @return number of the values of the container
 				 *
