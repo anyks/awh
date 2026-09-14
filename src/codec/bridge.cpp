@@ -130,17 +130,33 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 					if(this->_settings.narrow == narrow_t::SKIP)
 						// Продолжаем перебор полей отображения дальше
 						continue;
-					// Запоминаем код отказа перевода
-					this->_error = error_t::UNSUPPORTED;
-					// Выходим из метода, перевод отвечен отказом
-					return false;
+					/**
+					 * Если вид имени надлежит обратить в знаки
+					 *
+					 * @note Прежде правило `TEXT` здесь не спрашивалось вовсе, и имя, знаками
+					 *       не выражаемое, отвечалось отказом ТАК ЖЕ, как при правиле `STRICT`,
+					 *       - при том что правило это означает «обращать в последовательность
+					 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
+					 *       числом отвечало отказом при обоих правилах, и настройка различия
+					 *       не делала
+					 */
+					if(this->_settings.narrow == narrow_t::TEXT)
+						// Выполняем обращение имени поля в запись
+						name = this->record(value.key(i));
+					// Если обратить имя поля в запись не удалось
+					if(name.empty()){
+						// Запоминаем код отказа перевода
+						this->_error = error_t::UNSUPPORTED;
+						// Выходим из метода, перевод отвечен отказом
+						return false;
+					}
 				}
 				// Выполняем запись имени поля отображения
 				if(!writer.key(name))
 					// Выходим из метода, запись отвечена отказом
 					return false;
 				// Выполняем подачу значения поля отображения писателю JSON
-				if(!this->feed(value[name], writer, depth + 1))
+				if(!this->feed(value[i], writer, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
 			}
@@ -893,15 +909,31 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 					if(this->_settings.narrow == narrow_t::SKIP)
 						// Продолжаем перебор полей отображения дальше
 						continue;
-					// Запоминаем код отказа перевода
-					this->_error = error_t::UNSUPPORTED;
-					// Выходим из метода, перевод отвечен отказом
-					return false;
+					/**
+					 * Если вид имени надлежит обратить в знаки
+					 *
+					 * @note Прежде правило `TEXT` здесь не спрашивалось вовсе, и имя, знаками
+					 *       не выражаемое, отвечалось отказом ТАК ЖЕ, как при правиле `STRICT`,
+					 *       - при том что правило это означает «обращать в последовательность
+					 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
+					 *       числом отвечало отказом при обоих правилах, и настройка различия
+					 *       не делала
+					 */
+					if(this->_settings.narrow == narrow_t::TEXT)
+						// Выполняем обращение имени поля в запись
+						name = this->record(value.key(i));
+					// Если обратить имя поля в запись не удалось
+					if(name.empty()){
+						// Запоминаем код отказа перевода
+						this->_error = error_t::UNSUPPORTED;
+						// Выходим из метода, перевод отвечен отказом
+						return false;
+					}
 				}
 				// Собираемое значение поля отображения
 				yaml::Value item;
 				// Выполняем подачу значения поля значению отображения
-				if(!this->feedYAML(value[name], item, depth + 1))
+				if(!this->feedYAML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
 				/**
@@ -1174,15 +1206,31 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 					if(this->_settings.narrow == narrow_t::SKIP)
 						// Продолжаем перебор полей отображения дальше
 						continue;
-					// Запоминаем код отказа перевода
-					this->_error = error_t::UNSUPPORTED;
-					// Выходим из метода, перевод отвечен отказом
-					return false;
+					/**
+					 * Если вид имени надлежит обратить в знаки
+					 *
+					 * @note Прежде правило `TEXT` здесь не спрашивалось вовсе, и имя, знаками
+					 *       не выражаемое, отвечалось отказом ТАК ЖЕ, как при правиле `STRICT`,
+					 *       - при том что правило это означает «обращать в последовательность
+					 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
+					 *       числом отвечало отказом при обоих правилах, и настройка различия
+					 *       не делала
+					 */
+					if(this->_settings.narrow == narrow_t::TEXT)
+						// Выполняем обращение имени поля в запись
+						name = this->record(value.key(i));
+					// Если обратить имя поля в запись не удалось
+					if(name.empty()){
+						// Запоминаем код отказа перевода
+						this->_error = error_t::UNSUPPORTED;
+						// Выходим из метода, перевод отвечен отказом
+						return false;
+					}
 				}
 				// Собираемое значение поля отображения
 				toml::Value item;
 				// Выполняем подачу значения поля значению отображения
-				if(!this->feedTOML(value[name], item, depth + 1))
+				if(!this->feedTOML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
 				/**
@@ -1437,8 +1485,8 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 			 * @note Перечень пустой вместилищем ОСТАЁТСЯ: пометка `array` возвращает
 			 *       его перечнем при обратном чтении, и круг на нём замкнут
 			 */
-			if((value[name].is(abc::type_t::MAP) && (value[name].size() > 0)) ||
-			   (value[name].is(abc::type_t::ARRAY) && (!this->_settings.array.empty() || (value[name].size() > 0)))){
+			if((value[i].is(abc::type_t::MAP) && (value[i].size() > 0)) ||
+			   (value[i].is(abc::type_t::ARRAY) && (!this->_settings.array.empty() || (value[i].size() > 0)))){
 				// Запоминаем наличие вложенного вместилища
 				nested = true;
 				// Выходим из перебора полей отображения
@@ -1539,13 +1587,29 @@ bool awh::codec::Bridge::feedXML(const abc::value_t & value, xml::Value & result
 				if(this->_settings.narrow == narrow_t::SKIP)
 					// Продолжаем перебор полей отображения дальше
 					continue;
-				// Запоминаем код отказа перевода
-				this->_error = error_t::UNSUPPORTED;
-				// Выходим из метода, перевод отвечен отказом
-				return false;
+				/**
+				 * Если вид имени надлежит обратить в знаки
+				 *
+				 * @note Прежде правило `TEXT` здесь не спрашивалось вовсе, и имя, знаками
+				 *       не выражаемое, отвечалось отказом ТАК ЖЕ, как при правиле `STRICT`,
+				 *       - при том что правило это означает «обращать в последовательность
+				 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
+				 *       числом отвечало отказом при обоих правилах, и настройка различия
+				 *       не делала
+				 */
+				if(this->_settings.narrow == narrow_t::TEXT)
+					// Выполняем обращение имени поля в запись
+					name = this->record(value.key(i));
+				// Если обратить имя поля в запись не удалось
+				if(name.empty()){
+					// Запоминаем код отказа перевода
+					this->_error = error_t::UNSUPPORTED;
+					// Выходим из метода, перевод отвечен отказом
+					return false;
+				}
 			}
 			// Извлекаемое значение поля отображения
-			const abc::value_t & item = value[name];
+			const abc::value_t & item = value[i];
 			/**
 			 * Выполняем правку имени, разметке негодного
 			 *
@@ -2002,15 +2066,31 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 			if(this->_settings.narrow == narrow_t::SKIP)
 				// Продолжаем перебор полей отображения дальше
 				continue;
-			// Запоминаем код отказа перевода
-			this->_error = error_t::UNSUPPORTED;
-			// Выходим из метода, перевод отвечен отказом
-			return false;
+			/**
+			 * Если вид имени надлежит обратить в знаки
+			 *
+			 * @note Прежде правило `TEXT` здесь не спрашивалось вовсе, и имя, знаками
+			 *       не выражаемое, отвечалось отказом ТАК ЖЕ, как при правиле `STRICT`,
+			 *       - при том что правило это означает «обращать в последовательность
+			 *       знаков». Замерено 14.09.2026 аудитом: отображение с именем поля
+			 *       числом отвечало отказом при обоих правилах, и настройка различия
+			 *       не делала
+			 */
+			if(this->_settings.narrow == narrow_t::TEXT)
+				// Выполняем обращение имени поля в запись
+				name = this->record(value.key(i));
+			// Если обратить имя поля в запись не удалось
+			if(name.empty()){
+				// Запоминаем код отказа перевода
+				this->_error = error_t::UNSUPPORTED;
+				// Выходим из метода, перевод отвечен отказом
+				return false;
+			}
 		}
 		// Если поле отображением не является
-		if(!value[name].is(abc::type_t::MAP)){
+		if(!value[i].is(abc::type_t::MAP)){
 			// Выполняем запись значения свойством верхнего уровня
-			if(!this->feedINI(value[name], document, name, "", 1))
+			if(!this->feedINI(value[i], document, name, "", 1))
 				// Выходим из метода, запись отвечена отказом
 				return false;
 		}
@@ -2024,7 +2104,7 @@ bool awh::codec::Bridge::encodeINI(const abc::value_t & value, string & result) 
 			// Продолжаем перебор полей отображения дальше
 			continue;
 		// Извлекаемое значение поля отображения
-		const abc::value_t & node = value[name];
+		const abc::value_t & node = value[i];
 		// Если поле отображением не является
 		if(!node.is(abc::type_t::MAP))
 			// Продолжаем перебор полей отображения дальше
