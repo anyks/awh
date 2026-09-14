@@ -659,11 +659,22 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод извлечения отказов последнего разбора
 				 *
-				 * @return отказы, случившиеся при последнем разборе
+				 * @details Отказы КОПЯТСЯ со всех ходов сбора - разбора набора запуска, разбора
+				 * текста, сбора окружения, чтения и записи файла настроек, - и живут до
+				 * очистки ходом `clear()`. Сделано это ради того, что настройки берутся
+				 * из нескольких источников подряд, а судит их потребитель однажды, в
+				 * конце сбора: очищай их всякий разбор, отказ чтения файла настроек,
+				 * случившийся раньше, стирался бы молча
+				 *
+				 * @return отказы, накопленные с последней очистки
 				 *
 				 * \~english
 				 * @brief Method of the extraction of the refusals of the last parsing
-				 * @return refusals that have occurred at the last parsing
+				 * @details The refusals ACCUMULATE from all the functions of the gathering - the parsing of
+				 * the set of the launch, the parsing of a text, the gathering of the environment, the reading
+				 * and the writing of the settings file - and live until the clearing by the `clear()` function
+				 *
+				 * @return refusals accumulated since the last clearing
 				 *
 				 * \~
 				 */
