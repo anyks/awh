@@ -703,7 +703,7 @@ int main(int argc, char * argv[]) noexcept {
 				string dump = "";
 				// Выполняем перевод дерева значений в запись JSON
 				static_cast <void> (bridge.encode(value, dump, codec::bridge_t::format_t::JSON));
-				::fprintf(stderr, "НАХОДКА %s: собранная запись разбору не поддалась: «%s»\n  дерево: «%s»\n  сужение: %u, пустой узел: %u, пометка: «%s», глубина: %u\n", names[i], first.c_str(), dump.c_str(), static_cast <uint32_t> (bridge.settings().narrow), static_cast <uint32_t> (bridge.settings().empty), bridge.settings().array.c_str(), bridge.settings().depth);
+				::fprintf(stderr, "НАХОДКА %s: собранная запись разбору не поддалась: «%s»\n  дерево: «%s»\n  сужение: %u, пустой узел: %u, пометка: «%s», глубина: %u, корень: «%s», звено: «%s», текст: «%s», вид: %u\n", names[i], first.c_str(), dump.c_str(), static_cast <uint32_t> (bridge.settings().narrow), static_cast <uint32_t> (bridge.settings().empty), bridge.settings().array.c_str(), bridge.settings().depth, bridge.settings().root.c_str(), bridge.settings().item.c_str(), bridge.settings().text.c_str(), static_cast <uint32_t> (bridge.settings().typed));
 				// Если остановка на первой находке затребована
 				if(halt)
 					// Сообщаем сторожу, что прогон окончен
@@ -780,7 +780,7 @@ int main(int argc, char * argv[]) noexcept {
 				// Увеличиваем счёт найденных нарушений договора
 				totals.findings++;
 				// Выводим сообщение о нарушении неподвижности круга
-				::fprintf(stderr, "НАХОДКА %s: круг ползёт\n  второй проход: «%s»\n  третий проход: «%s»\n  первый проход: «%s»\n  дерево: «%s»\n  сужение: %u, пустой узел: %u, пометка: «%s», глубина: %u\n", names[i], next.c_str(), last.c_str(), first.c_str(), [&]{ string dump = ""; static_cast <void> (bridge.encode(value, dump, codec::bridge_t::format_t::JSON)); return dump; }().c_str(), static_cast <uint32_t> (bridge.settings().narrow), static_cast <uint32_t> (bridge.settings().empty), bridge.settings().array.c_str(), bridge.settings().depth);
+				::fprintf(stderr, "НАХОДКА %s: круг ползёт\n  второй проход: «%s»\n  третий проход: «%s»\n  первый проход: «%s»\n  дерево: «%s»\n  сужение: %u, пустой узел: %u, пометка: «%s», глубина: %u, корень: «%s», звено: «%s», текст: «%s», вид: %u\n", names[i], next.c_str(), last.c_str(), first.c_str(), [&]{ string dump = ""; static_cast <void> (bridge.encode(value, dump, codec::bridge_t::format_t::JSON)); return dump; }().c_str(), static_cast <uint32_t> (bridge.settings().narrow), static_cast <uint32_t> (bridge.settings().empty), bridge.settings().array.c_str(), bridge.settings().depth, bridge.settings().root.c_str(), bridge.settings().item.c_str(), bridge.settings().text.c_str(), static_cast <uint32_t> (bridge.settings().typed));
 				// Если остановка на первой находке затребована
 				if(halt)
 					// Сообщаем сторожу, что прогон окончен
