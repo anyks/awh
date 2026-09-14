@@ -1392,3 +1392,42 @@ TEST(CodecSysLogWriter, MessageBreakingTheRecord) {
 	// Выполняем проверку успешности сборки записи возвратом каретки ВНУТРИ текста
 	EXPECT_TRUE(::build(tree("Mes\rsage"), settings, result));
 }
+
+/**
+ * @brief Проверка оборота записи с повтором имени поля блока
+ *
+ * @details Описание дозволяет повтор имени поля внутри блока прямо: «An SD-PARAM MAY be
+ *          repeated multiple times inside an SD-ELEMENT» (RFC 5424, раздел 6.3.3).
+ *          Разбор повтор сохраняет перечнем, а запись его выражает ПОВТОРОМ имени - по
+ *          значению на каждое звено перечня
+ *
+ * @warning Прежде дело стояло надвое: разбор повтор терял, второе значение затирало
+ *          первое; а когда разбор его сохранять научился, запись перечень выразить не
+ *          могла и отвечала NESTED_VALUE - оборот записи с повтором давал ПУСТО. Обе
+ *          половины закрыты аудитом 14.09.2026
+ *
+ */
+TEST(CodecSysLogWriter, RepeatedParamRoundTrip) {
+	// Разбираемая запись с повтором имени поля блока
+	const string text = "<34>1 2003-10-11T22:14:15Z host app - - [a@1 k=\"one\" k=\"two\"] text";
+	// Объект события syslog
+	syslog::document_t document;
+	// Выполняем проверку успешности разбора записи с повтором имени поля
+	ASSERT_TRUE(document.parse(text));
+	// Выполняем проверку того, что повтор имени поля обратился в перечень
+	ASSERT_EQ(document.keys("/structures/a@1/k").size(), static_cast <size_t> (2));
+	// Выполняем сборку записи обратно из дерева события
+	const string rewritten = document.dump();
+	// Выполняем проверку того, что собранная запись повтор имени поля несёт
+	EXPECT_NE(rewritten.find("k=\"one\" k=\"two\""), string::npos) << rewritten;
+	// Объект события повторного разбора
+	syslog::document_t again;
+	// Выполняем проверку успешности повторного разбора собранной записи
+	ASSERT_TRUE(again.parse(rewritten));
+	// Выполняем проверку того, что перечень значений оборот пережил
+	ASSERT_EQ(again.keys("/structures/a@1/k").size(), static_cast <size_t> (2));
+	// Выполняем проверку того, что первое значение поля оборот пережило
+	EXPECT_EQ(again.at("/structures/a@1/k/0").text(), string("one"));
+	// Выполняем проверку того, что второе значение поля оборот пережило
+	EXPECT_EQ(again.at("/structures/a@1/k/1").text(), string("two"));
+}

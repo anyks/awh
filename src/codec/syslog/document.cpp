@@ -281,8 +281,47 @@ bool awh::codec::syslog::Document::parse(const string_view text) noexcept {
 			} break;
 			// Если событием является поле структурированных данных
 			case static_cast <uint8_t> (event_t::PARAM): {
-				// Ставим поле блока структурированных данных в дерево события
-				this->_root.place(string("/") + STRUCTURES)[block][this->_reader.key()] = abc::value_t(this->_reader.value());
+				// Получаем вместилище полей блока структурированных данных
+				abc::value_t & fields = this->_root.place(string("/") + STRUCTURES)[block];
+				/**
+				 * Если имя поля блоком уже объявлено
+				 *
+				 * @details Описание дозволяет повтор имени поля внутри блока прямо:
+				 *          «An SD-PARAM MAY be repeated multiple times inside an
+				 *          SD-ELEMENT» (RFC 5424, раздел 6.3.3). Прежде второе значение
+				 *          ЗАТИРАЛО первое, и повтор терялся молча - запись с двумя
+				 *          значениями возвращалась одним
+				 *
+				 * @note Повтор обращается в перечень и доливается в конец - тем же
+				 *       порядком, каким кодек CEF поступает с повтором ключа расширения.
+				 *       Обход остаётся замкнутым числовыми звеньями пути
+				 */
+				if(fields.contains(this->_reader.key())){
+					// Получаем значение, именем поля уже объявленное
+					abc::value_t & exists = fields[this->_reader.key()];
+					// Если объявленное значение перечнем является
+					if(exists.type() == abc::type_t::ARRAY){
+						// Добавляем новое значение в конец перечня
+						if(!exists.push(abc::value_t(this->_reader.value())))
+							// Выводим отрицательный признак разбора записи
+							return false;
+					// Если объявленное значение перечнем не является
+					} else {
+						// Заводим перечень значений одного имени
+						abc::value_t list(abc::kind_t::ARRAY);
+						// Добавляем объявленное ранее значение в перечень
+						if(!list.push(exists))
+							// Выводим отрицательный признак разбора записи
+							return false;
+						// Добавляем новое значение в перечень
+						if(!list.push(abc::value_t(this->_reader.value())))
+							// Выводим отрицательный признак разбора записи
+							return false;
+						// Ставим перечень значений на место объявленного значения
+						exists = ::std::move(list);
+					}
+				// Если имя поля блоком ещё не объявлено
+				} else fields[this->_reader.key()] = abc::value_t(this->_reader.value());
 			} break;
 			// Если событием является текст сообщения
 			case static_cast <uint8_t> (event_t::MESSAGE): {
@@ -368,6 +407,17 @@ static bool directory(const fs_t & fs, const string & filename) noexcept {
 }
 
 bool awh::codec::syslog::Document::load(const string & filename) noexcept {
+	/**
+	 * Сбрасываем код ошибки последней операции
+	 *
+	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
+	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
+	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *
+	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 */
+	this->_error = error_t::NONE;
 	/**
 	 * Если вместо файла подан каталог
 	 *
@@ -458,12 +508,22 @@ bool awh::codec::syslog::Document::load(const string & filename) noexcept {
  * @return         результат выполнения операции
  */
 bool awh::codec::syslog::Document::save(const string & filename) const noexcept {
+	/**
+	 * Сбрасываем код ошибки последней операции
+	 *
+	 * @note Ход этот константен, а поле кода изменяемо: отказ обязан называть причину.
+	 *       Прежде сохранение отвечало ложью БЕЗ кода вовсе, и `error()` нёс что угодно
+	 */
+	this->_error = error_t::NONE;
 	// Выполняем сбор записи системного журнала из дерева события
 	const string & content = this->dump();
 	// Если сбор записи системного журнала отказом завершился
-	if(content.empty())
+	if(content.empty()){
+		// Запоминаем код ошибки невозможности записи файла
+		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим отрицательный результат выполнения операции
 		return false;
+	}
 	/**
 	 * Выполняем снос прежнего файла записи системного журнала
 	 *
@@ -488,6 +548,8 @@ bool awh::codec::syslog::Document::save(const string & filename) const noexcept 
 	if(!this->_fs.write(filename, content.data(), content.size())){
 		// Выводим в лог сообщение об ошибке записи файла
 		awh::log::print("SysLog file \"%s\" could not be written", awh::log::flag_t::CRITICAL, filename.c_str());
+		// Запоминаем код ошибки невозможности записи файла
+		this->_error = error_t::FILE_NOT_OPENED;
 		// Выводим отрицательный результат выполнения операции
 		return false;
 	}
@@ -615,6 +677,17 @@ const awh::codec::abc::value_t & awh::codec::syslog::Document::at(const string &
  * @return      признак успешности постановки значения
  */
 bool awh::codec::syslog::Document::set(const string & path, const abc::value_t & value) noexcept {
+	/**
+	 * Сбрасываем код ошибки последней операции
+	 *
+	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
+	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
+	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *
+	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 */
+	this->_error = error_t::NONE;
 	// Получаем звенья разбираемого пути
 	const vector <string> links = split(path);
 	// Если путь звеньев не содержит
@@ -690,6 +763,17 @@ bool awh::codec::syslog::Document::set(const string & path, const abc::value_t &
  * @return     признак успешности сброса значения
  */
 bool awh::codec::syslog::Document::reset(const string & path) noexcept {
+	/**
+	 * Сбрасываем код ошибки последней операции
+	 *
+	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
+	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
+	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *
+	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 */
+	this->_error = error_t::NONE;
 	// Если значение по пути деревом не объявлено
 	if(!this->has(path)){
 		// Запоминаем код ошибки отсутствия поля
@@ -708,6 +792,17 @@ bool awh::codec::syslog::Document::reset(const string & path) noexcept {
  * @return     признак успешности сноса значения
  */
 bool awh::codec::syslog::Document::erase(const string & path) noexcept {
+	/**
+	 * Сбрасываем код ошибки последней операции
+	 *
+	 * @details Без сброса код ЗАЛИПАЛ: неудачная операция оставляла его, и всякая
+	 *          следующая - успешная - отвечала истиной при коде прежней беды. Потребитель,
+	 *          судящий по `error()`, а не по возврату, читал ложь. Проверено щупом
+	 *          14.09.2026: после успешного `set` код стоял 21 от прежней неудачи
+	 *
+	 * @note Образец взят у кодека YAML, где сброс стоит в начале каждой операции
+	 */
+	this->_error = error_t::NONE;
 	// Получаем звенья разбираемого пути
 	const vector <string> links = split(path);
 	// Если путь звеньев не содержит
