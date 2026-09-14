@@ -184,7 +184,35 @@ namespace awh {
 					 *       код на обе беды, не знает, что ему править - значение либо
 					 *       дерево
 					 */
-					STRUCTURE   = 0x05
+					STRUCTURE   = 0x05,
+					/**
+					 * \~russian
+					 * Настройка перевода негодна
+					 *
+					 * @details Код этот отделён от `WRITING` намеренно: тот означает
+					 * «кодек записать не смог», и искать причину потребитель идёт в
+					 * ДЕРЕВЕ, а этот означает «негодна сама настройка», и чинится он
+					 * сменою НАСТРОЙКИ. Имя корня и имя звена перечня становятся у
+					 * разметки именами узлов, а имя узла бывает не всяким: пустое
+					 * имя либо имя со знаком, стандартом не допущенным, записи
+					 * негодно вовсе
+					 *
+					 * @note Прежде негодная настройка уходила прямо кодеку, и тот
+					 *       отвечал отказом записи. Потребитель получал `WRITING` и
+					 *       шёл искать изъян в своём дереве, тогда как дерево было
+					 *       верным, а негодна была настройка. Замерено 15.09.2026
+					 *
+					 * \~english
+					 * A setting of the translation is invalid
+					 *
+					 * @details This code is deliberately separated from `WRITING`: that one means
+					 * «the codec could not write», and the consumer goes looking for the cause in the
+					 * TREE, while this one means «the setting itself is invalid», and it is fixed
+					 * by changing the SETTING
+					 *
+					 * \~
+					 */
+					SETTINGS    = 0x06
 				};
 				/**
 				 * \~russian
