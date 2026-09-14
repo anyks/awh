@@ -120,6 +120,46 @@ namespace {
 }
 
 /**
+ * @brief Метод упреждающего спроса пропуска значения правилом сужения
+ *
+ * @param value значение контейнера ABC
+ * @param depth глубина обхода дерева
+ * @return      признак пропуска значения правилом сужения
+ *
+ * @details Ход этот нужен ОДНОЙ лишь дороге JSON, и вот отчего: писатель её
+ * поточный, имя поля уходит в запись ДО значения, и пропустить значение после
+ * записи имени нельзя вовсе - вышло бы имя без значения. Прочие четыре дороги
+ * собирают владеющее значение и кладут его полем СЛЕДОМ, и им довольно признака,
+ * ходом подачи выставленного
+ *
+ * @note Спрос идёт подачею писателю ЧЕРНОВОМУ, а собранное им отбрасывается:
+ *       так знание о том, какие виды записи ведомы, остаётся в ОДНОМ месте - у
+ *       самого хода подачи. Повтори его здесь перечнем видов - перечни разошлись
+ *       бы при первом же заведении нового вида, и разошлись бы МОЛЧА
+ *
+ * @warning Спрос ставится лишь на значениях ПРОСТЫХ: вместилище правилом сужения
+ *          не пропускается никогда, а черновая подача его обошла бы всё поддерево
+ *          и обратила бы обход в квадратичный
+ *
+ */
+bool awh::codec::Bridge::narrows(const abc::value_t & value, const uint32_t depth) noexcept {
+	// Если правило сужения пропуска не велит либо значение является вместилищем
+	if((this->_settings.narrow != narrow_t::SKIP) || value.is(abc::type_t::CONTAINER))
+		// Выводим результат, пропускать значение не следует
+		return false;
+	// Запоминаем код отказа перевода, спросом не потревоженный
+	const error_t error = this->_error;
+	// Создаём чернового писателя записи JSON
+	json::writer_t writer;
+	// Выполняем черновую подачу значения писателю
+	const bool result = (this->feed(value, writer, depth) && this->_skipped);
+	// Восстанавливаем код отказа перевода
+	this->_error = error;
+	// Выводим результат спроса пропуска значения
+	return result;
+}
+
+/**
  * @brief Метод подачи значения ABC писателю JSON
  *
  * @param value  значение контейнера ABC
@@ -129,6 +169,8 @@ namespace {
  *
  */
 bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & writer, const uint32_t depth) noexcept {
+	// Выполняем сброс признака пропуска значения правилом сужения
+	this->_skipped = false;
 	// Если глубина обхода превысила предел перевода
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
@@ -176,11 +218,17 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 				return false;
 			// Выполняем перебор всех значений вместимого
 			for(size_t i = 0; i < value.size(); i++){
+				// Если значение пропускается правилом сужения
+				if(this->narrows(value[i], depth + 1))
+					// Продолжаем перебор значений вместимого дальше
+					continue;
 				// Выполняем подачу значения вместимого писателю JSON
 				if(!this->feed(value[i], writer, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
 			}
+			// Выполняем сброс признака: вместилище само пропущенным не бывает
+			this->_skipped = false;
 			// Выполняем закрытие вместимого записи JSON
 			return writer.close();
 		}
@@ -224,6 +272,10 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 						return false;
 					}
 				}
+				// Если значение поля пропускается правилом сужения
+				if(this->narrows(value[i], depth + 1))
+					// Продолжаем перебор полей отображения дальше
+					continue;
 				// Выполняем запись имени поля отображения
 				if(!writer.key(name))
 					// Выходим из метода, запись отвечена отказом
@@ -233,6 +285,8 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 					// Выходим из метода, подача отвечена отказом
 					return false;
 			}
+			// Выполняем сброс признака: вместилище само пропущенным не бывает
+			this->_skipped = false;
 			// Выполняем закрытие отображения записи JSON
 			return writer.close();
 		}
@@ -276,8 +330,18 @@ bool awh::codec::Bridge::feed(const abc::value_t & value, json::writer_t & write
 	 * обращаются по правилу, настройками заданному
 	 */
 	switch(static_cast <uint8_t> (this->_settings.narrow)){
-		// Если вид, кодеку неведомый, следует пропустить вовсе
+		/**
+		 * Если вид, кодеку неведомый, следует пропустить вовсе
+		 *
+		 * @note Признак пропуска ставится НАРЯДУ с укладкою пустого значения, а не
+		 *       вместо неё: писатель JSON поточный, и пропустить значение можно лишь
+		 *       ДО записи имени поля - ход этот спрашивается упреждающе, писателем
+		 *       черновым, и собранное им отбрасывается. У корня же дерева пропускать
+		 *       нечего, и пустое значение там и есть ответ
+		 */
 		case static_cast <uint8_t> (narrow_t::SKIP):
+			// Запоминаем признак пропуска значения правилом сужения
+			this->_skipped = true;
 			// Выводим пустое значение записью JSON
 			return writer.null();
 		// Если вид, кодеку неведомый, следует обратить в знаки
@@ -894,6 +958,8 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
  *
  */
 bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & result, const uint32_t depth) noexcept {
+	// Выполняем сброс признака пропуска значения правилом сужения
+	this->_skipped = false;
 	// Если глубина обхода превысила предел перевода
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
@@ -956,11 +1022,17 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 				if(!this->feedYAML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
+				// Если значение пропущено правилом сужения
+				if(this->_skipped)
+					// Продолжаем перебор значений вместимого дальше
+					continue;
 				// Выполняем добавление значения концом перечня
 				if(!result.push(item))
 					// Выходим из метода, добавление отвечено отказом
 					return false;
 			}
+			// Выполняем сброс признака: вместилище само пропущенным не бывает
+			this->_skipped = false;
 		} return true;
 		// Если значение является отображением
 		case static_cast <uint32_t> (abc::type_t::MAP): {
@@ -1009,6 +1081,10 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 				if(!this->feedYAML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
+				// Если значение пропущено правилом сужения
+				if(this->_skipped)
+					// Продолжаем перебор полей отображения дальше
+					continue;
 				/**
 				 * Выполняем добавление поля отображению
 				 *
@@ -1020,6 +1096,8 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 					// Выходим из метода, добавление отвечено отказом
 					return false;
 			}
+			// Выполняем сброс признака: вместилище само пропущенным не бывает
+			this->_skipped = false;
 		} return true;
 	}
 	/**
@@ -1088,6 +1166,8 @@ bool awh::codec::Bridge::feedYAML(const abc::value_t & value, yaml::Value & resu
 	switch(static_cast <uint8_t> (this->_settings.narrow)){
 		// Если вид надлежит пропустить вовсе
 		case static_cast <uint8_t> (narrow_t::SKIP):
+			// Запоминаем признак пропуска значения правилом сужения
+			this->_skipped = true;
 			// Выходим из метода, значение пропущено
 			return true;
 		/**
@@ -1222,6 +1302,8 @@ bool awh::codec::Bridge::encodeYAML(const abc::value_t & value, string & result)
  *
  */
 bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & result, const uint32_t depth) noexcept {
+	// Выполняем сброс признака пропуска значения правилом сужения
+	this->_skipped = false;
 	// Если глубина обхода превысила предел перевода
 	if(depth > this->_settings.depth){
 		// Запоминаем код отказа перевода
@@ -1229,10 +1311,24 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 		// Выходим из метода, обход остановлен
 		return false;
 	}
-	// Если значение контейнера ABC недействительно вовсе
-	if(!value.valid())
+	/**
+	 * Если значение контейнера ABC недействительно вовсе
+	 *
+	 * @warning Пропуск здесь ОБЪЯВЛЕННЫЙ, а не молчаливый выход успехом: прежде
+	 *          ход выходил успехом, значения не тронув, а вкладывающий клал
+	 *          НЕТРОНУТОЕ значение полем - собиратель отвечал отказом `WRITING`,
+	 *          и дерево с одним недействительным полем в запись TOML не ложилось
+	 *          ВОВСЕ. У прочих четырёх дорог значение такое ложится пустым, ибо
+	 *          нетронутое значение у них пустым и является; у записи TOML пустого
+	 *          вида нет вовсе, и честный ответ здесь - пропуск. Замерено
+	 *          15.09.2026 аудитом
+	 */
+	if(!value.valid()){
+		// Запоминаем признак пропуска значения
+		this->_skipped = true;
 		// Выходим из метода, подавать нечего
 		return true;
+	}
 	// Определяем вид значения контейнера ABC
 	switch(static_cast <uint32_t> (value.type())){
 		// Если значение является логическим
@@ -1273,11 +1369,17 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 				if(!this->feedTOML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
+				// Если значение пропущено правилом сужения
+				if(this->_skipped)
+					// Продолжаем перебор значений вместимого дальше
+					continue;
 				// Выполняем добавление значения концом перечня
 				if(!result.push(item))
 					// Выходим из метода, добавление отвечено отказом
 					return false;
 			}
+			// Выполняем сброс признака: вместилище само пропущенным не бывает
+			this->_skipped = false;
 		} return true;
 		// Если значение является отображением
 		case static_cast <uint32_t> (abc::type_t::MAP): {
@@ -1326,6 +1428,10 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 				if(!this->feedTOML(value[i], item, depth + 1))
 					// Выходим из метода, подача отвечена отказом
 					return false;
+				// Если значение пропущено правилом сужения
+				if(this->_skipped)
+					// Продолжаем перебор полей отображения дальше
+					continue;
 				/**
 				 * Выполняем добавление поля отображению
 				 *
@@ -1338,6 +1444,8 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 					// Выходим из метода, добавление отвечено отказом
 					return false;
 			}
+			// Выполняем сброс признака: вместилище само пропущенным не бывает
+			this->_skipped = false;
 		} return true;
 	}
 	/**
@@ -1378,9 +1486,12 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 				return false;
 			}
 			// Если сужение велит пропускать значение вовсе
-			if(this->_settings.narrow == narrow_t::SKIP)
+			if(this->_settings.narrow == narrow_t::SKIP){
+				// Запоминаем признак пропуска значения правилом сужения
+				this->_skipped = true;
 				// Выходим из метода, значение пропущено
 				return true;
+			}
 			// Выполняем заведение записи числа последовательностью знаков
 			result = toml::Value(this->record(value));
 			// Выводим результат подачи
@@ -1430,6 +1541,8 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
 	switch(static_cast <uint8_t> (this->_settings.narrow)){
 		// Если вид надлежит пропустить вовсе
 		case static_cast <uint8_t> (narrow_t::SKIP):
+			// Запоминаем признак пропуска значения правилом сужения
+			this->_skipped = true;
 			// Выходим из метода, значение пропущено
 			return true;
 		/**
@@ -1463,6 +1576,25 @@ bool awh::codec::Bridge::feedTOML(const abc::value_t & value, toml::Value & resu
  *
  */
 bool awh::codec::Bridge::encodeTOML(const abc::value_t & value, string & result) noexcept {
+	/**
+	 * Если корнем дерева стоит не отображение
+	 *
+	 * @warning Спрос этот стоит ровно затем же, зачем он стоит у дороги INI:
+	 *          верхний уровень записи TOML есть ТАБЛИЦА, и ни числу, ни перечню,
+	 *          ни пустому значению там места нет вовсе. Прежде спроса не было, и
+	 *          дерево такое уходило собирателю, а тот отвечал отказом `WRITING`
+	 *          да сообщением «empty key name» - потребитель, увидев его, искал
+	 *          изъян в ИМЕНАХ полей, тогда как имена были ни при чём, а негоден
+	 *          был корень. Замерено 15.09.2026 аудитом
+	 */
+	if(!value.is(abc::type_t::MAP)){
+		// Запоминаем код отказа перевода
+		this->_error = error_t::STRUCTURE;
+		// Выводим сообщение о негодном строении дерева
+		awh::log::print("Запись TOML требует отображения корнем дерева", awh::log::flag_t::WARNING);
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
 	// Создаём документ записи TOML
 	toml::document_t document;
 	// Собираемое владеющее значение записи TOML
@@ -3362,4 +3494,4 @@ void awh::codec::Bridge::settings(const settings_t & settings) noexcept {
  *
  * \~
  */
-awh::codec::Bridge::Bridge() noexcept : _error(error_t::NONE) {}
+awh::codec::Bridge::Bridge() noexcept : _error(error_t::NONE), _skipped(false) {}

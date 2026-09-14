@@ -82,6 +82,10 @@ using namespace awh;
  *
  */
 namespace {
+	// Названия причин отказа перевода
+	static const char * const REASON[] = {"нет отказа", "разбор", "запись", "вид неведом", "глубина", "устройство записи", "настройки"};
+	// Число причин отказа перевода
+	static constexpr size_t REASONS = (sizeof(REASON) / sizeof(REASON[0]));
 	/**
 	 * @brief Учёт проделанной работы
 	 *
@@ -107,8 +111,19 @@ namespace {
 		uint64_t findings = 0;
 		// Число переводов, отвеченных отказом, по видам записи
 		uint64_t refused[5] = {0, 0, 0, 0, 0};
-		// Число переводов, отвеченных отказом, по причинам отказа
-		uint64_t reasons[6] = {0, 0, 0, 0, 0, 0};
+		/**
+		 * Число переводов, отвеченных отказом, по причинам отказа
+		 *
+		 * @warning Ширина эта обязана покрывать ВСЕ коды отказа: прежде она стояла
+		 *          на пяти при шести кодах, а после заведения кода `SETTINGS` - на
+		 *          шести при семи, и целый разряд отказов не попадал в отчёт вовсе
+		 *          ОБА раза. Ширина берётся у перечня НАЗВАНИЙ причин, дабы
+		 *          заведение нового кода без названия его валило сборку, а не
+		 *          молчало
+		 */
+		uint64_t reasons[REASONS] = {};
+		// Число переводов, отвеченных отказом, по видам записи и причинам отказа
+		uint64_t breakdown[5][REASONS] = {};
 	};
 	/**
 	 * @brief Функция построения имени поля отображения
@@ -585,9 +600,12 @@ int main(int argc, char * argv[]) noexcept {
 				 *          разбор по причинам с ним не сходился МОЛЧА. Замерено
 				 *          09.09.2026 аудитом
 				 */
-				if(static_cast <size_t> (bridge.error()) < (sizeof(totals.reasons) / sizeof(totals.reasons[0])))
+				if(static_cast <size_t> (bridge.error()) < REASONS){
 					// Увеличиваем счёт отказов по причине
 					totals.reasons[static_cast <size_t> (bridge.error())]++;
+					// Увеличиваем счёт отказов по виду записи и причине
+					totals.breakdown[i][static_cast <size_t> (bridge.error())]++;
+				}
 				/**
 				 * Если отказ пришёл без причины
 				 *
@@ -806,12 +824,30 @@ int main(int argc, char * argv[]) noexcept {
 	for(size_t i = 0; i < (sizeof(formats) / sizeof(formats[0])); i++)
 		// Выводим счёт отказов по очередному виду записи
 		::fprintf(stdout, "  отказов %s: %llu\n", names[i], static_cast <unsigned long long> (totals.refused[i]));
-	// Названия причин отказа перевода
-	const char * reasons[] = {"нет отказа", "разбор", "запись", "вид неведом", "глубина", "устройство записи"};
 	// Выполняем перебор всех причин отказа
-	for(size_t i = 0; i < (sizeof(reasons) / sizeof(reasons[0])); i++)
+	for(size_t i = 0; i < REASONS; i++)
 		// Выводим счёт отказов по очередной причине
-		::fprintf(stdout, "  по причине «%s»: %llu\n", reasons[i], static_cast <unsigned long long> (totals.reasons[i]));
+		::fprintf(stdout, "  по причине «%s»: %llu\n", REASON[i], static_cast <unsigned long long> (totals.reasons[i]));
+	/**
+	 * Выполняем перебор всех видов записи
+	 *
+	 * @note Разбор двумерный показывает, какой дороге причина принадлежит: общий
+	 *       счёт по причинам на вопрос «у кого именно» не отвечает, и отказ,
+	 *       одной лишь дороге свойственный, тонул в сумме по пятерым
+	 */
+	for(size_t i = 0; i < (sizeof(formats) / sizeof(formats[0])); i++){
+		// Выводим имя очередного вида записи
+		::fprintf(stdout, "  %s по причинам:", names[i]);
+		// Выполняем перебор всех причин отказа
+		for(size_t j = 0; j < REASONS; j++){
+			// Если отказы по этой причине у этого вида записи были
+			if(totals.breakdown[i][j] > 0)
+				// Выводим счёт отказов по очередной причине
+				::fprintf(stdout, " %s=%llu", REASON[j], static_cast <unsigned long long> (totals.breakdown[i][j]));
+		}
+		// Выводим конец строки разбора
+		::fprintf(stdout, "\n");
+	}
 	// Выводим код выхода по наличию находок
 	return ((totals.findings > 0) ? 1 : 0);
 }
