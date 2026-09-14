@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_PROCRE__
-#define __AWH_PROCRE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -263,5 +262,3 @@ namespace awh {
 			~Process_Resolver() noexcept;
 	} procre_t;
 };
-
-#endif // __AWH_PROCRE__

@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_DETECT__
-#define __AWH_LEXICAL_DETECT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -41,12 +40,12 @@
 /**
  * Если архитектура соответствует 64-битной, но не определена разрядность по SIZE_MAX - считаем платформу 64-битной
  */
-#if (__x86_64 || __x86_64__ || _M_X64 || \
-	 __amd64 || __aarch64__ || _M_ARM64 || \
-	 __MINGW64__ || __s390x__ || \
-	 __ppc64__ || __PPC64__ || \
-	 __ppc64le__ || __PPC64LE__ || \
-	 __loongarch64 || (__riscv && (__riscv_xlen == 64)))
+#if (defined(__x86_64) || defined(__x86_64__) || defined(_M_X64) || \
+	 defined(__amd64) || defined(__aarch64__) || defined(_M_ARM64) || \
+	 defined(__MINGW64__) || defined(__s390x__) || \
+	 defined(__ppc64__) || defined(__PPC64__) || \
+	 defined(__ppc64le__) || defined(__PPC64LE__) || \
+	 defined(__loongarch64) || (defined(__riscv) && (__riscv_xlen == 64)))
 	/**
 	 * Платформа является 64-битной
 	 */
@@ -54,10 +53,10 @@
 /**
  * Если архитектура соответствует 32-битной, но не определена разрядность по SIZE_MAX - считаем платформу 32-битной
  */
-#elif (__i386 || __i386__ || _M_IX86 || \
-	 __arm__ || _M_ARM || __ppc__ || \
-	 __MINGW32__ || __EMSCRIPTEN__ || \
-	 (__riscv && (__riscv_xlen == 32)))
+#elif (defined(__i386) || defined(__i386__) || defined(_M_IX86) || \
+	 defined(__arm__) || defined(_M_ARM) || defined(__ppc__) || \
+	 defined(__MINGW32__) || defined(__EMSCRIPTEN__) || \
+	 (defined(__riscv) && (__riscv_xlen == 32)))
 	/**
 	 * Платформа является 32-битной
 	 */
@@ -65,7 +64,7 @@
 /** 
  * Если архитектура поддерживает 128-битные регистры, но не определена разрядность по SIZE_MAX - считаем платформу 64-битной
  */
-#elif (SIZE_MAX == 0xFFFFFFFFFFFFFFFFULL)
+#elif defined(SIZE_MAX) && (SIZE_MAX == 0xFFFFFFFFFFFFFFFFULL)
 	/**
 	 * Разрядность определена по максимальному размеру объекта
 	 */
@@ -73,7 +72,7 @@
 /**
  * Если архитектура поддерживает 64-битные регистры, но не определена разрядность по SIZE_MAX - считаем платформу 32-битной
  */
-#elif (SIZE_MAX == 0xFFFFFFFFUL)
+#elif defined(SIZE_MAX) && (SIZE_MAX == 0xFFFFFFFFUL)
 	/**
 	 * Разрядность определена по максимальному размеру объекта
 	 */
@@ -91,7 +90,7 @@
 /**
  * Определяем компилятор Visual Studio
  */
-#if _MSC_VER && !__clang__
+#if defined(_MSC_VER) && !defined(__clang__)
 	/**
 	 * Сборка выполняется компилятором Visual Studio
 	 */
@@ -101,8 +100,8 @@
 /**
  * Подключаем интринсики Visual Studio для 128-битного умножения
  */
-#if (AWH_LEXICAL_VISUAL_STUDIO && (_WIN32 || _WIN64)) || \
-	(_M_ARM64 && !__MINGW32__ && !__clang__)
+#if (defined(AWH_LEXICAL_VISUAL_STUDIO) && (defined(_WIN32) || defined(_WIN64))) || \
+	(defined(_M_ARM64) && !defined(__MINGW32__) && !defined(__clang__))
 	// Подключаем интринсики Visual Studio для 128-битного умножения
 	#include <intrin.h>
 #endif
@@ -119,7 +118,7 @@
  *
  * \~
  */
-#if __BYTE_ORDER__ && __ORDER_BIG_ENDIAN__
+#if defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__)
 	/**
 	 * Порядок байт получен из встроенных макросов компилятора
 	 */
@@ -127,7 +126,7 @@
 /**
  * Определяем порядок байт платформы для Visual Studio
  */
-#elif _WIN32 || _M_IX86 || _M_X64 || _M_ARM || _M_ARM64
+#elif defined(_WIN32) || defined(_M_IX86) || defined(_M_X64) || defined(_M_ARM) || defined(_M_ARM64)
 	/**
 	 * Платформы Windows всегда little-endian
 	 */
@@ -135,8 +134,8 @@
 /**
  * Если порядок байт платформы для GCC и Clang сответствует big-endian - определяем макрос как 1, иначе как 0
  */
-#elif __BIG_ENDIAN__ || __ARMEB__ || __THUMBEB__ || \
-	 __AARCH64EB__ || _MIBSEB || __MIBSEB || __MIBSEB__
+#elif defined(__BIG_ENDIAN__) || defined(__ARMEB__) || defined(__THUMBEB__) || \
+	 defined(__AARCH64EB__) || defined(_MIBSEB) || defined(__MIBSEB) || defined(__MIBSEB__)
 	/**
 	 * Платформа объявлена как big-endian
 	 */
@@ -144,8 +143,8 @@
 /**
  * Если порядок байт платформы для GCC и Clang сответствует little-endian - определяем макрос как 0, иначе как 1
  */
-#elif __LITTLE_ENDIAN__ || __ARMEL__ || __THUMBEL__ || \
-	 __AARCH64EL__ || _MIPSEL || __MIPSEL || __MIPSEL__
+#elif defined(__LITTLE_ENDIAN__) || defined(__ARMEL__) || defined(__THUMBEL__) || \
+	 defined(__AARCH64EL__) || defined(_MIPSEL) || defined(__MIPSEL) || defined(__MIPSEL__)
 	/**
 	 * Платформа объявлена как little-endian
 	 */
@@ -157,19 +156,19 @@
 	/**
 	 * Если операционная система соответствует Apple
 	 */
-	#if __APPLE__ || __FreeBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__)
 		// Подключаем системный заголовок с описанием порядка байт
 		#include <machine/endian.h>
 	/**
 	 * Если операционная система соответствует Solaris или OpenIndiana
 	 */
-	#elif sun || __sun
+	#elif defined(sun) || defined(__sun)
 		// Подключаем системный заголовок с описанием порядка байт
 		#include <sys/byteorder.h>
 	/**
 	 * Если операционная система соответствует Windows
 	 */
-	#elif __MVS__
+	#elif defined(__MVS__)
 		// Подключаем системный заголовок с описанием порядка байт
 		#include <sys/endian.h>
 	/**
@@ -187,7 +186,7 @@
 	/**
 	 * Если порядок байт платформы получен из системного заголовка
 	 */
-	#if BYTE_ORDER && BIG_ENDIAN
+	#if defined(BYTE_ORDER) && defined(BIG_ENDIAN)
 		/**
 		 * Порядок байт получен из системного заголовка
 		 */
@@ -206,8 +205,8 @@
 /**
  * Определяем поддержку набора инструкций SSE2
  */
-#if __SSE2__ || (AWH_LEXICAL_VISUAL_STUDIO && \
-	(_M_AMD64 || _M_X64 || (_M_IX86_FP && (_M_IX86_FP == 2))))
+#if defined(__SSE2__) || (defined(AWH_LEXICAL_VISUAL_STUDIO) && \
+	(defined(_M_AMD64) || defined(_M_X64) || (defined(_M_IX86_FP) && (_M_IX86_FP == 2))))
 	/**
 	 * Набор инструкций SSE2 доступен
 	 */
@@ -217,7 +216,7 @@
 /**
  * Определяем поддержку набора инструкций NEON
  */
-#if __aarch64__ || _M_ARM64
+#if defined(__aarch64__) || defined(_M_ARM64)
 	/**
 	 * Набор инструкций NEON доступен
 	 */
@@ -227,7 +226,7 @@
 /**
  * Определяем общую доступность векторных инструкций
  */
-#if AWH_LEXICAL_SSE2 || AWH_LEXICAL_NEON
+#if defined(AWH_LEXICAL_SSE2) || defined(AWH_LEXICAL_NEON)
 	/**
 	 * Векторные инструкции доступны
 	 */
@@ -237,7 +236,7 @@
 /**
  * Если компилятор принадлежит к семейству GCC или Clang
  */
-#if __GNUC__
+#if defined(__GNUC__)
 	/**
 	 * Отключаем предупреждения о выравнивании указателей
 	 */
@@ -289,7 +288,7 @@
 /**
  * Если компилятор принадлежит к Visual Studio
  */
-#ifdef AWH_LEXICAL_VISUAL_STUDIO
+#if defined(AWH_LEXICAL_VISUAL_STUDIO)
 	/**
 	 * Принудительная подстановка средствами Visual Studio
 	 */
@@ -322,7 +321,7 @@
  *
  * \~
  */
-#ifndef AWH_LEXICAL_ASSERT
+#if !defined(AWH_LEXICAL_ASSERT)
 	/**
 	 * Проверка внутренних инвариантов модуля активна только в отладочной сборке
 	 */
@@ -332,7 +331,7 @@
 /**
  * Проверяем корректность подключения стандартных заголовочных файлов
  */
-#ifndef FLT_EVAL_METHOD
+#if !defined(FLT_EVAL_METHOD)
 	/**
 	 * Стандартный заголовочный файл <cfloat> не подключён, либо компилятор не поддерживает
 	 * стандарт C99 и выше, либо платформа не поддерживается: требуется исправить подключение
@@ -340,5 +339,3 @@
 	 */
 	#error "AWH lexical: FLT_EVAL_METHOD is not defined, <cfloat> is required"
 #endif
-
-#endif // __AWH_LEXICAL_DETECT__

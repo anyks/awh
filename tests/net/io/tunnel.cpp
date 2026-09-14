@@ -73,7 +73,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -179,7 +179,7 @@ static bool tunnelPrivileged() noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Описатель маркера доступа текущего процесса
 		HANDLE token = nullptr;
 		// Если маркер доступа текущего процесса получить не удалось
@@ -267,7 +267,7 @@ enum class tunnel_driver_t : uint8_t {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Размер буфера под состав устройств машины
 		ULONG size = 0;
 		// Спрашиваем потребный размер буфера
@@ -326,7 +326,7 @@ enum class tunnel_driver_t : uint8_t {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем загрузку библиотеки драйвера Wintun
 		HMODULE handle = ::LoadLibraryExW(L"wintun.dll", nullptr, LOAD_LIBRARY_SEARCH_APPLICATION_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
 		// Если библиотека драйвера загружена
@@ -351,7 +351,7 @@ static void tunnelPinDriver([[maybe_unused]] awh::engine::io_t * io, [[maybe_unu
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Если объект сетевого движка не передан
 		if(io == nullptr)
 			// Выходим из функции
@@ -401,7 +401,7 @@ static const char * tunnelPinForCount([[maybe_unused]] awh::engine::io_t * io, [
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Если постоянных устройств на машине хватает
 		if(tunnelDevicesCount() >= count){
 			// Закрепляем драйвер tap-windows6
@@ -490,7 +490,7 @@ static bool tunnelReady([[maybe_unused]] const uint16_t count) noexcept {
 	/**
 	 * Для операционных систем Sun
 	 */
-	#if __sun__
+	#if defined(__sun__)
 		// Число отысканных связей
 		uint16_t found = 0;
 		/**
@@ -515,7 +515,7 @@ static bool tunnelReady([[maybe_unused]] const uint16_t count) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#elif _WIN32 || _WIN64
+	#elif defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Выводим признак готовности окружения
 		 *
@@ -1100,7 +1100,7 @@ TEST_F(IoFixture, IoTunnelAcceptsWrittenPacketTest){
 	 */
 	{
 		// Срок ожидания приёмника
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Срок ожидания задаётся числом миллисекунд
 			const DWORD timeout = 500;
 		#else
@@ -1401,7 +1401,7 @@ TEST_F(IoFixture, IoTunnelDeliversFirstWrittenPacketTest){
 	 */
 	{
 		// Срок ожидания приёмника
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Срок ожидания задаётся числом миллисекунд
 			const DWORD timeout = 500;
 		#else
@@ -2523,7 +2523,7 @@ TEST_F(IoFixture, IoTunnelRefusesCommitWithoutAddressTest){
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Доступен ли на машине драйвер Wintun
 	 *

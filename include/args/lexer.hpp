@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ARGS_LEXER__
-#define __AWH_ARGS_LEXER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -293,5 +292,3 @@ namespace awh {
 		} lexer_t;
 	}
 }
-
-#endif // __AWH_ARGS_LEXER__

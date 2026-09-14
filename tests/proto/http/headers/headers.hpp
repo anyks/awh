@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_HEADERS_TESTS__
-#define __AWH_HTTP_HEADERS_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -59,5 +58,3 @@ class HeadersFixture : public testing::Test {
 		 */
 		awh::http::headers_t::header_t header(const std::string & name, const std::string & value) const noexcept;
 };
-
-#endif // __AWH_HTTP_HEADERS_TESTS__

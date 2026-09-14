@@ -28,8 +28,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PARSER_HTTP2_HPACK__
-#define __AWH_HTTP_PARSER_HTTP2_HPACK__
+#pragma once
 
 /**
  * Если компилятор принадлежит к семейству Visual Studio
@@ -1539,5 +1538,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_HTTP_PARSER_HTTP2_HPACK__

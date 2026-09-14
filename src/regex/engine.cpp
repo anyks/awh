@@ -224,7 +224,7 @@ bool awh::regex::Engine::build(string_view pattern, const uint32_t flags, expres
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Regular expression could not be parsed at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern)}, awh::log::flag_t::WARNING, this->_parser.errorPos(), this->message().c_str());
 		/**

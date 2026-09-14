@@ -381,7 +381,7 @@ void awh::http::Authorization::type(const type_t type, const hash_t hash) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), static_cast <uint16_t> (hash)}, awh::log::flag_t::CRITICAL, error.what());
 		/**

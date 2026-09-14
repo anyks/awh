@@ -690,8 +690,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CHRONO__
-#define __AWH_CHRONO__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -4982,5 +4981,3 @@ namespace awh {
 			~Chrono() noexcept = default;
 	} chrono_t;
 };
-
-#endif // __AWH_CHRONO__

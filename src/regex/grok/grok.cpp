@@ -814,7 +814,7 @@ awh::Grok::exp_t awh::Grok::build(string_view pattern, const uint32_t flags) con
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Grok pattern could not be expanded", __PRETTY_FUNCTION__, {string(pattern), flags}, awh::log::flag_t::WARNING);
 		/**

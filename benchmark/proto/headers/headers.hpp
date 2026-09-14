@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_HTTP_HEADERS__
-#define __AWH_BENCHMARK_HTTP_HEADERS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -135,5 +134,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_HTTP_HEADERS__

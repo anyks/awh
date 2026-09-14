@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_ABC_STORAGE__
-#define __AWH_CODEC_ABC_STORAGE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -636,5 +635,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_CODEC_ABC_STORAGE__

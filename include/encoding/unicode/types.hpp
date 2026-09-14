@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNICODE_TYPES__
-#define __AWH_UNICODE_TYPES__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -400,5 +399,3 @@ namespace awh {
 		} naming_t;
 	};
 };
-
-#endif // __AWH_UNICODE_TYPES__

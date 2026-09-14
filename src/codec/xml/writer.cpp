@@ -1940,7 +1940,7 @@ bool awh::codec::xml::Writer::refuse(const error_t error) noexcept {
 	 *       текст извне и негодности его не виноват, тогда как записывается то, что
 	 *       собрало само приложение. Негодное здесь означает дефект у потребителя
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем отказ записи в журнал работы
 		awh::log::debug("XML writing failed: %s", __PRETTY_FUNCTION__, {},
 		                  awh::log::flag_t::CRITICAL, message(error));

@@ -43,8 +43,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LOGGER__
-#define __AWH_LOGGER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1172,5 +1171,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void debug(wstring_view format, string_view method, initializer_list <arg_t> params, flag_t flag, const vector <wstring> & args) noexcept;
 	}
 };
-
-#endif // __AWH_LOGGER__

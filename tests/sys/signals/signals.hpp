@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_SIGNALS_TESTS__
-#define __AWH_SIGNALS_TESTS__
+#pragma once
 
 #include "../../main.hpp"
 #include "../../../include/sys/signals.hpp"
@@ -45,5 +44,3 @@ class SignalsFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_SIGNALS_TESTS__

@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_TESTS_JOURNAL__
-#define __AWH_CODEC_TESTS_JOURNAL__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -154,5 +153,3 @@ namespace {
 			}
 	};
 }
-
-#endif // __AWH_CODEC_TESTS_JOURNAL__

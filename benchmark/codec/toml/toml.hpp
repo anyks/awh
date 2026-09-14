@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_CODEC_TOML__
-#define __AWH_BENCHMARK_CODEC_TOML__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -266,5 +265,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_CODEC_TOML__

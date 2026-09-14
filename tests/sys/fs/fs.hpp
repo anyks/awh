@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_FS_TESTS__
-#define __AWH_FS_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -48,5 +47,3 @@ class FSFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_FS_TESTS__

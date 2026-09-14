@@ -79,8 +79,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_CACHE__
-#define __AWH_ALLOC_CACHE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1015,5 +1014,3 @@ namespace awh {
 		} caches_t;
 	};
 };
-
-#endif // __AWH_ALLOC_CACHE__

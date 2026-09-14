@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL__
-#define __AWH_BENCHMARK_RIVAL__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -366,7 +365,7 @@ namespace rival {
 		/**
 		 * Если стенд собран под операционную систему macOS
 		 */
-		#if __APPLE__
+		#if defined(__APPLE__)
 			// Выводим пиковый объём занятой памяти как есть: macOS сообщает его в октетах
 			return static_cast <size_t> (usage.ru_maxrss);
 		/**
@@ -836,5 +835,3 @@ namespace rival {
 		return std::chrono::duration <double> (finish - start).count();
 	}
 };
-
-#endif // __AWH_BENCHMARK_RIVAL__

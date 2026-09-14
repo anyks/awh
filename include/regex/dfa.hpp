@@ -106,8 +106,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_DFA__
-#define __AWH_REGEX_DFA__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -668,5 +667,3 @@ namespace awh {
 		} dfa_t;
 	};
 };
-
-#endif // __AWH_REGEX_DFA__

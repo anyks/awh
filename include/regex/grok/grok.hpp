@@ -212,8 +212,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_GROK_INTERFACE__
-#define __AWH_GROK_INTERFACE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -965,5 +964,3 @@ namespace awh {
 			~Grok() noexcept {}
 	} grok_t;
 }
-
-#endif // __AWH_GROK_INTERFACE__

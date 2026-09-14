@@ -23,7 +23,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 *
@@ -58,7 +58,7 @@
  *       Работа с файлами ведётся там средствами самой системы через sys/macro/win32.hpp
  *
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Системные заголовочные файлы
 	 */
@@ -69,7 +69,7 @@
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Системный заголовочный файл для работы с syslog
 	 */
@@ -83,18 +83,18 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Если перенос строки лога не установлен
 	 */
-	#ifndef AWH_STRING_BREAK
+	#if !defined(AWH_STRING_BREAK)
 		// Формируем перенос строк лога
 		#define AWH_STRING_BREAK "\r\n"
 	#endif
 	/**
 	 * Если переносы строки лога не установлены
 	 */
-	#ifndef AWH_STRING_BREAKS
+	#if !defined(AWH_STRING_BREAKS)
 		// Формируем переносы строк лога
 		#define AWH_STRING_BREAKS AWH_STRING_BREAK"" AWH_STRING_BREAK
 	#endif
@@ -105,14 +105,14 @@
 	/**
 	 * Если перенос строки лога не установлен
 	 */
-	#ifndef AWH_STRING_BREAK
+	#if !defined(AWH_STRING_BREAK)
 		// Формируем перенос строк лога
 		#define AWH_STRING_BREAK "\n"
 	#endif
 	/**
 	 * Если переносы строки лога не установлены
 	 */
-	#ifndef AWH_STRING_BREAKS
+	#if !defined(AWH_STRING_BREAKS)
 		// Формируем переносы строк лога
 		#define AWH_STRING_BREAKS AWH_STRING_BREAK"" AWH_STRING_BREAK
 	#endif
@@ -717,7 +717,7 @@ namespace awh {
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Закрываем дескриптор файла
 						::CloseHandle(reinterpret_cast <HANDLE> (this->_fd));
 					/**
@@ -733,7 +733,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Открываем файл лога на дозапись (FILE_APPEND_DATA обеспечивает атомарную дозапись)
 					HANDLE handle = ::CreateFileW(fmk::convert(state()._filename).c_str(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
 					// Если файл открыт нормально
@@ -777,7 +777,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Получаем путь к исходному файлу лога
 					const wstring & filename = fmk::convert(state()._filename);
 					// Открываем исходный файл лога на чтение
@@ -884,7 +884,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Формируем маску поиска архивов
 					const wstring & mask = fmk::convert(fmk::format("%s%s*.gz", dir.c_str(), base.c_str()));
 					// Структура данных результата поиска
@@ -970,7 +970,7 @@ namespace awh {
 						/**
 						 * Для операционной системы MS Windows
 						 */
-						#if _WIN32 || _WIN64
+						#if defined(_WIN32) || defined(_WIN64)
 							// Удаляем устаревший архив
 							::_wunlink(fmk::convert(archives.at(i).first).c_str());
 						/**
@@ -999,7 +999,7 @@ namespace awh {
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Проверяем существование файла по его атрибутам
 						return (::GetFileAttributesW(fmk::convert(path).c_str()) != INVALID_FILE_ATTRIBUTES);
 					/**
@@ -1072,7 +1072,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					/**
 					 * Выполняем запись строки лога с учётом возможной частичной записи
 					 */
@@ -1133,7 +1133,7 @@ namespace awh {
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Закрываем текущий дескриптор перед ротацией
 						::CloseHandle(reinterpret_cast <HANDLE> (this->_fd));
 					/**
@@ -1166,7 +1166,7 @@ namespace awh {
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Закрываем дескриптор файла
 						::CloseHandle(reinterpret_cast <HANDLE> (this->_fd));
 					/**
@@ -1191,7 +1191,7 @@ namespace awh {
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
-				#if !_WIN32 && !_WIN64
+				#if !defined(_WIN32) && !defined(_WIN64)
 					// Открываем SysLog для нашего приложения
 					::openlog(!state()._name.empty() ? state()._name.c_str() : AWH_SHORT_NAME, LOG_PID, LOG_USER);
 					// Уровень сообщения SysLog
@@ -1261,7 +1261,7 @@ namespace awh {
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
-				#if !_WIN32 && !_WIN64
+				#if !defined(_WIN32) && !defined(_WIN64)
 					// Если разрешена отправка логов в SysLog
 					if(self._mode.find(mode_t::SYSLOG) != self._mode.end())
 						// Добавляем приёмник SysLog
@@ -1439,7 +1439,7 @@ namespace awh {
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
-						#if !_WIN32 && !_WIN64
+						#if !defined(_WIN32) && !defined(_WIN64)
 							// Устанавливаем путь к текущему каталогу
 							result.first.append("./");
 						#endif

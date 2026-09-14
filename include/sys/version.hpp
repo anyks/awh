@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_VERSION__
-#define __AWH_VERSION__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -411,5 +410,3 @@ namespace awh {
 	 */
 	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const version_t & version) noexcept;
 };
-
-#endif // __AWH_VERSION__

@@ -89,7 +89,7 @@ void ChronoFixture::TearDown(){
 	 */
 	// Если временной зоны в окружении не было
 	else {
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Закрепляем временную зону окружения на UTC вместо снятия её
 			::setenv("TZ", "UTC", 1);
 		/**

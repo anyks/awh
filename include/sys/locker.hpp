@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LOCKER__
-#define __AWH_LOCKER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -51,7 +50,7 @@
  */
 #if defined(_MSC_VER)
 	#include <process.h>
-	#ifndef getpid
+	#if !defined(getpid)
 		#define getpid _getpid
 	#endif
 	/**
@@ -876,5 +875,3 @@ namespace awh {
  * Возвращаем макросы, снятые в начале файла
  */
 #include "macro/restore.hpp"
-
-#endif // __AWH_LOCKER__

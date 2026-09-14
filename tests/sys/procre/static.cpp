@@ -75,7 +75,7 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Процесса с идентификатором 1 у MS Windows не существует: идентификаторы
 		 * выдаются там кратными четырём, единица среди них не встречается вовсе.

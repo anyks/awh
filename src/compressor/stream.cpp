@@ -22,7 +22,7 @@
 /**
  * Если не определён размер рабочего буфера порции данных, устанавливаем его
  */
-#ifndef AWH_COMPRESSOR_STREAM_CHUNK
+#if !defined(AWH_COMPRESSOR_STREAM_CHUNK)
 	/**
 	 * Устанавливаем размер рабочего буфера порции данных
 	 */
@@ -2031,7 +2031,7 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (flush)}, log::flag_t::WARNING, "Buffer is not passed");
 		/**
@@ -2062,7 +2062,7 @@ void awh::compressor::Stream::push(const void * buffer, const size_t size, T & r
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Compressor: %s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (flush)}, log::flag_t::WARNING, "Input chunk is too large for the selected method");
 		/**

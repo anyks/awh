@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef __AWH_PROTO_QUIC_VARINT__
-#define __AWH_PROTO_QUIC_VARINT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -156,5 +155,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_PROTO_QUIC_VARINT__

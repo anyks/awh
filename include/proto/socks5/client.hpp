@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_PROTO_SOCKS5_CLIENT__
-#define __AWH_PROTO_SOCKS5_CLIENT__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -203,5 +202,3 @@ namespace awh {
 		} client_socks5_t;
 	};
 };
-
-#endif // __AWH_PROTO_SOCKS5_CLIENT__

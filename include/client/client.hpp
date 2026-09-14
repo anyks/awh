@@ -31,8 +31,7 @@
 /**
  * Защита от повторного включения заголовочного файла
  */
-#ifndef __AWH_CLIENT__
-#define __AWH_CLIENT__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -2110,5 +2109,3 @@ namespace awh {
 			virtual ~Client() noexcept;
 	} client_t;
 };
-
-#endif // __AWH_CLIENT__

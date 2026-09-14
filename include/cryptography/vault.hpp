@@ -50,8 +50,7 @@
  *
  */
 
-#ifndef __AWH_VAULT__
-#define __AWH_VAULT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -348,5 +347,3 @@ namespace awh {
 			~Vault() noexcept;
 	} vault_t;
 };
-
-#endif // __AWH_VAULT__

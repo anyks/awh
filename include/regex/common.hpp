@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_COMMON__
-#define __AWH_REGEX_COMMON__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -62,7 +61,7 @@
  *          предсказание там сводится к самому условию.
  *
  */
-#ifndef AWH_REGEX_UNLIKELY
+#if !defined(AWH_REGEX_UNLIKELY)
 	/**
 	 * Если компилятор принадлежит к семейству GCC или Clang
 	 */
@@ -1899,5 +1898,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../sys/macro/restore.hpp"
-
-#endif // __AWH_REGEX_COMMON__

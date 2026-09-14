@@ -472,7 +472,7 @@ void awh::unit::Portmap::response(const event::id_t eid, const uint8_t * data, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1266,7 +1266,7 @@ bool awh::unit::Portmap::search(string_view group) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {group}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1399,7 +1399,7 @@ bool awh::unit::Portmap::stream(string_view address, const uint16_t port) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {address, port}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1622,7 +1622,7 @@ void awh::unit::Portmap::incoming(const event::id_t eid, const uint8_t * data, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2410,7 +2410,7 @@ bool awh::unit::Portmap::datagram(const type_t type) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2586,7 +2586,7 @@ bool awh::unit::Portmap::submit(const type_t type) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2808,7 +2808,7 @@ bool awh::unit::Portmap::lost(const type_t type, const uint32_t epoch) noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем сообщение в лог
 				awh::log::debug(
 					"Router has lost its port mapping state (protocol: %u)",
@@ -3086,7 +3086,7 @@ bool awh::unit::Portmap::announce(const bool mode) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {mode}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3171,7 +3171,7 @@ void awh::unit::Portmap::failure(const type_t type, const error_t error) noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"Port mapping failed (protocol: %u, reason: %u)",

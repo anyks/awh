@@ -31,13 +31,12 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_BUFFER__
-#define __AWH_BUFFER__
+#pragma once
 
 /**
  * Если максимальное значение потребляемой памяти не указано
  */
-#ifndef AWH_MAX_MEMORY_BUFFER
+#if !defined(AWH_MAX_MEMORY_BUFFER)
 	/**
 	 * Устанавливаем максимальное значение потребляемой памяти
 	 */
@@ -2014,5 +2013,3 @@ namespace awh {
 	 */
 	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const buffer_t & buffer) noexcept;
 };
-
-#endif // __AWH_BUFFER__

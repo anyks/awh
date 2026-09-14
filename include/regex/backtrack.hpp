@@ -130,8 +130,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_BACKTRACK__
-#define __AWH_REGEX_BACKTRACK__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1150,5 +1149,3 @@ namespace awh {
 		} backtrack_t;
 	};
 };
-
-#endif // __AWH_REGEX_BACKTRACK__

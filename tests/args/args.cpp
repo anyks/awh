@@ -82,7 +82,7 @@ namespace {
 		/**
 		 * Если операционной системой является MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем установку переменной окружения ходом системы
 			return (::_putenv_s(name, value) == 0);
 		/**
@@ -109,7 +109,7 @@ namespace {
 		/**
 		 * Если операционной системой является MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем снятие переменной окружения пустым значением
 			return (::_putenv_s(name, "") == 0);
 		/**

@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_BRIDGE__
-#define __AWH_CODEC_BRIDGE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -932,5 +931,3 @@ namespace awh {
 		} bridge_t;
 	}
 }
-
-#endif // __AWH_CODEC_BRIDGE__

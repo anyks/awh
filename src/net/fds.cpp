@@ -28,7 +28,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Стандартные заголовочные файлы
 	 */
@@ -39,7 +39,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -86,7 +86,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Выполняем формирование лога
 		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -115,7 +115,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы Linux
 	 */
-	#elif __linux__
+	#elif defined(__linux__)
 		// Выполняем формирование лога
 		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -144,7 +144,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы OpenBSD
 	 */
-	#elif __OpenBSD__
+	#elif defined(__OpenBSD__)
 		// Выполняем формирование лога
 		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -172,7 +172,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
-	#elif __sun__
+	#elif defined(__sun__)
 		// Выполняем формирование лога
 		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -201,7 +201,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы FreeBSD
 	 */
-	#elif __FreeBSD__
+	#elif defined(__FreeBSD__)
 		// Выполняем формирование лога
 		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -229,7 +229,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы NetBSD
 	 */
-	#elif __NetBSD__
+	#elif defined(__NetBSD__)
 		// Выполняем формирование лога
 		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -256,7 +256,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы macOS
 	 */
-	#elif __APPLE__ || __MACH__
+	#elif defined(__APPLE__) || defined(__MACH__)
 		// Выполняем формирование лога
 		awh::log::print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -308,13 +308,13 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// SetHandleCount — рекомендация системе, не гарантирует лимит
 		if(::SetHandleCount(limit)){
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Печатаем информационное сообщение
 				awh::log::print("Called SetHandleCount(%u) successfully", awh::log::flag_t::INFO, limit);
 			#endif
@@ -325,7 +325,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::WARNING, limit);
 			/**
@@ -349,7 +349,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
@@ -369,7 +369,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Печатаем информационное сообщение
 			awh::log::print("Current FD limits: soft=%u, hard=%u", awh::log::flag_t::INFO, currentSoft, currentHard);
 		#endif
@@ -388,7 +388,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Печатаем информационное сообщение
 					awh::log::print("Successfully raised soft FD limit to %u", awh::log::flag_t::INFO, limit);
 				#endif
@@ -398,7 +398,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::WARNING, limit, ::strerror(errno));
 			/**
@@ -423,7 +423,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Печатаем информационное сообщение
 				awh::log::print("Successfully raised soft and hard FD limit to %u", awh::log::flag_t::INFO, limit);
 			#endif
@@ -442,7 +442,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Печатаем информационное сообщение
 				awh::log::print("Raised soft FD limit to hard maximum %u (requested %u)", awh::log::flag_t::INFO, currentHard, limit);
 			#endif
@@ -451,7 +451,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, {limit}, awh::log::flag_t::WARNING, currentHard, ::strerror(errno));
 			/**
@@ -478,7 +478,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * На Windows нет аналога getrlimit(RLIMIT_NOFILE). Лимит файловых дескрипторов
 		 * уровня CRT управляется функциями _getmaxstdio()/_setmaxstdio() (по умолчанию 512,
@@ -494,7 +494,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Печатаем информационное сообщение
 			awh::log::print("Current FD limits: soft=%u, hard=%u", awh::log::flag_t::INFO, result.first, result.second);
 		#endif
@@ -515,7 +515,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -539,7 +539,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -569,7 +569,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::sockets(const uint32_t ma
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Выполняем перехват ошибок
 		 */
@@ -583,7 +583,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::sockets(const uint32_t ma
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("WSAStartup failed", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 				/**
@@ -634,7 +634,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::sockets(const uint32_t ma
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**

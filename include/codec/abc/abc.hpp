@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_ABC__
-#define __AWH_CODEC_ABC__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -47,5 +46,3 @@
 #include "schedule.hpp"
 #include "editor.hpp"
 #include "storage.hpp"
-
-#endif // __AWH_CODEC_ABC__

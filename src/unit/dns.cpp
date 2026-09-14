@@ -40,7 +40,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -83,7 +83,7 @@ using namespace placeholders;
 /**
  * Если стандартные DNS-серверы IPv4 не установлены
  */
-#ifndef AWH_IPV4_NS
+#if !defined(AWH_IPV4_NS)
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv4
 	 */
@@ -99,7 +99,7 @@ using namespace placeholders;
 /**
  * Если стандартные DNS-серверы IPv6 не установлены
  */
-#ifndef AWH_IPV6_NS
+#if !defined(AWH_IPV6_NS)
 	/**
 	 * Устанавливаем стандартные DNS-серверы IPv6
 	 */
@@ -1335,7 +1335,7 @@ namespace dns {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1842,7 +1842,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1955,7 +1955,7 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2298,7 +2298,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 					/**
@@ -2371,7 +2371,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {data, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2476,7 +2476,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Печатаем разделитель в отладочный вывод
 						cout << "------------------------------------------------------------" << endl << endl << flush;
 						// Печатаем заголовок ответа
@@ -2888,7 +2888,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
 					/**
@@ -2915,7 +2915,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
 					/**
@@ -2942,7 +2942,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
 					/**
@@ -2969,7 +2969,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
 					/**
@@ -2996,7 +2996,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::WARNING, error.c_str());
 					/**
@@ -3058,7 +3058,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3213,7 +3213,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug(
 							"DNS resolver timeout for domain '%s' (attempts: %u)",
@@ -3241,7 +3241,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (action), delay}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3347,7 +3347,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 			 *          на всех операционных системах делается одинаковым.
 			 *
 			 */
-			#if (_WIN32 || _WIN64) && !AWH_IDNA
+			#if (defined(_WIN32) || defined(_WIN64)) && !defined(AWH_IDNA)
 				// Результирующий буфер данных
 				wchar_t buffer[0xFF];
 				// Выполняем кодирование доменного имени
@@ -3359,7 +3359,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, awh::fmk::convert(wstring{message}).c_str());
 					/**
@@ -3386,7 +3386,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
 					/**
@@ -3406,7 +3406,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3446,7 +3446,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 			 *          на всех операционных системах делается одинаковым.
 			 *
 			 */
-			#if (_WIN32 || _WIN64) && !AWH_IDNA
+			#if (defined(_WIN32) || defined(_WIN64)) && !defined(AWH_IDNA)
 				// Результирующий буфер данных
 				wchar_t buffer[0xFF];
 				// Выполняем декодирование доменного имени
@@ -3458,7 +3458,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, awh::fmk::convert(wstring{message}).c_str());
 					/**
@@ -3485,7 +3485,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, string{idna::message(error)}.c_str());
 					/**
@@ -3505,7 +3505,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3585,7 +3585,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3623,7 +3623,7 @@ void awh::unit::DNS::clearBlacklist() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3674,7 +3674,7 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3736,7 +3736,7 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {ip}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3794,7 +3794,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const net::addr_t * ip) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3863,7 +3863,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3918,7 +3918,7 @@ void awh::unit::DNS::pushAddressToBlacklist(string_view ip) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {ip}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3968,7 +3968,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const net::addr_t * ip) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4029,7 +4029,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4083,7 +4083,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(string_view ip) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {ip}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4134,7 +4134,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const net::addr_t * ip) const noexc
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4212,7 +4212,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), ip}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4435,7 +4435,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4539,7 +4539,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {domain}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4675,7 +4675,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4755,7 +4755,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4846,7 +4846,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5066,7 +5066,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {domain, ttl}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5180,7 +5180,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Failed to set options for hosts file event", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL);
 							/**
@@ -5204,7 +5204,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("[%s] host address cannot be established", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL, filename);
 				/**
@@ -5225,7 +5225,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5349,7 +5349,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("Failed to start cache dump interval", __PRETTY_FUNCTION__, {filename, interval}, awh::log::flag_t::CRITICAL);
 						/**
@@ -5380,7 +5380,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {filename, interval}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5430,7 +5430,7 @@ void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5474,7 +5474,7 @@ uint16_t awh::unit::DNS::resolvers(const event::family_t family) const noexcept 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5582,7 +5582,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, awh::log::flag_t::CRITICAL);
 								/**
@@ -5677,7 +5677,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, awh::log::flag_t::CRITICAL);
 								/**
@@ -5707,7 +5707,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), count}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5778,7 +5778,7 @@ void awh::unit::DNS::setTargetPort(const uint16_t port) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {port}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5856,7 +5856,7 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5922,7 +5922,7 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6006,7 +6006,7 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6059,7 +6059,7 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6111,7 +6111,7 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6170,7 +6170,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6271,7 +6271,7 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6383,7 +6383,7 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6479,7 +6479,7 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), servers.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6536,7 +6536,7 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6594,7 +6594,7 @@ void awh::unit::DNS::setSource(const net::addr_t * source) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6653,7 +6653,7 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6839,7 +6839,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, alive}, awh::log::flag_t::WARNING, error.c_str());
 							/**
@@ -6918,7 +6918,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, alive}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6989,7 +6989,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), ip, alive}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -7057,7 +7057,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain, alive}, awh::log::flag_t::WARNING, error.c_str());
 						/**
@@ -7135,7 +7135,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (record), domain, alive}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -7300,7 +7300,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, awh::log::flag_t::WARNING, error.c_str());
 							/**
@@ -7350,7 +7350,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, awh::log::flag_t::WARNING, error.c_str());
 							/**
@@ -7442,7 +7442,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain, alive}, awh::log::flag_t::CRITICAL, error.what());
 		/**

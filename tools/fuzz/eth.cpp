@@ -177,7 +177,7 @@ static const char * IFACES[] = {
  * @note Список тот же, что и у самой библиотеки (include/net/eth/eth.hpp): у прочих
  *       систем объекта `sctp` нет вовсе, и обращение к нему не собралось бы
  */
-#if __linux__ || __FreeBSD__ || __sun
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 	/**
 	 * Возможности SCTP, о каких ворошитель спрашивает
 	 */
@@ -603,7 +603,7 @@ static void gateways(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
  * @param engine источник случайных чисел
  *
  */
-#if __linux__ || __FreeBSD__ || __sun
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 	static void sctps(const awh::eth_t & eth, mt19937_64 & engine) noexcept {
 		// Описатель, каким ведётся ворошение
 		awh::net::socket_t sock = awh::net::invalid_socket_t;
@@ -861,7 +861,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		 * @note Долей ворошения SCTP отведена та же, что и прочим частям, лишь у систем
 		 *       с протоколом: у прочих её нет вовсе, и разбор идёт по четырём
 		 */
-		#if __linux__ || __FreeBSD__ || __sun
+		#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 			const uint8_t parts = 5;
 		#else
 			const uint8_t parts = 4;
@@ -878,7 +878,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			/**
 			 * Ворошим методы работы с SCTP
 			 */
-			#if __linux__ || __FreeBSD__ || __sun
+			#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 				case 4: ::sctps(eth, engine); break;
 			#endif
 		}

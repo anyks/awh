@@ -31,13 +31,12 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_QUEUE__
-#define __AWH_QUEUE__
+#pragma once
 
 /**
  * Если максимальное количество записей очереди не указано
  */
-#ifndef AWH_MAX_RECORDS_QUEUE
+#if !defined(AWH_MAX_RECORDS_QUEUE)
 	/**
 	 * Устанавливаем максимальное количество записей очереди 1000
 	 */
@@ -47,7 +46,7 @@
 /**
  * Если максимальное значение потребляемой памяти не указано
  */
-#ifndef AWH_MAX_MEMORY_QUEUE
+#if !defined(AWH_MAX_MEMORY_QUEUE)
 	/**
 	 * Устанавливаем максимальное значение потребляемой памяти
 	 */
@@ -1418,5 +1417,3 @@ namespace awh {
 			}
 	} queue_t;
 };
-
-#endif // __AWH_QUEUE__

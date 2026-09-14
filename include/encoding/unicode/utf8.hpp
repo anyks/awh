@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNICODE_UTF8__
-#define __AWH_UNICODE_UTF8__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -176,5 +175,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ size_t length(string_view text) noexcept;
 	};
 };
-
-#endif // __AWH_UNICODE_UTF8__

@@ -28,13 +28,12 @@
  *
  */
 
-#ifndef __AWH_HTTP_HEADERS__
-#define __AWH_HTTP_HEADERS__
+#pragma once
 
 /**
  * Если максимальное количество заголовков не указано
  */
-#ifndef AWH_MAX_COUNT_HTTP_HEADERS
+#if !defined(AWH_MAX_COUNT_HTTP_HEADERS)
 	/**
 	 * Устанавливаем максимальное количество заголовков в 100
 	 */
@@ -44,7 +43,7 @@
 /**
  * Если максимальное значение потребляемой памяти не указано
  */
-#ifndef AWH_MAX_MEMORY_HTTP_HEADERS
+#if !defined(AWH_MAX_MEMORY_HTTP_HEADERS)
 	/**
 	 * Устанавливаем максимальное значение потребляемой памяти 16 КБ
 	 */
@@ -2874,5 +2873,3 @@ namespace awh {
 	 */
 	__AWH_SHARED_EXPORT__ ostream & operator << (ostream & os, const http::headers_t & headers) noexcept;
 };
-
-#endif // __AWH_HTTP_HEADERS__

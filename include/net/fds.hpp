@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_EVENT_FDS_BASE__
-#define __AWH_EVENT_FDS_BASE__
+#pragma once
 
 /**
  * Стандартный заголовочный файл
@@ -258,5 +257,3 @@ namespace awh {
 			~Files_Descriptors() noexcept;
 	} fds_t;
 };
-
-#endif // __AWH_EVENT_FDS_BASE__

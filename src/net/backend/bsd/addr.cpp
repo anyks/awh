@@ -29,7 +29,7 @@
  *       структуры и выглядят пустыми.
  *
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	/**
 	 * Макрос выравнивания структуры (для Apple)
 	 */
@@ -641,7 +641,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::WARNING);
 							/**
@@ -689,7 +689,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::WARNING);
 							/**
@@ -780,7 +780,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -834,7 +834,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
 				 * Проверка не работает на то, соответствует ли IP-адрес 192.168.7.249 маске 255.255.255.0
 				 */
-				#ifdef __AWH_DISABLED__
+				#if defined(__AWH_DISABLED__)
 					// Проверка выравнивания сетевого адреса по маске
 					const uint32_t mask = ((network->prefix == 0) ? 0 : (~((1U << (32 - network->prefix)) - 1)));
 					// Если сетевой адрес не выровнен по маске
@@ -842,7 +842,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug(
 								"Network address %u is not aligned to prefix %u", __PRETTY_FUNCTION__,
@@ -867,7 +867,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Буфер временных данных для генерации IP-адреса
 						char buffer[INET_ADDRSTRLEN];
 						// Записываем ошибку в лог
@@ -950,7 +950,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Буфер временных данных для генерации IP-адреса
 						char buffer[INET6_ADDRSTRLEN];
 						// Записываем ошибку в лог
@@ -1036,7 +1036,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1194,7 +1194,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 *       переживёт и появление признака там, где его пока нет
 						 *
 						 */
-						#ifdef RTF_LLDATA
+						#if defined(RTF_LLDATA)
 							mib[5] = RTF_LLDATA;
 						/**
 						 * Если признак записей канального уровня зовётся иначе
@@ -1209,7 +1209,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
@@ -1229,7 +1229,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
@@ -1328,7 +1328,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						 *       переживёт и появление признака там, где его пока нет
 						 *
 						 */
-						#ifdef RTF_LLDATA
+						#if defined(RTF_LLDATA)
 							mib[5] = RTF_LLDATA;
 						/**
 						 * Если признак записей канального уровня зовётся иначе
@@ -1343,7 +1343,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Route sysctl estimate", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
@@ -1363,7 +1363,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
@@ -1405,7 +1405,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							/**
 							 * Если мы работаем с KAME
 							 */
-							#ifdef __KAME__
+							#if defined(__KAME__)
 								{
 									// Получаем текущий адрес IPv6
 									struct in6_addr * in6 = &sin->sin6_addr;
@@ -1523,7 +1523,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
@@ -1611,7 +1611,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node)}, awh::log::flag_t::WARNING);
 							/**
@@ -1731,7 +1731,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (node), static_cast <uint16_t> (source.ip->size)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1784,7 +1784,7 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {ip, net, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1858,7 +1858,7 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {first, second, static_cast <uint16_t> (length)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1920,7 +1920,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 					/**
@@ -2034,7 +2034,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 				/**
@@ -2066,7 +2066,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL, error.what());
 			/**

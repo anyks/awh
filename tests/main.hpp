@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_TESTS__
-#define __AWH_TESTS__
+#pragma once
 
 /**
  * Отключаем поддержку POSIX регулярных выражений в Google Test
@@ -101,5 +100,3 @@ static inline bool subnormalBits(const T value) noexcept {
 	// Прочие виды дробных значений разбору не подлежат
 	return false;
 }
-
-#endif // __AWH_TESTS__

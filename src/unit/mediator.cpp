@@ -122,7 +122,7 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Failed to commit mediator", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 				/**
@@ -141,7 +141,7 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -340,7 +340,7 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**

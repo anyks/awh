@@ -780,8 +780,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_CODEGEN__
-#define __AWH_REGEX_CODEGEN__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1672,5 +1671,3 @@ namespace awh {
 		} codegen_t;
 	};
 };
-
-#endif // __AWH_REGEX_CODEGEN__

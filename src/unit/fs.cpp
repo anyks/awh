@@ -145,7 +145,7 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог создания события
 				awh::log::debug("Filesystem event could not be created because its type is not defined", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::WARNING);
 			/**
@@ -181,7 +181,7 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог создания события
 			awh::log::debug("Filesystem event could not be created", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type)}, awh::log::flag_t::WARNING);
 		/**

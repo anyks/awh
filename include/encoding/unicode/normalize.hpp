@@ -68,8 +68,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNICODE_NORMALIZE__
-#define __AWH_UNICODE_NORMALIZE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -188,5 +187,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ void normalize(const vector <uint32_t> & text, const form_t form, vector <uint32_t> & result) noexcept;
 	};
 };
-
-#endif // __AWH_UNICODE_NORMALIZE__

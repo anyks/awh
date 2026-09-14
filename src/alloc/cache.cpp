@@ -23,7 +23,7 @@
 #include <alloc/cache.hpp>
 #if defined(__OpenBSD__)
 	#include <dlfcn.h>
-	#ifndef RTLD_DEFAULT
+	#if !defined(RTLD_DEFAULT)
 		#define RTLD_DEFAULT reinterpret_cast <void *> (0)
 	#endif
 #endif

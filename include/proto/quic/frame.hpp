@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef __AWH_PROTO_QUIC_FRAME__
-#define __AWH_PROTO_QUIC_FRAME__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1041,5 +1040,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_PROTO_QUIC_FRAME__

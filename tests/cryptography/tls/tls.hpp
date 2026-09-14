@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_TLS_CODER_TESTS__
-#define __AWH_TLS_CODER_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -75,5 +74,3 @@ class TlsFixture : public testing::Test {
 		 */
 		bool makeCertificate(std::string & certificate, std::string & privateKey, const std::string & host = "localhost") const noexcept;
 };
-
-#endif // __AWH_TLS_CODER_TESTS__

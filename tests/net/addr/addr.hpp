@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_NET_ADDR_TESTS__
-#define __AWH_NET_ADDR_TESTS__
+#pragma once
 
 #include "../../main.hpp"
 #include "../../../include/net/addr.hpp"
@@ -45,5 +44,3 @@ class NetFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_NET_ADDR_TESTS__

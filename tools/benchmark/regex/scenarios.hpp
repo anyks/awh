@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_REGEX_SCENARIOS__
-#define __AWH_BENCHMARK_REGEX_SCENARIOS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -368,5 +367,3 @@ namespace scenarios {
 		return SHORT_ROUNDS;
 	}
 };
-
-#endif // __AWH_BENCHMARK_REGEX_SCENARIOS__

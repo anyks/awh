@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_AUTH_BEARER__
-#define __AWH_AUTH_BEARER__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -154,5 +153,3 @@ namespace awh {
 		} bearer_t;
 	};
 };
-
-#endif // __AWH_AUTH_BEARER__

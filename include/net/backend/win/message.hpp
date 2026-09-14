@@ -108,8 +108,7 @@
  *
  */
 
-#ifndef __AWH_NET_BACKEND_WIN_MESSAGE__
-#define __AWH_NET_BACKEND_WIN_MESSAGE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -466,5 +465,3 @@ namespace awh {
 #define CMSG_DATA(cmsg) ::awh::win::message::data(cmsg)
 #define CMSG_LEN(size) (::awh::win::message::align(sizeof(cmsghdr)) + (size))
 #define CMSG_SPACE(size) (::awh::win::message::align(sizeof(cmsghdr)) + ::awh::win::message::align(size))
-
-#endif // __AWH_NET_BACKEND_WIN_MESSAGE__

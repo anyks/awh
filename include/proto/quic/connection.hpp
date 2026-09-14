@@ -28,8 +28,7 @@
  *
  */
 
-#ifndef __AWH_PROTO_QUIC_CONNECTION__
-#define __AWH_PROTO_QUIC_CONNECTION__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -4581,5 +4580,3 @@ namespace awh {
 		} connection_t;
 	};
 };
-
-#endif // __AWH_PROTO_QUIC_CONNECTION__

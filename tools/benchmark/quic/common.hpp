@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_QUIC__
-#define __AWH_BENCHMARK_RIVAL_QUIC__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -226,5 +225,3 @@ namespace rival {
 		::printf("%-34s %14s   (%s)\n", name, "—", reason);
 	}
 };
-
-#endif // __AWH_BENCHMARK_RIVAL_QUIC__

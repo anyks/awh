@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_NET_ADDR__
-#define __AWH_BENCHMARK_NET_ADDR__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -125,5 +124,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_NET_ADDR__

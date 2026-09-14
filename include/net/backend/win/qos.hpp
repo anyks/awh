@@ -83,8 +83,7 @@
  *
  */
 
-#ifndef __AWH_NET_BACKEND_WIN_QOS__
-#define __AWH_NET_BACKEND_WIN_QOS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -241,5 +240,3 @@ namespace awh {
 		}
 	}
 }
-
-#endif // __AWH_NET_BACKEND_WIN_QOS__

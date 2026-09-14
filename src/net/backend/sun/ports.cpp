@@ -58,7 +58,7 @@
 /**
  * Если размер пакета для таймеров не определён
  */
-#ifndef AWH_BATCH_SIZE_INTERNAL_TIMER
+#if !defined(AWH_BATCH_SIZE_INTERNAL_TIMER)
 	/**
 	 * @brief Устанавливаем размер пакета для таймеров в 256
 	 *
@@ -69,7 +69,7 @@
 /**
  * Если количество идентификаторов таймаутов на одно событие не определено
  */
-#ifndef AWH_COUNT_IDS_INTERNAL_TIMER
+#if !defined(AWH_COUNT_IDS_INTERNAL_TIMER)
 	/**
 	 * @brief Устанавливаем количество идентификаторов таймаутов на одно событие в 8
 	 *
@@ -90,7 +90,7 @@
 /**
  * Если количество обработанных таймеров не определено
  */
-#ifndef AWH_COUNT_PROCESSED_INTERNAL_TIMER
+#if !defined(AWH_COUNT_PROCESSED_INTERNAL_TIMER)
 	/**
 	 * @brief Устанавливаем количество обработанных таймеров в 256, для предотвращения бесконечного цикла
 	 *
@@ -101,7 +101,7 @@
 /**
  * Если размер кучи для таймеров не определён
  */
-#ifndef AWH_HEAP_SIZE_INTERNAL_TIMER
+#if !defined(AWH_HEAP_SIZE_INTERNAL_TIMER)
 	/**
 	 * @brief Устанавливаем размер кучи для таймеров в 50 000 элементов
 	 *
@@ -114,7 +114,7 @@
 /**
  * Если размер чанка для таймеров не определён
  */
-#ifndef AWH_CHUNK_EIDS_INTERNAL_TIMER
+#if !defined(AWH_CHUNK_EIDS_INTERNAL_TIMER)
 	/**
 	 * @brief Устанавливаем размер чанка в 1024 eid × 256 таймеров/ид = 1 МБ на чанк
 	 *
@@ -127,7 +127,7 @@
 /**
  * Если порог "незначительного" сдвига дедлайна не определён
  */
-#ifndef AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER
+#if !defined(AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER)
 	/**
 	 * @brief Порог "незначительного" сдвига дедлайна (в мс)
 	 *
@@ -141,7 +141,7 @@
 /**
  * Если начальный размер массива опрашиваемых событий не установлен
  */
-#ifndef AWH_MAX_POLL_EVENTS_COUNT
+#if !defined(AWH_MAX_POLL_EVENTS_COUNT)
 	/**
 	 * @brief Устанавливаем начальный размер массива опрашиваемых событий (64)
 	 *
@@ -152,7 +152,7 @@
 /**
  * Если верхний предел роста массива опрашиваемых событий не установлен
  */
-#ifndef AWH_MAX_POLL_EVENTS_LIMIT
+#if !defined(AWH_MAX_POLL_EVENTS_LIMIT)
 	/**
 	 * @brief Устанавливаем верхний предел роста массива опрашиваемых событий (4096)
 	 *
@@ -175,7 +175,7 @@
 /**
  * Если длительность затишья, по которой массив событий ужимается, не установлена
  */
-#ifndef AWH_POLL_EVENTS_IDLE_ROUNDS
+#if !defined(AWH_POLL_EVENTS_IDLE_ROUNDS)
 	/**
 	 * @brief Устанавливаем длительность затишья для сжатия массива событий (1024 опроса)
 	 *
@@ -186,7 +186,7 @@
 /**
  * Если максимальный размер буфера на чтение данных не определён
  */
-#ifndef AWH_EVENT_MAX_BUFFER_SIZE
+#if !defined(AWH_EVENT_MAX_BUFFER_SIZE)
 	/**
 	 * @brief Устанавливаем максимальный размер буфера на чтение данных в 64 КБ
 	 *
@@ -197,7 +197,7 @@
 /**
  * Если максимальное время ожидания получения данных не определено
  */
-#ifndef AWH_EVENT_MAX_LOOP_WAIT
+#if !defined(AWH_EVENT_MAX_LOOP_WAIT)
 	/**
 	 * @brief Устанавливаем максимальное время ожидания получения данных в 500 мкс
 	 *
@@ -208,7 +208,7 @@
 /**
  * Если размер MTU для UDP сообщений в IPv4 не определён
  */
-#ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
+#if !defined(AWH_MTU_UDP_IPV4_PAYLOAD_SIZE)
 	/**
 	 * @brief Устанавливаем рекомендуемый размер UDP-полезной нагрузки для IPv4 в 1400 байт
 	 *        1400 = 1500 (Ethernet MTU) - 20 (IPv4) - 8 (UDP) - 72 (запас на инкапсуляцию)
@@ -226,7 +226,7 @@
 /**
  * Если размер MTU для UDP сообщений в IPv6 не определён
  */
-#ifndef AWH_MTU_UDP_IPV6_PAYLOAD_SIZE
+#if !defined(AWH_MTU_UDP_IPV6_PAYLOAD_SIZE)
 	/**
 	 * @brief Устанавливаем рекомендуемый размер UDP-полезной нагрузки для IPv6 в 1380 байт
 	 *        1380 = 1500 (Ethernet MTU) - 40 (IPv6) - 8 (UDP) - 72 (запас на инкапсуляцию)
@@ -242,7 +242,7 @@
 /**
  * Если окно всплеска ограничения пропускной способности не определено
  */
-#ifndef AWH_BANDWIDTH_BURST_WINDOW
+#if !defined(AWH_BANDWIDTH_BURST_WINDOW)
 	/**
 	 * @brief Устанавливаем окно всплеска ограничения пропускной способности в 10 миллисекунд
 	 *
@@ -257,7 +257,7 @@
 /**
  * Если размер MTU для TCP сообщений в IPv4 не определён
  */
-#ifndef AWH_MTU_TCP_IPV4_PAYLOAD_SIZE
+#if !defined(AWH_MTU_TCP_IPV4_PAYLOAD_SIZE)
 	/**
 	 * @brief Устанавливаем рекомендуемый размер TCP-полезной нагрузки для IPv4 в 1440 байт
 	 *        1440 = 1500 (Ethernet MTU) - 20 (IPv4) - 20 (TCP) - 20 (запас на опции/инкапсуляцию)
@@ -273,7 +273,7 @@
 /**
  * Если размер MTU для TCP сообщений в IPv6 не определён
  */
-#ifndef AWH_MTU_TCP_IPV6_PAYLOAD_SIZE
+#if !defined(AWH_MTU_TCP_IPV6_PAYLOAD_SIZE)
 	/**
 	 * @brief Устанавливаем рекомендуемый размер TCP-полезной нагрузки для IPv6 в 1420 байт
 	 *        1420 = 1500 (Ethernet MTU) - 40 (IPv6) - 20 (TCP) - 20 (запас на опции/инкапсуляцию)
@@ -425,7 +425,7 @@
  *       остаётся с прежним своим значением, и это намеренно
  *
  */
-#if IP_RECVTOS
+#if defined(IP_RECVTOS)
 	/**
 	 * @brief Определяем имя типа служебного сообщения, которым система выдаёт класс обслуживания принятого пакета
 	 *
@@ -4123,7 +4123,7 @@ namespace fs {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {input}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -6900,7 +6900,7 @@ namespace events {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {sock, node->id}, log::flag_t::WARNING, ::strerror(errno));
 						/**
@@ -6920,7 +6920,7 @@ namespace events {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {sock, node->id}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -7018,7 +7018,7 @@ namespace events {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {sock, node->id}, log::flag_t::WARNING, ::strerror(errno));
 						/**
@@ -7038,7 +7038,7 @@ namespace events {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {sock, node->id}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -8306,7 +8306,7 @@ namespace timer {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, ::strerror(errno));
 						/**
@@ -8326,7 +8326,7 @@ namespace timer {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -8735,7 +8735,7 @@ namespace timer {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint32_t> (tm.delay), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -9548,7 +9548,7 @@ namespace timer {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -9993,7 +9993,7 @@ namespace timer {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, ::strerror(errno));
 						/**
@@ -10013,7 +10013,7 @@ namespace timer {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -10565,7 +10565,7 @@ namespace timer {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint32_t> (tm.delay), static_cast <uint16_t> (flag)}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -11411,7 +11411,7 @@ namespace timer {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -12069,7 +12069,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {fs, fs->id}, log::flag_t::CRITICAL, ::strerror(errno));
 									/**
@@ -12108,7 +12108,7 @@ namespace io {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {fs, fs->id}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -12131,7 +12131,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {fs, fs->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -12213,7 +12213,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -12274,7 +12274,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -12323,7 +12323,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -12378,7 +12378,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -12439,7 +12439,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -12514,7 +12514,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -12575,7 +12575,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -12615,7 +12615,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -12758,7 +12758,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -12965,7 +12965,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -13124,7 +13124,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -13294,7 +13294,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -13475,7 +13475,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -13604,7 +13604,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -13844,7 +13844,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -13883,7 +13883,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -14079,7 +14079,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -14116,7 +14116,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -14146,7 +14146,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -14214,7 +14214,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -14254,7 +14254,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, ::strerror(errno));
 						/**
@@ -14489,7 +14489,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -14528,7 +14528,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -14724,7 +14724,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -14761,7 +14761,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -14791,7 +14791,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -14859,7 +14859,7 @@ namespace io {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, ::strerror(errno));
 							/**
@@ -14884,7 +14884,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -15027,7 +15027,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -15234,7 +15234,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -15417,20 +15417,20 @@ namespace io {
 												/**
 												 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
 												 */
-												#if IPV6_HOPLIMIT
+												#if defined(IPV6_HOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
 												/**
 												 * Если тип control message соответствует 2292HOPLIMIT
 												 */
-												#elif IPV6_2292HOPLIMIT
+												#elif defined(IPV6_2292HOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
 												#endif
 												/**
 												 * Если тип control message соответствует RECVHOPLIMIT
 												 */
-												#if IPV6_RECVHOPLIMIT
+												#if defined(IPV6_RECVHOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
 												#endif
@@ -15474,7 +15474,7 @@ namespace io {
 														 * Если тип control message соответствует PKTINFO,
 														 * извлекаем индекс сетевого интерфейса источника из control message
 														 */
-														#if IPV6_PKTINFO
+														#if defined(IPV6_PKTINFO)
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
@@ -15524,7 +15524,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -15680,20 +15680,20 @@ namespace io {
 											/**
 											 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
 											 */
-											#if IPV6_HOPLIMIT
+											#if defined(IPV6_HOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
 											/**
 											 * Если тип control message соответствует 2292HOPLIMIT
 											 */
-											#elif IPV6_2292HOPLIMIT
+											#elif defined(IPV6_2292HOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
 											#endif
 											/**
 											 * Если тип control message соответствует RECVHOPLIMIT
 											 */
-											#if IPV6_RECVHOPLIMIT
+											#if defined(IPV6_RECVHOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
 											#endif
@@ -15737,7 +15737,7 @@ namespace io {
 													 * Если тип control message соответствует PKTINFO,
 													 * извлекаем индекс сетевого интерфейса источника из control message
 													 */
-													#if IPV6_PKTINFO
+													#if defined(IPV6_PKTINFO)
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
@@ -15772,7 +15772,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -15911,20 +15911,20 @@ namespace io {
 												/**
 												 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
 												 */
-												#if IPV6_HOPLIMIT
+												#if defined(IPV6_HOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
 												/**
 												 * Если тип control message соответствует 2292HOPLIMIT
 												 */
-												#elif IPV6_2292HOPLIMIT
+												#elif defined(IPV6_2292HOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
 												#endif
 												/**
 												 * Если тип control message соответствует RECVHOPLIMIT
 												 */
-												#if IPV6_RECVHOPLIMIT
+												#if defined(IPV6_RECVHOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
 												#endif
@@ -15968,7 +15968,7 @@ namespace io {
 														 * Если тип control message соответствует PKTINFO,
 														 * извлекаем индекс сетевого интерфейса источника из control message
 														 */
-														#if IPV6_PKTINFO
+														#if defined(IPV6_PKTINFO)
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
@@ -16027,7 +16027,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -16187,20 +16187,20 @@ namespace io {
 											/**
 											 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
 											 */
-											#if IPV6_HOPLIMIT
+											#if defined(IPV6_HOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
 											/**
 											 * Если тип control message соответствует 2292HOPLIMIT
 											 */
-											#elif IPV6_2292HOPLIMIT
+											#elif defined(IPV6_2292HOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
 											#endif
 											/**
 											 * Если тип control message соответствует RECVHOPLIMIT
 											 */
-											#if IPV6_RECVHOPLIMIT
+											#if defined(IPV6_RECVHOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
 											#endif
@@ -16244,7 +16244,7 @@ namespace io {
 													 * Если тип control message соответствует PKTINFO,
 													 * извлекаем индекс сетевого интерфейса источника из control message
 													 */
-													#if IPV6_PKTINFO
+													#if defined(IPV6_PKTINFO)
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
@@ -16288,7 +16288,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -16407,7 +16407,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -16589,7 +16589,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -16778,7 +16778,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -16967,7 +16967,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -17161,7 +17161,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -17304,20 +17304,20 @@ namespace io {
 												/**
 												 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
 												 */
-												#if IPV6_HOPLIMIT
+												#if defined(IPV6_HOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
 												/**
 												 * Если тип control message соответствует 2292HOPLIMIT
 												 */
-												#elif IPV6_2292HOPLIMIT
+												#elif defined(IPV6_2292HOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
 												#endif
 												/**
 												 * Если тип control message соответствует RECVHOPLIMIT
 												 */
-												#if IPV6_RECVHOPLIMIT
+												#if defined(IPV6_RECVHOPLIMIT)
 													// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
 													match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
 												#endif
@@ -17361,7 +17361,7 @@ namespace io {
 														 * Если тип control message соответствует PKTINFO,
 														 * извлекаем индекс сетевого интерфейса источника из control message
 														 */
-														#if IPV6_PKTINFO
+														#if defined(IPV6_PKTINFO)
 															// Если тип control message соответствует PKTINFO
 															case IPV6_PKTINFO: {
 																// Извлекаем структуру in6_pktinfo из control message
@@ -17421,7 +17421,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -17520,7 +17520,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -17611,20 +17611,20 @@ namespace io {
 											/**
 											 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
 											 */
-											#if IPV6_HOPLIMIT
+											#if defined(IPV6_HOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
 											/**
 											 * Если тип control message соответствует 2292HOPLIMIT
 											 */
-											#elif IPV6_2292HOPLIMIT
+											#elif defined(IPV6_2292HOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
 											#endif
 											/**
 											 * Если тип control message соответствует RECVHOPLIMIT
 											 */
-											#if IPV6_RECVHOPLIMIT
+											#if defined(IPV6_RECVHOPLIMIT)
 												// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
 												match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
 											#endif
@@ -17668,7 +17668,7 @@ namespace io {
 													 * Если тип control message соответствует PKTINFO,
 													 * извлекаем индекс сетевого интерфейса источника из control message
 													 */
-													#if IPV6_PKTINFO
+													#if defined(IPV6_PKTINFO)
 														// Если тип control message соответствует PKTINFO
 														case IPV6_PKTINFO: {
 															// Извлекаем структуру in6_pktinfo из control message
@@ -17712,7 +17712,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -17778,7 +17778,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -17815,7 +17815,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::WARNING, error.c_str());
 						/**
@@ -17835,7 +17835,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -17990,7 +17990,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -18041,7 +18041,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -18157,7 +18157,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -18315,7 +18315,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -18358,7 +18358,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {ipc, ipc->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -18547,7 +18547,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -18604,7 +18604,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -18986,7 +18986,7 @@ namespace io {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::WARNING, ::strerror(errno));
 													/**
@@ -19041,7 +19041,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 										/**
@@ -19247,7 +19247,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {peer, peer->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -19444,7 +19444,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {origin, origin->id}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -19487,7 +19487,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -19686,7 +19686,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {origin, origin->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -19877,7 +19877,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -19903,7 +19903,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {tunnel, tunnel->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -20102,7 +20102,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -20159,7 +20159,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -20578,7 +20578,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -20633,7 +20633,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -21074,7 +21074,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -21129,7 +21129,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -21335,7 +21335,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -21445,7 +21445,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {origin, origin->id}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -21645,7 +21645,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -21701,7 +21701,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -21775,7 +21775,7 @@ namespace io {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -21821,7 +21821,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -21975,7 +21975,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -22065,7 +22065,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -22172,7 +22172,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -22274,7 +22274,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -22395,7 +22395,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -22504,7 +22504,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -22536,7 +22536,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -22711,7 +22711,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -22740,7 +22740,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -23078,7 +23078,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -23110,7 +23110,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -23420,7 +23420,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -23567,7 +23567,7 @@ namespace io {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 													/**
@@ -23596,7 +23596,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 										/**
@@ -23921,7 +23921,7 @@ namespace io {
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 														/**
@@ -23954,7 +23954,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 											/**
@@ -24249,7 +24249,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -24281,7 +24281,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -24463,7 +24463,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -24492,7 +24492,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -24765,7 +24765,7 @@ namespace io {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 													/**
@@ -24798,7 +24798,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 										/**
@@ -25004,7 +25004,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -25045,7 +25045,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -25065,7 +25065,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -25217,7 +25217,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -25579,7 +25579,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -25931,7 +25931,7 @@ namespace io {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 							/**
@@ -26209,7 +26209,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -26435,7 +26435,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -26464,7 +26464,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -26812,7 +26812,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -26844,7 +26844,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 									/**
@@ -27164,7 +27164,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -27304,7 +27304,7 @@ namespace io {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 													/**
@@ -27333,7 +27333,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 										/**
@@ -27647,7 +27647,7 @@ namespace io {
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 														/**
@@ -27680,7 +27680,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 											/**
@@ -27964,7 +27964,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -28100,7 +28100,7 @@ namespace io {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 													/**
@@ -28129,7 +28129,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 										/**
@@ -28443,7 +28443,7 @@ namespace io {
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 														/**
@@ -28476,7 +28476,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 											/**
@@ -28760,7 +28760,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -28800,7 +28800,7 @@ namespace io {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -28967,7 +28967,7 @@ namespace io {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 													/**
@@ -28996,7 +28996,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 										/**
@@ -29335,7 +29335,7 @@ namespace io {
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 														/**
@@ -29368,7 +29368,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 											/**
@@ -29677,7 +29677,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -29838,7 +29838,7 @@ namespace io {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 													/**
@@ -29867,7 +29867,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 										/**
@@ -30206,7 +30206,7 @@ namespace io {
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 														/**
@@ -30239,7 +30239,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 											/**
@@ -30548,7 +30548,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -30588,7 +30588,7 @@ namespace io {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -30609,7 +30609,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -30716,7 +30716,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -30812,7 +30812,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 										/**
@@ -30907,7 +30907,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -30948,7 +30948,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -30968,7 +30968,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -31137,7 +31137,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {fd}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -31795,7 +31795,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {node, node->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -31868,7 +31868,7 @@ namespace io {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {user, user->id}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -32134,7 +32134,7 @@ namespace io {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"Socket handover is not possible for the specified node type",
@@ -32294,7 +32294,7 @@ namespace io {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug(
 							"Socket creation is not possible for the specified node type",
@@ -32316,7 +32316,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {node, node->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -32366,7 +32366,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32401,7 +32401,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32434,7 +32434,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32467,7 +32467,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32500,7 +32500,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32533,7 +32533,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32566,7 +32566,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32599,7 +32599,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32632,7 +32632,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32689,7 +32689,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32722,7 +32722,7 @@ namespace io {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, ::strerror(code));
 						/**
@@ -32746,7 +32746,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {node, code, node->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -32895,7 +32895,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug(
 					"Source address belongs to device \"%s\" while route to target goes through \"%s\"",
@@ -32917,7 +32917,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {client}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -33014,7 +33014,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {node, static_cast <uint16_t> (limiting), delay}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -33757,7 +33757,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {node, node->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -33975,7 +33975,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {client->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -34113,7 +34113,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {dir, dir->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -34225,7 +34225,7 @@ namespace io {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {client, client->id}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -34384,7 +34384,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, ::strerror(errno));
 									/**
@@ -34450,7 +34450,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -34522,7 +34522,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -34557,7 +34557,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -34597,7 +34597,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -34632,7 +34632,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -34720,7 +34720,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -34755,7 +34755,7 @@ namespace io {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -34795,7 +34795,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -34830,7 +34830,7 @@ namespace io {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -35010,7 +35010,7 @@ namespace io {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -35129,7 +35129,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {node, node->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -35258,7 +35258,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -35289,7 +35289,7 @@ namespace io {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {node, node->id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -36313,7 +36313,7 @@ namespace io {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -36381,7 +36381,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -36412,7 +36412,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -36448,7 +36448,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -36479,7 +36479,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -36548,7 +36548,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -36579,7 +36579,7 @@ namespace io {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -36615,7 +36615,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -36646,7 +36646,7 @@ namespace io {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server, server->id}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -37082,7 +37082,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии изменения ассоциации SCTP
 							log::print(
 								"SCTP_ASSOC_CHANGE: ID=%u, STATE=%d, ERROR=%d, OUT BOUND=%u, INPUT BOUND=%u",
@@ -37207,7 +37207,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							/**
 							 * Преобразуем адрес в строковое представление
 							 */
@@ -37300,7 +37300,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии ошибки удалённого узла SCTP
 							log::print(
 								"SCTP_REMOTE_ERROR: ID=%u, ERROR=0x%04x",
@@ -37367,7 +37367,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии ошибки отправки SCTP
 							log::print(
 								"SCTP_SEND_FAILED: ID=%u, ERROR=0x%04x",
@@ -37419,7 +37419,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии завершения SCTP
 							log::print(
 								"SCTP_SHUTDOWN_EVENT: ID=%u",
@@ -37474,7 +37474,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии адаптационной индикации SCTP
 							log::print(
 								"SCTP_ADAPTATION_INDICATION: ID=%u, INDICATION=0x%08x",
@@ -37540,7 +37540,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии частичной доставки SCTP
 							log::print(
 								"SCTP_PARTIAL_DELIVERY_EVENT: ID=%u, INDICATION=0x%08x",
@@ -37636,7 +37636,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии аутентификационной индикации SCTP
 							log::print(
 								"SCTP_AUTHENTICATION_EVENT: ID=%u, KEY=%u",
@@ -37740,7 +37740,7 @@ namespace sctp {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем в лог информацию о событии сброса потоков SCTP
 								log::print(
 									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x, STREAMS=%zu",
@@ -37782,7 +37782,7 @@ namespace sctp {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем в лог информацию о событии сброса потоков SCTP
 								log::print(
 									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x",
@@ -37844,7 +37844,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии исчерпания отправителя SCTP
 							log::print(
 								"SCTP_SENDER_DRY_EVENT: ID=%u",
@@ -37869,7 +37869,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о остановке уведомлений SCTP
 							log::print(
 								"SCTP notifications stopped event received",
@@ -37947,7 +37947,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии исчерпания отправителя SCTP
 							log::print(
 								"SCTP_ASSOC_RESET_EVENT: ID=%u, LOCAL TSN=%u, REMOTE TSN=%u, FLAGS=0x%08x",
@@ -38029,7 +38029,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о событии исчерпания отправителя SCTP
 							log::print(
 								"SCTP_STREAM_CHANGE_EVENT: ID=%u, OUT=%u, INPUT=%u, FLAGS=0x%08x",
@@ -38121,7 +38121,7 @@ namespace sctp {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем в лог информацию о событии ошибки отправки SCTP
 								log::print(
 									"SCTP_SEND_FAILED_EVENT: ID=%u, LENGTH=%zu, ERROR=%d",
@@ -38163,7 +38163,7 @@ namespace sctp {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем в лог информацию об отсутствии дополнительных данных в событии ошибки отправки SCTP
 								log::print(
 									"SCTP_SEND_FAILED_EVENT: ID=%u, ERROR=%d",
@@ -38182,7 +38182,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем в лог информацию о неизвестном типе события SCTP
 							log::print(
 								"SCTP notification type: %u",
@@ -38239,7 +38239,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("SCTP settings can only be retrieved from peer, client, or server nodes", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 						/**
@@ -38259,7 +38259,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -38348,7 +38348,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag SENDALL is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38387,7 +38387,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag SACK_IMMEDIATELY is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38421,7 +38421,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag PR_SCTP_RTX is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38450,7 +38450,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag PR_SCTP_PRIO is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38482,7 +38482,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -38548,7 +38548,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag SENDALL is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38587,7 +38587,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag SACK_IMMEDIATELY is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38621,7 +38621,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag PR_SCTP_RTX is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38650,7 +38650,7 @@ namespace sctp {
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем предупреждение в лог
 													log::debug("SCTP message flag PR_SCTP_PRIO is not supported by this operating system", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 												/**
@@ -38682,7 +38682,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -38700,7 +38700,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("SCTP settings can only be configured for peer nodes, clients, or servers", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 						/**
@@ -38720,7 +38720,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -38792,7 +38792,7 @@ namespace sctp {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -38822,7 +38822,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -38871,7 +38871,7 @@ namespace sctp {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -38901,7 +38901,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -38923,7 +38923,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -38986,7 +38986,7 @@ namespace sctp {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -39015,7 +39015,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39055,7 +39055,7 @@ namespace sctp {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -39084,7 +39084,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39106,7 +39106,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -39163,7 +39163,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -39224,7 +39224,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, events.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39262,7 +39262,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, events.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39284,7 +39284,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, events.size()}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -39365,7 +39365,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39407,7 +39407,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39464,7 +39464,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39486,7 +39486,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -39570,7 +39570,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type), timeout}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39612,7 +39612,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type), timeout}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39657,7 +39657,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type), timeout}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39679,7 +39679,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (type), timeout}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -39742,7 +39742,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, num, key}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39780,7 +39780,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, num, key}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39802,7 +39802,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, num, key}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -39876,7 +39876,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), num}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39925,7 +39925,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), num}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -39947,7 +39947,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), num}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40011,7 +40011,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, chunks.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40049,7 +40049,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, chunks.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40071,7 +40071,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, chunks.size()}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40138,7 +40138,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (origin)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40176,7 +40176,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (origin)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40214,7 +40214,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (origin)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40236,7 +40236,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (origin)}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40300,7 +40300,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, types.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40338,7 +40338,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, types.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40376,7 +40376,7 @@ namespace sctp {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, types.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -40398,7 +40398,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, types.size()}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40445,7 +40445,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40494,7 +40494,7 @@ namespace sctp {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("An SCTP message cannot be sent to this event type", __PRETTY_FUNCTION__, {id, size, end}, log::flag_t::WARNING);
 					/**
@@ -40553,7 +40553,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("An SCTP message cannot be sent to this event type", __PRETTY_FUNCTION__, {id, size, end}, log::flag_t::WARNING);
 						/**
@@ -40573,7 +40573,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, size, end}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40648,7 +40648,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("A SCTP info message callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 						/**
@@ -40668,7 +40668,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40717,7 +40717,7 @@ namespace sctp {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("A SCTP events callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 							/**
@@ -40737,7 +40737,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40810,7 +40810,7 @@ namespace sctp {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("A SCTP message callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 						/**
@@ -40830,7 +40830,7 @@ namespace sctp {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -40911,7 +40911,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 							/**
@@ -40927,7 +40927,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 							/**
@@ -40949,7 +40949,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -41025,7 +41025,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -41073,7 +41073,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -41118,7 +41118,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -41166,7 +41166,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -41195,7 +41195,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING);
 								/**
@@ -41211,7 +41211,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING);
 								/**
@@ -41233,7 +41233,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -41358,7 +41358,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING);
 								/**
@@ -41374,7 +41374,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, {id, value}, log::flag_t::WARNING);
 								/**
@@ -41396,7 +41396,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, value}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -41460,7 +41460,7 @@ const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 							/**
@@ -41476,7 +41476,7 @@ const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 							/**
@@ -41498,7 +41498,7 @@ const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -41552,7 +41552,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Event engine is not initialized", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL);
 		/**
@@ -41680,7 +41680,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, dir->fd, path}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -41744,7 +41744,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -41775,7 +41775,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -41806,7 +41806,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -41888,7 +41888,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -41919,7 +41919,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -41950,7 +41950,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -42036,7 +42036,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -42066,7 +42066,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -42325,7 +42325,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -42412,7 +42412,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -42459,7 +42459,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -42640,7 +42640,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -42745,7 +42745,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -42875,7 +42875,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			/**
 																			 * Если включён режим отладки
 																			 */
-																			#if DEBUG_MODE
+																			#if defined(DEBUG_MODE)
 																				// Записываем ошибку в лог
 																				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																			/**
@@ -42925,7 +42925,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				/**
 																				 * Если включён режим отладки
 																				 */
-																				#if DEBUG_MODE
+																				#if defined(DEBUG_MODE)
 																					// Записываем ошибку в лог
 																					log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																				/**
@@ -42963,7 +42963,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			/**
 																			 * Если включён режим отладки
 																			 */
-																			#if DEBUG_MODE
+																			#if defined(DEBUG_MODE)
 																				// Записываем ошибку в лог
 																				log::debug("%s", __PRETTY_FUNCTION__, {client->transfer.fd, unixsocket, filename}, log::flag_t::WARNING, ::strerror(errno));
 																			/**
@@ -43024,7 +43024,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																	/**
@@ -43095,7 +43095,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -43127,7 +43127,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -43249,7 +43249,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
@@ -43379,7 +43379,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			/**
 																			 * Если включён режим отладки
 																			 */
-																			#if DEBUG_MODE
+																			#if defined(DEBUG_MODE)
 																				// Записываем ошибку в лог
 																				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																			/**
@@ -43410,7 +43410,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																		/**
@@ -43528,7 +43528,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				/**
 																				 * Если включён режим отладки
 																				 */
-																				#if DEBUG_MODE
+																				#if defined(DEBUG_MODE)
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																					// Записываем ошибку в лог
@@ -43601,7 +43601,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																		/**
@@ -43666,7 +43666,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																			// Записываем ошибку в лог
@@ -43741,7 +43741,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																	/**
@@ -43776,7 +43776,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -43806,7 +43806,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -43931,7 +43931,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
@@ -44066,7 +44066,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			/**
 																			 * Если включён режим отладки
 																			 */
-																			#if DEBUG_MODE
+																			#if defined(DEBUG_MODE)
 																				// Записываем ошибку в лог
 																				log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																			/**
@@ -44097,7 +44097,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																		/**
@@ -44230,7 +44230,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				/**
 																				 * Если включён режим отладки
 																				 */
-																				#if DEBUG_MODE
+																				#if defined(DEBUG_MODE)
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																					// Записываем ошибку в лог
@@ -44303,7 +44303,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																		/**
@@ -44375,7 +44375,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																			// Записываем ошибку в лог
@@ -44450,7 +44450,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																	/**
@@ -44485,7 +44485,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -44515,7 +44515,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -44549,7 +44549,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -44581,7 +44581,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -44779,7 +44779,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -44870,7 +44870,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -44959,7 +44959,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			log::debug("%s", __PRETTY_FUNCTION__, {server->fd, unixsocket}, log::flag_t::CRITICAL, ::strerror(errno));
 																		/**
@@ -45021,7 +45021,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			log::debug("%s", __PRETTY_FUNCTION__, {server->fd, unixsocket, unixsocket}, log::flag_t::CRITICAL, ::strerror(errno));
 																		/**
@@ -45062,7 +45062,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 																	/**
@@ -45129,7 +45129,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -45161,7 +45161,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -45255,7 +45255,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
@@ -45335,7 +45335,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -45365,7 +45365,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -45464,7 +45464,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
 																	// Записываем ошибку в лог
@@ -45544,7 +45544,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -45574,7 +45574,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -45608,7 +45608,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -45640,7 +45640,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -45681,7 +45681,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45712,7 +45712,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45743,7 +45743,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45776,7 +45776,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45807,7 +45807,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45838,7 +45838,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45869,7 +45869,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45900,7 +45900,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45931,7 +45931,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45962,7 +45962,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -45993,7 +45993,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -46015,7 +46015,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -46847,7 +46847,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -47028,7 +47028,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -47089,7 +47089,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -47113,7 +47113,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -47266,7 +47266,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, name}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -47351,7 +47351,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, name}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -47429,7 +47429,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, name}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -47497,7 +47497,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, name}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -47521,7 +47521,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, name}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -47707,7 +47707,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("Unable to obtain an internal port for this network node", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 							/**
@@ -47725,7 +47725,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Internal port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -47745,7 +47745,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -47870,7 +47870,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("Failed to set the internal port for this network node", __PRETTY_FUNCTION__, {id, port}, log::flag_t::WARNING);
 							/**
@@ -47888,7 +47888,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Internal port cannot be set for events that are not network related", __PRETTY_FUNCTION__, {id, port}, log::flag_t::WARNING);
 					/**
@@ -47908,7 +47908,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, port}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -47979,7 +47979,7 @@ uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -47999,7 +47999,7 @@ uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -48093,7 +48093,7 @@ bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) n
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Port cannot be set for events that are not network related", __PRETTY_FUNCTION__, {id, port}, log::flag_t::WARNING);
 					/**
@@ -48113,7 +48113,7 @@ bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, port}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -48217,7 +48217,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48257,7 +48257,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48318,7 +48318,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48358,7 +48358,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48412,7 +48412,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48452,7 +48452,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48506,7 +48506,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48546,7 +48546,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48607,7 +48607,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48647,7 +48647,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48708,7 +48708,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48748,7 +48748,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48772,7 +48772,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -48848,7 +48848,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48879,7 +48879,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -48929,7 +48929,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -48960,7 +48960,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -49010,7 +49010,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49052,7 +49052,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49104,7 +49104,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49146,7 +49146,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49207,7 +49207,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49256,7 +49256,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49305,7 +49305,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49366,7 +49366,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49415,7 +49415,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49464,7 +49464,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -49489,7 +49489,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, target}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -49610,7 +49610,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -49652,7 +49652,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -49719,7 +49719,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -49761,7 +49761,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -49817,7 +49817,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -49859,7 +49859,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -49915,7 +49915,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -49957,7 +49957,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -50024,7 +50024,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -50066,7 +50066,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -50133,7 +50133,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -50175,7 +50175,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -50199,7 +50199,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -50279,7 +50279,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -50327,7 +50327,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -50570,7 +50570,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -50693,7 +50693,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -50722,7 +50722,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -50770,7 +50770,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -50799,7 +50799,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -50829,7 +50829,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -50890,7 +50890,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -50919,7 +50919,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -50967,7 +50967,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -50996,7 +50996,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -51026,7 +51026,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -51104,7 +51104,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -51133,7 +51133,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -51189,7 +51189,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -51218,7 +51218,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -51248,7 +51248,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -51313,7 +51313,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -51361,7 +51361,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -51390,7 +51390,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -51442,7 +51442,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -51490,7 +51490,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -51519,7 +51519,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -51549,7 +51549,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -51918,7 +51918,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -52012,7 +52012,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -52065,7 +52065,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -52094,7 +52094,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -52142,7 +52142,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -52171,7 +52171,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -52189,7 +52189,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Address \"%s\" can only be set for node", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 								/**
@@ -52284,7 +52284,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -52344,7 +52344,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -52375,7 +52375,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -52449,7 +52449,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -52513,7 +52513,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -52544,7 +52544,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -52564,7 +52564,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("MAC-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 								/**
@@ -52631,7 +52631,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -52682,7 +52682,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -52702,7 +52702,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("Unix socket address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 									/**
@@ -52719,7 +52719,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("You cannot set address \"%s\" because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 							/**
@@ -52766,7 +52766,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -52795,7 +52795,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -52837,7 +52837,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -52866,7 +52866,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -52962,7 +52962,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -52991,7 +52991,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -53020,7 +53020,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -53110,7 +53110,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -53140,7 +53140,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -53169,7 +53169,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -53187,7 +53187,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 								/**
@@ -53235,7 +53235,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -53264,7 +53264,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -53306,7 +53306,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -53335,7 +53335,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -53439,7 +53439,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -53468,7 +53468,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -53497,7 +53497,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -53611,7 +53611,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -53641,7 +53641,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -53670,7 +53670,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -53688,7 +53688,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 								/**
@@ -53828,7 +53828,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -53857,7 +53857,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -53935,7 +53935,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -53964,7 +53964,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54079,7 +54079,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -54108,7 +54108,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54190,7 +54190,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 													/**
@@ -54219,7 +54219,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54239,7 +54239,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Network-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 								/**
@@ -54257,7 +54257,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Unsupported address \"%s\" type cannot be set", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::WARNING, value.data());
 						/**
@@ -54278,7 +54278,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address), value}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -54414,7 +54414,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54443,7 +54443,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -54489,7 +54489,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54518,7 +54518,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -54548,7 +54548,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -54611,7 +54611,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54640,7 +54640,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -54686,7 +54686,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54715,7 +54715,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -54745,7 +54745,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -54825,7 +54825,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54854,7 +54854,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -54908,7 +54908,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -54937,7 +54937,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -54967,7 +54967,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -55034,7 +55034,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -55080,7 +55080,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -55109,7 +55109,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -55159,7 +55159,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -55205,7 +55205,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -55234,7 +55234,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -55264,7 +55264,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -55670,7 +55670,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -55768,7 +55768,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -55819,7 +55819,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -55865,7 +55865,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -55883,7 +55883,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Address can only be set for node", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 								/**
@@ -55976,7 +55976,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -56036,7 +56036,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -56110,7 +56110,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -56174,7 +56174,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 														/**
@@ -56196,7 +56196,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("MAC-address can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 								/**
@@ -56272,7 +56272,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("Unix socket address can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 									/**
@@ -56289,7 +56289,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("You cannot set address because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 							/**
@@ -56338,7 +56338,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -56382,7 +56382,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -56478,7 +56478,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -56507,7 +56507,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -56597,7 +56597,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -56627,7 +56627,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -56645,7 +56645,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 								/**
@@ -56701,7 +56701,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -56751,7 +56751,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -56859,7 +56859,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -56888,7 +56888,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -56990,7 +56990,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 												/**
@@ -57020,7 +57020,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -57038,7 +57038,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 								/**
@@ -57056,7 +57056,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Unsupported address type cannot be set", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::WARNING);
 						/**
@@ -57077,7 +57077,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (address)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -57138,7 +57138,7 @@ uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -57292,7 +57292,7 @@ uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -57353,7 +57353,7 @@ uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -57377,7 +57377,7 @@ uint32_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -57439,7 +57439,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, mtu}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -57593,7 +57593,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, mtu}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -57654,7 +57654,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, mtu}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -57678,7 +57678,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, mtu}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -57719,7 +57719,7 @@ bool awh::engine::IO::availableExplicitCongestionNotification(const event::famil
 			/**
 			 * Если система средства запроса выдачи отметок по IPv4 не даёт
 			 */
-			#if !IP_RECVTOS
+			#if !defined(IP_RECVTOS)
 				// Сообщаем, что отметки перегрузки пути по IPv4 недоступны
 				return false;
 			/**
@@ -57735,7 +57735,7 @@ bool awh::engine::IO::availableExplicitCongestionNotification(const event::famil
 			/**
 			 * Если система средства запроса выдачи отметок по IPv6 не даёт
 			 */
-			#if !IPV6_RECVTCLASS
+			#if !defined(IPV6_RECVTCLASS)
 				// Сообщаем, что отметки перегрузки пути по IPv6 недоступны
 				return false;
 			/**
@@ -57805,7 +57805,7 @@ awh::event::dscp_t awh::engine::IO::getDifferentiatedServicesCodePoint(const eve
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -57880,7 +57880,7 @@ bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -57990,7 +57990,7 @@ awh::event::ecn_t awh::engine::IO::getExplicitCongestionNotification(const event
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -58115,7 +58115,7 @@ bool awh::engine::IO::setExplicitCongestionNotification(const event::id_t id, co
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -58190,7 +58190,7 @@ awh::event::mtu_discover_t awh::engine::IO::getMaximumTransmissionUnitDiscover(c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -58265,7 +58265,7 @@ bool awh::engine::IO::setMaximumTransmissionUnitDiscover(const event::id_t id, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -58381,7 +58381,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
@@ -58427,7 +58427,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -58456,7 +58456,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -58508,7 +58508,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
@@ -58554,7 +58554,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -58583,7 +58583,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -58647,7 +58647,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
@@ -58693,7 +58693,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -58722,7 +58722,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -58780,7 +58780,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
 													// Записываем ошибку в лог
@@ -58826,7 +58826,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -58855,7 +58855,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -58875,7 +58875,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL);
 						/**
@@ -58899,7 +58899,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL);
 					/**
@@ -58915,7 +58915,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL);
 					/**
@@ -58935,7 +58935,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode), group, source}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -59043,7 +59043,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
@@ -59104,7 +59104,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
@@ -59177,7 +59177,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
@@ -59244,7 +59244,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
 											// Записываем ошибку в лог
@@ -59281,7 +59281,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL);
 						/**
@@ -59305,7 +59305,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL);
 					/**
@@ -59321,7 +59321,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL);
 					/**
@@ -59341,7 +59341,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -59413,7 +59413,7 @@ bool awh::engine::IO::bind(const event::id_t id, const net::origin_key_t & key) 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -59499,7 +59499,7 @@ bool awh::engine::IO::unbind(const event::id_t id, const net::origin_key_t & key
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -59549,7 +59549,7 @@ uint32_t awh::engine::IO::getMaxConnections(const event::id_t id) const noexcept
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -59603,7 +59603,7 @@ bool awh::engine::IO::setMaxConnections(const event::id_t id, const uint32_t max
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 			/**
@@ -59621,7 +59621,7 @@ bool awh::engine::IO::setMaxConnections(const event::id_t id, const uint32_t max
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -59685,7 +59685,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -59904,7 +59904,7 @@ array <event::id_t, 2> awh::engine::IO::events(const event::family_t family, con
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {
 				static_cast <uint16_t> (family),
@@ -60015,7 +60015,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60087,7 +60087,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60195,7 +60195,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60250,7 +60250,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60305,7 +60305,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60360,7 +60360,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60448,7 +60448,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(
 										"An event for a Unix event cannot be created because it has an invalid initialization type",
@@ -60573,7 +60573,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(
 										"An event for a IP event cannot be created because it has an invalid initialization type",
@@ -60599,7 +60599,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60681,7 +60681,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(
 										"An event for a Unix event cannot be created because it has an invalid initialization type",
@@ -60774,7 +60774,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(
 										"An event for a IP event cannot be created because it has an invalid initialization type",
@@ -60800,7 +60800,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(
 								"Event cannot be created because family it belongs to is not defined",
@@ -60829,7 +60829,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {
 				static_cast <uint16_t> (node),
@@ -60903,7 +60903,7 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Seek offset cannot be get for events that are not file system related", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (seek)}, log::flag_t::WARNING);
 					/**
@@ -60923,7 +60923,7 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (seek)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -60997,7 +60997,7 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Seek offset cannot be set for events that are not file system related", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (seek), offset}, log::flag_t::WARNING);
 					/**
@@ -61017,7 +61017,7 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -61056,7 +61056,7 @@ uint16_t awh::engine::IO::getOptions(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -62044,7 +62044,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, options}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -62940,7 +62940,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, option, mode}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -63010,7 +63010,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63043,7 +63043,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63074,7 +63074,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63128,7 +63128,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 							/**
@@ -63167,7 +63167,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63200,7 +63200,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63231,7 +63231,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63287,7 +63287,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 							/**
@@ -63326,7 +63326,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63359,7 +63359,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63390,7 +63390,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63452,7 +63452,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63485,7 +63485,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63516,7 +63516,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63578,7 +63578,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63611,7 +63611,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63642,7 +63642,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63696,7 +63696,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 							/**
@@ -63735,7 +63735,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63768,7 +63768,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63847,7 +63847,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63880,7 +63880,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -63925,7 +63925,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {eid, dest}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -64069,7 +64069,7 @@ bool awh::engine::IO::snapshot(const event::id_t id, const event::id_t dest, vec
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, dest}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -64211,7 +64211,7 @@ bool awh::engine::IO::restore(const event::id_t id, const void * snapshot, const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -64456,7 +64456,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -64536,7 +64536,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -64609,7 +64609,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -64662,7 +64662,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -64696,7 +64696,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 						/**
@@ -64727,7 +64727,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 						/**
@@ -64758,7 +64758,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 						/**
@@ -64779,7 +64779,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -64893,7 +64893,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -65002,7 +65002,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Записываем ошибку в лог
 																	log::debug("%s", __PRETTY_FUNCTION__, {client->id, ids.size()}, log::flag_t::WARNING, ::strerror(errno));
 																/**
@@ -65126,7 +65126,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Записываем предупреждение в лог
 																	log::debug("%s", __PRETTY_FUNCTION__, {* (ids.begin() + j), ids.size()}, log::flag_t::WARNING, reason);
 																/**
@@ -65238,7 +65238,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		log::debug("%s", __PRETTY_FUNCTION__, {client->id, ids.size()}, log::flag_t::WARNING, ::strerror(errno));
 																	/**
@@ -65290,7 +65290,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {user->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65321,7 +65321,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {dir->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65352,7 +65352,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {fs->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65385,7 +65385,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {timer->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65416,7 +65416,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {ipc->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65447,7 +65447,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {peer->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65478,7 +65478,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {origin->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65509,7 +65509,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65540,7 +65540,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65571,7 +65571,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {server->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -65611,7 +65611,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {user->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65642,7 +65642,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {dir->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65673,7 +65673,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {fs->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65706,7 +65706,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {timer->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65737,7 +65737,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {ipc->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65768,7 +65768,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {peer->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65799,7 +65799,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {origin->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65830,7 +65830,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65861,7 +65861,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65892,7 +65892,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {client->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65923,7 +65923,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {server->id, ids.size()}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -65947,7 +65947,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {ids.size()}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -66025,7 +66025,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, ::strerror(errno));
 											/**
@@ -66072,7 +66072,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, ::strerror(errno));
 												/**
@@ -66103,7 +66103,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 											/**
@@ -66135,7 +66135,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 										/**
@@ -66177,7 +66177,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66208,7 +66208,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66239,7 +66239,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66272,7 +66272,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66303,7 +66303,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66334,7 +66334,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66365,7 +66365,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66396,7 +66396,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66427,7 +66427,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66458,7 +66458,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -66498,7 +66498,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66529,7 +66529,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66560,7 +66560,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66593,7 +66593,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66624,7 +66624,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66655,7 +66655,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66686,7 +66686,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66717,7 +66717,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66748,7 +66748,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66779,7 +66779,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66810,7 +66810,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -66832,7 +66832,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, max}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -66871,7 +66871,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -67088,7 +67088,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 								/**
@@ -67208,7 +67208,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -67365,7 +67365,7 @@ size_t awh::engine::IO::relay(const event::id_t id, const void * buffer, const s
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::WARNING, ::strerror(errno));
 									/**
@@ -67488,7 +67488,7 @@ size_t awh::engine::IO::relay(const event::id_t id, const void * buffer, const s
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -67537,7 +67537,7 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Event incoming connection accept queue depth cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -67557,7 +67557,7 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, depth, adaptive}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -67621,7 +67621,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -67853,7 +67853,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Buffer size cannot be get for this event type", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action)}, log::flag_t::WARNING);
 					/**
@@ -67873,7 +67873,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -67949,7 +67949,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), size}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -68143,7 +68143,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Buffer size cannot be set for this event type", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), size}, log::flag_t::WARNING);
 					/**
@@ -68163,7 +68163,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), size}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -68253,7 +68253,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -68370,7 +68370,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 								/**
@@ -68387,7 +68387,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 						/**
@@ -68451,7 +68451,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("Cannot set incoming network bandwidth limit for this node type", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 										/**
@@ -68469,7 +68469,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 								/**
@@ -68486,7 +68486,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 						/**
@@ -68583,7 +68583,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 								/**
@@ -68600,7 +68600,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 						/**
@@ -68635,7 +68635,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("Cannot set outgoing network bandwidth limit for this node type", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 										/**
@@ -68682,7 +68682,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 								/**
@@ -68699,7 +68699,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 						/**
@@ -68716,7 +68716,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Bandwidth cannot be set for this event node", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::WARNING);
 					/**
@@ -68736,7 +68736,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (limiting), bandwidth}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -68775,7 +68775,7 @@ awh::event::delivery_mode_t awh::engine::IO::getDelivery(const event::id_t id) c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -68897,7 +68897,7 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Unable to set packet forwarding mode for non-network nodes", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (delivery)}, log::flag_t::CRITICAL);
 					/**
@@ -68917,7 +68917,7 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (delivery)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -68968,7 +68968,7 @@ awh::net::dgram_info_t awh::engine::IO::getTrafficInfo(const event::id_t id) con
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -69019,7 +69019,7 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -69219,7 +69219,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, {
 							id, static_cast <uint8_t> (hops)
@@ -69241,7 +69241,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {
 				id, static_cast <uint8_t> (hops)
@@ -69282,7 +69282,7 @@ awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -69373,7 +69373,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, {
 							id, static_cast <uint8_t> (hops)
@@ -69395,7 +69395,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {
 				id, static_cast <uint8_t> (hops)
@@ -69456,7 +69456,7 @@ awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -69521,7 +69521,7 @@ void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usa
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (usage)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -69654,7 +69654,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action)}, log::flag_t::WARNING);
 					/**
@@ -69674,7 +69674,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -69879,7 +69879,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), timeout}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -69930,7 +69930,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), timeout}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -70096,7 +70096,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), timeout}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -70171,7 +70171,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), timeout}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -70190,7 +70190,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), timeout}, log::flag_t::WARNING);
 					/**
@@ -70210,7 +70210,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), timeout}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -70427,7 +70427,7 @@ bool awh::engine::IO::rearmTimeout(const event::id_t id, const event::action_t a
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), delay}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -70920,7 +70920,7 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -72250,7 +72250,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (action), static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -72348,7 +72348,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, cnt, idle, intvl}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -72813,7 +72813,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -73237,7 +73237,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -73337,7 +73337,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -73969,7 +73969,7 @@ bool awh::engine::IO::kick() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, ::strerror(errno));
 			/**
@@ -74052,7 +74052,7 @@ bool awh::engine::IO::initialize() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s: cannot create poll queue: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			/**
@@ -74149,7 +74149,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s: cannot create poll queue: %s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, ::strerror(errno));
 			/**
@@ -75268,7 +75268,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Unable to get size for non-file system events", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -75288,7 +75288,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -75377,7 +75377,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Unable to get available sending queue size for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -75397,7 +75397,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -75436,7 +75436,7 @@ awh::event::type_t awh::engine::IO::type(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -75475,7 +75475,7 @@ awh::event::node_t awh::engine::IO::node(const event::id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -75514,7 +75514,7 @@ awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -75553,7 +75553,7 @@ awh::event::status_t awh::engine::IO::status(const event::id_t id) const noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -75592,7 +75592,7 @@ awh::event::protocol_t awh::engine::IO::protocol(const event::id_t id) const noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -75885,7 +75885,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("%s", __PRETTY_FUNCTION__, {timeout}, log::flag_t::WARNING, ::strerror(reason));
 					/**
@@ -76095,7 +76095,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {timeout}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -76113,7 +76113,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("You cannot poll for network and filesystem events until engine AWH is initialized", __PRETTY_FUNCTION__, {timeout}, log::flag_t::WARNING);
 		/**
@@ -76189,7 +76189,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A data read callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76209,7 +76209,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76283,7 +76283,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A data write callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76303,7 +76303,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76372,7 +76372,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A event callback cannot be set for this spool type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76392,7 +76392,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76476,7 +76476,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A event callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76496,7 +76496,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76592,7 +76592,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A error callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76612,7 +76612,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76661,7 +76661,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A change callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76681,7 +76681,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76740,7 +76740,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::inject_t cb) no
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A data inject callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76760,7 +76760,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::inject_t cb) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76856,7 +76856,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A status callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76876,7 +76876,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76920,7 +76920,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A accept callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -76940,7 +76940,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -76985,7 +76985,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::origin_t cb) no
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 				/**
@@ -77004,7 +77004,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::origin_t cb) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -77053,7 +77053,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::traffic_t cb) n
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A traffic info callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -77073,7 +77073,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::traffic_t cb) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -77117,7 +77117,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A connect callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -77137,7 +77137,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -77181,7 +77181,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A tuninfo callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -77201,7 +77201,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -77255,7 +77255,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A timeout callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -77275,7 +77275,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -77401,7 +77401,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A data source cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -77421,7 +77421,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::source_t cb) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -77491,7 +77491,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("A available callback cannot be set for this event type", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING);
 					/**
@@ -77511,7 +77511,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**

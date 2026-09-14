@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_FILESYSTEM__
-#define __AWH_UNIT_FILESYSTEM__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -471,5 +470,3 @@ namespace awh {
 		} fs_t;
 	};
 };
-
-#endif // __AWH_UNIT_FILESYSTEM__

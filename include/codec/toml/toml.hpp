@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_TOML__
-#define __AWH_CODEC_TOML__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -41,5 +40,3 @@
 #include "writer.hpp"
 #include "document.hpp"
 #include "value.hpp"
-
-#endif // __AWH_CODEC_TOML__

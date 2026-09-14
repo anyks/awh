@@ -29,8 +29,7 @@
 /**
  * Защита от повторного включения заголовочного файла
  */
-#ifndef __AWH_UNIT_SERVER__
-#define __AWH_UNIT_SERVER__
+#pragma once
 
 /**
  * Стандартный заголовочный файл
@@ -1950,5 +1949,3 @@ namespace awh {
 		} server_t;
 	};
 };
-
-#endif // __AWH_UNIT_SERVER__

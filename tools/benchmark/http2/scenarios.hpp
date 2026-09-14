@@ -25,8 +25,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_HTTP2_SCENARIOS__
-#define __AWH_BENCHMARK_RIVAL_HTTP2_SCENARIOS__
+#pragma once
 
 /**
  * Признак поддержки стендом сценариев уровня соединения
@@ -34,7 +33,7 @@
  * @details Часть сравниваемых реализаций - это кодеки заголовков, а не
  *          реализации протокола: разбирать поток кадров и вести обмен им нечем
  */
-#ifndef RIVAL_SESSIONS
+#if !defined(RIVAL_SESSIONS)
 	#define RIVAL_SESSIONS 1
 #endif
 
@@ -45,7 +44,7 @@
  *          выделения памяти языка либо собственный интерфейс аллокатора
  *          сравниваемой реализации
  */
-#ifndef RIVAL_ALLOCATIONS
+#if !defined(RIVAL_ALLOCATIONS)
 	#define RIVAL_ALLOCATIONS 1
 #endif
 
@@ -464,5 +463,3 @@ int32_t main(int32_t argc, char ** argv) noexcept {
 	// Выводим успешный код выхода
 	return 0;
 }
-
-#endif // __AWH_BENCHMARK_RIVAL_HTTP2_SCENARIOS__

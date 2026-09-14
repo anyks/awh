@@ -22,8 +22,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_PROTO_PORTMAP_TESTS__
-#define __AWH_PROTO_PORTMAP_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -118,5 +117,3 @@ class PortmapFixture : public testing::Test {
 		 */
 		bool decodeAddress(const uint8_t * address, uint32_t & value) const noexcept;
 };
-
-#endif // __AWH_PROTO_PORTMAP_TESTS__

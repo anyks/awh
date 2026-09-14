@@ -31,8 +31,7 @@
 /**
  * Защита от повторного включения заголовочного файла
  */
-#ifndef __AWH_UNIT_NTP__
-#define __AWH_UNIT_NTP__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -810,5 +809,3 @@ namespace awh {
 		} ntp_t;
 	};
 };
-
-#endif // __AWH_UNIT_NTP__

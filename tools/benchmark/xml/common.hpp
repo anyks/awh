@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_XML__
-#define __AWH_BENCHMARK_RIVAL_XML__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -784,5 +783,3 @@ void operator delete [] (void * address, std::size_t size) noexcept {
 	// Выполняем освобождение памяти
 	::free(address);
 }
-
-#endif // __AWH_BENCHMARK_RIVAL_XML__

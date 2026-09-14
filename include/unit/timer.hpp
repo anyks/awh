@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_TIMER__
-#define __AWH_UNIT_TIMER__
+#pragma once
 
 /**
  * Стандартный заголовочный файл
@@ -220,5 +219,3 @@ namespace awh {
 		} timer_t;
 	};
 };
-
-#endif // __AWH_UNIT_TIMER__

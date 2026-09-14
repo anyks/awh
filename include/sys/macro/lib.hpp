@@ -31,13 +31,12 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CONFIG__
-#define __AWH_CONFIG__
+#pragma once
 
 /**
  * Если название библиотеки не определено
  */
-#ifndef AWH_NAME
+#if !defined(AWH_NAME)
 	/**
 	 * @brief Устанавливаем название библиотеки
 	 *
@@ -47,7 +46,7 @@
 /**
  * Если короткое название библиотеки не определено
  */
-#ifndef AWH_SHORT_NAME
+#if !defined(AWH_SHORT_NAME)
 	/**
 	 * @brief Устанавливаем короткое название библиотеки
 	 *
@@ -57,7 +56,7 @@
 /**
  * Если версия библиотеки не определена
  */
-#ifndef AWH_VERSION
+#if !defined(AWH_VERSION)
 	/**
 	 * @brief Устанавливаем версию библиотеки
 	 *
@@ -67,7 +66,7 @@
 /**
  * Если хост библиотеки не определён
  */
-#ifndef AWH_HOST
+#if !defined(AWH_HOST)
 	/**
 	 * @brief Устанавливаем хост библиотеки
 	 *
@@ -77,7 +76,7 @@
 /**
  * Если адрес сайта библиотеки не определён
  */
-#ifndef AWH_SITE
+#if !defined(AWH_SITE)
 	/**
 	 * @brief Устанавливаем адрес сайта библиотеки
 	 *
@@ -87,7 +86,7 @@
 /**
  * Если адрес электронной почты библиотеки не определён
  */
-#ifndef AWH_EMAIL
+#if !defined(AWH_EMAIL)
 	/**
 	 * @brief Устанавливаем адрес электронной почты библиотеки
 	 *
@@ -97,7 +96,7 @@
 /**
  * Если контактный адрес библиотеки не определён
  */
-#ifndef AWH_CONTACT
+#if !defined(AWH_CONTACT)
 	/**
 	 * @brief Устанавливаем контактный адрес библиотеки
 	 *
@@ -107,11 +106,11 @@
 /**
  * Если локаль библиотеки не определена
  */
-#ifndef AWH_LOCALE
+#if !defined(AWH_LOCALE)
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * @brief Устанавливаем локаль словаря по умолчанию
 		 *
@@ -174,7 +173,7 @@
 /**
  * Если максимальный размер HTTP-тела запроса/ответа установлено
  */
-#ifndef AWH_MAX_BODY_SIZE
+#if !defined(AWH_MAX_BODY_SIZE)
 	/**
 	 * Устанавливаем максимальный размер HTTP-тела 10Mb
 	 */
@@ -222,49 +221,49 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "%ProgramFiles%\\OpenSSL-Win64\\bin\\PEM\\cert.pem"
 /**
  * Для операционной системы macOS
  */
-#elif __APPLE__ || __MACH__
+#elif defined(__APPLE__) || defined(__MACH__)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/usr/local/etc/ca-certificates/cert.pem"
 /**
  * Для операционной системы Linux
  */
-#elif __linux__
+#elif defined(__linux__)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/etc/ssl/certs/certSIGN_ROOT_CA.pem"
 /**
  * Для операционной системы FreeBSD
  */
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/usr/local/openssl/cert.pem"
 /**
  * Для операционной системы OpenBSD
  */
-#elif __OpenBSD__
+#elif defined(__OpenBSD__)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/usr/local/openssl/cert.pem"
 /**
  * Для операционной системы NetBSD
  */
-#elif __NetBSD__
+#elif defined(__NetBSD__)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/usr/src/crypto/external/bsd/openssl/dist/apps/cert.pem"
 /**
  * Для операционной системы Sun Solaris
  */
-#elif __sun__
+#elif defined(__sun__)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "/etc/certs/CA/certSIGN_ROOT_CA.pem"
 /**
  * Для всех остальных Unix-подобных операционных систем
  */
-#elif __unix || __unix__
+#elif defined(__unix) || defined(__unix__)
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE ""
 /**
@@ -274,5 +273,3 @@
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE ""
 #endif
-
-#endif // __AWH_CONFIG__

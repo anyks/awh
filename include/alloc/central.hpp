@@ -44,8 +44,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_CENTRAL__
-#define __AWH_ALLOC_CENTRAL__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -677,5 +676,3 @@ namespace awh {
 		} central_t;
 	};
 };
-
-#endif // __AWH_ALLOC_CENTRAL__

@@ -30,7 +30,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 *
@@ -117,7 +117,7 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {octets}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -207,7 +207,7 @@ void awh::Version::set(const string & version) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {version}, awh::log::flag_t::CRITICAL, error.what());
 			/**

@@ -497,10 +497,10 @@ awh::quic::status_t awh::quic::Handshake::process() noexcept {
 	 * они не объявлены (RFC 9001 §4.1.1)
 	 */
 	if((code == SSL_ERROR_WANT_READ) || (code == SSL_ERROR_WANT_X509_LOOKUP)
-#ifdef SSL_ERROR_WANT_PRIVATE_KEY_OPERATION
+#if defined(SSL_ERROR_WANT_PRIVATE_KEY_OPERATION)
 	   || (code == SSL_ERROR_WANT_PRIVATE_KEY_OPERATION)
 #endif
-#ifdef SSL_ERROR_WANT_CERTIFICATE_VERIFY
+#if defined(SSL_ERROR_WANT_CERTIFICATE_VERIFY)
 	   || (code == SSL_ERROR_WANT_CERTIFICATE_VERIFY)
 #endif
 	)

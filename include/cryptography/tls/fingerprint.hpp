@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_SSL_FINGERPRINT__
-#define __AWH_SSL_FINGERPRINT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -3255,5 +3254,3 @@ namespace awh {
 		} fgp_t;
 	};
 };
-
-#endif // __AWH_SSL_FINGERPRINT__

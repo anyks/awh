@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ENGINE_CALLBACK__
-#define __AWH_ENGINE_CALLBACK__
+#pragma once
 
 /**
  * Стандартный заголовочный файл
@@ -84,7 +83,7 @@ namespace awh {
 			/**
 			 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 			 */
-			#if __linux__ || __FreeBSD__ || __sun
+			#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 				/**
 				 * \~russian
 				 * @brief Пространство имён для работы с SCTP
@@ -551,5 +550,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_ENGINE_CALLBACK__

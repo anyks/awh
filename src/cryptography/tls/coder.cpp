@@ -57,7 +57,7 @@
  *       приходят там из winsock2.h
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -125,7 +125,7 @@ using namespace std;
 /**
  * Если максимальный размер SSL буфера не определён
  */
-#ifndef AWH_MAX_SSL_BUFFER_SIZE
+#if !defined(AWH_MAX_SSL_BUFFER_SIZE)
 	/**
 	 * Устанавливаем максимальный размер SSL буфера в 16 КБ
 	 */
@@ -431,13 +431,13 @@ namespace ssl {
 		 *       отвечает там кодом ошибки, а не сигналом, и гасить нечего
 		 *
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем игнорирование сигналов SIGPIPE
 		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
@@ -464,7 +464,7 @@ namespace ssl {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL);
 			/**
@@ -1196,7 +1196,7 @@ namespace ssl {
 	 *          и не званное ниоткуда обращение с шестью неиспользуемыми доводами -
 	 *          шесть предупреждений из семи по всей зоне давало одно это место
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 	/**
 	 * @brief Функция обратного вызова сообщений SSL
 	 *
@@ -1859,7 +1859,7 @@ namespace ssl {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * @brief Функция проверки параметров сертификата
 		 *
@@ -1880,7 +1880,7 @@ namespace ssl {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, "Failed to open system certificate store");
 					/**
@@ -1914,7 +1914,7 @@ namespace ssl {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {name}, log::flag_t::CRITICAL, "X509 creation failed");
 						/**
@@ -2200,7 +2200,7 @@ namespace cookie {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
 			/**
@@ -2250,7 +2250,7 @@ namespace cookie {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
 					/**
@@ -2294,7 +2294,7 @@ namespace cookie {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
 				/**
@@ -2391,7 +2391,7 @@ namespace cookie {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::CRITICAL, error.c_str());
 				/**
@@ -2619,7 +2619,7 @@ namespace verify {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, error.c_str());
 				/**
@@ -2795,7 +2795,7 @@ namespace verify {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Если хранилище сертификатов передано верное
 			if(store != nullptr){
 				// Выполняем извлечение сертификата
@@ -2886,7 +2886,7 @@ namespace verify {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -2920,7 +2920,7 @@ namespace verify {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -2946,7 +2946,7 @@ namespace verify {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем в лог сообщение
 									log::print("HTTPS server [%s] has this certificate, which looks good to me: %s", log::flag_t::INFO, member->host.c_str(), fqdn);
 								#endif
@@ -3005,7 +3005,7 @@ namespace verify {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -3122,7 +3122,7 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -3312,7 +3312,7 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -3380,7 +3380,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug(
 									"OpenSSL version mismatch!\n"
@@ -3435,7 +3435,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем в лог сообщение
 								log::debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							/**
@@ -3470,7 +3470,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -3501,7 +3501,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -3561,7 +3561,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug(
 									"OpenSSL version mismatch!\n"
@@ -3616,7 +3616,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем в лог сообщение
 								log::debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							/**
@@ -3716,7 +3716,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -3747,7 +3747,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -3784,7 +3784,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -3837,7 +3837,7 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -3862,7 +3862,7 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -3917,7 +3917,7 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -3986,7 +3986,7 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -4047,7 +4047,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -4078,7 +4078,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -4131,7 +4131,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -4162,7 +4162,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -4199,7 +4199,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -4589,7 +4589,7 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -4644,7 +4644,7 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -4708,7 +4708,7 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -4766,7 +4766,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -4807,7 +4807,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -4844,7 +4844,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 							/**
@@ -4879,7 +4879,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 							/**
@@ -4914,7 +4914,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, ::X509_verify_cert_error_string(error));
 							/**
@@ -4992,7 +4992,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5103,7 +5103,7 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, mode}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5166,7 +5166,7 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5256,7 +5256,7 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5305,7 +5305,7 @@ string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5396,7 +5396,7 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, sni}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -5422,7 +5422,7 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, sni}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5474,7 +5474,7 @@ bool awh::tls::Coder::session(const id_t id, string_view key, string & session) 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, key, session}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5521,7 +5521,7 @@ void awh::tls::Coder::session(const id_t id, string_view key, string_view sessio
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, key, session}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5576,7 +5576,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, ip, port}, log::flag_t::CRITICAL, error.c_str());
 							/**
@@ -5633,7 +5633,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, ip, port}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -5661,7 +5661,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, ip, port}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -5688,7 +5688,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, ip, port}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5794,7 +5794,7 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5849,7 +5849,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -5897,7 +5897,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -5953,7 +5953,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 					/**
@@ -6012,7 +6012,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -6075,7 +6075,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																log::debug("%s", __PRETTY_FUNCTION__, {id, recordLen}, log::flag_t::WARNING, error.c_str());
 															/**
@@ -6123,7 +6123,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -6215,7 +6215,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -6270,7 +6270,7 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -6304,7 +6304,7 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -6355,7 +6355,7 @@ ssl_ctx_st * awh::tls::Coder::native(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -6437,7 +6437,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -6478,7 +6478,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -6601,7 +6601,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -6642,7 +6642,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -6717,7 +6717,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, cts->host.name}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -6751,7 +6751,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -6829,7 +6829,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug(
 							"%s", __PRETTY_FUNCTION__,
@@ -6923,7 +6923,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Устанавливаем функцию обратного вызова для обработки сообщений TLS
 					::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
 					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
@@ -6938,7 +6938,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("%s", __PRETTY_FUNCTION__, {
 							static_cast <uint16_t> (node),
@@ -6956,7 +6956,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Проверяем существует ли путь
 						if(!::ssl::addCertToStore(store, "CA") ||
 						   !::ssl::addCertToStore(store, "ROOT") ||
@@ -6977,7 +6977,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {
 								static_cast <uint16_t> (node),
@@ -7051,7 +7051,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug(
 							"%s", __PRETTY_FUNCTION__,
@@ -7135,7 +7135,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Устанавливаем функцию обратного вызова для обработки сообщений TLS
 					::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
 					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
@@ -7160,7 +7160,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug(
 							"%s", __PRETTY_FUNCTION__,
@@ -7199,7 +7199,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("%s", __PRETTY_FUNCTION__, {
 							static_cast <uint16_t> (node),
@@ -7217,7 +7217,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Проверяем существует ли путь
 						if(!::ssl::addCertToStore(store, "CA") ||
 						   !::ssl::addCertToStore(store, "ROOT") ||
@@ -7238,7 +7238,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {
 								static_cast <uint16_t> (node),
@@ -7328,7 +7328,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug(
 						"Invalid event node type", __PRETTY_FUNCTION__,
@@ -7353,7 +7353,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -7435,7 +7435,7 @@ vector <uint8_t> awh::tls::Coder::getKeysECH(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -7567,7 +7567,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -7623,7 +7623,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::CRITICAL, error.c_str());
 													/**
@@ -7675,7 +7675,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -7700,7 +7700,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -7740,7 +7740,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -7769,7 +7769,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -7791,7 +7791,7 @@ bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, size}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -7851,7 +7851,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -7910,7 +7910,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -7948,7 +7948,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -7996,7 +7996,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -8018,7 +8018,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -8078,7 +8078,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.c_str());
 						/**
@@ -8151,7 +8151,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -8199,7 +8199,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.c_str());
 							/**
@@ -8227,7 +8227,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, buffer, size}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -8343,7 +8343,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, support.size()}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -8377,7 +8377,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, support.size()}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -8401,7 +8401,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, groups.size()}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -8587,7 +8587,7 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, ciphers.size()}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -8621,7 +8621,7 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, ciphers.size()}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -8645,7 +8645,7 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, ciphers.size()}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -8715,7 +8715,7 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -8766,7 +8766,7 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -8788,7 +8788,7 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -8858,7 +8858,7 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -8909,7 +8909,7 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -8931,7 +8931,7 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -8989,7 +8989,7 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -9049,7 +9049,7 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -9188,7 +9188,7 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (mode)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -9343,7 +9343,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем предупреждение в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, fid}, log::flag_t::WARNING, "Browser fingerprint template is empty");
 							/**
@@ -9371,7 +9371,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, fid}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -9539,7 +9539,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем предупреждение в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, fid}, log::flag_t::WARNING, "Browser fingerprint template is empty");
 							/**
@@ -9567,7 +9567,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, fid}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -9589,7 +9589,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, fid}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -9691,7 +9691,7 @@ vector <awh::tls::Coder::alpn_t> awh::tls::Coder::protocols(const id_t id) const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -9742,7 +9742,7 @@ uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -9797,7 +9797,7 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, item.protocol}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -9847,7 +9847,7 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, item.protocol}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -9886,7 +9886,7 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, alpn.size()}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -9940,7 +9940,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, alps.size()}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -9971,7 +9971,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, item.protocol}, log::flag_t::WARNING, error.c_str());
 									/**
@@ -10043,7 +10043,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, alps.size()}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -10066,7 +10066,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, alps.size()}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -10208,7 +10208,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, signatures.size()}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -10245,7 +10245,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, signatures.size()}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -10269,7 +10269,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, signatures.size()}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -10342,7 +10342,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -10382,7 +10382,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -10422,7 +10422,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -10452,7 +10452,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -10506,7 +10506,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -10546,7 +10546,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -10586,7 +10586,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 											/**
@@ -10616,7 +10616,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (method)}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -10641,7 +10641,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <compressor::metho
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, methods.size()}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -10695,7 +10695,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {id, groups.size(), static_cast <uint16_t> (grease)}, log::flag_t::WARNING, error.c_str());
 							/**
@@ -10794,7 +10794,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, groups.size(), static_cast <uint16_t> (grease)}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -10824,7 +10824,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, groups.size(), static_cast <uint16_t> (grease)}, log::flag_t::WARNING, error.c_str());
 								/**
@@ -10847,7 +10847,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, groups.size(), static_cast <uint16_t> (grease)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -10904,7 +10904,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -10935,7 +10935,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -10974,7 +10974,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -11014,7 +11014,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11045,7 +11045,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11074,7 +11074,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -11132,7 +11132,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11173,7 +11173,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -11210,7 +11210,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -11256,7 +11256,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11297,7 +11297,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -11334,7 +11334,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.c_str());
 									/**
@@ -11364,7 +11364,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, dir, file}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -11425,7 +11425,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11456,7 +11456,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11491,7 +11491,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11533,7 +11533,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11564,7 +11564,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11599,7 +11599,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11624,7 +11624,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, filename}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -11686,7 +11686,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -11720,7 +11720,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -11753,7 +11753,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11793,7 +11793,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -11827,7 +11827,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 										/**
@@ -11860,7 +11860,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 								/**
@@ -11883,7 +11883,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -11951,7 +11951,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -11983,7 +11983,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -12023,7 +12023,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -12055,7 +12055,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -12105,7 +12105,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -12137,7 +12137,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -12177,7 +12177,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -12209,7 +12209,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.c_str());
 												/**
@@ -12236,7 +12236,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id, filename, static_cast <uint16_t> (type)}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -12282,7 +12282,7 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -12330,7 +12330,7 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -12390,7 +12390,7 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -12450,7 +12450,7 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -12498,7 +12498,7 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {id}, log::flag_t::CRITICAL, error.what());
 		/**

@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef __AWH_FIBER_TESTS__
-#define __AWH_FIBER_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -44,5 +43,3 @@ class FiberFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_FIBER_TESTS__

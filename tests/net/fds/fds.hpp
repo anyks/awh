@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_FDS_TESTS__
-#define __AWH_FDS_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -48,5 +47,3 @@ class FdsFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_FDS_TESTS__

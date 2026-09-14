@@ -246,7 +246,7 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Failed to commit client", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 					/**
@@ -266,7 +266,7 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -305,7 +305,7 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Failed to launch client", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 					/**
@@ -325,7 +325,7 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1232,7 +1232,7 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, awh::log::flag_t::CRITICAL, error.what());
 		/**

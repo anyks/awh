@@ -61,7 +61,7 @@
  *          вызова, и на стендах Solaris и OpenIndiana счётчик не собирался вовсе
  *
  */
-#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 	#define AWH_SYSCOUNT_HAS_SYSCTL 1
 #else
 	#define AWH_SYSCOUNT_HAS_SYSCTL 0
@@ -80,7 +80,7 @@
  * @note Разыскание подлинных функций нужно лишь этому способу подмены: у macOS
  *       подлинная функция остаётся доступной по своему имени
  */
-#if __linux__
+#if defined(__linux__)
 	#include <dlfcn.h>
 	#include <sys/epoll.h>
 #endif
@@ -91,7 +91,7 @@
 /**
  * Если операционной системой является macOS
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	#include <sys/event.h>
 #endif
 
@@ -121,7 +121,7 @@
  *       самих, а не рассуждением по сходству
  *
  */
-#if __APPLE__ || __linux__
+#if defined(__APPLE__) || defined(__linux__)
 	#define AWH_SYSCOUNT_SUPPORTED 1
 #else
 	#define AWH_SYSCOUNT_SUPPORTED 0
@@ -216,7 +216,7 @@ static inline uint64_t __awh_nanostamp__(void){
 	/**
 	 * Если операционной системой является macOS
 	 */
-	#if __APPLE__
+	#if defined(__APPLE__)
 		// Выводим текущее время монотонных часов
 		return clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
 	/**
@@ -356,7 +356,7 @@ static void __awh_initialize__(void){
  *          своему имени, поэтому получать её через `dlsym` не требуется
  *
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	#define AWH_SYSCOUNT_BIND(name) \
 		__attribute__((used)) static struct { const void * replacement; const void * replacee; } \
 		__awh_interpose_##name __attribute__((section("__DATA,__interpose"))) = \
@@ -643,7 +643,7 @@ AWH_SYSCOUNT_BIND(recv)
  * @note Вызов этот принадлежит BSD и macOS. Правки подписок уходят у него тем же
  *       вызовом, что и ожидание, оттого оба и учитываются одной разновидностью
  */
-#if __APPLE__
+#if defined(__APPLE__)
 /**
  * @brief Подменяющая функция ожидания готовности событий
  *
@@ -703,7 +703,7 @@ AWH_SYSCOUNT_BIND(kevent)
  *       их вместе здесь тому и служит: показатель обращений к очереди опроса
  *       остаётся сопоставим между платформами, а не считает разное разным числом
  */
-#if __linux__
+#if defined(__linux__)
 	/**
 	 * @brief Подменяющая функция ожидания готовности событий
 	 *
@@ -824,7 +824,7 @@ AWH_SYSCOUNT_BIND(fcntl)
  *          на стенде Alpine счётчик не собирался вовсе
  *
  */
-#if __linux__ && !defined(__GLIBC__)
+#if defined(__linux__) && !defined(__GLIBC__)
 	typedef int32_t awh_ioctl_request_t;
 #else
 	typedef unsigned long awh_ioctl_request_t;
@@ -901,7 +901,7 @@ AWH_SYSCOUNT_WRAP(AWH_SYSCOUNT_CLOCK, int32_t, clock_gettime, (clockid_t id, str
  *
  * @note Механизм этот принадлежит одному Linux, и подмена заводится только там
  */
-#if __linux__
+#if defined(__linux__)
 /**
  * @brief Подменяющая функция обращения к ядру по номеру вызова
  *

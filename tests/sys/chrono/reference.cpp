@@ -347,7 +347,7 @@ static const struct ReferenceZone {
  *       им же, отчего замена и годится на всём промежутке проверки
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	#define REFERENCE_ZONE_NAME(zone) (zone).rule
 #else
 	#define REFERENCE_ZONE_NAME(zone) (zone).name
@@ -390,7 +390,7 @@ TEST_F(ReferenceFixture, ExecutionReferenceDaylightChronoTest){
 	 *          проверял бы себя самого
 	 *
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Пропускаем сверку с ненадёжным эталоном
 		GTEST_SKIP() << "библиотека времени исполнения MS Windows эталоном перехода на летнее время служить не может";
 	#endif

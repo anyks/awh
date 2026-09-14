@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_SYS_CHRONO__
-#define __AWH_BENCHMARK_SYS_CHRONO__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -256,5 +255,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_SYS_CHRONO__

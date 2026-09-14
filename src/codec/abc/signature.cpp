@@ -95,7 +95,7 @@ bool awh::codec::abc::Merkle::fail(const char * message) const noexcept {
 	/**
 	 * Если включён режим отладки
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
 		awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {this->_leaves.size()},
 		 awh::log::flag_t::WARNING, message);

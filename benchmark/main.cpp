@@ -38,7 +38,7 @@
  *       вызовов внедряется подставной библиотекой через загрузчик, а у MS Windows
  *       ни этого заголовка, ни самого способа внедрения нет вовсе
  */
-#if !(_WIN32 || _WIN64)
+#if !(defined(_WIN32) || defined(_WIN64))
 	#include <dlfcn.h>
 #endif
 
@@ -236,7 +236,7 @@ namespace {
 		 *       загрузчик там нет, и точки входа взяться неоткуда: учёт системных
 		 *       вызовов на этой системе недоступен целиком
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Выводим отсутствие состояния счётчика
 			return result;
 		#else
@@ -405,7 +405,7 @@ std::string awh::benchmark::syscall::reason() noexcept {
 	/**
 	 * Если сборка ведётся не под MS Windows
 	 */
-	#if !(_WIN32 || _WIN64)
+	#if !(defined(_WIN32) || defined(_WIN64))
 		// Если подставная библиотека внедрена, но её двоичный контракт не совпал
 		if(::dlsym(RTLD_DEFAULT, AWH_SYSCOUNT_ENTRY_POINT) != nullptr)
 			// Выводим причину несовпадения двоичного контракта

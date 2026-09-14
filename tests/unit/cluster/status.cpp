@@ -36,7 +36,7 @@
 /**
  * Для операционных систем, отличных от MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Системные заголовочные файлы
 	 */
@@ -60,7 +60,7 @@ static int32_t exitedStatus(const int32_t code) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Код завершения отдаётся системой как есть
 		return code;
 	/**
@@ -86,7 +86,7 @@ static int32_t signaledStatus(const int32_t signal) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Подбираем ближайшее по смыслу значение NTSTATUS
 		 */
@@ -161,7 +161,7 @@ TEST(ClusterStatusFixture, CrashedStatusTest){
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Процесс снят сигналом
 		ASSERT_TRUE(unit::cluster_t::signaled(status));
 		// Номер снявшего сигнала извлекается неискажённым
@@ -209,7 +209,7 @@ TEST(ClusterStatusFixture, StoppedByMasterStatusTest){
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Состояние остановки воркера мастером у MS Windows
 		const int32_t status = static_cast <int32_t> (0xE0000001u);
 	/**

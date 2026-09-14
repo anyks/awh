@@ -121,7 +121,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -148,7 +148,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::add(const string
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -216,7 +216,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::remove(const str
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {externalPort}, awh::log::flag_t::WARNING, "port mapping parameters are incomplete");
 		/**
@@ -307,7 +307,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::specific(const s
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {externalPort}, awh::log::flag_t::WARNING, "port mapping parameters are incomplete");
 		/**
@@ -378,7 +378,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -405,7 +405,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::pinhole(const st
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -515,7 +515,7 @@ awh::proto::portmap::UPnP::request_t awh::proto::portmap::UPnP::repinhole(const 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,

@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_HEADERS_SCENARIOS__
-#define __AWH_BENCHMARK_HEADERS_SCENARIOS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -125,5 +124,3 @@ namespace scenarios {
 	 */
 	static constexpr const char * REPLACEMENTS[2] = {"4096", "131072"};
 };
-
-#endif // __AWH_BENCHMARK_HEADERS_SCENARIOS__

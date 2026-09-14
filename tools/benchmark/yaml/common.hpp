@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_YAML__
-#define __AWH_BENCHMARK_RIVAL_YAML__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -831,5 +830,3 @@ namespace rival {
 		return EXIT_SUCCESS;
 	}
 };
-
-#endif // __AWH_BENCHMARK_RIVAL_YAML__

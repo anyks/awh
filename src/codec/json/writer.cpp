@@ -134,7 +134,7 @@ bool awh::codec::json::Writer::refuse(const error_t error) noexcept {
 	 * @note Отказ записи беда КРИТИЧЕСКАЯ: записывается то, что собрало само приложение,
 	 *       и негодное здесь означает дефект у потребителя, а не чужой негодный ввод
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем отказ записи в журнал работы
 		awh::log::debug("JSON writing refused: %s", __PRETTY_FUNCTION__, {},
 		                  awh::log::flag_t::CRITICAL, reason);

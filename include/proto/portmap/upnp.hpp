@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_PROTO_PORTMAP_UPNP__
-#define __AWH_PROTO_PORTMAP_UPNP__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -876,5 +875,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-
-#endif // __AWH_PROTO_PORTMAP_UPNP__

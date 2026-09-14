@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_SOCKET__
-#define __AWH_SOCKET__
+#pragma once
 
 /**
  * Наши модули
@@ -911,5 +910,3 @@ namespace awh {
 		} socket_t;
 	};
 };
-
-#endif // __AWH_SOCKET__

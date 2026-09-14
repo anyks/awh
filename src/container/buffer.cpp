@@ -259,7 +259,7 @@ void awh::Buffer::error(const char * func, const char * message, const awh::log:
 	/**
 	 * Если включён режим отладки
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
 		awh::log::debug("%s", func, {}, flag, message);
 	/**
@@ -404,13 +404,13 @@ template awh::Buffer::Iterator <double> awh::Buffer::end <double> () noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Buffer::Iterator <char> awh::Buffer::end <char> () noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Buffer::Iterator <size_t> awh::Buffer::end <size_t> () noexcept;
 	template awh::Buffer::Iterator <ssize_t> awh::Buffer::end <ssize_t> () noexcept;
 #endif
@@ -447,13 +447,13 @@ template awh::Buffer::Iterator <double> awh::Buffer::begin <double> () noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Buffer::Iterator <char> awh::Buffer::begin <char> () noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Buffer::Iterator <size_t> awh::Buffer::begin <size_t> () noexcept;
 	template awh::Buffer::Iterator <ssize_t> awh::Buffer::begin <ssize_t> () noexcept;
 #endif
@@ -520,14 +520,14 @@ template awh::Buffer::Const_Iterator <double> awh::Buffer::cend <double> () cons
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Buffer::Const_Iterator <char> awh::Buffer::end <char> () const noexcept;
 	template awh::Buffer::Const_Iterator <char> awh::Buffer::cend <char> () const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::end <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::cend <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <ssize_t> awh::Buffer::end <ssize_t> () const noexcept;
@@ -596,14 +596,14 @@ template awh::Buffer::Const_Iterator <double> awh::Buffer::cbegin <double> () co
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Buffer::Const_Iterator <char> awh::Buffer::begin <char> () const noexcept;
 	template awh::Buffer::Const_Iterator <char> awh::Buffer::cbegin <char> () const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::begin <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <size_t> awh::Buffer::cbegin <size_t> () const noexcept;
 	template awh::Buffer::Const_Iterator <ssize_t> awh::Buffer::begin <ssize_t> () const noexcept;
@@ -642,13 +642,13 @@ template void awh::Buffer::pop <double> () noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template void awh::Buffer::pop <char> () noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template void awh::Buffer::pop <size_t> () noexcept;
 	template void awh::Buffer::pop <ssize_t> () noexcept;
 #endif
@@ -689,13 +689,13 @@ template size_t awh::Buffer::count <double> () const noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template size_t awh::Buffer::count <char> () const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::Buffer::count <size_t> () const noexcept;
 	template size_t awh::Buffer::count <ssize_t> () const noexcept;
 #endif
@@ -743,13 +743,13 @@ template double awh::Buffer::back() const noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template char awh::Buffer::back() const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::Buffer::back() const noexcept;
 	template ssize_t awh::Buffer::back() const noexcept;
 #endif
@@ -797,13 +797,13 @@ template double awh::Buffer::front() const noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template char awh::Buffer::front() const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::Buffer::front() const noexcept;
 	template ssize_t awh::Buffer::front() const noexcept;
 #endif
@@ -856,13 +856,13 @@ template double awh::Buffer::at(const size_t) const noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template char awh::Buffer::at(const size_t) const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::Buffer::at(const size_t) const noexcept;
 	template ssize_t awh::Buffer::at(const size_t) const noexcept;
 #endif
@@ -911,13 +911,13 @@ template void awh::Buffer::set(const double, const size_t) noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template void awh::Buffer::set(const char, const size_t) noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template void awh::Buffer::set(const size_t, const size_t) noexcept;
 	template void awh::Buffer::set(const ssize_t, const size_t) noexcept;
 #endif
@@ -1090,13 +1090,13 @@ template bool awh::Buffer::push(const double) noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template bool awh::Buffer::push(const char) noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template bool awh::Buffer::push(const size_t) noexcept;
 	template bool awh::Buffer::push(const ssize_t) noexcept;
 #endif

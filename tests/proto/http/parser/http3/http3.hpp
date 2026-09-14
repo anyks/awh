@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PARSER_HTTP3_TESTS__
-#define __AWH_HTTP_PARSER_HTTP3_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -205,5 +204,3 @@ class ParserHttp3Fixture : public testing::Test {
 		 */
 		std::string phases(const events_t & events, const uint64_t sid) const noexcept;
 };
-
-#endif // __AWH_HTTP_PARSER_HTTP3_TESTS__

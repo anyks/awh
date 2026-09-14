@@ -167,7 +167,7 @@ int32_t main(){
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Добавляем новое событие клиента ICMP
 		eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
 	/**

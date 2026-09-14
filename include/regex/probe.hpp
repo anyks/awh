@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef __AWH_REGEX_PROBE__
-#define __AWH_REGEX_PROBE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -209,5 +208,3 @@ namespace awh {
 	 */
 	#define AWH_REGEX_TICK(PATH) ((void) 0)
 #endif
-
-#endif // __AWH_REGEX_PROBE__

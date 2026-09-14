@@ -34,13 +34,12 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_TESTS_POSIX__
-#define __AWH_TESTS_POSIX__
+#pragma once
 
 /**
  * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Стандартные заголовочные файлы работы с файловыми дескрипторами и гнёздами
 	 *
@@ -141,7 +140,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Стандартные заголовочные файлы
 	 */
@@ -219,7 +218,7 @@
 	 *       прежде заведения своего надлежит всегда
 	 *
 	 */
-	#ifndef _POSIX_THREAD_SAFE_FUNCTIONS
+	#if !defined(_POSIX_THREAD_SAFE_FUNCTIONS)
 	/**
 	 * @brief Функция разложения времени по всемирной временной зоне
 	 *
@@ -456,14 +455,14 @@
 	 *       с тем, чем пользуются прочие средства той же системы
 	 *
 	 */
-	#ifndef IFF_LOOPBACK
+	#if !defined(IFF_LOOPBACK)
 		#define IFF_LOOPBACK 0x8
 	#endif
 	/**
 	 * @brief Признак поднятого устройства
 	 *
 	 */
-	#ifndef IFF_UP
+	#if !defined(IFF_UP)
 		#define IFF_UP 0x1
 	#endif
 
@@ -659,7 +658,7 @@ inline bool waitReadable(const int32_t fd, const uint32_t timeout) noexcept {
 	// Выполняем очистку набора гнёзд
 	FD_ZERO(&set);
 	// Добавляем гнездо в набор ожидания
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// У MS Windows набор ожидания принимает описатель гнезда своего типа
 		FD_SET(static_cast <SOCKET> (fd), &set);
 	#else
@@ -673,7 +672,7 @@ inline bool waitReadable(const int32_t fd, const uint32_t timeout) noexcept {
 	// Устанавливаем доли секунды предела ожидания
 	value.tv_usec = static_cast <decltype(value.tv_usec)> ((timeout % 1000) * 1000);
 	// Выводим итог ожидания готовности гнезда к приёму
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// У MS Windows первый довод не значит ничего и передаётся нулём
 		return (::select(0, &set, nullptr, nullptr, &value) > 0);
 	#else
@@ -681,5 +680,3 @@ inline bool waitReadable(const int32_t fd, const uint32_t timeout) noexcept {
 		return (::select(fd + 1, &set, nullptr, nullptr, &value) > 0);
 	#endif
 }
-
-#endif // __AWH_TESTS_POSIX__

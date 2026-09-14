@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_LEXICAL_TESTS__
-#define __AWH_LEXICAL_TESTS__
+#pragma once
 
 /**
  * Подключаем общие заголовки тестов
@@ -101,5 +100,3 @@ class LexicalFixture : public testing::Test {
 		 */
 		static void expectFloatMatchesStrtof(const char * text) noexcept;
 };
-
-#endif // __AWH_LEXICAL_TESTS__

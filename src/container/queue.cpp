@@ -156,7 +156,7 @@ void awh::Queue::error([[maybe_unused]] const char * func, [[maybe_unused]] cons
 	/**
 	 * Если включён режим отладки
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
 		awh::log::debug("%s", func, {size}, awh::log::flag_t::CRITICAL, message);
 	/**
@@ -327,13 +327,13 @@ template awh::Queue::Iterator <double> awh::Queue::end <double> () noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Queue::Iterator <char> awh::Queue::end <char> () noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Queue::Iterator <size_t> awh::Queue::end <size_t> () noexcept;
 	template awh::Queue::Iterator <ssize_t> awh::Queue::end <ssize_t> () noexcept;
 #endif
@@ -370,13 +370,13 @@ template awh::Queue::Iterator <double> awh::Queue::begin <double> () noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Queue::Iterator <char> awh::Queue::begin <char> () noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Queue::Iterator <size_t> awh::Queue::begin <size_t> () noexcept;
 	template awh::Queue::Iterator <ssize_t> awh::Queue::begin <ssize_t> () noexcept;
 #endif
@@ -443,14 +443,14 @@ template awh::Queue::Const_Iterator <double> awh::Queue::cend <double> () const 
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Queue::Const_Iterator <char> awh::Queue::end <char> () const noexcept;
 	template awh::Queue::Const_Iterator <char> awh::Queue::cend <char> () const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Queue::Const_Iterator <size_t> awh::Queue::end <size_t> () const noexcept;
 	template awh::Queue::Const_Iterator <size_t> awh::Queue::cend <size_t> () const noexcept;
 	template awh::Queue::Const_Iterator <ssize_t> awh::Queue::end <ssize_t> () const noexcept;
@@ -519,14 +519,14 @@ template awh::Queue::Const_Iterator <double> awh::Queue::cbegin <double> () cons
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template awh::Queue::Const_Iterator <char> awh::Queue::begin <char> () const noexcept;
 	template awh::Queue::Const_Iterator <char> awh::Queue::cbegin <char> () const noexcept;
 #endif
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template awh::Queue::Const_Iterator <size_t> awh::Queue::begin <size_t> () const noexcept;
 	template awh::Queue::Const_Iterator <size_t> awh::Queue::cbegin <size_t> () const noexcept;
 	template awh::Queue::Const_Iterator <ssize_t> awh::Queue::begin <ssize_t> () const noexcept;

@@ -87,8 +87,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_IDNA__
-#define __AWH_IDNA__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -261,5 +260,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ string toUnicode(string_view domain, const uint16_t mode = DEFAULT_MODE) noexcept;
 	};
 };
-
-#endif // __AWH_IDNA__

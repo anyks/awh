@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_PROTO_SOCKS5_TESTS__
-#define __AWH_PROTO_SOCKS5_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -61,5 +60,3 @@ class Socks5Fixture : public testing::Test {
 		 */
 		std::unique_ptr <awh::proto::server_socks5_t> makeServer() const noexcept;
 };
-
-#endif // __AWH_PROTO_SOCKS5_TESTS__

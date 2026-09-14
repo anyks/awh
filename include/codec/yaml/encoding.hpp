@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_YAML_ENCODING__
-#define __AWH_CODEC_YAML_ENCODING__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -531,5 +530,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_CODEC_YAML_ENCODING__

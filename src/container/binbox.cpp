@@ -180,7 +180,7 @@ namespace binbox {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -330,7 +330,7 @@ namespace binbox {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer.size()}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -401,7 +401,7 @@ awh::BinBox::Iterator & awh::BinBox::Iterator::operator ++ () noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -627,7 +627,7 @@ uint64_t awh::BinBox::idw(string_view key) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {key}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -721,7 +721,7 @@ size_t awh::BinBox::size(const uint64_t idw) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -782,7 +782,7 @@ void * awh::BinBox::get(const uint64_t idw) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -823,7 +823,7 @@ template bool awh::BinBox::get <bool> (string_view) noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template int8_t awh::BinBox::get <int8_t> (string_view) noexcept;
 #endif
 template uint8_t awh::BinBox::get <uint8_t> (string_view) noexcept;
@@ -841,7 +841,7 @@ template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (string_view) noex
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::BinBox::get <size_t> (string_view) noexcept;
 	template ssize_t awh::BinBox::get <ssize_t> (string_view) noexcept;
 #endif
@@ -897,7 +897,7 @@ template bool awh::BinBox::get <bool> (const uint64_t) noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template int8_t awh::BinBox::get <int8_t> (const uint64_t) noexcept;
 #endif
 template uint8_t awh::BinBox::get <uint8_t> (const uint64_t) noexcept;
@@ -915,7 +915,7 @@ template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (const uint64_t) n
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::BinBox::get <size_t> (const uint64_t) noexcept;
 	template ssize_t awh::BinBox::get <ssize_t> (const uint64_t) noexcept;
 #endif
@@ -975,7 +975,7 @@ bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw, buffer.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1048,7 +1048,7 @@ bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1094,7 +1094,7 @@ template bool awh::BinBox::add <bool> (const uint64_t, const bool) noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template bool awh::BinBox::add <int8_t> (const uint64_t, const int8_t) noexcept;
 #endif
 template bool awh::BinBox::add <uint8_t> (const uint64_t, const uint8_t) noexcept;
@@ -1109,7 +1109,7 @@ template bool awh::BinBox::add <double> (const uint64_t, const double) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template bool awh::BinBox::add <size_t> (const uint64_t, const size_t) noexcept;
 	template bool awh::BinBox::add <ssize_t> (const uint64_t, const ssize_t) noexcept;
 #endif
@@ -1143,7 +1143,7 @@ template bool awh::BinBox::add <char> (const uint64_t, const vector <char> &) no
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template bool awh::BinBox::add <int8_t> (const uint64_t, const vector <int8_t> &) noexcept;
 #endif
 template bool awh::BinBox::add <uint8_t> (const uint64_t, const vector <uint8_t> &) noexcept;
@@ -1158,7 +1158,7 @@ template bool awh::BinBox::add <double> (const uint64_t, const vector <double> &
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template bool awh::BinBox::add <size_t> (const uint64_t, const vector <size_t> &) noexcept;
 	template bool awh::BinBox::add <ssize_t> (const uint64_t, const vector <ssize_t> &) noexcept;
 #endif
@@ -1228,7 +1228,7 @@ bool awh::BinBox::add(const uint64_t idw, const void * buffer, const size_t size
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw, buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1274,7 +1274,7 @@ template bool awh::BinBox::add <bool> (string_view, const bool) noexcept;
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template bool awh::BinBox::add <int8_t> (string_view, const int8_t) noexcept;
 #endif
 template bool awh::BinBox::add <uint8_t> (string_view, const uint8_t) noexcept;
@@ -1289,7 +1289,7 @@ template bool awh::BinBox::add <double> (string_view, const double) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template bool awh::BinBox::add <size_t> (string_view, const size_t) noexcept;
 	template bool awh::BinBox::add <ssize_t> (string_view, const ssize_t) noexcept;
 #endif
@@ -1323,7 +1323,7 @@ template bool awh::BinBox::add <char> (string_view, const vector <char> &) noexc
 /**
  * Реализация под операционные системы кроме Sun Solaris
  */
-#if !__sun__
+#if !defined(__sun__)
 	template bool awh::BinBox::add <int8_t> (string_view, const vector <int8_t> &) noexcept;
 #endif
 template bool awh::BinBox::add <uint8_t> (string_view, const vector <uint8_t> &) noexcept;
@@ -1338,7 +1338,7 @@ template bool awh::BinBox::add <double> (string_view, const vector <double> &) n
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template bool awh::BinBox::add <size_t> (string_view, const vector <size_t> &) noexcept;
 	template bool awh::BinBox::add <ssize_t> (string_view, const vector <ssize_t> &) noexcept;
 #endif
@@ -1434,7 +1434,7 @@ awh::BinBox::iterator_t awh::BinBox::find(string_view key) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {key}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1472,7 +1472,7 @@ awh::BinBox::iterator_t awh::BinBox::find(const uint64_t idw) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {idw}, awh::log::flag_t::CRITICAL, error.what());
 			/**

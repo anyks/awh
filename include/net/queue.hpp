@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_NETWORK_QUEUE__
-#define __AWH_NETWORK_QUEUE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -49,7 +48,7 @@
 /**
  * Если размер буфера в байтах не определён
  */
-#ifndef AWH_NETWORK_QUEUE_BUFFER_SIZE
+#if !defined(AWH_NETWORK_QUEUE_BUFFER_SIZE)
 	/**
 	 * \~russian
 	 * Устанавливаем размер буфера для сетевой очереди (по умолчанию 64 КБ)
@@ -567,5 +566,3 @@ namespace awh {
 			~Network_Queue() noexcept;
 	} net_queue_t;
 };
-
-#endif // __AWH_NETWORK_QUEUE__

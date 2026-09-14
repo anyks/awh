@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PROVIDER__
-#define __AWH_HTTP_PROVIDER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -784,5 +783,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool splitTarget(const string_view target, string_view & scheme, string_view & authority, string_view & path) noexcept;
     };
 };
-
-#endif // __AWH_HTTP_PROVIDER__

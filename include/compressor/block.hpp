@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_COMPRESSOR_BLOCK__
-#define __AWH_COMPRESSOR_BLOCK__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -794,5 +793,3 @@ namespace awh {
 		} block_t;
 	};
 };
-
-#endif // __AWH_COMPRESSOR_BLOCK__

@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_QUEUE_TESTS__
-#define __AWH_QUEUE_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -48,5 +47,3 @@ class QueueFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_QUEUE_TESTS__

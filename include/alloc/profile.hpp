@@ -47,8 +47,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_PROFILE__
-#define __AWH_ALLOC_PROFILE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -484,5 +483,3 @@ namespace awh {
 		} profile_t;
 	};
 };
-
-#endif // __AWH_ALLOC_PROFILE__

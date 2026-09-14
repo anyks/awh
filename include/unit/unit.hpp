@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT__
-#define __AWH_UNIT__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -694,5 +693,3 @@ namespace awh {
 		} unit_t;
 	};
 };
-
-#endif // __AWH_UNIT__

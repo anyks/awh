@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_EVENTS__
-#define __AWH_EVENTS__
+#pragma once
 
 /**
  * Стандартный заголовочный файл
@@ -1612,5 +1611,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../sys/macro/restore.hpp"
-
-#endif // __AWH_EVENTS__

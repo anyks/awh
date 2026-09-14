@@ -157,7 +157,7 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(service), string(action)}, awh::log::flag_t::WARNING, message(error_t::INVALID_ACTION));
 		/**
@@ -220,7 +220,7 @@ string awh::proto::portmap::SOAP::request(const string_view service, const strin
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(service), string(action)}, awh::log::flag_t::WARNING, codec::xml::message(writer.error()));
 		/**
@@ -301,7 +301,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -323,7 +323,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -347,7 +347,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -375,7 +375,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().local}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -399,7 +399,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().uri}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -469,7 +469,7 @@ bool awh::proto::portmap::SOAP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {envelope.name().uri}, awh::log::flag_t::WARNING, message(error));
 		/**

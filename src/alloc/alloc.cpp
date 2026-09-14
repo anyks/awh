@@ -36,11 +36,11 @@
  * Мера времени нужна на каждом освобождении сверх разрядов, и источник её у каждой
  * системы свой - смотри `now()`
  */
-#if __FreeBSD__ || __DragonFly__
+#if defined(__FreeBSD__) || defined(__DragonFly__)
 	#include <sys/types.h>
 	#include <sys/time.h>
 	#include <sys/sysctl.h>
-#elif (__sun__ || __sun || sun) && (__SVR4 || __svr4__)
+#elif (defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__))
 	#include <sys/time.h>
 #endif
 #include <thread>
@@ -632,7 +632,7 @@ namespace {
 	 * системного таймера он вырастает до десятков миллисекунд, и отсрочка отдачи,
 	 * заданная в миллисекундах, потеряла бы смысл
 	 */
-	#if __NetBSD__ && __aarch64__
+	#if defined(__NetBSD__) && defined(__aarch64__)
 		/**
 		 * @brief Метод получения частоты счётчика системного таймера ARM
 		 *
@@ -653,7 +653,7 @@ namespace {
 		}
 		// Частота счётчика системного таймера, ноль означает негодность счётчика
 		static const uint64_t counter = frequency();
-	#elif __FreeBSD__ || __DragonFly__ || __linux__
+	#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__linux__)
 		/**
 		 * @brief Метод выбора источника монотонного времени
 		 *
@@ -684,11 +684,11 @@ namespace {
 			 *       и о зернистости дешёвых часов не говорит ничего. Проверено на обоих
 			 *       стендах
 			 */
-			#if __FreeBSD__ || __DragonFly__
+			#if defined(__FreeBSD__) || defined(__DragonFly__)
 				/**
 				 * Если операционной системой является FreeBSD
 				 */
-				#if __FreeBSD__
+				#if defined(__FreeBSD__)
 					// Частота системного таймера
 					int32_t hz = 0;
 					// Размер получаемого значения
@@ -748,7 +748,7 @@ namespace {
 		/**
 		 * Если операционной системой является macOS
 		 */
-		#if __APPLE__ || __MACH__
+		#if defined(__APPLE__) || defined(__MACH__)
 			/**
 			 * Если дешёвые монотонные часы доступны
 			 */
@@ -765,13 +765,13 @@ namespace {
 		/**
 		 * Если операционной системой является Sun Solaris либо illumos
 		 */
-		#elif (__sun__ || __sun || sun) && (__SVR4 || __svr4__)
+		#elif (defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__))
 			// Выводим текущее время монотонных часов в миллисекундах
 			return (static_cast <uint64_t> (::gethrtime()) / 1000000ull);
 		/**
 		 * Если системой является NetBSD с набором команд ARM64
 		 */
-		#elif __NetBSD__ && __aarch64__
+		#elif defined(__NetBSD__) && defined(__aarch64__)
 			/**
 			 * Если счётчик системного таймера годен
 			 */
@@ -797,7 +797,7 @@ namespace {
 		/**
 		 * Если операционной системой является FreeBSD либо Linux
 		 */
-		#elif __FreeBSD__ || __DragonFly__ || __linux__
+		#elif defined(__FreeBSD__) || defined(__DragonFly__) || defined(__linux__)
 			// Отметка времени
 			struct timespec stamp{};
 			// Получаем текущее время выбранных монотонных часов

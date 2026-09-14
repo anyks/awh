@@ -203,7 +203,7 @@ size_t awh::proto::portmap::PCP::request(void * buffer, const size_t size, const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (request.opcode)}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -236,7 +236,7 @@ size_t awh::proto::portmap::PCP::request(void * buffer, const size_t size, const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {length}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -258,7 +258,7 @@ size_t awh::proto::portmap::PCP::request(void * buffer, const size_t size, const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {size, length}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -370,7 +370,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		 *       запись о каждом из них засоряла бы журнал, а при обстреле снаружи
 		 *       ещё и служила бы средством нападения
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -388,7 +388,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {data[0]}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -404,7 +404,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {data[1]}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -424,7 +424,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {opcode}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -440,7 +440,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {size, payload}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -501,7 +501,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {offset, size}, awh::log::flag_t::WARNING, message(error));
 			#endif
@@ -524,7 +524,7 @@ bool awh::proto::portmap::PCP::parse(const void * buffer, const size_t size, ans
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {offset, length, size}, awh::log::flag_t::WARNING, message(error));
 			#endif

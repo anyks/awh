@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef __AWH_TOOLS_REGEX_CONFORMANCE__
-#define __AWH_TOOLS_REGEX_CONFORMANCE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -64,5 +63,3 @@ static const block_t BLOCKS[] = {
 	{"UTF-8 длинные",       77,   5000,  300, true,  0x5f338e431692b460ull},
 	{"UTF-8 сообщения",    404,   1000, 3000, true,  0xf0af2d77f26d770dull}
 };
-
-#endif // __AWH_TOOLS_REGEX_CONFORMANCE__

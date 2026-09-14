@@ -33,7 +33,7 @@
 /**
  * Операционной системой является Linux
  */
-#if __linux__
+#if defined(__linux__)
 	/**
 	 * Стандартный заголовочный файл
 	 */
@@ -46,7 +46,7 @@
 /**
  * Если операционной системой является FreeBSD, NetBSD и OpenBSD
  */
-#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 	/**
 	 * Системные заголовочные файлы
 	 *
@@ -60,7 +60,7 @@
 	/**
 	 * Если операционной системой является FreeBSD и NetBSD
 	 */
-	#if !__NetBSD__
+	#if !defined(__NetBSD__)
 		#include <sys/user.h>
 	#endif
 	/**
@@ -70,7 +70,7 @@
 	 *       таблицам названий, которые система отдаёт заголовками. Таблицы сетевой
 	 *       ветви лежат в заголовках сетевых, оттого они здесь и подключаются
 	 */
-	#if __OpenBSD__
+	#if defined(__OpenBSD__)
 		#include <sys/queue.h>
 		#include <sys/socket.h>
 		#include <sys/timeout.h>
@@ -88,7 +88,7 @@
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Системные заголовочные файлы
 	 */
@@ -100,7 +100,7 @@
 /**
  * Если операционной системой является macOS, FreeBSD, NetBSD и OpenBSD
  */
-#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+#if defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 	/**
 	 * Системный заголовочный файл
 	 */
@@ -110,7 +110,7 @@
 /**
  * Если операционной системой является macOS и Unix
  */
-#if __unix__ || __unix || unix || (__APPLE__ && __MACH__)
+#if defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
 	/**
 	 * Системные заголовочные файлы
 	 */
@@ -121,7 +121,7 @@
 	/**
 	 * Для операционной системы macOS
 	 */
-	#if __APPLE__ || __MACH__
+	#if defined(__APPLE__) || defined(__MACH__)
 		/**
 		 * Системные заголовочные файлы
 		 */
@@ -129,7 +129,7 @@
 	/**
 	 * Для операционной системы Sun Solaris
 	 */
-	#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
+	#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
 		/**
 		 * Системные заголовочные файлы
 		 */
@@ -138,7 +138,7 @@
 	/**
 	 * Подключаем заголовки для Linux
 	 */
-	#elif __linux__ || __linux || linux || __gnu_linux__
+	#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 		/**
 		 * Системный заголовочный файл
 		 */
@@ -149,7 +149,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 *
@@ -176,7 +176,7 @@
 	/**
 	 * Если активирован компилятор MS Visual Studio
 	 */
-	#if !(__MINGW32__ || __MINGW64__)
+	#if !(defined(__MINGW32__) || defined(__MINGW64__))
 		/**
 		 * Заголовочный файл контроллера памяти
 		 */
@@ -204,7 +204,7 @@ using namespace std;
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Функция получения строкового типа метаданных
 	 *
@@ -267,7 +267,7 @@ using namespace std;
 	/**
 	 * Тип элемента списка групп пользователя для функции getgrouplist (на macOS прототип использует int32_t, на остальных системах gid_t)
 	 */
-	#if __APPLE__ || __MACH__
+	#if defined(__APPLE__) || defined(__MACH__)
 		/**
 		 * @brief Тип элемента списка групп пользователя для функции getgrouplist на macOS
 		 *
@@ -397,7 +397,7 @@ using namespace std;
 	/**
 	 * Если операционной системой является OpenBSD
 	 */
-	#if __OpenBSD__
+	#if defined(__OpenBSD__)
 		/**
 		 * @brief Функция разрешения названия настройки ядра в числовой указатель
 		 *
@@ -628,7 +628,7 @@ using namespace std;
 			/**
 			 * Если мы работаем в macOS, FreeBSD, NetBSD или OpenBSD
 			 */
-			#if __OpenBSD__
+			#if defined(__OpenBSD__)
 				// Числовой указатель настройки ядра
 				int32_t mib[CTL_MAXNAME];
 				// Количество частей числового указателя
@@ -650,7 +650,7 @@ using namespace std;
 			/**
 			 * Если мы работаем в macOS, FreeBSD либо NetBSD
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+			#elif defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__)
 				// Получаем размер буфера
 				size_t length = 0;
 				// Если размеры удачно получены
@@ -665,7 +665,7 @@ using namespace std;
 			/**
 			 * Если это Linux
 			 */
-			#elif __linux__
+			#elif defined(__linux__)
 				// Формируем путь к параметру ядра в виртуальной файловой системе /proc/sys
 				string path = "/proc/sys/";
 				/**
@@ -800,7 +800,7 @@ using namespace std;
 			/**
 			 * Если мы работаем в macOS, FreeBSD, NetBSD или OpenBSD
 			 */
-			#if __OpenBSD__
+			#if defined(__OpenBSD__)
 				// Числовой указатель настройки ядра
 				int32_t mib[CTL_MAXNAME];
 				// Количество частей числового указателя
@@ -814,13 +814,13 @@ using namespace std;
 			/**
 			 * Если мы работаем в macOS, FreeBSD либо NetBSD
 			 */
-			#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
+			#elif defined(__APPLE__) || defined(__MACH__) || defined(__FreeBSD__) || defined(__NetBSD__)
 				// Устанавливаем новые параметры настройки ядра
 				return (::sysctlbyname(name.data(), nullptr, 0, const_cast <uint8_t *> (reinterpret_cast <const uint8_t *> (buffer)), size) == 0);
 			/**
 			 * Операционной системой является Linux
 			 */
-			#elif __linux__
+			#elif defined(__linux__)
 				// Формируем путь к параметру ядра в виртуальной файловой системе /proc/sys
 				string path = "/proc/sys/";
 				/**
@@ -922,7 +922,7 @@ bool awh::Operating_System::isAdmin() const noexcept {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Возвращаем результат проверки
 		return (::geteuid() == 0);
 	/**
@@ -959,53 +959,53 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 	/**
 	 * Операционной системой является Windows 32bit
 	 */
-	#ifdef _WIN32
+	#if defined(_WIN32)
 		// Возвращаем флаг операционной системы
 		return family_t::WIND32;
 	/**
 	 * Операционной системой является Windows 64bit
 	 */
-	#elif _WIN64
+	#elif defined(_WIN64)
 		// Возвращаем флаг операционной системы
 		return family_t::WIND64;
 	/**
 	 * Операционной системой является macOS
 	 */
-	#elif __APPLE__ || __MACH__
+	#elif defined(__APPLE__) || defined(__MACH__)
 		// Возвращаем флаг операционной системы
 		return family_t::MACOSX;
 	/**
 	 * Операционной системой является Linux
 	 */
-	#elif __linux__
+	#elif defined(__linux__)
 		// Возвращаем флаг операционной системы
 		return family_t::LINUX;
 	/**
 	 * Операционной системой является FreeBSD
 	 */
-	#elif __FreeBSD__
+	#elif defined(__FreeBSD__)
 		// Возвращаем флаг операционной системы
 		return family_t::FREEBSD;
 	/**
 	 * Операционной системой является NetBSD
 	 */
-	#elif __NetBSD__
+	#elif defined(__NetBSD__)
 		// Возвращаем флаг операционной системы
 		return family_t::NETBSD;
 	/**
 	 * Операционной системой является OpenBSD
 	 */
-	#elif __OpenBSD__
+	#elif defined(__OpenBSD__)
 		// Возвращаем флаг операционной системы
 		return family_t::OPENBSD;
 	/**
 	 * Реализация под Sun Solaris
 	 */
-	#elif __sun__
+	#elif defined(__sun__)
 		/**
 		 * Если операционной системой является OpenSolaris
 		 */
-		#ifdef __illumos__
+		#if defined(__illumos__)
 			// Возвращаем флаг операционной системы
 			return family_t::ILLUMOS;
 		#else
@@ -1015,7 +1015,7 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 	/**
 	 * Операционной системой является Unix
 	 */
-	#elif __unix || __unix__
+	#elif defined(__unix) || defined(__unix__)
 		// Возвращаем флаг операционной системы
 		return family_t::UNIX;
 	/**
@@ -1036,37 +1036,37 @@ awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcep
 	/**
 	 * Если процессор принадлежит к x86_64
 	 */
-	#if __x86_64__ || _M_X64
+	#if defined(__x86_64__) || defined(_M_X64)
 		// Возвращаем определённую архитектуру процессора
 		return cpu_t::AMD64;
 	/**
 	 * Если процессор принадлежит к ARM64
 	 */
-	#elif __aarch64__ || _M_ARM64
+	#elif defined(__aarch64__) || defined(_M_ARM64)
 		// Возвращаем определённую архитектуру процессора
 		return cpu_t::ARM64;
 	/**
 	 * Если процессор принадлежит к ARM
 	 */
-	#elif __arm__ || _M_ARM
+	#elif defined(__arm__) || defined(_M_ARM)
 		// Возвращаем определённую архитектуру процессора
 		return cpu_t::ARM;
 	/**
 	 * Если процессор принадлежит к x86
 	 */
-	#elif __i386__ || _M_IX86
+	#elif defined(__i386__) || defined(_M_IX86)
 		// Возвращаем определённую архитектуру процессора
 		return cpu_t::X86;
 	/**
 	 * Если процессор принадлежит к PowerPC
 	 */
-	#elif __powerpc__ || __ppc__
+	#elif defined(__powerpc__) || defined(__ppc__)
 		// Возвращаем определённую архитектуру процессора
 		return cpu_t::PPC;
 	/**
 	 * Если процессор принадлежит к MIPS
 	 */
-	#elif __mips__
+	#elif defined(__mips__)
 		// Возвращаем определённую архитектуру процессора
 		return cpu_t::MIPS;
 	/**
@@ -1119,7 +1119,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Создаём объект информации о памяти
 						PROCESS_MEMORY_COUNTERS info;
 						// Выполняем извлечение данных текущего процесса
@@ -1131,7 +1131,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 							/**
@@ -1146,7 +1146,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					/**
 					 * Для операционной системы macOS
 					 */
-					#elif __APPLE__ || __MACH__
+					#elif defined(__APPLE__) || defined(__MACH__)
 						// Создаём объект информации о памяти
 						struct mach_task_basic_info info;
 						// Устанавливаем количество извлекаемой информации
@@ -1156,7 +1156,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							/**
@@ -1174,7 +1174,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					/**
 					 * Для операционной системы FreeBSD, NetBSD, OpenBSD
 					 */
-					#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+					#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 						/**
 						 * Сведения о процессе описаны у каждой системы своей структурой, и
 						 * запрашиваются они по-разному
@@ -1190,7 +1190,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 *       в октеты общий для всех трёх
 						 *
 						 */
-						#if __NetBSD__
+						#if defined(__NetBSD__)
 							// Создаём объект информации о памяти
 							struct kinfo_proc2 info;
 							// Получаем размер объекта информации
@@ -1199,7 +1199,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							int32_t mib[] = {CTL_KERN, KERN_PROC2, KERN_PROC_PID, static_cast <int32_t> (::getpid()), static_cast <int32_t> (sizeof(info)), 1};
 							// Количество частей запроса сведений о процессе
 							static constexpr u_int MIB_SIZE = 6;
-						#elif __OpenBSD__
+						#elif defined(__OpenBSD__)
 							// Создаём объект информации о памяти
 							struct kinfo_proc info;
 							// Получаем размер объекта информации
@@ -1223,7 +1223,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -1237,7 +1237,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							return result;
 						}
 						// RSS в страницах; переводим в байты
-						#if __NetBSD__ || __OpenBSD__
+						#if defined(__NetBSD__) || defined(__OpenBSD__)
 							return (static_cast <size_t> (info.p_vm_rssize) * ::getpagesize());
 						#else
 							return (static_cast <size_t> (info.ki_rssize) * ::getpagesize());
@@ -1245,7 +1245,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					/**
 					 * Для операционной системы Linux
 					 */
-					#elif __linux__ || __linux || linux || __gnu_linux__
+					#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
 						// Размер потребления памяти
 						long rss = 0L;
 						// Создаём указатель файла
@@ -1255,7 +1255,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -1273,7 +1273,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -1295,7 +1295,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					/**
 					 * Для операционной системы Sun Solaris
 					 */
-					#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
+					#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
 						// Создаём файловый дескриптор для чтения файла
 						int32_t sock = -1;
 						// Создаём объект информации о памяти
@@ -1305,7 +1305,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -1323,7 +1323,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -1350,7 +1350,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Создаём объект информации о памяти
 					PROCESS_MEMORY_COUNTERS info;
 					// Выполняем извлечение данных текущего процесса
@@ -1362,7 +1362,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 						/**
@@ -1377,7 +1377,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 				/**
 				 * Для операционной системы Sun Solaris
 				 */
-				#elif (_AIX || __TOS__AIX__) || (__sun__ || __sun || sun && (__SVR4 || __svr4__))
+				#elif (defined(_AIX) || defined(__TOS__AIX__)) || (defined(__sun__) || defined(__sun) || defined(sun) && (defined(__SVR4) || defined(__svr4__)))
 					// Создаём файловый дескриптор для чтения файла
 					int32_t sock = -1;
 					// Создаём объект информации о памяти
@@ -1387,7 +1387,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1405,7 +1405,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1427,7 +1427,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 				/**
 				 * Если операционной системой является macOS, FreeBSD, NetBSD, OpenBSD и Linux
 				 */
-				#elif __unix__ || __unix || unix || (__APPLE__ && __MACH__)
+				#elif defined(__unix__) || defined(__unix) || defined(unix) || (defined(__APPLE__) && defined(__MACH__))
 					// Создаём объект информации о памяти
 					struct rusage rusage;
 					// Если получить данные памяти не вышло
@@ -1435,7 +1435,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1450,7 +1450,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						/**
 						 * Реализация под macOS
 						 */
-						#if __APPLE__ && __MACH__
+						#if defined(__APPLE__) && defined(__MACH__)
 							// Выполняем извлечение размера пика потребляемой памяти
 							result = static_cast <size_t> (rusage.ru_maxrss);
 						/**
@@ -1471,7 +1471,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1495,7 +1495,7 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, "Memory statistics are available only when the allocator has captured process memory allocation");
 		/**
@@ -1561,7 +1561,7 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 		/**
 		 * Если операционной системой является Linux
 		 */
-		#ifdef __linux__
+		#if defined(__linux__)
 			/**
 			 * Закрепляем память в RAM (предотвращает swap)
 			 */
@@ -1594,7 +1594,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {mode}, awh::log::flag_t::CRITICAL, "Memory release policy is available only when the allocator has captured process memory allocation");
 		/**
@@ -1626,7 +1626,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Метод получения идентификатора текущего пользователя
 	 *
@@ -1677,7 +1677,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -1697,7 +1697,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
@@ -1734,7 +1734,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {uid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
@@ -1771,7 +1771,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {gid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
@@ -1812,7 +1812,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -1854,7 +1854,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -1896,7 +1896,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -1946,7 +1946,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1966,7 +1966,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -1998,7 +1998,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {uid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
@@ -2032,7 +2032,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {uid, gid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2050,7 +2050,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {uid, gid}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**
@@ -2104,7 +2104,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {user, group}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -2120,7 +2120,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {user, group}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2161,7 +2161,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2192,7 +2192,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2221,7 +2221,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2280,7 +2280,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2311,7 +2311,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2340,7 +2340,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2413,7 +2413,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {::convert(sid)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
@@ -2458,7 +2458,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {::convert(sid)}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
@@ -2512,7 +2512,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2580,7 +2580,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
@@ -2622,7 +2622,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
@@ -2653,7 +2653,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
@@ -2684,7 +2684,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {user}, awh::log::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
@@ -2735,7 +2735,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Шаблон метода извлечения настроек ядра операционной системы
 	 *
@@ -2788,7 +2788,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__
+	#if defined(__APPLE__) || defined(__MACH__)
 		template size_t awh::Operating_System::sysctl <size_t> (string_view) const noexcept;
 		template ssize_t awh::Operating_System::sysctl <ssize_t> (string_view) const noexcept;
 	#endif
@@ -2813,7 +2813,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__
+	#if defined(__APPLE__) || defined(__MACH__)
 		template vector <size_t> awh::Operating_System::sysctl <vector <size_t>> (string_view) const noexcept;
 		template vector <ssize_t> awh::Operating_System::sysctl <vector <ssize_t>> (string_view) const noexcept;
 	#endif
@@ -2838,7 +2838,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			/**
 			 * Если это Linux
 			 */
-			#if __linux__
+			#if defined(__linux__)
 				// Выполняем преобразование числа в строку
 				const string param = std::to_string(value);
 				// Выполняем установку буфера бинарных данных
@@ -2878,7 +2878,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__
+	#if defined(__APPLE__) || defined(__MACH__)
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const size_t) const noexcept;
 		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const ssize_t) const noexcept;
 	#endif
@@ -2935,7 +2935,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 			/**
 			 * Если это Linux
 			 */
-			#if __linux__
+			#if defined(__linux__)
 				// Выполняем преобразование числа в строку
 				string param = "";
 				/**
@@ -2995,7 +2995,7 @@ bool awh::Operating_System::disableReturnMemory(const bool mode) const noexcept 
 	 *       числом отведённой разрядности, и отдельное объявление прототипов для него
 	 *       вышло бы повторным. У систем BSD и macOS виды эти самостоятельны
 	 */
-	#if __APPLE__ || __MACH__
+	#if defined(__APPLE__) || defined(__MACH__)
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const vector <size_t> &) const noexcept;
 		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const vector <ssize_t> &) const noexcept;
 	#endif
@@ -3075,7 +3075,7 @@ string awh::Operating_System::exec(string_view cmd, const bool multiline) const 
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 			// Создаем буфер для чтения результата
 			char buffer[128];
 			// Создаем пайп для чтения результата работы Operating_System

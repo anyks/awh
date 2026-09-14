@@ -1516,7 +1516,7 @@ void awh::Network_Types::zone(string_view zone) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1681,7 +1681,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::CRITICAL, error.what());
 			/**

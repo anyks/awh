@@ -52,13 +52,12 @@
  *
  */
 
-#ifndef __AWH_ALLOC_PE__
-#define __AWH_ALLOC_PE__
+#pragma once
 
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 
 /**
  * Стандартные заголовочные файлы
@@ -308,5 +307,3 @@ namespace awh {
 };
 
 #endif // _WIN32 || _WIN64
-
-#endif // __AWH_ALLOC_PE__

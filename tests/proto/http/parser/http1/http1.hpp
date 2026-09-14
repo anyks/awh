@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PARSER_HTTP1_TESTS__
-#define __AWH_HTTP_PARSER_HTTP1_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -90,5 +89,3 @@ class ParserFixture : public testing::Test {
 		 */
 		void attach(awh::http::parser_http_t & parser, events_t & events) const noexcept;
 };
-
-#endif // __AWH_HTTP_PARSER_HTTP1_TESTS__

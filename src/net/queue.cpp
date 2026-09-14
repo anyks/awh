@@ -22,7 +22,7 @@
 /**
  * Если максимальное количество свободных блоков не определёно
  */
-#ifndef AWH_NETWORK_QUEUE_BLOCK_POOL_CAP
+#if !defined(AWH_NETWORK_QUEUE_BLOCK_POOL_CAP)
 	/**
 	 * Максимальное количество свободных блоков, удерживаемых в пуле на поток
 	 * (ограничивает «прилипание» пиковой памяти: AWH_NETWORK_QUEUE_BLOCK_POOL_CAP * 64 КБ)
@@ -238,7 +238,7 @@ void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcep
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, {pos, size}, awh::log::flag_t::WARNING);
 			/**

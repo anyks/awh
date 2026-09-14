@@ -89,8 +89,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_ASSEMBLY__
-#define __AWH_REGEX_ASSEMBLY__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -403,5 +402,3 @@ namespace awh {
 		} assembly_t;
 	};
 };
-
-#endif // __AWH_REGEX_ASSEMBLY__

@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_SYSLOG_WRITER__
-#define __AWH_CODEC_SYSLOG_WRITER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -508,5 +507,3 @@ namespace awh {
  */
 #include "../../sys/macro/restore.hpp"
 #include <sys/macro/global.hpp>
-
-#endif // __AWH_CODEC_SYSLOG_WRITER__

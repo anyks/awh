@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_CEF_READER__
-#define __AWH_CODEC_CEF_READER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -733,5 +732,3 @@ namespace awh {
 		}
 	}
 }
-
-#endif // __AWH_CODEC_CEF_READER__

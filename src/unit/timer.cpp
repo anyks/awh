@@ -136,7 +136,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог запуска события
 					awh::log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 				/**
@@ -157,7 +157,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог создания события
 				awh::log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 			/**
@@ -199,7 +199,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог запуска события
 					awh::log::debug("Timer event could not be launched", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 				/**
@@ -220,7 +220,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог создания события
 				awh::log::debug("Timer event could not be created", __PRETTY_FUNCTION__, {delay}, awh::log::flag_t::WARNING);
 			/**

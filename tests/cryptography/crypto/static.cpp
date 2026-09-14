@@ -47,7 +47,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Заголовочный файл работы со списками управления доступом
 	 */
@@ -74,7 +74,7 @@ static bool restricted(const std::string & path) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Список управления доступом файла
 		PACL dacl = nullptr;
 		// Описатель защиты файла
@@ -2894,7 +2894,7 @@ TEST_F(CryptoFixture, TailCapacityCryptoTest){
 /**
  * Если операционной системой не является MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Заголовочные файлы работы с процессами
 	 */
@@ -3388,7 +3388,7 @@ TEST_F(CryptoFixture, SignatureKeyStorageCryptoTest){
 		 * Права файла закрытого ключа сличаются с правами одного лишь владельца тем же
 		 * порядком, каким сличаются права файла ключа RSA (5.29)
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 			// Приметы файла закрытого ключа
 			struct stat info;
 			// Выполняем снятие примет файла закрытого ключа

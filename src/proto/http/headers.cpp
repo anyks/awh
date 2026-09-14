@@ -44,7 +44,7 @@ using namespace std;
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Заменяем функцию gmtime_r на gmtime_s
 	 */
@@ -1126,7 +1126,7 @@ namespace {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", func, {}, flag, message);
 		/**
@@ -2336,53 +2336,53 @@ string awh::http::Headers::ident() const noexcept {
 			/**
 			 * Операционной системой является Windows 32bit
 			 */
-			#ifdef _WIN32
+			#if defined(_WIN32)
 				// Устанавливаем название операционной системы
 				const char * os = "Windows";
 			/**
 			 * Операционной системой является Windows 64bit
 			 */
-			#elif _WIN64
+			#elif defined(_WIN64)
 				// Устанавливаем название операционной системы
 				const char * os = "Windows";
 			/**
 			 * Операционной системой является macOS
 			 */
-			#elif __APPLE__ || __MACH__
+			#elif defined(__APPLE__) || defined(__MACH__)
 				// Устанавливаем название операционной системы
 				const char * os = "macOS";
 			/**
 			 * Операционной системой является Linux
 			 */
-			#elif __linux__
+			#elif defined(__linux__)
 				// Устанавливаем название операционной системы
 				const char * os = "Linux";
 			/**
 			 * Операционной системой является FreeBSD
 			 */
-			#elif __FreeBSD__
+			#elif defined(__FreeBSD__)
 				// Устанавливаем название операционной системы
 				const char * os = "FreeBSD";
 			/**
 			 * Операционной системой является NetBSD
 			 */
-			#elif __NetBSD__
+			#elif defined(__NetBSD__)
 				// Устанавливаем название операционной системы
 				const char * os = "NetBSD";
 			/**
 			 * Операционной системой является OpenBSD
 			 */
-			#elif __OpenBSD__
+			#elif defined(__OpenBSD__)
 				// Устанавливаем название операционной системы
 				const char * os = "OpenBSD";
 			/**
 			 * Реализация под Sun Solaris
 			 */
-			#elif __sun__
+			#elif defined(__sun__)
 				/**
 				 * Если операционной системой является OpenSolaris
 				 */
-				#ifdef __illumos__
+				#if defined(__illumos__)
 					// Устанавливаем название операционной системы
 					const char * os = "OpenSolaris";
 				#else
@@ -2392,7 +2392,7 @@ string awh::http::Headers::ident() const noexcept {
 			/**
 			 * Операционной системой является Unix
 			 */
-			#elif __unix || __unix__
+			#elif defined(__unix) || defined(__unix__)
 				// Устанавливаем название операционной системы
 				const char * os = "Unix";
 			/**

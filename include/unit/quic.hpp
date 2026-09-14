@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_QUIC__
-#define __AWH_UNIT_QUIC__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -3877,5 +3876,3 @@ namespace awh {
 		} quic_client_t;
 	};
 };
-
-#endif // __AWH_UNIT_QUIC__

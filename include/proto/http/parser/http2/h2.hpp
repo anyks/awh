@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PARSER_HTTP2_H2__
-#define __AWH_HTTP_PARSER_HTTP2_H2__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -529,5 +528,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../../../sys/macro/restore.hpp"
-
-#endif // __AWH_HTTP_PARSER_HTTP2_H2__

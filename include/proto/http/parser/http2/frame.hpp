@@ -28,8 +28,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PARSER_HTTP2_FRAME__
-#define __AWH_HTTP_PARSER_HTTP2_FRAME__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -956,5 +955,3 @@ namespace awh {
 		}
 	};
 };
-
-#endif // __AWH_HTTP_PARSER_HTTP2_FRAME__

@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_BIGINT__
-#define __AWH_LEXICAL_BIGINT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -673,7 +672,7 @@ namespace awh {
 			/**
 			 * Для компиляторов с поддержкой встроенной проверки используем её
 			 */
-			#ifdef AWH_LEXICAL_ADD_OVERFLOW
+			#if defined(AWH_LEXICAL_ADD_OVERFLOW)
 				// Выполняем сложение с контролем переполнения
 				overflow = __builtin_add_overflow(x, y, &result);
 			/**
@@ -711,11 +710,11 @@ namespace awh {
 			/**
 			 * Для 64-битного разряда используем расширенное умножение
 			 */
-			#ifdef AWH_LEXICAL_64BIT_LIMB
+			#if defined(AWH_LEXICAL_64BIT_LIMB)
 				/**
 				 * Для компиляторов с поддержкой встроенного расширенного умножения используем его
 				 */
-				#if __SIZEOF_INT128__
+				#if defined(__SIZEOF_INT128__)
 					// Выполняем умножение с расширением разрядности и учётом переноса
 					const __uint128_t result = (
 						(static_cast <__uint128_t> (x) * static_cast <__uint128_t> (y)) +
@@ -1143,7 +1142,7 @@ namespace awh {
 			 * содержит значения пятёрки в степени крупного шага, помещающиеся в 64-битное слово.
 			 * В противном случае таблица крупного шага содержит значения пятёрки в степени крупного шага, помещающиеся в 32-битное слово.
 			 */
-			#ifdef AWH_LEXICAL_64BIT_LIMB
+			#if defined(AWH_LEXICAL_64BIT_LIMB)
 				/**
 				 * \~russian
 				 * @brief Таблица разрядов значения пятёрки в степени крупного шага
@@ -1270,7 +1269,7 @@ namespace awh {
 				/**
 				 * Для 64-битного разряда значение помещается в один разряд
 				 */
-				#ifdef AWH_LEXICAL_64BIT_LIMB
+				#if defined(AWH_LEXICAL_64BIT_LIMB)
 					// Выполняем добавление значения одним разрядом
 					this->vec.push(value);
 				/**
@@ -1305,7 +1304,7 @@ namespace awh {
 				/**
 				 * Для 64-битного разряда достаточно двух старших разрядов
 				 */
-				#ifdef AWH_LEXICAL_64BIT_LIMB
+				#if defined(AWH_LEXICAL_64BIT_LIMB)
 					// Если значение является нулевым
 					if(this->vec.isEmpty())
 						// Выводим нулевой результат
@@ -1404,7 +1403,7 @@ namespace awh {
 					/**
 					 * Приводим старший разряд к разрядности подсчёта
 					 */
-					#ifdef AWH_LEXICAL_64BIT_LIMB
+					#if defined(AWH_LEXICAL_64BIT_LIMB)
 						// Выводим количество ведущих нулевых бит старшего разряда
 						return leadingZeros(this->vec.rindex(0));
 					/**
@@ -1626,7 +1625,7 @@ namespace awh {
 				/**
 				 * Определяем параметры среднего шага по разрядности
 				 */
-				#ifdef AWH_LEXICAL_64BIT_LIMB
+				#if defined(AWH_LEXICAL_64BIT_LIMB)
 					// Показатель степени, помещающийся в один разряд
 					constexpr uint32_t SMALL_STEP = 27;
 					// Наибольшая степень пятёрки, помещающаяся в один разряд
@@ -1683,5 +1682,3 @@ namespace awh {
 		} bigint_t;
 	};
 };
-
-#endif // __AWH_LEXICAL_BIGINT__

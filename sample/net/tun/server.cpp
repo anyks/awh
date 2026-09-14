@@ -318,7 +318,7 @@ int32_t main(int32_t argc, char * argv[]){
 	 *       раз, при создании. У прочих систем драйвер один, и довод там не значит
 	 *       ничего - оттого весь этот кусок собирается только у MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		if(!params.driver.empty() && (params.driver.compare("auto") != 0)){
 			// Если заказан драйвер Wintun
 			if(params.driver.compare("wintun") == 0){

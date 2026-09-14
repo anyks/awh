@@ -53,7 +53,7 @@
 /**
  * Если сборка производится под операционную систему macOS
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	#include <mach/mach.h>
 	#include <mach/task_info.h>
 #endif
@@ -313,7 +313,7 @@ size_t awh::benchmark::io::footprint() noexcept {
 	/**
 	 * Если сборка производится под операционную систему macOS
 	 */
-	#if __APPLE__
+	#if defined(__APPLE__)
 		// Выводим пиковый объём занятой памяти как есть: macOS сообщает его в октетах
 		return static_cast <size_t> (usage.ru_maxrss);
 	/**
@@ -351,7 +351,7 @@ size_t awh::benchmark::io::occupancy() noexcept {
 	/**
 	 * Если сборка производится под операционную систему macOS
 	 */
-	#elif __APPLE__
+	#elif defined(__APPLE__)
 		// Объект сведений о виртуальной памяти задачи
 		task_vm_info_data_t info{};
 		// Размер объекта сведений в машинных словах
@@ -363,7 +363,7 @@ size_t awh::benchmark::io::occupancy() noexcept {
 		/**
 		 * Если ядро сообщило пиковое значение собственного объёма
 		 */
-		#ifdef TASK_VM_INFO_REV1_COUNT
+		#if defined(TASK_VM_INFO_REV1_COUNT)
 			// Если сведения содержат пиковое значение собственного объёма
 			if(count >= TASK_VM_INFO_REV1_COUNT)
 				// Выводим пиковый собственный объём памяти процесса

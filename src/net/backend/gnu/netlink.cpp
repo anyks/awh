@@ -84,7 +84,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
 			/**
@@ -126,7 +126,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
 			/**
@@ -167,7 +167,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -203,7 +203,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::WARNING, ::strerror(-error->error));
 					/**
@@ -247,7 +247,7 @@ bool awh::gnu::Netlink::dump(const uint16_t type, const uint8_t family, const ha
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {type, family}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -279,7 +279,7 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
@@ -297,7 +297,7 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
@@ -329,7 +329,7 @@ bool awh::gnu::Netlink::commit(const void * message, const size_t size) const no
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(-error->error));
 				/**
@@ -447,7 +447,7 @@ bool awh::gnu::Netlink::unlink(string_view name) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(name)}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
@@ -511,7 +511,7 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
@@ -529,7 +529,7 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
@@ -567,7 +567,7 @@ bool awh::gnu::Netlink::request(const void * message, const size_t size, const h
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {size}, awh::log::flag_t::WARNING, ::strerror(-error->error));
 				/**

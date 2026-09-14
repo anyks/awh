@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNICODE_TABLE__
-#define __AWH_UNICODE_TABLE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -112,5 +111,3 @@ namespace awh {
 		extern __AWH_SHARED_EXPORT__ const size_t COMPOSITIONS_COUNT;
 	};
 };
-
-#endif // __AWH_UNICODE_TABLE__

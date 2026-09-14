@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_SERVER__
-#define __AWH_SERVER__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -2929,5 +2928,3 @@ namespace awh {
 			virtual ~Server() noexcept;
 	} server_t;
 };
-
-#endif // __AWH_SERVER__

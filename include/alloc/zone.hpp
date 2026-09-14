@@ -58,8 +58,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_ZONE__
-#define __AWH_ALLOC_ZONE__
+#pragma once
 
 /**
  * Если операционной системой является macOS
@@ -194,5 +193,3 @@ namespace awh {
 };
 
 #endif // __APPLE__
-
-#endif // __AWH_ALLOC_ZONE__

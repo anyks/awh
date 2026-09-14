@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_PROTO_PORTMAP_DEVICE__
-#define __AWH_PROTO_PORTMAP_DEVICE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -409,5 +408,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_PROTO_PORTMAP_DEVICE__

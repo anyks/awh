@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_SHORTEST__
-#define __AWH_LEXICAL_SHORTEST__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -556,5 +555,3 @@ namespace awh {
 		}
 	};
 };
-
-#endif // __AWH_LEXICAL_SHORTEST__

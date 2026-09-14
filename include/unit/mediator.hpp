@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_MEDIATOR__
-#define __AWH_UNIT_MEDIATOR__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -437,5 +436,3 @@ namespace awh {
 		} mediator_t;
 	};
 };
-
-#endif // __AWH_UNIT_MEDIATOR__

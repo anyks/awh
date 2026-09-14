@@ -30,7 +30,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -581,7 +581,7 @@ TEST_F(EthFixture, IfaceAddressLifecycleTest){
 		 *       Где метод есть, круг проверяется целиком; где его нет - исчезновение
 		 *       адреса проверяется уничтожением самого устройства ниже
 		 */
-		#if _WIN32 || _WIN64 || __sun__ || __APPLE__
+		#if defined(_WIN32) || defined(_WIN64) || defined(__sun__) || defined(__APPLE__)
 			// Выполняем снятие адреса с устройства
 			ASSERT_TRUE(this->_eth->iface.delAddress(name, ip.get(), nullptr))
 			 << "Снять поставленный адрес с устройства " << name << " не удалось";

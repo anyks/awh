@@ -33,7 +33,7 @@
  *       закрепляют вторую половину — что макросы возвращены потребителю
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @note Гнёзда подключаются ПЕРЕД `windows.h` намеренно. Заголовок `windows.h`
 	 *       втягивает за собою `winsock.h` - издание первое, - и `winsock2.h`,
@@ -82,7 +82,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Закрепляем возврат макросов потребителю библиотеки
 	 *
@@ -94,31 +94,31 @@
 	 *       макросы уже раскрыты, и отсутствие их телом не выявить
 	 *
 	 */
-	#ifndef DELETE
+	#if !defined(DELETE)
 		#error "Макрос DELETE не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef ERROR
+	#if !defined(ERROR)
 		#error "Макрос ERROR не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef STRICT
+	#if !defined(STRICT)
 		#error "Макрос STRICT не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef NO_ERROR
+	#if !defined(NO_ERROR)
 		#error "Макрос NO_ERROR не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef ALTERNATE
+	#if !defined(ALTERNATE)
 		#error "Макрос ALTERNATE не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef TRANSPARENT
+	#if !defined(TRANSPARENT)
 		#error "Макрос TRANSPARENT не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef INVALID_SOCKET
+	#if !defined(INVALID_SOCKET)
 		#error "Макрос INVALID_SOCKET не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef TEXT
+	#if !defined(TEXT)
 		#error "Макрос TEXT не возвращён потребителю заголовками AWH"
 	#endif
-	#ifndef FAILED
+	#if !defined(FAILED)
 		#error "Макрос FAILED не возвращён потребителю заголовками AWH"
 	#endif
 #endif
@@ -181,7 +181,7 @@ TEST_F(MacroFixture, SocketTypeMatchesSystemTest){
 	 *       не разошлось с системным SOCKET
 	 *
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Проверяем совпадение размера типа сокета с системным
 		ASSERT_EQ(sizeof(awh::net::socket_t), sizeof(SOCKET));
 		// Проверяем совпадение самого типа сокета с системным

@@ -54,7 +54,7 @@
 /**
  * Определяем константу времени жизни, если она не задана
  */
-#ifndef ND6_INFINITE_LIFETIME
+#if !defined(ND6_INFINITE_LIFETIME)
 	/**
 	 * Время жизни адреса IPv6 - бесконечность
 	 */
@@ -71,7 +71,7 @@
 /**
  * Для операционной системы macOS
  */
-#if __APPLE__ || __MACH__
+#if defined(__APPLE__) || defined(__MACH__)
 	/**
 	 * Подключаем заголовочные файлы для работы с uTUN интерфейсами
 	 */
@@ -80,7 +80,7 @@
 /**
  * Для операционной системы FreeBSD, NetBSD, OpenBSD
  */
-#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 	/**
 	 * Подключаем заголовочный файл для работы с TUN интерфейсами
 	 */
@@ -92,7 +92,7 @@
  *       «net/tun/if_tun.h» вместо «net/if_tun.h». Оттого система и не легла в
  *       общую ветвь BSD, хотя управляющие вызовы у неё те же
  */
-#elif __DragonFly__
+#elif defined(__DragonFly__)
 	/**
 	 * Подключаем заголовочные файлы для работы с TUN и TAP интерфейсами
 	 */
@@ -179,14 +179,14 @@ namespace iface {
 			/**
 			 * Если определён тип интерфейса Tunnel
 			 */
-			#ifdef IFT_TUNNEL
+			#if defined(IFT_TUNNEL)
 				// Если это виртуальный интерфейс (Tunnel)
 				case IFT_TUNNEL:
 			#endif
 			/**
 			 * Если определён тип интерфейса STF
 			 */
-			#ifdef IFT_STF
+			#if defined(IFT_STF)
 				// Если это виртуальный интерфейс (STF)
 				case IFT_STF:
 			#endif
@@ -215,28 +215,28 @@ namespace iface {
 			/**
 			 * Если определён тип интерфейса Bridge
 			 */
-			#ifdef IFT_BRIDGE
+			#if defined(IFT_BRIDGE)
 				// Если это виртуальный интерфейс (Bridge)
 				case IFT_BRIDGE:
 			#endif
 			/**
 			 * Если определён тип интерфейса VLAN
 			 */
-			#ifdef IFT_L2VLAN
+			#if defined(IFT_L2VLAN)
 				// Если это виртуальный интерфейс (VLAN)
 				case IFT_L2VLAN:
 			#endif
 			/**
 			 * Если определён тип интерфейса Tunnel
 			 */
-			#ifdef IFT_TUNNEL
+			#if defined(IFT_TUNNEL)
 				// Если это виртуальный интерфейс (Tunnel)
 				case IFT_TUNNEL:
 			#endif
 			/**
 			 * Если определён тип интерфейса STF
 			 */
-			#ifdef IFT_STF
+			#if defined(IFT_STF)
 				// Если это виртуальный интерфейс (STF)
 				case IFT_STF:
 			#endif
@@ -498,7 +498,7 @@ namespace iface {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -645,7 +645,7 @@ namespace iface {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -683,7 +683,7 @@ namespace iface {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -709,7 +709,7 @@ namespace iface {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -756,7 +756,7 @@ namespace iface {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {driver, name}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -796,7 +796,7 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -818,7 +818,7 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -838,7 +838,7 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -873,7 +873,7 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
@@ -901,7 +901,7 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -938,7 +938,7 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 				/**
@@ -969,7 +969,7 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1015,7 +1015,7 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1066,7 +1066,7 @@ bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1113,7 +1113,7 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1164,7 +1164,7 @@ bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1257,7 +1257,7 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
@@ -1281,7 +1281,7 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1409,7 +1409,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				/**
 				 * Для операционной системы macOS
 				 */
-				#if __APPLE__ || __MACH__
+				#if defined(__APPLE__) || defined(__MACH__)
 					// Объект контроллера
 					struct ctl_info ctlInfo{};
 					// Устанавливаем имя контроллера UTUN
@@ -1421,7 +1421,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1439,7 +1439,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1477,7 +1477,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1501,7 +1501,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1521,7 +1521,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				/**
 				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
 				 */
-				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
+				#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 					/**
 					 * Заводим устройство туннеля
 					 *
@@ -1537,7 +1537,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *       OpenBSD отсутствует
 					 *
 					 */
-					#if __FreeBSD__ || __DragonFly__
+					#if defined(__FreeBSD__) || defined(__DragonFly__)
 						// Создаём сокет для управления UTUN интерфейсом
 						result = ::open("/dev/tun", O_RDWR);
 					#else
@@ -1604,7 +1604,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1623,7 +1623,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 * @note Разрешение имени по описателю нужно лишь клонирующему устройству:
 					 *       перебор имя уже знает из пути, которым устройство открывал
 					 */
-					#if __FreeBSD__ || __DragonFly__
+					#if defined(__FreeBSD__) || defined(__DragonFly__)
 					// Запоминаем заказанное имя устройства до его разрешения
 					const string request(name);
 					// Выделяем буфер для имени интерфейса
@@ -1635,7 +1635,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *          с nullptr там не собирается вовсе. Имя берётся родным запросом
 					 *          устройства TUNGIFNAME, отдающим его сразу в структуре запроса
 					 */
-					#if __DragonFly__
+					#if defined(__DragonFly__)
 						// Объект запроса имени устройства
 						struct ifreq ifr;
 						// Обнуляем объект запроса имени устройства
@@ -1655,7 +1655,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1709,7 +1709,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), request}, awh::log::flag_t::CRITICAL, ::strerror(error));
 								/**
@@ -1741,7 +1741,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *       опускается, а не отвечает отказом
 					 *
 					 */
-					#if !__OpenBSD__
+					#if !defined(__OpenBSD__)
 					// Флаг активации заголовка
 					int32_t flag = 1;
 					// Включаем информацию о пакете TUN (заголовок)
@@ -1749,7 +1749,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1772,7 +1772,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				/**
 				 * Для операционной системы macOS
 				 */
-				#if __APPLE__ || __MACH__
+				#if defined(__APPLE__) || defined(__MACH__)
 					/**
 					 * В штатной поставке macOS нет /dev/tap.
 					 * Для поддержки tap требуются сторонние расширения (например, tuntaposx).
@@ -1790,7 +1790,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				/**
 				 * Для операционной системы FreeBSD, NetBSD, OpenBSD
 				 */
-				#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__
+				#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 					/**
 					 * Заводим устройство передачи кадров
 					 *
@@ -1801,7 +1801,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					 *          имя тогда известно из самого пути
 					 *
 					 */
-					#if __FreeBSD__
+					#if defined(__FreeBSD__)
 						// Открываем клонирующее устройство
 						result = ::open("/dev/tap", O_RDWR);
 					#else
@@ -1830,7 +1830,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 						 * @note Разрешение имени по описателю нужно лишь клонирующему устройству:
 						 *       перебор имя уже знает из пути, которым устройство открывал
 						 */
-						#if __FreeBSD__
+						#if defined(__FreeBSD__)
 						// Выделяем буфер для имени интерфейса
 						name.resize(IFNAMSIZ, '\0');
 						// Получаем имя созданного интерфейса
@@ -1838,7 +1838,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -1894,7 +1894,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Unsupported network interface type", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::WARNING);
 				/**
@@ -1913,7 +1913,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), name}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1948,7 +1948,7 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -1970,7 +1970,7 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -1996,7 +1996,7 @@ uint32_t awh::eth::Interface::mtu(string_view name) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2035,7 +2035,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2057,7 +2057,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2079,7 +2079,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2099,7 +2099,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint32_t mtu) const noexce
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, mtu}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2137,7 +2137,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2159,7 +2159,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2223,7 +2223,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2263,7 +2263,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2285,7 +2285,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2399,7 +2399,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Passed network interface flag cannot be modified", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::WARNING);
 					/**
@@ -2420,7 +2420,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2440,7 +2440,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (flag), static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2499,7 +2499,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2523,7 +2523,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2562,7 +2562,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 				/**
@@ -2657,7 +2657,7 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2716,7 +2716,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2740,7 +2740,7 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2881,7 +2881,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 				/**
@@ -2899,7 +2899,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2937,7 +2937,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
  *       по-прежнему числила адрес за «utun10», отчего второй оборот проверки жизненного
  *       цикла и падал
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	/**
 	 * @brief Метод снятия адреса с сетевого интерфейса
 	 *
@@ -3088,7 +3088,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -3120,7 +3120,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -3149,7 +3149,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -3165,7 +3165,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 					/**
@@ -3186,7 +3186,7 @@ bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, co
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, static_cast <uint16_t> (prefix), mtu}, awh::log::flag_t::CRITICAL, error.what());
 			/**

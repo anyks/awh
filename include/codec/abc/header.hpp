@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_ABC_HEADER__
-#define __AWH_CODEC_ABC_HEADER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -457,5 +456,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_CODEC_ABC_HEADER__

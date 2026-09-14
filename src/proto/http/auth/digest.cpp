@@ -22,7 +22,7 @@
 /**
  * Если максимальное число записей replay-защиты Digest (lncs) не указано
  */
-#ifndef AWH_AUTH_DIGEST_LNCS_MAX
+#if !defined(AWH_AUTH_DIGEST_LNCS_MAX)
 	/**
 	 * Устанавливаем максимальное число записей replay-защиты Digest (lncs) в 4096
 	 */
@@ -302,7 +302,7 @@ string awh::http::Digest::response(const string & user, const string & pass) con
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {user, pass}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -543,7 +543,7 @@ bool awh::http::Digest::check() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -732,7 +732,7 @@ bool awh::http::Digest::parse(const string_view header) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {header}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -898,7 +898,7 @@ string awh::http::Digest::header(const bool full) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {full}, awh::log::flag_t::CRITICAL, error.what());
 		/**

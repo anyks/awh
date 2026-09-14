@@ -66,8 +66,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_GUARD__
-#define __AWH_ALLOC_GUARD__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -727,5 +726,3 @@ namespace awh {
 		} quarantine_t;
 	};
 };
-
-#endif // __AWH_ALLOC_GUARD__

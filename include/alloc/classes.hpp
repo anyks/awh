@@ -54,8 +54,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_CLASSES__
-#define __AWH_ALLOC_CLASSES__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -353,5 +352,3 @@ namespace awh {
 		} classes_t;
 	};
 };
-
-#endif // __AWH_ALLOC_CLASSES__

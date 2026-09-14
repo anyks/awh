@@ -23,12 +23,9 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_NGINX_CORE__
-#define __AWH_BENCHMARK_RIVAL_NGINX_CORE__
+#pragma once
 
 /**
  * Подключаем обвязку окружения парсера
  */
 #include <ngx_config.h>
-
-#endif // __AWH_BENCHMARK_RIVAL_NGINX_CORE__

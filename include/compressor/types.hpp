@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_COMPRESSOR_TYPES__
-#define __AWH_COMPRESSOR_TYPES__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -67,7 +66,7 @@
  *
  * \~
  */
-#ifndef AWH_COMPRESSOR_LZMA_MEMLIMIT
+#if !defined(AWH_COMPRESSOR_LZMA_MEMLIMIT)
 	#define AWH_COMPRESSOR_LZMA_MEMLIMIT (128ull * 1024ull * 1024ull)
 #endif
 
@@ -91,7 +90,7 @@
  *
  * \~
  */
-#ifndef AWH_COMPRESSOR_MAX_OUTPUT
+#if !defined(AWH_COMPRESSOR_MAX_OUTPUT)
 	#define AWH_COMPRESSOR_MAX_OUTPUT (1ull << 30)
 #endif
 
@@ -250,5 +249,3 @@ namespace awh {
 		} params_t;
 	};
 };
-
-#endif // __AWH_COMPRESSOR_TYPES__

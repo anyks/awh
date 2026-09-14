@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_JSON_ENCODING__
-#define __AWH_CODEC_JSON_ENCODING__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -758,5 +757,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_CODEC_JSON_ENCODING__

@@ -241,7 +241,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 				/**
@@ -329,7 +329,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL);
 			/**
@@ -378,7 +378,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length}, awh::log::flag_t::CRITICAL, error.what());
 		/**

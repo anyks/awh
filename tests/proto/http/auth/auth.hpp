@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_AUTH_TESTS__
-#define __AWH_HTTP_AUTH_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -54,5 +53,3 @@ class AuthFixture : public testing::Test {
 		 */
 		std::unique_ptr <awh::http::auth_t> make(const awh::http::auth_t::owner_t owner) const noexcept;
 };
-
-#endif // __AWH_HTTP_AUTH_TESTS__

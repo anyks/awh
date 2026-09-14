@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_AUTH_BASIC__
-#define __AWH_AUTH_BASIC__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -154,5 +153,3 @@ namespace awh {
 		} basic_t;
 	};
 };
-
-#endif // __AWH_AUTH_BASIC__

@@ -30,7 +30,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -53,7 +53,7 @@
 	 *       чтобы таблица маршрутов машины не затрагивалась вовсе
 	 */
 	#if defined(__linux__)
-		#ifndef _GNU_SOURCE
+		#if !defined(_GNU_SOURCE)
 			#define _GNU_SOURCE
 		#endif
 		#include <sched.h>
@@ -238,7 +238,7 @@ namespace {
 				/**
 				 * Для операционной системы Linux
 				 */
-				#if __linux__
+				#if defined(__linux__)
 					// Формируем команду возврата маршрута по умолчанию
 					command = ("ip route replace default via " + gateway);
 				/**

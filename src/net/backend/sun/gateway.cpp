@@ -952,7 +952,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 							/**
@@ -1206,7 +1206,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 							/**
@@ -1271,7 +1271,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
 					/**
@@ -1288,7 +1288,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
@@ -1306,7 +1306,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1400,7 +1400,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1517,7 +1517,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
 							/**
@@ -1602,7 +1602,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1625,7 +1625,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1744,7 +1744,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING, route.ifname.c_str());
 							/**
@@ -1848,7 +1848,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -1867,7 +1867,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
 					/**
@@ -1884,7 +1884,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
@@ -1902,7 +1902,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2003,7 +2003,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 						/**
@@ -2025,7 +2025,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -2216,7 +2216,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 								/**
@@ -2256,7 +2256,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("Kernel routing table could not be obtained", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 						/**
@@ -2278,7 +2278,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -2488,7 +2488,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 								/**
@@ -2517,7 +2517,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Unsupported address family", __PRETTY_FUNCTION__, {route.gateway->size}, awh::log::flag_t::CRITICAL);
 					/**
@@ -2534,7 +2534,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
@@ -2552,7 +2552,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**

@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_GROK_TABLE__
-#define __AWH_GROK_TABLE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -115,5 +114,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ extern const entry_t PATTERNS[];
 	}
 }
-
-#endif // __AWH_GROK_TABLE__

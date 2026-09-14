@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_SCREEN__
-#define __AWH_SCREEN__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -348,7 +347,7 @@ namespace awh {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
@@ -1094,5 +1093,3 @@ namespace awh {
 	 */
 	using screen_t = Screen <T>;
 };
-
-#endif // __AWH_SCREEN__

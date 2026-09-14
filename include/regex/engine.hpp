@@ -194,8 +194,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_ENGINE__
-#define __AWH_REGEX_ENGINE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -788,5 +787,3 @@ namespace awh {
 		} engine_t;
 	};
 };
-
-#endif // __AWH_REGEX_ENGINE__

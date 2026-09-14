@@ -168,7 +168,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
@@ -283,7 +283,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
@@ -311,7 +311,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::WARNING, "SCTP events list is empty");
 		/**
@@ -380,7 +380,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -464,7 +464,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, events.size()}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
@@ -530,7 +530,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, types.size()}, awh::log::flag_t::WARNING, ::strerror(errno));
 			/**
@@ -582,7 +582,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, num, key}, awh::log::flag_t::WARNING, ::strerror(errno));
 			/**
@@ -629,7 +629,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, static_cast <uint16_t> (mode), id, num}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -648,7 +648,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, static_cast <uint16_t> (mode), id, num}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -773,7 +773,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, chunks.size()}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -942,7 +942,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id}, awh::log::flag_t::WARNING, ::strerror(errno));
 		/**
@@ -986,7 +986,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -1012,7 +1012,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -1034,7 +1034,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
@@ -1062,7 +1062,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -1088,7 +1088,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -1138,7 +1138,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -1163,7 +1163,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -1184,7 +1184,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			/**
@@ -1214,7 +1214,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**
@@ -1239,7 +1239,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {sock, id, static_cast <uint16_t> (type), timeout, ctx}, awh::log::flag_t::WARNING, ::strerror(errno));
 				/**

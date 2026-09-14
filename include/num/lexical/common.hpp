@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_COMMON__
-#define __AWH_LEXICAL_COMMON__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -47,7 +46,7 @@
 /**
  * Подключаем расширенные типы чисел с плавающей точкой стандарта C++23
  */
-#ifdef __has_include
+#if defined(__has_include)
 	/**
 	 * Проверяем наличие заголовочного файла <stdfloat>
 	 */
@@ -172,25 +171,25 @@ namespace awh {
 			/**
 			 * Если поддерживаются 32-битные типы чисел с плавающей точкой стандарта C++23
 			 */
-			#ifdef __STDCPP_FLOAT32_T__
+			#if defined(__STDCPP_FLOAT32_T__)
 				|| is_same <T, float32_t>::value
 			#endif
 			/**
 			 * Если поддерживаются 64-битные типы чисел с плавающей точкой стандарта C++23
 			 */
-			#ifdef __STDCPP_FLOAT64_T__
+			#if defined(__STDCPP_FLOAT64_T__)
 				|| is_same <T, float64_t>::value
 			#endif
 			/**
 			 * Если поддерживается расширенный тип с плавающей запятой binary16 (16-битный формат)
 			 */
-			#ifdef __STDCPP_FLOAT16_T__
+			#if defined(__STDCPP_FLOAT16_T__)
 				|| is_same <T, float16_t>::value
 			#endif
 			/**
 			 * Если компилятор поддерживает тип std::bfloat16_t стандарта C++23
 			 */
-			#ifdef __STDCPP_BFLOAT16_T__
+			#if defined(__STDCPP_BFLOAT16_T__)
 				|| is_same <T, bfloat16_t>::value
 			#endif
 		> {};
@@ -248,7 +247,7 @@ namespace awh {
 			is_same <UC, wchar_t>::value ||
 			is_same <UC, char16_t>::value ||
 			is_same <UC, char32_t>::value
-			#ifdef __cpp_char8_t
+			#if defined(__cpp_char8_t)
 				|| is_same <UC, char8_t>::value
 			#endif
 		> {};
@@ -818,7 +817,7 @@ namespace awh {
 			/**
 			 * Для компилятора Visual Studio используем интринсики
 			 */
-			#if AWH_LEXICAL_VISUAL_STUDIO && (_M_X64 || _M_ARM64)
+			#if defined(AWH_LEXICAL_VISUAL_STUDIO) && (defined(_M_X64) || defined(_M_ARM64))
 				// Позиция старшего установленного бита
 				unsigned long result = 0;
 				// Выполняем поиск старшего установленного бита
@@ -828,7 +827,7 @@ namespace awh {
 			/**
 			 * Для компилятора Visual Studio без поддержки интринсик используем ручной поиск
 			 */
-			#elif AWH_LEXICAL_VISUAL_STUDIO
+			#elif defined(AWH_LEXICAL_VISUAL_STUDIO)
 				// Накопленная позиция старшего установленного бита
 				int32_t position = 0;
 				// Копия исходного значения
@@ -958,7 +957,7 @@ namespace awh {
 			/**
 			 * Для платформ с поддержкой 128-битного целого используем нативный тип
 			 */
-			#if AWH_LEXICAL_64BIT && __SIZEOF_INT128__
+			#if defined(AWH_LEXICAL_64BIT) && defined(__SIZEOF_INT128__)
 				// Выполняем умножение с расширением разрядности
 				const __uint128_t result = (static_cast <__uint128_t> (x) * static_cast <__uint128_t> (y));
 				// Выводим результат умножения
@@ -966,13 +965,13 @@ namespace awh {
 			/**
 			 * Для платформы ARM64 с поддержкой 64-битного умножения с расширением разрядности используем нативный тип
 			 */
-			#elif _M_ARM64 && !__MINGW32__
+			#elif defined(_M_ARM64) && !defined(__MINGW32__)
 				// Выводим результат умножения
 				return value128_t((x * y), ::__umulh(x, y));
 			/**
 			 * Для платформы Windows с поддержкой 64-битного умножения с расширением разрядности используем нативный тип
 			 */
-			#elif _WIN64 && AWH_LEXICAL_VISUAL_STUDIO
+			#elif defined(_WIN64) && defined(AWH_LEXICAL_VISUAL_STUDIO)
 				// Старшие 64 бита результата
 				uint64_t high = 0;
 				// Выполняем умножение с расширением разрядности
@@ -2046,7 +2045,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает типы половинной точности и bfloat16, то определяем их параметры
 		 */
-		#ifdef __STDCPP_FLOAT16_T__
+		#if defined(__STDCPP_FLOAT16_T__)
 			/**
 			 * \~russian
 			 * @brief Шаблон фиктивного типа подстановки
@@ -2402,7 +2401,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип bfloat16, то определяем его параметры
 		 */
-		#ifdef __STDCPP_BFLOAT16_T__
+		#if defined(__STDCPP_BFLOAT16_T__)
 			/**
 			 * \~russian
 			 * @brief Шаблон фиктивного типа подстановки
@@ -2757,7 +2756,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип float32_t, то определяем его параметры
 		 */
-		#ifdef __STDCPP_FLOAT32_T__
+		#if defined(__STDCPP_FLOAT32_T__)
 			/**
 			 * \~russian
 			 * @brief Структура параметров двоичного формата float32_t
@@ -2773,7 +2772,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип float64_t, то определяем его параметры
 		 */
-		#ifdef __STDCPP_FLOAT64_T__
+		#if defined(__STDCPP_FLOAT64_T__)
 			/**
 			 * \~russian
 			 * @brief Структура параметров двоичного формата float64_t
@@ -3296,7 +3295,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип char8_t, то определяем его параметры
 		 */
-		#ifdef __cpp_char8_t
+		#if defined(__cpp_char8_t)
 			/**
 			 * \~russian
 			 * @brief Метод получения строковой константы нечислового значения (8-битный символ)
@@ -3411,7 +3410,7 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип char8_t, то определяем его параметры
 		 */
-		#ifdef __cpp_char8_t
+		#if defined(__cpp_char8_t)
 			/**
 			 * \~russian
 			 * @brief Метод получения строковой константы бесконечности (8-битный символ)
@@ -3445,32 +3444,30 @@ namespace awh {
 		/**
 		 * Если компилятор поддерживает тип float32_t, то выполняем проверку соответствия платформы требованиям модуля
 		 */
-		#ifdef __STDCPP_FLOAT32_T__
+		#if defined(__STDCPP_FLOAT32_T__)
 			// Выводим статическую проверку соответствия типа float32_t стандарту IEEE 754
 			static_assert(numeric_limits <float32_t>::is_iec559, "AWH lexical: float32_t must fulfill IEC 559 (IEEE 754)");
 		#endif
 		/**
 		 * Если компилятор поддерживает тип float64_t, то выполняем проверку соответствия платформы требованиям модуля
 		 */
-		#ifdef __STDCPP_FLOAT64_T__
+		#if defined(__STDCPP_FLOAT64_T__)
 			// Выводим статическую проверку соответствия типа float64_t стандарту IEEE 754
 			static_assert(numeric_limits <float64_t>::is_iec559, "AWH lexical: float64_t must fulfill IEC 559 (IEEE 754)");
 		#endif
 		/**
 		 * Если компилятор поддерживает тип float16_t, то выполняем проверку соответствия платформы требованиям модуля
 		 */
-		#ifdef __STDCPP_FLOAT16_T__
+		#if defined(__STDCPP_FLOAT16_T__)
 			// Выводим статическую проверку соответствия типа float16_t стандарту IEEE 754
 			static_assert(numeric_limits <float16_t>::is_iec559, "AWH lexical: float16_t must fulfill IEC 559 (IEEE 754)");
 		#endif
 		/**
 		 * Если компилятор поддерживает тип bfloat16_t, то выполняем проверку соответствия платформы требованиям модуля
 		 */
-		#ifdef __STDCPP_BFLOAT16_T__
+		#if defined(__STDCPP_BFLOAT16_T__)
 			// Выводим статическую проверку соответствия типа bfloat16_t стандарту IEEE 754
 			static_assert(numeric_limits <bfloat16_t>::is_iec559, "AWH lexical: bfloat16_t must fulfill IEC 559 (IEEE 754)");
 		#endif
 	};
 };
-
-#endif // __AWH_LEXICAL_COMMON__

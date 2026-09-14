@@ -706,7 +706,7 @@ void awh::codec::xml::Reader::report(const error_t error, const location_t & loc
 	 *          мои шли отдельным стендом, а он собирается без «DEBUG_MODE», и оттого
 	 *          расхождение это у меня было зелено, а в общей сборке падало
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем отказ разбора в журнал работы
 		awh::log::debug("XML parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
 		                  {location.line, location.column}, awh::log::flag_t::WARNING,

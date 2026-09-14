@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_ETH_TESTS__
-#define __AWH_ETH_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -51,5 +50,3 @@ class EthFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_ETH_TESTS__

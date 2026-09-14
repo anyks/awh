@@ -99,8 +99,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_EMITTER__
-#define __AWH_REGEX_EMITTER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1240,5 +1239,3 @@ namespace awh {
  */
 #include "../sys/macro/restore.hpp"
 #include <sys/macro/global.hpp>
-
-#endif // __AWH_REGEX_EMITTER__

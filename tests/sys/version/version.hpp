@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_VERSION_TESTS__
-#define __AWH_VERSION_TESTS__
+#pragma once
 
 #include "../../main.hpp"
 #include "../../../include/sys/version.hpp"
@@ -45,5 +44,3 @@ class VersionFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_VERSION_TESTS__

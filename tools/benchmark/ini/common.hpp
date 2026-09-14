@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_INI__
-#define __AWH_BENCHMARK_RIVAL_INI__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -623,5 +622,3 @@ namespace rival {
 		return EXIT_SUCCESS;
 	}
 };
-
-#endif // __AWH_BENCHMARK_RIVAL_INI__

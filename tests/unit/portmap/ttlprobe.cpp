@@ -17,7 +17,7 @@
 #include <cstring>
 #include <string>
 
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	#include <sys/macro/win32.hpp>
 	#include <iphlpapi.h>
 #else
@@ -101,7 +101,7 @@ static bool delivers(const std::string & iface, const unsigned char hops) noexce
 }
 
 int main(){
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		WSADATA data;
 		::WSAStartup(MAKEWORD(2, 2), &data);
 	#endif

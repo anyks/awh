@@ -31,8 +31,7 @@
 /**
  * Защита от повторного включения заголовочного файла
  */
-#ifndef __AWH_UNIT_CLIENT__
-#define __AWH_UNIT_CLIENT__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -1297,5 +1296,3 @@ namespace awh {
 		} client_t;
 	};
 };
-
-#endif // __AWH_UNIT_CLIENT__

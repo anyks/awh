@@ -126,7 +126,7 @@ TEST_F(FSFixture, FSTest){
 	// -------------------------------------------------------------
 	// Тест прав доступа (chmod)
 	// -------------------------------------------------------------
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Получаем текущие права
 		uint32_t perms = this->_fs->chmod(testFile);
 		// Меняем права (например 0777)
@@ -154,7 +154,7 @@ TEST_F(FSFixture, FSTest){
 	 *       Проверять надлежит то имя, какое библиотека и создала
 	 *
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Дополняем адрес ссылки расширением ярлыка оболочки
 		symLink.append(".lnk");
 	#endif
@@ -492,7 +492,7 @@ TEST_F(FSFixture, TypeDetectLinksOverloadTest){
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Путь к символьной ссылке
 		const std::string link = dir + "/link.txt";
 		// Создаём символьную ссылку на файл
@@ -640,7 +640,7 @@ TEST_F(FSFixture, EnvironmentPathTest){
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Собираем путь с переменной окружения
 		const std::string path = "%TEMP%\\awh_env_probe.txt";
 		// Получаем полный путь

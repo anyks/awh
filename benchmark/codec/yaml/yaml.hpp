@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_CODEC_YAML__
-#define __AWH_BENCHMARK_CODEC_YAML__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -288,5 +287,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_CODEC_YAML__

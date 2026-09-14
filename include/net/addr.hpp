@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_NET_ADDR__
-#define __AWH_NET_ADDR__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -2450,5 +2449,3 @@ namespace awh {
  */
 #include "../sys/macro/restore.hpp"
 #include <sys/macro/global.hpp>
-
-#endif // __AWH_NET_ADDR__

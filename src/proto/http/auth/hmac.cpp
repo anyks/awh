@@ -23,7 +23,7 @@
 /**
  * Если максимальное число HMAC-nonce не указано
  */
-#ifndef AWH_AUTH_HMAC_NONCE_MAX
+#if !defined(AWH_AUTH_HMAC_NONCE_MAX)
 	/**
 	 * Устанавливаем максимальное число принятых HMAC-nonce в 4096
 	 */
@@ -263,7 +263,7 @@ string awh::http::Hmac::params() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -311,7 +311,7 @@ string awh::http::Hmac::base(const string & params) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {params}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -365,7 +365,7 @@ string awh::http::Hmac::sign(const string & base, const string & key) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {base, key}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -632,7 +632,7 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name, header}, awh::log::flag_t::CRITICAL, error.what());
 			/**

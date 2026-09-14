@@ -26,11 +26,11 @@
 /**
  * Если операционной системой является macOS
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	/**
 	 * Если признак стека системой не заведён, обходимся без него
 	 */
-	#ifndef _XOPEN_SOURCE
+	#if !defined(_XOPEN_SOURCE)
 		/**
 		 * Отпираем ucontext: у macOS они помечены устаревшими и без этого не видны
 		 */
@@ -42,7 +42,7 @@
 	 * @warning Отпирание строгого POSIX выше прячет MAP_ANON ВМЕСТЕ с MAP_ANONYMOUS,
 	 *          и отображение безымянной памяти становится недоступно вовсе
 	 */
-	#ifndef _DARWIN_C_SOURCE
+	#if !defined(_DARWIN_C_SOURCE)
 		/**
 		 * Возвращаем расширения BSD
 		 */
@@ -77,7 +77,7 @@ using namespace std;
  *       потоки, а нам нужно ровно обратное - переключение стека БЕЗ потоков.
  *       Предупреждение потому и снимается здесь целиком, а не правкой по месту
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	/**
 	 * Добавляем в стек предупреждений о вызове устаревшей функции
 	 */
@@ -91,7 +91,7 @@ using namespace std;
 /**
  * Если операционной системой является Linux
  */
-#if __linux__
+#if defined(__linux__)
 	/**
 	 * Заголовок этот заводит признак __GLIBC__, если стандартной библиотекой служит
 	 * glibc, и НЕ заводит его у musl. Нужен он выбору подкладки ниже, где наличие
@@ -111,7 +111,7 @@ using namespace std;
 /**
  * Если операционной системой является MS Windows
  */
-#elif _WIN32 || _WIN64
+#elif defined(_WIN32) || defined(_WIN64)
 	// Подкладкой служат родные волокна системы
 	#define AWH_FIBER_WINAPI 1
 	/**
@@ -125,7 +125,7 @@ using namespace std;
 /**
  * Если операционной системой является OpenBSD
  */
-#elif __OpenBSD__
+#elif defined(__OpenBSD__)
 	/**
 	 * У OpenBSD ucontext удалён из системы: заголовка нет вовсе,
 	 * и переключать стек приходится самим
@@ -148,7 +148,7 @@ using namespace std;
  *       пределами выбор остаётся за ucontext, и отказ связывания там будет честным
  *       следствием отсутствия подкладки, а не молчаливой подменой
  */
-#elif __linux__ && !__GLIBC__ && (__x86_64__ || __aarch64__)
+#elif defined(__linux__) && !defined(__GLIBC__) && (defined(__x86_64__) || defined(__aarch64__))
 	// Подкладкой служит свой переключатель стека
 	#define AWH_FIBER_ASM 1
 /**
@@ -166,7 +166,7 @@ using namespace std;
 /**
  * Если операционной системой является не MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Системные заголовочные файлы
 	 *
@@ -185,7 +185,7 @@ using namespace std;
 	 *          на стенде: обычная память из кучи давала отказ сегментации на первом
 	 *          же переходе в волокно
 	 */
-	#ifndef MAP_STACK
+	#if !defined(MAP_STACK)
 		/**
 		 * Признак стека
 		 */
@@ -210,7 +210,7 @@ namespace awh {
 	/**
 	 * Если подкладкой служит свой переключатель стека
 	 */
-	#if AWH_FIBER_ASM
+	#if defined(AWH_FIBER_ASM)
 		/**
 		 * @brief Функция входа волокна, зовётся переключателем по первому переходу
 		 *
@@ -232,7 +232,7 @@ namespace awh {
 		/**
 		 * Если набором команд является x86-64
 		 */
-		#if __x86_64__
+		#if defined(__x86_64__)
 			/**
 			 * Переключатель стека для x86-64
 			 */
@@ -261,7 +261,7 @@ namespace awh {
 		/**
 		 * Если набором команд является ARM64
 		 */
-		#elif __aarch64__
+		#elif defined(__aarch64__)
 			/**
 			 * Переключатель стека для ARM64
 			 */
@@ -403,7 +403,7 @@ namespace awh {
 	/**
 	 * Если подкладкой служат родные волокна системы
 	 */
-	#if AWH_FIBER_WINAPI
+	#if defined(AWH_FIBER_WINAPI)
 		/**
 		 * @brief Функция обращения потока в волокно
 		 *
@@ -446,7 +446,7 @@ namespace awh {
 	/**
 	 * Если подкладкой служит ucontext
 	 */
-	#if AWH_FIBER_UCONTEXT
+	#if defined(AWH_FIBER_UCONTEXT)
 		/**
 		 * @brief Функция входа волокна
 		 *
@@ -462,7 +462,7 @@ namespace awh {
 	/**
 	 * Если подкладкой служат родные волокна системы
 	 */
-	#elif AWH_FIBER_WINAPI
+	#elif defined(AWH_FIBER_WINAPI)
 		/**
 		 * @brief Функция входа волокна
 		 *
@@ -480,7 +480,7 @@ namespace awh {
 	/**
 	 * Если подкладкой служит свой переключатель стека
 	 */
-	#elif AWH_FIBER_ASM
+	#elif defined(AWH_FIBER_ASM)
 		/**
 		 * @brief Функция входа волокна, зовётся переключателем по первому переходу
 		 *
@@ -515,7 +515,7 @@ namespace awh {
 			/**
 			 * Если набором команд является x86-64
 			 */
-			#if __x86_64__
+			#if defined(__x86_64__)
 				// Количество сберегаемых регистров: rbp, rbx, r12, r13, r14, r15
 				constexpr size_t registers = 6;
 				// Оставляем восемь октетов пустоты ради выравнивания
@@ -523,7 +523,7 @@ namespace awh {
 			/**
 			 * Если набором команд является ARM64
 			 */
-			#elif __aarch64__
+			#elif defined(__aarch64__)
 				// Количество сберегаемых регистров: x19..x30 и d8..d15
 				constexpr size_t registers = 20;
 			/**
@@ -538,7 +538,7 @@ namespace awh {
 			/**
 			 * Если набором команд является x86-64
 			 */
-			#if __x86_64__
+			#if defined(__x86_64__)
 				// Кладём адрес входа волокна: его снимет возврат переключателя
 				*(--result) = reinterpret_cast <void *> (&__awh_fiber_start__);
 			#endif
@@ -551,7 +551,7 @@ namespace awh {
 			/**
 			 * Если набором команд является ARM64
 			 */
-			#if __aarch64__
+			#if defined(__aarch64__)
 				// Кладём адрес входа волокна полем x30: возврат уводит управление по нему
 				result[11] = reinterpret_cast <void *> (&__awh_fiber_start__);
 			#endif
@@ -568,7 +568,7 @@ namespace awh {
 	 *       стек волокну там отводит сама система, и все четыре его вызова стоят в
 	 *       ветвях `mmap`/`munmap`
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Функция получения размера страницы памяти
 	 *
@@ -621,7 +621,7 @@ namespace awh {
 		/**
 		 * Если операционной системой является MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Стек волокну отводит сама система
 			result->stack = nullptr;
 		/**
@@ -670,7 +670,7 @@ namespace awh {
 		/**
 		 * Если подкладкой служит ucontext
 		 */
-		#if AWH_FIBER_UCONTEXT
+		#if defined(AWH_FIBER_UCONTEXT)
 			// Снимаем обстановку волокна
 			::getcontext(&result->context);
 			// Возврата по завершении нет: вход волокна уводит управление сам
@@ -684,7 +684,7 @@ namespace awh {
 		/**
 		 * Если подкладкой служат родные волокна системы
 		 */
-		#elif AWH_FIBER_WINAPI
+		#elif defined(AWH_FIBER_WINAPI)
 			// Заводим волокно системы
 			result->handle = ::CreateFiber(size, &__awh_fiber_trampoline__, result);
 			// Если волокно системы завести не удалось
@@ -699,7 +699,7 @@ namespace awh {
 		/**
 		 * Если подкладкой служит свой переключатель стека
 		 */
-		#elif AWH_FIBER_ASM
+		#elif defined(AWH_FIBER_ASM)
 			// Получаем вершину стека волокна
 			char * top = (result->stack + size);
 			// Выравниваем вершину стека по шестнадцати октетам
@@ -730,19 +730,19 @@ void awh::fiber::yield() noexcept {
 	/**
 	 * Если подкладкой служит ucontext
 	 */
-	#if AWH_FIBER_UCONTEXT
+	#if defined(AWH_FIBER_UCONTEXT)
 		// Возвращаем управление разбудившей стороне
 		::swapcontext(&fiber->context, &fiber->caller);
 	/**
 	 * Если подкладкой служат родные волокна системы
 	 */
-	#elif AWH_FIBER_WINAPI
+	#elif defined(AWH_FIBER_WINAPI)
 		// Возвращаем управление разбудившей стороне
 		::SwitchToFiber(fiber->caller);
 	/**
 	 * Если подкладкой служит свой переключатель стека
 	 */
-	#elif AWH_FIBER_ASM
+	#elif defined(AWH_FIBER_ASM)
 		// Возвращаем управление разбудившей стороне
 		__awh_fiber_swap__(&fiber->handle, fiber->caller);
 	#endif
@@ -772,13 +772,13 @@ bool awh::fiber::resume(ctx_t * fiber) noexcept {
 	/**
 	 * Если подкладкой служит ucontext
 	 */
-	#if AWH_FIBER_UCONTEXT
+	#if defined(AWH_FIBER_UCONTEXT)
 		// Переходим в волокно, сложив обстановку разбудившей стороны
 		::swapcontext(&fiber->caller, &fiber->context);
 	/**
 	 * Если подкладкой служат родные волокна системы
 	 */
-	#elif AWH_FIBER_WINAPI
+	#elif defined(AWH_FIBER_WINAPI)
 		// Обращаем поток в волокно, иначе переходить не из чего
 		__awh_fiber_thread__();
 		// Запоминаем волокно разбудившей стороны
@@ -788,7 +788,7 @@ bool awh::fiber::resume(ctx_t * fiber) noexcept {
 	/**
 	 * Если подкладкой служит свой переключатель стека
 	 */
-	#elif AWH_FIBER_ASM
+	#elif defined(AWH_FIBER_ASM)
 		// Переходим в волокно, сложив указатель стека разбудившей стороны
 		__awh_fiber_swap__(&fiber->caller, fiber->handle);
 	#endif
@@ -915,7 +915,7 @@ bool awh::fiber::destroy(ctx_t * fiber) noexcept {
 	/**
 	 * Если подкладкой служат родные волокна системы
 	 */
-	#if AWH_FIBER_WINAPI
+	#if defined(AWH_FIBER_WINAPI)
 		// Если волокно системы заведено
 		if(fiber->handle != nullptr)
 			// Удаляем волокно системы
@@ -991,7 +991,7 @@ awh::fiber::Context * awh::fiber::spawn(task_t task, const size_t size) noexcept
 /**
  * Если операционной системой является macOS, возвращаем разбор предупреждений
  */
-#if __APPLE__
+#if defined(__APPLE__)
 	/**
 	 * Возвращаем разбор предупреждений о вызове устаревшей функции
 	 */

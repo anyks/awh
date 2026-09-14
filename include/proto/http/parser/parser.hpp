@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PARSER__
-#define __AWH_HTTP_PARSER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -490,5 +489,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../../sys/macro/restore.hpp"
-
-#endif // __AWH_HTTP_PARSER__

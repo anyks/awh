@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_FMK_TESTS__
-#define __AWH_FMK_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -45,5 +44,3 @@ class FmkFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_FMK_TESTS__

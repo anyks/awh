@@ -48,7 +48,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -347,7 +347,7 @@ static std::string uds(const std::string & name) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Буфер для получения пути к каталогу временных файлов
 		char buffer[MAX_PATH + 1];
 		// Выполняем получение пути к каталогу временных файлов
@@ -1161,7 +1161,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			/**
 			 * Для операционной системы FreeBSD
 			 */
-			#if __FreeBSD__
+			#if defined(__FreeBSD__)
 				// Извлекаем информационные метаданные SCTP сообщения
 				const awh::net::sctp::minfo_t & minfo = this->_sctp->messageInfo(eid1);
 				// Записываем в лог информацию о сообщении SCTP-сокета
@@ -10380,7 +10380,7 @@ TEST_F(IoFixture, IoFsTest){
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				// Удаляем файл
 				::remove("tmp.txt");
 			/**
@@ -10565,7 +10565,7 @@ TEST_F(IoFixture, IoFsTest){
  *          заведён отдельный близнец `IoFsDirEntriesWindowsTest` ниже
  *
  */
-#if !(_WIN32 || _WIN64)
+#if !(defined(_WIN32) || defined(_WIN64))
 /**
  * @brief Тест событий записей отслеживаемого каталога
  *
@@ -10823,7 +10823,7 @@ TEST_F(IoFixture, IoFsDirEntriesTest){
 /**
  * Проверка событий записей каталога для MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 /**
  * @brief Тест событий записей отслеживаемого каталога под MS Windows
  *
@@ -10902,7 +10902,7 @@ TEST_F(IoFixture, IoReadyPackOverflowKeepsRemainderTest){
 	 * Поле длины записи адреса заводят лишь системы происхождения BSD: у Linux и
 	 * MS Windows его нет вовсе, а нужным оно не является нигде
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		host.sin_len = sizeof(host);
 	#endif
 	host.sin_family = AF_INET;
@@ -11315,7 +11315,7 @@ TEST_F(IoFixture, IoFsDirEntriesWindowsTest){
  *       `sockaddr_un` объявлен у MinGW не в `sys/un.h`, а в `<afunix.h>`, и без
  *       ограды цель `awh_UNITTEST_net` не собиралась там вовсе
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 /**
  * Проверка столкновения имён неприменима к MS Windows
  *
@@ -16918,7 +16918,7 @@ TEST_F(IoFixture, IoDTLSTest){
 /**
  * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__ || __sun
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 	/**
 	 * @brief Готово ли ЯДРО машины к работе по SCTP
 	 *
@@ -24221,7 +24221,7 @@ TEST_F(IoFixture, IoDestroyOverridesAutoReconnectTest){
 	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
 	 * вызовам отдельным доводом
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		host.sin_len = sizeof(host);
 	#endif
 	host.sin_family = AF_INET;
@@ -24292,7 +24292,7 @@ TEST_F(IoFixture, IoRebuildRevivesClientTest){
 	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
 	 * вызовам отдельным доводом
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		host.sin_len = sizeof(host);
 	#endif
 	host.sin_family = AF_INET;
@@ -24385,7 +24385,7 @@ TEST_F(IoFixture, IoReinitializeKeepsExchangeTest){
 	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
 	 * вызовам отдельным доводом
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		host.sin_len = sizeof(host);
 	#endif
 	host.sin_family = AF_INET;
@@ -24724,7 +24724,7 @@ TEST_F(IoFixture, IoRebuildDuringReconnectTest){
 	 * MS Windows его нет вовсе, а нужным оно не является нигде - длина подаётся
 	 * вызовам отдельным доводом
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		host.sin_len = sizeof(host);
 	#endif
 	host.sin_family = AF_INET;
@@ -28456,7 +28456,7 @@ TEST_F(IoFixture, IoSnapshotRefusalTest){
 /**
  * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__ || __sun
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 
 /**
  * @brief Проверка неоднородного списка подключения
@@ -32044,7 +32044,7 @@ TEST_F(IoFixture, IoClientReconnectOrderTest){
 	/**
 	 * У систем BSD длина адреса задаётся полем самого адреса
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		// Устанавливаем размер объекта адреса
 		host.sin_len = sizeof(host);
 	#endif
@@ -32242,7 +32242,7 @@ TEST_F(IoFixture, IoPauseResumeOrderTest){
 	/**
 	 * У систем BSD длина адреса задаётся полем самого адреса
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		// Устанавливаем размер объекта адреса
 		host.sin_len = sizeof(host);
 	#endif
@@ -32420,7 +32420,7 @@ TEST_F(IoFixture, IoConnectFailureOrderTest){
 		/**
 		 * У систем BSD длина адреса задаётся полем самого адреса
 		 */
-		#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+		#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 			// Устанавливаем размер объекта адреса
 			host.sin_len = sizeof(host);
 		#endif
@@ -32591,7 +32591,7 @@ TEST_F(IoFixture, IoClientDisconnectOrderTest){
 	/**
 	 * У систем BSD длина адреса задаётся полем самого адреса
 	 */
-	#if __APPLE__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
+	#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 		// Устанавливаем размер объекта адреса
 		host.sin_len = sizeof(host);
 	#endif

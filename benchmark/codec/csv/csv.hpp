@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_CODEC_CSV__
-#define __AWH_BENCHMARK_CODEC_CSV__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -280,5 +279,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_CODEC_CSV__

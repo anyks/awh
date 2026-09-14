@@ -31,8 +31,7 @@
 /**
  * Защита от повторного включения заголовочного файла
  */
-#ifndef __AWH_UNIT_ICMP__
-#define __AWH_UNIT_ICMP__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -632,5 +631,3 @@ namespace awh {
 		} icmp_t;
 	};
 };
-
-#endif // __AWH_UNIT_ICMP__

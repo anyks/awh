@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_ABC_READER__
-#define __AWH_CODEC_ABC_READER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1550,5 +1549,3 @@ namespace awh {
  */
 #include "../../sys/macro/restore.hpp"
 #include <sys/macro/global.hpp>
-
-#endif // __AWH_CODEC_ABC_READER__

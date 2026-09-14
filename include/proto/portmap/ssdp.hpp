@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_PROTO_PORTMAP_SSDP__
-#define __AWH_PROTO_PORTMAP_SSDP__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -449,5 +448,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_PROTO_PORTMAP_SSDP__

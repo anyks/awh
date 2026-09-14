@@ -39,7 +39,7 @@
  *       ниже через единую точку sys/macro/win32.hpp
  *
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Системный заголовочный файл
 	 */
@@ -49,7 +49,7 @@
 /**
  * Для операционной системы Linux
  */
-#ifdef __linux__
+#if defined(__linux__)
 	/**
 	 * Стандартный заголовочный файл
 	 */
@@ -65,7 +65,7 @@
 /**
  * Для операционной системы FreeBSD
  */
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
 	/**
 	 * Системные заголовочные файлы
 	 */
@@ -77,7 +77,7 @@
 /**
  * Для операционной системы macOS
  */
-#elif __APPLE__ || __MACH__
+#elif defined(__APPLE__) || defined(__MACH__)
 	/**
 	 * Системный заголовочный файл
 	 */
@@ -85,7 +85,7 @@
 /**
  * Для операционной системы NetBSD или OpenBSD
  */
-#elif __NetBSD__ || __OpenBSD__
+#elif defined(__NetBSD__) || defined(__OpenBSD__)
 	/**
 	 * Стандартные заголовочные файлы
 	 */
@@ -106,13 +106,13 @@
 	 *       у OpenBSD нет вовсе, и читать название неоткуда
 	 *
 	 */
-	#if __OpenBSD__
+	#if defined(__OpenBSD__)
 		#include <sys/sysctl.h>
 	#endif
 /**
  * Реализация под Sun Solaris
  */
-#elif __sun__
+#elif defined(__sun__)
 	/**
 	 * Стандартные заголовочные файлы
 	 */
@@ -133,7 +133,7 @@
 /**
  * Для операционной системы Windows
  */
-#elif _WIN32 || _WIN64
+#elif defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -162,7 +162,7 @@ using namespace std;
 /**
  * Для операционной системы NetBSD или OpenBSD
  */
-#if __NetBSD__ || __OpenBSD__
+#if defined(__NetBSD__) || defined(__OpenBSD__)
 	/**
 	 * @brief Инкапсулируем функции Process Resolver в пространство имён
 	 *
@@ -210,7 +210,7 @@ using namespace std;
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {filename}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -259,7 +259,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		/**
 		 * Для операционной системы Linux
 		 */
-		#if __linux__
+		#if defined(__linux__)
 			// Сначала читаем информацию о всех сокетах из /proc/net/
 			map <ino_t, info_t> socketsInfo;
 			/**
@@ -489,7 +489,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		/**
 		 * Реализация под Sun Solaris
 		 */
-		#elif __sun__
+		#elif defined(__sun__)
 			// Читаем информацию о всех процессах из /proc и сопоставляем её с информацией о сокете
 			awh::dir::DIR * dir = awh::dir::opendir("/proc");
 			// Если каталог открыт удачно
@@ -669,7 +669,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		/**
 		 * Для операционной системы macOS
 		 */
-		#elif __APPLE__ || __MACH__
+		#elif defined(__APPLE__) || defined(__MACH__)
 			// Узнаём требуемый размер буфера под список идентификаторов процессов (функция возвращает размер данных в байтах)
 			int32_t listSize = ::proc_listpids(PROC_ALL_PIDS, 0, nullptr, 0);
 			// Если размер буфера для списка идентификаторов процессов получен
@@ -685,7 +685,7 @@ void awh::Process_Resolver::scanning() noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -939,7 +939,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		/**
 		 * Для операционной системы FreeBSD
 		 */
-		#elif __FreeBSD__
+		#elif defined(__FreeBSD__)
 			// Массив MIB для получения списка процессов
 			int32_t mib[3] = {
 				CTL_KERN,      // Получаем информацию о ядре
@@ -1176,7 +1176,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		/**
 		 * Для операционной системы NetBSD или OpenBSD
 		 */
-		#elif __NetBSD__ || __OpenBSD__
+		#elif defined(__NetBSD__) || defined(__OpenBSD__)
 			// Если функция обратного вызова установлена
 			if(this->_callback != nullptr){
 				/**
@@ -1186,7 +1186,7 @@ void awh::Process_Resolver::scanning() noexcept {
 				/**
 				 * Для операционной системы NetBSD
 				 */
-				#if __NetBSD__
+				#if defined(__NetBSD__)
 					// Открываем процесс для чтения вывода команды sockstat
 					FILE * fp = ::popen("sockstat -n 2>/dev/null", "r");
 					// Если процесс открыт успешно
@@ -1320,7 +1320,7 @@ void awh::Process_Resolver::scanning() noexcept {
 				/**
 				 * Для операционной системы OpenBSD
 				 */
-				#elif __OpenBSD__
+				#elif defined(__OpenBSD__)
 					// Открываем процесс для чтения вывода команды fstat
 					FILE * fp = ::popen("fstat -n 2>/dev/null", "r");
 					// Если процесс открыт успешно
@@ -1488,7 +1488,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#elif _WIN32 || _WIN64
+		#elif defined(_WIN32) || defined(_WIN64)
 			// Если функция обратного вызова установлена
 			if(this->_callback != nullptr){
 				// Размер данных для таблицы TCP-соединений
@@ -1644,7 +1644,7 @@ void awh::Process_Resolver::scanning() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1673,7 +1673,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		/**
 		 * Для операционной системы Linux
 		 */
-		#if __linux__
+		#if defined(__linux__)
 			// Создаём буфер строки
 			char buffer[1024];
 			// Заполняем нулями буфер данных
@@ -1709,7 +1709,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		/**
 		 * Для операционной системы FreeBSD
 		 */
-		#elif __FreeBSD__
+		#elif defined(__FreeBSD__)
 			// Выполняем получение данных процесса
 			struct kinfo_proc * proc = ::kinfo_getproc(pid);
 			// Если данные процесса получены
@@ -1722,7 +1722,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		/**
 		 * Для операционной системы macOS
 		 */
-		#elif __APPLE__ || __MACH__
+		#elif defined(__APPLE__) || defined(__MACH__)
 			// Создаём буфер строки
 			char buffer[512];
 			// Заполняем нулями буфер данных
@@ -1742,7 +1742,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		 *          же держит название в записи о процессе и отдаёт его запросом
 		 *
 		 */
-		#elif __OpenBSD__
+		#elif defined(__OpenBSD__)
 			// Запись о процессе, получаемая у ядра
 			struct kinfo_proc process;
 			// Зануляем запись о процессе
@@ -1765,7 +1765,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		/**
 		 * Для операционной системы NetBSD
 		 */
-		#elif __NetBSD__
+		#elif defined(__NetBSD__)
 			// Строковый поток названия файла
 			stringstream ss;
 			// Формируем название файла
@@ -1809,7 +1809,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		/**
 		 * Реализация под Sun Solaris
 		 */
-		#elif __sun__
+		#elif defined(__sun__)
 			// Строковый поток названия файла
 			stringstream ss;
 			// Формируем название файла
@@ -1830,7 +1830,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#elif _WIN32 || _WIN64
+		#elif defined(_WIN32) || defined(_WIN64)
 			// Выполняем получение данных процесса
 			HANDLE hpc = ::OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 			// Если процесс открыт удачно
@@ -1860,7 +1860,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pid}, awh::log::flag_t::CRITICAL, error.what());
 		/**

@@ -32,7 +32,7 @@
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Стандартный заголовочный файл
 	 */
@@ -90,7 +90,7 @@ namespace signals {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
 		 * @brief Полезная нагрузка, передаваемая из обработчика сигнала в рабочий поток
 		 *
@@ -149,7 +149,7 @@ namespace signals {
 		 * В режиме релиза требуется определять фатальные синхронные сигналы для их
 		 * корректной обработки внутри обработчика (приостановка сбойного потока).
 		 */
-		#if !DEBUG_MODE
+		#if !defined(DEBUG_MODE)
 			/**
 			 * @brief Функция проверки сигнала на принадлежность к синхронным фатальным
 			 *
@@ -240,7 +240,7 @@ namespace signals {
 			 * Чтобы исключить бесконечное повторное срабатывание сбойной инструкции, сбойный
 			 * поток приостанавливается до завершения процесса (pause является async-signal-safe).
 			 */
-			#if !DEBUG_MODE
+			#if !defined(DEBUG_MODE)
 				// Если получен фатальный синхронный сигнал
 				if(fatal(sig)){
 					// Восстанавливаем значение errno
@@ -505,7 +505,7 @@ namespace signals {
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Конструктор
 	 *
@@ -526,7 +526,7 @@ void awh::Signals::disarm() noexcept {
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 			// Формируем структуру восстановления обработчика по умолчанию
 			struct sigaction sa{};
 			// Заполняем структуру нулями
@@ -593,7 +593,7 @@ void awh::Signals::disarm() noexcept {
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Метод рабочего потока асинхронной обработки сигналов
 	 *
@@ -678,7 +678,7 @@ void awh::Signals::disarm() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем в лог адрес обращения, вызвавшего сбой
 				awh::log::debug("Fault detected at address %p", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::CRITICAL, addr);
 			/**
@@ -722,7 +722,7 @@ void awh::Signals::disarm() noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
 						awh::log::debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, name.c_str(), user);
 					/**
@@ -737,7 +737,7 @@ void awh::Signals::disarm() noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
 						awh::log::debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, name.c_str(), uid);
 					/**
@@ -755,7 +755,7 @@ void awh::Signals::disarm() noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
 						awh::log::debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, pid, user);
 					/**
@@ -770,7 +770,7 @@ void awh::Signals::disarm() noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем в лог сообщение в лог
 						awh::log::debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, {sig, pid, uid}, awh::log::flag_t::WARNING, pid, uid);
 					/**
@@ -873,7 +873,7 @@ void awh::Signals::stop() noexcept {
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 			// Деактивируем самопайп для обработчика сигналов
 			::signals::pipefd.store(-1, std::memory_order_release);
 			// Если рабочий поток запущен
@@ -982,7 +982,7 @@ void awh::Signals::start() noexcept {
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
-			#if !_WIN32 && !_WIN64
+			#if !defined(_WIN32) && !defined(_WIN64)
 				// Устанавливаем флаг запроса остановки рабочего потока
 				this->_exit.store(true, std::memory_order_release);
 				// Если дескриптор записи самопайпа открыт, пробуждаем рабочий поток
@@ -1043,7 +1043,7 @@ void awh::Signals::start() noexcept {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Если самопайп прежним подъёмом ещё не заведён
 		if(this->_pipe[0] < 0){
 			// Создаём самопайп для передачи сигналов рабочему потоку
@@ -1208,7 +1208,7 @@ void awh::Signals::start() noexcept {
 		 * а сбойный поток приостанавливается внутри обработчика — это позволяет рабочему потоку
 		 * корректно завершить работу приложения через функцию обратного вызова.
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Флаги фатальных сигналов в режиме отладки
 			int32_t flags = (SA_SIGINFO | SA_RESETHAND);
 		#else
@@ -1329,7 +1329,7 @@ awh::Signals::Signals() noexcept :
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Обнуляем запасной стек обработчика сбоев
 		::memset(&this->_stack, 0, sizeof(this->_stack));
 		/**
@@ -1343,7 +1343,7 @@ awh::Signals::Signals() noexcept :
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Инициализируем дескрипторы самопайпа закрытыми значениями
 		this->_pipe[0] = -1;
 		// Инициализируем дескриптор записи самопайпа закрытым значением
@@ -1360,7 +1360,7 @@ awh::Signals::~Signals() noexcept {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
 		 * Закрываем самопайп: остановку он переживает, а объект - нет
 		 *

@@ -253,7 +253,7 @@ awh::RegularExpression::exp_t awh::RegularExpression::build(string_view pattern,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Regular expression could not be built at offset %zu: %s", __PRETTY_FUNCTION__, {string(pattern), flags}, awh::log::flag_t::WARNING, report().offset, report().message.c_str());
 		/**

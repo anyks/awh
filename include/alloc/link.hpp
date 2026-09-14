@@ -58,8 +58,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_LINK__
-#define __AWH_ALLOC_LINK__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -210,5 +209,3 @@ namespace awh {
 		} link_t;
 	};
 };
-
-#endif // __AWH_ALLOC_LINK__

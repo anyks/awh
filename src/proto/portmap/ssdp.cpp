@@ -118,7 +118,7 @@ string awh::proto::portmap::SSDP::search(const string_view target, const uint8_t
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (delay), group}, awh::log::flag_t::WARNING, message(error_t::MISSING_TARGET));
 		/**
@@ -226,7 +226,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		 *       адрес приходят оповещения всех устройств сети вперемешку с мусором,
 		 *       и запись о каждом из них засоряла бы журнал
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -242,7 +242,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -364,7 +364,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (parser.error())}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -380,7 +380,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		#endif
@@ -405,7 +405,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <const http::response_t *> (parser.message().provider.get())->code}, awh::log::flag_t::WARNING, message(error));
 			#endif
@@ -447,7 +447,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (static_cast <const http::request_t *> (parser.message().provider.get())->method)}, awh::log::flag_t::WARNING, message(error));
 				#endif
@@ -472,7 +472,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {answer.usn}, awh::log::flag_t::WARNING, message(error));
 			#endif
@@ -491,7 +491,7 @@ bool awh::proto::portmap::SSDP::parse(const string_view text, answer_t & answer,
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {answer.target}, awh::log::flag_t::WARNING, message(error));
 			#endif

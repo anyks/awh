@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CHARSET_TYPES__
-#define __AWH_CHARSET_TYPES__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -219,5 +218,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-
-#endif // __AWH_CHARSET_TYPES__

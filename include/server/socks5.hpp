@@ -31,8 +31,7 @@
 /**
  * Защита от повторного включения заголовка
  */
-#ifndef __AWH_SERVER_SOCKS5__
-#define __AWH_SERVER_SOCKS5__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1589,5 +1588,3 @@ namespace awh {
 		} socks5_t;
 	};
 };
-
-#endif // __AWH_SERVER_SOCKS5__

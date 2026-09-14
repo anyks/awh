@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_PARSER__
-#define __AWH_REGEX_PARSER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1413,5 +1412,3 @@ namespace awh {
 		} parser_t;
 	};
 };
-
-#endif // __AWH_REGEX_PARSER__

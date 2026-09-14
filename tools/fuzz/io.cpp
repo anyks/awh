@@ -634,19 +634,19 @@ static const char * descriptorKind([[maybe_unused]] const int32_t fd) noexcept {
 			 * Настройки SO_DOMAIN, SO_TYPE и SO_PROTOCOL заведены не всюду: у Linux они
 			 * есть все три, у macOS и BSD - лишь часть, поэтому неснятые остаются -1
 			 */
-			#ifdef SO_DOMAIN
+			#if defined(SO_DOMAIN)
 				// Выполняем снятие устройства сокета
 				static_cast <void> (::getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &domain, &length));
 				// Восстанавливаем длину снимаемой настройки
 				length = static_cast <socklen_t> (sizeof(int32_t));
 			#endif
-			#ifdef SO_TYPE
+			#if defined(SO_TYPE)
 				// Выполняем снятие рода сокета
 				static_cast <void> (::getsockopt(fd, SOL_SOCKET, SO_TYPE, &kind, &length));
 				// Восстанавливаем длину снимаемой настройки
 				length = static_cast <socklen_t> (sizeof(int32_t));
 			#endif
-			#ifdef SO_PROTOCOL
+			#if defined(SO_PROTOCOL)
 				// Выполняем снятие наречия сокета
 				static_cast <void> (::getsockopt(fd, SOL_SOCKET, SO_PROTOCOL, &protocol, &length));
 			#endif

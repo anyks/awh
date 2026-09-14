@@ -90,7 +90,7 @@ bool awh::http::Bearer::parse(const string_view header) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {header}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -152,7 +152,7 @@ string awh::http::Bearer::header(const bool full) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {full}, awh::log::flag_t::CRITICAL, error.what());
 		/**

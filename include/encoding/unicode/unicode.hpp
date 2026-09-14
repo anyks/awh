@@ -110,8 +110,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNICODE__
-#define __AWH_UNICODE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -350,5 +349,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ indic_t indic(const uint32_t code) noexcept;
 	};
 };
-
-#endif // __AWH_UNICODE__

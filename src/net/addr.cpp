@@ -34,7 +34,7 @@
 /**
  * Если мы используем порядок байтов Little Endian или Big Endian
  */
-#if __BYTE_ORDER__ && __ORDER_LITTLE_ENDIAN__
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
 	/**
 	 * Макрос проверки порядка поддержки Little Endian
 	 */
@@ -49,7 +49,7 @@
  * порядок байтов машины. Проверка их наличием давала обратный порядок на машине
  * с прямым - на этом уже попался модуль хэширования
  */
-#elif _BYTE_ORDER && _LITTLE_ENDIAN && (_BYTE_ORDER == _LITTLE_ENDIAN)
+#elif defined(_BYTE_ORDER) && defined(_LITTLE_ENDIAN) && (_BYTE_ORDER == _LITTLE_ENDIAN)
 	/**
 	 * Включаем макрос поддержки Little Endian
 	 */
@@ -57,7 +57,7 @@
 /**
  * Если мы используем порядок байтов Big Endian
  */
-#elif (_BYTE_ORDER && _BIG_ENDIAN && (_BYTE_ORDER == _BIG_ENDIAN)) || (__BIG_ENDIAN__ && !__LITTLE_ENDIAN__)
+#elif (defined(_BYTE_ORDER) && defined(_BIG_ENDIAN) && (_BYTE_ORDER == _BIG_ENDIAN)) || (defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__))
 	/**
 	 * Отключаем макрос поддержки Little Endian
 	 */
@@ -122,7 +122,7 @@
  *       учитывает: не распознав названия, он читает зону числом
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -135,7 +135,7 @@
 	/**
 	 * Если размер буфера названия устройства не объявлен системой
 	 */
-	#ifndef IF_NAMESIZE
+	#if !defined(IF_NAMESIZE)
 		/**
 		 * Макрос размера буфера названия устройства
 		 */
@@ -2025,7 +2025,7 @@ void awh::Network_Address::zone(string_view zone) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2169,7 +2169,7 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {host}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2208,7 +2208,7 @@ array <uint8_t, 6> awh::Network_Address::mac() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2255,7 +2255,7 @@ void awh::Network_Address::mac(const array <uint8_t, 6> & addr) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -2347,7 +2347,7 @@ uint32_t awh::Network_Address::v4(const endian_t endian) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -2410,7 +2410,7 @@ void awh::Network_Address::v4(const uint32_t addr, const endian_t endian) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -2498,7 +2498,7 @@ array <uint8_t, 16> awh::Network_Address::v6(const endian_t endian) const noexce
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -2561,7 +2561,7 @@ void awh::Network_Address::v6(const array <uint8_t, 16> & addr, const endian_t e
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -2674,7 +2674,7 @@ unique_ptr <awh::net::addr_t> awh::Network_Address::source(const endian_t endian
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -2802,7 +2802,7 @@ void awh::Network_Address::source(const net::addr_t * value, const endian_t endi
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -3111,7 +3111,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -3226,7 +3226,7 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -3320,7 +3320,7 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -3409,7 +3409,7 @@ string awh::Network_Address::prefix2Mask(const uint8_t prefix, const type_t type
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -3543,7 +3543,7 @@ bool awh::Network_Address::range(const Network_Address & begin, const Network_Ad
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -3653,7 +3653,7 @@ bool awh::Network_Address::range(string_view begin, string_view end, const uint8
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -3763,7 +3763,7 @@ bool awh::Network_Address::mapping(string_view network, const type_t type) const
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -3907,7 +3907,7 @@ bool awh::Network_Address::mapping(string_view network, const uint8_t prefix, co
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -4219,7 +4219,7 @@ awh::Network_Address::own_t awh::Network_Address::own() const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4321,7 +4321,7 @@ string awh::Network_Address::arpa() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4504,7 +4504,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {addr}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4616,7 +4616,7 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {addr}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4729,7 +4729,7 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -6075,7 +6075,7 @@ void awh::Network_Address::print(string & result, const format_size_t size, cons
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"%s", __PRETTY_FUNCTION__,
@@ -6193,7 +6193,7 @@ bool awh::Network_Address::operator < (const net_addr_t & addr) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6260,7 +6260,7 @@ bool awh::Network_Address::operator > (const net_addr_t & addr) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6327,7 +6327,7 @@ bool awh::Network_Address::operator <= (const net_addr_t & addr) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6394,7 +6394,7 @@ bool awh::Network_Address::operator >= (const net_addr_t & addr) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6481,7 +6481,7 @@ bool awh::Network_Address::operator == (const net_addr_t & addr) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6529,7 +6529,7 @@ awh::Network_Address & awh::Network_Address::operator = (const net_addr_t & addr
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**

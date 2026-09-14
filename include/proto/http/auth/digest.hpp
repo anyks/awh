@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_AUTH_DIGEST__
-#define __AWH_AUTH_DIGEST__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -185,5 +184,3 @@ namespace awh {
 		} digest_scheme_t;
 	};
 };
-
-#endif // __AWH_AUTH_DIGEST__

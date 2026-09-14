@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_THREADPOOL_TESTS__
-#define __AWH_THREADPOOL_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -49,5 +48,3 @@ class ThreadPoolFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_THREADPOOL_TESTS__

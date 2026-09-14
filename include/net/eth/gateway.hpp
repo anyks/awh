@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_GATEWAY__
-#define __AWH_GATEWAY__
+#pragma once
 
 /**
  * Наши модули
@@ -271,5 +270,3 @@ namespace awh {
 		} gateway_t;
 	};
 };
-
-#endif // __AWH_GATEWAY__

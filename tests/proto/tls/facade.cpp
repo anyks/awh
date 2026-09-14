@@ -45,7 +45,7 @@
  *       объявляет X509_NAME, X509_EXTENSIONS и PKCS7_SIGNER_INFO макросами, и
  *       заголовки OpenSSL следом за ним не разбираются вовсе
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	#define NOCRYPT
 	#include <windows.h>
 #endif
@@ -115,7 +115,7 @@ namespace {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Буфер под путь к временному каталогу
 			char buffer[MAX_PATH + 1]{0};
 			// Получаем путь к временному каталогу у системы

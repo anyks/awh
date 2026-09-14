@@ -122,7 +122,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -144,7 +144,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {text.length()}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -168,7 +168,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"%s", __PRETTY_FUNCTION__,
@@ -196,7 +196,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {root.name().local}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -222,7 +222,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.base}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -258,7 +258,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.name, description.type}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -368,7 +368,7 @@ bool awh::proto::portmap::Device::parse(const string_view text, description_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {description.name, description.udn}, awh::log::flag_t::WARNING, message(error));
 		/**
@@ -448,7 +448,7 @@ string awh::proto::portmap::Device::address(const description_t & description, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(base), string(address)}, awh::log::flag_t::WARNING, "unable to parse the device description address");
 		/**
@@ -471,7 +471,7 @@ string awh::proto::portmap::Device::address(const description_t & description, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {string(base), string(address)}, awh::log::flag_t::WARNING, "unable to resolve the service control address");
 		/**

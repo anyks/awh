@@ -24,7 +24,7 @@
  * действует вовсе - `RTLD_NEXT` тогда не объявляется, а без него прежних функций не
  * добыть
  */
-#ifndef _GNU_SOURCE
+#if !defined(_GNU_SOURCE)
 	#define _GNU_SOURCE
 #endif
 
@@ -50,14 +50,14 @@
  * Объявляются они не всюду: у musl и Solaris `RTLD_NEXT` есть, но лежит за
  * признаком набора возможностей
  */
-#ifndef RTLD_NEXT
+#if !defined(RTLD_NEXT)
 	#define RTLD_NEXT reinterpret_cast <void *> (-1l)
 #endif
 
 /**
  * Если поиск по всему процессу не объявлен
  */
-#ifndef RTLD_DEFAULT
+#if !defined(RTLD_DEFAULT)
 	#define RTLD_DEFAULT reinterpret_cast <void *> (0)
 #endif
 

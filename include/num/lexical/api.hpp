@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_API__
-#define __AWH_LEXICAL_API__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -120,13 +119,13 @@ namespace awh {
 				/**
 				 * Отключаем предупреждение о точном сравнении чисел с плавающей точкой
 				 */
-				#if AWH_LEXICAL_VISUAL_STUDIO
+				#if defined(AWH_LEXICAL_VISUAL_STUDIO)
 					// Отключаем предупреждение о точном сравнении чисел с плавающей точкой
 					#pragma warning(push)
 				/**
 				 * Компилятор Clang не поддерживает pragma warning, поэтому используем pragma diagnostic
 				 */
-				#elif __clang__
+				#elif defined(__clang__)
 					// Отключаем предупреждение о точном сравнении чисел с плавающей точкой
 					#pragma clang diagnostic push
 					// Игнорируем предупреждение о точном сравнении чисел с плавающей точкой
@@ -134,7 +133,7 @@ namespace awh {
 				/**
 				 * Компилятор GCC не поддерживает pragma warning, поэтому используем pragma diagnostic
 				 */
-				#elif __GNUC__
+				#elif defined(__GNUC__)
 					// Отключаем предупреждение о точном сравнении чисел с плавающей точкой
 					#pragma GCC diagnostic push
 					// Игнорируем предупреждение о точном сравнении чисел с плавающей точкой
@@ -145,19 +144,19 @@ namespace awh {
 				/**
 				 * Восстанавливаем предупреждение о точном сравнении
 				 */
-				#if AWH_LEXICAL_VISUAL_STUDIO
+				#if defined(AWH_LEXICAL_VISUAL_STUDIO)
 					// Восстанавливаем предупреждение о точном сравнении чисел с плавающей точкой
 					#pragma warning(pop)
 				/**
 				 * Компилятор Clang не поддерживает pragma warning, поэтому используем pragma diagnostic
 				 */
-				#elif __clang__
+				#elif defined(__clang__)
 					// Восстанавливаем предупреждение о точном сравнении чисел с плавающей точкой
 					#pragma clang diagnostic pop
 				/**
 				 * Компилятор GCC не поддерживает pragma warning, поэтому используем pragma diagnostic
 				 */
-				#elif __GNUC__
+				#elif defined(__GNUC__)
 					// Восстанавливаем предупреждение о точном сравнении чисел с плавающей точкой
 					#pragma GCC diagnostic pop
 				#endif
@@ -244,7 +243,7 @@ namespace awh {
 			 * Отдельные компиляторы отображают нулевое значение в отрицательный
 			 * нуль при округлении вниз, поэтому обрабатываем нуль явно
 			 */
-			#if __clang__ || AWH_LEXICAL_32BIT
+			#if defined(__clang__) || defined(AWH_LEXICAL_32BIT)
 				// Если мантисса является нулевой
 				if(mantissa == 0){
 					// Устанавливаем нулевой результат с корректным знаком
@@ -1164,5 +1163,3 @@ namespace awh {
 		}
 	};
 };
-
-#endif // __AWH_LEXICAL_API__

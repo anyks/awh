@@ -2162,7 +2162,7 @@ void awh::Chrono::clear() noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Устанавливаем временную зону по умолчанию
 			::_tzset();
 		/**
@@ -2203,7 +2203,7 @@ void awh::Chrono::clear() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2886,7 +2886,7 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2983,7 +2983,7 @@ void awh::Chrono::makeDate(const uint64_t stamp, dt_t & dt) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3784,7 +3784,7 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3911,7 +3911,7 @@ uint64_t awh::Chrono::end(const uint64_t stamp, const type_t type) const noexcep
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4067,7 +4067,7 @@ uint64_t awh::Chrono::begin(const uint64_t stamp, const type_t type) const noexc
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5366,7 +5366,7 @@ uint64_t awh::Chrono::actual(const uint64_t stamp, const type_t value, const typ
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5876,7 +5876,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6015,7 +6015,7 @@ string awh::Chrono::seconds(const double duration) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {duration}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6118,7 +6118,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {value}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6159,7 +6159,7 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6210,7 +6210,7 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6310,7 +6310,7 @@ uint16_t awh::Chrono::year(const uint64_t stamp, uint64_t & begin) const noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6360,7 +6360,7 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6401,7 +6401,7 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6461,7 +6461,7 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {year}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6499,7 +6499,7 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6580,7 +6580,7 @@ template void awh::Chrono::set(const string, const unit_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template void awh::Chrono::set(const size_t, const unit_t) noexcept;
 	template void awh::Chrono::set(const ssize_t, const unit_t) noexcept;
 #endif
@@ -7485,7 +7485,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -7566,7 +7566,7 @@ template string awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 	template ssize_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 #endif
@@ -7634,7 +7634,7 @@ template string awh::Chrono::get(const unit_t) const noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::Chrono::get(const unit_t) const noexcept;
 	template ssize_t awh::Chrono::get(const unit_t) const noexcept;
 #endif
@@ -7703,7 +7703,7 @@ template string awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 	template ssize_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 #endif
@@ -7994,7 +7994,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, date, static_cast <uint16_t> (unit), text}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -8725,7 +8725,7 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -9050,7 +9050,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -9103,7 +9103,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -9724,7 +9724,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -9775,7 +9775,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (std), static_cast <uint16_t> (sum)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -9855,7 +9855,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Устанавливаем временную зону по умолчанию
 					::_tzset();
 					/**
@@ -9912,7 +9912,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 				 *          нужно обратное - оттого и обращение знака
 				 *
 				 */
-				#elif __sun
+				#elif defined(__sun)
 					// Устанавливаем временную зону по умолчанию
 					::tzset();
 					// Создаем структуру времени
@@ -9960,7 +9960,7 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -9994,7 +9994,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -10037,7 +10037,7 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {name, offset}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -10176,7 +10176,7 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, static_cast <uint16_t> (type)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -10416,7 +10416,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (type), static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -11861,7 +11861,7 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {zone}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -12735,7 +12735,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (zone)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -13767,7 +13767,7 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {date, format1, format2, static_cast <uint16_t> (storage)}, awh::log::flag_t::CRITICAL, error.what());
 			/**

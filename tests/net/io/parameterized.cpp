@@ -35,7 +35,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -230,7 +230,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 * @note Отказ здесь означал бы вину кода, тогда как дело в правах, поэтому
 	 *       пропускаем с указанием причины, а не проваливаем
 	 */
-	#if !(_WIN32 || _WIN64)
+	#if !(defined(_WIN32) || defined(_WIN64))
 		// Если пользователь является непривилигированным
 		if(::getuid()){
 			// Выполняем пробу создания дейтаграммного сокета ICMP
@@ -268,7 +268,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	 * @note Убрать сам захват нельзя: у прочих систем признак берётся опытом
 	 *       (`::getuid()`), и там он обязателен
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		bool raw = true;
 	#else
 		bool raw = (::getuid() == 0);
@@ -276,7 +276,7 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Добавляем новое событие клиента ICMP
 		eid = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::RAW, awh::event::protocol_t::ICMP);
 	/**
@@ -859,7 +859,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Обмен между процессами у MS Windows работает: он лёг на именованный канал в
 		 * строе сообщений, и подтверждён опытом на модуле кластера - мастер и работники
@@ -2151,7 +2151,7 @@ TEST_P(IoIPCTestParameterizedFixture, IoIPCTest){
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Работник проверки межпроцессного обмена
 	 *

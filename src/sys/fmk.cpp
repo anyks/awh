@@ -22,7 +22,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 *
@@ -59,7 +59,7 @@
  * @note Заголовок пределов нужен ради подъёма предела дампа ядра. У MS Windows его нет
  *       вовсе, а дампы там заводятся иначе - средствами самой системы
  */
-#if DEBUG_MODE && !(_WIN32 || _WIN64)
+#if defined(DEBUG_MODE) && !(defined(_WIN32) || defined(_WIN64))
 	#include <sys/resource.h>
 #endif
 
@@ -129,7 +129,7 @@ namespace {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Если символ принадлежит набору ASCII - переводим его напрямую
 			if(letter < 0x80)
 				// Выводим переведённый символ
@@ -165,7 +165,7 @@ namespace {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Если символ принадлежит набору ASCII - переводим его напрямую
 			if(letter < 0x80)
 				// Выводим переведённый символ
@@ -705,7 +705,7 @@ namespace {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -763,7 +763,7 @@ namespace {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {str, delim, container.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -823,7 +823,7 @@ namespace {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -881,7 +881,7 @@ namespace {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {str.size(), delim.size(), container.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1456,7 +1456,7 @@ namespace {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE && !(_WIN32 || _WIN64)
+		#if defined(DEBUG_MODE) && !(defined(_WIN32) || defined(_WIN64))
 			// Предел размера дампа ядра
 			struct rlimit limit;
 			// Получаем действующий предел
@@ -1638,7 +1638,7 @@ bool awh::fmk::is(const char letter, const check_t flag) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1717,7 +1717,7 @@ bool awh::fmk::is(const wchar_t letter, const check_t flag) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {letter, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2014,7 +2014,7 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2340,7 +2340,7 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2690,7 +2690,7 @@ void awh::fmk::detail::timestamp(void * buffer, const size_t size, const chrono_
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size, static_cast <uint16_t> (type), text}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2765,7 +2765,7 @@ template string awh::fmk::timestamp <string> (const chrono_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::fmk::timestamp <size_t> (const chrono_t) noexcept;
 	template ssize_t awh::fmk::timestamp <ssize_t> (const chrono_t) noexcept;
 #endif
@@ -2812,7 +2812,7 @@ string awh::fmk::transcode(string_view text, const codepage_t from, const codepa
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (from), static_cast <uint16_t> (to)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -2989,7 +2989,7 @@ string & awh::fmk::transform(string & text, const transform_t flag) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3082,7 +3082,7 @@ wstring & awh::fmk::transform(wstring & text, const transform_t flag) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), static_cast <uint16_t> (flag)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3242,7 +3242,7 @@ wstring awh::fmk::convert(string_view str) noexcept {
 		// Если строка передана
 		if(!str.empty()){
 			// Если используется BOOST
-			#ifdef USE_BOOST_CONVERT
+			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
@@ -3260,7 +3260,7 @@ wstring awh::fmk::convert(string_view str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3277,7 +3277,7 @@ wstring awh::fmk::convert(string_view str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3308,7 +3308,7 @@ string awh::fmk::convert(wstring_view str) noexcept {
 		// Если строка передана
 		if(!str.empty()){
 			// Если используется BOOST
-			#ifdef USE_BOOST_CONVERT
+			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
@@ -3326,7 +3326,7 @@ string awh::fmk::convert(wstring_view str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3343,7 +3343,7 @@ string awh::fmk::convert(wstring_view str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3374,7 +3374,7 @@ wstring awh::fmk::convert(const char * str) noexcept {
 		// Если строка передана
 		if((str != nullptr) && ((* str) != '\0')){
 			// Если используется BOOST
-			#ifdef USE_BOOST_CONVERT
+			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
@@ -3392,7 +3392,7 @@ wstring awh::fmk::convert(const char * str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3409,7 +3409,7 @@ wstring awh::fmk::convert(const char * str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3440,7 +3440,7 @@ string awh::fmk::convert(const wchar_t * str) noexcept {
 		// Если строка передана
 		if((str != nullptr) && ((* str) != L'\0')){
 			// Если используется BOOST
-			#ifdef USE_BOOST_CONVERT
+			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
@@ -3458,7 +3458,7 @@ string awh::fmk::convert(const wchar_t * str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3475,7 +3475,7 @@ string awh::fmk::convert(const wchar_t * str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3506,7 +3506,7 @@ wstring awh::fmk::convert(const string & str) noexcept {
 		// Если строка передана
 		if(!str.empty()){
 			// Если используется BOOST
-			#ifdef USE_BOOST_CONVERT
+			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
@@ -3524,7 +3524,7 @@ wstring awh::fmk::convert(const string & str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3541,7 +3541,7 @@ wstring awh::fmk::convert(const string & str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3572,7 +3572,7 @@ string awh::fmk::convert(const wstring & str) noexcept {
 		// Если строка передана
 		if(!str.empty()){
 			// Если используется BOOST
-			#ifdef USE_BOOST_CONVERT
+			#if defined(USE_BOOST_CONVERT)
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
@@ -3590,7 +3590,7 @@ string awh::fmk::convert(const wstring & str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3607,7 +3607,7 @@ string awh::fmk::convert(const wstring & str) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3659,7 +3659,7 @@ template size_t awh::fmk::size <double> (const double) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::fmk::size <size_t> (const size_t) noexcept;
 	template size_t awh::fmk::size <ssize_t> (const ssize_t) noexcept;
 #endif
@@ -3706,7 +3706,7 @@ size_t awh::fmk::size(const void * value, const size_t size) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3760,7 +3760,7 @@ template bool awh::fmk::isGreater <double> (const double, const double) noexcept
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template bool awh::fmk::isGreater <size_t> (const size_t, const size_t) noexcept;
 	template bool awh::fmk::isGreater <ssize_t> (const ssize_t, const ssize_t) noexcept;
 #endif
@@ -3813,7 +3813,7 @@ bool awh::fmk::isGreater(const void * value1, const void * value2, const size_t 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {value1, value2, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3867,7 +3867,7 @@ template string awh::fmk::itoa <double> (const double, const uint8_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template string awh::fmk::itoa <size_t> (const size_t, const uint8_t) noexcept;
 	template string awh::fmk::itoa <ssize_t> (const ssize_t, const uint8_t) noexcept;
 #endif
@@ -4006,7 +4006,7 @@ string awh::fmk::itoa(const void * value, const size_t size, const uint8_t radix
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Binary data buffer cannot be cast to a number");
 						/**
@@ -4030,7 +4030,7 @@ string awh::fmk::itoa(const void * value, const size_t size, const uint8_t radix
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, size, static_cast <uint16_t> (radix)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4108,7 +4108,7 @@ template double awh::fmk::atoi <double> (string_view) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::fmk::atoi <size_t> (string_view) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (string_view) noexcept;
 #endif
@@ -4160,7 +4160,7 @@ template double awh::fmk::atoi <double> (string_view, const uint8_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::fmk::atoi <size_t> (string_view, const uint8_t) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (string_view, const uint8_t) noexcept;
 #endif
@@ -4316,7 +4316,7 @@ void awh::fmk::atoi(string_view value, const uint8_t radix, void * buffer, const
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						/**
@@ -4338,7 +4338,7 @@ void awh::fmk::atoi(string_view value, const uint8_t radix, void * buffer, const
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4414,7 +4414,7 @@ template double awh::fmk::atoi <double> (wstring_view) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::fmk::atoi <size_t> (wstring_view) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (wstring_view) noexcept;
 #endif
@@ -4466,7 +4466,7 @@ template double awh::fmk::atoi <double> (wstring_view, const uint8_t) noexcept;
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template size_t awh::fmk::atoi <size_t> (wstring_view, const uint8_t) noexcept;
 	template ssize_t awh::fmk::atoi <ssize_t> (wstring_view, const uint8_t) noexcept;
 #endif
@@ -4622,7 +4622,7 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, "Only binary number can be converted to binary buffer");
 						/**
@@ -4644,7 +4644,7 @@ void awh::fmk::atoi(wstring_view value, const uint8_t radix, void * buffer, cons
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(value), static_cast <uint16_t> (radix), buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4690,7 +4690,7 @@ string awh::fmk::noexp(const double number, const uint8_t step) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {number, static_cast <uint8_t> (step)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4741,7 +4741,7 @@ string awh::fmk::noexp(const double number, const bool onlyNum) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {number, onlyNum}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4886,7 +4886,7 @@ template string awh::fmk::grouped <uint64_t> (const uint64_t, const char, const 
 /**
  * Если size_t и ssize_t являются самостоятельными типами
  */
-#if __AWH_DISTINCT_SIZE_TYPES__
+#if defined(__AWH_DISTINCT_SIZE_TYPES__)
 	template string awh::fmk::grouped <size_t> (const size_t, const char, const uint8_t) noexcept;
 	template string awh::fmk::grouped <ssize_t> (const ssize_t, const char, const uint8_t) noexcept;
 #endif
@@ -4916,7 +4916,7 @@ float awh::fmk::rate(const float a, const float b) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {a, b}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4954,7 +4954,7 @@ double awh::fmk::floor(const double x, const uint8_t n) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {x, static_cast <uint8_t> (n)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5200,7 +5200,7 @@ uint16_t awh::fmk::rome2arabic(string_view word) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {word}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5447,7 +5447,7 @@ uint16_t awh::fmk::rome2arabic(wstring_view word) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5501,7 +5501,7 @@ wstring awh::fmk::arabic2rome(const uint32_t number) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {number}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5543,7 +5543,7 @@ string awh::fmk::arabic2rome(string_view word) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {word}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5585,7 +5585,7 @@ wstring awh::fmk::arabic2rome(wstring_view word) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5656,7 +5656,7 @@ size_t awh::fmk::countLetter(string_view word, const wchar_t letter) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {word, letter}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5706,7 +5706,7 @@ size_t awh::fmk::countLetter(wstring_view word, const wchar_t letter) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word), letter}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -5783,7 +5783,7 @@ bool awh::fmk::isBit(const T pos, const T num) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5866,7 +5866,7 @@ T awh::fmk::flipBit(const T pos, const T num) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5949,7 +5949,7 @@ T awh::fmk::resetBit(const T pos, const T num) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6032,7 +6032,7 @@ T awh::fmk::setBit(const T pos, const T num) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pos, num}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6135,7 +6135,7 @@ string awh::fmk::detail::formatted(const char * format, ...) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {format}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6234,7 +6234,7 @@ wstring awh::fmk::detail::formatted(const wchar_t * format, ...) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6299,7 +6299,7 @@ string awh::fmk::format(string_view format, const vector <string> & items) noexc
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {format, items.size()}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -6336,7 +6336,7 @@ string awh::fmk::format(string_view format, const vector <string> & items) noexc
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {format, items.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6399,7 +6399,7 @@ wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) no
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format), items.size()}, awh::log::flag_t::CRITICAL, error.what());
 				/**
@@ -6436,7 +6436,7 @@ wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) no
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(format), items.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6480,7 +6480,7 @@ bool awh::fmk::exists(string_view word, string_view text) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {word, text}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6524,7 +6524,7 @@ bool awh::fmk::exists(wstring_view word, wstring_view text) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(word), convert(text)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6575,7 +6575,7 @@ string & awh::fmk::replace(string & text, const string & word, const string & al
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, word, alt}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6626,7 +6626,7 @@ wstring & awh::fmk::replace(wstring & text, const wstring & word, const wstring 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(word), convert(alt)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6722,7 +6722,7 @@ unordered_multimap <string, string> awh::fmk::kv(string_view text, string_view d
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {text, delim, separator, escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6768,7 +6768,7 @@ unordered_multimap <wstring, wstring> awh::fmk::kv(wstring_view text, wstring_vi
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {convert(text), convert(delim), convert(separator), escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6813,7 +6813,7 @@ void awh::fmk::kv(const uint64_t sid, string_view text, string_view delim, funct
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, text, delim, separator, escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6856,7 +6856,7 @@ void awh::fmk::kv(const uint64_t sid, wstring_view text, wstring_view delim, fun
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, convert(text), convert(delim), convert(separator), escaping.size()}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -6953,7 +6953,7 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING, message.c_str());
 			/**
@@ -6967,7 +6967,7 @@ void awh::fmk::setLocale(string_view locale) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Параметры устанавливаемого шрифта
 			CONSOLE_FONT_INFOEX fontInfo = {};
 			// Устанавливаем размер буфера шрифта
@@ -7040,7 +7040,7 @@ unordered_map <size_t, size_t> awh::fmk::urls(string_view text) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {text}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -7212,7 +7212,7 @@ double awh::fmk::bytes(const string_view str) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -7290,7 +7290,7 @@ string awh::fmk::bytes(const double value, const bool onlyNum) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {value, onlyNum}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -7401,7 +7401,7 @@ size_t awh::fmk::bpsSize(const string_view str) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -7534,7 +7534,7 @@ size_t awh::fmk::bpsBuffer(const string_view str) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {str}, awh::log::flag_t::CRITICAL, error.what());
 			/**

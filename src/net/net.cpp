@@ -28,7 +28,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -194,7 +194,7 @@ awh::net::Interface::Interface() noexcept : name{""}, mtu(0), flags{} {}
 /**
  * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__ || __sun
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 	/**
 	 * @brief Конструктор
 	 *

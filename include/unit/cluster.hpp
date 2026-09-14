@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_CLUSTER__
-#define __AWH_UNIT_CLUSTER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -322,7 +321,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					/**
 					 * \~russian
 					 * Дескриптор объекта родительского процесса (0 у мастера и до захвата)
@@ -510,7 +509,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					/**
 					 * \~russian
 					 * @brief Метод порождения дочернего процесса повторным запуском образа приложения
@@ -675,7 +674,7 @@ namespace awh {
 				/**
 				 * Для операционных систем, отличных от MS Windows
 				 */
-				#if !_WIN32 && !_WIN64
+				#if !defined(_WIN32) && !defined(_WIN64)
 					/**
 					 * \~russian
 					 * @brief Функция фильтр перехватчика сигналов
@@ -708,7 +707,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					/**
 					 * \~russian
 					 * @brief Функция извещения о завершении дочернего процесса
@@ -1683,5 +1682,3 @@ namespace awh {
 		} cluster_t;
 	};
 };
-
-#endif // __AWH_UNIT_CLUSTER__

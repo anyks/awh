@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ETHERNET__
-#define __AWH_ETHERNET__
+#pragma once
 
 /**
  * Наши модули
@@ -41,7 +40,7 @@
 /**
  * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__ || __sun
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 	/**
 	 * Подключаем заголовочный модуль SCTP протокола
 	 */
@@ -125,7 +124,7 @@ namespace awh {
 			/**
 			 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 			 */
-			#if __linux__ || __FreeBSD__ || __sun
+			#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 				// Объект управления протоколом передачи с управлением потоком
 				eth::sctp_t sctp;
 			#endif
@@ -157,5 +156,3 @@ namespace awh {
 			~Ethernet() noexcept;
 	} eth_t;
 };
-
-#endif // __AWH_ETHERNET__

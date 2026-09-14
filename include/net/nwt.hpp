@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_NWT__
-#define __AWH_NWT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -471,5 +470,3 @@ namespace awh {
 			~Network_Types() noexcept = default;
 	} nwt_t;
 };
-
-#endif // __AWH_NWT__

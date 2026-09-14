@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef __AWH_VAULT_TESTS__
-#define __AWH_VAULT_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -47,5 +46,3 @@ class VaultFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_VAULT_TESTS__

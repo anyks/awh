@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef __AWH_TESTS_CODEC_TEMPORARY__
-#define __AWH_TESTS_CODEC_TEMPORARY__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -166,5 +165,3 @@ inline bool removeDirectory(const std::string & path) noexcept {
 	// Выполняем снос каталога вместе с содержимым и выводим признак его отсутствия
 	return (fs.unlink(path) || (fs.type(path, false) != awh::fs_t::type_t::DIR));
 }
-
-#endif // __AWH_TESTS_CODEC_TEMPORARY__

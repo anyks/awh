@@ -74,7 +74,7 @@ namespace {
 		/**
 		 * На macOS ru_maxrss измеряется в байтах, на Linux - в килобайтах
 		 */
-		#ifdef __APPLE__
+		#if defined(__APPLE__)
 			return (static_cast <double> (usage.ru_maxrss) / (1024.0 * 1024.0));
 		#else
 			return (static_cast <double> (usage.ru_maxrss) / 1024.0);

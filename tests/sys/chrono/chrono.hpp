@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_CHRONO_TESTS__
-#define __AWH_CHRONO_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -120,5 +119,3 @@ class ChronoFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_CHRONO_TESTS__

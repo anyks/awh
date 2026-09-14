@@ -154,8 +154,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_STORAGE__
-#define __AWH_REGEX_STORAGE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -705,5 +704,3 @@ namespace awh {
 		} storage_t;
 	}
 }
-
-#endif // __AWH_REGEX_STORAGE__

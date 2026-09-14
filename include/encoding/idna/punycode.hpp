@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_IDNA_PUNYCODE__
-#define __AWH_IDNA_PUNYCODE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -118,5 +117,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool decode(string_view text, vector <uint32_t> & result) noexcept;
 	};
 };
-
-#endif // __AWH_IDNA_PUNYCODE__

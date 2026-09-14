@@ -91,7 +91,7 @@ void awh::unit::Server::unlinkClient(const event::id_t cid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {cid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -147,7 +147,7 @@ void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -192,7 +192,7 @@ void awh::unit::Server::linkClient(const event::id_t sid, const event::id_t cid)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, cid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -220,7 +220,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				/**
 				 * Проверяем требуется ли активировать кластер
 				 */
@@ -286,7 +286,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			/**
 			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#elif __AWH_CLUSTER_BALANCE__
+			#elif defined(__AWH_CLUSTER_BALANCE__)
 				// Если кластер в работе не используется или если процесс является дочерним
 				if((this->_clusterParams.mode == event::mode_t::DISABLED) || !this->_cluster->master())
 					// Выполняем функцию обратного вызова
@@ -294,7 +294,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 			 */
-			#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
+			#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__sun__) || defined(__APPLE__) || defined(__MACH__)
 				/**
 				 * Проверяем требуется ли активировать кластер
 				 */
@@ -372,7 +372,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 			 */
-			#if __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
+			#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__sun__) || defined(__APPLE__) || defined(__MACH__)
 				// Если необходимо деактивировать кластер
 				if(this->_clusterParams.mode == event::mode_t::ENABLED){
 					// Если кластер инициализирован
@@ -550,7 +550,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				/**
 				 * Если процесс является родительским
 				 *
@@ -591,7 +591,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			/**
 			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#elif __AWH_CLUSTER_BALANCE__
+			#elif defined(__AWH_CLUSTER_BALANCE__)
 				// Если работа юнита ещё не запущена
 				if(!this->working()){
 					// Выполняем получение идентификатора функции обратного вызова
@@ -608,7 +608,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 			 */
-			#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
+			#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__sun__) || defined(__APPLE__) || defined(__MACH__)
 				// Если процесс является дочерним
 				if(!this->_cluster->master())
 					// Выполняем функцию обратного вызова
@@ -620,7 +620,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			/**
 			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#if __AWH_CLUSTER_BALANCE__
+			#if defined(__AWH_CLUSTER_BALANCE__)
 				// Если работа юнита запущена
 				if(this->working())
 					// Останавливаем работу основного юнита
@@ -1215,7 +1215,7 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 			/**
 			 * Для систем, где ядро само разводит подключения между процессами кластера
 			 */
-			#if __AWH_CLUSTER_BALANCE__
+			#if defined(__AWH_CLUSTER_BALANCE__)
 				// Если кластер активен, значит нам необходимо проверить опции сервера
 				if(this->_clusterParams.mode == event::mode_t::ENABLED){
 					// Если не установлена опция переиспользования портов
@@ -1268,7 +1268,7 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Failed to commit server", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 					/**
@@ -1288,7 +1288,7 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1343,7 +1343,7 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 					/**
@@ -1363,7 +1363,7 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1451,7 +1451,7 @@ bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, ctx}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1517,7 +1517,7 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Failed to launch server", __PRETTY_FUNCTION__, {eid, max}, awh::log::flag_t::CRITICAL);
 					/**
@@ -1537,7 +1537,7 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, max}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2221,7 +2221,7 @@ void awh::unit::Server::stop() noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Если кластер в работе и процесс является родительским
 			if((this->_cluster != nullptr) && this->_cluster->master())
 				// Останавливаем работу кластера: работники уходят вместе с мастером
@@ -2231,7 +2231,7 @@ void awh::unit::Server::stop() noexcept {
 		/**
 		 * Для систем, где ядро само разводит подключения между процессами кластера
 		 */
-		#elif __AWH_CLUSTER_BALANCE__
+		#elif defined(__AWH_CLUSTER_BALANCE__)
 			/**
 			 * Определяем режим запуска сервера
 			 */
@@ -2252,7 +2252,7 @@ void awh::unit::Server::stop() noexcept {
 		/**
 		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 		 */
-		#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
+		#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__sun__) || defined(__APPLE__) || defined(__MACH__)
 			// Выполняем остановку работы основного юнита
 			unit_t::stop();
 		/**
@@ -2262,7 +2262,7 @@ void awh::unit::Server::stop() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог запуска события
 				awh::log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
@@ -2287,7 +2287,7 @@ void awh::unit::Server::start() noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			/**
 			 * Кластер заводится ДО запуска юнита
 			 *
@@ -2314,7 +2314,7 @@ void awh::unit::Server::start() noexcept {
 		/**
 		 * Для систем, где ядро само разводит подключения между процессами кластера
 		 */
-		#elif __AWH_CLUSTER_BALANCE__
+		#elif defined(__AWH_CLUSTER_BALANCE__)
 			/**
 			 * Определяем режим запуска сервера
 			 */
@@ -2372,7 +2372,7 @@ void awh::unit::Server::start() noexcept {
 		/**
 		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 		 */
-		#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
+		#elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__sun__) || defined(__APPLE__) || defined(__MACH__)
 			// Выполняем получение идентификатора функции обратного вызова
 			const callback_t::id_t fid = this->_callback.id("status");
 			// Если функция обратного вызова установлена
@@ -2390,7 +2390,7 @@ void awh::unit::Server::start() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог запуска события
 				awh::log::debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 			/**
@@ -2524,7 +2524,7 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2638,7 +2638,7 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {count}, awh::log::flag_t::CRITICAL, error.what());
 		/**

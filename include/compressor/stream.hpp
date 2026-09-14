@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_COMPRESSOR_STREAM__
-#define __AWH_COMPRESSOR_STREAM__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -467,5 +466,3 @@ namespace awh {
 		} stream_t;
 	};
 };
-
-#endif // __AWH_COMPRESSOR_STREAM__

@@ -38,8 +38,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_CEF__
-#define __AWH_CODEC_CEF__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -49,5 +48,3 @@
 #include "writer.hpp"
 #include "document.hpp"
 #include "dictionary.hpp"
-
-#endif // __AWH_CODEC_CEF__

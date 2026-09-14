@@ -63,8 +63,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_HUGE__
-#define __AWH_ALLOC_HUGE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -496,5 +495,3 @@ namespace awh {
 		} huge_t;
 	};
 };
-
-#endif // __AWH_ALLOC_HUGE__

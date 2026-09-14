@@ -22,8 +22,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_BENCHMARK_CODEC_SYSLOG__
-#define __AWH_BENCHMARK_CODEC_SYSLOG__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -307,5 +306,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_CODEC_SYSLOG__

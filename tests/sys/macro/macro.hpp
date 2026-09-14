@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_MACRO_TESTS__
-#define __AWH_MACRO_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -47,5 +46,3 @@ class MacroFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_MACRO_TESTS__

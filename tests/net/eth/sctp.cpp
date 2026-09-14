@@ -27,7 +27,7 @@
 /**
  * Модуль SCTP доступен на системах с поддержкой протокола: Linux, FreeBSD, Solaris и illumos
  */
-#if __linux__ || __FreeBSD__ || __sun
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 
 /**
  * Подключаем стандартные заголовочные файлы

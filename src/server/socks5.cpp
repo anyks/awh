@@ -23,7 +23,7 @@
 /**
  * Если размер MTU для UDP сообщений в IPv4 не определён
  */
-#ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
+#if !defined(AWH_MTU_UDP_IPV4_PAYLOAD_SIZE)
 	/**
 	 * Полезная нагрузка UDP для IPv4: 1400 байт.
 	 *
@@ -39,7 +39,7 @@
 /**
  * Если размер MTU для UDP сообщений в IPv6 не определён
  */
-#ifndef AWH_MTU_UDP_IPV6_PAYLOAD_SIZE
+#if !defined(AWH_MTU_UDP_IPV6_PAYLOAD_SIZE)
 	/**
 	 * Полезная нагрузка UDP для IPv6: 1380 байт.
 	 *
@@ -70,7 +70,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -598,7 +598,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, static_cast <event::id_t> (this->_id.eid));
 							/**
@@ -687,7 +687,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																			/**
 																			 * Если включён режим отладки
 																			 */
-																			#if DEBUG_MODE
+																			#if defined(DEBUG_MODE)
 																				// Записываем ошибку в лог
 																				awh::log::debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																			/**
@@ -712,7 +712,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			awh::log::debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																		/**
@@ -731,7 +731,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		awh::log::debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																	/**
@@ -750,7 +750,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Записываем ошибку в лог
 																	awh::log::debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																/**
@@ -799,7 +799,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																			/**
 																			 * Если включён режим отладки
 																			 */
-																			#if DEBUG_MODE
+																			#if defined(DEBUG_MODE)
 																				// Записываем ошибку в лог
 																				awh::log::debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																			/**
@@ -824,7 +824,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			awh::log::debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																		/**
@@ -843,7 +843,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		awh::log::debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																	/**
@@ -862,7 +862,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Записываем ошибку в лог
 																	awh::log::debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, uid);
 																/**
@@ -948,7 +948,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::WARNING, error.c_str());
 								/**
@@ -977,7 +977,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (index), static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1079,7 +1079,7 @@ void awh::server::Socks5::eventsCluster(const pid_t pid, const unit::cluster_t::
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pid, static_cast <uint16_t> (event)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1151,7 +1151,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															awh::log::debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 														/**
@@ -1176,7 +1176,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														awh::log::debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 													/**
@@ -1195,7 +1195,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													awh::log::debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 												/**
@@ -1214,7 +1214,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												awh::log::debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 											/**
@@ -1252,7 +1252,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															awh::log::debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 														/**
@@ -1277,7 +1277,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														awh::log::debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 													/**
@@ -1296,7 +1296,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													awh::log::debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 												/**
@@ -1315,7 +1315,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												awh::log::debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::WARNING, uid);
 											/**
@@ -1349,7 +1349,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {pid, data, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1448,7 +1448,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("Failed to send data to client", __PRETTY_FUNCTION__, {eid, ok}, awh::log::flag_t::WARNING);
 								/**
@@ -1472,7 +1472,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											awh::log::debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, {eid, ok}, awh::log::flag_t::WARNING, i->second);
 										/**
@@ -1511,7 +1511,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, ok}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1628,7 +1628,7 @@ void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buff
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, ::__awh_size__);
 				/**
@@ -1644,7 +1644,7 @@ void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buff
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 			/**
@@ -1740,7 +1740,7 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										awh::log::debug("Failed to send data to remote server", __PRETTY_FUNCTION__, {eid, cid}, awh::log::flag_t::WARNING);
 									/**
@@ -1795,7 +1795,7 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Attempt to illegally connect to a UDP server for node with ID=%u", __PRETTY_FUNCTION__, {eid, cid}, awh::log::flag_t::WARNING, eid);
 					/**
@@ -1828,7 +1828,7 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, cid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1949,7 +1949,7 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2014,7 +2014,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												// Если фактическая длина полезной нагрузки превышает размер приёмника кэша - фиксируем в логах (данные усекаются)
 												if((size > i->second.udp.size) && ((size - i->second.udp.size) > sizeof(cache_t::buffer))){
 													// Если включён режим отладки
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем предупреждение в лог
 														awh::log::debug("UDP relay payload size %zu exceeds cache buffer %zu, data truncated", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, size - i->second.udp.size, sizeof(cache_t::buffer));
 													/**
@@ -2079,7 +2079,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, error.c_str());
 														/**
@@ -2119,7 +2119,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Записываем ошибку в лог
 																	awh::log::debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 																/**
@@ -2155,7 +2155,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																awh::log::debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 															/**
@@ -2174,7 +2174,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														/**
 														 * Если включён режим отладки
 														 */
-														#if DEBUG_MODE
+														#if defined(DEBUG_MODE)
 															// Записываем ошибку в лог
 															awh::log::debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 														/**
@@ -2195,7 +2195,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												awh::log::debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, iface.c_str(), eid);
 											/**
@@ -2214,7 +2214,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											awh::log::debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 										/**
@@ -2332,7 +2332,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, error.c_str());
 						/**
@@ -2387,7 +2387,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::CRITICAL, this->_socks5.statusMessage(i->second.ctx.status).c_str());
 										/**
@@ -2443,7 +2443,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Записываем ошибку в лог
 																	awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, error.c_str());
 																/**
@@ -2498,7 +2498,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																				/**
 																				 * Если включён режим отладки
 																				 */
-																				#if DEBUG_MODE
+																				#if defined(DEBUG_MODE)
 																					// Записываем ошибку в лог
 																					awh::log::debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 																				/**
@@ -2532,7 +2532,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																			/**
 																			 * Если включён режим отладки
 																			 */
-																			#if DEBUG_MODE
+																			#if defined(DEBUG_MODE)
 																				// Записываем ошибку в лог
 																				awh::log::debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, this->_client.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
 																			/**
@@ -2551,7 +2551,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																		/**
 																		 * Если включён режим отладки
 																		 */
-																		#if DEBUG_MODE
+																		#if defined(DEBUG_MODE)
 																			// Записываем ошибку в лог
 																			awh::log::debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 																		/**
@@ -2570,7 +2570,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																	/**
 																	 * Если включён режим отладки
 																	 */
-																	#if DEBUG_MODE
+																	#if defined(DEBUG_MODE)
 																		// Записываем ошибку в лог
 																		awh::log::debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 																	/**
@@ -2589,7 +2589,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																/**
 																 * Если включён режим отладки
 																 */
-																#if DEBUG_MODE
+																#if defined(DEBUG_MODE)
 																	// Записываем ошибку в лог
 																	awh::log::debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, iface.c_str(), eid);
 																/**
@@ -2608,7 +2608,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															/**
 															 * Если включён режим отладки
 															 */
-															#if DEBUG_MODE
+															#if defined(DEBUG_MODE)
 																// Записываем ошибку в лог
 																awh::log::debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING, eid);
 															/**
@@ -2933,7 +2933,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													awh::log::debug("Failed to send data to client", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 												/**
@@ -2978,7 +2978,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													awh::log::debug("Failed to send data to client", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::WARNING);
 												/**
@@ -3027,7 +3027,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3215,7 +3215,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											awh::log::debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, i->second);
 										/**
@@ -3249,7 +3249,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										awh::log::debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, i->second);
 									/**
@@ -3268,7 +3268,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, i->second);
 								/**
@@ -3309,7 +3309,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 													/**
 													 * Если включён режим отладки
 													 */
-													#if DEBUG_MODE
+													#if defined(DEBUG_MODE)
 														// Записываем ошибку в лог
 														awh::log::debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, i->second);
 													/**
@@ -3345,7 +3345,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 												/**
 												 * Если включён режим отладки
 												 */
-												#if DEBUG_MODE
+												#if defined(DEBUG_MODE)
 													// Записываем ошибку в лог
 													awh::log::debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, domain.c_str(), awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port);
 												/**
@@ -3364,7 +3364,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 											/**
 											 * Если включён режим отладки
 											 */
-											#if DEBUG_MODE
+											#if defined(DEBUG_MODE)
 												// Записываем ошибку в лог
 												awh::log::debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, i->second);
 											/**
@@ -3383,7 +3383,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 										/**
 										 * Если включён режим отладки
 										 */
-										#if DEBUG_MODE
+										#if defined(DEBUG_MODE)
 											// Записываем ошибку в лог
 											awh::log::debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, i->second);
 										/**
@@ -3402,7 +3402,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										awh::log::debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, iface.c_str(), i->second);
 									/**
@@ -3421,7 +3421,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::WARNING, i->second);
 								/**
@@ -3452,7 +3452,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (family), domain}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3509,7 +3509,7 @@ void awh::server::Socks5::stop() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server ID is not set", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
@@ -3582,7 +3582,7 @@ void awh::server::Socks5::start() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server ID is not set", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
@@ -3620,7 +3620,7 @@ bool awh::server::Socks5::pause(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3659,7 +3659,7 @@ bool awh::server::Socks5::resume(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3704,7 +3704,7 @@ void awh::server::Socks5::destroy(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3792,7 +3792,7 @@ uint16_t awh::server::Socks5::getOptions(const event::id_t eid) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3844,7 +3844,7 @@ bool awh::server::Socks5::setOptions(const event::id_t eid, const uint16_t optio
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, options}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3896,7 +3896,7 @@ bool awh::server::Socks5::setOption(const event::id_t eid, const uint16_t option
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, option, mode}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3926,7 +3926,7 @@ string awh::server::Socks5::getIface() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
@@ -3965,7 +3965,7 @@ string awh::server::Socks5::getIface(const event::id_t eid) const noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server or peer ID is not set", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::WARNING);
 			/**
@@ -3999,7 +3999,7 @@ bool awh::server::Socks5::setIface(string_view name) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {name}, awh::log::flag_t::WARNING);
 			/**
@@ -4042,7 +4042,7 @@ bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server or peer ID is not set", __PRETTY_FUNCTION__, {eid, name}, awh::log::flag_t::WARNING);
 			/**
@@ -4073,7 +4073,7 @@ uint16_t awh::server::Socks5::getSourcePort() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
@@ -4112,7 +4112,7 @@ uint16_t awh::server::Socks5::getSourcePort(const event::id_t eid) const noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4145,7 +4145,7 @@ bool awh::server::Socks5::setSourcePort(const uint16_t port) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {port}, awh::log::flag_t::WARNING);
 			/**
@@ -4179,7 +4179,7 @@ uint16_t awh::server::Socks5::getTargetPort(const event::id_t eid) const noexcep
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server or peer ID is not set", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::WARNING);
 		/**
@@ -4218,7 +4218,7 @@ string awh::server::Socks5::getTarget(const event::id_t eid) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4258,7 +4258,7 @@ bool awh::server::Socks5::getTarget(const event::id_t eid, unique_ptr <net::addr
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4315,7 +4315,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, string_view
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address), value}, awh::log::flag_t::WARNING);
 			/**
@@ -4373,7 +4373,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, const net::
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, awh::log::flag_t::WARNING);
 			/**
@@ -4424,7 +4424,7 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (address), value}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4474,7 +4474,7 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (address)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4505,7 +4505,7 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, awh::log::flag_t::WARNING);
 		/**
@@ -4537,7 +4537,7 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (address)}, awh::log::flag_t::WARNING);
 		/**
@@ -4582,7 +4582,7 @@ string awh::server::Socks5::getAddress(const event::id_t eid, const event::addre
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (address)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4628,7 +4628,7 @@ bool awh::server::Socks5::getAddress(const event::id_t eid, const event::address
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (address)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4668,7 +4668,7 @@ size_t awh::server::Socks5::getBufferSize(const event::id_t eid, const event::ac
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (action)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4709,7 +4709,7 @@ bool awh::server::Socks5::setBufferSize(const event::id_t eid, const event::acti
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (action), size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4739,7 +4739,7 @@ awh::event::usage_t awh::server::Socks5::getUsageReadTimeout() const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
@@ -4778,7 +4778,7 @@ awh::event::usage_t awh::server::Socks5::getUsageReadTimeout(const event::id_t e
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4808,7 +4808,7 @@ void awh::server::Socks5::setUsageReadTimeout(const event::usage_t usage) noexce
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (usage)}, awh::log::flag_t::WARNING);
 		/**
@@ -4845,7 +4845,7 @@ void awh::server::Socks5::setUsageReadTimeout(const event::id_t eid, const event
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (usage)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4874,7 +4874,7 @@ uint32_t awh::server::Socks5::getTimeout(const event::action_t action) const noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action)}, awh::log::flag_t::WARNING);
 		/**
@@ -4914,7 +4914,7 @@ uint32_t awh::server::Socks5::getTimeout(const event::id_t eid, const event::act
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (action)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4945,7 +4945,7 @@ void awh::server::Socks5::setTimeout(const event::action_t action, const uint32_
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (action), timeout}, awh::log::flag_t::WARNING);
 		/**
@@ -4983,7 +4983,7 @@ void awh::server::Socks5::setTimeout(const event::id_t eid, const event::action_
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (action), timeout}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5013,7 +5013,7 @@ bool awh::server::Socks5::bandwidth(const event::limiting_t limiting, string_vie
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Server is not initialized", __PRETTY_FUNCTION__, {static_cast <uint16_t> (limiting), bandwidth}, awh::log::flag_t::WARNING);
 		/**
@@ -5054,7 +5054,7 @@ bool awh::server::Socks5::bandwidth(const event::id_t eid, const event::limiting
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (limiting), bandwidth}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5099,7 +5099,7 @@ bool awh::server::Socks5::keepAlive(const event::id_t eid, const int32_t cnt, co
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, cnt, idle, intvl}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5165,7 +5165,7 @@ size_t awh::server::Socks5::clusterSend(const void * buffer, const size_t size) 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Message sent is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, ::__awh_size__);
 			/**
@@ -5183,7 +5183,7 @@ size_t awh::server::Socks5::clusterSend(const void * buffer, const size_t size) 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5230,7 +5230,7 @@ size_t awh::server::Socks5::clusterSend(const pid_t pid, const void * buffer, co
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Message sent is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, {pid, buffer, size}, awh::log::flag_t::WARNING, ::__awh_size__);
 			/**
@@ -5248,7 +5248,7 @@ size_t awh::server::Socks5::clusterSend(const pid_t pid, const void * buffer, co
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pid, buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5294,7 +5294,7 @@ size_t awh::server::Socks5::clusterBroadcast(const void * buffer, const size_t s
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Message sent is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING, ::__awh_size__);
 			/**
@@ -5312,7 +5312,7 @@ size_t awh::server::Socks5::clusterBroadcast(const void * buffer, const size_t s
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5380,7 +5380,7 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {count, begin, end, addr}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5461,7 +5461,7 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {count, begin, end}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5577,7 +5577,7 @@ void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t *
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5703,7 +5703,7 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {addr, intPort, alias, extPort}, awh::log::flag_t::CRITICAL, error.what());
 		/**

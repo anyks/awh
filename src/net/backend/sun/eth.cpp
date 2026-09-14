@@ -23,7 +23,7 @@
 /**
  * Если максимальное количество файловых дескрипторов не передано
  */
-#ifndef AWH_MAX_COUNT_FDS
+#if !defined(AWH_MAX_COUNT_FDS)
 	/**
 	 * Устанавливаем максимальное количество доступных файловых дескрипторов 131072
 	 */
@@ -103,13 +103,13 @@ namespace options {
 			/**
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
-			#if AWH_BOOSTING_NET
+			#if defined(AWH_BOOSTING_NET)
 				// Если эффективный идентификатор пользователя не принадлежит ROOT
 				if(!os.isAdmin()){
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 					/**
@@ -155,7 +155,7 @@ namespace options {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**

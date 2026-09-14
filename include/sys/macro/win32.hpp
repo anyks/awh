@@ -29,13 +29,12 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_WIN32__
-#define __AWH_WIN32__
+#pragma once
 
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 
 	/**
 	 * \~russian
@@ -56,7 +55,7 @@
 	 *
 	 * \~
 	 */
-	#ifndef _WIN32_WINNT
+	#if !defined(_WIN32_WINNT)
 		#define _WIN32_WINNT 0x0A00
 	#endif
 
@@ -77,7 +76,7 @@
 	 *
 	 * \~
 	 */
-	#ifndef WIN32_LEAN_AND_MEAN
+	#if !defined(WIN32_LEAN_AND_MEAN)
 		#define WIN32_LEAN_AND_MEAN
 	#endif
 
@@ -96,7 +95,7 @@
 	 *
 	 * \~
 	 */
-	#ifndef NOMINMAX
+	#if !defined(NOMINMAX)
 		#define NOMINMAX
 	#endif
 
@@ -214,5 +213,3 @@
 	 */
 
 #endif
-
-#endif // __AWH_WIN32__

@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_TESTS_SILENT__
-#define __AWH_CODEC_TESTS_SILENT__
+#pragma once
 
 /**
  * Подключаем внешние заголовочные файлы
@@ -103,5 +102,3 @@ namespace {
 	// Объект заводителя глушителя вывода журнала
 	const SilencerSetup silencer;
 }
-
-#endif // __AWH_CODEC_TESTS_SILENT__

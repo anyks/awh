@@ -60,8 +60,7 @@
  * @copyright Copyright © 2026
  */
 
-#ifndef __AWH_FIBER__
-#define __AWH_FIBER__
+#pragma once
 
 /**
  * Стандартные модули
@@ -389,5 +388,3 @@ namespace awh {
  * Возвращаем макросы, снятые в начале файла
  */
 #include "macro/restore.hpp"
-
-#endif // __AWH_FIBER__

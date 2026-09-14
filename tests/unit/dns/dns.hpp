@@ -22,8 +22,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_DNS_TESTS__
-#define __AWH_UNIT_DNS_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -257,5 +256,3 @@ class DNSUnitFixture : public testing::Test {
 		 */
 		void setup(awh::unit::dns_t & dns, const DNSStubServer & server, const uint32_t delay, const uint8_t count) const noexcept;
 };
-
-#endif // __AWH_UNIT_DNS_TESTS__

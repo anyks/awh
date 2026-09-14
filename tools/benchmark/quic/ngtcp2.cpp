@@ -51,10 +51,10 @@
  * Пути к тестовому сертификату и приватному ключу сервера задаются при сборке:
  * стенд их только загружает, к измеряемой работе рукопожатие отношения не имеет
  */
-#ifndef QUIC_CERT_FILE
+#if !defined(QUIC_CERT_FILE)
 	#define QUIC_CERT_FILE "sh/certificates/server/cert.pem"
 #endif
-#ifndef QUIC_KEY_FILE
+#if !defined(QUIC_KEY_FILE)
 	#define QUIC_KEY_FILE "sh/certificates/server/key.pem"
 #endif
 

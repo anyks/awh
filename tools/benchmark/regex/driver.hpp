@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_REGEX_DRIVER__
-#define __AWH_BENCHMARK_REGEX_DRIVER__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы стендов
@@ -125,5 +124,3 @@ namespace driver {
 		}
 	}
 };
-
-#endif // __AWH_BENCHMARK_REGEX_DRIVER__

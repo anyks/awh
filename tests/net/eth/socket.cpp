@@ -31,7 +31,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -146,7 +146,7 @@ TEST_F(EthFixture, SocketCreateTest){
 	 *          и тот случай, когда сокет вдруг заведётся вопреки устройству системы.
 	 *          Прежде проверка ждала успеха и падала на всякой машине Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Дейтаграммный сокет домена UNIX завестись не может
 		ASSERT_EQ(udsg, awh::net::invalid_socket_t) << "у MS Windows дейтаграммных сокетов домена UNIX нет, а сокет заведён";
 	/**
@@ -659,13 +659,13 @@ TEST_F(EthFixture, SocketKeepaliveTest){
 	 *
 	 */
 	#if defined(_WIN32) || defined(_WIN64)
-		#ifndef TCP_KEEPIDLE
+		#if !defined(TCP_KEEPIDLE)
 			#define TCP_KEEPIDLE 3
 		#endif
-		#ifndef TCP_KEEPCNT
+		#if !defined(TCP_KEEPCNT)
 			#define TCP_KEEPCNT 16
 		#endif
-		#ifndef TCP_KEEPINTVL
+		#if !defined(TCP_KEEPINTVL)
 			#define TCP_KEEPINTVL 17
 		#endif
 	#endif
@@ -803,7 +803,7 @@ TEST_F(EthFixture, SocketSwitchOptionIPv6Test){
 	 * значило бы требовать от системы того, чего она не делает
 	 *
 	 */
-	#if !__OpenBSD__
+	#if !defined(__OpenBSD__)
 		// Отключаем режим только IPv6 на IPv6 сокете
 		ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::DISABLED, awh::event::options::IPV6_ONLY));
 	#endif
@@ -869,7 +869,7 @@ TEST_F(EthFixture, SocketHeaderInclusionIPv6Test){
 	 *       OpenIndiana), опрашивать нечего, и договор там иной - успех на пустое
 	 *       действие
 	 */
-	#ifdef IPV6_HDRINCL
+	#if defined(IPV6_HDRINCL)
 		// Значение настройки, прочитанное у системы
 		int32_t value = 0;
 		// Длина значения настройки
@@ -886,7 +886,7 @@ TEST_F(EthFixture, SocketHeaderInclusionIPv6Test){
 	/**
 	 * Опрашиваем сокет заново: выключение обязано дойти до системы так же
 	 */
-	#ifdef IPV6_HDRINCL
+	#if defined(IPV6_HDRINCL)
 		// Восстанавливаем длину значения настройки
 		length = sizeof(value);
 		// Настройка обязана быть ВЫКЛЮЧЕНА у самого сокета
@@ -1027,7 +1027,7 @@ static awh::event::ecn_t ecnExpected(const awh::event::ecn_t ecn) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Всякая поставленная метка читается признаком способности
 		return ((ecn == awh::event::ecn_t::NOT_ECT) ? awh::event::ecn_t::NOT_ECT : awh::event::ecn_t::ECT1);
 	/**
@@ -1554,7 +1554,7 @@ TEST_F(EthFixture, SocketRawProtocolIPv6Test){
 	 *          Косвенный путь через свою голову пакета тоже негоден: у Linux сокет с
 	 *          `IPPROTO_RAW` имеет её включённой по умолчанию, а у MS Windows нет
 	 */
-	#ifdef SO_PROTOCOL
+	#if defined(SO_PROTOCOL)
 		/**
 		 * Заводим ЭТАЛОННЫЙ сокет средствами системы, минуя движок
 		 *

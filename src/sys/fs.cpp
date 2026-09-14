@@ -23,7 +23,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 *
@@ -72,7 +72,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Системные заголовочные файлы
 	 */
@@ -95,7 +95,7 @@
 /**
  * Если операционной системой является macOS
  */
-#if __APPLE__ || __MACH__
+#if defined(__APPLE__) || defined(__MACH__)
 	/**
 	 * Системный заголовочный файл
 	 */
@@ -146,7 +146,7 @@ namespace awh {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * @brief Класс для автоматического управления каталогом Windows (RAII)
 		 *
@@ -1425,7 +1425,7 @@ namespace {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Сведения о системе, запрашиваемые единожды
 			static SYSTEM_INFO info = [](){
 				// Создаём объект сведений о системе
@@ -1449,7 +1449,7 @@ namespace {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * @brief Шаблон класса для автоматического управления COM-интерфейсами (RAII)
 		 *
@@ -1620,7 +1620,7 @@ namespace {
 						 *       и HOMEPATH - так поступают и сами средства MS Windows
 						 *
 						 */
-						#if _WIN32 || _WIN64
+						#if defined(_WIN32) || defined(_WIN64)
 							// Буфер для сборки домашнего каталога из двух переменных окружения
 							static string profile = "";
 							// Получаем домашний каталог пользователя
@@ -1738,7 +1738,7 @@ namespace {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {input}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -1772,7 +1772,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
-			#if !_WIN32 && !_WIN64
+			#if !defined(_WIN32) && !defined(_WIN64)
 				// Выполняем создание символьной ссылки
 				::symlink(this->fullpath(first, true).c_str(), this->fullpath(second, true).c_str());
 			/**
@@ -1849,7 +1849,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -1866,7 +1866,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -1896,7 +1896,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
-			#if !_WIN32 && !_WIN64
+			#if !defined(_WIN32) && !defined(_WIN64)
 				// Если адрес на который нужно создать ссылку существует
 				if(this->type(first) != type_t::NONE)
 					// Выполняем создание символьной ссылки
@@ -1938,7 +1938,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -1955,7 +1955,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {first, second}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -1998,7 +1998,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						/**
 						 * Для операционной системы MS Windows
 						 */
-						#if _WIN32 || _WIN64
+						#if defined(_WIN32) || defined(_WIN64)
 							// Открываем указанный каталог
 							HandleDir dir(awh::dir::_wopendir(fmk::convert(address).c_str()));
 						/**
@@ -2013,7 +2013,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 							/**
 							 * Для операционной системы MS Windows
 							 */
-							#if _WIN32 || _WIN64
+							#if defined(_WIN32) || defined(_WIN64)
 								// Структура проверка статистики
 								struct _stat info{};
 								// Создаем указатель на содержимое каталога
@@ -2038,7 +2038,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 									/**
 									 * Для операционной системы MS Windows
 									 */
-									#if _WIN32 || _WIN64
+									#if defined(_WIN32) || defined(_WIN64)
 										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 										if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 											// Выполняем пропуск каталога
@@ -2059,7 +2059,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 									/**
 									 * Для операционной системы MS Windows
 									 */
-									#if _WIN32 || _WIN64
+									#if defined(_WIN32) || defined(_WIN64)
 										// Конвертируем адрес в формат wstring
 										const wstring & path = fmk::convert(child);
 										// Если статистика извлечена
@@ -2102,7 +2102,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 							/**
 							 * Для операционной системы MS Windows
 							 */
-							#if _WIN32 || _WIN64
+							#if defined(_WIN32) || defined(_WIN64)
 								// Получаем количество дочерних элементов
 								result = (::_wrmdir(fmk::convert(address).c_str()) == 0);
 							/**
@@ -2121,7 +2121,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						/**
 						 * Для операционной системы MS Windows
 						 */
-						#if _WIN32 || _WIN64
+						#if defined(_WIN32) || defined(_WIN64)
 							// Выполняем удаление переданного пути
 							result = (::_wunlink(fmk::convert(address).c_str()) == 0);
 						/**
@@ -2138,7 +2138,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Выполняем извлечение актуального значения адреса
 						const string & address = this->fullpath(addr);
 						// Если адрес получен правильный
@@ -2161,7 +2161,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -2178,7 +2178,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -2213,7 +2213,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				// Структура проверка статистики
 				struct _stat info{};
 				// Выполняем извлечение актуального значения адреса
@@ -2254,7 +2254,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
-				#if !_WIN32 && !_WIN64
+				#if !defined(_WIN32) && !defined(_WIN64)
 					// Если это сокет
 					else if(S_ISSOCK(info.st_mode))
 						// Получаем тип файловой системы
@@ -2285,11 +2285,11 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				/**
 				 * Если операционной системой является macOS
 				 */
-				#if __APPLE__ || __MACH__
+				#if defined(__APPLE__) || defined(__MACH__)
 					/**
 					 * Если целевая платформа является macOS
 					 */
-					#ifdef __AWH_USE_MACOS_ALIAS_RESOLUTION__
+					#if defined(__AWH_USE_MACOS_ALIAS_RESOLUTION__)
 						// Alias-файлы всегда являются обычными файлами — проверяем только их и только если детект включён
 						if(detectLinks && (result == type_t::FILE)){
 							/**
@@ -2328,7 +2328,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
-				#if !_WIN32 && !_WIN64
+				#if !defined(_WIN32) && !defined(_WIN64)
 					// Если тип определён
 					if(::lstat(addr.data(), &info) == 0){
 						// Если это символьная ссылка
@@ -2376,7 +2376,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr, detectLinks}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -2393,7 +2393,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr, detectLinks}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -2426,7 +2426,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Создаём буфер для полного адреса
 			wchar_t buffer[_MAX_PATH];
 			// Заполняем буфер нулями
@@ -2515,7 +2515,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 					/**
 					 * Если целевая платформа является macOS
 					 */
-					#ifdef __AWH_USE_MACOS_ALIAS_RESOLUTION__
+					#if defined(__AWH_USE_MACOS_ALIAS_RESOLUTION__)
 						/**
 						 * Выполняем проверку является ли файл alias-файлом
 						 */
@@ -2594,7 +2594,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -2611,7 +2611,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -2640,7 +2640,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем извлечение актуального значения адреса
 			const string & address = this->fullpath(addr, true);
 			// Если адрес получен правильный
@@ -2658,7 +2658,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2691,7 +2691,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем извлечение актуального значения адреса
 			const string & address = this->fullpath(addr, true);
 			// Если адрес получен правильный
@@ -2707,7 +2707,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {addr, mode}, log::flag_t::CRITICAL, ::strerror(errno));
 				/**
@@ -2740,7 +2740,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 		/**
 		 * Для операционной системы не являющейся MS Windows
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 			// Если группа пользователя передана
 			if(!group.empty()){
 				// Идентификатор пользователя
@@ -2754,7 +2754,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {addr, user, group}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -2790,7 +2790,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
@@ -2843,7 +2843,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
@@ -2867,7 +2867,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
@@ -2893,7 +2893,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug(L"%s", __PRETTY_FUNCTION__, {addr, user}, log::flag_t::CRITICAL, message);
 				/**
@@ -2954,7 +2954,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
-							#if !_WIN32 && !_WIN64
+							#if !defined(_WIN32) && !defined(_WIN64)
 								// Создаем каталог
 								result = (::mkdir(buffer.c_str(), S_IRWXU) == 0);
 							/**
@@ -2982,7 +2982,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
-							#if !_WIN32 && !_WIN64
+							#if !defined(_WIN32) && !defined(_WIN64)
 								// Создаем каталог
 								result = (::mkdir(buffer.c_str(), S_IRWXU) == 0);
 							/**
@@ -3014,7 +3014,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("Memory allocation error", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL);
 				/**
@@ -3033,7 +3033,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -3050,7 +3050,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {addr}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -3109,7 +3109,7 @@ bool awh::Filesystem::replaceAddress(string_view temporary, string_view filename
 	/**
 	 * Для операционной системы, MS Windows не являющейся
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Выполняем подмену целевого файла временным
 		return (::rename(string(temporary).c_str(), string(filename).c_str()) == 0);
 	/**
@@ -3175,7 +3175,7 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve, before}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -3192,7 +3192,7 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("%s", __PRETTY_FUNCTION__, {addr, resolve, before}, log::flag_t::CRITICAL, error.what());
 		/**
@@ -3239,7 +3239,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 						/**
 						 * Для операционной системы MS Windows
 						 */
-						#if _WIN32 || _WIN64
+						#if defined(_WIN32) || defined(_WIN64)
 							// Создаём объект работы с файлом
 							/**
 							 * @note Дозволяется и запись, и удаление, а не одно лишь чтение: файл вправе
@@ -3262,7 +3262,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug(L"%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, message);
 									/**
@@ -3299,7 +3299,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 						/**
 						 * Для операционной системы MS Windows
 						 */
-						#if _WIN32 || _WIN64
+						#if defined(_WIN32) || defined(_WIN64)
 							// Открываем указанный каталог
 							HandleDir dir(awh::dir::_wopendir(fmk::convert(path.data()).c_str()));
 						/**
@@ -3314,7 +3314,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 							/**
 							 * Для операционной системы MS Windows
 							 */
-							#if _WIN32 || _WIN64
+							#if defined(_WIN32) || defined(_WIN64)
 								// Создаем указатель на содержимое каталога
 								awh::dir::_wdirent * ptr = nullptr;
 								/**
@@ -3335,7 +3335,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 									/**
 									 * Для операционной системы MS Windows
 									 */
-									#if _WIN32 || _WIN64
+									#if defined(_WIN32) || defined(_WIN64)
 										// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 										if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 											// Выполняем пропуск каталога
@@ -3380,7 +3380,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 												/**
 												 * Для операционной системы MS Windows
 												 */
-												#if _WIN32 || _WIN64
+												#if defined(_WIN32) || defined(_WIN64)
 													// Структура проверка статистики
 													struct _stat info{};
 													// Если статистика извлечена
@@ -3403,7 +3403,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 											/**
 											 * Для операционной системы MS Windows
 											 */
-											#if _WIN32 || _WIN64
+											#if defined(_WIN32) || defined(_WIN64)
 												// Структура проверка статистики
 												struct _stat info{};
 												// Если статистика извлечена
@@ -3433,7 +3433,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -3450,7 +3450,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -3492,7 +3492,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Открываем указанный каталог
 					HandleDir dir(awh::dir::_wopendir(fmk::convert(path.data()).c_str()));
 				/**
@@ -3507,7 +3507,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 						/**
 						 * Для операционной системы MS Windows
 						 */
-						#if _WIN32 || _WIN64
+						#if defined(_WIN32) || defined(_WIN64)
 							// Создаем указатель на содержимое каталога
 							awh::dir::_wdirent * ptr = nullptr;
 							/**
@@ -3528,7 +3528,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 								/**
 								 * Для операционной системы MS Windows
 								 */
-								#if _WIN32 || _WIN64
+								#if defined(_WIN32) || defined(_WIN64)
 									// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 									if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 										// Выполняем пропуск каталога
@@ -3584,7 +3584,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -3601,7 +3601,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -3617,7 +3617,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, {addr, ext, recurse}, log::flag_t::WARNING, addr.data());
 		/**
@@ -3692,7 +3692,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -3727,7 +3727,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug(L"%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
 							/**
@@ -3749,7 +3749,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, message);
 						/**
@@ -3784,7 +3784,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -3802,7 +3802,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -3822,7 +3822,7 @@ bool awh::Filesystem::truncate(string_view filename, const uint64_t length, cons
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, length}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -3878,7 +3878,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -3914,7 +3914,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
 								/**
@@ -3937,7 +3937,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, message);
 						/**
@@ -3973,7 +3973,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 * @note Отказ `F_FULLFSYNC` откатывается к `fsync`, а не объявляется отказом:
 						 *       управление им держит не всякая файловая система
 						 */
-						#ifdef __APPLE__
+						#if defined(__APPLE__)
 							// Выполняем сброс записанного из ядра на носитель
 							const int32_t flushed = (durable ?
 								((::fcntl(file, F_FULLFSYNC, 0) == -1) ? ::fsync(file) : 0) :
@@ -3986,7 +3986,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						 *       и тем обходится дешевле. Долговечности он не обещает, оттого стоит
 						 *       ЛИШЬ под снятым признаком `durable`
 						 */
-						#elif _POSIX_SYNCHRONIZED_IO && (_POSIX_SYNCHRONIZED_IO > 0)
+						#elif defined(_POSIX_SYNCHRONIZED_IO) && (_POSIX_SYNCHRONIZED_IO > 0)
 							// Выполняем сброс записанного из ядра на носитель
 							const int32_t flushed = (durable ? ::fsync(file) : ::fdatasync(file));
 						/**
@@ -4010,7 +4010,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug("%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, ::strerror(errno));
 								/**
@@ -4029,7 +4029,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -4049,7 +4049,7 @@ bool awh::Filesystem::flush(string_view filename, const bool durable, const hand
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, durable}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -4221,7 +4221,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -4262,7 +4262,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, message);
 						/**
@@ -4300,7 +4300,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -4323,7 +4323,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -4344,7 +4344,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -4361,7 +4361,7 @@ bool awh::Filesystem::append(string_view filename, const void * buffer, const si
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -4467,7 +4467,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -4545,7 +4545,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, message);
 								/**
@@ -4573,7 +4573,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -4588,7 +4588,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -4646,7 +4646,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), result.size(), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -4667,7 +4667,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -4684,7 +4684,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -4754,7 +4754,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -4780,7 +4780,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 							/**
@@ -4806,7 +4806,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 								/**
@@ -4830,7 +4830,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, message);
 								/**
@@ -4877,7 +4877,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -4892,7 +4892,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -4913,7 +4913,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -4958,7 +4958,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -4975,7 +4975,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -5153,7 +5153,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -5236,7 +5236,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug(L"%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 						/**
@@ -5266,7 +5266,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -5309,7 +5309,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 							/**
@@ -5330,7 +5330,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -5347,7 +5347,7 @@ bool awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, buffer, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -5447,7 +5447,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -5505,7 +5505,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 								/**
@@ -5541,7 +5541,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug(L"%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 									/**
@@ -5580,7 +5580,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -5595,7 +5595,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -5674,7 +5674,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -5691,7 +5691,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -5749,7 +5749,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если объект файла ещё не заведён
 					if(!file.valid())
 						/**
@@ -5807,7 +5807,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 								/**
@@ -5843,7 +5843,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 									/**
 									 * Если включён режим отладки
 									 */
-									#if DEBUG_MODE
+									#if defined(DEBUG_MODE)
 										// Записываем ошибку в лог
 										log::debug(L"%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, message);
 									/**
@@ -5882,7 +5882,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -5897,7 +5897,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, ::strerror(errno));
 						/**
@@ -5965,7 +5965,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -5982,7 +5982,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				log::debug("%s", __PRETTY_FUNCTION__, {filename, size, static_cast <uint16_t> (seek), offset}, log::flag_t::CRITICAL, error.what());
 			/**
@@ -6043,7 +6043,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Открываем корень обхода
 						dir.set(awh::dir::_wopendir(fmk::convert(root).c_str()));
 					/**
@@ -6076,7 +6076,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						log::debug("Directory name: \"%s\" cannot be opened", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, root.c_str());
 					/**
@@ -6139,7 +6139,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Выполняем чтение содержимого каталога
 						awh::dir::_wdirent * ptr = awh::dir::_wreaddir(dir.empty() ? static_cast <awh::dir::_WDIR *> (dir) : dir.top());
 					/**
@@ -6175,7 +6175,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 						if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 							// Выполняем пропуск каталога
@@ -6206,7 +6206,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 								/**
 								 * Для операционной системы MS Windows
 								 */
-								#if _WIN32 || _WIN64
+								#if defined(_WIN32) || defined(_WIN64)
 									// Открываем вложенный каталог
 									awh::dir::_WDIR * nested = awh::dir::_wopendir(fmk::convert(address).c_str());
 								/**
@@ -6260,7 +6260,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -6277,7 +6277,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					log::debug("%s", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::CRITICAL, error.what());
 				/**
@@ -6294,7 +6294,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
@@ -6431,7 +6431,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
@@ -6569,7 +6569,7 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const size_t si
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
@@ -6688,7 +6688,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**
@@ -6780,7 +6780,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			log::debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, {path, ext, size, recurse, resolve}, log::flag_t::WARNING, path.data());
 		/**

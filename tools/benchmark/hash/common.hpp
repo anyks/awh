@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_HASH__
-#define __AWH_BENCHMARK_RIVAL_HASH__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -245,5 +244,3 @@ namespace rival {
 		::printf("checksum: %llu\n", static_cast <unsigned long long> (checksum));
 	}
 };
-
-#endif // __AWH_BENCHMARK_RIVAL_HASH__

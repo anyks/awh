@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_SSL_ENGINE__
-#define __AWH_SSL_ENGINE__
+#pragma once
 
 /**
  * \~russian
@@ -1737,5 +1736,3 @@ namespace awh {
  */
 #include "../../sys/macro/restore.hpp"
 #include <sys/macro/global.hpp>
-
-#endif // __AWH_SSL_ENGINE__

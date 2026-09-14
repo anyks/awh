@@ -41,7 +41,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -85,7 +85,7 @@ using namespace placeholders;
 /**
  * Если стандартные NTP-серверы не установлены
  */
-#ifndef AWH_NTP_SERVERS
+#if !defined(AWH_NTP_SERVERS)
 	/**
 	 * Устанавливаем стандартные NTP-серверы
 	 */
@@ -778,7 +778,7 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 						/**
 						* Если включён режим отладки
 						*/
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("Invalid NTP response", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::WARNING);
 						/**
@@ -799,7 +799,7 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -873,7 +873,7 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug(
 					"NTP-client timeout (attempts: %u)",
@@ -993,7 +993,7 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Failed to set options for NTP-client event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
 							/**
@@ -1016,7 +1016,7 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Failed to launch NTP-client", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL);
 							/**
@@ -1038,7 +1038,7 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1209,7 +1209,7 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1267,7 +1267,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1343,7 +1343,7 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1380,7 +1380,7 @@ void awh::unit::NTP::addServer(string_view server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1428,7 +1428,7 @@ void awh::unit::NTP::addServer(const net::addr_t * server) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1481,7 +1481,7 @@ void awh::unit::NTP::addServer(const event::family_t family, string_view server)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), server}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1570,7 +1570,7 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1670,7 +1670,7 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {servers.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1782,7 +1782,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), servers.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1834,7 +1834,7 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1887,7 +1887,7 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1941,7 +1941,7 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -2004,7 +2004,7 @@ bool awh::unit::NTP::sync(const version_t version) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**

@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_SYSLOG_COMMON__
-#define __AWH_CODEC_SYSLOG_COMMON__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -619,5 +618,3 @@ namespace awh {
  * Возвращаем имена, системными макросами занятые
  */
 #include "../../sys/macro/restore.hpp"
-
-#endif // __AWH_CODEC_SYSLOG_COMMON__

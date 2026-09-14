@@ -27,8 +27,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ARGS__
-#define __AWH_ARGS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -774,5 +773,3 @@ namespace awh {
 		} args_t;
 	}
 }
-
-#endif // __AWH_ARGS__

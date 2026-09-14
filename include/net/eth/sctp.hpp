@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_SCTP__
-#define __AWH_SCTP__
+#pragma once
 
 /**
  * Наши модули
@@ -594,5 +593,3 @@ namespace awh {
 		} sctp_t;
 	};
 };
-
-#endif // __AWH_SCTP__

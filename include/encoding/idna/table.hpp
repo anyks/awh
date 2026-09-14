@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_IDNA_TABLE__
-#define __AWH_IDNA_TABLE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -85,5 +84,3 @@ namespace awh {
 		extern __AWH_SHARED_EXPORT__ const size_t JOININGS_COUNT;
 	};
 };
-
-#endif // __AWH_IDNA_TABLE__

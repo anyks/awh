@@ -37,7 +37,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -527,7 +527,7 @@ bool awh::proto::Client_Socks5::parse(const void * buffer, const size_t size, ct
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -663,7 +663,7 @@ bool awh::proto::Client_Socks5::parse(const void * buffer, const size_t size, ud
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -824,7 +824,7 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -925,7 +925,7 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**

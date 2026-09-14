@@ -22,8 +22,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_PORTMAP_TESTS__
-#define __AWH_UNIT_PORTMAP_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -116,5 +115,3 @@ class PortmapUnitFixture : public testing::Test {
 		 */
 		outcome_t await(awh::unit::portmap_t & portmap, const awh::unit::portmap_t::action_t action) const noexcept;
 };
-
-#endif // __AWH_UNIT_PORTMAP_TESTS__

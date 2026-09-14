@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_FAKE_IGD__
-#define __AWH_FAKE_IGD__
+#pragma once
 #include <atomic>
 #include <string>
 #include <thread>
@@ -36,7 +35,7 @@
  *       sys/macro/win32.hpp, а недостающее восполняет tests/posix.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	#include <sys/macro/win32.hpp>
 	/**
 	 * @brief Заголовок перечня сетевых устройств машины
@@ -129,7 +128,7 @@
 
 	// Название сетевого устройства петли
 	#define LOOPBACK_IFACE (__awh_loopback__.c_str())
-#elif __linux__
+#elif defined(__linux__)
 	static constexpr const char * LOOPBACK_IFACE = "lo";
 #else
 	static constexpr const char * LOOPBACK_IFACE = "lo0";
@@ -779,7 +778,7 @@ class FakeIGD {
 				 * Настройки SO_REUSEPORT у MS Windows нет вовсе: разделение порта между
 				 * гнёздами выражается там одним лишь SO_REUSEADDR, поставленным выше
 				 */
-				#ifdef SO_REUSEPORT
+				#if defined(SO_REUSEPORT)
 					::setsockopt(this->_udp, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&yes), sizeof(yes));
 				#endif
 								::setReceiveTimeout(this->_udp, 100);
@@ -813,7 +812,7 @@ class FakeIGD {
 				 * Настройки SO_REUSEPORT у MS Windows нет вовсе: разделение порта между
 				 * гнёздами выражается там одним лишь SO_REUSEADDR, поставленным выше
 				 */
-				#ifdef SO_REUSEPORT
+				#if defined(SO_REUSEPORT)
 					::setsockopt(this->_udp6, SOL_SOCKET, SO_REUSEPORT, reinterpret_cast <const char *> (&yes), sizeof(yes));
 				#endif
 				::setsockopt(this->_udp6, IPPROTO_IPV6, IPV6_V6ONLY, reinterpret_cast <const char *> (&yes), sizeof(yes));
@@ -902,4 +901,3 @@ class FakeIGD {
 		}
 		~FakeIGD() noexcept { this->stop(); }
 };
-#endif

@@ -124,7 +124,7 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Failed to launch tunnel", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL);
 				/**
@@ -146,7 +146,7 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -413,7 +413,7 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**

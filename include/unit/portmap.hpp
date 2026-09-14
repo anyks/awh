@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_PORTMAP__
-#define __AWH_UNIT_PORTMAP__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -2077,5 +2076,3 @@ namespace awh {
 		} portmap_t;
 	};
 };
-
-#endif // __AWH_UNIT_PORTMAP__

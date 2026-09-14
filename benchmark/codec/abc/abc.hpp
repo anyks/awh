@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_CODEC_ABC__
-#define __AWH_BENCHMARK_CODEC_ABC__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -258,5 +257,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_CODEC_ABC__

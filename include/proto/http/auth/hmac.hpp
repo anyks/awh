@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_AUTH_HMAC__
-#define __AWH_AUTH_HMAC__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -288,5 +287,3 @@ namespace awh {
 		} hmac_t;
 	};
 };
-
-#endif // __AWH_AUTH_HMAC__

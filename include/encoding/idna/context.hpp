@@ -70,8 +70,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_IDNA_CONTEXT__
-#define __AWH_IDNA_CONTEXT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -189,5 +188,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ bool bidirectional(const vector <uint32_t> & label) noexcept;
 	};
 };
-
-#endif // __AWH_IDNA_CONTEXT__

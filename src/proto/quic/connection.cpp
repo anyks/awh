@@ -7567,7 +7567,7 @@ void awh::quic::Connection::drop([[maybe_unused]] const char * reason) const noe
 	/**
 	 * Если включён режим отладки
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем причину отбрасывания пакета в лог
 		awh::log::debug(
 			"QUIC packet dropped: %s", __PRETTY_FUNCTION__,

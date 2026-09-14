@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_YAML_READER__
-#define __AWH_CODEC_YAML_READER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1743,5 +1742,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-
-#endif // __AWH_CODEC_YAML_READER__

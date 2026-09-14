@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_HOLDER_TESTS__
-#define __AWH_HOLDER_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -63,5 +62,3 @@ class HolderFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_HOLDER_TESTS__

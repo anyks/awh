@@ -64,8 +64,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC__
-#define __AWH_ALLOC__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -780,5 +779,3 @@ namespace awh {
 		} allocator_t;
 	};
 };
-
-#endif // __AWH_ALLOC__

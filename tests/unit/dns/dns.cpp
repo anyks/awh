@@ -37,7 +37,7 @@
  *       sys/macro/win32.hpp, а недостающее восполняет tests/posix.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	#include <sys/macro/win32.hpp>
 /**
  * Для операционных систем Linux, FreeBSD, NetBSD, OpenBSD, macOS и Solaris

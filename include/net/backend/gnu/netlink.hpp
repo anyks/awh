@@ -82,13 +82,12 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_GNU_NETLINK__
-#define __AWH_GNU_NETLINK__
+#pragma once
 
 /**
  * Модуль предназначен только для операционной системы Linux
  */
-#if __linux__
+#if defined(__linux__)
 
 /**
  * Стандартная библиотека
@@ -321,5 +320,3 @@ namespace awh {
 };
 
 #endif // __linux__
-
-#endif // __AWH_GNU_NETLINK__

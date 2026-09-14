@@ -249,7 +249,7 @@ bool awh::regex::Assembly::allocate(const size_t size) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Executable memory of %zu bytes could not be allocated: %s", __PRETTY_FUNCTION__, {length}, awh::log::flag_t::CRITICAL, reason.c_str());
 		/**
@@ -409,7 +409,7 @@ bool awh::regex::Assembly::commit() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Execution of the allocated memory could not be permitted: %s", __PRETTY_FUNCTION__, {this->_size}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**

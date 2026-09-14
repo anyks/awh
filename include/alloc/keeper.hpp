@@ -51,8 +51,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_KEEPER__
-#define __AWH_ALLOC_KEEPER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -221,5 +220,3 @@ namespace awh {
 		}
 	};
 };
-
-#endif // __AWH_ALLOC_KEEPER__

@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_PROCRE_TESTS__
-#define __AWH_PROCRE_TESTS__
+#pragma once
 
 #include "../../main.hpp"
 #include "../../../include/net/addr.hpp"
@@ -48,5 +47,3 @@ class ProcreFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_PROCRE_TESTS__

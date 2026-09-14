@@ -70,7 +70,7 @@ bool awh::codec::abc::Assembler::fail(const error_t error) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
 			 awh::log::flag_t::WARNING, abc::message(error));
@@ -717,7 +717,7 @@ bool awh::codec::abc::Loader::fail(const error_t error) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
 			 awh::log::flag_t::WARNING, abc::message(error));
@@ -1016,7 +1016,7 @@ namespace {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
 			 awh::log::flag_t::WARNING, awh::codec::abc::message(error));

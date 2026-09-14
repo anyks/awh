@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_IFACE__
-#define __AWH_IFACE__
+#pragma once
 
 /**
  * Наши модули
@@ -101,7 +100,7 @@ namespace awh {
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				public:
 					/**
 					 * \~russian
@@ -146,7 +145,7 @@ namespace awh {
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				private:
 					/**
 					 * \~russian
@@ -225,7 +224,7 @@ namespace awh {
 			 *          нечем - оно заводится управляющим сокетом ядра и исчезает само,
 			 *          но НЕ СРАЗУ, - и адрес всё это время числится за мертвецом
 			 */
-			#if _WIN32 || _WIN64 || __sun__ || __APPLE__
+			#if defined(_WIN32) || defined(_WIN64) || defined(__sun__) || defined(__APPLE__)
 				public:
 					/**
 					 * \~russian
@@ -783,5 +782,3 @@ namespace awh {
 		} iface_t;
 	};
 };
-
-#endif // __AWH_IFACE__

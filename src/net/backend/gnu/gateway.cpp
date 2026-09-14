@@ -629,7 +629,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {route.ifname}, awh::log::flag_t::CRITICAL, error.what());
 		/**

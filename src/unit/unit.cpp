@@ -35,11 +35,11 @@
 /**
  * Если мы работаем с компилятором MinGW в MS Windows
  */
-#if __MINGW32__ || __MINGW64__
+#if defined(__MINGW32__) || defined(__MINGW64__)
 	/**
 	 * Если процессор принадлежит к x86_64
 	 */
-	#if __x86_64__ || _M_X64
+	#if defined(__x86_64__) || defined(_M_X64)
 		/**
 		 * Подключаем заголовочный файл для процессора x86_64
 		 */
@@ -52,7 +52,7 @@
 	/**
 	 * Если процессор принадлежит к x86
 	 */
-	#elif __i386__ || _M_IX86
+	#elif defined(__i386__) || defined(_M_IX86)
 		/**
 		 * Подключаем заголовочный файл для процессора x86
 		 */
@@ -65,11 +65,11 @@
 	/**
 	 * Если процессор принадлежит к ARM64
 	 */
-	#elif __aarch64__ || _M_ARM64
+	#elif defined(__aarch64__) || defined(_M_ARM64)
 		/**
 		 * Для компилятора GCC/Clang
 		 */
-		#if __clang__
+		#if defined(__clang__)
 			/**
 			 * Формируем функцию паузы для CPU (Clang)
 			 */
@@ -77,7 +77,7 @@
 		/**
 		 * Для компилятора GCC (в GCC нет __builtin_arm_yield)
 		 */
-		#elif __GNUC__
+		#elif defined(__GNUC__)
 			/**
 			 * Формируем функцию паузы для CPU (GCC)
 			 */
@@ -94,11 +94,11 @@
 	/**
 	 * Если процессор принадлежит к ARM/ARM64
 	 */
-	#elif __arm__ || _M_ARM
+	#elif defined(__arm__) || defined(_M_ARM)
 		/**
 		 * Для компилятора GCC/Clang
 		 */
-		#if __clang__
+		#if defined(__clang__)
 			/**
 			 * Формируем функцию паузы для CPU (Clang)
 			 */
@@ -106,7 +106,7 @@
 		/**
 		 * Для компилятора GCC (в GCC нет __builtin_arm_yield)
 		 */
-		#elif __GNUC__
+		#elif defined(__GNUC__)
 			/**
 			 * Формируем функцию паузы для CPU (GCC)
 			 */
@@ -141,7 +141,7 @@
 	/**
 	 * Если процессор принадлежит к x86/x86_64
 	 */
-	#if __x86_64__ || __i386__ || _M_X64 || _M_IX86
+	#if defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)
 		/**
 		 * Подключаем заголовочный файл для процессора x86/x86_64
 		 */
@@ -154,11 +154,11 @@
 	/**
 	 * Если процессор принадлежит к ARM/ARM64
 	 */
-	#elif __aarch64__ || __arm__ || _M_ARM64 || _M_ARM
+	#elif defined(__aarch64__) || defined(__arm__) || defined(_M_ARM64) || defined(_M_ARM)
 		/**
 		 * Для компилятора GCC/Clang
 		 */
-		#if __clang__
+		#if defined(__clang__)
 			/**
 			 * Формируем функцию паузы для CPU (Clang)
 			 */
@@ -166,7 +166,7 @@
 		/**
 		 * Для компилятора GCC (в GCC нет __builtin_arm_yield)
 		 */
-		#elif __GNUC__
+		#elif defined(__GNUC__)
 			/**
 			 * Формируем функцию паузы для CPU (GCC)
 			 */
@@ -183,7 +183,7 @@
 	/**
 	 * Если процессор принадлежит к PowerPC
 	 */
-	#elif __powerpc__ || __ppc__
+	#elif defined(__powerpc__) || defined(__ppc__)
 		/**
 		 * Формируем функцию паузы для CPU
 		 */
@@ -191,7 +191,7 @@
 	/**
 	 * Если процессор принадлежит к MIPS
 	 */
-	#elif __mips__
+	#elif defined(__mips__)
 		/**
 		 * Формируем функцию паузы для CPU
 		 */
@@ -362,7 +362,7 @@ void awh::unit::Unit::reinit() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Event database reinitialization failed: %s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 		/**
@@ -437,7 +437,7 @@ void awh::unit::Unit::stop() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -525,7 +525,7 @@ void awh::unit::Unit::start() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -709,7 +709,7 @@ awh::unit::Unit::Unit() noexcept :
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Event database could not be initialized: %s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, ::strerror(errno));
 			/**

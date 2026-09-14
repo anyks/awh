@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_NOTIFIER__
-#define __AWH_UNIT_NOTIFIER__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -277,5 +276,3 @@ namespace awh {
 		} notifier_t;
 	};
 };
-
-#endif // __AWH_UNIT_NOTIFIER__

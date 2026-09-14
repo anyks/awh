@@ -1493,7 +1493,7 @@ bool awh::codec::json::Reader::fail(const error_t error) noexcept {
 	 *          доводом отладочной: иначе запись выходит разною по виду сборки, а
 	 *          читающему журнал до вида сборки дела нет
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем отказ разбора в журнал работы
 		awh::log::debug("JSON parsing failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
 		                  {this->_position.line, this->_position.column}, awh::log::flag_t::WARNING,

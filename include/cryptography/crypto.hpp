@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CRYPTO__
-#define __AWH_CRYPTO__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -47,7 +46,7 @@
 /**
  * Если количество итераций PBKDF2 для вывода ключа AES не определено
  */
-#ifndef AWH_CRYPTO_AES_ROUNDS
+#if !defined(AWH_CRYPTO_AES_ROUNDS)
 	/**
 	 * Устанавливаем количество итераций PBKDF2 по умолчанию для вывода ключа AES из пароля
 	 */
@@ -2715,5 +2714,3 @@ namespace awh {
  */
 #include "../sys/macro/restore.hpp"
 #include <sys/macro/global.hpp>
-
-#endif // __AWH_CRYPTO__

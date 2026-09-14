@@ -530,7 +530,7 @@ bool awh::codec::xml::Document::parse(const string_view text, const reader_t::se
 			 * @note Отказ этот беда КРИТИЧЕСКАЯ, в отличие от отказа разбора: текст
 			 *       разобрался, а места под дерево не хватило - беда своя, не чужая
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				awh::log::debug("XML document build failed at line %llu column %llu: %s", __PRETTY_FUNCTION__,
 				                  {location.line, location.column}, awh::log::flag_t::CRITICAL,
 				                  static_cast <unsigned long long> (location.line),

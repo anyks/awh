@@ -42,8 +42,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_SOURCE__
-#define __AWH_ALLOC_SOURCE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -479,5 +478,3 @@ namespace awh {
 		} system_source_t;
 	};
 };
-
-#endif // __AWH_ALLOC_SOURCE__

@@ -12,8 +12,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_DIRENT_BASE__
-#define __AWH_DIRENT_BASE__
+#pragma once
 
 /**
  * \~russian
@@ -46,7 +45,7 @@
 /**
  * Если сборка выполняется оснасткою Visual Studio
  */
-#if _MSC_VER
+#if defined(_MSC_VER)
 	/**
 	 * Стандартные заголовочные файлы
 	 */
@@ -119,7 +118,7 @@ namespace awh {
 		 * @details Заголовка `dirent.h` у неё нет вовсе: он принадлежит наречиям POSIX, а
 		 *          MinGW несёт его своей частью. Оттого устройство обхода заводится здесь
 		 */
-		#if _MSC_VER
+		#if defined(_MSC_VER)
 			/**
 			 * @brief Запись широкого каталога
 			 *
@@ -446,7 +445,7 @@ namespace awh {
 			 * @note `telldir` объявлен в том же блоке заголовка системы и макросом не
 			 *       перекрыт - внесения не требует, покуда не понадобится зовом
 			 */
-			#if __sun || __sun__ || sun
+			#if defined(__sun) || defined(__sun__) || defined(sun)
 				// Вносим имя, в какое системный макрос разворачивает перемотку каталога
 				using ::seekdir;
 			#endif
@@ -456,7 +455,7 @@ namespace awh {
 			 * @details Широкий ряд несёт один лишь MinGW: прочим системам POSIX он не
 			 *          нужен вовсе, названия у них и без того приходят октетами
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				/**
 				 * Вносим имена широкого ряда из заголовка системы
 				 */
@@ -470,5 +469,3 @@ namespace awh {
 		#endif
 	}
 }
-
-#endif // __AWH_DIRENT_BASE__

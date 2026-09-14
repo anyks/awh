@@ -31,7 +31,7 @@
  * @note Подключение заведено ради щупа сторожевой страницы: он подаёт адрес
  *       доводом системного вызова, а стоком служит открытый /dev/null
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	#include <fcntl.h>
 	#include <unistd.h>
 #endif
@@ -470,7 +470,7 @@ TEST_F(FiberFixture, FiberHugeStackRefusedTest){
 	/**
 	 * Если разрядность машины 64-битная
 	 */
-	#if (SIZE_MAX > 0xFFFFFFFFULL)
+	#if defined(SIZE_MAX) && (SIZE_MAX > 0xFFFFFFFFULL)
 		// Проверяем что волокно с непосильным стеком не заводится
 		ASSERT_EQ(fiber::spawn([]() noexcept -> void {}, (static_cast <size_t> (1) << 62)), nullptr);
 	/**
@@ -538,7 +538,7 @@ TEST_F(FiberFixture, FiberManyAliveTest){
  * @note Стек волокну у MS Windows отводит сама система, сторожевой страницы модуль
  *       там не ставит, и проверять нечего
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 
 /**
  * @brief Тест работоспособности волокна на стеке в одну страницу

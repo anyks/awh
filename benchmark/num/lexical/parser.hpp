@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_LEXICAL__
-#define __AWH_BENCHMARK_LEXICAL__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -354,5 +353,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_LEXICAL__

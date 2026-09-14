@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_CSV__
-#define __AWH_BENCHMARK_RIVAL_CSV__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -521,5 +520,3 @@ namespace rival {
 		}
 	}
 };
-
-#endif // __AWH_BENCHMARK_RIVAL_CSV__

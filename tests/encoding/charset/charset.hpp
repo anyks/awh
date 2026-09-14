@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_CHARSET_TESTS__
-#define __AWH_CHARSET_TESTS__
+#pragma once
 
 /**
  * Подключаем общие заголовки тестов
@@ -56,5 +55,3 @@ class CharsetFixture : public testing::Test {
 		 */
 		void TearDown() override;
 };
-
-#endif // __AWH_CHARSET_TESTS__

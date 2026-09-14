@@ -39,8 +39,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_FRAMEWORK__
-#define __AWH_FRAMEWORK__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -3150,5 +3149,3 @@ namespace awh {
  * Возвращаем макросы, снятые в начале файла
  */
 #include "macro/restore.hpp"
-
-#endif // __AWH_FRAMEWORK__

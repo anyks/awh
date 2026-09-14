@@ -39,7 +39,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -577,7 +577,7 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug(
 				"ICMP-client timeout (delay: %u)",
@@ -919,7 +919,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (mode), data, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -950,7 +950,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Добавляем новое событие клиента ICMP
 			this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
 		/**
@@ -981,7 +981,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
 				/**
@@ -1025,7 +1025,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
 				/**
@@ -1079,7 +1079,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL);
 			/**
@@ -1101,7 +1101,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1252,7 +1252,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {target}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1311,7 +1311,7 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1375,7 +1375,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), target}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1436,7 +1436,7 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1501,7 +1501,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1566,7 +1566,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (family), source}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -1644,7 +1644,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					/**
 					 * Для операционной системы MS Windows
 					 */
-					#if _WIN32 || _WIN64
+					#if defined(_WIN32) || defined(_WIN64)
 						// Добавляем новое событие клиента ICMP
 						eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
 					/**
@@ -1671,7 +1671,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL);
 							/**
@@ -1724,7 +1724,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 								/**
 								 * Если включён режим отладки
 								 */
-								#if DEBUG_MODE
+								#if defined(DEBUG_MODE)
 									// Записываем ошибку в лог
 									awh::log::debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL);
 								/**
@@ -1769,7 +1769,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							/**
 							 * Если включён режим отладки
 							 */
-							#if DEBUG_MODE
+							#if defined(DEBUG_MODE)
 								// Записываем ошибку в лог
 								awh::log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::WARNING, error.c_str());
 							/**
@@ -1811,7 +1811,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, count, static_cast <uint16_t> (mode)}, awh::log::flag_t::CRITICAL, error.what());
 		/**

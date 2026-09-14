@@ -31,7 +31,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	#include <windows.h>
 /**
  * Для операционной системы не являющейся MS Windows
@@ -56,7 +56,7 @@ size_t awh::alloc::SystemSource::detect() const noexcept {
 	 * 64 КБ при странице в 4 КБ. Приняв за зернистость размер страницы, куча просила
 	 * бы выравнивания, какого система не даёт
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Сведения о системе
 		SYSTEM_INFO info;
 		// Обнуляем сведения о системе
@@ -153,7 +153,7 @@ size_t awh::alloc::SystemSource::superpaged() const noexcept {
  *
  */
 static void * __awh_source_huge__(const size_t size) noexcept {
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Просим у системы крупные страницы
 		 *
@@ -180,7 +180,7 @@ static void * __awh_source_huge__(const size_t size) noexcept {
 			return nullptr;
 		// Отводим область крупными страницами
 		return ::VirtualAlloc(nullptr, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
-	#elif __linux__
+	#elif defined(__linux__)
 		/**
 		 * Просим у системы крупные страницы
 		 *
@@ -197,7 +197,7 @@ static void * __awh_source_huge__(const size_t size) noexcept {
 			(void) size;
 			return nullptr;
 		#endif
-	#elif __FreeBSD__
+	#elif defined(__FreeBSD__)
 		/**
 		 * Просим у системы сверхстраницы
 		 *
@@ -243,7 +243,7 @@ static void * __awh_source_huge__(const size_t size) noexcept {
  * @param size размер области в байтах
  *
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	static void __awh_source_advise__(void * addr, const size_t size) noexcept {
 		#if defined(MADV_HUGEPAGE)
 			// Советуем системе собрать крупные страницы
@@ -353,7 +353,7 @@ void * awh::alloc::SystemSource::alloc(const size_t size, const size_t alignment
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Выдача идёт с запасом под выравнивание, а затем повторяется по выровненному
 		 * адресу
@@ -487,7 +487,7 @@ bool awh::alloc::SystemSource::wire(void * addr, const size_t size, const bool w
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Ставим либо снимаем запрет уходить в подкачку
 		return (wanted ? (::VirtualLock(addr, size) != 0) : (::VirtualUnlock(addr, size) != 0));
 	/**
@@ -583,7 +583,7 @@ bool awh::alloc::SystemSource::purge(void * addr, const size_t size) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Средство отдачи выбирается по наличию: DiscardVirtualMemory появилось в
 		 * Windows 8.1 и отдаёт страницы сразу, а MEM_RESET лишь помечает содержимое
@@ -607,7 +607,7 @@ bool awh::alloc::SystemSource::purge(void * addr, const size_t size) noexcept {
 	 * MADV_FREE там тоже есть, но отдаёт лениво, и расход памяти по отчётам системы
 	 * при этом не убывает - для нашей задачи это негодно
 	 */
-	#elif __linux__
+	#elif defined(__linux__)
 		// Отдаём страницы системе
 		return (::madvise(addr, size, MADV_DONTNEED) == 0);
 	/**
@@ -671,7 +671,7 @@ bool awh::alloc::SystemSource::release(void * addr, const size_t size) noexcept 
 	 * MEM_RELEASE требует нулевого размера и адреса, полученного от VirtualAlloc:
 	 * область отдаётся целиком, частями отдать её система не даёт
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Отмечаем неиспользуемый параметр
 		static_cast <void> (size);
 		// Отдаём область системе
@@ -701,7 +701,7 @@ bool awh::alloc::SystemSource::protect(void * addr, const size_t size, const boo
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Прежняя доступность области
 		DWORD previous = 0;
 		// Меняем доступность области

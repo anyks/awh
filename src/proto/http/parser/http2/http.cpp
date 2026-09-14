@@ -1162,7 +1162,7 @@ void awh::http::Parser_HTTP2::flush() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -1833,7 +1833,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::fail(const error_t code, const 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (code), message}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3381,7 +3381,7 @@ void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code)
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint32_t> (code)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3421,7 +3421,7 @@ bool awh::http::Parser_HTTP2::firePhase(const uint32_t id, const phase_t phase, 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {id, static_cast <uint16_t> (phase), static_cast <uint16_t> (part)}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -3470,7 +3470,7 @@ void awh::http::Parser_HTTP2::fireSettings() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3506,7 +3506,7 @@ void awh::http::Parser_HTTP2::fireWritable(const uint32_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3543,7 +3543,7 @@ bool awh::http::Parser_HTTP2::fireBegin(const uint32_t id) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3583,7 +3583,7 @@ bool awh::http::Parser_HTTP2::firePush(const uint32_t sid, const uint32_t promis
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, promisedSid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3623,7 +3623,7 @@ void awh::http::Parser_HTTP2::fireGoaway(const uint32_t sid, const error_t code,
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, static_cast <uint32_t> (code)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3662,7 +3662,7 @@ bool awh::http::Parser_HTTP2::fireProvider(const uint32_t id, const provider_t *
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, endStream}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3704,7 +3704,7 @@ bool awh::http::Parser_HTTP2::fireData(const uint32_t id, const void * buffer, c
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, size, endStream}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -3746,7 +3746,7 @@ bool awh::http::Parser_HTTP2::fireHeader(const uint32_t id, const string_view na
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {id, string(name), string(value)}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4094,7 +4094,7 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {id}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -4632,7 +4632,7 @@ bool awh::http::Parser_HTTP2::deferTrailers(const uint32_t sid, const vector <h2
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size(), endStream}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4687,7 +4687,7 @@ bool awh::http::Parser_HTTP2::flushTrailers(stream_t & stream) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -4823,7 +4823,7 @@ unique_ptr <awh::http::provider_t> awh::http::Parser_HTTP2::buildProvider(const 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {fields.size(), request}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5028,7 +5028,7 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP2::clone() const noexcept
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5140,7 +5140,7 @@ size_t awh::http::Parser_HTTP2::parse(const void * buffer, const size_t size) no
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5880,7 +5880,7 @@ size_t awh::http::Parser_HTTP2::sendData(const uint32_t sid, const void * buffer
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, buffer, size, endStream}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -5979,7 +5979,7 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size()}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6103,7 +6103,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const vector <h2::
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, fields.size(), endStream}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -6394,7 +6394,7 @@ void awh::http::Parser_HTTP2::sendHeaders(const uint32_t sid, const headers_t & 
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {sid, headers.size(), endStream, scheme}, awh::log::flag_t::CRITICAL, error.what());
 		/**

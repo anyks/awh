@@ -25,8 +25,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_CITYHASH_CONFIG__
-#define __AWH_BENCHMARK_RIVAL_CITYHASH_CONFIG__
+#pragma once
 
 /**
  * Если компилятор принадлежит к семейству GCC или Clang
@@ -52,5 +51,3 @@
 	 */
 	#define WORDS_BIGENDIAN 1
 #endif
-
-#endif // __AWH_BENCHMARK_RIVAL_CITYHASH_CONFIG__

@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_LOG_TESTS__
-#define __AWH_LOG_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -46,5 +45,3 @@ class LogFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_LOG_TESTS__

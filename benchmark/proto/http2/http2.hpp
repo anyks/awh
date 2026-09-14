@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_HTTP2__
-#define __AWH_BENCHMARK_HTTP2__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -123,5 +122,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_HTTP2__

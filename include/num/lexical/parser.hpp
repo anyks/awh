@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_PARSER__
-#define __AWH_LEXICAL_PARSER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -50,14 +49,14 @@
 /**
  * Если векторные инструкции доступны
  */
-#ifdef AWH_LEXICAL_SSE2
+#if defined(AWH_LEXICAL_SSE2)
 	// Подключаем заголовочные файлы векторных инструкций
 	#include <emmintrin.h>
 #endif
 /**
  * Если векторные инструкции NEON доступны, то подключаем заголовочные файлы
  */
-#ifdef AWH_LEXICAL_NEON
+#if defined(AWH_LEXICAL_NEON)
 	// Подключаем заголовочные файлы NEON
 	#include <arm_neon.h>
 #endif
@@ -146,7 +145,7 @@ namespace awh {
 			/**
 			 * Определяем доступность векторного разбора
 			 */
-			#ifdef AWH_LEXICAL_SIMD
+			#if defined(AWH_LEXICAL_SIMD)
 				// Векторный разбор доступен для двухбайтовых символов
 				return is_same <UC, char16_t>::value;
 			/**
@@ -251,7 +250,7 @@ namespace awh {
 		/**
 		 * Если векторные инструкции доступны, то определяем функции упаковки блока символов
 		 */
-		#ifdef AWH_LEXICAL_SSE2
+		#if defined(AWH_LEXICAL_SSE2)
 			/**
 			 * \~russian
 			 * @brief Функция упаковки блока символов из векторного регистра
@@ -274,7 +273,7 @@ namespace awh {
 				/**
 				 * Извлекаем результат с учётом разрядности платформы
 				 */
-				#ifdef AWH_LEXICAL_64BIT
+				#if defined(AWH_LEXICAL_64BIT)
 					// Выводим младшие 64 бита векторного регистра
 					return static_cast <uint64_t> (_mm_cvtsi128_si64(packed));
 				/**
@@ -316,7 +315,7 @@ namespace awh {
 		/**
 		 * Если векторные инструкции NEON доступны, то определяем функции упаковки блока символов
 		 */
-		#elif AWH_LEXICAL_NEON
+		#elif defined(AWH_LEXICAL_NEON)
 			/**
 			 * \~russian
 			 * @brief Функция упаковки блока символов из векторного регистра
@@ -486,7 +485,7 @@ namespace awh {
 		/**
 		 * Если векторные инструкции доступны, то определяем функции проверки блока на состав из десятичных цифр
 		 */
-		#ifdef AWH_LEXICAL_SIMD
+		#if defined(AWH_LEXICAL_SIMD)
 			/**
 			 * \~russian
 			 * @brief Функция векторного разбора блока двухбайтовых десятичных цифр
@@ -507,7 +506,7 @@ namespace awh {
 				/**
 				 * Выполняем разбор блока доступным набором векторных инструкций
 				 */
-				#ifdef AWH_LEXICAL_SSE2
+				#if defined(AWH_LEXICAL_SSE2)
 					// Отключаем предупреждения о выравнивании указателей
 					AWH_LEXICAL_SIMD_DISABLE_WARNINGS
 					// Выполняем загрузку блока символов
@@ -1242,5 +1241,3 @@ namespace awh {
 		}
 	};
 };
-
-#endif // __AWH_LEXICAL_PARSER__

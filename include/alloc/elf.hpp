@@ -49,8 +49,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_ELF__
-#define __AWH_ALLOC_ELF__
+#pragma once
 
 /**
  * Если операционной системой не является MS Windows и не macOS
@@ -170,5 +169,3 @@ namespace awh {
 };
 
 #endif // !_WIN32 && !_WIN64 && !__APPLE__
-
-#endif // __AWH_ALLOC_ELF__

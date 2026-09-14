@@ -75,7 +75,7 @@ TEST_P(SignalsTestParameterizedFixture, SignalTest){
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Сигнал поднимается прямо здесь намеренно
 		 *
@@ -144,7 +144,7 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, SignalsTestParameterizedFixture,
 		/**
 		 * Сигнал SIGBUS отсутствует на MS Windows
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 			SignalsTestParameter({SIGBUS}),
 		#endif
 		SignalsTestParameter({SIGTERM})

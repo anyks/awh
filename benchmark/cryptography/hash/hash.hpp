@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_HASH__
-#define __AWH_BENCHMARK_HASH__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -249,5 +248,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_HASH__

@@ -19,8 +19,7 @@
  *
  */
  
-#ifndef __AWH_IO_TESTS__
-#define __AWH_IO_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -52,7 +51,7 @@
 	/**
 	 * Если операционной системой является OpenBSD
 	 */
-	#if __OpenBSD__
+	#if defined(__OpenBSD__)
 		#include <netinet/ip_var.h>
 	#endif
 /**
@@ -139,7 +138,7 @@ static inline bool __awh_system_ephemeral__(uint16_t & first, uint16_t & last) n
 	/**
 	 * Если операционной системой является Linux
 	 */
-	#if __linux__
+	#if defined(__linux__)
 		// Открываем настройку разряда временных портов ядра
 		FILE * file = ::fopen("/proc/sys/net/ipv4/ip_local_port_range", "r");
 		// Если настройку открыть не удалось, разряд системы неизвестен
@@ -184,7 +183,7 @@ static inline bool __awh_system_ephemeral__(uint16_t & first, uint16_t & last) n
 	 * @note Разряд там держится настройкой `ipadm`, и спросить его иначе как
 	 *       вызовом нечем. Отказ вызова не беда: ниже стоит значение по умолчанию
 	 */
-	#elif __sun
+	#elif defined(__sun)
 		// Снимаемые границы разряда
 		uint32_t begin = 32768, end = 65535;
 		// Открываем поток вызова снятия нижней границы разряда
@@ -233,7 +232,7 @@ static inline bool __awh_system_ephemeral__(uint16_t & first, uint16_t & last) n
 		/**
 		 * Если операционной системой является OpenBSD
 		 */
-		#if __OpenBSD__
+		#if defined(__OpenBSD__)
 			// Ветвь снятия нижней границы разряда
 			int32_t lower[] = {CTL_NET, PF_INET, IPPROTO_IP, IPCTL_IPPORT_FIRSTAUTO};
 			// Ветвь снятия верхней границы разряда
@@ -251,7 +250,7 @@ static inline bool __awh_system_ephemeral__(uint16_t & first, uint16_t & last) n
 		/**
 		 * Если операционной системой является NetBSD
 		 */
-		#elif __NetBSD__
+		#elif defined(__NetBSD__)
 			// Если нижнюю границу разряда снять не удалось
 			if(::sysctlbyname("net.inet.ip.anonportmin", &begin, &length, nullptr, 0) != 0)
 				// Выводим признак неудачи
@@ -381,7 +380,7 @@ class IoFixture : public testing::Test {
 		/**
 		 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 		 */
-		#if __linux__ || __FreeBSD__ || __sun
+		#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 			// Объект управления SCTP протоколом
 			std::unique_ptr <awh::engine::sctp_t> _sctp;
 		#endif
@@ -397,5 +396,3 @@ class IoFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_IO_TESTS__

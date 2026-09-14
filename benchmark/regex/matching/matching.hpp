@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_REGEX_MATCHING__
-#define __AWH_BENCHMARK_REGEX_MATCHING__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -513,5 +512,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_REGEX_MATCHING__

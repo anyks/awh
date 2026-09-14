@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL__
-#define __AWH_LEXICAL__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -413,5 +412,3 @@ namespace awh {
 			}
 	} lexical_t;
 };
-
-#endif // __AWH_LEXICAL__

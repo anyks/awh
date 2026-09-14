@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_BINBOX_CONTAINER__
-#define __AWH_BINBOX_CONTAINER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1076,5 +1075,3 @@ namespace awh {
 			~BinBox() noexcept;
 	} binbox_t;
 };
-
-#endif // __AWH_BINBOX_CONTAINER__

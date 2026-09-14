@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ARGS_COMMON__
-#define __AWH_ARGS_COMMON__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -316,5 +315,3 @@ namespace awh {
  * Возвращаем подавленные системные макросы
  */
 #include "../sys/macro/restore.hpp"
-
-#endif // __AWH_ARGS_COMMON__

@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_GLOBAL__
-#define __AWH_GLOBAL__
+#pragma once
 
 /**
  * \~russian
@@ -53,15 +52,15 @@
 #if defined(_MSC_VER)
 	#include <BaseTsd.h>
 	#include <process.h>
-	#ifndef __AWH_MSVC_SSIZE_T__
+	#if !defined(__AWH_MSVC_SSIZE_T__)
 		#define __AWH_MSVC_SSIZE_T__
 		typedef SSIZE_T ssize_t;
 	#endif
-	#ifndef __AWH_MSVC_PID_T__
+	#if !defined(__AWH_MSVC_PID_T__)
 		#define __AWH_MSVC_PID_T__
 		typedef int pid_t;
 	#endif
-	#ifndef getpid
+	#if !defined(getpid)
 		#define getpid _getpid
 	#endif
 #endif
@@ -89,7 +88,7 @@
  *
  * \~
  */
-#if DEBUG_MODE
+#if defined(DEBUG_MODE)
 	// Безопасное приведение типов с проверкой
 	#define awh_cast dynamic_cast
 /**
@@ -349,7 +348,7 @@
  *
  * \~
  */
-#if __APPLE__ || __MACH__ || __OpenBSD__
+#if defined(__APPLE__) || defined(__MACH__) || defined(__OpenBSD__)
 	#define __AWH_DISTINCT_SIZE_TYPES__ 1
 #endif
 
@@ -446,7 +445,7 @@
  *
  * \~
  */
-#if __linux__ || (__sun && !__illumos__)
+#if defined(__linux__) || (defined(__sun) && !defined(__illumos__))
 	// Разводящая настройка заведена в Linux 3.9 и Solaris 11.4
 	#define __AWH_CLUSTER_BALANCE__ 1
 /**
@@ -460,7 +459,7 @@
  *
  * \~
  */
-#elif __FreeBSD__
+#elif defined(__FreeBSD__)
 	/**
 	 * Число версии FreeBSD объявляет не компилятор, а заголовок: без его подключения
 	 * проверка версии молча не срабатывает, и разводящая настройка теряется
@@ -469,10 +468,8 @@
 	/**
 	 * Разводящая настройка заведена в FreeBSD 12.0 и выше
 	 */
-	#if __FreeBSD_version >= 1200000
+	#if defined(__FreeBSD_version) && (__FreeBSD_version >= 1200000)
 		// Разводящая настройка заведена в FreeBSD 12.0 и выше
 		#define __AWH_CLUSTER_BALANCE__ 1
 	#endif
 #endif
-
-#endif // __AWH_GLOBAL__

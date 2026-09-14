@@ -50,8 +50,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_CAPTURE__
-#define __AWH_ALLOC_CAPTURE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -266,5 +265,3 @@ namespace awh {
 		} capture_t;
 	};
 };
-
-#endif // __AWH_ALLOC_CAPTURE__

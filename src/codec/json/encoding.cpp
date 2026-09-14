@@ -1404,7 +1404,7 @@ bool awh::codec::json::Decoder::refuse(const error_t error) noexcept {
 	 * @note Приведение работает над текстом, извне пришедшим, и негодность его беда
 	 *       не критическая - как и у разбора. Оттого запись идёт предупреждением
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем отказ приведения в журнал работы
 		awh::log::debug("JSON decoding failed: %s", __PRETTY_FUNCTION__, {},
 		                  awh::log::flag_t::WARNING, message(error));

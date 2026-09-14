@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PROVIDER_TESTS__
-#define __AWH_HTTP_PROVIDER_TESTS__
+#pragma once
 
 /**
  * Подключаем заголовочный файлы проекта
@@ -45,5 +44,3 @@ class ProviderFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_HTTP_PROVIDER_TESTS__

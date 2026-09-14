@@ -39,8 +39,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_SPIN__
-#define __AWH_ALLOC_SPIN__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -228,5 +227,3 @@ namespace awh {
 		} hold_t;
 	};
 };
-
-#endif // __AWH_ALLOC_SPIN__

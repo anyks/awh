@@ -836,13 +836,13 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 	 *       обращение - в миллисекундах. Оттого перевод стоит лишь у запасного пути
 	 *
 	 */
-	#ifndef TCP_KEEPIDLE
+	#if !defined(TCP_KEEPIDLE)
 		#define TCP_KEEPIDLE 3
 	#endif
-	#ifndef TCP_KEEPCNT
+	#if !defined(TCP_KEEPCNT)
 		#define TCP_KEEPCNT 16
 	#endif
-	#ifndef TCP_KEEPINTVL
+	#if !defined(TCP_KEEPINTVL)
 		#define TCP_KEEPINTVL 17
 	#endif
 	// Признак того, что поимённые настройки система приняла

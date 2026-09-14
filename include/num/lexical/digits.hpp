@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_DIGITS__
-#define __AWH_LEXICAL_DIGITS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -607,7 +606,7 @@ namespace awh {
 			/**
 			 * Определяем размер блока скалярного умножения по разрядности
 			 */
-			#ifdef AWH_LEXICAL_64BIT_LIMB
+			#if defined(AWH_LEXICAL_64BIT_LIMB)
 				// Количество десятичных цифр, помещающихся в один разряд
 				constexpr size_t STEP = 19;
 			/**
@@ -1013,5 +1012,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-
-#endif // __AWH_LEXICAL_DIGITS__

@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_IO_ENGINE__
-#define __AWH_IO_ENGINE__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -68,7 +67,7 @@ namespace awh {
 		/**
 		 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 		 */
-		#if __linux__ || __FreeBSD__ || __sun
+		#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 			/**
 			 * \~russian
 			 * @brief Класс управления протоколом передачи с управлением потоком
@@ -1057,7 +1056,7 @@ namespace awh {
 				/**
 				 * Для операционной системы MS Windows
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					public:
 						/**
 						 * \~russian
@@ -4142,5 +4141,3 @@ namespace awh {
 		} io_t;
 	};
 };
-
-#endif // __AWH_IO_ENGINE__

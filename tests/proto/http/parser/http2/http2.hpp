@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_HTTP_PARSER_HTTP2_TESTS__
-#define __AWH_HTTP_PARSER_HTTP2_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -137,5 +136,3 @@ class ParserHttp2Fixture : public testing::Test {
 		 */
 		void handshake(awh::http::parser_http2_t & client, awh::http::parser_http2_t & server) const noexcept;
 };
-
-#endif // __AWH_HTTP_PARSER_HTTP2_TESTS__

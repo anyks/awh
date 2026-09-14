@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_PROGRAM__
-#define __AWH_REGEX_PROGRAM__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1075,5 +1074,3 @@ namespace awh {
 		} program_t;
 	};
 };
-
-#endif // __AWH_REGEX_PROGRAM__

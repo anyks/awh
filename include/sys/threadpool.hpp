@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_THREAD_POOL__
-#define __AWH_THREAD_POOL__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -452,5 +451,3 @@ namespace awh {
 			}
 	} thr_t;
 };
-
-#endif // __AWH_THREAD_POOL__

@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_PREFILTER__
-#define __AWH_REGEX_PREFILTER__
+#pragma once
 
 /**
  * Если принудительная подстановка ещё не определена
@@ -44,7 +43,7 @@
  *          тождественное пропускают молча.
  *
  */
-#ifndef AWH_REGEX_INLINE
+#if !defined(AWH_REGEX_INLINE)
 	/**
 	 * Если компилятор является Visual Studio
 	 */
@@ -1111,5 +1110,3 @@ namespace awh {
 		} prefilter_t;
 	};
 };
-
-#endif // __AWH_REGEX_PREFILTER__

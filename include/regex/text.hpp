@@ -73,8 +73,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_TEXT__
-#define __AWH_REGEX_TEXT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -94,7 +93,7 @@
  *          несут два заголовочных файла, подключаемых в разном порядке.
  *
  */
-#ifndef AWH_REGEX_INLINE
+#if !defined(AWH_REGEX_INLINE)
 	/**
 	 * Если используется компилятор Microsoft Visual C++
 	 */
@@ -407,5 +406,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ size_t grapheme(string_view text, const size_t pos, const uint32_t flags) noexcept;
 	};
 };
-
-#endif // __AWH_REGEX_TEXT__

@@ -50,8 +50,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_PAGES__
-#define __AWH_ALLOC_PAGES__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -864,5 +863,3 @@ namespace awh {
 		} pages_t;
 	};
 };
-
-#endif // __AWH_ALLOC_PAGES__

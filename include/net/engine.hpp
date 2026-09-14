@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ENGINE__
-#define __AWH_ENGINE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -217,7 +216,7 @@ namespace awh {
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				public:
 					/**
 					 * \~russian
@@ -2095,5 +2094,3 @@ namespace awh {
 			virtual ~Engine() noexcept {}
 	} engine_t;
 };
-
-#endif // __AWH_ENGINE__

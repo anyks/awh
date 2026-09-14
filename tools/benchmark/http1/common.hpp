@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_HTTP1__
-#define __AWH_BENCHMARK_RIVAL_HTTP1__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -642,5 +641,3 @@ void operator delete [] (void * ptr, size_t) noexcept {
 	// Выполняем освобождение памяти
 	::free(ptr);
 }
-
-#endif // __AWH_BENCHMARK_RIVAL_HTTP1__

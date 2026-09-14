@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_PROTO_QUIC_TESTS__
-#define __AWH_PROTO_QUIC_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -182,5 +181,3 @@ class QuicSecurity {
 		 */
 		~QuicSecurity() noexcept;
 };
-
-#endif // __AWH_PROTO_QUIC_TESTS__

@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_PROTO_SOCKS5__
-#define __AWH_PROTO_SOCKS5__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -365,5 +364,3 @@ namespace awh {
 		} socks5_t;
 	};
 };
-
-#endif // __AWH_PROTO_SOCKS5__

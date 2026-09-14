@@ -104,7 +104,7 @@ bool awh::codec::abc::Editor::fail(const error_t error) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("ABC: %s", __PRETTY_FUNCTION__, {static_cast <uint16_t> (error)},
 			 awh::log::flag_t::WARNING, abc::message(error));

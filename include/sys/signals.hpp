@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_SIGNALS__
-#define __AWH_SIGNALS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -51,7 +50,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Системный заголовочный файл
 	 */
@@ -96,7 +95,7 @@ namespace awh {
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
-			#if !_WIN32 && !_WIN64
+			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
 				 * \~russian
 				 * @brief Структура событий сигналов
@@ -254,7 +253,7 @@ namespace awh {
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
-			#if !_WIN32 && !_WIN64
+			#if !defined(_WIN32) && !defined(_WIN64)
 				// Дескрипторы самопайпа: [0] - чтение, [1] - запись
 				int32_t _pipe[2];
 				// Запасной стек обработчика сбоев, нужный при срыве основного
@@ -307,7 +306,7 @@ namespace awh {
 			/**
 			 * Для операционной системы не являющейся MS Windows
 			 */
-			#if !_WIN32 && !_WIN64
+			#if !defined(_WIN32) && !defined(_WIN64)
 				/**
 				 * \~russian
 				 * @brief Метод обработки полученного сигнала вне контекста обработчика
@@ -409,5 +408,3 @@ namespace awh {
 			~Signals() noexcept;
 	} signals_t;
 };
-
-#endif // __AWH_SIGNALS__

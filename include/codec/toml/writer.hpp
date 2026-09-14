@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_TOML_WRITER__
-#define __AWH_CODEC_TOML_WRITER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1491,5 +1490,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_CODEC_TOML_WRITER__

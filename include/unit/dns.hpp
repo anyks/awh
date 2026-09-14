@@ -31,8 +31,7 @@
 /**
  * Защита от повторного подключения заголовка
  */
-#ifndef __AWH_UNIT_DNS_RESOLVER__
-#define __AWH_UNIT_DNS_RESOLVER__
+#pragma once
 
 /**
  * Стандартный заголовочный файл
@@ -1670,5 +1669,3 @@ namespace awh {
 		} dns_t;
 	};
 };
-
-#endif // __AWH_UNIT_DNS_RESOLVER__

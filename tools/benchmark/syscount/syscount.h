@@ -26,8 +26,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_SYSCOUNT__
-#define __AWH_BENCHMARK_SYSCOUNT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -38,7 +37,7 @@
 /**
  * Если заголовочный файл подключается из C++
  */
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
@@ -223,8 +222,6 @@ static inline const char * awh_syscount_name(const awh_syscount_kind_t kind){
 /**
  * Если заголовочный файл подключается из C++
  */
-#ifdef __cplusplus
+#if defined(__cplusplus)
 };
 #endif
-
-#endif // __AWH_BENCHMARK_SYSCOUNT__

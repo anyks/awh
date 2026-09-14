@@ -54,8 +54,7 @@
  *
  */
 
-#ifndef __AWH_ALLOC_TRACE__
-#define __AWH_ALLOC_TRACE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -233,5 +232,3 @@ namespace awh {
 		} trace_t;
 	};
 };
-
-#endif // __AWH_ALLOC_TRACE__

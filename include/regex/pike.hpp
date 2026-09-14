@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_PIKE__
-#define __AWH_REGEX_PIKE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -508,5 +507,3 @@ namespace awh {
 		} pike_t;
 	};
 };
-
-#endif // __AWH_REGEX_PIKE__

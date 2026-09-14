@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_FS__
-#define __AWH_FS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1418,5 +1417,3 @@ namespace awh {
 			~Filesystem() noexcept {}
 	} fs_t;
 };
-
-#endif // __AWH_FS__

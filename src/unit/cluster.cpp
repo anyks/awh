@@ -33,7 +33,7 @@
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -55,7 +55,7 @@
 	 *       ещё на подключении - проверено на стенде Alpine 3.24 (12.08.2026).
 	 *       Признак __GLIBC__ musl не объявляет, им и различаются
 	 */
-	#if !__linux__ || defined(__GLIBC__)
+	#if !defined(__linux__) || defined(__GLIBC__)
 		#define AWH_BACKTRACE_SUPPORTED 1
 		#include <execinfo.h>
 	#endif
@@ -105,7 +105,7 @@ namespace {
 	 *          отличает падение от остановки
 	 *
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		constexpr int32_t AWH_CLUSTER_STOPPED = static_cast <int32_t> (0xE0000001u);
 	#else
 		constexpr int32_t AWH_CLUSTER_STOPPED = SIGSTOP;
@@ -174,7 +174,7 @@ namespace {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			// Выполняем открытие дескриптора завершаемого процесса
 			HANDLE handle = ::OpenProcess(PROCESS_TERMINATE, FALSE, static_cast <DWORD> (pid));
 			// Если дескриптор процесса получен
@@ -197,7 +197,7 @@ namespace {
 /**
  * Для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Инкапсулируем статические типы данных в пространство имён
 	 *
@@ -219,7 +219,7 @@ namespace {
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * @brief Инкапсулируем состояние управления процессами в пространство имён
 	 *
@@ -287,11 +287,11 @@ namespace {
 /**
  * Для операционных систем, отличных от MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Если включён режим отладки
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		/**
 		 * @brief Инкапсулируем статические параметры локального кэша в пространство имён
 		 *
@@ -350,7 +350,7 @@ namespace {
 					/**
 					 * Для операционной системы macOS
 					 */
-					#if __APPLE__ || __MACH__
+					#if defined(__APPLE__) || defined(__MACH__)
 						// Формируем команду символизации через atos (смещение загрузки модуля задаётся параметром -l)
 						::snprintf(command, sizeof(command), "atos -o '%s' -l 0x%llx 0x%llx 2>/dev/null", info.dli_fname, static_cast <uint64_t> (base), static_cast <uint64_t> (addr));
 					/**
@@ -456,7 +456,7 @@ bool awh::unit::Cluster::parent() const noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Если дескриптор объекта родительского процесса не получен - процесс родителя не отслеживается
 		if(this->_master == 0)
 			// Сообщаем, что родительского процесса нет
@@ -513,7 +513,7 @@ void awh::unit::Cluster::create() noexcept {
 			 *       процессов: работник выходит на канал по имени сразу, и конец мастера
 			 *       обязан ждать подключения к тому времени
 			 */
-			#if !_WIN32 && !_WIN64
+			#if !defined(_WIN32) && !defined(_WIN64)
 			for(auto & [pid, worker] : this->_workers){
 				// Если служебный канал заведён, фиксируем и запускаем его
 				if((worker->cid != 0) && !(this->_io->commit(worker->cid) && this->_io->launch(worker->cid)))
@@ -524,7 +524,7 @@ void awh::unit::Cluster::create() noexcept {
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог запуска события
 						awh::log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, pid);
 					/**
@@ -549,7 +549,7 @@ void awh::unit::Cluster::create() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -591,7 +591,7 @@ void awh::unit::Cluster::emplace(const pid_t pid) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {pid}, awh::log::flag_t::CRITICAL, error.what());
 		/**
@@ -667,7 +667,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			/**
 			 * Для операционной системы MS Windows
 			 */
-			#if _WIN32 || _WIN64
+			#if defined(_WIN32) || defined(_WIN64)
 				/**
 				 * Распознаём роль процесса по метке в окружении
 				 *
@@ -775,7 +775,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Создаём новый вокрер дочернего процесса
 		unique_ptr <worker_t> worker = make_unique <worker_t> ();
 		// Устанавливаем время создания процесса
@@ -787,7 +787,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Child process worker could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL);
 			/**
@@ -839,7 +839,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Child process could not be created", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL);
 				/**
@@ -857,7 +857,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					{
 						// Создаём объект перехвата сигнала
 						struct sigaction sa{};
@@ -938,7 +938,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::WARNING);
 						/**
@@ -1015,7 +1015,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог запуска события
 							awh::log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL, ret.first->first);
 						/**
@@ -1033,7 +1033,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL, ::getpid());
 					/**
@@ -1062,7 +1062,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::WARNING);
 					/**
@@ -1104,7 +1104,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог запуска события
 							awh::log::debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {replaced, deferred}, awh::log::flag_t::CRITICAL, replaced);
 						/**
@@ -1210,7 +1210,7 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
  *       запускать заново - собственным образом приложения
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 /**
  * @brief Метод заведения своего конца канала обмена для порождаемого процесса
  *
@@ -1917,7 +1917,7 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		// Идентификатор завершившегося процесса
 		pid_t pid = 0;
 		// Статус завершившегося процесса
@@ -2015,7 +2015,7 @@ void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_un
  *       `_wakeup` и метод `reap`
  *
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 /**
  * @brief Функция фильтр перехватчика сигналов
  *
@@ -2049,7 +2049,7 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 /**
  * @brief Функция извещения о завершении дочернего процесса
  *
@@ -2217,7 +2217,7 @@ void awh::unit::Cluster::establish(const pid_t initiator, const pid_t peer, [[ma
 	 *          встреча идёт по имени, тем же путём, каким работник выходит на канал
 	 *          мастера
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Если имени канала в заказе нет вовсе
 		if((data == nullptr) || (size == 0))
 			// Отказываем в заведении связи
@@ -2518,7 +2518,7 @@ void awh::unit::Cluster::control(const event::id_t eid, const uint8_t * data, co
 				 *          нечего. Имя же канала означает связь, заведённую соседом, - к
 				 *          ней выходят по имени
 				 */
-				#if _WIN32 || _WIN64
+				#if defined(_WIN32) || defined(_WIN64)
 					// Если тело сообщения пустое - связь завёл сам этот узел
 					if(length == 0){
 						// Выполняем поиск заведённой узлом связи
@@ -2779,7 +2779,7 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, size}, awh::log::flag_t::CRITICAL, ::getpid());
 				/**
@@ -2827,7 +2827,7 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, data, size}, awh::log::flag_t::CRITICAL, ::getpid());
 				/**
@@ -2882,7 +2882,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, ::getpid());
 					/**
@@ -2922,7 +2922,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						/**
 						 * Если включён режим отладки
 						 */
-						#if DEBUG_MODE
+						#if defined(DEBUG_MODE)
 							// Записываем ошибку в лог
 							awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status)}, awh::log::flag_t::CRITICAL, ::getpid());
 						/**
@@ -2972,7 +2972,7 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (error), message}, awh::log::flag_t::CRITICAL, ::getpid());
 				/**
@@ -3020,7 +3020,7 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {eid, static_cast <uint16_t> (status), size}, awh::log::flag_t::CRITICAL, ::getpid());
 				/**
@@ -3047,7 +3047,7 @@ bool awh::unit::Cluster::exited(const int32_t status) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Различить возврат из main и снятие через TerminateProcess у MS Windows нельзя:
 		 * код завершения выставляется и в том, и в другом случае. Отделяется потому лишь
@@ -3074,7 +3074,7 @@ int32_t awh::unit::Cluster::exitcode(const int32_t status) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Значение GetExitCodeProcess и есть код возврата, разбирать нечего. Ненормальное
 		 * же завершение кодом возврата не является вовсе: система кладёт туда NTSTATUS
@@ -3100,7 +3100,7 @@ bool awh::unit::Cluster::signaled([[maybe_unused]] const int32_t status) noexcep
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Сигналов у MS Windows нет вовсе, снятым сигналом процесс быть не может
 		return false;
 	/**
@@ -3122,7 +3122,7 @@ int32_t awh::unit::Cluster::termsig([[maybe_unused]] const int32_t status) noexc
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Сигналов у MS Windows нет вовсе, отдавать нечего
 		return 0;
 	/**
@@ -3144,7 +3144,7 @@ bool awh::unit::Cluster::crashed(const int32_t status) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Необработанное исключение система кладёт в код завершения значением NTSTATUS,
 		 * у которого два старших разряда - признак важности - выставлены в единицы
@@ -3197,7 +3197,7 @@ bool awh::unit::Cluster::manual(const int32_t status) noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Сообщаем, признана ли остановка ручной
 		return (static_cast <uint32_t> (status) == static_cast <uint32_t> (STATUS_CONTROL_C_EXIT));
 	/**
@@ -3224,7 +3224,7 @@ void awh::unit::Cluster::stop() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Only the master process can stop the cluster", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
@@ -3273,7 +3273,7 @@ void awh::unit::Cluster::start() noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Only the master process can start the cluster", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
@@ -3331,7 +3331,7 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Only the master process can clear the cluster", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 		/**
@@ -3363,7 +3363,7 @@ void awh::unit::Cluster::emplace() noexcept {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("Only the master process can create child processes", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 			/**
@@ -3424,7 +3424,7 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, {pid}, awh::log::flag_t::WARNING);
 		/**
@@ -3594,7 +3594,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 				/**
 				 * Если включён режим отладки
 				 */
-				#if DEBUG_MODE
+				#if defined(DEBUG_MODE)
 					// Записываем ошибку в лог
 					awh::log::debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::CRITICAL, ::getpid());
 				/**
@@ -3612,7 +3612,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 			/**
@@ -3647,7 +3647,7 @@ bool awh::unit::Cluster::worker() const noexcept {
 	 * @note Метка здесь только спрашивается: снимает её перенятие роли при запуске
 	 *       кластера, и снять её раньше значило бы отнять у него признак
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		/**
 		 * Роль спрашивается двумя путями, и оба нужны
 		 *
@@ -3708,7 +3708,7 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {pid, buffer, size}, awh::log::flag_t::WARNING);
 			/**
@@ -3751,7 +3751,7 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, {buffer, size}, awh::log::flag_t::WARNING);
 			/**
@@ -3809,7 +3809,7 @@ bool awh::unit::Cluster::link(const pid_t pid) noexcept {
 	 *          является, - и встреча идёт по имени. Мастеру уходит одно лишь имя, а тот
 	 *          доводит его до соседа, распорядившись правом на связь
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Заводим пару обмена для прямой связи
 		const auto & events = this->_io->events(event::family_t::PIPE, this->_type);
 		// Если пара обмена не заведена
@@ -3945,7 +3945,7 @@ size_t awh::unit::Cluster::transmit(const pid_t pid, const void * buffer, const 
 	/**
 	 * Если включён режим отладки
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
 		awh::log::debug("Cluster worker process [%d] is not linked, a message cannot be transmitted", __PRETTY_FUNCTION__, {pid, buffer, size}, awh::log::flag_t::WARNING, pid);
 	/**
@@ -4152,7 +4152,7 @@ awh::unit::Cluster::Cluster() noexcept :
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Обнуляем дескриптор объекта родительского процесса (захватывается дочерним процессом при запуске)
 		this->_master = 0;
 		/**
@@ -4241,7 +4241,7 @@ awh::unit::Cluster::~Cluster() noexcept {
 	/**
 	 * Для операционной системы MS Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Если дескриптор объекта родительского процесса был получен
 		if(this->_master != 0){
 			// Закрываем дескриптор объекта родительского процесса

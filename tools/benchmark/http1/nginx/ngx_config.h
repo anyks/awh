@@ -27,8 +27,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_RIVAL_NGINX__
-#define __AWH_BENCHMARK_RIVAL_NGINX__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -279,5 +278,3 @@ static inline void ngx_unescape_uri(u_char **dst, u_char **src, size_t size, ngx
 	// Выполняем сдвиг указателя источника
 	*src += size;
 }
-
-#endif // __AWH_BENCHMARK_RIVAL_NGINX__

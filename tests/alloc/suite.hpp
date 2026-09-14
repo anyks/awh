@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef __AWH_TESTS_ALLOC__
-#define __AWH_TESTS_ALLOC__
+#pragma once
 
 /**
  * Признак сборки под санитайзером
@@ -84,5 +83,3 @@ class AllocFixture : public testing::Test {
 			awh::alloc::Allocator::options(this->_restore);
 		}
 };
-
-#endif // __AWH_TESTS_ALLOC__

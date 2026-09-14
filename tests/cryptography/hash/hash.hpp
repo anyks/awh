@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_HASH_TESTS__
-#define __AWH_HASH_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -62,5 +61,3 @@ class HashFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_HASH_TESTS__

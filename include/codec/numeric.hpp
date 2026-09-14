@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_NUMERIC__
-#define __AWH_CODEC_NUMERIC__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -160,5 +159,3 @@ namespace awh {
 		__AWH_SHARED_EXPORT__ T convert(const double value) noexcept;
 	};
 };
-
-#endif // __AWH_CODEC_NUMERIC__

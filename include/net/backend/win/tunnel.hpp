@@ -108,8 +108,7 @@
  *
  */
 
-#ifndef __AWH_NET_BACKEND_WIN_TUNNEL__
-#define __AWH_NET_BACKEND_WIN_TUNNEL__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -431,5 +430,3 @@ namespace awh {
 		}
 	}
 }
-
-#endif // __AWH_NET_BACKEND_WIN_TUNNEL__

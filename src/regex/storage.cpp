@@ -1528,7 +1528,7 @@ bool awh::regex::Storage::restore(const shared_ptr <const string> & blob, vector
 	/**
 	 * Если включён режим отладки
 	 */
-	#if DEBUG_MODE
+	#if defined(DEBUG_MODE)
 		// Записываем ошибку в лог
 		awh::log::debug("Storage record of %zu bytes could not be restored: error %u", __PRETTY_FUNCTION__, {blob ? blob->size() : 0}, awh::log::flag_t::WARNING, (blob ? blob->size() : 0), static_cast <uint16_t> (this->_error));
 	/**

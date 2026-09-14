@@ -36,7 +36,7 @@ void IoFixture::SetUp(){
 	/**
 	 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 	 */
-	#if __linux__ || __FreeBSD__ || __sun
+	#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 		// Объект управления SCTP протоколом
 		this->_sctp = std::make_unique <awh::engine::sctp_t> ();
 	#endif

@@ -22,7 +22,7 @@
 /**
  * Если максимальное количество файловых дескрипторов не передано
  */
-#ifndef AWH_MAX_COUNT_FDS
+#if !defined(AWH_MAX_COUNT_FDS)
 	/**
 	 * Устанавливаем максимальное количество доступных файловых дескрипторов 131072
 	 */
@@ -82,13 +82,13 @@ namespace options {
 			/**
 			 * Если необходимо выполнить тюннинг операционной системы
 			 */
-			#if AWH_BOOSTING_NET
+			#if defined(AWH_BOOSTING_NET)
 				// Если эффективный идентификатор пользователя не принадлежит ROOT
 				if(!os.isAdmin()){
 					/**
 					 * Если включён режим отладки
 					 */
-					#if DEBUG_MODE
+					#if defined(DEBUG_MODE)
 						// Записываем ошибку в лог
 						awh::log::debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log::flag_t::WARNING);
 					/**
@@ -105,7 +105,7 @@ namespace options {
 					 *
 					 * Названия проверены на macOS 26.5
 					 */
-					#if __APPLE__ || __MACH__
+					#if defined(__APPLE__) || defined(__MACH__)
 						// Устанавливаем максимальное количество подключений
 						os.sysctl("kern.ipc.somaxconn", 49152);
 						/**
@@ -144,7 +144,7 @@ namespace options {
 					 * Данные оптимизаций берутся отсюда: http://fasterdata.es.net/host-tuning/freebsd
 					 * Названия проверены на FreeBSD 14.1-RELEASE
 					 */
-					#elif __FreeBSD__
+					#elif defined(__FreeBSD__)
 						// Активируем контроль работы временной марки и масштабируемого окна
 						os.sysctl("net.inet.tcp.rfc1323", 1);
 						// Устанавливаем максимальное количество подключений
@@ -237,7 +237,7 @@ namespace options {
 					 * "kern.sbmax", и поднимать его следует **первым** - пределы буферов TCP
 					 * выше него не встанут
 					 */
-					#elif __NetBSD__
+					#elif defined(__NetBSD__)
 						// Поднимаем общий потолок буферов сокета
 						os.sysctl("kern.sbmax", 16777216);
 						// Активируем контроль работы временной марки и масштабируемого окна
@@ -314,7 +314,7 @@ namespace options {
 					 * ветвь FreeBSD целиком, и из десяти её настроек ложилась ровно одна -
 					 * прочие отвергались молча
 					 */
-					#elif __OpenBSD__
+					#elif defined(__OpenBSD__)
 						/**
 						 * Устанавливаем максимальное количество подключений
 						 *
@@ -349,7 +349,7 @@ namespace options {
 			/**
 			 * Если включён режим отладки
 			 */
-			#if DEBUG_MODE
+			#if defined(DEBUG_MODE)
 				// Записываем ошибку в лог
 				awh::log::debug("%s", __PRETTY_FUNCTION__, {}, awh::log::flag_t::CRITICAL, error.what());
 			/**
@@ -366,7 +366,7 @@ namespace options {
 /**
  * Если операционной системой является FreeBSD
  */
-#if __FreeBSD__
+#if defined(__FreeBSD__)
 	/**
 	 * @brief Конструктор
 	 *

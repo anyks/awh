@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ADDR__
-#define __AWH_ADDR__
+#pragma once
 
 /**
  * Наши модули
@@ -388,5 +387,3 @@ namespace awh {
 		} addr_t;
 	};
 };
-
-#endif // __AWH_ADDR__

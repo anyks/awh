@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_CODEC_XML_VALUE__
-#define __AWH_CODEC_XML_VALUE__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы модуля
@@ -2215,5 +2214,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../../sys/macro/restore.hpp"
-
-#endif // __AWH_CODEC_XML_VALUE__

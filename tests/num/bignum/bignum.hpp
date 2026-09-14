@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BIGNUM_TESTS__
-#define __AWH_BIGNUM_TESTS__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -133,5 +132,3 @@ class BigNumFixture : public testing::Test {
 		 */
 		void TearDown();
 };
-
-#endif // __AWH_BIGNUM_TESTS__

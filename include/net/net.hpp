@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_NETWORK__
-#define __AWH_NETWORK__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -64,7 +63,7 @@
  *
  * \~
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * Системный заголовочный файл
 	 */
@@ -113,7 +112,7 @@ namespace awh {
 		/**
 		 * Для операционной системы MS Windows
 		 */
-		#if _WIN32 || _WIN64
+		#if defined(_WIN32) || defined(_WIN64)
 			/**
 			 * \~russian
 			 * @brief Тип сокета
@@ -1151,7 +1150,7 @@ namespace awh {
 		/**
 		 * Для операционных систем с поддержкой SCTP: Linux, FreeBSD, Solaris и illumos
 		 */
-		#if __linux__ || __FreeBSD__ || __sun
+		#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 			/**
 			 * \~russian
 			 * @brief Пространство имён для работы с SCTP
@@ -2358,5 +2357,3 @@ namespace awh {
  * имена, подавленные в начале файла, снова принадлежат ему
  */
 #include "../sys/macro/restore.hpp"
-
-#endif // __AWH_NETWORK__

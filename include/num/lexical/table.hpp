@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_LEXICAL_TABLE__
-#define __AWH_LEXICAL_TABLE__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -253,5 +252,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_LEXICAL_TABLE__

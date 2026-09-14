@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_HOLDER__
-#define __AWH_HOLDER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -181,5 +180,3 @@ namespace awh {
 	 */
 	using holder_t = Holder <T, MutexType>;
 };
-
-#endif // __AWH_HOLDER__

@@ -29,8 +29,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_UNIT_TUNNEL__
-#define __AWH_UNIT_TUNNEL__
+#pragma once
 
 /**
  * Подключаем заголовочный файл проекта
@@ -541,5 +540,3 @@ namespace awh {
 		} tunnel_t;
 	};
 };
-
-#endif // __AWH_UNIT_TUNNEL__

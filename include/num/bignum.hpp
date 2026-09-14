@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_BIGNUM__
-#define __AWH_BIGNUM__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -3793,5 +3792,3 @@ namespace awh {
 	using real768_t  = bigreal_t <96>;   // Вещественное 768-битное число
 	using real1024_t = bigreal_t <128>;  // Вещественное 1024-битное число
 };
-
-#endif // __AWH_BIGNUM__

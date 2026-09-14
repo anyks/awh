@@ -31,7 +31,7 @@
  *       подключаемого через единую точку sys/macro/win32.hpp
  *
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * Подключаем единую точку подключения системных заголовков MS Windows
 	 */
@@ -144,7 +144,7 @@ TEST_F(EthFixture, EthSuiteTest){
 	 *       заголовков - обе системы сюда не входят намеренно
 	 *
 	 */
-	#if __linux__ || __FreeBSD__ || __sun
+	#if defined(__linux__) || defined(__FreeBSD__) || defined(__sun)
 		// Активируем получение SCTP-событий для сокета
 		ASSERT_FALSE(this->_eth->sctp.eventsSubscribe(sock, {
 			awh::net::sctp::event_type_t::ASSOC_CHANGE,
@@ -184,7 +184,7 @@ TEST_F(EthFixture, EthSuiteTest){
 	 *          поведение каждой системы, а не поведение одной из них: прежде проверка
 	 *          ждала отказа всюду и падала на всякой машине Windows
 	 */
-	#if _WIN32 || _WIN64
+	#if defined(_WIN32) || defined(_WIN64)
 		// Настройка принимается и обращается пустым действием
 		ASSERT_TRUE(this->_eth->socket.switchOption(sock, awh::event::family_t::IPV6, awh::net::socket_mode_t::ENABLED, awh::event::options::IPV6_ONLY));
 	#else
@@ -219,7 +219,7 @@ TEST_F(EthFixture, EthSuiteTest){
 	 * а не расхождение поведения, потому проверка разделена по системам
 	 *
 	 */
-	#if !__OpenBSD__
+	#if !defined(__OpenBSD__)
 		// Устанавливаем постоянное подключение на сокет
 		ASSERT_FALSE(this->_eth->socket.setKeepalive(sock, 30, 60, 10));
 	#else

@@ -101,8 +101,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_REGEX_COMPILER__
-#define __AWH_REGEX_COMPILER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -1396,5 +1395,3 @@ namespace awh {
 		} compiler_t;
 	};
 };
-
-#endif // __AWH_REGEX_COMPILER__

@@ -1789,7 +1789,7 @@ void awh::unit::QuicServer::stop() noexcept {
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		/**
 		 * В режиме кластера работу останавливает родительский процесс: он не запускает
 		 * собственный цикл событий (working() остаётся ложным), а лишь супервизирует
@@ -1819,7 +1819,7 @@ void awh::unit::QuicServer::start() noexcept {
 		/**
 		 * Для операционных систем, отличных от MS Windows
 		 */
-		#if !_WIN32 && !_WIN64
+		#if !defined(_WIN32) && !defined(_WIN64)
 			/**
 			 * В режиме кластера родительский процесс выступает супервизором: он не
 			 * поднимает собственный сокет, а раздаёт порты дочерним процессам (см.
@@ -2212,7 +2212,7 @@ void awh::unit::QuicServer::cluster(const pid_t pid, const unit::cluster_t::even
 							 *       случай единственного порта диапазона - он достаётся всем
 							 *
 							 */
-							#if __AWH_CLUSTER_BALANCE__
+							#if defined(__AWH_CLUSTER_BALANCE__)
 								// Отправляем дочернему процессу последний порт диапазона
 								this->sendPort(worker, ports.back());
 							/**
@@ -2474,7 +2474,7 @@ void awh::unit::QuicServer::clusterCount(const uint16_t count) noexcept {
 		/**
 		 * Если включён режим отладки
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Записываем ошибку в лог
 			awh::log::debug("%s", __PRETTY_FUNCTION__, {count}, awh::log::flag_t::CRITICAL, error.what());
 		/**

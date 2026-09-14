@@ -17,8 +17,7 @@
  *
  * @copyright Copyright © 2026
  */
-#ifndef __AWH_VERIFY_REGEX_SILENT__
-#define __AWH_VERIFY_REGEX_SILENT__
+#pragma once
 
 /**
  * Подключаем заголовочные файлы фреймворка
@@ -39,5 +38,3 @@ namespace verify {
 		awh::log::mode({});
 	}
 }
-
-#endif // __AWH_VERIFY_REGEX_SILENT__

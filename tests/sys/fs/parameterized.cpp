@@ -58,7 +58,7 @@ TEST_P(FSPathTests, FullPathTest) {
 	 * Если путь должен быть абсолютным, он должен начинаться с / (на Unix)
 	 * В тестах предполагаем Unix окружение на основе списка файлов
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		if(params.shouldBeAbsolute)
 			ASSERT_EQ(result.front(), '/');
 	#endif

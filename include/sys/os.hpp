@@ -31,8 +31,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_OPERATING_SYSTEM__
-#define __AWH_OPERATING_SYSTEM__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -67,19 +66,19 @@
  *       отвечает ложью всегда - ровно так же, как она ведёт себя и под MinGW
  */
 #if defined(_MSC_VER)
-	#ifndef S_ISDIR
+	#if !defined(S_ISDIR)
 		#define S_ISDIR(mode) (((mode) & _S_IFMT) == _S_IFDIR)
 	#endif
-	#ifndef S_ISREG
+	#if !defined(S_ISREG)
 		#define S_ISREG(mode) (((mode) & _S_IFMT) == _S_IFREG)
 	#endif
-	#ifndef S_ISLNK
+	#if !defined(S_ISLNK)
 		#define S_ISLNK(mode) (((void) (mode)), false)
 	#endif
-	#ifndef S_ISCHR
+	#if !defined(S_ISCHR)
 		#define S_ISCHR(mode) (((mode) & _S_IFMT) == _S_IFCHR)
 	#endif
-	#ifndef S_ISFIFO
+	#if !defined(S_ISFIFO)
 		#define S_ISFIFO(mode) (((mode) & _S_IFMT) == _S_IFIFO)
 	#endif
 	/**
@@ -87,10 +86,10 @@
 	 *       различает вовсе: примет для них нет ни у одной оснастки, и проверки эти
 	 *       отвечают ложью - ровно так же, как они ведут себя и под MinGW
 	 */
-	#ifndef S_ISBLK
+	#if !defined(S_ISBLK)
 		#define S_ISBLK(mode) (((void) (mode)), false)
 	#endif
-	#ifndef S_ISSOCK
+	#if !defined(S_ISSOCK)
 		#define S_ISSOCK(mode) (((void) (mode)), false)
 	#endif
 #endif
@@ -98,14 +97,14 @@
 /**
  * Активируем поддержку юникода
  */
-#ifndef UNICODE
+#if !defined(UNICODE)
 	#define UNICODE
 #endif
 
 /**
  * Для операционной системы MS Windows
  */
-#if _WIN32 || _WIN64
+#if defined(_WIN32) || defined(_WIN64)
 	/**
 	 * \~russian
 	 * Заменяем переменную AWH ERROR
@@ -234,14 +233,14 @@
 	/**
 	 * Устанавливаем функцию getpid
 	 */
-	#ifndef getpid
+	#if !defined(getpid)
 		#define getpid _getpid
 	#endif
 
 	/**
 	 * Устанавливаем функцию getppid
 	 */
-	#ifndef getppid
+	#if !defined(getppid)
 		#define getppid GetCurrentProcessId
 	#endif
 /**
@@ -465,7 +464,7 @@ namespace awh {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		public:
 			/**
 			 * \~russian
@@ -731,7 +730,7 @@ namespace awh {
 	/**
 	 * Для операционной системы не являющейся MS Windows
 	 */
-	#if !_WIN32 && !_WIN64
+	#if !defined(_WIN32) && !defined(_WIN64)
 		public:
 			/**
 			 * \~russian
@@ -920,5 +919,3 @@ namespace awh {
 			explicit Operating_System() noexcept {}
 	} os_t;
 };
-
-#endif // __AWH_OPERATING_SYSTEM__

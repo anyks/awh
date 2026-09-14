@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __AWH_BENCHMARK_NET_IO__
-#define __AWH_BENCHMARK_NET_IO__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -366,5 +365,3 @@ namespace awh {
 		};
 	};
 };
-
-#endif // __AWH_BENCHMARK_NET_IO__

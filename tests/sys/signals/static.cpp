@@ -36,7 +36,7 @@
 /**
  * Системные заголовочные файлы для операционной системы не являющейся MS Windows
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	#include <unistd.h>
 	#include <sys/wait.h>
 	#include <sys/resource.h>
@@ -546,7 +546,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 /**
  * Процессный тест фатального сигнала доступен только на UNIX-подобных системах
  */
-#if !_WIN32 && !_WIN64
+#if !defined(_WIN32) && !defined(_WIN64)
 	/**
 	 * @brief Функция намеренного нарушения сегментации
 	 *
@@ -601,7 +601,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 				 * В режиме релиза фатальный сигнал обрабатывается грациозно: приложение
 				 * завершается с заданным кодом из функции обратного вызова.
 				 */
-				#if !DEBUG_MODE
+				#if !defined(DEBUG_MODE)
 					// Завершаем процесс с кодом грациозной обработки
 					::_exit(42);
 				#endif
@@ -630,7 +630,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 		/**
 		 * В режиме отладки фатальный сигнал приводит к аварийному завершению процесса.
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Проверяем, что процесс завершён сигналом, а не штатно
 			ASSERT_TRUE(WIFSIGNALED(status));
 			// Проверяем, что процесс завершён сигналом нарушения доступа к памяти
@@ -713,7 +713,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 				 * В режиме релиза фатальный сигнал обрабатывается грациозно: приложение
 				 * завершается с заданным кодом из функции обратного вызова.
 				 */
-				#if !DEBUG_MODE
+				#if !defined(DEBUG_MODE)
 					// Завершаем процесс с кодом грациозной обработки
 					::_exit(42);
 				#endif
@@ -734,7 +734,7 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 		/**
 		 * В режиме отладки фатальный сигнал приводит к аварийному завершению процесса.
 		 */
-		#if DEBUG_MODE
+		#if defined(DEBUG_MODE)
 			// Проверяем, что процесс завершён сигналом, а не штатно
 			ASSERT_TRUE(WIFSIGNALED(status));
 			// Проверяем, что процесс завершён сигналом нарушения доступа к памяти
