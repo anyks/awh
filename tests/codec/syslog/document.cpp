@@ -1180,3 +1180,27 @@ TEST(CodecSysLogDocument, ErrorCodeFollowsTheLastOperation) {
 	// Выполняем проверку того, что отказ сохранения причину назвал
 	EXPECT_NE(empty.error(), syslog::error_t::NONE);
 }
+
+/**
+ * @brief Проверка границы глубины пути, устройством записи заданной
+ *
+ * @details Путь длиннее трёх звеньев - «/structures/<опознаватель>/<имя поля>» - записи
+ *          syslog неведом вовсе: это граница формата, а не недоделка обхода. Проверка
+ *          стережёт, чтобы граница эта отвечалась ОТКАЗОМ, а не молчаливым заведением
+ *          узлов, каких запись потом выразить не сможет
+ *
+ */
+TEST(CodecSysLogDocument, PathDepthIsBoundedByTheFormat) {
+	// Объект события syslog
+	syslog::document_t document;
+	// Выполняем проверку успешности разбора записи с блоком структурированных данных
+	ASSERT_TRUE(document.parse("<34>1 2003-10-11T22:14:15Z host app - - [a@1 k=\"one\"] текст"));
+	// Выполняем проверку успешности постановки значения по пути дозволенной глубины
+	EXPECT_TRUE(document.set("/structures/a@1/m", abc::value_t(string("two"))));
+	// Выполняем проверку того, что запись поставленное поле несёт
+	EXPECT_NE(document.dump().find("m=\"two\""), string::npos);
+	// Выполняем проверку отказа постановки значения по пути глубиною в четыре звена
+	EXPECT_FALSE(document.set("/structures/a@1/k/deep", abc::value_t(string("x"))));
+	// Выполняем проверку того, что значения по такому пути в дереве нет
+	EXPECT_FALSE(document.at("/structures/a@1/k/deep").valid());
+}

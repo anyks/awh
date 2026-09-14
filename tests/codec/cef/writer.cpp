@@ -848,3 +848,76 @@ TEST(CodecCefWriter, ValueBreakingTheRecord) {
 	// Выполняем проверку того, что перевод строки в расширении отменён последовательностью
 	EXPECT_NE(result.find("te\\nxt"), string::npos);
 }
+
+/**
+ * @brief Проверка того, что писатель не рождает записей, кодеком не читаемых
+ *
+ * @details Оборот замыкается лишь тогда, когда всякая собранная запись разбирается
+ *          обратно. Два разрыва найдены щупом 14.09.2026:
+ *
+ *          - «inf», «-inf» и «nan» писались как есть, а собственный разбор отвергал их
+ *            кодом INVALID_NUMBER: записи CEF они неведомы вовсе. Теперь запись
+ *            отвечает отказом - честнее отвергнуть у себя, чем слать принимающему пару,
+ *            какую поправить уже некому;
+ *
+ *          - «1.7976931348623157e+308» писалось кратчайшим обратимым представлением, а
+ *            разбор отвергал его, ибо спрашивал у рамки, число ли это, а рамка записи с
+ *            точкой И показателем степени разом дробной не признаёт. Довод у рамки снят
+ *            за ненадобностью: строгий разбор поверяет запись сам
+ *
+ */
+TEST(CodecCefWriter, WrittenRecordsAreAlwaysReadable) {
+	// Объект записи событий
+	cef::writer_t writer;
+	// Собранная запись CEF
+	string result = "";
+	/**
+	 * @brief Метод сборки дерева события с заданным дробным значением
+	 *
+	 * @param value дробное значение пары расширения
+	 * @return      дерево собираемого события
+	 */
+	const auto tree = [](const double value) noexcept -> abc::value_t {
+		// Дерево собираемого события
+		abc::value_t root(abc::kind_t::MAP);
+		// Ставим номер редакции записи в дерево события
+		root.place("/header/version") = abc::value_t(static_cast <uint64_t> (0));
+		// Ставим поставщика устройства в дерево события
+		root.place("/header/vendor") = abc::value_t(string("V"));
+		// Ставим название устройства в дерево события
+		root.place("/header/product") = abc::value_t(string("P"));
+		// Ставим редакцию устройства в дерево события
+		root.place("/header/release") = abc::value_t(string("1"));
+		// Ставим опознаватель события в дерево события
+		root.place("/header/signature") = abc::value_t(string("S"));
+		// Ставим название события в дерево события
+		root.place("/header/name") = abc::value_t(string("N"));
+		// Ставим важность события в дерево события
+		root.place("/header/severity") = abc::value_t(static_cast <uint64_t> (1));
+		// Ставим дробное значение пары расширения в дерево события
+		root.place("/extension/cfp1") = abc::value_t(value);
+		// Выводим дерево собираемого события
+		return root;
+	};
+	// Настройки разбора записей со строгим сличением видов
+	cef::reader_t::settings_t settings;
+	// Устанавливаем строгое сличение со словарём
+	settings.mode = cef::mode_t::STRONG;
+	// Выполняем проверку отказа записи бесконечностью
+	EXPECT_FALSE(writer.write(tree(::std::numeric_limits <double>::infinity()), result));
+	// Выполняем проверку отказа записи значением, числом не являющимся
+	EXPECT_FALSE(writer.write(tree(::std::numeric_limits <double>::quiet_NaN()), result));
+	/**
+	 * Выполняем перебор конечных дробных значений, записи подлежащих
+	 */
+	for(const double value : {1.5, 0.0, -2.25, ::std::numeric_limits <double>::max(), ::std::numeric_limits <double>::denorm_min()}) {
+		// Выполняем проверку успешности сборки записи дробным значением
+		ASSERT_TRUE(writer.write(tree(value), result)) << value;
+		// Объект события повторного разбора
+		cef::document_t again;
+		// Устанавливаем настройки разбора записей
+		again.settings(settings);
+		// Выполняем проверку того, что собранная запись разбирается обратно
+		EXPECT_TRUE(again.parse(result)) << "собранная запись не читается кодеком: " << result;
+	}
+}

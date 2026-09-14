@@ -1431,3 +1431,63 @@ TEST(CodecSysLogWriter, RepeatedParamRoundTrip) {
 	// Выполняем проверку того, что второе значение поля оборот пережило
 	EXPECT_EQ(again.at("/structures/a@1/k/1").text(), string("two"));
 }
+
+/**
+ * @brief Проверка постановки метки порядка байтов лишь перед годным UTF-8
+ *
+ * @details Метка есть ОБЪЯВЛЕНИЕ кодировки: «If the MSG contains UTF-8 ... MUST start
+ *          with BOM» (RFC 5424, раздел 6.4). Прежде довода о годности не было вовсе -
+ *          метка ставилась перед всяким текстом, знаками ASCII не исчерпывающимся, - и
+ *          щуп 14.09.2026 показал её перед одиноким продолжающим байтом и перед
+ *          оборванной последовательностью, кои UTF-8 не суть
+ *
+ * @note Текст негодный пишется КАК ЕСТЬ, без метки и без отказа: журнал берёт данные,
+ *       какие есть, и выдумывать за отправителя кодировку не наше дело
+ *
+ */
+TEST(CodecSysLogWriter, ByteOrderMarkOnlyForValidUtf8) {
+	// Настройки записи событий
+	syslog::writer_t::settings_t settings;
+	// Устанавливаем сборку записи нынешним описанием
+	settings.standard = syslog::standard_t::RFC5424;
+	// Собранная запись системного журнала
+	string result = "";
+	/**
+	 * @brief Метод сборки дерева события с заданным текстом сообщения
+	 *
+	 * @param message текст сообщения события
+	 * @return        дерево собираемого события
+	 */
+	const auto tree = [](const string & message) noexcept -> abc::value_t {
+		// Дерево собираемого события
+		abc::value_t value(abc::kind_t::MAP);
+		// Ставим приоритет записи в дерево события
+		value.place("/priority") = abc::value_t(static_cast <uint64_t> (13));
+		// Ставим номер описания записи в дерево события
+		value.place("/header/version") = abc::value_t(static_cast <uint64_t> (1));
+		// Ставим дату сообщения в дерево события
+		value.place("/header/timestamp") = abc::value_t(string("2023-04-11T23:29:33Z"));
+		// Ставим текст сообщения в дерево события
+		value.place("/message") = abc::value_t(message);
+		// Выводим дерево собираемого события
+		return value;
+	};
+	// Метка порядка байтов, описанием заданная
+	const string bom = "\xEF\xBB\xBF";
+	// Выполняем сборку записи текстом в годном UTF-8
+	ASSERT_TRUE(::build(tree("текст"), settings, result));
+	// Выполняем проверку того, что перед годным UTF-8 метка поставлена
+	EXPECT_NE(result.find(bom), string::npos);
+	// Выполняем сборку записи текстом из одних знаков ASCII
+	ASSERT_TRUE(::build(tree("text"), settings, result));
+	// Выполняем проверку того, что перед знаками ASCII метки нет
+	EXPECT_EQ(result.find(bom), string::npos);
+	// Выполняем сборку записи оборванной последовательностью UTF-8
+	ASSERT_TRUE(::build(tree(string("\xD1")), settings, result));
+	// Выполняем проверку того, что перед негодным UTF-8 метки нет
+	EXPECT_EQ(result.find(bom), string::npos) << "метка объявляет UTF-8 перед оборванной последовательностью";
+	// Выполняем сборку записи одинокими продолжающими байтами
+	ASSERT_TRUE(::build(tree(string("\x80\x80")), settings, result));
+	// Выполняем проверку того, что перед одинокими продолжающими байтами метки нет
+	EXPECT_EQ(result.find(bom), string::npos) << "метка объявляет UTF-8 перед одинокими продолжающими байтами";
+}

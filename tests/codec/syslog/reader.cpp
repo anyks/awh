@@ -1270,3 +1270,41 @@ TEST(CodecSysLogReader, NumberOverflowWrap) {
 		EXPECT_EQ(reader.error(), syslog::error_t::INVALID_PRIORITY);
 	}
 }
+
+/**
+ * @brief Проверка предела длины записи у текста без границы
+ *
+ * @details Поверка длины стояла ЛИШЬ за найденной границей записи, и текст без перевода
+ *          строки её не встречал вовсе: хранилище росло, пока подаёт подающий. Щуп
+ *          14.09.2026 скормил 64 МБ при пределе записи в 1 МБ - ни отказа, ни жалобы
+ *
+ * @warning Разряд этот опаснее прочих: отправитель, границы не ставящий, исчерпывает
+ *          память принимающего, и никакая настройка того не останавливала
+ *
+ */
+TEST(CodecSysLogReader, UnboundedFeedIsRefused) {
+	// Настройки разбора записей
+	syslog::reader_t::settings_t settings;
+	// Устанавливаем малый предел длины записи
+	settings.maxRecord = 1024;
+	// Выполняем создание объекта чтения записей
+	syslog::reader_t reader;
+	// Устанавливаем настройки разбора записей
+	ASSERT_TRUE(reader.settings(settings));
+	// Кусок текста длиною РОВНО в предел, границы записи не несущий
+	const string chunk(settings.maxRecord, 'A');
+	// Выполняем подачу куска текста длиною ровно в предел
+	ASSERT_TRUE(reader.feed(chunk.data(), chunk.size(), false));
+	// Выполняем перебор событий разбора
+	while(reader.next()){}
+	// Выполняем проверку того, что кусок длиною ровно в предел отказа не навёл
+	EXPECT_EQ(reader.error(), syslog::error_t::NONE);
+	// Выполняем подачу второго куска текста, предел превосходящего
+	ASSERT_TRUE(reader.feed(chunk.data(), chunk.size(), false));
+	// Выполняем перебор событий разбора
+	while(reader.next()){}
+	// Выполняем проверку того, что превышение предела отвечено отказом
+	EXPECT_EQ(reader.error(), syslog::error_t::RECORD_TOO_LONG);
+	// Выполняем проверку того, что чтение записей прекращено отказом
+	EXPECT_EQ(reader.state(), syslog::state_t::FAILED);
+}

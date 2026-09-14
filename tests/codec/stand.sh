@@ -93,7 +93,7 @@ OPTIONS="-O2 -std=c++17 -I$ROOT/include $THIRD_INCLUDES -I$GTEST/include $FLAGS"
 mkdir -p "$OUTPUT"
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/contract.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/net-nwt.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/charset.o $OUTPUT/charset-table.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/contract.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/sys-fs.o $OUTPUT/sys-os.o $OUTPUT/net-nwt.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/charset.o $OUTPUT/charset-table.o"
 
 ##
 # Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
@@ -117,6 +117,11 @@ fi
 ##
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	##
+	# Основа «Foundation» потребна слою файловой системы: «src/sys/fs.cpp» зовёт у macOS
+	# «NSFileManager», и без неё связывание отвечает отсутствием знаков Objective-C
+	##
+	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -245,6 +250,24 @@ $COMPILER $OPTIONS -c "$ROOT/tests/codec/contract.cpp" -o "$OUTPUT/contract.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/sys-log.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
+##
+# Собираем слой файловой системы и сведения о системе
+#
+# @details Работу с файлами кодеки ведут через «sys/fs» - чтение, запись, снос и
+#          подмену, - а прежняя переносимая подмена «src/codec/replace.cpp» снесена
+#          владельцем как нарушение договора. Без этих двух частей связывание отвечает
+#          отсутствием знаков «awh::Filesystem» у всякого кодека, файлы читающего
+#
+# @note У macOS слой этот написан на Objective-C++ и обычным C++ не собирается вовсе:
+#       приходит «stray @ in program». Прочим системам ключи эти не нужны и вредны,
+#       оттого ветвь по «uname», а не общий довод
+##
+if [ "$(uname -s)" = "Darwin" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -x objective-c++ -fobjc-arc -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+else
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+fi
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize.cpp" -o "$OUTPUT/uni-normalize.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"
@@ -275,15 +298,18 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/numeric.cpp" -o "$OU
 OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
 
 #
-# Собираем переносимую подмену файла, общую всем кодекам
+# Переносимая подмена файла «src/codec/replace.cpp» отсюда СНЯТА
 #
-# @details Лежит в «src/codec», а не в каталоге кодека, и перебором частей кодека
-#          ниже не берётся — как и «numeric.cpp», её нужно называть поимённо.
-#          У MS Windows «rename» существующий файл не заменяет, потому сохранение
-#          через временный файл ходит здесь, а не через вызов системы напрямую.
+# @details Часть эта снесена владельцем как нарушение договора: подмену файла ведёт
+#          теперь слой файловой системы «sys/fs», и второй её записи в дереве нет.
+#          Стенд же продолжал звать её поимённо и оттого не собирался ВОВСЕ - ни у кого
+#          и ни на одной машине: сборка обрывалась на «no such file or directory», а
+#          договор семи кодеков не сличался с тех пор ничем
 #
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/replace.cpp" -o "$OUTPUT/codec-replace.o"
-OBJECTS="$OBJECTS $OUTPUT/codec-replace.o"
+# @note Снято 15.09.2026. Отсутствие стенда договора неотличимо от стенда пройденного:
+#       раскладка по машинам пропускала его кодом 77 «проверка неприменима», и молчание
+#       это выглядело как согласие
+#
 
 #
 # Собираем подпись содержимого, какой требует кодек ABC
