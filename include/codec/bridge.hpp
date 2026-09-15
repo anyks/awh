@@ -444,6 +444,25 @@ namespace awh {
 				bool narrows(const abc::value_t & value, const uint32_t depth) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод разбора отказа собирателя записи INI правилом сужения
+				 *
+				 * @details Наречие INI принимает не всякое имя и не всякое значение, и отказ
+				 * его есть отказ по НЕВЫРАЗИМОСТИ: разбирать его надлежит правилом сужения,
+				 * а не выдачей наружу кодом `WRITING`
+				 *
+				 * @param name имя свойства, записи не принятого
+				 * @return     результат разбора: истина, когда запись продолжима
+				 *
+				 * \~english
+				 * @brief Method of the treatment of a refusal of the writer of the record INI by the narrowing rule
+				 * @param name name of the property not accepted by the record
+				 * @return     result of the treatment: true when the writing can continue
+				 *
+				 * \~
+				 */
+				bool narrowed(const string & name) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод подачи значения ABC писателю JSON
 				 *
 				 * @param value  значение контейнера ABC
