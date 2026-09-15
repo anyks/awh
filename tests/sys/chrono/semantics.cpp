@@ -3269,4 +3269,14 @@ TEST_F(ChronoFixture, ExecutionLowerCaseDelimitersChronoTest){
 	ASSERT_FALSE(this->_chrono->validate("11/10/2003 22:14:15Z", awh::chrono_t::standard_t::RFC3339));
 	// Сличение разделителей прочих стандартов остаётся строгим по составу
 	ASSERT_FALSE(this->_chrono->validate("11-Oct-2003:22:14:15 +0000", awh::chrono_t::standard_t::CLF));
+	/**
+	 * Послабление дано одному лишь RFC 3339: ISO 8601 строчных разделителей не
+	 * допускает, хотя записи его разбираются теми же образцами
+	 */
+	// Основная форма ISO 8601 с прописным разделителем пригодна
+	ASSERT_TRUE(this->_chrono->validate("20031011T221415Z", awh::chrono_t::standard_t::ISO8601));
+	// Основная форма ISO 8601 со строчным разделителем пригодной не считается
+	ASSERT_FALSE(this->_chrono->validate("20031011t221415Z", awh::chrono_t::standard_t::ISO8601));
+	// Расширенная форма ISO 8601 со строчным разделителем пригодной не считается
+	ASSERT_FALSE(this->_chrono->validate("2003-10-11t22:14:15Z", awh::chrono_t::standard_t::ISO8601));
 }
