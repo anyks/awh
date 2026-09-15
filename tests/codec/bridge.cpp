@@ -1154,6 +1154,19 @@ TEST(CodecBridge, MarkupContainers){
 	// Создаём объект работы с логами
 	// Создаём мост между контейнером ABC и текстовыми кодеками
 	bridge_t bridge;
+	/**
+	 * Выполняем затребование записи ПЛОТНОЙ
+	 *
+	 * @note Проверка эта закрепляет строение записи, а не её оформление, и сличает
+	 *       содержимое строкою целиком: умолчанием у моста стоит вид нарядный, и
+	 *       отступы его сличению мешают. Прежде дорога разметки настройку оформления
+	 *       не слушала вовсе и писала плотно ВСЕГДА - оттого спрос этот и не стоял
+	 */
+	bridge_t::settings_t settings = bridge.settings();
+	// Устанавливаем плотный вид собираемой записи
+	settings.format = json::format_t::COMPACT;
+	// Выполняем установку настроек перевода
+	bridge.settings(settings);
 	// Собираемое дерево значений контейнера ABC
 	abc::value_t value;
 	// Собираемый перечень вложенный
@@ -1294,6 +1307,19 @@ TEST(CodecBridge, MarkupJointEdges){
 	// Создаём мост между контейнером ABC и текстовыми кодеками
 	bridge_t bridge;
 	/**
+	 * Выполняем затребование записи ПЛОТНОЙ
+	 *
+	 * @note Проверка эта закрепляет строение записи, а не её оформление, и сличает
+	 *       содержимое строкою целиком: умолчанием у моста стоит вид нарядный, и
+	 *       отступы его сличению мешают. Прежде дорога разметки настройку оформления
+	 *       не слушала вовсе и писала плотно ВСЕГДА - оттого спрос этот и не стоял
+	 */
+	bridge_t::settings_t settings = bridge.settings();
+	// Устанавливаем плотный вид собираемой записи
+	settings.format = json::format_t::COMPACT;
+	// Выполняем установку настроек перевода
+	bridge.settings(settings);
+	/**
 	 * Выполняем проверку укладки пустого узла разметки
 	 *
 	 * @note Умолчанием стоит логическая истина, и умолчание это СПОРНО. Владелец
@@ -1329,8 +1355,17 @@ TEST(CodecBridge, MarkupJointEdges){
 		 */
 		ASSERT_TRUE(empty["config"]["Correlation"].is(abc::type_t::STRING)) << "настройка укладки пустого узла не работает";
 		ASSERT_TRUE(empty["config"]["Correlation"].text().empty()) << "пустой узел уложен строкою непустою";
-		// Возвращаем настройки перевода к умолчанию
-		bridge.settings(bridge_t::settings_t());
+		/**
+		 * Возвращаем настройки перевода к умолчанию, вид оформления удержав
+		 *
+		 * @note Вид записи здесь ПЛОТНЫЙ и держится особо: проверка сличает записи
+		 *       строкою целиком, а умолчанием у моста стоит вид нарядный
+		 */
+		bridge_t::settings_t restored;
+		// Устанавливаем плотный вид собираемой записи
+		restored.format = json::format_t::COMPACT;
+		// Выполняем возврат настроек перевода
+		bridge.settings(restored);
 	}
 	/**
 	 * Выполняем проверку записи числа дробного
@@ -3813,4 +3848,46 @@ TEST(CodecBridge, ASkippedSoleFieldLeavesNoHusk){
 	ASSERT_EQ(result.find("dec"), string::npos) << "пропущенное поле оставило по себе узел: " << result;
 	// Выполняем проверку того, что корень взят настройкою
 	ASSERT_NE(result.find("config"), string::npos) << "корень записи взят не настройкою: " << result;
+}
+
+/**
+ * @brief Проверка того, что настройка оформления слышна всякой дорогой, её несущей
+ *
+ * @details Настройка эта объявлена настройкою МОСТА, а слушала её одна дорога
+ * JSON: прочие звали сборку умолчанием, и потребитель, затребовавший запись
+ * плотную, получал её нарядной без всякого ответа
+ *
+ */
+TEST(CodecBridge, TheFormatSettingIsHeardByEveryRoadThatHasOne){
+	// Выполняем перебор всех видов записи, оформление несущих
+	for(auto & format : vector <codec::Bridge::format_t> {
+		codec::Bridge::format_t::JSON, codec::Bridge::format_t::XML,
+		codec::Bridge::format_t::TOML, codec::Bridge::format_t::INI
+	}){
+		// Собранные записи плотного и нарядного вида
+		string compact = "", pretty = "";
+		// Выполняем перебор обоих видов оформления
+		for(size_t i = 0; i < 2; i++){
+			// Создаём мост перевода записей
+			codec::Bridge bridge;
+			// Получаем настройки перевода
+			codec::Bridge::settings_t settings = bridge.settings();
+			// Устанавливаем вид оформления собираемой записи
+			settings.format = (i == 0 ? codec::json::format_t::COMPACT : codec::json::format_t::PRETTY);
+			// Выполняем установку настроек перевода
+			bridge.settings(settings);
+			// Собираемое дерево значений
+			codec::abc::value_t value;
+			// Выполняем разбор дерева из двух разделов
+			ASSERT_TRUE(bridge.decode("{\"sec\":{\"a\":1},\"two\":{\"b\":2}}", value, codec::Bridge::format_t::JSON));
+			// Выполняем перевод дерева в затребованный вид записи
+			ASSERT_TRUE(bridge.encode(value, (i == 0 ? compact : pretty), format))
+			 << "перевод вида " << static_cast <uint16_t> (format) << " отвечен отказом";
+		}
+		// Выполняем проверку того, что оформление записи переменилось
+		ASSERT_NE(compact, pretty) << "вид записи " << static_cast <uint16_t> (format)
+		 << " настройки оформления не услышал: [" << compact << "]";
+		// Выполняем проверку того, что плотная запись короче нарядной
+		ASSERT_LT(compact.length(), pretty.length()) << "плотная запись вышла не короче нарядной";
+	}
 }
