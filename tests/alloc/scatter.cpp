@@ -297,3 +297,184 @@ TEST(AllocScatterTest, GammaMasksRepeatedBytes){
 	// Носитель из повторяющегося секрета обязан быть разнородным
 	EXPECT_FALSE(uniform);
 }
+/**
+ * @brief Проверка привязки раскладки к контрольной сумме кода
+ *
+ * @note Якорь подмешан в зерно: собрать секрет удаётся лишь той же суммой, какой он
+ *       разложен. Иная сумма - патч образа - даёт мусор, а не секрет
+ *
+ */
+TEST(AllocScatterTest, AnchorBindsLayoutToChecksum){
+	// Раскладываемый секрет
+	const uint8_t secret[] = {0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58};
+	// Зерно раскладки из закрытого контура
+	const uint64_t seed = 0x0F1E2D3C4B5A6978ULL;
+	// Контрольная сумма кода при сборке
+	const uint64_t checksum = 0xABCDEF0123456789ULL;
+	// Раскладываем секрет зерном, привязанным к контрольной сумме
+	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), awh::alloc::Scatter::anchor(seed, checksum), 128);
+	// Носитель обязан быть заведён
+	ASSERT_FALSE(carrier.empty());
+	// Заводим приёмник под сбор верной суммой
+	awh::alloc::vessel_t right = ::relaxed();
+	// Собираем той же контрольной суммой
+	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), awh::alloc::Scatter::anchor(seed, checksum), sizeof(secret), right));
+	// Признак совпадения собранного верной суммой с исходным
+	bool matched = false;
+	// Обращаемся к собранному верной суммой
+	ASSERT_TRUE(right.apply([&](const uint8_t * data, const size_t size) noexcept {
+		// Сверяем собранное с исходным секретом
+		matched = ((size == sizeof(secret)) && (::memcmp(data, secret, sizeof(secret)) == 0));
+	}));
+	// Собранное верной суммой обязано совпасть с исходным
+	EXPECT_TRUE(matched);
+	// Заводим приёмник под сбор изменённой суммой
+	awh::alloc::vessel_t wrong = ::relaxed();
+	// Собираем изменённой суммой - имитируем патч кода на один разряд
+	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), awh::alloc::Scatter::anchor(seed, checksum ^ 0x1ULL), sizeof(secret), wrong));
+	// Признак совпадения собранного изменённой суммой с исходным
+	bool patched = true;
+	// Обращаемся к собранному изменённой суммой
+	ASSERT_TRUE(wrong.apply([&](const uint8_t * data, const size_t size) noexcept {
+		// Сверяем собранное с исходным секретом
+		patched = ((size == sizeof(secret)) && (::memcmp(data, secret, sizeof(secret)) == 0));
+	}));
+	// Собранное изменённой суммой секретом быть не должно
+	EXPECT_FALSE(patched);
+}
+/**
+ * @brief Проверка развода сборок версией ключа
+ *
+ * @note Версия подмешана в зерно наравне с суммой: боевой контур и отладочный выводят
+ *       ключи разных версий, и контейнер одной версии не открывается ключом другой не
+ *       запретом, а тем, что ключ иной
+ *
+ */
+TEST(AllocScatterTest, AnchorVersionSeparatesBuilds){
+	// Раскладываемый секрет
+	const uint8_t secret[] = {0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68};
+	// Зерно раскладки
+	const uint64_t seed = 0x1234ABCD5678EF90ULL;
+	// Контрольная сумма кода
+	const uint64_t checksum = 0x00FF00FF00FF00FFULL;
+	// Раскладываем секрет боевой версией ключа
+	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(secret, sizeof(secret), awh::alloc::Scatter::anchor(seed, checksum, 1), 128);
+	// Носитель обязан быть заведён
+	ASSERT_FALSE(carrier.empty());
+	// Заводим приёмник под сбор отладочной версией
+	awh::alloc::vessel_t vessel = ::relaxed();
+	// Собираем отладочной версией того же ключа
+	ASSERT_TRUE(awh::alloc::Scatter::gather(carrier.data(), carrier.size(), awh::alloc::Scatter::anchor(seed, checksum, 2), sizeof(secret), vessel));
+	// Признак совпадения собранного иной версией с исходным
+	bool crossed = true;
+	// Обращаемся к собранному иной версией
+	ASSERT_TRUE(vessel.apply([&](const uint8_t * data, const size_t size) noexcept {
+		// Сверяем собранное с исходным секретом
+		crossed = ((size == sizeof(secret)) && (::memcmp(data, secret, sizeof(secret)) == 0));
+	}));
+	// Собранное иной версией секретом быть не должно
+	EXPECT_FALSE(crossed);
+}
+/**
+ * @brief Проверка воспроизводимости якоря
+ *
+ * @note Один вход - один выход: обе стороны договора обязаны получить одно зерно из
+ *       одного зерна, одной суммы и одной версии, иначе поток разойдётся
+ *
+ */
+TEST(AllocScatterTest, AnchorIsDeterministic){
+	// Одинаковый вход обязан давать одинаковое привязанное зерно
+	EXPECT_EQ(awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3));
+	// Смена суммы обязана менять привязанное зерно
+	EXPECT_NE(awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::Scatter::anchor(0x11ULL, 0x23ULL, 3));
+	// Смена версии обязана менять привязанное зерно
+	EXPECT_NE(awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 3), awh::alloc::Scatter::anchor(0x11ULL, 0x22ULL, 4));
+}
+/**
+ * @brief Проверка вплетения секрета в рабочую таблицу без порчи прочих данных
+ *
+ * @note Вплетение правит лишь места секрета, прочие места таблицы - настоящие рабочие
+ *       данные - оставляет нетронутыми. Изменённых мест ровно столько, какова длина
+ *       секрета, а собрать секрет из вплетённой таблицы удаётся тем же зерном
+ *
+ */
+TEST(AllocScatterTest, WeaveKeepsWorkingDataIntact){
+	// Размер рабочей таблицы
+	const size_t size = 200;
+	// Длина вплетаемого секрета
+	const uint8_t secret[] = {0x71, 0x72, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A};
+	// Зерно раскладки
+	const uint64_t seed = 0x2468ACE013579BDFULL;
+	// Заводим рабочую таблицу с осмысленными данными
+	std::vector <uint8_t> table(size);
+	/**
+	 * Заполняем таблицу рабочими данными
+	 */
+	for(size_t i = 0; i < size; i++)
+		// Записываем очередное рабочее значение
+		table[i] = static_cast <uint8_t> ((i * 7) + 3);
+	// Снимаем копию таблицы до вплетения
+	const std::vector <uint8_t> before = table;
+	// Вплетаем секрет в рабочую таблицу
+	ASSERT_TRUE(awh::alloc::Scatter::weave(table.data(), table.size(), secret, sizeof(secret), seed));
+	// Число изменённых мест таблицы
+	size_t changed = 0;
+	/**
+	 * Считаем изменённые места таблицы
+	 */
+	for(size_t i = 0; i < size; i++){
+		// Если место изменилось
+		if(table[i] != before[i])
+			// Увеличиваем число изменённых мест
+			changed++;
+	}
+	// Изменённых мест обязано быть не больше длины секрета
+	EXPECT_LE(changed, sizeof(secret));
+	// Заводим приёмник под сбор из вплетённой таблицы
+	awh::alloc::vessel_t vessel = ::relaxed();
+	// Собираем секрет из вплетённой таблицы тем же зерном
+	ASSERT_TRUE(awh::alloc::Scatter::gather(table.data(), table.size(), seed, sizeof(secret), vessel));
+	// Признак совпадения собранного с исходным
+	bool matched = false;
+	// Обращаемся к собранному секрету
+	ASSERT_TRUE(vessel.apply([&](const uint8_t * data, const size_t size) noexcept {
+		// Сверяем собранное с исходным секретом
+		matched = ((size == sizeof(secret)) && (::memcmp(data, secret, sizeof(secret)) == 0));
+	}));
+	// Собранный из таблицы секрет обязан совпасть с исходным
+	EXPECT_TRUE(matched);
+}
+/**
+ * @brief Проверка воспроизводимости раскладки между системами
+ *
+ * @note Зашитый ключ раскладывается на сборочной машине, а собирается в образе на
+ *       целевой - возможно иной архитектуры. Поток `splitmix64` есть арифметика над
+ *       шестидесятичетырёхразрядным словом, `byte()` берёт младший разряд, перестановка
+ *       ведётся остатком - всё это обязано давать один ряд на всякой системе. Эталон снят
+ *       на macOS ARM64 15.09.2026; расхождение на ином стенде означает, что раскладка
+ *       НЕ воспроизводима между системами, и зашитый ключ на целевой машине не соберётся
+ *
+ */
+TEST(AllocScatterTest, CarrierMatchesGoldenVector){
+	// Эталонный носитель для известного входа
+	static const uint8_t golden[48] = {
+		0x64, 0x8D, 0x1B, 0xB2, 0xBC, 0x4D, 0x65, 0x3E, 0xA9, 0x73, 0x77, 0x5A,
+		0xD0, 0x1D, 0x13, 0x02, 0x70, 0xB7, 0xC0, 0xD5, 0x9E, 0x29, 0x62, 0xCF,
+		0xDD, 0x0B, 0x05, 0xE4, 0x8C, 0x34, 0xD4, 0x7D, 0xFF, 0x93, 0xA9, 0xDB,
+		0x1A, 0xDA, 0x48, 0x64, 0x54, 0xBB, 0xB2, 0x1C, 0x6F, 0x7A, 0x65, 0xCF
+	};
+	// Известный секрет эталона
+	const char secret[] = "ANYKS-KEY";
+	// Длина известного секрета
+	const size_t length = sizeof(secret) - 1;
+	// Зерно эталона
+	const uint64_t seed = 0x0123456789ABCDEFULL;
+	// Раскладываем известный секрет известным зерном
+	const std::vector <uint8_t> carrier = awh::alloc::Scatter::lay(reinterpret_cast <const uint8_t *> (secret), length, seed, sizeof(golden));
+	// Носитель обязан быть заведён размером эталона
+	ASSERT_EQ(carrier.size(), sizeof(golden));
+	// Носитель обязан совпасть с эталоном байт в байт
+	EXPECT_EQ(::memcmp(carrier.data(), golden, sizeof(golden)), 0);
+	// Якорь обязан давать одно значение на всякой системе
+	EXPECT_EQ(awh::alloc::Scatter::anchor(seed, 0xABCDULL, 1), static_cast <uint64_t> (0x1C52017B87888DF7ULL));
+}

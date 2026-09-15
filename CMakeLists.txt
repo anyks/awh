@@ -1881,6 +1881,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с укрытой памятью
     option(CMAKE_BUILD_KEEPER_APP_SAMPLE "Build Keeper app sample" ON)
 
+    # Устанавливаем имя приложения рассеяния ключевого материала по образу
+    SET(SCATTER_APP_NAME scatter)
+    # Указываем что нужно собрать приложение рассеяния ключевого материала по образу
+    option(CMAKE_BUILD_SCATTER_APP_SAMPLE "Build Scatter app sample" ON)
+
     # Устанавливаем имя приложения работы с датой и временем
     SET(DATE_APP_SYS_NAME sys-date)
     # Указываем что нужно собрать приложение работы с датой и временем
@@ -2600,6 +2605,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample KEEPER: No\n")
     endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+
+    # Если нужно собрать семпл рассеяния ключевого материала по образу
+    if (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SCATTER: Yes\n")
+        # Выполняем создание приложения рассеяния ключевого материала по образу
+        add_sample(${SCATTER_APP_NAME} sample/alloc/scatter.cpp alloc)
+    # Если не нужно собирать семпл рассеяния ключевого материала по образу
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SCATTER: No\n")
+    endif (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -3708,6 +3725,16 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+
+        # Если нужно собрать семпл рассеяния ключевого материала по образу
+        if (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
+            # Выполняем сборку приложения рассеяния ключевого материала
+            target_link_libraries(
+                ${SCATTER_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -4972,6 +4999,17 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+
+        # Если нужно собрать семпл рассеяния ключевого материала по образу
+        if (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
+            # Выполняем сборку приложения рассеяния ключевого материала
+            target_link_libraries(
+                ${SCATTER_APP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с датой и временем
         if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -7433,6 +7471,12 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${TUNING_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         install(TARGETS ${KEEPER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_KEEPER_APP_SAMPLE})
+
+    # Если нужно собрать семпл рассеяния ключевого материала по образу
+    if (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
+        # Устанавливаем приложение рассеяния ключевого материала по образу
+        install(TARGETS ${SCATTER_APP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_SCATTER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с датой и временем
     if (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
