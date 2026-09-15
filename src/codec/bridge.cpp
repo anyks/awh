@@ -514,6 +514,23 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 }
 
 /**
+ * @brief Метод спроса о виде, всякой текстовой записи родном
+ *
+ * @param value значение контейнера ABC
+ * @return      признак родного вида
+ *
+ */
+bool awh::codec::Bridge::native(const abc::value_t & value) const noexcept {
+	// Выводим признак вида, всякой текстовой записи родного
+	return (
+		value.is(abc::type_t::NUL) || value.is(abc::type_t::BOOL) ||
+		value.is(abc::type_t::STRING) || value.is(abc::type_t::TIME) ||
+		value.is(abc::type_t::INT) || value.is(abc::type_t::REAL) ||
+		value.is(abc::type_t::CONTAINER)
+	);
+}
+
+/**
  * @brief Метод перевода дерева ABC в запись самого контейнера ABC
  *
  * @param value  дерево значений контейнера ABC
@@ -2781,6 +2798,22 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 				// Выходим из метода, перевод отвечен отказом
 				return false;
 			}
+			// Если вид звена перечня записи INI неведом
+			if(!this->native(item)){
+				// Если вид надлежит пропустить вовсе
+				if(this->_settings.narrow == narrow_t::SKIP)
+					// Продолжаем перебор значений перечня дальше
+					continue;
+				// Если сужение велит отвечать отказом
+				if(this->_settings.narrow == narrow_t::STRICT){
+					// Запоминаем код отказа перевода
+					this->_error = error_t::UNSUPPORTED;
+					// Выводим сообщение о виде, записи INI неведомом
+					awh::log::print("Вид звена перечня «%s» записью INI не выражается", awh::log::flag_t::WARNING, name.c_str());
+					// Выходим из метода, перевод отвечен отказом
+					return false;
+				}
+			}
 			// Выполняем долив значения к перечню свойства
 			if(!document.push(name, this->record(item), section)){
 				// Если отказ разобран правилом сужения
@@ -2793,6 +2826,36 @@ bool awh::codec::Bridge::feedINI(const abc::value_t & value, ini::document_t & d
 		}
 		// Выводим результат записи
 		return true;
+	}
+	/**
+	 * Если вид значения записи INI неведом
+	 *
+	 * @warning Спрос этот стоит ровно затем же, зачем он стоит у прочих четырёх
+	 *          дорог, и прежде дорога INI его не несла вовсе: двоичные данные,
+	 *          опознаватель, десятичное с точным разрядом и открытое расширение
+	 *          уходили записью ВСЕГДА, как если бы правилом стояло `TEXT`.
+	 *          Выходило, что настройка, обещающая отказ на всё, записью не
+	 *          выразимое, на этой дороге молчала, а обещающая пропуск - писала.
+	 *          Замерено 15.09.2026 аудитом: дерево с двоичным полем ложилось
+	 *          записью при всех трёх правилах
+	 */
+	if(!this->native(value)){
+		// Если вид надлежит пропустить вовсе
+		if(this->_settings.narrow == narrow_t::SKIP){
+			// Запоминаем признак пропуска значения правилом сужения
+			this->_skipped = true;
+			// Выходим из метода, значение пропущено
+			return true;
+		}
+		// Если сужение велит отвечать отказом
+		if(this->_settings.narrow == narrow_t::STRICT){
+			// Запоминаем код отказа перевода
+			this->_error = error_t::UNSUPPORTED;
+			// Выводим сообщение о виде, записи INI неведомом
+			awh::log::print("Вид значения «%s» записью INI не выражается", awh::log::flag_t::WARNING, name.c_str());
+			// Выходим из метода, перевод отвечен отказом
+			return false;
+		}
 	}
 	// Если установка значения свойства принята кодеком
 	if(document.set(name, this->record(value), section))

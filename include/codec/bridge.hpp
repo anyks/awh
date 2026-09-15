@@ -545,6 +545,28 @@ namespace awh {
 				 *
 				 * \~
 				 */
+				/**
+				 * \~russian
+				 * @brief Метод спроса о виде, всякой текстовой записи родном
+				 *
+				 * @details Родными считаются виды, какие всякий текстовый кодек выражает
+				 * сам: пустота, логическое значение, последовательность знаков, число
+				 * целое и дробное да отметка времени, числом записываемая. Прочие -
+				 * двоичные данные, опознаватель, десятичное с точным разрядом, целое
+				 * сверх родных видов и открытое расширение - записи неведомы, и обращение
+				 * с ними решает настройка сужения
+				 *
+				 * @param value значение контейнера ABC
+				 * @return      признак родного вида
+				 *
+				 * \~english
+				 * @brief Method of the question about a kind native to every text record
+				 * @param value value of the container ABC
+				 * @return sign of a native kind
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool native(const abc::value_t & value) const noexcept;
 				[[nodiscard]] bool encodeABC(const abc::value_t & value, string & result) noexcept;
 				/**
 				 * \~russian

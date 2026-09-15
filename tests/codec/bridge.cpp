@@ -29,6 +29,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/bridge.hpp>
+#include <codec/abc/writer.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -3648,5 +3649,72 @@ TEST(CodecBridge, ADigitLeadingNameIsJudgedTheSameAtTheRoot){
 		 << "дерево из двух полей отвечено отказом при правиле " << static_cast <uint16_t> (narrow);
 		// Выполняем проверку того, что имя поля выправлено тою же приставкой
 		ASSERT_NE(paired.find("<Item3"), string::npos) << "имя поля выправлено иначе: " << paired;
+	}
+}
+
+/**
+ * @brief Проверка того, что правило сужения спрашивается и дорогой INI
+ *
+ * @details Двоичные данные, опознаватель, десятичное с точным разрядом и открытое
+ * расширение уходили записью INI ВСЕГДА, как если бы правилом стояло `TEXT`:
+ * настройка, обещающая отказ, молчала, а обещающая пропуск - писала
+ *
+ */
+TEST(CodecBridge, TheNarrowingRuleIsAskedByTheINIRoadToo){
+	// Создаём собиратель записи контейнера ABC
+	codec::abc::writer_t writer;
+	// Образец двоичных данных
+	const uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
+	// Выполняем сборку записи с полем двоичным и полем числовым
+	ASSERT_TRUE(writer.mapBegin(2) && writer.text("blob") && writer.blob(data, sizeof(data)) &&
+	 writer.text("port") && writer.number(static_cast <uint64_t> (8080)) && writer.mapEnd());
+	// Собранная запись контейнера ABC
+	const string record(reinterpret_cast <const char *> (writer.record().data()), writer.record().size());
+	// Выполняем перебор всех правил сужения
+	for(auto & narrow : vector <codec::Bridge::narrow_t> {
+		codec::Bridge::narrow_t::STRICT, codec::Bridge::narrow_t::TEXT, codec::Bridge::narrow_t::SKIP
+	}){
+		// Создаём мост перевода записей
+		codec::Bridge bridge;
+		// Получаем настройки перевода
+		codec::Bridge::settings_t settings = bridge.settings();
+		// Устанавливаем правило обращения с видами, записи неведомыми
+		settings.narrow = narrow;
+		// Выполняем установку настроек перевода
+		bridge.settings(settings);
+		// Собираемое дерево значений
+		codec::abc::value_t value;
+		// Выполняем разбор записи контейнера ABC в дерево значений
+		ASSERT_TRUE(bridge.decode(record, value, codec::Bridge::format_t::ABC));
+		// Собираемая запись INI
+		string result = "";
+		// Выполняем перевод дерева в запись INI
+		const bool ok = bridge.encode(value, result, codec::Bridge::format_t::INI);
+		// Определяем правило обращения с видами, записи неведомыми
+		switch(static_cast <uint8_t> (narrow)){
+			// Если сужение велит отвечать отказом
+			case static_cast <uint8_t> (codec::Bridge::narrow_t::STRICT): {
+				// Выполняем проверку того, что перевод отвечен отказом
+				ASSERT_FALSE(ok) << "строгое сужение приняло двоичное поле записью INI: " << result;
+				// Выполняем проверку того, что отказ назван невыразимостью
+				ASSERT_EQ(bridge.error(), codec::Bridge::error_t::UNSUPPORTED) << "отказ назван причиной иною";
+			} break;
+			// Если вид надлежит обратить в последовательность знаков
+			case static_cast <uint8_t> (codec::Bridge::narrow_t::TEXT): {
+				// Выполняем проверку того, что перевод выполнен
+				ASSERT_TRUE(ok) << "обращение в знаки отвечено отказом";
+				// Выполняем проверку того, что двоичное поле уложено записью
+				ASSERT_NE(result.find("blob"), string::npos) << "обращение в знаки поле потеряло: " << result;
+			} break;
+			// Если вид надлежит пропустить вовсе
+			case static_cast <uint8_t> (codec::Bridge::narrow_t::SKIP): {
+				// Выполняем проверку того, что перевод выполнен
+				ASSERT_TRUE(ok) << "пропуск вида отвечен отказом";
+				// Выполняем проверку того, что двоичное поле пропущено
+				ASSERT_EQ(result.find("blob"), string::npos) << "пропуск вида поле всё же уложил: " << result;
+				// Выполняем проверку того, что соседнее поле уцелело
+				ASSERT_NE(result.find("port"), string::npos) << "пропуск вида унёс и соседнее поле: " << result;
+			} break;
+		}
 	}
 }
