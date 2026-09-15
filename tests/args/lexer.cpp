@@ -538,7 +538,7 @@ TEST(ArgsLexer, ASingleDashIsAnOperand) {
 		values.push_back(string(lexeme.value));
 		// Продолжаем разбор набора дальше
 		return true;
-	}, [&failures](const error_t, const location_t) -> bool {
+	}, [&failures](const args::error_t, const location_t) -> bool {
 		// Увеличиваем число извещений об отказе разбора
 		failures++;
 		// Продолжаем разбор набора дальше
@@ -581,9 +581,9 @@ TEST(ArgsLexer, ASingleDashIsAnOperand) {
 	static_cast <void> (other.parse(second, [](const lexeme_t &) -> bool {
 		// Продолжаем разбор набора дальше
 		return true;
-	}, [&refusals](const error_t error, const location_t) -> bool {
+	}, [&refusals](const args::error_t error, const location_t) -> bool {
 		// Если отказом оказалось пустое имя параметра
-		if(error == error_t::EMPTY_KEY)
+		if(error == args::error_t::EMPTY_KEY)
 			// Увеличиваем число извещений об отказе разбора
 			refusals++;
 		// Продолжаем разбор набора дальше
