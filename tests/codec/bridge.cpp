@@ -3601,3 +3601,52 @@ TEST(CodecBridge, TheContainerRecordIsARoadOfItsOwn){
 	// Выполняем проверку того, что запись негодная отвечена отказом
 	ASSERT_FALSE(bridge.decode(string("\x7F\x7F\x7F\x7F", 4), empty, codec::Bridge::format_t::ABC)) << "негодная запись контейнера принята разбором";
 }
+
+/**
+ * @brief Проверка того, что имя, с цифры начатое, судится одинаково у корня и у поля
+ *
+ * @details Приставка `Item` налагалась лишь на имена полей, а имя единственного
+ * поля, корнем записи становящееся, шло мимо неё: дерево `{«3»: …}` отвечало
+ * отказом при строгом сужении и ложилось именем `_x33_` при обращении в знаки,
+ * тогда как то же поле рядом с соседом ложилось узлом `Item3` при всех правилах
+ *
+ */
+TEST(CodecBridge, ADigitLeadingNameIsJudgedTheSameAtTheRoot){
+	// Выполняем перебор всех правил сужения
+	for(auto & narrow : vector <codec::Bridge::narrow_t> {
+		codec::Bridge::narrow_t::STRICT, codec::Bridge::narrow_t::TEXT, codec::Bridge::narrow_t::SKIP
+	}){
+		// Создаём мост перевода записей
+		codec::Bridge bridge;
+		// Получаем настройки перевода
+		codec::Bridge::settings_t settings = bridge.settings();
+		// Устанавливаем правило обращения с видами, записи неведомыми
+		settings.narrow = narrow;
+		// Выполняем установку настроек перевода
+		bridge.settings(settings);
+		// Собираемое дерево значений из ОДНОГО поля, с цифры начатого
+		codec::abc::value_t alone;
+		// Выполняем разбор дерева из одного поля
+		ASSERT_TRUE(bridge.decode("{\"3\":{\"a\":1}}", alone, codec::Bridge::format_t::JSON));
+		// Собираемая запись разметки у дерева из одного поля
+		string single = "";
+		// Выполняем перевод дерева из одного поля в запись разметки
+		ASSERT_TRUE(bridge.encode(alone, single, codec::Bridge::format_t::XML))
+		 << "дерево из одного поля, с цифры начатого, отвечено отказом при правиле " << static_cast <uint16_t> (narrow);
+		// Выполняем проверку того, что имя выправлено приставкой
+		ASSERT_NE(single.find("<Item3"), string::npos) << "имя корня выправлено иначе, нежели имя поля: " << single;
+		// Выполняем проверку того, что содержимое поля не пропало
+		ASSERT_NE(single.find("a=\"1\""), string::npos) << "содержимое корневого поля пропало из записи: " << single;
+		// Собираемое дерево значений из того же поля С СОСЕДОМ
+		codec::abc::value_t neighboured;
+		// Выполняем разбор дерева из двух полей
+		ASSERT_TRUE(bridge.decode("{\"3\":{\"a\":1},\"b\":2}", neighboured, codec::Bridge::format_t::JSON));
+		// Собираемая запись разметки у дерева из двух полей
+		string paired = "";
+		// Выполняем перевод дерева из двух полей в запись разметки
+		ASSERT_TRUE(bridge.encode(neighboured, paired, codec::Bridge::format_t::XML))
+		 << "дерево из двух полей отвечено отказом при правиле " << static_cast <uint16_t> (narrow);
+		// Выполняем проверку того, что имя поля выправлено тою же приставкой
+		ASSERT_NE(paired.find("<Item3"), string::npos) << "имя поля выправлено иначе: " << paired;
+	}
+}
