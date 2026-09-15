@@ -3521,3 +3521,83 @@ TEST(CodecBridge, TOMLTimestampsSurviveTheReading) {
 		ASSERT_EQ(second, third) << "круг сдвинулся на третьем проходе; было: " << second << " стало: " << third;
 	}
 }
+
+/**
+ * @brief Проверка того, что обвязка пробелами вида записи не меняет
+ *
+ * @details Правило ведущего нуля спрашивалось у записи исходной, а разбор числа
+ * шёл по очищенной от обвязки: один пробел правило обходил, и ` 007` ложилось
+ * числом 7 там, где `007` оставалось последовательностью знаков. Тем же
+ * расхождением логическое значение спрашивалось у записи исходной, и ` 42 `
+ * выходило числом, а ` true ` оставалось строкою
+ *
+ */
+TEST(CodecBridge, TheSurroundingSpacesDoNotChangeTheKind){
+	// Создаём мост перевода записей
+	codec::Bridge bridge;
+	// Выполняем перебор образцов записи с обвязкой пробелами и без неё
+	for(auto & sample : vector <pair <string, string>> {
+		// Ведущий нуль числом не признаётся ни с обвязкой, ни без неё
+		{"007", "\"007\""}, {" 007", "\" 007\""},
+		{"-007", "\"-007\""}, {" -007 ", "\" -007 \""},
+		{"+007", "\"+007\""},
+		// Число обвязкою пробелов числом быть не перестаёт
+		{"42", "42"}, {" 42 ", "42"}, {"0.5", "0.5"}, {" 0.5 ", "0.5"},
+		// Логическое значение обвязкою пробелов логическим быть не перестаёт
+		{"true", "true"}, {" true ", "true"}, {" false ", "false"}
+	}){
+		// Собираемое дерево значений
+		codec::abc::value_t value;
+		// Выполняем разбор записи разметки с образцом значения
+		ASSERT_TRUE(bridge.decode(string("<r><k>").append(sample.first).append("</k></r>"), value, codec::Bridge::format_t::XML))
+		 << "разбор образца [" << sample.first << "] отвечен отказом";
+		// Собираемая запись JSON
+		string result = "";
+		// Выполняем запись собранного дерева значений
+		ASSERT_TRUE(bridge.encode(value, result, codec::Bridge::format_t::JSON))
+		 << "запись образца [" << sample.first << "] отвечена отказом";
+		// Выполняем проверку вида, выведенного у образца
+		ASSERT_NE(result.find(string("\"k\": ").append(sample.second)), string::npos)
+		 << "образец [" << sample.first << "] выведен видом иным: " << result;
+	}
+}
+
+/**
+ * @brief Проверка перевода дерева в запись самого контейнера ABC
+ *
+ * @details Вид `format_t::ABC` объявлен перечнем и описан записью двоичной, а
+ * спрос его отвечался «вид мостом ещё не переводится»: потребитель, вид записи
+ * выбирающий настройкой, получал отказ на вид, мостом обещанный
+ *
+ */
+TEST(CodecBridge, TheContainerRecordIsARoadOfItsOwn){
+	// Создаём мост перевода записей
+	codec::Bridge bridge;
+	// Собираемое дерево значений
+	codec::abc::value_t value;
+	// Выполняем разбор записи JSON с образцами всех простых видов
+	ASSERT_TRUE(bridge.decode("{\"host\":\"localhost\",\"port\":8080,\"ratio\":0.25,\"on\":true,\"list\":[1,2,3]}", value, codec::Bridge::format_t::JSON));
+	// Собираемая запись контейнера ABC
+	string record = "";
+	// Выполняем перевод дерева в запись контейнера ABC
+	ASSERT_TRUE(bridge.encode(value, record, codec::Bridge::format_t::ABC)) << "перевод дерева в запись контейнера отвечен отказом";
+	// Выполняем проверку того, что запись контейнера собрана непустою
+	ASSERT_FALSE(record.empty()) << "запись контейнера собрана пустою";
+	// Собираемое дерево значений обратного перевода
+	codec::abc::value_t circle;
+	// Выполняем разбор записи контейнера ABC в дерево значений
+	ASSERT_TRUE(bridge.decode(record, circle, codec::Bridge::format_t::ABC)) << "разбор записи контейнера отвечен отказом";
+	// Собираемые записи JSON обоих деревьев
+	string before = "", after = "";
+	// Выполняем запись обоих деревьев видом JSON
+	ASSERT_TRUE(bridge.encode(value, before, codec::Bridge::format_t::JSON));
+	ASSERT_TRUE(bridge.encode(circle, after, codec::Bridge::format_t::JSON));
+	// Выполняем проверку того, что круг перевода значения сохранил
+	ASSERT_EQ(before, after) << "круг через запись контейнера значения изменил";
+	// Выполняем проверку того, что пустая запись контейнера отвечена отказом
+	codec::abc::value_t empty;
+	ASSERT_FALSE(bridge.decode("", empty, codec::Bridge::format_t::ABC)) << "пустая запись контейнера принята разбором";
+	ASSERT_EQ(bridge.error(), codec::Bridge::error_t::PARSING) << "отказ разбора пустой записи назван причиной иною";
+	// Выполняем проверку того, что запись негодная отвечена отказом
+	ASSERT_FALSE(bridge.decode(string("\x7F\x7F\x7F\x7F", 4), empty, codec::Bridge::format_t::ABC)) << "негодная запись контейнера принята разбором";
+}

@@ -525,6 +525,46 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
+				 * @brief Метод перевода дерева ABC в запись самого контейнера ABC
+				 *
+				 * @details Дорога эта не переводит ничего: запись контейнера собирается
+				 * им самим. Мост же ставит её вровень с прочими видами, дабы потребитель,
+				 * вид записи выбирающий настройкой, не знал о ABC особого хода
+				 *
+				 * @warning Запись эта ДВОИЧНА и укладывается в строку октетами как есть
+				 *
+				 * @param value  дерево значений контейнера ABC
+				 * @param result собранная запись контейнера ABC
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a tree of ABC into a record of the container ABC itself
+				 * @param value tree of the values of the container ABC
+				 * @param result assembled record of the container ABC
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool encodeABC(const abc::value_t & value, string & result) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод перевода записи контейнера ABC в дерево ABC
+				 *
+				 * @param text   запись контейнера ABC для перевода
+				 * @param result собранное дерево значений контейнера ABC
+				 * @return       результат перевода
+				 *
+				 * \~english
+				 * @brief Method of the translation of a record of the container ABC into a tree of ABC
+				 * @param text record of the container ABC for the translation
+				 * @param result assembled tree of the values of the container ABC
+				 * @return result of the translation
+				 *
+				 * \~
+				 */
+				[[nodiscard]] bool decodeABC(const string_view text, abc::value_t & result) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод перевода дерева ABC в запись JSON
 				 *
 				 * @param value  дерево значений контейнера ABC

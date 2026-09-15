@@ -350,7 +350,7 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
 	// Значение пары расширения деревом контейнера ABC
 	abc::value_t current;
 	// Если обращение значения расширения отказом завершилось
-	if(!this->convert(entry, value, current)){
+	if(!this->convert(entry, value, current, this->_reader.settings().mode)){
 		// Выводим в лог сообщение о несоответствии значения виду
 		awh::log::print(
 			"CEF extension key \"%s\" holds a value of another kind: %s",
@@ -403,9 +403,7 @@ bool awh::codec::cef::Document::inject(const string & key, const string & value)
  * @param result значение дерева контейнера ABC
  * @return       признак успешности обращения значения
  */
-bool awh::codec::cef::Document::convert(const entry_t * entry, const string & value, abc::value_t & result) noexcept {
-	// Получаем строгость сличения ключей расширения со словарём
-	const mode_t mode = this->_reader.settings().mode;
+bool awh::codec::cef::Document::convert(const entry_t * entry, const string & value, abc::value_t & result, const mode_t mode) noexcept {
 	// Если значение пары расширения пусто
 	if(value.empty()){
 		/**
@@ -1085,6 +1083,126 @@ string awh::codec::cef::Document::dump() const noexcept {
 	 * @note Найдено ворошителем 04.09.2026: запись с непредставимым ключом выдавалась
 	 *       одним заголовком, а расширение пропадало без всякого знака о том
 	 */
+	/**
+	 * Если значение расширения виду, словарём назначенному, не отвечает
+	 *
+	 * @details Словарь назначает полю вид, и разбор читает значение именно им. Значение,
+	 * виду чуждое, записывается знаками исправно, а обратно НЕ ЧИТАЕТСЯ: кодек рождает
+	 * запись, какую сам прочесть не может, и уходит она принимающему как годная
+	 *
+	 * @warning Замерено щупом видов 15.09.2026: из одиннадцати значений, видам словаря
+	 *          чуждых, ДЕВЯТЬ записывались и своим же строгим чтением отвергались -
+	 *          логическое в поле адреса, число в поле аппаратного адреса, дробное в поле
+	 *          целого, знаки в поле метки времени. Прежде поверка эта стояла у дробных
+	 *          («inf» и «nan», 14.09.2026) и у целых (15.09.2026), то есть разряд
+	 *          закрывался по одной ветви, тогда как он общий для ВСЕХ видов словаря
+	 *
+	 * @note Поверка ставится ЗДЕСЬ, а не у писателя: здесь уже есть и словарь, и
+	 *       обращение значений ходом `convert`, и заводить второй договор видов в
+	 *       писателе значило бы держать один договор в двух местах. Ход `convert`
+	 *       зовётся ЛИШЬ для значений знаковых - у прочих довольно сличить вид дерева с
+	 *       видом словаря, и разбора не требуется вовсе
+	 */
+	if(this->_root.contains(EXTENSION)){
+		// Получаем пары расширения записи из дерева
+		const abc::value_t & extension = this->_root.at(string("/") + EXTENSION);
+		// Выполняем перебор всех пар расширения записи
+		for(size_t i = 0; (extension.type() == abc::type_t::MAP) && (i < extension.size()); i++){
+			// Получаем имя ключа очередной пары расширения
+			const string & key = extension.key(i).text();
+			// Выполняем розыск записи словаря по ключу расширения
+			const entry_t * entry = dictionary::find(key);
+			// Если ключ словарю неизвестен либо вид его знаками является, поверять нечего
+			if((entry == nullptr) || (entry->type == type_t::STRING) || (entry->type == type_t::NONE))
+				// Переходим к следующей паре расширения
+				continue;
+			// Получаем значение, ключом объявленное
+			const abc::value_t & current = extension[key];
+			// Количество значений, ключом объявленных: повтор ключа даёт перечень
+			const size_t count = ((current.type() == abc::type_t::ARRAY) ? current.size() : 1);
+			// Выполняем перебор всех значений, ключом объявленных
+			for(size_t j = 0; j < count; j++){
+				// Получаем очередное значение, ключом объявленное
+				const abc::value_t & item = ((current.type() == abc::type_t::ARRAY) ? current[j] : current);
+				// Значение дерева, обращением наполняемое
+				abc::value_t checked;
+				// Признак того, что значение виду словаря отвечает
+				bool fits = true;
+				/**
+				 * Значения ЗНАКОВЫЕ поверке видом не подлежат вовсе
+				 *
+				 * @details Обратимость текстовая обещана кодеком при сличении выключенном:
+				 * значения кладутся в дерево как есть, и запись обязана собираться обратно
+				 * дословно. Знаки же, виду словаря не отвечающие, могли прийти ровно оттуда
+				 * - из мягкого разбора, - и отвергать их при записи значило бы отказывать
+				 * кодеку в обороте собственного чтения
+				 *
+				 * @warning Первая редакция поверки 15.09.2026 отвергала и знаковые, обращая
+				 *          их строго. Ворошитель показал цену немедленно: переписанных
+				 *          записей стало 11823 вместо 12465 - 642 записи, кодеком же и
+				 *          прочитанные, обратно не собирались. Замер этот и указал, что
+				 *          поверка противоречит намеренному решению, записанному у
+				 *          `reader.hpp`
+				 *
+				 * @note Поверяются оттого лишь значения НЕЗНАКОВЫЕ: число в поле адреса,
+				 *       логическое в поле дробного - такие в дерево кладёт потребитель, а
+				 *       разбор их не рождает никогда
+				 */
+				if(item.type() != abc::type_t::STRING){
+					/**
+					 * Определяем вид, словарём назначенный
+					 */
+					switch(static_cast <uint8_t> (entry->type)){
+						// Если словарь назначает полю адрес сети либо метку времени
+						case static_cast <uint8_t> (type_t::MAC):
+						case static_cast <uint8_t> (type_t::IPV4):
+						case static_cast <uint8_t> (type_t::IPV6):
+						case static_cast <uint8_t> (type_t::ADDRESS):
+							/**
+							 * Выводим признак соответствия вида
+							 *
+							 * @note Адрес сети знаками записывается ВСЕГДА: число адресом
+							 *       быть не может, ибо запись его словарём не назначена
+							 */
+							fits = false;
+						break;
+						// Если словарь назначает полю логическое значение
+						case static_cast <uint8_t> (type_t::BOOLEAN):
+							// Логическому виду отвечает лишь логическое значение
+							fits = (item.type() == abc::type_t::BOOL);
+						break;
+						// Если словарь назначает полю целое число
+						case static_cast <uint8_t> (type_t::INTEGER):
+						case static_cast <uint8_t> (type_t::UNSIGNED):
+						case static_cast <uint8_t> (type_t::TIMESTAMP):
+							// Целому виду отвечает лишь целое значение
+							fits = ((static_cast <uint32_t> (item.type()) &
+							        (static_cast <uint32_t> (abc::type_t::SIGNED) | static_cast <uint32_t> (abc::type_t::UNSIGNED))) > 0);
+						break;
+						// Если словарь назначает полю дробное число
+						case static_cast <uint8_t> (type_t::DOUBLE):
+							// Дробному виду отвечает и целое, и дробное значение
+							fits = ((static_cast <uint32_t> (item.type()) &
+							        (static_cast <uint32_t> (abc::type_t::SIGNED) | static_cast <uint32_t> (abc::type_t::UNSIGNED) |
+							         static_cast <uint32_t> (abc::type_t::FLOAT) | static_cast <uint32_t> (abc::type_t::DOUBLE))) > 0);
+						break;
+					}
+				}
+				// Если значение виду, словарём назначенному, не отвечает
+				if(!fits){
+					// Устанавливаем код ошибки непредставимого значения
+					const_cast <Document *> (this)->_error = error_t::UNREPRESENTABLE_VALUE;
+					// Выводим в лог сообщение о значении, виду словаря чуждом
+					awh::log::print(
+						"CEF extension key \"%s\" holds a value alien to the kind given by the dictionary",
+						awh::log::flag_t::CRITICAL, key.c_str()
+					);
+					// Выводим пустую запись CEF
+					return string("");
+				}
+			}
+		}
+	}
 	if(!const_cast <writer_t &> (this->_writer).write(this->_root, result)){
 		// Запоминаем код ошибки сборки записи
 		const_cast <Document *> (this)->_error = this->_writer.error();

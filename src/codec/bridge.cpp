@@ -514,6 +514,73 @@ bool awh::codec::Bridge::absorb(const json::Document::value_t & value, abc::valu
 }
 
 /**
+ * @brief Метод перевода дерева ABC в запись самого контейнера ABC
+ *
+ * @param value  дерево значений контейнера ABC
+ * @param result собранная запись контейнера ABC
+ * @return       результат перевода
+ *
+ * @warning Дорога эта прежде не была заведена вовсе: вид `format_t::ABC`
+ *          объявлен перечнем и описан здесь же записью двоичной, а спрос его
+ *          отвечался «вид мостом ещё не переводится». Потребитель, вид записи
+ *          выбирающий настройкой, получал отказ на вид, мостом обещанный.
+ *          Замерено 15.09.2026 аудитом
+ *
+ */
+bool awh::codec::Bridge::encodeABC(const abc::value_t & value, string & result) noexcept {
+	// Собираемая запись контейнера ABC
+	vector <uint8_t> buffer;
+	// Код отказа сборки записи контейнера
+	abc::error_t error = abc::error_t::NONE;
+	// Если сборка записи контейнера отвечена отказом
+	if(!value.dump(buffer, error)){
+		// Запоминаем код отказа перевода
+		this->_error = error_t::WRITING;
+		// Выводим сообщение об отказе сборки записи контейнера
+		awh::log::print("Запись контейнера ABC собрать не удалось: код отказа %u", awh::log::flag_t::WARNING, static_cast <uint16_t> (error));
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
+	// Выполняем укладку собранной записи октетами как они есть
+	result.assign(reinterpret_cast <const char *> (buffer.data()), buffer.size());
+	// Сообщаем, что перевод дерева выполнен
+	return true;
+}
+
+/**
+ * @brief Метод перевода записи контейнера ABC в дерево ABC
+ *
+ * @param text   запись контейнера ABC для перевода
+ * @param result собранное дерево значений контейнера ABC
+ * @return       результат перевода
+ *
+ */
+bool awh::codec::Bridge::decodeABC(const string_view text, abc::value_t & result) noexcept {
+	// Если запись контейнера подана пустою
+	if(text.empty()){
+		// Запоминаем код отказа перевода
+		this->_error = error_t::PARSING;
+		// Выводим сообщение о пустой записи контейнера
+		awh::log::print("Запись контейнера ABC подана пустою", awh::log::flag_t::WARNING);
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
+	// Если разбор записи контейнера отвечен отказом
+	if(!result.parse(text.data(), text.size())){
+		// Выполняем очистку собранного дерева значений
+		result.clear();
+		// Запоминаем код отказа перевода
+		this->_error = error_t::PARSING;
+		// Выводим сообщение об отказе разбора записи контейнера
+		awh::log::print("Запись контейнера ABC разобрать не удалось", awh::log::flag_t::WARNING);
+		// Выходим из метода, перевод отвечен отказом
+		return false;
+	}
+	// Сообщаем, что перевод записи выполнен
+	return true;
+}
+
+/**
  * @brief Метод перевода дерева ABC в запись JSON
  *
  * @param value  дерево значений контейнера ABC
@@ -848,26 +915,45 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 		// Выводим значение последовательностью знаков
 		return abc::value_t(text);
 	/**
+	 * Запись, от обвязки пробелами очищенная
+	 *
+	 * @warning Очистка стоит ПЕРВЫМ ходом, и все спросы вида идут по ней одной.
+	 *          Прежде ведущий нуль спрашивался у записи ИСХОДНОЙ, а разбор числа
+	 *          шёл по очищенной, отчего один пробел правило обходил: `007`
+	 *          оставалось последовательностью знаков, а ` 007` ложилось числом 7,
+	 *          `-007` оставалось строкой, а ` -007 ` ложилось числом -7. Разметке
+	 *          же и записи INI обвязка пробелами у значения обычна. Тем же
+	 *          расхождением логическое значение спрашивалось у записи исходной,
+	 *          и ` 42 ` выходило числом, а ` true ` оставалось строкою - два
+	 *          разных ответа на один вопрос об одной и той же обвязке. Замерено
+	 *          15.09.2026 аудитом, закреплено проверкой
+	 *          `CodecBridge.TheSurroundingSpacesDoNotChangeTheKind`
+	 */
+	string record = text;
+	// Выполняем очистку записи от обвязки пробелами
+	awh::fmk::transform(record, awh::fmk::transform_t::TRIM);
+	// Если запись пуста
+	if(record.empty())
+		// Выводим значение последовательностью знаков
+		return abc::value_t(text);
+	/**
 	 * Определяем запись с ведущим нулём
 	 *
 	 * @note Ведущий нуль допускается лишь у записи `0` самой и у дробной записи
 	 *       вида `0.5`, где он значим
 	 */
 	const bool zeroed = (
-		((text.front() == '0') && (text.size() > 1) && (text.at(1) != '.')) ||
-		((text.front() == '-') && (text.size() > 2) && (text.at(1) == '0') && (text.at(2) != '.'))
+		((record.front() == '0') && (record.size() > 1) && (record.at(1) != '.')) ||
+		((record.front() == '-') && (record.size() > 2) && (record.at(1) == '0') && (record.at(2) != '.')) ||
+		((record.front() == '+') && (record.size() > 2) && (record.at(1) == '0') && (record.at(2) != '.'))
 	);
 	// Если запись ведущего нуля не несёт
 	if(!zeroed){
-		// Запись числа, от обвязки пробелами очищенная
-		string record = text;
-		// Выполняем очистку записи от обвязки пробелами
-		awh::fmk::transform(record, awh::fmk::transform_t::TRIM);
 		// Если запись несёт ведущий плюс, разбору не поддающийся
-		if(!record.empty() && (record.front() == '+'))
+		if(record.front() == '+')
 			// Выполняем отбрасывание ведущего плюса
 			record.erase(0, 1);
-		// Если запись пуста
+		// Если запись без ведущего плюса пуста
 		if(record.empty())
 			// Выводим значение последовательностью знаков
 			return abc::value_t(text);
@@ -933,11 +1019,11 @@ awh::codec::abc::value_t awh::codec::Bridge::infer(const string & text) const no
 		}
 	}
 	// Если запись означает истину
-	if(awh::fmk::compare("true", text))
+	if(awh::fmk::compare("true", record))
 		// Выводим значение логическою истиной
 		return abc::value_t(true);
 	// Если запись означает ложь
-	if(awh::fmk::compare("false", text))
+	if(awh::fmk::compare("false", record))
 		// Выводим значение логическою ложью
 		return abc::value_t(false);
 	// Выводим значение последовательностью знаков
@@ -3792,6 +3878,10 @@ bool awh::codec::Bridge::encode(const abc::value_t & value, string & result, con
 	};
 	// Определяем вид записи, в который переводится дерево
 	switch(static_cast <uint8_t> (format)){
+		// Если запись переводится в вид самого контейнера ABC
+		case static_cast <uint8_t> (format_t::ABC):
+			// Выводим результат перевода дерева в запись контейнера ABC
+			return guardFn(this->encodeABC(value, result));
 		// Если запись переводится в вид JSON
 		case static_cast <uint8_t> (format_t::JSON):
 			// Выводим результат перевода дерева в запись JSON
@@ -3847,6 +3937,10 @@ bool awh::codec::Bridge::decode(const string_view text, abc::value_t & result, c
 	result.clear();
 	// Определяем вид поданной записи
 	switch(static_cast <uint8_t> (format)){
+		// Если подана запись вида самого контейнера ABC
+		case static_cast <uint8_t> (format_t::ABC):
+			// Выводим результат перевода записи контейнера ABC в дерево
+			return this->decodeABC(text, result);
 		// Если подана запись вида JSON
 		case static_cast <uint8_t> (format_t::JSON):
 			// Выводим результат перевода записи JSON в дерево
