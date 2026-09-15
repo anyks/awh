@@ -66,6 +66,7 @@ const char * awh::codec::syslog::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::INVALID_HOSTNAME): return "name of the host contains a character not allowed by the description";
 		// Если опознаватель работы построен ошибочно
 		case static_cast <uint8_t> (error_t::INVALID_PROCESS): return "identifier of the process is built erroneously";
+		case static_cast <uint8_t> (error_t::INVALID_HEADER_FIELD): return "field of the header contains a character not allowed by the description";
 		// Если скобка структурированных данных не закрыта
 		case static_cast <uint8_t> (error_t::UNCLOSED_STRUCTURE): return "bracket of the structured data is not closed";
 		// Если опознаватель структурированных данных построен ошибочно

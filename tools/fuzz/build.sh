@@ -317,8 +317,17 @@ mkdir -p "$OUTPUT"
 #       и прогон отчитывается успехом по коду, какого в нём уже нет
 rm -f "$OUTPUT/$CODEC-fuzz" "$OUTPUT/$CODEC-fuzz.exe"
 
+##
 # Собираем перечень частей тела фреймворка, каких требует журнал работы
+#
+# @note Слой файловой системы «src/sys/fs.cpp» и опора его «src/sys/os.cpp» стоят здесь,
+#       в перечне ОБЩЕМ, а не у кодеков поимённо: к ходу `fs_t` перешли ВСЕ девять
+#       кодеков, и поимённая приписка отстала бы при первом же новом. Прежде они стояли
+#       лишь у «cef» и «syslog», и ворошители прочих семи не собирались вовсе -
+#       связывание отвечало восемью нераскрытыми именами «awh::Filesystem»
+##
 FRAMEWORK="src/sys/log.cpp src/sys/chrono.cpp src/sys/fmk.cpp src/net/nwt.cpp
+	src/sys/fs.cpp src/sys/os.cpp
 	src/encoding/unicode/normalize.cpp src/encoding/unicode/table.cpp
 	src/encoding/unicode/unicode.cpp src/encoding/unicode/utf8.cpp
 	src/encoding/charset/charset.cpp src/encoding/charset/table.cpp
@@ -508,7 +517,22 @@ for PART in $FRAMEWORK; do
 		CHANGED="$(find "$ROOT/include" -name '*.hpp' -newer "$OUTPUT/$NAME.o" 2>/dev/null | head -1)"
 	fi
 	if [ ! -f "$OUTPUT/$NAME.o" ] || [ "$ROOT/$PART" -nt "$OUTPUT/$NAME.o" ] || [ -n "$CHANGED" ]; then
-		$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/$PART" -o "$OUTPUT/$NAME.o"
+		##
+		# Слой файловой системы у macOS написан на Objective-C++
+		#
+		# @details «src/sys/fs.cpp» зовёт там «NSFileManager», и обычным C++ он не
+		#          собирается вовсе: приходит «expected unqualified-id» прямо в заголовках
+		#          основы. Отбор этот повторяет и круг сборки частей кодека ниже, и
+		#          CMakeLists.txt, где тому же файлу и только ему назначены эти ключи
+		##
+		if [ "$(basename "$PART")" = "fs.cpp" ] && [ "$(uname -s)" = "Darwin" ]; then
+			# Выполняем сборку слоя файловой системы средствами Objective-C++
+			$COMPILER $OPTIONS -Wno-c++11-narrowing -x objective-c++ -fobjc-arc -c "$ROOT/$PART" -o "$OUTPUT/$NAME.o"
+		# Иначе собираем часть обычным образом
+		else
+			# Выполняем сборку очередной части тела фреймворка
+			$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/$PART" -o "$OUTPUT/$NAME.o"
+		fi
 	fi
 	# Добавляем собранное к перечню объектных файлов
 	OBJECTS="$OBJECTS $OUTPUT/$NAME.o"
@@ -660,18 +684,19 @@ case "$CODEC" in
 			##
 			# Работа с файловой системой и нити берутся там же
 			#
-			# @note Движок этой системы зовёт и то, и другое: наблюдение за файлами он
-			#       ведёт через объект файловой системы, а долгие работы уводит в нить,
-			#       чтобы не держать оборот опроса. У движков наречий POSIX ни того, ни
-			#       другого в теле нет, оттого части эти и не значились в общем перечне,
-			#       а связывание валилось на «awh::Filesystem::Filesystem» и
+			# @note Движок этой системы уводит долгие работы в нить, чтобы не держать
+			#       оборот опроса, - у движков наречий POSIX того в теле нет, оттого нити
+			#       и не значились в общем перечне, а связывание валилось на
 			#       «awh::fiber::dismissed»
+			#
+			# @warning Слой файловой системы отсюда СНЯТ 15.09.2026: он переехал в перечень
+			#          общий, ибо к ходу `fs_t` перешли все девять кодеков. Оставь его
+			#          здесь - и связывание у этой системы отвечало бы двойными телами
 			##
 			TARGET="$TARGET
 				$ROOT/src/net/backend/win/tunnel.cpp
 				$ROOT/src/net/backend/win/qos.cpp
 				$ROOT/src/net/backend/win/message.cpp
-				$ROOT/src/sys/fs.cpp
 				$ROOT/src/sys/fiber.cpp"
 			##
 			# «-luuid» нужна работе с файловой системой
@@ -750,7 +775,7 @@ CODEC_DIR="${CODEC%%-*}"
 #          трогающих вовсе. Замер 02.09.2026: маска повалила «csv», «blockprobe» и
 #          «deadlockprobe», прежде собиравшиеся
 ##
-SHARED="$ROOT/src/codec/numeric.cpp $ROOT/src/codec/replace.cpp"
+SHARED="$ROOT/src/codec/numeric.cpp"
 
 ##
 # Подмена целевого файла временным добавлена сюда 07.09.2026
@@ -784,7 +809,7 @@ SHARED="$ROOT/src/codec/numeric.cpp $ROOT/src/codec/replace.cpp"
 DEPENDS=""
 case "$CODEC_DIR" in
 	# Кодек CEF стоит на дереве ABC, а проверку адресов сети ведёт «net_addr_t»
-	cef) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp) $ROOT/src/net/addr.cpp $ROOT/src/net/net.cpp $ROOT/src/sys/fs.cpp $ROOT/src/sys/os.cpp" ;;
+	cef) DEPENDS="$(echo "$ROOT/src/codec/abc/"*.cpp) $ROOT/src/net/addr.cpp $ROOT/src/net/net.cpp" ;;
 	##
 	# Кодек SysLog стоит на дереве ABC; сетей он не разбирает вовсе, и «net_addr_t» ему не нужен
 	#
@@ -798,7 +823,7 @@ case "$CODEC_DIR" in
 	#          «libdependence.a», а её на отладочных машинах нет и собирается она
 	#          десятками минут. Без третьей стороны ворошитель кодека собирается всюду
 	#
-	syslog) DEPENDS="$ROOT/src/codec/abc/common.cpp $ROOT/src/codec/abc/encoding.cpp $ROOT/src/codec/abc/reader.cpp $ROOT/src/codec/abc/writer.cpp $ROOT/src/codec/abc/document.cpp $ROOT/src/codec/abc/value.cpp $ROOT/src/codec/abc/header.cpp $ROOT/src/codec/abc/schedule.cpp $ROOT/src/cryptography/hash.cpp $ROOT/src/num/bignum.cpp $ROOT/src/sys/fs.cpp $ROOT/src/sys/os.cpp" ;;
+	syslog) DEPENDS="$ROOT/src/codec/abc/common.cpp $ROOT/src/codec/abc/encoding.cpp $ROOT/src/codec/abc/reader.cpp $ROOT/src/codec/abc/writer.cpp $ROOT/src/codec/abc/document.cpp $ROOT/src/codec/abc/value.cpp $ROOT/src/codec/abc/header.cpp $ROOT/src/codec/abc/schedule.cpp $ROOT/src/cryptography/hash.cpp $ROOT/src/num/bignum.cpp" ;;
 	##
 	# Мост стоит на ВСЕХ кодеках разом
 	#

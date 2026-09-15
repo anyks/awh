@@ -104,6 +104,9 @@ const char * awh::codec::json::message(const error_t error) noexcept {
 		// Если запись числа не отвечает стандарту
 		case error_t::INVALID_NUMBER:
 			return "invalid number";
+		// Если значение установленными настройками записи непредставимо
+		case error_t::UNWRITABLE_VALUE:
+			return "value is not representable by the writing settings";
 		// Если число не представимо затребованным видом
 		case error_t::NUMBER_OUT_OF_RANGE:
 			return "number out of range";

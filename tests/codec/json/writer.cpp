@@ -1267,8 +1267,14 @@ TEST(CodecJsonWriter, RefusalReportsErrorCode) {
 		json::writer_t writer;
 		// Выполняем проверку отказа записи нечисла при отключённом послаблении
 		ASSERT_FALSE(writer.value(::std::numeric_limits <double>::infinity()));
-		// Выполняем проверку кода отказа записи
-		ASSERT_EQ(writer.error(), json::error_t::INVALID_NUMBER);
+		/**
+		 * Выполняем проверку кода отказа записи
+		 *
+		 * @note Отказ этот о НАСТРОЙКЕ, а не о данных: с поднятым дозволением то же самое
+		 *       значение пишется исправно. Прежде отвечалось `INVALID_NUMBER` - суждение
+		 *       ложное, уводившее зовущего искать изъян в своих данных
+		 */
+		ASSERT_EQ(writer.error(), json::error_t::UNWRITABLE_VALUE);
 		// Выполняем проверку описания кода отказа записи
 		ASSERT_STRNE(json::message(writer.error()), json::message(json::error_t::NONE));
 	}
@@ -2046,7 +2052,7 @@ TEST(CodecJsonWriter, EveryWordOfInfinityAndNotANumberIsWritten){
 		// Выполняем проверку отказа записи слова
 		ASSERT_FALSE(writer.raw(word)) << "[" << word << "]";
 		// Выполняем проверку кода отказа записи
-		ASSERT_EQ(writer.error(), json::error_t::INVALID_NUMBER) << "[" << word << "]";
+		ASSERT_EQ(writer.error(), json::error_t::UNWRITABLE_VALUE) << "[" << word << "]";
 	}
 	/**
 	 * Записи, близкие к дозволенным, но договором не названные

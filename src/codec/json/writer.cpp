@@ -890,8 +890,14 @@ bool awh::codec::json::Writer::value(const double value) noexcept {
 		 * Если запись таких чисел настройками не дозволена
 		 */
 		if(!this->_settings.allowInfinityAndNan)
-			// Выполняем отказ записи с сообщением о доводе его в журнал
-			return this->refuse(error_t::INVALID_NUMBER);
+			/**
+			 * Выполняем отказ записи с сообщением о доводе его в журнал
+			 *
+			 * @note Отказ этот о НАСТРОЙКЕ, а не о данных: дробное подано верное, а
+			 *       записать его нечем при снятом дозволении. Прежде отвечалось
+			 *       `INVALID_NUMBER`, и зовущий искал бы изъян в своих данных
+			 */
+			return this->refuse(error_t::UNWRITABLE_VALUE);
 		/**
 		 * Если запись значения в этом месте недопустима
 		 */
@@ -1157,11 +1163,24 @@ bool awh::codec::json::Writer::raw(const string & value) noexcept {
 	 */
 	if(!numeric(value)){
 		/**
-		 * Если запись числа словами не является либо запись таких чисел не дозволена
+		 * Если запись числа словами вовсе не является
+		 *
+		 * @note Здесь отказ О ДАННЫХ: поданное числом не является ни при каких
+		 *       настройках, и `INVALID_NUMBER` суждение верное
 		 */
-		if(!this->_settings.allowInfinityAndNan || ((value != "NaN") && (value != "Infinity") && (value != "-Infinity")))
+		if((value != "NaN") && (value != "Infinity") && (value != "-Infinity"))
 			// Выполняем отказ записи с сообщением о доводе его в журнал
 			return this->refuse(error_t::INVALID_NUMBER);
+		/**
+		 * Если запись таких чисел настройками не дозволена
+		 *
+		 * @note А здесь отказ О НАСТРОЙКЕ: слово подано верное, и с поднятым дозволением
+		 *       оно пишется исправно. Прежде оба случая сливались в одно условие и
+		 *       отвечали `INVALID_NUMBER` - суждением, для второго из них ложным
+		 */
+		if(!this->_settings.allowInfinityAndNan)
+			// Выполняем отказ записи с сообщением о доводе его в журнал
+			return this->refuse(error_t::UNWRITABLE_VALUE);
 	}
 	/**
 	 * Если длина записи числа превышает допустимую

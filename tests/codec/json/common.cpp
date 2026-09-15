@@ -80,7 +80,7 @@ TEST(CodecJsonCommon, Messages) {
 	 */
 	// Свод описаний кодов отказа для сличения их на различимость
 	set <string> distinct;
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::ENCODING_ALREADY_CHOSEN); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (json::error_t::UNWRITABLE_VALUE); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = json::message(static_cast <json::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -107,9 +107,9 @@ TEST(CodecJsonCommon, Messages) {
 	/**
 	 * Выполняем проверку числа различимых описаний
 	 *
-	 * @note Число правлено 08.09.2026 с 37 на 40 - прибавилось три: код `ENCODING_ALREADY_CHOSEN` и два кода незакрытых скобок, прежде из перебора выпадавших
+	 * @note Число правлено 08.09.2026 с 37 на 40 - прибавилось три: код `ENCODING_ALREADY_CHOSEN` и два кода незакрытых скобок, прежде из перебора выпадавших; 15.09.2026 с 40 на 41 - прибавился `UNWRITABLE_VALUE`
 	 */
-	ASSERT_EQ(distinct.size(), 40u);
+	ASSERT_EQ(distinct.size(), 41u);
 	/**
 	 * Выполняем проверку того, что перечень кодов на том и оканчивается
 	 *
@@ -118,7 +118,7 @@ TEST(CodecJsonCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::ENCODING_ALREADY_CHOSEN) + 1)), "unknown error");
+	ASSERT_STREQ(json::message(static_cast <json::error_t> (static_cast <uint32_t> (json::error_t::UNWRITABLE_VALUE) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(json::message(static_cast <json::error_t> (0xFF)), "unknown error");
 }

@@ -21,6 +21,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <algorithm>
 
 /**
  * Подключаем заголовочные файлы проекта

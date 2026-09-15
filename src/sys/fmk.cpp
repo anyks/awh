@@ -1965,6 +1965,8 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 								break;
 							}
 						}
+						// Разобранное число с плавающей точкой
+						double number = 0.;
 						/**
 						 * Смещение начала записи числа
 						 *
@@ -1973,15 +1975,13 @@ bool awh::fmk::is(string_view text, const check_t flag) noexcept {
 						 *       сохранена: запись разбирается со знака, за плюсом стоящего
 						 */
 						const size_t begin = ((record.front() == '+') ? 1 : 0);
-						// Разобранное число с плавающей точкой
-						double number = 0.;
 						// Выполняем разбор записи числа модулем разбора чисел
 						const auto parsed = lexical_t::fromChars((record.data() + begin), (record.data() + record.size()), number);
 						// Выводим признак того, что запись разобрана целиком и конечна
 						result = (
 							static_cast <bool> (parsed) &&
 							(parsed.ptr == (record.data() + record.size())) &&
-							::std::isfinite(number)
+							std::isfinite(number)
 						);
 					// Если символ всего один, проверяем его так
 					} else result = symbols.isArabic(text.front());
@@ -2319,7 +2319,7 @@ bool awh::fmk::is(wstring_view text, const check_t flag) noexcept {
 						result = (
 							static_cast <bool> (parsed) &&
 							(parsed.ptr == (record.data() + record.size())) &&
-							::std::isfinite(number)
+							std::isfinite(number)
 						);
 					// Если символ всего один, проверяем его так
 					} else result = symbols.isArabic(text.front());

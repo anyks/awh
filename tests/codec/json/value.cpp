@@ -3104,17 +3104,17 @@ TEST(CodecJsonValue, SaveFailureIsNotSuccess) {
  */
 TEST(CodecJsonValue, RefusalChannelSpeaks){
 	/**
-	 * Число, записи стандартом не подлежащее, называет причину
+	 * Число, установленными настройками записи непредставимое, называет причину
 	 */
 	{
 		// Объект владеющего значения документа
 		json::value_t value(json::kind_t::OBJECT);
-		// Выполняем добавление числа, записи стандартом не подлежащего
+		// Выполняем добавление числа, установленными настройками записи непредставимого
 		ASSERT_TRUE(value.insert("ч", json::value_t(::nan(""))));
 		// Выполняем проверку того, что выдача текста отказала
 		ASSERT_TRUE(value.dump().empty());
 		// Выполняем проверку того, что причина отказа названа
-		ASSERT_EQ(value.error(), json::error_t::INVALID_NUMBER);
+		ASSERT_EQ(value.error(), json::error_t::UNWRITABLE_VALUE);
 	}
 	/**
 	 * Отказ записи файла оставляет прежнее содержимое целым
@@ -3137,17 +3137,17 @@ TEST(CodecJsonValue, RefusalChannelSpeaks){
 			ASSERT_TRUE(value.save(filename));
 		}
 		/**
-		 * Пишем поверх значение, записи не подлежащее
+		 * Пишем поверх значение, установленными настройками записи непредставимое
 		 */
 		{
 			// Объект владеющего значения документа
 			json::value_t value(json::kind_t::OBJECT);
-			// Выполняем добавление числа, записи стандартом не подлежащего
+			// Выполняем добавление числа, установленными настройками записи непредставимого
 			ASSERT_TRUE(value.insert("ч", json::value_t(::nan(""))));
 			// Выполняем проверку отказа записи значения в файл
 			ASSERT_FALSE(value.save(filename));
 			// Выполняем проверку того, что причина отказа названа
-			ASSERT_EQ(value.error(), json::error_t::INVALID_NUMBER);
+			ASSERT_EQ(value.error(), json::error_t::UNWRITABLE_VALUE);
 		}
 		/**
 		 * Выполняем проверку того, что прежнее содержимое файла цело

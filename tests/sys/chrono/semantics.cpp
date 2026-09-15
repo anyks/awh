@@ -3240,3 +3240,33 @@ TEST_F(ChronoFixture, ExecutionParseStopsAtMissingFieldChronoTest){
 	// Ненайденное поле в конце образца обрывает разбор так же
 	ASSERT_FALSE(this->_chrono->validate("01.02.2003 04:05:06", "%d.%m.%Y %H:%M:%S %z"));
 }
+/**
+ * @brief Тест строчных разделителей записи по RFC 3339
+ *
+ * @details Примечание к §5.6 RFC 3339 строчные разделители допускает наравне
+ *          с прописными. Прежде сличение литералов образца различало регистр,
+ *          и запись со строчной «t» отвергалась, не дойдя до разбора, тогда как
+ *          строчная «z» принималась: переменная зоны регистра не различает
+ *
+ */
+TEST_F(ChronoFixture, ExecutionLowerCaseDelimitersChronoTest){
+	// Запись с прописными разделителями пригодна
+	ASSERT_TRUE(this->_chrono->validate("2003-10-11T22:14:15Z", awh::chrono_t::standard_t::RFC3339));
+	// Строчное обозначение нулевой зоны пригодно
+	ASSERT_TRUE(this->_chrono->validate("2003-10-11T22:14:15z", awh::chrono_t::standard_t::RFC3339));
+	// Строчный разделитель даты и времени пригоден наравне с ним
+	ASSERT_TRUE(this->_chrono->validate("2003-10-11t22:14:15Z", awh::chrono_t::standard_t::RFC3339));
+	// Обе буквы записи строчными пригодности не отменяют
+	ASSERT_TRUE(this->_chrono->validate("2003-10-11t22:14:15z", awh::chrono_t::standard_t::RFC3339));
+	// Записи со строчными разделителями разбираются одним моментом
+	ASSERT_EQ(this->_chrono->parse("2003-10-11t22:14:15z", awh::chrono_t::standard_t::RFC3339, awh::chrono_t::storage_t::GLOBAL),
+		this->_chrono->parse("2003-10-11T22:14:15Z", awh::chrono_t::standard_t::RFC3339, awh::chrono_t::storage_t::GLOBAL));
+	// Строчный разделитель пригоден и при смещении зоны числом
+	ASSERT_TRUE(this->_chrono->validate("2003-10-11t22:14:15+03:00", awh::chrono_t::standard_t::RFC3339));
+	// Запись, временной зоны не несущую, RFC 3339 пригодной не считает
+	ASSERT_FALSE(this->_chrono->validate("2003-10-11T22:14:15", awh::chrono_t::standard_t::RFC3339));
+	// Чужие разделители записи пригодности не дают
+	ASSERT_FALSE(this->_chrono->validate("11/10/2003 22:14:15Z", awh::chrono_t::standard_t::RFC3339));
+	// Сличение разделителей прочих стандартов остаётся строгим по составу
+	ASSERT_FALSE(this->_chrono->validate("11-Oct-2003:22:14:15 +0000", awh::chrono_t::standard_t::CLF));
+}

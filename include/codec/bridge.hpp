@@ -463,6 +463,29 @@ namespace awh {
 				bool narrowed(const string & name) noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод сборки записи значения, разметке годной
+				 *
+				 * @details Разметка несёт в тексте не всякое кодовое значение, и значение,
+				 * ею невыразимое, ведётся правилом сужения. Спрос стоит у моста оттого, что
+				 * кодек отвечает отказом лишь при посадке собранного узла документом - то
+				 * есть после того, как всё дерево уже подано, и поле, отказ вызвавшее, уже
+				 * не отличить
+				 *
+				 * @param value  значение контейнера ABC
+				 * @param result собранная запись значения
+				 * @return       результат сборки: истина, когда запись продолжима
+				 *
+				 * \~english
+				 * @brief Method of the assembly of a record of a value admissible in the markup
+				 * @param value  value of the container ABC
+				 * @param result assembled record of the value
+				 * @return       result of the assembly: true when the writing can continue
+				 *
+				 * \~
+				 */
+				bool carryable(const abc::value_t & value, string & result) noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод подачи значения ABC писателю JSON
 				 *
 				 * @param value  значение контейнера ABC

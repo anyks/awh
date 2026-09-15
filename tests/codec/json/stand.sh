@@ -127,6 +127,13 @@ fi
 ##
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# @note Основа «Foundation» потребна слою файловой системы: «src/sys/fs.cpp» зовёт у
+	#       macOS «NSFileManager», и без неё связывание отвечает отсутствием знаков
+	#       Objective-C
+	#
+	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
+	SunOS) SYSTEM_LIBS="-lsocket -lnsl" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 
@@ -145,6 +152,24 @@ $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-tabl
 #          нельзя, сужение у себя обязано оставаться отказом сборки
 #
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/sys-log.o"
+#
+# Выполняем сборку слоя файловой системы и опознания системы
+#
+# @details Подмена целевого файла временным живёт ходом «fs_t::replaceAddress» с той
+#          поры, как модуль «codec/replace» удалён владельцем. Кодеки зовут её сохранением
+#          документа, и без этих частей связывание валится на «awh::Filesystem::Filesystem»
+#
+# @warning Под macOS «fs.cpp» собирается как Objective-C++, а не как C++: разбор
+#          alias-файлов зовёт Foundation, и сборка обычным ходом валится сотнями отказов
+#          в системных заголовках. Отбор этот повторяет CMakeLists.txt
+#
+if [ "$(uname -s)" = "Darwin" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -x objective-c++ -fobjc-arc -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+else
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+fi
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"
+OBJECTS="$OBJECTS $OUTPUT/sys-fs.o $OUTPUT/sys-os.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
@@ -184,8 +209,9 @@ OBJECTS="$OBJECTS $OUTPUT/codec-numeric.o"
 #          У MS Windows «rename» существующий файл не заменяет, потому сохранение
 #          через временный файл ходит здесь, а не через вызов системы напрямую.
 #
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/replace.cpp" -o "$OUTPUT/codec-replace.o"
-OBJECTS="$OBJECTS $OUTPUT/codec-replace.o"
+# @note Часть «replace» изъята 15.09.2026: модуль «codec/replace» удалён владельцем как
+#       нарушение договора, а подмена целевого файла временным ведётся ныне ходом
+#       «fs_t::replaceAddress». Стенд валился сборкою на отсутствующем исходнике
 
 # Выполняем перебор всех частей кодека JSON
 for PART in common encoding reader writer document value; do
