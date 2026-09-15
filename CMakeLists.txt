@@ -1217,6 +1217,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/alloc/guard.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/trace.cpp"
     "${CMAKE_SOURCE_DIR}/src/alloc/profile.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/vessel.cpp"
+    "${CMAKE_SOURCE_DIR}/src/alloc/prompt.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/os.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fs.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/fmk.cpp"
@@ -1407,6 +1409,103 @@ if (NOT MSVC)
     )
 endif()
 
+##
+ # Снимаем надзор санитайзеров с самого распределителя
+ #
+ # Вопрос этот НЕ о том, кто раздаёт память, а о том, какие файлы собираются с
+ # проверками надзирателя. Слепив два вопроса в один, набор прежде гасил распределитель
+ # целиком (CMAKE_BUILD_ALLOCATOR=OFF) - и прогон шёл с СИСТЕМНЫМ malloc, то есть
+ # проверял не ту связку, какой фреймворк работает.
+ #
+ # Инструментировать эти файлы нельзя по устройству: у систем ELF наш `malloc`
+ # подменяется связыванием, и первая просьба о памяти приходит из `_dl_init` - оттуда,
+ # где надзиратель ещё не завёл себе теневой области. Инструментированный вход валится
+ # об неё ошибкой сегментации прежде первой строки `main`. Не готов НАДЗИРАТЕЛЬ, а не
+ # распределитель; тем же порядком собирают себя jemalloc и tcmalloc.
+ #
+ # Сняв надзор с одних лишь этих файлов, получаем боевую связку: память раздаёт НАШ
+ # распределитель, а надзиратель следит за всем прочим кодом фреймворка. Платой идёт
+ # то, что ошибку ВНУТРИ распределителя надзиратель не увидит - её стерегут свой набор
+ # проверок и заслоны самого модуля.
+ #
+ # Замерено 15.09.2026 на Debian 12: выдача под ASan даёт ALLOCATED=73872 против 73728
+ # без него, то есть обслуживает её распределитель, а не подмена надзирателя.
+ ##
+# Если сборка проверок под санитайзерами активирована
+if (CMAKE_BUILD_SANITIZE AND NOT MSVC)
+    # Перечень исходников распределителя, какие надзору не подлежат
+    SET(AWH_ALLOC_SOURCES
+        "${CMAKE_SOURCE_DIR}/src/alloc/alloc.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/source.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/pages.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/classes.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/spin.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/link.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/central.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/cache.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/huge.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/guard.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/trace.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/profile.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/vessel.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/prompt.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/elf.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/mach.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/obsd.cpp"
+        "${CMAKE_SOURCE_DIR}/src/alloc/capture/pe.cpp"
+    )
+    ##
+     # Перечень ведётся ПОИМЁННО, а не сбором по образцу
+     #
+     # Сбор по образцу подхватил бы и файл, заведённый после, - молча и не спросив.
+     # Здесь же добавление нового исходника распределителя требует строки, и строка эта
+     # есть повод свериться, вправду ли ему надзор не положен
+     ##
+    # Выполняем перебор исходников распределителя
+    foreach (AWH_ALLOC_SOURCE ${AWH_ALLOC_SOURCES})
+        # Получаем настройки сборки исходника, какие уже заданы
+        get_source_file_property(AWH_ALLOC_OPTIONS "${AWH_ALLOC_SOURCE}" COMPILE_OPTIONS)
+        # Если настроек сборки у исходника не задано вовсе
+        if (NOT AWH_ALLOC_OPTIONS)
+            # Заводим перечень настроек сборки пустым
+            SET(AWH_ALLOC_OPTIONS "")
+        endif()
+        ##
+         # Настройки ДОПОЛНЯЮТСЯ, а не переписываются
+         #
+         # У `alloc.cpp` тут уже стоит запрет встроенного malloc-семейства, и
+         # перезапись его сняла бы - собиратель обратил бы наш `calloc` в вызов себя
+         # самого, а программа встала бы навсегда
+         ##
+        set_source_files_properties(
+            "${AWH_ALLOC_SOURCE}"
+            PROPERTIES COMPILE_OPTIONS "${AWH_ALLOC_OPTIONS};-fno-sanitize=all"
+        )
+        ##
+         # Признак сборки ПРОГРАММЫ под надзирателем ставится вручную
+         #
+         # Сняв инструментацию, мы заодно погасили встроенные признаки надзирателя у
+         # этих файлов - а модуль по ним судит НЕ О ПРОВЕРКАХ, а о своём поведении: у
+         # macOS подмена имён под надзирателем снимается сама, и замолчавший признак
+         # её оставлял. Выдача тогда делится между нашими метками и зоной надзирателя,
+         # и не видит её целиком ни один из двоих
+         ##
+        get_source_file_property(AWH_ALLOC_DEFINES "${AWH_ALLOC_SOURCE}" COMPILE_DEFINITIONS)
+        # Если признаков сборки у исходника не задано вовсе
+        if (NOT AWH_ALLOC_DEFINES)
+            # Заводим перечень признаков сборки пустым
+            SET(AWH_ALLOC_DEFINES "")
+        endif()
+        # Дополняем признаки сборки признаком надзирателя
+        set_source_files_properties(
+            "${AWH_ALLOC_SOURCE}"
+            PROPERTIES COMPILE_DEFINITIONS "${AWH_ALLOC_DEFINES};AWH_ALLOC_SANITIZER_BUILD"
+        )
+    endforeach()
+    # Выводим сообщение о снятии надзора санитайзеров с распределителя
+    message(STATUS "Allocator sources are built WITHOUT sanitizer instrumentation (allocator stays ENABLED)\n")
+endif()
+
 # Устанавливаем имя библиотеки
 SET(AWH_LIB_NAME ${PROJECT_NAME})
 
@@ -1445,12 +1544,35 @@ if (CMAKE_BUILD_TESTS)
      # проверки обращения к памяти и неопределённого поведения, а проверку состязаний
      # (thread) включают отдельно - с адресной она несовместима.
      #
-     # Наш распределитель памяти при этом ОБЯЗАТЕЛЬНО отключается: он подменяет malloc
-     # самим фактом связывания, и адресный санитайзер делает то же. Несовместимость
-     # устройственная: у Linux набор валится с ошибкой сегментации до первой проверки,
-     # у macOS проходит, но санитайзер слепнет и молчит обо всём.
+     # Распределитель при этом остаётся ВКЛЮЧЁННЫМ, и гасить его более не требуется:
+     # надзор санитайзеров снят с одних лишь его исходников (см. довод при
+     # set_source_files_properties выше), а раздаёт память по-прежнему он. Так проверяется
+     # та самая связка, какой фреймворк работает.
      #
-     #   cmake -DCMAKE_BUILD_SANITIZE=YES -DCMAKE_BUILD_COVERAGE=NO -DCMAKE_BUILD_ALLOCATOR=OFF ..
+     # Прежде здесь предписывалось гасить распределитель ключом CMAKE_BUILD_ALLOCATOR=OFF.
+     # Предписание это СНЯТО 15.09.2026: оно подменяло наш malloc системным, и прогон под
+     # надзирателями проверял не ту связку - охват урезался молча.
+     #
+     # ВАЖНО, и это поправка к той же дате: ключ тот НЕ обход, а ВТОРОЙ ЗАКОННЫЙ ПРОГОН,
+     # и без него охват неполон. Пока выдачу ведём мы, адресный надзиратель кучи НЕ
+     # ВИДИТ: перехват его подменён нашими метками, и обращение к освобождённому блоку
+     # проходит незамеченным. Замерено на Debian 12 щупом с намеренной бедой: чистый
+     # надзиратель отвечает «heap-use-after-free», он же с нашим распределителем -
+     # молчит. (Щуп при -O1 негоден вовсе: собиратель выбрасывает пару выдача-
+     # освобождение целиком, и молчат ОБА - мерить только при -O0.)
+     #
+     # Отсюда прогонов под надзирателями ДВА, и они проверяют разное:
+     #
+     #   cmake -DCMAKE_BUILD_SANITIZE=YES ..                            наш распределитель
+     #     в работе, надзор за стеком, глобальными и неопределённым поведением;
+     #     куча под нашей охраной - заслоны, карантин, свой набор проверок
+     #
+     #   cmake -DCMAKE_BUILD_SANITIZE=YES -DCMAKE_BUILD_ALLOCATOR=OFF ..  куча под
+     #     надзирателем целиком: обращения к освобождённому, выход за край блока.
+     #     Наш распределитель при этом не участвует вовсе
+     #
+     # У macOS оговорка своя и прежняя: там подмена имён под санитайзером снимается самим
+     # модулем (см. врезку в src/alloc/alloc.cpp), и выдачу ловит зона.
      #
      # Проверку состязаний (thread) гонять с TSAN_OPTIONS=exitcode=0:
      #
@@ -1474,6 +1596,47 @@ if (CMAKE_BUILD_TESTS)
         SET(GCC_COVERAGE_COMPILE_FLAGS ${GCC_COVERAGE_COMPILE_FLAGS} -fsanitize=${CMAKE_BUILD_SANITIZE_LIST} -fno-omit-frame-pointer -g)
         # Дополняем зависимости линковки проверок рантаймом санитайзеров
         SET(GCC_COVERAGE_LIBS ${GCC_COVERAGE_LIBS} -fsanitize=${CMAKE_BUILD_SANITIZE_LIST})
+
+        ##
+         # Среду надзирателя просим ДИНАМИЧЕСКУЮ
+         #
+         # Статическая среда определяет malloc и родню В АРХИВЕ, и связыватель видит два
+         # определения одного имени в двух объектных файлах: наше и её. Спор неразрешим
+         # по устройству связывания, и снятие инструментации от него не спасает - оно
+         # про проверки, а не про имена. Замерено на FreeBSD 14 (clang 19):
+         # «ld: error: duplicate symbol: malloc», и так по всем шести именам выдачи.
+         #
+         # У GNU/Linux с gcc среда динамическая умолчанием, и беды не возникает вовсе;
+         # у clang она статическая - оттого ключ и просится явно. Путь к среде вписываем
+         # в двоичный файл: иначе запуск требует переменной окружения, а её забудут
+         ##
+        ##
+         # Ключ этот знает лишь clang
+         #
+         # Собиратель GNU отвечает на него «unrecognized command-line option», и притом
+         # среда у него динамическая умолчанием - просить её незачем. Наличие среды
+         # clang в системе о собирателе НЕ говорит: у Debian она нашлась при сборке
+         # собирателем GNU, и набор отказался собираться вовсе
+         ##
+        if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+            # Ищем динамическую среду надзирателя у собирателя
+            file(GLOB AWH_ASAN_RUNTIME "/usr/lib/clang/*/lib/*/libclang_rt.asan-*.so")
+            # Просим динамическую среду надзирателя
+            SET(GCC_COVERAGE_COMPILE_FLAGS ${GCC_COVERAGE_COMPILE_FLAGS} -shared-libasan)
+            # Дополняем зависимости линковки динамической средой надзирателя
+            SET(GCC_COVERAGE_LIBS ${GCC_COVERAGE_LIBS} -shared-libasan)
+            # Если динамическая среда надзирателя найдена
+            if (AWH_ASAN_RUNTIME)
+                # Получаем первую найденную среду надзирателя
+                list(GET AWH_ASAN_RUNTIME 0 AWH_ASAN_LIBRARY)
+                # Получаем каталог среды надзирателя
+                get_filename_component(AWH_ASAN_DIRECTORY "${AWH_ASAN_LIBRARY}" DIRECTORY)
+                # Вписываем путь к среде надзирателя в двоичный файл
+                SET(GCC_COVERAGE_LIBS ${GCC_COVERAGE_LIBS} "-Wl,-rpath,${AWH_ASAN_DIRECTORY}")
+                # Выводим сообщение о найденной среде надзирателя
+                message(STATUS "Sanitizer runtime taken shared: ${AWH_ASAN_DIRECTORY}")
+            endif()
+        endif()
 
         # Выводим сообщение о сборке проверок под санитайзерами
         message(STATUS "Build unit tests with sanitizers: ${CMAKE_BUILD_SANITIZE_LIST}\n")

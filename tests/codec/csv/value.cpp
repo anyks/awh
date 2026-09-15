@@ -995,8 +995,18 @@ TEST(CodecCsvValue, SavingAndDumpingNameTheirCause) {
 		csv::value_t field("значение");
 		// Выполняем проверку того, что выдача текста отвечает пустотою
 		ASSERT_TRUE(field.dump().empty());
-		// Выполняем проверку кода отказа выдачи
-		ASSERT_EQ(field.error(), csv::error_t::INTERNAL);
+		/**
+		 * Выполняем проверку кода отказа выдачи
+		 *
+		 * @note Причина названа ПО СУЩЕСТВУ: простое значение таблицею не является, и это
+		 *       не сбой кодека. Прежде здесь стоял `INTERNAL` - «внутренний сбой разбора»,
+		 *       - и проверка закрепляла ложь: ни разбора, ни сбоя тут нет, а значение
+		 *       исправно. Найдено сличением шести кодеков рамки владельцем INI, TOML и
+		 *       YAML 15.09.2026
+		 */
+		ASSERT_EQ(field.error(), csv::error_t::UNREPRESENTABLE_VALUE);
+		// Выполняем проверку того, что описание причины кодек САМ КОДЕК не винит
+		ASSERT_EQ(string(csv::message(field.error())).find("internal"), string::npos) << csv::message(field.error());
 	}
 }
 

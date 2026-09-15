@@ -67,6 +67,7 @@ const char * awh::codec::syslog::message(const error_t error) noexcept {
 		// Если опознаватель работы построен ошибочно
 		case static_cast <uint8_t> (error_t::INVALID_PROCESS): return "identifier of the process is built erroneously";
 		case static_cast <uint8_t> (error_t::INVALID_HEADER_FIELD): return "field of the header contains a character not allowed by the description";
+		case static_cast <uint8_t> (error_t::MULTIPLE_RECORDS): return "file holds more than one record while a document holds one";
 		// Если скобка структурированных данных не закрыта
 		case static_cast <uint8_t> (error_t::UNCLOSED_STRUCTURE): return "bracket of the structured data is not closed";
 		// Если опознаватель структурированных данных построен ошибочно

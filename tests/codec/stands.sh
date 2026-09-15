@@ -84,6 +84,20 @@ STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/sysl
 #          сеанс ssh посреди прогона, а после череды обрывов перестаёт принимать
 #          подключения вовсе. Машина публичная и служит не одним проверкам
 #
+##
+# Добавочные ключи сборки, стендам передаваемые
+#
+# @details Переменная эта уходит на машину и подаётся стендам как есть. Ею гонится
+# раскладка под надзирателями:
+#
+#     FLAGS="-fsanitize=address,undefined" ./tests/codec/stands.sh
+#
+# @note Части распределителя памяти стенды собирают без инструментации сами - отключать
+#       распределитель ключом «AWH_ALLOC_DISABLED» НЕ нужно: под надзирателем выдачу
+#       памяти ведёт он, а надзиратель следит за кодеками. Заведено 15.09.2026
+##
+FLAGS="${FLAGS:-}"
+
 MACHINES="${AWH_STANDS:-
 forman@10.100.1.207|/usr/local|freebsd|
 forman@10.100.1.200|/usr/pkg|netbsd|
@@ -409,7 +423,7 @@ echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG COMPILER; do
 	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no "$HOST" \
 		"rm -rf ~/codec-stands-$STAMP && mkdir -p ~/codec-stands-$STAMP && cd ~/codec-stands-$STAMP &&
 		 gzip -dc /tmp/awh-codec-stands-$STAMP.tgz | tar -xf - &&
-		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' AWH_STAMP='$STAMP' ${COMPILER:+CXX='$COMPILER'} sh /tmp/awh-codec-runner-$STAMP.sh;
+		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' AWH_STAMP='$STAMP' ${FLAGS:+FLAGS='$FLAGS'} ${COMPILER:+CXX='$COMPILER'} sh /tmp/awh-codec-runner-$STAMP.sh;
 		 cd ~ && rm -rf ~/codec-stands-$STAMP /tmp/awh-codec-stands-$STAMP.tgz /tmp/awh-codec-runner-$STAMP.sh /tmp/awh-stand-$STAMP-*[!g]" |
 	#
 	# Выполняем отбор отказов сборки в перечень несобравшегося

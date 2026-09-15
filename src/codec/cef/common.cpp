@@ -72,6 +72,7 @@ const char * awh::codec::cef::message(const error_t error) noexcept {
 		// Если длина имени превышает допустимую
 		case static_cast <uint8_t> (error_t::NAME_TOO_LONG): return "length of the name exceeds the admissible one";
 		case static_cast <uint8_t> (error_t::VALUE_TOO_LONG): return "length of the value exceeds the limit given by the dictionary";
+		case static_cast <uint8_t> (error_t::MULTIPLE_RECORDS): return "file holds more than one record while a document holds one";
 		// Если длина поля заголовка превышает допустимую
 		case static_cast <uint8_t> (error_t::FIELD_TOO_LONG): return "length of the field of the header exceeds the admissible one";
 		// Если длина записи превышает допустимую

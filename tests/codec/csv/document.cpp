@@ -1433,8 +1433,14 @@ TEST(CodecCsvDocument, EmptyTextParsedWholly) {
 /**
  * @brief Проверка отказа выдачи записями без переданного обработчика
  *
- * @details Отказ этот собственный внутренний изъян и означает: обработчик обязателен,
- * а разбор без него смысла не имеет
+ * @details Обработчик обязателен, а разбор без него смысла не имеет: разобранному некуда
+ * деваться. Отказ этот о ДОВОДЕ ЗОВУЩЕГО, а не о изъяне кодека
+ *
+ * @note Прежде здесь стоял `INTERNAL` - «внутренний сбой разбора», - и проверка закрепляла
+ *       ложь: изъян не внутри кодека, а в доводе. Правлено 15.09.2026 по доводу владельца
+ *       кодеков INI, TOML и YAML: стеречь надлежит не слово в описании, а ДОСТИЖИМОСТЬ
+ *       кода `INTERNAL` обычным ходом. Достижимость эта здесь и доказывалась - проверкою,
+ *       наводящей его простым зовом с пустым обработчиком
  *
  */
 TEST(CodecCsvDocument, MissingCallbackRefused) {
@@ -1447,11 +1453,11 @@ TEST(CodecCsvDocument, MissingCallbackRefused) {
 	// Выполняем проверку отказа разбора текста таблицы без обработчика
 	ASSERT_FALSE(document.parse("1,2\r\n", empty));
 	// Выполняем проверку кода отказа разбора
-	ASSERT_EQ(document.error(), csv::error_t::INTERNAL);
+	ASSERT_EQ(document.error(), csv::error_t::MISSING_CALLBACK);
 	// Выполняем проверку отказа чтения файла таблицы без обработчика
 	ASSERT_FALSE(document.read(scratch0.path(), empty));
 	// Выполняем проверку кода отказа чтения
-	ASSERT_EQ(document.error(), csv::error_t::INTERNAL);
+	ASSERT_EQ(document.error(), csv::error_t::MISSING_CALLBACK);
 	// Выполняем проверку отказа чтения отсутствующего файла таблицы годным обработчиком
 	ASSERT_FALSE(document.read(scratch0.path(), [](const vector <string_view> &) noexcept -> bool {
 		// Выводим признак продолжения чтения

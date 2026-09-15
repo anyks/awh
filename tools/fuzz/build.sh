@@ -334,7 +334,7 @@ FRAMEWORK="src/sys/log.cpp src/sys/chrono.cpp src/sys/fmk.cpp src/net/nwt.cpp
 	src/alloc/alloc.cpp src/alloc/cache.cpp src/alloc/central.cpp
 	src/alloc/classes.cpp src/alloc/guard.cpp src/alloc/huge.cpp
 	src/alloc/link.cpp src/alloc/pages.cpp src/alloc/profile.cpp
-	src/alloc/source.cpp src/alloc/spin.cpp src/alloc/trace.cpp
+	src/alloc/source.cpp src/alloc/spin.cpp src/alloc/trace.cpp src/alloc/vessel.cpp
 	src/alloc/capture/elf.cpp src/alloc/capture/mach.cpp src/alloc/capture/pe.cpp
 	src/num/lexical/table.cpp"
 

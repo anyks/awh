@@ -2214,8 +2214,15 @@ string awh::codec::toml::Value::dump(const writer_t::settings_t & settings) cons
 	 *       велит тексту быть перечнем пар, и число либо строка корнем его не бывают
 	 */
 	if(this->_type != type_t::TABLE){
-		// Запоминаем код отказа записи
-		this->_error = error_t::INVALID_VALUE;
+		/**
+		 * Запоминаем код отказа записи
+		 *
+		 * @warning Код именно `UNREPRESENTABLE_VALUE`, а НЕ `INVALID_VALUE`: значение
+		 *          исправно, корнем текста его не сделать по устройству наречия. Прежде
+		 *          стоял второй, и отказ гласил «значение искажено» о вполне годном целом -
+		 *          потребитель шёл искать порчу там, где её нет
+		 */
+		this->_error = error_t::UNREPRESENTABLE_VALUE;
 		// Выводим пустой текст настроек
 		return string();
 	}

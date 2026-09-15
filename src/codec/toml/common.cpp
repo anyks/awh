@@ -252,6 +252,10 @@ const char * awh::codec::toml::message(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::SETTINGS_ALREADY_APPLIED):
 			// Выводим описание кода ошибки
 			return "the settings cannot be changed in the middle of the feed";
+		// Если значение такого вида корнем текста TOML быть не может
+		case static_cast <uint8_t> (error_t::UNREPRESENTABLE_VALUE):
+			// Выводим описание кода ошибки
+			return "the value cannot be the root of a TOML text";
 	}
 	// Выводим описание неизвестного кода ошибки
 	return "unknown error";

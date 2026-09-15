@@ -215,6 +215,19 @@ const awh::alloc::shelter_t & awh::Vault::shelter() const noexcept {
  *
  */
 bool awh::Vault::store(const std::string & name, const void * data, const size_t size) noexcept {
+	/**
+	 * Замок ведётся лишь у склада, поделённого между потоками
+	 *
+	 * Склад, принадлежащий одному потоку, делить не с кем, и замок на горячем пути
+	 * стоил бы дороже того, что стережёт. Стережёт он СОГЛАСОВАННОСТЬ СОСТАВА, а не
+	 * страницы: доступность области считает сам распределитель
+	 */
+	// Охранник состава склада
+	std::unique_lock <std::mutex> lock(this->_mutex, std::defer_lock);
+	// Если склад делится между потоками
+	if(this->_threading == threading_t::SHARED)
+		// Берём замок состава склада
+		lock.lock();
 	// Если склад заведён не был либо название тайны не задано
 	if(!this->ready() || name.empty())
 		// Отвечаем отказом
@@ -254,6 +267,31 @@ bool awh::Vault::store(const std::string & name, const void * data, const size_t
 	return true;
 }
 /**
+ * @brief Метод укладки тайны на склад из приёмника тайн
+ *
+ * @param name   название тайны
+ * @param vessel приёмник с содержимым тайны
+ * @return       признак удавшейся укладки
+ *
+ */
+bool awh::Vault::store(const std::string & name, awh::alloc::vessel_t & vessel) noexcept {
+	// Признак удавшейся укладки
+	bool result = false;
+	/**
+	 * Содержимое берётся из защищённой области приёмника
+	 *
+	 * Обращение через обработчик здесь не удобство, а суть дела: приёмник раскрывает
+	 * область лишь на время вызова и запечатывает её обратно сам, и содержимое нигде
+	 * не ложится вместилищем языка по дороге
+	 */
+	static_cast <void> (vessel.apply([this, &name, &result](const uint8_t * data, const size_t size) noexcept -> void {
+		// Укладываем содержимое приёмника на склад
+		result = this->store(name, static_cast <const void *> (data), size);
+	}));
+	// Выводим признак удавшейся укладки
+	return result;
+}
+/**
  * @brief Метод взятия тайны со склада
  *
  * @param name название тайны
@@ -261,6 +299,19 @@ bool awh::Vault::store(const std::string & name, const void * data, const size_t
  *
  */
 awh::Vault::Handle awh::Vault::borrow(const std::string & name) noexcept {
+	/**
+	 * Замок ведётся лишь у склада, поделённого между потоками
+	 *
+	 * Склад, принадлежащий одному потоку, делить не с кем, и замок на горячем пути
+	 * стоил бы дороже того, что стережёт. Стережёт он СОГЛАСОВАННОСТЬ СОСТАВА, а не
+	 * страницы: доступность области считает сам распределитель
+	 */
+	// Охранник состава склада
+	std::unique_lock <std::mutex> lock(this->_mutex, std::defer_lock);
+	// Если склад делится между потоками
+	if(this->_threading == threading_t::SHARED)
+		// Берём замок состава склада
+		lock.lock();
 	// Если склад заведён не был
 	if(!this->ready())
 		// Выводим негодную рукоять
@@ -299,6 +350,19 @@ awh::Vault::Handle awh::Vault::borrow(const std::string & name) noexcept {
  *
  */
 bool awh::Vault::erase(const std::string & name) noexcept {
+	/**
+	 * Замок ведётся лишь у склада, поделённого между потоками
+	 *
+	 * Склад, принадлежащий одному потоку, делить не с кем, и замок на горячем пути
+	 * стоил бы дороже того, что стережёт. Стережёт он СОГЛАСОВАННОСТЬ СОСТАВА, а не
+	 * страницы: доступность области считает сам распределитель
+	 */
+	// Охранник состава склада
+	std::unique_lock <std::mutex> lock(this->_mutex, std::defer_lock);
+	// Если склад делится между потоками
+	if(this->_threading == threading_t::SHARED)
+		// Берём замок состава склада
+		lock.lock();
 	// Выполняем поиск тайны на складе
 	auto i = this->_secrets.find(name);
 	// Если тайна на складе не найдена
@@ -323,6 +387,19 @@ bool awh::Vault::erase(const std::string & name) noexcept {
  *
  */
 bool awh::Vault::sealed(const std::string & name, std::vector <char> & cipher) const noexcept {
+	/**
+	 * Замок ведётся лишь у склада, поделённого между потоками
+	 *
+	 * Склад, принадлежащий одному потоку, делить не с кем, и замок на горячем пути
+	 * стоил бы дороже того, что стережёт. Стережёт он СОГЛАСОВАННОСТЬ СОСТАВА, а не
+	 * страницы: доступность области считает сам распределитель
+	 */
+	// Охранник состава склада
+	std::unique_lock <std::mutex> lock(this->_mutex, std::defer_lock);
+	// Если склад делится между потоками
+	if(this->_threading == threading_t::SHARED)
+		// Берём замок состава склада
+		lock.lock();
 	// Выполняем поиск тайны на складе
 	auto i = this->_secrets.find(name);
 	// Если тайна на складе не найдена
@@ -342,6 +419,19 @@ bool awh::Vault::sealed(const std::string & name, std::vector <char> & cipher) c
  *
  */
 bool awh::Vault::has(const std::string & name) const noexcept {
+	/**
+	 * Замок ведётся лишь у склада, поделённого между потоками
+	 *
+	 * Склад, принадлежащий одному потоку, делить не с кем, и замок на горячем пути
+	 * стоил бы дороже того, что стережёт. Стережёт он СОГЛАСОВАННОСТЬ СОСТАВА, а не
+	 * страницы: доступность области считает сам распределитель
+	 */
+	// Охранник состава склада
+	std::unique_lock <std::mutex> lock(this->_mutex, std::defer_lock);
+	// Если склад делится между потоками
+	if(this->_threading == threading_t::SHARED)
+		// Берём замок состава склада
+		lock.lock();
 	// Выводим признак наличия тайны на складе
 	return (this->_secrets.find(name) != this->_secrets.end());
 }
@@ -352,15 +442,65 @@ bool awh::Vault::has(const std::string & name) const noexcept {
  *
  */
 size_t awh::Vault::count() const noexcept {
+	/**
+	 * Замок ведётся лишь у склада, поделённого между потоками
+	 *
+	 * Склад, принадлежащий одному потоку, делить не с кем, и замок на горячем пути
+	 * стоил бы дороже того, что стережёт. Стережёт он СОГЛАСОВАННОСТЬ СОСТАВА, а не
+	 * страницы: доступность области считает сам распределитель
+	 */
+	// Охранник состава склада
+	std::unique_lock <std::mutex> lock(this->_mutex, std::defer_lock);
+	// Если склад делится между потоками
+	if(this->_threading == threading_t::SHARED)
+		// Берём замок состава склада
+		lock.lock();
 	// Выводим число тайн на складе
 	return this->_secrets.size();
 }
 /**
- * @brief Конструктор
+ * @brief Метод получения склада, общего на процесс
+ *
+ * @return склад, общий на процесс
  *
  */
-awh::Vault::Vault() noexcept :
- _secrets(), _crypto(), _ready(false), _shelter() {
+awh::Vault & awh::Vault::shared() noexcept {
+	/**
+	 * Заводится склад при первом обращении и живёт до конца работы программы
+	 *
+	 * Заведение это потокобезопасно само по себе: языком положено, что статический
+	 * объект внутри хода заводится единожды, а прочие потоки ждут окончания заведения
+	 */
+	static Vault vault(awh::alloc::secrecy_t::STRICT, threading_t::SHARED);
+	// Выводим склад, общий на процесс
+	return vault;
+}
+/**
+ * @brief Метод получения склада, своего у каждого потока
+ *
+ * @return склад, свой у каждого потока
+ *
+ */
+awh::Vault & awh::Vault::local() noexcept {
+	/**
+	 * Свой склад у каждого потока замка не ведёт: делить его не с кем
+	 *
+	 * Память тем взята по числу потоков, обратившихся к нему, - это и есть плата за
+	 * снятие замка с горячего пути, и назначена она намеренно
+	 */
+	static thread_local Vault vault(awh::alloc::secrecy_t::STRICT, threading_t::LOCAL);
+	// Выводим склад, свой у текущего потока
+	return vault;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param secrecy   строгость склада
+ * @param threading вид многопоточности склада
+ *
+ */
+awh::Vault::Vault(const awh::alloc::secrecy_t secrecy, const threading_t threading) noexcept :
+ _secrets(), _crypto(), _ready(false), _threading(threading), _secrecy(secrecy), _mutex(), _shelter() {
 	/**
 	 * Спрашиваем у распределителя, какая защита состоялась НА ДЕЛЕ
 	 *
@@ -376,6 +516,25 @@ awh::Vault::Vault() noexcept :
 		if(probe != nullptr)
 			// Возвращаем пробную выдачу распределителю
 			awh::alloc::Allocator::release(probe);
+	}
+	/**
+	 * Строгий склад отвечает отказом, не получив обещанной защиты
+	 *
+	 * Молчаливое понижение защиты хуже честного отказа: заводящий склад вправе знать,
+	 * что тайны его уйдут в подкачку, ПРЕЖДЕ чем он туда что-то положит. Судится это
+	 * запретом подкачки, а не укрытием от снимка: укрытие даётся не всюду, и требовать
+	 * его значило бы закрыть склад на системах, где защита лишь ниже, а не отсутствует
+	 */
+	if(!this->_shelter.wired){
+		// Если склад заведён строгим
+		if(this->_secrecy == awh::alloc::secrecy_t::STRICT){
+			// Записываем отказ заведения в журнал
+			awh::log::print("Vault is not prepared: memory locking is unavailable, strict vault refuses to hold the secrets", awh::log::flag_t::CRITICAL);
+			// Склад заведённым не отмечаем: работать он отказывается целиком
+			return;
+		}
+		// Записываем понижение защиты в журнал
+		awh::log::print("Vault: memory locking is unavailable, the secrets may reach the swap", awh::log::flag_t::WARNING);
 	}
 	// Случайный ключ склада
 	uint8_t key[KEYSIZE];

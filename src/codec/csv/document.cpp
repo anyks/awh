@@ -759,7 +759,7 @@ bool awh::codec::csv::Document::read(const string & filename, const function <bo
 	 */
 	if(!static_cast <bool> (callback)){
 		// Запоминаем код ошибки разбора
-		this->_error = error_t::INTERNAL;
+		this->_error = error_t::MISSING_CALLBACK;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим признак неудачного чтения
@@ -946,7 +946,7 @@ bool awh::codec::csv::Document::parse(const string_view text, const function <bo
 	 */
 	if(!static_cast <bool> (callback)){
 		// Запоминаем код ошибки разбора
-		this->_error = error_t::INTERNAL;
+		this->_error = error_t::MISSING_CALLBACK;
 		// Выполняем вывод сообщения об отказе в лог
 		this->report();
 		// Выводим признак неудачного разбора

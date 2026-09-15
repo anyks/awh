@@ -51,7 +51,7 @@ TEST(CodecTomlCommon, Messages) {
 	 *          никем не проверялись. Та же беда была у перебора кодировок, и найдена
 	 *          она снастью молчащих кодов, а не глазами
 	 */
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::SETTINGS_ALREADY_APPLIED); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (toml::error_t::UNREPRESENTABLE_VALUE); code++){
 		// Получаем описание очередного кода ошибки
 		const char * message = toml::message(static_cast <toml::error_t> (code));
 		// Выполняем проверку того, что описание кода ошибки выдано
@@ -70,10 +70,12 @@ TEST(CodecTomlCommon, Messages) {
 	 *
 	 * @warning Без неё предупреждение остаётся одними словами и гниёт молча: предел
 	 *          стоял на `STORAGE_EXHAUSTED`, а перечень с тех пор вырос на два кода, и описания
-	 *          их никем не проверялись - вторая та же беда на том же месте
+	 *          их никем не проверялись - вторая та же беда на том же месте. А 15.09.2026
+	 *          поверка эта СРАБОТАЛА: заведение `UNREPRESENTABLE_VALUE` уронило её сразу,
+	 *          и предел был подвинут в ту же правку, а не спустя месяц
 	 */
 	ASSERT_STREQ(toml::message(static_cast <toml::error_t> (
-	 static_cast <uint32_t> (toml::error_t::SETTINGS_ALREADY_APPLIED) + 1)), "unknown error");
+	 static_cast <uint32_t> (toml::error_t::UNREPRESENTABLE_VALUE) + 1)), "unknown error");
 	// Выполняем проверку описания кода ошибки за пределами перечисления
 	ASSERT_STREQ(toml::message(static_cast <toml::error_t> (0xFF)), "unknown error");
 }

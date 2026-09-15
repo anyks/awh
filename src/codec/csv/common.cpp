@@ -137,6 +137,12 @@ const char * awh::codec::csv::message(const error_t error) noexcept {
 		// Если произошла внутренняя ошибка разбора
 		case error_t::INTERNAL:
 			return "internal parser error";
+		// Если значение таблицею не является
+		case error_t::UNREPRESENTABLE_VALUE:
+			return "the value cannot be expressed as a CSV table";
+		// Если обработчик записей не передан
+		case error_t::MISSING_CALLBACK:
+			return "the handler of the records has not been given";
 		// Если знак недопустим в тексте
 		case error_t::INVALID_CHARACTER:
 			return "invalid character";

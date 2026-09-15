@@ -50,6 +50,33 @@
 #          сборке. Всякую проверку, текста записи в журнал касающуюся, гонять ОБЕИМИ:
 #
 #              sh tests/codec/syslog/stand.sh
+#              Под надзирателями прогонов ДВА, и они проверяют РАЗНОЕ - один другого не
+#              заменяет:
+#
+#              FLAGS="-fsanitize=address,undefined" sh ...
+#                  Распределитель в работе: надзор за стеком, за глобальными и за
+#                  неопределённым поведением. Куча при этом под охраною СВОЕЙ - заслоны,
+#                  карантин, свой набор проверок, - а адресный надзиратель её НЕ видит:
+#                  перехват его подменён нашими метками. Части распределителя стенд
+#                  собирает без инструментации сам, см. ALLOC_OPTIONS ниже
+#
+#              FLAGS="-fsanitize=address,undefined -DAWH_ALLOC_DISABLED" sh ...
+#                  Куча под надзирателем ЦЕЛИКОМ: обращения к освобождённому, выход за
+#                  край блока. Распределитель не участвует вовсе
+#
+#              @warning Ключ AWH_ALLOC_DISABLED - НЕ обход, а второй законный прогон.
+#                       Записка эта правлена трижды за день 15.09.2026: сперва ключ подан
+#                       был правилом, затем обходом, и лишь замером владельца модуля
+#                       распределителя выяснено, что прогона два и охват у них разный.
+#                       ЗАМЕРЕНО владельцем модуля распределителя на Debian 12: щуп с
+#                       намеренной бедой отвечает «heap-use-after-free» без нашего
+#                       распределителя и МОЛЧИТ с ним. Мерить только при -O0: при -O1
+#                       собиратель выбрасывает пару malloc/free целиком, и молчат ОБА
+#
+#              @note Разделение «замерено» и «сказано» проставлено здесь намеренно: два
+#                    прежних утверждения об этом ключе пришли чужим словом без замера и
+#                    занесены были как свои - оттого записка и правилась трижды
+#
 #              FLAGS=-DDEBUG_MODE sh tests/codec/syslog/stand.sh
 #
 #
@@ -108,7 +135,7 @@ mkdir -p "$OUTPUT"
 rm -f "$OUTPUT/syslog-tests" "$OUTPUT/syslog-tests.exe"
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-fs.o $OUTPUT/sys-os.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/net-nwt.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/charset.o $OUTPUT/charset-table.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-fs.o $OUTPUT/sys-os.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/net-nwt.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-vessel.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/charset.o $OUTPUT/charset-table.o"
 
 ##
 # Внутренние имена распределителя libc берутся ТОЛЬКО под OpenBSD
@@ -186,24 +213,99 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/unicode.cpp" -o "$OUTPUT/uni-unicode.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/utf8.cpp" -o "$OUTPUT/uni-utf8.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/alloc.cpp" -o "$OUTPUT/alloc-alloc.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/cache.cpp" -o "$OUTPUT/alloc-cache.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/central.cpp" -o "$OUTPUT/alloc-central.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/classes.cpp" -o "$OUTPUT/alloc-classes.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/guard.cpp" -o "$OUTPUT/alloc-guard.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/huge.cpp" -o "$OUTPUT/alloc-huge.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/link.cpp" -o "$OUTPUT/alloc-link.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/pages.cpp" -o "$OUTPUT/alloc-pages.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/profile.cpp" -o "$OUTPUT/alloc-profile.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/source.cpp" -o "$OUTPUT/alloc-source.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/spin.cpp" -o "$OUTPUT/alloc-spin.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/trace.cpp" -o "$OUTPUT/alloc-trace.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/elf.cpp" -o "$OUTPUT/alloc-elf.o"
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/mach.cpp" -o "$OUTPUT/alloc-mach.o"
+##
+# Ключи сборки частей распределителя памяти, надзирателей НЕ несущие
+#
+# @details Части эти собираются БЕЗ инструментации надзирателя, тогда как всё прочее - с
+# нею. Разделение это возвращает прогону полный охват: выдачу памяти обслуживает свой
+# распределитель, а надзиратель следит за кодеками
+#
+# @warning Собранные С инструментацией, части эти валят двоичный файл до первой проверки:
+#          перехваченный `malloc` зовётся из `_dl_init`, когда ASAN ещё сам себя
+#          размечает, и инструментированный пролог валится о неотображённую теневую
+#          память. Готовность распределителя тут ни при чём - не готов САНИТАЙЗЕР
+#
+# @note Прежде здесь стоял обход «-DAWH_ALLOC_DISABLED», отключавший распределитель вовсе:
+#       прогон шёл с распределителем системным, и охват был уже обещанного. Рецепт этот
+#       дан владельцем модуля распределителя 15.09.2026 вместе с починкой дефекта посева
+#       зерна, найденного по замеру отсюда, и проверен показанием выдачи: под надзирателем
+#       ALLOCATED=73872 против 73728 без него - выдаёт наш распределитель
+##
+##
+# Среда надзирателя берётся ДИНАМИЧЕСКОЙ, коль скоро собиратель - clang
+#
+# @details У систем, где среда надзирателя поставляется архивом (FreeBSD и всякий clang с
+# «libclang_rt»), связывание валится повтором имён: архив определяет `malloc`, `free`,
+# `calloc`, `realloc`, `aligned_alloc` и `valloc`, и наш распределитель определяет их же.
+# Спор этот неразрешим по устройству связывания - два определения одного имени в двух
+# объектных файлах, - и снятие инструментации его не снимает: оно про проверки, а не про
+# имена. Динамическая же среда подменяется нашими метками при разрешении, ровно как у
+# GNU/Linux, где она динамическая умолчанием
+#
+# @warning Путь к среде вписывается в двоичный файл через `rpath`: иначе запуск требует
+#          переменной окружения, а её забудут. Путь спрашивается у самого собирателя ходом
+#          `-print-file-name`, а НЕ `-print-runtime-dir`: последний у FreeBSD 14 указывает
+#          на новый уклад каталогов, где файла нет вовсе
+#
+# @note Ключ `-shared-libasan` знает ОДИН clang: собиратель GNU отвечает «unrecognized
+#       command-line option». Оттого отбор ведётся по собирателю, а НЕ по наличию среды в
+#       системе - у Debian она нашлась при сборке через g++, и набор перестал собираться
+#       вовсе. Путь этот подан владельцем модуля распределителя 15.09.2026
+##
+case "$OPTIONS" in
+	# Если сборка ведётся под надзирателями
+	*-fsanitize=*)
+		# Если собирателем является clang
+		if $COMPILER --version 2>/dev/null | grep -q "clang"; then
+			# Получаем путь к динамической среде надзирателя
+			ASAN_LIBRARY="$($COMPILER -print-file-name=libclang_rt.asan-x86_64.so 2>/dev/null)"
+			# Если динамическая среда надзирателя отыскалась
+			case "$ASAN_LIBRARY" in
+				/*)
+					# Если файл динамической среды надзирателя на месте
+					if [ -f "$ASAN_LIBRARY" ]; then
+						# Просим среду надзирателя динамической
+						OPTIONS="$OPTIONS -shared-libasan"
+						# Вписываем путь к среде надзирателя в двоичный файл
+						OPTIONS="$OPTIONS -Wl,-rpath,$(dirname "$ASAN_LIBRARY")"
+					fi
+				;;
+			esac
+		fi
+	;;
+esac
+
+ALLOC_OPTIONS=""
+# Выполняем перебор всех ключей сборки стенда
+for OPTION in $OPTIONS; do
+	# Определяем очередной ключ сборки стенда
+	case "$OPTION" in
+		# Ключи надзирателей частям распределителя не передаются
+		-fsanitize=*|-fno-sanitize=*|-fsanitize-*) ;;
+		# Прочие ключи сборки передаются частям распределителя как есть
+		*) ALLOC_OPTIONS="$ALLOC_OPTIONS $OPTION" ;;
+	esac
+done
+
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/alloc.cpp" -o "$OUTPUT/alloc-alloc.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/cache.cpp" -o "$OUTPUT/alloc-cache.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/central.cpp" -o "$OUTPUT/alloc-central.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/classes.cpp" -o "$OUTPUT/alloc-classes.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/guard.cpp" -o "$OUTPUT/alloc-guard.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/huge.cpp" -o "$OUTPUT/alloc-huge.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/link.cpp" -o "$OUTPUT/alloc-link.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/pages.cpp" -o "$OUTPUT/alloc-pages.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/profile.cpp" -o "$OUTPUT/alloc-profile.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/source.cpp" -o "$OUTPUT/alloc-source.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/spin.cpp" -o "$OUTPUT/alloc-spin.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/trace.cpp" -o "$OUTPUT/alloc-trace.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/vessel.cpp" -o "$OUTPUT/alloc-vessel.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/elf.cpp" -o "$OUTPUT/alloc-elf.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/mach.cpp" -o "$OUTPUT/alloc-mach.o"
 if [ "$(uname -s)" = "OpenBSD" ]; then
-	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
+	$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/obsd.cpp" -o "$OUTPUT/alloc-obsd.o"
 fi
-$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "$OUTPUT/alloc-pe.o"
+$COMPILER $ALLOC_OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/alloc/capture/pe.cpp" -o "$OUTPUT/alloc-pe.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/charset.cpp" -o "$OUTPUT/charset.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/charset/table.cpp" -o "$OUTPUT/charset-table.o"
 
@@ -290,4 +392,34 @@ done
 $COMPILER $OPTIONS $OBJECTS -L"$GTEST/lib" -lgtest -lgtest_main -pthread $SYSTEM_LIBS $ZLIB -o "$OUTPUT/syslog-tests"
 
 # Выводим сообщение об окончании сборки стенда
+##
+# Снимаем у NetBSD случайное размещение образа, коль скоро сборка шла под надзирателями
+#
+# @details NetBSD включает ASLR всем двоичным файлам, а адресный надзиратель с ним не
+# уживается: собранный стенд печатает «This sanitizer is not compatible with enabled ASLR»
+# и НЕ ПРОГОНЯЕТ НИ ОДНОЙ проверки, отвечая при том кодом ноль. Молчание это неотличимо от
+# успеха, если смотреть на код возврата
+#
+# @warning Признак снимается с ГОТОВОГО двоичного файла и ровно в таком порядке: сперва
+#          «-0» - сброс всех признаков, - затем «+a». Прямое «+a» отвечает «New flags 0x30
+#          don't make sense». Зовётся «paxctl» полным путём: в «/usr/sbin» он есть, а в
+#          путях поиска обычного пользователя его нет
+#
+# @note Замерено 15.09.2026: без этого NetBSD давала 0 проверок, с этим - 91 из 91 под
+#       ASAN со своим распределителем. UBSan там отсутствует, потому «undefined» в ключах
+#       давать этой машине нельзя
+##
+if [ "$(uname -s)" = "NetBSD" ] && [ -x /usr/sbin/paxctl ]; then
+	# Определяем ключи сборки стенда
+	case "$OPTIONS" in
+		# Если сборка велась под надзирателями
+		*-fsanitize=*)
+			# Сбрасываем все признаки PaX готового двоичного файла
+			/usr/sbin/paxctl -0 "$OUTPUT/syslog-tests" > /dev/null 2>&1
+			# Запрещаем случайное размещение образа явно
+			/usr/sbin/paxctl +a "$OUTPUT/syslog-tests" > /dev/null 2>&1
+		;;
+	esac
+fi
+
 echo "Стенд собран: $OUTPUT/syslog-tests"

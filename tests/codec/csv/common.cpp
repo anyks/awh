@@ -69,7 +69,7 @@ TEST(CodecCsvCommon, Messages) {
 	 */
 	// Свод описаний кодов отказа для сличения их на различимость
 	set <string> distinct;
-	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::ENCODING_ALREADY_CHOSEN); code++){
+	for(uint32_t code = 0; code <= static_cast <uint32_t> (csv::error_t::MISSING_CALLBACK); code++){
 		// Получаем описание очередного кода отказа
 		const char * message = csv::message(static_cast <csv::error_t> (code));
 		// Выполняем проверку наличия описания кода отказа
@@ -96,9 +96,9 @@ TEST(CodecCsvCommon, Messages) {
 	/**
 	 * Выполняем проверку числа различимых описаний
 	 *
-	 * @note Число правлено 08.09.2026 с 22 на 24 - прибавилось два: код `ENCODING_ALREADY_CHOSEN` и код `BARE_LINE_BREAK`, прежде из перебора выпадавший
+	 * @note Число правлено 08.09.2026 с 22 на 24 - прибавилось два: код `ENCODING_ALREADY_CHOSEN` и код `BARE_LINE_BREAK`, прежде из перебора выпадавший; 15.09.2026 с 24 на 26 - прибавились `UNREPRESENTABLE_VALUE` и `MISSING_CALLBACK`
 	 */
-	ASSERT_EQ(distinct.size(), 24u);
+	ASSERT_EQ(distinct.size(), 26u);
 	/**
 	 * Выполняем проверку того, что перечень кодов на том и оканчивается
 	 *
@@ -107,7 +107,7 @@ TEST(CodecCsvCommon, Messages) {
 	 *       щупом: дописанный код отказа проверку не уронил. Сторожем тут выступает
 	 *       собиратель - смотри примечание у самой выдачи описаний
 	 */
-	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::ENCODING_ALREADY_CHOSEN) + 1)), "unknown error");
+	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (static_cast <uint32_t> (csv::error_t::MISSING_CALLBACK) + 1)), "unknown error");
 	// Выполняем проверку описания кода, договором не отведённого
 	ASSERT_STREQ(csv::message(static_cast <csv::error_t> (0xFF)), "unknown error");
 }
