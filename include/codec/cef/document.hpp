@@ -274,7 +274,14 @@ namespace awh {
 					 *
 					 * \~
 					 */
-					bool convert(const entry_t * entry, const string & value, abc::value_t & result) noexcept;
+					/**
+					 * @warning Строгость сличения подаётся ДОВОДОМ, а не берётся из
+					 *          настроек чтения: поверка выразимости значения при ЗАПИСИ
+					 *          от настроек чтения не зависит вовсе - запись уходит
+					 *          принимающему, и читать её он волен строго. Заведено
+					 *          15.09.2026 по щупу видов
+					 */
+					bool convert(const entry_t * entry, const string & value, abc::value_t & result, const mode_t mode) noexcept;
 				public:
 					/**
 					 * \~russian

@@ -167,7 +167,7 @@ for AWH_ALLOC_SOURCE in \
  "$ROOT/src/alloc/classes.cpp" "$ROOT/src/alloc/spin.cpp" "$ROOT/src/alloc/link.cpp" \
  "$ROOT/src/alloc/central.cpp" "$ROOT/src/alloc/cache.cpp" "$ROOT/src/alloc/guard.cpp" \
  "$ROOT/src/alloc/huge.cpp" "$ROOT/src/alloc/trace.cpp" "$ROOT/src/alloc/profile.cpp" \
- "$ROOT/src/alloc/vessel.cpp" "$ROOT/src/alloc/prompt.cpp" "$CAPTURE"; do
+ "$ROOT/src/alloc/vessel.cpp" "$ROOT/src/alloc/prompt.cpp" "$ROOT/src/alloc/scatter.cpp" "$CAPTURE"; do
 	# Собираем очередной модуль распределителя
 	$CXX -std=c++17 -O2 $NOBUILTIN $ALLOCFLAGS -I "$ROOT/include" \
 	 -c "$AWH_ALLOC_SOURCE" -o "$OUT/$(basename "$AWH_ALLOC_SOURCE" .cpp).o" >> "$OUT/build.log" 2>&1 || {
@@ -187,6 +187,7 @@ $CXX -std=c++17 -O2 $NOBUILTIN $FLAGS $GTESTFLAGS -I "$ROOT/include" -o "$OUT/al
  "$ROOT/tests/alloc/huge.cpp" "$ROOT/tests/alloc/zone.cpp" \
  "$ROOT/tests/alloc/purge.cpp" "$ROOT/tests/alloc/profile.cpp" \
  "$ROOT/tests/alloc/fork.cpp" "$ROOT/tests/alloc/vessel.cpp" \
+ "$ROOT/tests/alloc/scatter.cpp" \
  "$OUT"/*.o $LINKFLAGS -lgtest $GMOCK -lpthread >> "$OUT/build.log" 2>&1
 ##
 # Признак случайной раскладки снимаем у NetBSD

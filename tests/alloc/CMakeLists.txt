@@ -83,6 +83,7 @@ if (${GTest_FOUND})
                 profile.cpp
                 fork.cpp
                 vessel.cpp
+                scatter.cpp
                 framework.cpp
             )
         # Если не нужно собрать тесты для модуля распределителя памяти
