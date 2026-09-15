@@ -3773,3 +3773,44 @@ TEST(CodecBridge, TheNarrowingRuleIsAskedByTheINIRoadToo){
 		}
 	}
 }
+
+/**
+ * @brief Проверка того, что пропуск не оставляет от поля пустого узла
+ *
+ * @details Дерево из ОДНОГО поля, записи невыразимого, давало при правиле `SKIP`
+ * запись `<dec/>`, а обратное чтение возвращало поле `dec` со значением, взятым
+ * правилом пустого узла: пропуск воскрешал то, что обещал уронить. То же поле
+ * рядом с соседом исчезало без следа - вид записи решал сосед
+ *
+ */
+TEST(CodecBridge, ASkippedSoleFieldLeavesNoHusk){
+	// Создаём собиратель записи контейнера ABC
+	codec::abc::writer_t writer;
+	// Образец десятичного числа с точным разрядом
+	const uint8_t digits[] = {0x30, 0x39};
+	// Выполняем сборку записи из ОДНОГО поля, записи текстовой неведомого
+	ASSERT_TRUE(writer.mapBegin(1) && writer.text("dec") &&
+	 writer.decimal(digits, sizeof(digits), false, -2) && writer.mapEnd());
+	// Собранная запись контейнера ABC
+	const string record(reinterpret_cast <const char *> (writer.record().data()), writer.record().size());
+	// Создаём мост перевода записей
+	codec::Bridge bridge;
+	// Получаем настройки перевода
+	codec::Bridge::settings_t settings = bridge.settings();
+	// Устанавливаем правило пропуска видов, записи неведомых
+	settings.narrow = codec::Bridge::narrow_t::SKIP;
+	// Выполняем установку настроек перевода
+	bridge.settings(settings);
+	// Собираемое дерево значений
+	codec::abc::value_t value;
+	// Выполняем разбор записи контейнера ABC в дерево значений
+	ASSERT_TRUE(bridge.decode(record, value, codec::Bridge::format_t::ABC));
+	// Собираемая запись разметки
+	string result = "";
+	// Выполняем перевод дерева в запись разметки
+	ASSERT_TRUE(bridge.encode(value, result, codec::Bridge::format_t::XML)) << "пропуск вида отвечен отказом";
+	// Выполняем проверку того, что от пропущенного поля не осталось узла
+	ASSERT_EQ(result.find("dec"), string::npos) << "пропущенное поле оставило по себе узел: " << result;
+	// Выполняем проверку того, что корень взят настройкою
+	ASSERT_NE(result.find("config"), string::npos) << "корень записи взят не настройкою: " << result;
+}
