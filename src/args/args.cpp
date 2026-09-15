@@ -490,10 +490,26 @@ bool awh::args::Args::apply(const lexeme_t & lexeme, const source_t source) noex
 			if(!lexeme.assigned && this->_schema.cluster(lexeme.key, names)){
 				// Признак успешности укладки разобранных признаков
 				bool result = true;
-				// Выполняем перебор всех разобранных длинных имён
-				for(auto & name : names)
-					// Выполняем укладку взведённого признака
-					result = (this->lay(this->route(name), codec::abc::value_t(true), source) && result);
+				/**
+				 * Всякое разобранное имя укладывается тем же путём, каким легло бы,
+				 * будучи поданным отдельно
+				 *
+				 * @warning Прежде склейка укладывала признаки сама и мимо спроса о
+				 *          повторной подаче: запись «-vv» принималась молча, тогда как
+				 *          «-v -v» отвечалась отказом DUPLICATE - одна и та же подача
+				 *          получала два разных ответа. Замерено 15.09.2026 аудитом,
+				 *          закреплено проверкой `Args.AClusterObeysTheDuplicateRule`
+				 */
+				for(auto & name : names){
+					// Собираем лексему разобранного признака
+					lexeme_t item = lexeme;
+					// Устанавливаем длинное имя разобранного признака
+					item.key = name;
+					// Снимаем признак поданного значения
+					item.assigned = false;
+					// Выполняем укладку разобранного признака
+					result = (this->apply(item, source) && result);
+				}
 				// Выводим результат укладки разобранных признаков
 				return result;
 			}

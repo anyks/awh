@@ -99,7 +99,16 @@ namespace awh {
 		 * отдельно, она расходится с делом при первой же правке, и расхождение это
 		 * молчаливо: приложение работает, а справка лжёт
 		 *
-		 * @li **Короткое имя есть один знак, и это не украшение.** Склейка «-abc»
+		 * @li **Короткое имя есть знак буквенно-цифровой.** Указание 3 договора POSIX
+		 * о наречии программ зовёт коротким именем один знак буквенно-цифровой, и
+		 * заведение всякого иного отвечается отказом: знак «=» разбор наречия отрезает
+		 * значением и до имени не доносит, «-» сливается с двойным тире и одиночным
+		 * доводом, пробел и перевод строки оболочка до программы не доводит вовсе.
+		 * Прежде описание такие имена принимало и выводило их справкой, обещая наречие,
+		 * подать которое нельзя. Замерено 15.09.2026 аудитом, закреплено проверкой
+		 * `ArgsSchema.AShortNameMustBeTypeable`
+		 *
+		 * @li **Склейка коротких имён есть один знак, и это не украшение.** Склейка «-abc»
 		 * разбирается тремя признаками лишь тогда, когда все три знака описанию
 		 * известны короткими именами; иначе запись эта неотличима от длинного имени
 		 * под одним тире, каковое запись «-name VALUE» дозволяет
@@ -117,9 +126,14 @@ namespace awh {
 		 * \~english
 		 * @brief Description of the expected parameters of the launch
 		 * @details The description is optional: without it the parsing accepts every submitted
-		 * parameter. With it the parsing becomes strict — a name unknown to the description
-		 * is answered by a refusal — and there appears a help of the usage, assembled from
-		 * the description itself rather than written a second time by hand
+		 * parameter. With it the name is checked against the expected ones, a cluster of the
+		 * short names is parsed, the need of a value and the obligation of a parameter are
+		 * verified, and a help of the usage is assembled from the description itself rather
+		 * than written a second time by hand
+		 * @warning The description by itself does NOT make the parsing strict: a refusal on a
+		 *          name unknown to the description is a separate setting `strict`, and by
+		 *          default it is OFF. This half of the documentation used to claim the
+		 *          opposite while the Russian half had already been corrected
 		 *
 		 * \~
 		 */
@@ -213,10 +227,13 @@ namespace awh {
 				 * @brief Метод заведения описания ожидаемого параметра
 				 *
 				 * @details Имя, заведённое повторно, описание прежнее заменяет
-		 *
-		 * @note Замена отвечается ОТКАЗОМ, если короткое имя поданного описания занято
-		 *       описанием ИНЫМ: иначе розыск по знаку вёл бы к чужому параметру, а
-		 *       прежнее короткое имя заменяемого пропадало бы вовсе
+				 *
+				 * @note Замена отвечается ОТКАЗОМ, если короткое имя поданного описания занято
+				 *       описанием ИНЫМ: иначе розыск по знаку вёл бы к чужому параметру, а
+				 *       прежнее короткое имя заменяемого пропадало бы вовсе
+				 *
+				 * @note Заведение отвечается ОТКАЗОМ и тогда, когда короткое имя не является
+				 *       знаком буквенно-цифровым: подать такое имя наречием нельзя
 				 *
 				 * @param param описание ожидаемого параметра
 				 * @return      результат заведения
