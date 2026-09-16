@@ -543,3 +543,102 @@ TEST(ArgsSchema, AClusterOfKnownLettersNeverBecomesASetting){
 	// Выполняем проверку того, что имя уложено как есть
 	ASSERT_TRUE(named.get <bool> ("verbose")) << "длинное имя под одним тире не уложено";
 }
+
+/**
+ * @brief Проверка того, что негодная склейка названа своей причиной
+ *
+ * @details Знак, описанию ИЗВЕСТНЫЙ, среди знаков записи означает, что подавали
+ * склейку, а не длинное имя: имени `avZ` описание не знает, а имена `a` и `v`
+ * знает короткими. Ответ отказом тут один и тот же, разнится лишь причина, и
+ * назвать её точнее ничего не стоит. Запись же, у которой НИ ОДИН знак описанию
+ * не известен, склейкою не зовётся вовсе - `-name` есть законная запись длинного
+ * имени под одним тире
+ *
+ */
+TEST(ArgsSchema, AStrangerLetterInAClusterIsNamedByItsOwnCause){
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Извлекаем настройки разбора
+	args_t::settings_t settingsargs = args.settings();
+	// Взводим строгость разбора, ибо причина спрашивается только ею
+	settingsargs.strict = true;
+	// Устанавливаем настройки разбора
+	args.settings(settingsargs);
+	// Выполняем заведение двух признаков, значения не принимающих
+	ASSERT_TRUE(args.schema().add("alpha", 'a', schema_t::value_t::NONE));
+	ASSERT_TRUE(args.schema().add("verbose", 'v', schema_t::value_t::NONE));
+	// Выполняем проверку того, что склейка со знаком, описанию неизвестным, отвечена отказом
+	ASSERT_FALSE(args.parse({"-avZ"})) << "склейка со знаком, описанию неизвестным, принята";
+	// Выполняем проверку того, что отказ назван негодностью знака склейки
+	ASSERT_FALSE(args.errors().empty()) << "отказ склейки пришёл без причины";
+	ASSERT_EQ(args.errors().back().first, args::error_t::CLUSTER) << "отказ склейки назван причиной иною";
+	// Создаём объект сбора с записью, НИ ОДИН знак которой описанию не известен
+	args_t named;
+	// Извлекаем настройки разбора
+	args_t::settings_t settingsnamed = named.settings();
+	// Взводим строгость разбора, ибо причина спрашивается только ею
+	settingsnamed.strict = true;
+	// Устанавливаем настройки разбора
+	named.settings(settingsnamed);
+	// Выполняем заведение единственного признака иного знака
+	ASSERT_TRUE(named.schema().add("alpha", 'a', schema_t::value_t::NONE));
+	// Выполняем проверку того, что имя, описанию неизвестное, отвечено отказом
+	ASSERT_FALSE(named.parse({"-xyz"})) << "имя, описанию неизвестное, принято";
+	// Выполняем проверку того, что отказ назван неизвестностью ИМЕНИ, а не склейки
+	ASSERT_FALSE(named.errors().empty()) << "отказ имени пришёл без причины";
+	ASSERT_EQ(named.errors().back().first, args::error_t::UNKNOWN) << "длинное имя названо негодной склейкой";
+}
+
+/**
+ * @brief Проверка того, что двусмыслие склейки с длинным именем разрешено порядком
+ *
+ * @details Запись `-awh` при объявленных знаках `a`, `w`, `h` и объявленном же имени
+ * `awh` двусмысленна по существу. Разрешает её порядок спроса: имя длинное старше
+ * склейки, ибо объявлено прямо, тогда как склейка выведена перебором знаков.
+ * Потребителю оставлены обе записи однозначные - `--awh` есть имя длинное
+ * непременно, а `-a -w -h` есть три признака непременно
+ *
+ */
+TEST(ArgsSchema, ADeclaredLongNameOutranksTheClusterOfItsLetters){
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Выполняем заведение длинного имени, знакам склейки совпадающего
+	ASSERT_TRUE(args.schema().add("awh", 0, schema_t::value_t::NONE));
+	// Выполняем заведение трёх признаков теми же знаками
+	ASSERT_TRUE(args.schema().add("alpha", 'a', schema_t::value_t::NONE));
+	ASSERT_TRUE(args.schema().add("wide", 'w', schema_t::value_t::NONE));
+	ASSERT_TRUE(args.schema().add("host", 'h', schema_t::value_t::NONE));
+	// Выполняем разбор записи под одним тире
+	ASSERT_TRUE(args.parse({"-awh"})) << "запись, имени длинному совпадающая, отвечена отказом";
+	// Выполняем проверку того, что взято имя длинное, а не склейка
+	ASSERT_TRUE(args.get <bool> ("awh")) << "имя длинное уступило склейке своих же знаков";
+	ASSERT_FALSE(args.has("alpha")) << "склейка взята при объявленном имени длинном";
+	// Создаём объект сбора без объявленного имени длинного
+	args_t cluster;
+	// Выполняем заведение трёх признаков теми же знаками
+	ASSERT_TRUE(cluster.schema().add("alpha", 'a', schema_t::value_t::NONE));
+	ASSERT_TRUE(cluster.schema().add("wide", 'w', schema_t::value_t::NONE));
+	ASSERT_TRUE(cluster.schema().add("host", 'h', schema_t::value_t::NONE));
+	// Выполняем разбор той же записи под одним тире
+	ASSERT_TRUE(cluster.parse({"-awh"})) << "склейка отвечена отказом";
+	// Выполняем проверку того, что взята склейка трёх признаков
+	ASSERT_TRUE(cluster.get <bool> ("alpha"));
+	ASSERT_TRUE(cluster.get <bool> ("wide"));
+	ASSERT_TRUE(cluster.get <bool> ("host"));
+	/**
+	 * Создаём объект сбора для записи под двумя тире
+	 *
+	 * @note Двойное тире склейкою не разбирается вовсе: запись эта есть имя длинное
+	 *       непременно, и при снятой строгости она ложится настройкой как есть
+	 */
+	args_t doubled;
+	// Выполняем заведение трёх признаков теми же знаками
+	ASSERT_TRUE(doubled.schema().add("alpha", 'a', schema_t::value_t::NONE));
+	ASSERT_TRUE(doubled.schema().add("wide", 'w', schema_t::value_t::NONE));
+	ASSERT_TRUE(doubled.schema().add("host", 'h', schema_t::value_t::NONE));
+	// Выполняем разбор записи под двумя тире
+	ASSERT_TRUE(doubled.parse({"--awh"})) << "имя длинное под двумя тире отвечено отказом";
+	// Выполняем проверку того, что склейка не взята вовсе
+	ASSERT_FALSE(doubled.has("alpha")) << "запись под двумя тире разобрана склейкою";
+	ASSERT_TRUE(doubled.get <bool> ("awh")) << "имя длинное под двумя тире не уложено";
+}
