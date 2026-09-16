@@ -1365,3 +1365,60 @@ TEST(Args, TheRepeatWithoutArraysKeepsTheLastValue) {
 	 */
 	ASSERT_EQ(collected.size(string_view("порт")), static_cast <size_t> (2)) << "повтор массивом не собран";
 }
+
+/**
+ * @brief Проверка того, что круг выдачи и чтения разметки неподвижен
+ *
+ * @details Мост пишет дерево из ОДНОГО поля верхнего уровня без своего обноса:
+ * корнем записи становится само поле. Чтение же снимало корень по одному лишь
+ * числу полей и уносило настоящий уровень настроек - `--zums.cyqdjf=0.25`
+ * выдавалось записью `<zums cyqdjf="0.25"/>`, а возвращалось полем `cyqdjf`
+ *
+ */
+TEST(Args, TheMarkupCircleKeepsTheSoleLevel){
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Выполняем разбор набора доводов с ОДНИМ полем верхнего уровня
+	ASSERT_TRUE(args.parse(vector <string> {"--zums.cyqdjf=0.25"}));
+	// Собираемая запись разметки первого прохода
+	string first = "";
+	// Выполняем выдачу собранного дерева записью разметки
+	ASSERT_TRUE(args.dump(first, codec::Bridge::format_t::XML));
+	// Создаём объект чтения записи настроек
+	args_t back;
+	// Выполняем чтение собранной записи разметки
+	ASSERT_TRUE(back.config(first, codec::Bridge::format_t::XML));
+	// Выполняем проверку того, что звено верхнего уровня уцелело
+	ASSERT_TRUE(back.has("zums.cyqdjf")) << "чтение унесло звено верхнего уровня: " << first;
+	// Выполняем проверку того, что значение уцелело
+	ASSERT_EQ(back.get <double> ("zums.cyqdjf"), 0.25);
+	// Собираемая запись разметки второго прохода
+	string second = "";
+	// Выполняем выдачу прочитанного дерева записью разметки
+	ASSERT_TRUE(back.dump(second, codec::Bridge::format_t::XML));
+	// Выполняем проверку неподвижности круга выдачи и чтения
+	ASSERT_EQ(first, second) << "круг выдачи и чтения разметки ползёт";
+	/**
+	 * Выполняем проверку снятия обноса у дерева из НЕСКОЛЬКИХ полей
+	 *
+	 * @note Вторая половина договора: обнос, мостом поставленный, чтением
+	 *       по-прежнему снимается, иначе настройки ложились бы путём `config.имя`
+	 *       и доводом запуска не перекрывались
+	 */
+	args_t paired;
+	// Выполняем разбор набора доводов с двумя полями верхнего уровня
+	ASSERT_TRUE(paired.parse(vector <string> {"--host=localhost", "--port=8080"}));
+	// Собираемая запись разметки с обносом
+	string wrapped = "";
+	// Выполняем выдачу собранного дерева записью разметки
+	ASSERT_TRUE(paired.dump(wrapped, codec::Bridge::format_t::XML));
+	// Выполняем проверку того, что обнос записью поставлен
+	ASSERT_NE(wrapped.find("config"), string::npos) << "обнос записи разметки не поставлен: " << wrapped;
+	// Создаём объект чтения записи с обносом
+	args_t unwrapped;
+	// Выполняем чтение записи разметки с обносом
+	ASSERT_TRUE(unwrapped.config(wrapped, codec::Bridge::format_t::XML));
+	// Выполняем проверку того, что обнос чтением снят
+	ASSERT_TRUE(unwrapped.has("host")) << "обнос записи чтением не снят: " << wrapped;
+	ASSERT_EQ(unwrapped.get <string> ("host"), "localhost");
+}
