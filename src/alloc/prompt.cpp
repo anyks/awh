@@ -62,8 +62,15 @@ namespace {
 	 */
 	// Знак возврата на один шаг
 	static constexpr uint8_t BACKSPACE = 0x08;
-	// Знак удаления предыдущего
-	static constexpr uint8_t DELETE = 0x7F;
+	/**
+	 * Знак удаления предыдущего
+	 *
+	 * Имя взято НЕ `DELETE`: тот занят макросом у `<winnt.h>` MS Windows
+	 * (`#define DELETE 0x00010000`), и объявление с таким именем не собирается вовсе -
+	 * препроцессор подставляет на его место число. `RUBOUT` - историческое имя того же
+	 * знака 0x7F, и макросом оно не занято нигде
+	 */
+	static constexpr uint8_t RUBOUT = 0x7F;
 	/**
 	 * Наибольшее число знаков, у каких помнится ширина
 	 *
@@ -316,7 +323,7 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 				// Набор кончился
 				break;
 			// Если знак снимает предыдущий
-			if((static_cast <uint8_t> (symbol) == BACKSPACE) || (static_cast <uint8_t> (symbol) == DELETE)){
+			if((static_cast <uint8_t> (symbol) == BACKSPACE) || (static_cast <uint8_t> (symbol) == RUBOUT)){
 				// Если снимать нечего
 				if(taken_symbols == 0)
 					// Переходим к следующему знаку
@@ -430,7 +437,7 @@ awh::alloc::Prompt::result_t awh::alloc::Prompt::read(vessel_t & vessel, const c
 				// Набор кончился
 				break;
 			// Если знак снимает предыдущий
-			if((symbol == BACKSPACE) || (symbol == DELETE)){
+			if((symbol == BACKSPACE) || (symbol == RUBOUT)){
 				// Если снимать нечего
 				if(symbols == 0)
 					// Переходим к следующему знаку

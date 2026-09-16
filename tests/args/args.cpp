@@ -1422,3 +1422,38 @@ TEST(Args, TheMarkupCircleKeepsTheSoleLevel){
 	ASSERT_TRUE(unwrapped.has("host")) << "обнос записи чтением не снят: " << wrapped;
 	ASSERT_EQ(unwrapped.get <string> ("host"), "localhost");
 }
+
+/**
+ * @brief Проверка ограждения имён переменных окружения для оси хранения
+ *
+ * @details Имя переменной окружения ограничено лишь запретом знака равенства да
+ * нуля, и косая черта с тильдой в нём законны. Путь собирался заменою одних
+ * подчёркиваний: `APP_A/B` ложилась ДВУМЯ уровнями вместо одного поля `a/b`, а
+ * `APP_C~D` пропадала из дерева вовсе - при ответе «успех» у самого сбора
+ *
+ */
+TEST(Args, EnvironmentNamesAreEscapedForTheStorageAxis){
+	// Выполняем заведение переменных окружения со знаками оси хранения
+	ASSERT_EQ(::setenv("AWHTEST_A/B", "1", 1), 0);
+	ASSERT_EQ(::setenv("AWHTEST_C~D", "2", 1), 0);
+	ASSERT_EQ(::setenv("AWHTEST_NET_PORT", "8080", 1), 0);
+	// Создаём объект сбора параметров запуска
+	args_t args;
+	// Устанавливаем начало имён переменных окружения
+	args.prefix("AWHTEST");
+	// Выполняем сбор переменных окружения
+	ASSERT_TRUE(args.env()) << "сбор переменных окружения отвечен отказом";
+	// Выполняем проверку того, что косая черта осталась знаком ИМЕНИ, а не разделителем
+	ASSERT_TRUE(args.has("a/b")) << "переменная с косой чертой уложена не одним полем";
+	ASSERT_EQ(args.get <uint32_t> ("a/b"), 1u);
+	// Выполняем проверку того, что тильда имя не потеряла
+	ASSERT_TRUE(args.has("c~d")) << "переменная с тильдой пропала из дерева";
+	ASSERT_EQ(args.get <uint32_t> ("c~d"), 2u);
+	// Выполняем проверку того, что подчёркивание по-прежнему делит звенья
+	ASSERT_TRUE(args.has("net.port")) << "подчёркивание перестало делить звенья пути";
+	ASSERT_EQ(args.get <uint32_t> ("net.port"), 8080u);
+	// Выполняем снятие заведённых переменных окружения
+	static_cast <void> (::unsetenv("AWHTEST_A/B"));
+	static_cast <void> (::unsetenv("AWHTEST_C~D"));
+	static_cast <void> (::unsetenv("AWHTEST_NET_PORT"));
+}

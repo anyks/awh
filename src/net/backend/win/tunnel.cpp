@@ -640,7 +640,7 @@ namespace {
 		// Завершаем перебор и закрываем ветвь настроек
 		::RegCloseKey(branch);
 		// Если свободного устройства найти не удалось
-		if((result == INVALID_HANDLE_VALUE) && (log != nullptr))
+		if(result == INVALID_HANDLE_VALUE)
 			// Выводим в журнал сообщение об отсутствии свободных устройств
 			awh::log::print("%s: no free tap-windows6 adapter is available, the driver installer creates them", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__);
 		// Выводим результат занятия устройства
@@ -907,7 +907,7 @@ bool awh::win::tunnel::configure(const net::socket_t sock, const uint32_t local,
 	// Снимаем объявление сборки управляющего кода
 	#undef __AWH_TAP_CONTROL__
 	// Если сообщить драйверу адреса туннеля не удалось
-	if(!result && (log != nullptr))
+	if(!result)
 		// Выводим в журнал сообщение о невозможности сообщения адресов
 		awh::log::print("%s: tap-windows6 adapter could not be configured for the point-to-point mode, error %lu", awh::log::flag_t::WARNING, ::__AWH_TUNNEL_BACKEND__, ::GetLastError());
 	// Выводим результат выполнения сообщения
@@ -1264,7 +1264,7 @@ bool awh::win::tunnel::available(const driver_t driver) noexcept {
 		// Если проверяется драйвер Wintun
 		case static_cast <uint8_t> (driver_t::WINTUN):
 			// Выводим признак доступности библиотеки драйвера
-			return (::__awh_wintun__(nullptr) != nullptr);
+			return (::__awh_wintun__() != nullptr);
 		// Если проверяется драйвер tap-windows6
 		case static_cast <uint8_t> (driver_t::TAP): {
 			// Название занятого для проверки устройства
@@ -1277,7 +1277,7 @@ bool awh::win::tunnel::available(const driver_t driver) noexcept {
 			 *       них, выясняется лишь попыткой его открыть
 			 *
 			 */
-			HANDLE handle = ::__awh_tap__(name, nullptr);
+			HANDLE handle = ::__awh_tap__(name);
 			// Если свободное устройство нашлось
 			if(handle != INVALID_HANDLE_VALUE){
 				// Выполняем освобождение занятого устройства
@@ -1420,7 +1420,7 @@ int64_t awh::win::tunnel::read(const net::socket_t sock, void * buffer, const si
 	// Если устройство заведено драйвером Wintun
 	if(entry.driver == driver_t::WINTUN){
 		// Выполняем подключение библиотеки драйвера
-		const wintun_t * wintun = ::__awh_wintun__(nullptr);
+		const wintun_t * wintun = ::__awh_wintun__();
 		// Если библиотека драйвера не подключена
 		if(wintun == nullptr)
 			// Выводим признак отказа приёма
@@ -1556,7 +1556,7 @@ int64_t awh::win::tunnel::write(const net::socket_t sock, const void * buffer, c
 	// Если устройство заведено драйвером Wintun
 	if(entry.driver == driver_t::WINTUN){
 		// Выполняем подключение библиотеки драйвера
-		const wintun_t * wintun = ::__awh_wintun__(nullptr);
+		const wintun_t * wintun = ::__awh_wintun__();
 		// Если библиотека драйвера не подключена
 		if(wintun == nullptr)
 			// Выводим признак отказа отправки

@@ -80,7 +80,7 @@ STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/sysl
 #       обычной «СБОРКА ОТКАЗАЛА» - то есть машина числилась опрошенной и отвергнутой,
 #       тогда как опросить её было попросту нечем
 #
-# @warning FreeBSD берётся МЕСТНАЯ (10.100.1.207), а не anyks.com: та рвёт длинный
+# @warning FreeBSD берётся МЕСТНАЯ (192.168.53.172), а не anyks.com: та рвёт длинный
 #          сеанс ssh посреди прогона, а после череды обрывов перестаёт принимать
 #          подключения вовсе. Машина публичная и служит не одним проверкам
 #
@@ -99,14 +99,14 @@ STANDS="${*:-tests/codec/xml/stand.sh tests/codec/json/stand.sh tests/codec/sysl
 FLAGS="${FLAGS:-}"
 
 MACHINES="${AWH_STANDS:-
-forman@10.100.1.207|/usr/local|freebsd|
-forman@10.100.1.200|/usr/pkg|netbsd|
-forman@10.100.1.145|/usr/local|openbsd|
-forman@10.100.1.155|/usr/local|dragonfly|g++14
-forman@10.100.1.105|/usr/local|solaris|
-forman@10.100.1.159|/usr|openindiana|
-forman@10.100.1.250|/usr|debian|
-forman@10.100.1.245|/usr|alpine|
+forman@192.168.53.172|/usr/local|freebsd|
+forman@192.168.53.173|/usr/pkg|netbsd|
+forman@192.168.53.175|/usr/local|openbsd|
+forman@192.168.53.153|/usr/local|dragonfly|g++14
+forman@192.168.53.104|/usr/local|solaris|
+forman@192.168.53.158|/usr|openindiana|
+forman@192.168.53.247|/usr|debian|
+forman@192.168.53.163|/usr|alpine|
 }"
 
 #
@@ -407,7 +407,8 @@ echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG COMPILER; do
 	# @note Отказ передачи прогон не прекращает: недоступная машина - это отсутствие
 	#       сведений о ней, а не отказ прочих
 	#
-	if ! scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$BUNDLE" "$RUNNER" "$HOST:/tmp/"; then
+	if ! scp -q -o BatchMode=yes -o StrictHostKeyChecking=no \
+		-o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 "$BUNDLE" "$RUNNER" "$HOST:/tmp/"; then
 		# Выводим сообщение о недоступности машины
 		echo "$TAG: передача не удалась, машина пропущена"
 		# Выполняем переход к следующей машине
@@ -420,7 +421,18 @@ echo "$MACHINES" | while IFS='|' read -r HOST GTEST TAG COMPILER; do
 	#          съедает остаток перечня машин, отчего раскладка молча обрывается на
 	#          первой же из них
 	#
-	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no "$HOST" \
+	#
+	# @warning Сроки связи обязательны: без них полуоткрытая связь вешает раскладку
+	#          НАВСЕГДА и МОЛЧА. Замерено 16.09.2026 - прогон на OpenIndiana стоял час
+	#          при пустой машине: работа там кончилась, ход прогона снёс за собой и
+	#          свёрток, и сценарий, а `ssh` о том не узнал, ибо встречный FIN не дошёл.
+	#          Связь числилась ESTABLISHED, load average держался нулём, а раскладка
+	#          ждала. `ServerAliveInterval` шлёт опрос каждые 30 секунд и рвёт связь
+	#          после десяти безответных - сиречь через пять минут молчания, чего на
+	#          сборку стенда с запасом хватает, ибо опрос идёт и во время работы
+	#
+	ssh -n -o BatchMode=yes -o StrictHostKeyChecking=no \
+		-o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 "$HOST" \
 		"rm -rf ~/codec-stands-$STAMP && mkdir -p ~/codec-stands-$STAMP && cd ~/codec-stands-$STAMP &&
 		 gzip -dc /tmp/awh-codec-stands-$STAMP.tgz | tar -xf - &&
 		 GTEST_ROOT='$GTEST' AWH_SCRIPTS='$STANDS' AWH_STAMP='$STAMP' ${FLAGS:+FLAGS='$FLAGS'} ${COMPILER:+CXX='$COMPILER'} sh /tmp/awh-codec-runner-$STAMP.sh;

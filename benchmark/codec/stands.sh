@@ -106,7 +106,7 @@ FILTER="${AWH_FILTER:-}"
 #          21.08.2026: с прописанным путём проходят и замеры, и все 178 проверок, а в
 #          двоичном файле стоит `RPATH /usr/local/lib/gcc14`
 #
-# @warning FreeBSD берётся МЕСТНЫЙ (10.100.1.207), а не anyks.com: тот рвёт длинный
+# @warning FreeBSD берётся МЕСТНЫЙ (192.168.53.172), а не anyks.com: тот рвёт длинный
 #          сеанс ssh посреди прогона - трижды подряд ровно на 56-й строке вывода, - а
 #          после череды таких обрывов перестаёт принимать подключения вовсе, отвечая
 #          «Connection closed» уже на передаче свёртка. Машина эта публичная и служит
@@ -119,18 +119,18 @@ FILTER="${AWH_FILTER:-}"
 #          из Linux, - и порог, снятый без него, оказался вчетверо завышен
 #
 MACHINES="${AWH_STANDS:-
-forman@10.100.1.207|freebsd||
-forman@10.100.1.200|netbsd||
-forman@10.100.1.145|openbsd||
-forman@10.100.1.155|dragonfly|g++14|
-forman@10.100.1.105|solaris||
-forman@10.100.1.159|openindiana||
-forman@10.100.1.250|debian||
-forman@10.100.1.209|ubuntu||
-forman@10.100.1.249|fedora||
-forman@10.100.1.109|opensuse||
-forman@10.100.1.172|alt||
-forman@10.100.1.245|alpine||
+forman@192.168.53.172|freebsd||
+forman@192.168.53.173|netbsd||
+forman@192.168.53.175|openbsd||
+forman@192.168.53.153|dragonfly|g++14|
+forman@192.168.53.104|solaris||
+forman@192.168.53.158|openindiana||
+forman@192.168.53.247|debian||
+forman@192.168.53.166|ubuntu||
+forman@192.168.53.167|fedora||
+forman@192.168.53.168|opensuse||
+forman@192.168.53.165|alt||
+forman@192.168.53.163|alpine||
 }"
 
 #

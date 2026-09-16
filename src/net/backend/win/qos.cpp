@@ -392,7 +392,7 @@ bool awh::win::qos::mark(const net::socket_t sock, const event::dscp_t dscp) noe
 	 *       нет. Отметка тогда остаётся запомненной и будет применена применением
 	 *
 	 */
-	::__awh_flow__(sock, dscp, flow, nullptr);
+	::__awh_flow__(sock, dscp, flow);
 	// Запоминаем номер заведённого потока
 	entry.flow = flow;
 	// Выполняем блокировку реестра отмеченных сокетов
@@ -538,7 +538,7 @@ bool awh::win::qos::release(const net::socket_t sock) noexcept {
 		// Выводим положительный результат снятия
 		return true;
 	// Выполняем открытие работы с подсистемой
-	const qwave_t * qwave = ::__awh_qwave__(nullptr);
+	const qwave_t * qwave = ::__awh_qwave__();
 	// Если работа с подсистемой не открыта
 	if(qwave == nullptr)
 		// Выводим отрицательный результат снятия

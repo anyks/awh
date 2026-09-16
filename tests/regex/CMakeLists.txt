@@ -259,44 +259,36 @@ if (${GTest_FOUND})
             endif()
         endif()
 
-        # Если эталонная реализация не получена из подмодуля дерева
-        if (AWH_REFERENCE AND NOT AWH_REFERENCE_INCLUDE_DIR)
-            # Выполняем поиск заголовочного файла эталонной реализации
-            find_path(AWH_REFERENCE_INCLUDE_DIR NAMES pcre2.h)
+        ##
+         # Запасного пути в систему НЕТ намеренно
+         #
+         # Прежде эталон искался в системе, не найдясь в подмодуле, и это было
+         # неверно: подмодуль «submodules/pcre2» лежит в дереве всегда, а издание
+         # системное случайно - правила разбора у изданий разные, и расхождение
+         # с ним неотличимо с виду от изъяна модуля. Однажды это уже стоило разбора
+         # десяти мнимых отказов боевой сборки, да ещё и пары рассогласованной:
+         # заголовок брался от homebrew, а библиотека из состава Xcode.
+         #
+         # Источников эталона отныне два, и оба явные: пути, переданные руками,
+         # либо сборка подмодуля общим сценарием. Не вышло ни то ни другое -
+         # настройка отказывает, а не берёт что подвернулось
+         ##
 
-            # Если заголовочный файл эталонной реализации найден
-            if (AWH_REFERENCE_INCLUDE_DIR)
-                # Получаем каталог установки, заголовок содержащий
-                get_filename_component(AWH_REFERENCE_PREFIX "${AWH_REFERENCE_INCLUDE_DIR}" DIRECTORY)
-
-                # Выполняем поиск библиотеки эталонной реализации той же установки
-                find_library(AWH_REFERENCE_LIBRARY NAMES pcre2-8
-                    HINTS "${AWH_REFERENCE_PREFIX}/lib" "${AWH_REFERENCE_PREFIX}/lib64"
-                    NO_DEFAULT_PATH
-                )
-            endif()
-
-            ##
-             # Если эталон взят из системы, а не из подмодуля дерева
-             #
-             # Сообщение обязано быть громким: издание системного эталона
-             # случайно, правила разбора у изданий разные, и расхождение
-             # с ним неотличимо с виду от изъяна модуля. Молчание же здесь
-             # уже стоило разбора десяти мнимых отказов боевой сборки.
-             ##
-            if (AWH_REFERENCE_LIBRARY AND AWH_REFERENCE_INCLUDE_DIR)
-                # Отмечаем, что пути эталона добыты сборкою, а не переданы руками
-                set(AWH_REFERENCE_AUTO ON CACHE INTERNAL "PCRE2 reference paths were detected, not given")
-                # Выводим предупреждение
-                message(WARNING
-                    "The comparison standard is taken from the system: ${AWH_REFERENCE_LIBRARY}. "
-                    "Its publication is accidental, and discrepancies with it do not constitute a defect of the module. "
-                    "This is a fallback path: the standard should be lifted from a submodule of the tree, and the assembly "
-                    "came here because the submodule was not deployed, the shell was not found, or its assembly failed "
-                    "- the reason is stated in the message above. "
-                    "Deploy the submodule «git submodule update --init --recursive submodules/pcre2» and reconfigure.\n"
-                )
-            endif()
+        ##
+         # Если сличение затребовано, но эталон не получен ни одним путём
+         #
+         # Отказ настройки здесь обязателен: затребовавший сличение получил бы
+         # набор без эталона, а тридцать три сличения в нём - пропусками. Пропуск
+         # виден в выводе прогона, однако настройка о нём молчала бы, и заказавший
+         # сличение узнавал бы о его отсутствии лишь читая хвост чужого прогона
+         ##
+        if (AWH_REFERENCE AND NOT (AWH_REFERENCE_LIBRARY AND AWH_REFERENCE_INCLUDE_DIR))
+            # Выводим сообщение об отказе настройки сборки
+            message(FATAL_ERROR
+                "The comparison with the standard is requested by the -DAWH_REFERENCE=ON key, but the standard was not obtained. "
+                "Deploy the submodule «git submodule update --init --recursive submodules/pcre2» "
+                "or pass the paths of a ready standard: -DAWH_REFERENCE_INCLUDE_DIR=<first> -DAWH_REFERENCE_LIBRARY=<second>\n"
+            )
         endif()
 
         ##

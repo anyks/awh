@@ -316,6 +316,7 @@
  */
 #include <io.h>
 #include <fcntl.h>
+#include <sys/locker.hpp>
 #include <sys/dirent.hpp>
 /**
  * Заголовок POSIX есть у MinGW, но НЕ у оснастки MSVC: там его заменяют io.h и process.h
@@ -1067,7 +1068,7 @@ static int32_t __awh_close__(const SOCKET sock) noexcept {
 	 *       закрывать больше нечего. Дескриптору не туннельному оно отвечает отказом
 	 *       по отсутствию записи в реестре, и обходится одним поиском
 	 */
-	if(::awh::win::tunnel::destroy(static_cast <awh::net::socket_t> (sock), nullptr))
+	if(::awh::win::tunnel::destroy(static_cast <awh::net::socket_t> (sock)))
 		// Выводим успешный результат закрытия
 		return 0;
 	// Выполняем закрытие дескриптора как сокета
@@ -1203,7 +1204,7 @@ static int32_t __awh_connect__(const SOCKET sock, const struct sockaddr * addr, 
 	 */
 	if(result == 0)
 		// Выполняем применение запомненной отметки
-		::awh::win::qos::apply(sock, nullptr);
+		::awh::win::qos::apply(sock);
 	// Если подключение сокета не удалось
 	if(result < 0){
 		// Получаем код отказа подключения сокета
@@ -1884,10 +1885,6 @@ static int32_t __awh_unlink__(const char * path) noexcept {
  */
 #define open(...)     __awh_open__(__VA_ARGS__)
 #define stat(...)     __awh_stat__(__VA_ARGS__)
-#define awh::dir::opendir(...)  __awh_opendir__(__VA_ARGS__)
-#define awh::dir::readdir(...)  __awh_readdir__(__VA_ARGS__)
-#define awh::dir::closedir(...) __awh_closedir__(__VA_ARGS__)
-#define awh::dir::rewinddir(...) __awh_rewinddir__(__VA_ARGS__)
 #define unlink(...)   __awh_unlink__(__VA_ARGS__)
 #define getcwd(...)   __awh_getcwd__(__VA_ARGS__)
 
@@ -6491,7 +6488,7 @@ namespace {
 					// Если каталог открыт
 					if(dir->handle != nullptr){
 						// Закрываем каталог
-						awh::dir::closedir(dir->handle);
+						::__awh_closedir__(dir->handle);
 						// Сбрасываем значение указателя на каталог
 						dir->handle = nullptr;
 					}
@@ -16011,7 +16008,7 @@ namespace timer {
 					 * не будет. Прежде тот же отсев делался здесь по признаку "снимается
 					 * корень очереди", и он пропускал случай, когда ядро не взведено вовсе
 					 */
-					__rearm__(event::rate_t::INSTANT, nullptr);
+					__rearm__(event::rate_t::INSTANT);
 				// Если таймер не найден в lookup, снимаем только локальный статус
 				} else tm.status = event::status_t::NONE;
 			}
@@ -17683,7 +17680,7 @@ namespace timer {
 				 * отсев делался здесь по признаку "снимается корень кучи", и он пропускал
 				 * случай, когда ядро не взведено вовсе
 				 */
-				__rearm__(event::rate_t::INSTANT, nullptr);
+				__rearm__(event::rate_t::INSTANT);
 			}
 		}
 
@@ -40313,11 +40310,11 @@ namespace io {
 					 *       Установлено щупом: свежее открытие того же каталога в тот же
 					 *       миг показывало запись, которой поток ещё не видел
 					 */
-					awh::dir::rewinddir(dir->handle);
+					::__awh_rewinddir__(dir->handle);
 					/**
 					 * Выполняем чтение содержимого каталога
 					 */
-					while((ptr = awh::dir::readdir(dir->handle)) != nullptr){
+					while((ptr = ::__awh_readdir__(dir->handle)) != nullptr){
 						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
 							// Выполняем пропуск каталога
@@ -40367,7 +40364,7 @@ namespace io {
 						}
 					}
 					// Сбрасываем указатель каталога в начало
-					awh::dir::rewinddir(dir->handle);
+					::__awh_rewinddir__(dir->handle);
 					// Если произошло событие удаления файла или каталога
 					if(!entries.empty()){
 						/**
@@ -43727,7 +43724,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								// Если файловый дескриптор каталога существует
 								if(dir->fd != net::invalid_socket_t){
 									// Создаём объект промежуточного звена
-									dir->handle = awh::dir::opendir(path.c_str());
+									dir->handle = ::__awh_opendir__(path.c_str());
 									// Если объект открытого каталога создан успешно
 									if(!(result = (dir->handle != nullptr))){
 										// Если установлена функция обратного вызова
@@ -48759,7 +48756,7 @@ bool awh::engine::IO::rebuild(const event::id_t id) noexcept {
 				// Если каталог открыт
 				if(dir->handle != nullptr){
 					// Закрываем каталог
-					awh::dir::closedir(dir->handle);
+					::__awh_closedir__(dir->handle);
 					// Сбрасываем значение указателя на каталог
 					dir->handle = nullptr;
 				}
@@ -76158,7 +76155,7 @@ void awh::engine::IO::clear() noexcept {
 							// Если каталог открыт
 							if(dir->handle != nullptr)
 								// Закрываем каталог
-								awh::dir::closedir(dir->handle);
+								::__awh_closedir__(dir->handle);
 							// Закрываем дескриптор сокета
 							::kernel::close(dir->fd);
 							// Сбрасываем значение дескриптора сокета
@@ -76957,7 +76954,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 					// Если каталог открыт
 					if(dir->handle != nullptr)
 						// Закрываем каталог
-						awh::dir::closedir(dir->handle);
+						::__awh_closedir__(dir->handle);
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -77534,7 +77531,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 					// Если каталог открыт
 					if(dir->handle != nullptr)
 						// Закрываем каталог
-						awh::dir::closedir(dir->handle);
+						::__awh_closedir__(dir->handle);
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
@@ -77957,7 +77954,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 					/**
 					 * Выполняем чтение содержимого каталога
 					 */
-					while((ptr = awh::dir::readdir(dir->handle)) != nullptr){
+					while((ptr = ::__awh_readdir__(dir->handle)) != nullptr){
 						// Пропускаем названия текущие "." и внешние "..", так как идет рекурсия
 						if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
 							// Выполняем пропуск каталога
@@ -77973,7 +77970,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 						}
 					}
 					// Сбрасываем указатель каталога в начало
-					awh::dir::rewinddir(dir->handle);
+					::__awh_rewinddir__(dir->handle);
 				} break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE): {
@@ -81290,7 +81287,7 @@ awh::engine::IO::~IO() noexcept {
 					// Если каталог открыт
 					if(dir->handle != nullptr)
 						// Закрываем каталог
-						awh::dir::closedir(dir->handle);
+						::__awh_closedir__(dir->handle);
 					// Если дескриптор сокета инициализирован
 					if(dir->fd != net::invalid_socket_t){
 						// Закрываем дескриптор сокета
