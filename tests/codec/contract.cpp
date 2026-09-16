@@ -160,6 +160,7 @@
  * Стандартные заголовочные файлы
  */
 #include <cmath>
+#include <tuple>
 #include <string>
 #include <vector>
 #include <cstdio>

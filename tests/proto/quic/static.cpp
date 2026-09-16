@@ -27,6 +27,7 @@
 #include <vector>
 #include <cstring>
 #include <cstdint>
+#include <algorithm>
 
 /**
  * Подключаем заголовочный файлы проекта

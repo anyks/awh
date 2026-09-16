@@ -1574,7 +1574,7 @@ namespace {
 			 */
 			if(taken != parsed){
 				// Выводим сообщение о расхождении исхода разбора
-				::fprintf(stderr, "ini fuzz: хвостовой перевод строки меняет исход разбора: %s против %s\n",
+				::fprintf(stderr, "ini fuzz: trailing newline changes the parse verdict: %s vs %s\n",
 				 (taken ? "принят" : "отвергнут"), (parsed ? "принят" : "отвергнут"));
 				// Выводим разбираемый текст настроек
 				dump(text);
@@ -1639,7 +1639,7 @@ namespace {
 			 */
 			if(parsed && !blanked && (tailed.text() != document.text())){
 				// Выводим сообщение о расхождении записей написаний
-				::fprintf(stderr, "ini fuzz: хвостовой перевод строки меняет запись\n");
+				::fprintf(stderr, "ini fuzz: trailing newline changes the rewrite\n");
 				// Выводим разбираемый текст настроек
 				dump(text);
 				// Выводим запись написания иного
@@ -1654,7 +1654,7 @@ namespace {
 			// Если причина отказа разбора не названа
 			if(document.error() == ini::error_t::NONE){
 				// Выводим сообщение об отказе без названной причины
-				::fprintf(stderr, "ini fuzz: разбор отвергнут без кода ошибки\n");
+				::fprintf(stderr, "ini fuzz: parsing refused without a named cause\n");
 				// Выводим отрицательный результат работы генератора
 				return false;
 			}
@@ -1703,7 +1703,7 @@ namespace {
 			 */
 			if(first != second){
 				// Выводим сообщение о расхождении исхода переписи
-				::fprintf(stderr, "ini fuzz: исход подачи у записи свежей и занятой разошёлся: %s против %s\n",
+				::fprintf(stderr, "ini fuzz: feeding outcome differs between a fresh writer and a reused one: %s vs %s\n",
 				 (first ? "принято" : "отвергнуто"), (second ? "принято" : "отвергнуто"));
 				// Выводим исходный текст настроек
 				dump(text);
@@ -1715,7 +1715,7 @@ namespace {
 			 */
 			if(fresh.text() != reused.text()){
 				// Выводим сообщение о расхождении собранного текста
-				::fprintf(stderr, "ini fuzz: запись, прежней подачей занятая, собрала текст иной\n");
+				::fprintf(stderr, "ini fuzz: a writer reused after a previous feed assembled a different text\n");
 				// Выводим исходный текст настроек
 				dump(text);
 				// Выводим текст, собранный свежим объектом записи
@@ -1730,7 +1730,7 @@ namespace {
 			 */
 			if(fresh.error() != reused.error()){
 				// Выводим сообщение о расхождении кода отказа
-				::fprintf(stderr, "ini fuzz: код отказа у записи свежей и занятой разошёлся: %u против %u\n",
+				::fprintf(stderr, "ini fuzz: refusal code differs between a fresh writer and a reused one: %u vs %u\n",
 				 static_cast <uint32_t> (fresh.error()), static_cast <uint32_t> (reused.error()));
 				// Выводим исходный текст настроек
 				dump(text);
@@ -1771,7 +1771,7 @@ namespace {
 				 */
 				if(!consistent(document, lifted, diverged)){
 					// Выводим сообщение о расхождении снятия с деревом
-					::fprintf(stderr, "ini fuzz: снятое значение дереву не отвечает: %s\n", diverged.c_str());
+					::fprintf(stderr, "ini fuzz: taken value disagrees with the tree: %s\n", diverged.c_str());
 					// Выводим исходный текст настроек
 					dump(text);
 					// Выводим результат проверки дерева настроек
@@ -1806,7 +1806,7 @@ namespace {
 					 */
 					if(!(back == lifted)){
 						// Выводим сообщение о расхождении кругового хода
-						::fprintf(stderr, "ini fuzz: круговой ход снятого значения через перезапись расхождением окончился\n");
+						::fprintf(stderr, "ini fuzz: round trip of the taken value through a rewrite ended in divergence\n");
 						// Выводим исходный текст настроек
 						dump(text);
 						// Выводим перезапись дерева настроек
@@ -1974,7 +1974,7 @@ namespace {
 			 */
 			if(!edited && (document.error() == ini::error_t::NONE)){
 				// Выводим сообщение об отказе без названной причины
-				::fprintf(stderr, "ini fuzz: правка отвергнута без кода ошибки, разновидность %u, раздел [%s] подраздел [%s] ключ [%s]\n",
+				::fprintf(stderr, "ini fuzz: edit refused without a named cause, kind %u, section [%s] subsection [%s] key [%s]\n",
 				 kind, section.c_str(), subsection.c_str(), key.c_str());
 				// Выводим отрицательный результат работы генератора
 				return false;
@@ -2133,7 +2133,7 @@ namespace {
 						 */
 						if(!after.empty() && (before != after)){
 							// Выводим сообщение о расхождении значения после перевода
-							::fprintf(stderr, "ini fuzz: translation differs, dialect=%u, key=[%s]\n  исходное [%s]\n  перевод  [%s]\n",
+							::fprintf(stderr, "ini fuzz: translation differs, dialect=%u, key=[%s]\n  source      [%s]\n  translation [%s]\n",
 								index, string(key).c_str(), before.c_str(), after.c_str());
 							// Выводим настройки разбора исходного текста настроек
 							dump(settings.reader);
@@ -2173,15 +2173,15 @@ namespace {
 				 */
 				if((offered > 0) && (regained == 0)){
 					// Выводим сообщение о переводе, ничего обратно не отдавшем
-					::fprintf(stderr, "ini fuzz: translation yielded nothing back, dialect=%u, свойств было %zu,"
-					 " разделов у исходного %zu, у перевода %zu\n",
+					::fprintf(stderr, "ini fuzz: translation yielded nothing back, dialect=%u, properties were %zu,"
+					 " sections in the source %zu, in the translation %zu\n",
 					 index, offered, document.sections().size(), back.sections().size());
 					/**
 					 * Выполняем перебор всех разделов исходного дерева настроек
 					 */
 					for(const auto & section : document.sections())
 						// Выводим название раздела исходного дерева настроек вместе с числом свойств
-						::fprintf(stderr, "  исходный раздел [%s|%s], свойств %zu\n",
+						::fprintf(stderr, "  source section [%s|%s], properties %zu\n",
 						 string(section.section).c_str(), string(section.subsection).c_str(),
 						 document.keys(section.section, section.subsection).size());
 					/**
@@ -2189,7 +2189,7 @@ namespace {
 					 */
 					for(const auto & section : back.sections())
 						// Выводим название раздела переведённого дерева настроек вместе с числом свойств
-						::fprintf(stderr, "  раздел перевода [%s|%s], свойств %zu\n",
+						::fprintf(stderr, "  translation section [%s|%s], properties %zu\n",
 						 string(section.section).c_str(), string(section.subsection).c_str(),
 						 back.keys(section.section, section.subsection).size());
 					// Выводим настройки разбора исходного текста настроек
@@ -2288,7 +2288,7 @@ namespace {
 					 */
 					if(got != hostage){
 						// Выводим сообщение о расхождении значения после кругового хода
-						::fprintf(stderr, "ini fuzz: hostile value differs\n  было  [%s]\n  стало [%s]\n  текст [%s]\n",
+						::fprintf(stderr, "ini fuzz: hostile value differs\n  before [%s]\n  after  [%s]\n  text   [%s]\n",
 							hostage.c_str(), got.c_str(), written.c_str());
 						// Выходим из приложения с кодом ошибки
 						return false;
@@ -2298,7 +2298,7 @@ namespace {
 					 */
 					if(back.text() != written){
 						// Выводим сообщение о неустойчивости перезаписи значения
-						::fprintf(stderr, "ini fuzz: hostile value rewrite unstable\n  первая [%s]\n  вторая [%s]\n",
+						::fprintf(stderr, "ini fuzz: hostile value rewrite unstable\n  first  [%s]\n  second [%s]\n",
 							written.c_str(), back.text().c_str());
 						// Выходим из приложения с кодом ошибки
 						return false;
@@ -2350,7 +2350,7 @@ namespace {
 				 */
 				if(before != after){
 					// Выводим сообщение о расхождении чтения дерева с чтением перезаписи
-					::fprintf(stderr, "ini fuzz: edited read differs, key=[%s]\n  дерево    [%s]\n  перезапись [%s]\n",
+					::fprintf(stderr, "ini fuzz: edited read differs, key=[%s]\n  tree    [%s]\n  rewrite [%s]\n",
 						string(key).c_str(), before.c_str(), after.c_str());
 					// Выводим перезапись правленого дерева настроек
 					dump(edited);
@@ -2629,7 +2629,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(achieved != state){
 				// Выводим сообщение о расхождении состояния подачи
-				::fprintf(stderr, "ini fuzz: reused reader state differs: %u против %u\n",
+				::fprintf(stderr, "ini fuzz: reused reader state differs: %u vs %u\n",
 				 static_cast <uint32_t> (achieved), static_cast <uint32_t> (state));
 				// Выводим настройки разбора исходного текста настроек
 				dump(settings);

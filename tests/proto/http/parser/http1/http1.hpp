@@ -24,6 +24,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <tuple>
 #include <string>
 #include <vector>
 #include <memory>

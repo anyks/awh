@@ -75,6 +75,7 @@
 #pragma pop_macro("ES")
 #pragma pop_macro("FS")
 #pragma pop_macro("INVALID_SOCKET")
+#pragma pop_macro("OPTIONAL")
 #pragma pop_macro("TRANSPARENT")
 #pragma pop_macro("FALSE")
 #pragma pop_macro("TRUE")

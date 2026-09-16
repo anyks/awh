@@ -56,8 +56,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ALLOC_VESSEL__
-#define __AWH_ALLOC_VESSEL__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -70,6 +69,13 @@
  */
 #include "alloc.hpp"
 #include "../sys/macro/global.hpp"
+
+/**
+ * Подавляем системный макрос, занявший имя члена перечисления ниже:
+ * STRICT у MS Windows раскрывается в единицу и объявление ломает.
+ * Имя снимается лишь на время объявлений - возврат в конце файла
+ */
+#include "../sys/macro/suppress.hpp"
 
 /**
  * \~russian
@@ -377,4 +383,7 @@ namespace awh {
 	};
 };
 
-#endif // __AWH_ALLOC_VESSEL__
+/**
+ * Возвращаем имя, системным макросом занятое
+ */
+#include "../sys/macro/restore.hpp"

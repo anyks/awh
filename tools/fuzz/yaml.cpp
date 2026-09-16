@@ -2268,7 +2268,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(achieved != state){
 				// Выводим сообщение о расхождении состояния подачи
-				::fprintf(stderr, "yaml fuzz: reused reader state differs: %u против %u, settings %s\n",
+				::fprintf(stderr, "yaml fuzz: reused reader state differs: %u vs %u, settings %s\n",
 				 static_cast <uint32_t> (achieved), static_cast <uint32_t> (state), described(settings).c_str());
 				// Выводим разбираемый текст
 				dump(text);
@@ -2280,7 +2280,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(repeated != failure){
 				// Выводим сообщение о расхождении кода ошибки
-				::fprintf(stderr, "yaml fuzz: reused reader error differs: %s против %s, settings %s\n",
+				::fprintf(stderr, "yaml fuzz: reused reader error differs: %s vs %s, settings %s\n",
 				 yaml::message(repeated), yaml::message(failure), described(settings).c_str());
 				// Выводим разбираемый текст
 				dump(text);
@@ -2392,7 +2392,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(!parsed && (document.error() == yaml::error_t::NONE)){
 				// Выводим сообщение об отказе без названной причины
-				::fprintf(stderr, "yaml fuzz: разбор отвергнут без кода ошибки\n");
+				::fprintf(stderr, "yaml fuzz: parsing refused without a named cause\n");
 				// Выводим отрицательный результат работы генератора
 				return EXIT_FAILURE;
 			}
@@ -2421,7 +2421,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				 */
 				if(again != parsed){
 					// Выводим сообщение о расхождении исхода разбора
-					::fprintf(stderr, "yaml fuzz: reused tree parse differs: %s против %s, settings %s\n",
+					::fprintf(stderr, "yaml fuzz: reused tree parse differs: %s vs %s, settings %s\n",
 					 (again ? "удался" : "отвергнут"), (parsed ? "удался" : "отвергнут"),
 					 described(settings).c_str());
 					// Выводим разбираемый текст
@@ -2530,7 +2530,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 				 */
 				if((taken != parsed) && !keeping){
 					// Выводим сообщение о расхождении исхода разбора
-					::fprintf(stderr, "yaml fuzz: trailing newline changes verdict: %s против %s, settings %s\n",
+					::fprintf(stderr, "yaml fuzz: trailing newline changes verdict: %s vs %s, settings %s\n",
 					 (taken ? "принят" : "отвергнут"), (parsed ? "принят" : "отвергнут"),
 					 described(settings).c_str());
 					// Выводим разбираемый текст
@@ -2623,7 +2623,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 								 */
 								if(!(back == taken)){
 									// Выводим сообщение о расхождении кругового хода
-									::fprintf(stderr, "yaml fuzz: круговой ход снятого значения через перезапись расхождением окончился\n");
+									::fprintf(stderr, "yaml fuzz: round trip of the taken value through a rewrite ended in divergence\n");
 									// Выводим разбираемый текст
 									dump(text);
 									// Выводим перезапись дерева документа
@@ -3101,7 +3101,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 						 */
 						if(!changed && (edited.error() == yaml::error_t::NONE)){
 							// Выводим сообщение об отказе без названной причины
-							::fprintf(stderr, "yaml fuzz: правка отвергнута без кода ошибки, разновидность %u, путь [%s]\n",
+							::fprintf(stderr, "yaml fuzz: edit refused without a named cause, kind %u, path [%s]\n",
 							 static_cast <uint32_t> (kind), path.c_str());
 							// Выводим отрицательный результат работы генератора
 							return EXIT_FAILURE;
@@ -3527,7 +3527,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(first != second){
 				// Выводим сообщение о расхождении исходов вызовов
-				::fprintf(stderr, "yaml fuzz: исходы подачи у записи свежей и занятой разошлись\n");
+				::fprintf(stderr, "yaml fuzz: feeding outcomes differ between a fresh writer and a reused one\n");
 				// Выводим текст, собранный свежим объектом записи
 				dump(fresh.text());
 				// Выводим текст, собранный объектом, прежней подачей занятым
@@ -3540,7 +3540,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(fresh.text() != reused.text()){
 				// Выводим сообщение о расхождении собранного текста
-				::fprintf(stderr, "yaml fuzz: запись, прежней подачей занятая, собрала текст иной\n");
+				::fprintf(stderr, "yaml fuzz: a writer reused after a previous feed assembled a different text\n");
 				// Выводим текст, собранный свежим объектом записи
 				dump(fresh.text());
 				// Выводим текст, собранный объектом, прежней подачей занятым
@@ -3553,7 +3553,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(fresh.error() != reused.error()){
 				// Выводим сообщение о расхождении кода отказа
-				::fprintf(stderr, "yaml fuzz: код отказа у записи свежей и занятой разошёлся: %u против %u\n",
+				::fprintf(stderr, "yaml fuzz: refusal code differs between a fresh writer and a reused one: %u vs %u\n",
 				 static_cast <uint32_t> (fresh.error()), static_cast <uint32_t> (reused.error()));
 				// Выходим из приложения с ошибкой
 				return EXIT_FAILURE;
@@ -3563,7 +3563,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		}
 	}
 	// Выводим итог работы генератора
-	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu не допущено, %llu однобайтовых отсеяно), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu обойдено), %llu recycled (%llu хвостом), %llu grafts (%llu refused), %llu transcribed, %llu circling%s\n",
+	::fprintf(stderr, "yaml fuzz: %llu texts (%llu corrupted, %llu survived), %llu events, %llu chunked, %llu transcoded (%llu rejected, %llu single-byte filtered), %llu trees, %llu kept, %llu pruned, %llu edited (%llu verified), %llu taken, %llu assembled, %llu restyled (%llu skipped), %llu recycled (%llu by tail), %llu grafts (%llu refused), %llu transcribed, %llu circling%s\n",
 		static_cast <unsigned long long> (totals.texts), static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.survived), static_cast <unsigned long long> (totals.events),
 		static_cast <unsigned long long> (totals.chunked), static_cast <unsigned long long> (totals.transcoded),

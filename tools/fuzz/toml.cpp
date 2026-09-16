@@ -1572,7 +1572,7 @@ namespace {
 			 */
 			if(taken != parsed){
 				// Выводим сообщение о расхождении исхода разбора
-				::fprintf(stderr, "toml fuzz: хвостовой перевод строки меняет исход разбора: %s против %s\n",
+				::fprintf(stderr, "toml fuzz: trailing newline changes the parse verdict: %s vs %s\n",
 				 (taken ? "принят" : "отвергнут"), (parsed ? "принят" : "отвергнут"));
 				// Выводим разбираемый текст настроек
 				dump(text);
@@ -1584,7 +1584,7 @@ namespace {
 			 */
 			if(parsed && (harvest(tailed) != harvest(document))){
 				// Выводим сообщение о расхождении содержимого написаний
-				::fprintf(stderr, "toml fuzz: хвостовой перевод строки меняет содержимое\n");
+				::fprintf(stderr, "toml fuzz: trailing newline changes the content\n");
 				// Выводим разбираемый текст настроек
 				dump(text);
 				// Выводим содержимое написания иного
@@ -1608,7 +1608,7 @@ namespace {
 			 */
 			if(document.error() == toml::error_t::NONE){
 				// Выводим сообщение об отказе без названной причины
-				::fprintf(stderr, "toml fuzz: разбор отвергнут без кода ошибки\n");
+				::fprintf(stderr, "toml fuzz: parsing refused without a named cause\n");
 				// Выводим отрицательный результат работы генератора
 				return false;
 			}
@@ -1932,7 +1932,7 @@ namespace {
 			 */
 			if(!edited && (document.error() == toml::error_t::NONE)){
 				// Выводим сообщение об отказе без названной причины
-				::fprintf(stderr, "toml fuzz: правка отвергнута без кода ошибки, разновидность %u, путь [%s]\n",
+				::fprintf(stderr, "toml fuzz: edit refused without a named cause, kind %u, path [%s]\n",
 				 static_cast <uint32_t> (kind), trace.c_str());
 				// Выводим отрицательный результат работы генератора
 				return false;
@@ -2194,7 +2194,7 @@ namespace {
 			 */
 			if(document.settings().reader.duplicates && !consistent(document, lifted, path, names, diverged)){
 				// Выводим сообщение о расхождении снятия с деревом
-				::fprintf(stderr, "toml fuzz: снятое значение дереву не отвечает: %s\n", diverged.c_str());
+				::fprintf(stderr, "toml fuzz: taken value disagrees with the tree: %s\n", diverged.c_str());
 				// Выводим исходный текст настроек
 				dump(text);
 				// Выводим перезапись дерева настроек
@@ -2241,7 +2241,7 @@ namespace {
 					 */
 					if(!(back == lifted)){
 						// Выводим сообщение о расхождении кругового хода
-						::fprintf(stderr, "toml fuzz: круговой ход снятого значения через перезапись расхождением окончился\n");
+						::fprintf(stderr, "toml fuzz: round trip of the taken value through a rewrite ended in divergence\n");
 						// Выводим исходный текст настроек
 						dump(text);
 						// Выводим перезапись дерева настроек
@@ -2559,7 +2559,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(achieved != state){
 				// Выводим сообщение о расхождении состояния подачи
-				::fprintf(stderr, "toml fuzz: reused reader state differs: %u против %u\n",
+				::fprintf(stderr, "toml fuzz: reused reader state differs: %u vs %u\n",
 				 static_cast <uint32_t> (achieved), static_cast <uint32_t> (state));
 				// Выводим настройки разбора исходного текста настроек
 				dump(settings);
@@ -2927,7 +2927,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(first != second){
 				// Выводим сообщение о расхождении исходов вызовов
-				::fprintf(stderr, "toml fuzz: исходы подачи у записи свежей и занятой разошлись\n");
+				::fprintf(stderr, "toml fuzz: feeding outcomes differ between a fresh writer and a reused one\n");
 				// Выводим текст, собранный свежим объектом записи
 				dump(fresh.text());
 				// Выводим текст, собранный объектом, прежней подачей занятым
@@ -2940,7 +2940,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(fresh.text() != reused.text()){
 				// Выводим сообщение о расхождении собранного текста
-				::fprintf(stderr, "toml fuzz: запись, прежней подачей занятая, собрала текст иной\n");
+				::fprintf(stderr, "toml fuzz: a writer reused after a previous feed assembled a different text\n");
 				// Выводим текст, собранный свежим объектом записи
 				dump(fresh.text());
 				// Выводим текст, собранный объектом, прежней подачей занятым
@@ -2953,7 +2953,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 			 */
 			if(fresh.error() != reused.error()){
 				// Выводим сообщение о расхождении кода отказа
-				::fprintf(stderr, "toml fuzz: код отказа у записи свежей и занятой разошёлся: %u против %u\n",
+				::fprintf(stderr, "toml fuzz: refusal code differs between a fresh writer and a reused one: %u vs %u\n",
 				 static_cast <uint32_t> (fresh.error()), static_cast <uint32_t> (reused.error()));
 				// Выходим из приложения с кодом ошибки
 				return EXIT_FAILURE;
@@ -2965,7 +2965,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 	// Выводим статистику работы генератора
 	::fprintf(
 		stdout,
-		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu restyled (%llu обойдено), %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed, %llu mirrored%s\n",
+		"toml fuzz: %llu texts (%llu corrupted), %llu events, %llu parsed to the end, %llu trees, %llu rewrites, %llu restyled (%llu skipped), %llu grafts (%llu refused), %llu transcoded (%llu untranscodable), %llu transcribed, %llu mirrored%s\n",
 		static_cast <unsigned long long> (totals.texts),
 		static_cast <unsigned long long> (totals.corrupted),
 		static_cast <unsigned long long> (totals.events),

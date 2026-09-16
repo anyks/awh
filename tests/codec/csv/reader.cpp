@@ -25,6 +25,7 @@
  */
 #include <string>
 #include <vector>
+#include <iomanip>
 
 /**
  * Подключаем заголовочные файлы проекта

@@ -23,6 +23,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include <random>
+#include <memory>
 #include "crypto.hpp"
 
 /**

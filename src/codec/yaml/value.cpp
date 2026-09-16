@@ -33,6 +33,7 @@
 #include <atomic>
 #include <limits>
 #include <type_traits>
+#include <iterator>
 
 /**
  * Подключаем заголовочные файлы модуля

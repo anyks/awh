@@ -21,6 +21,11 @@
  
 #pragma once
 
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <memory>
+
 #include "../../main.hpp"
 #include "../../../include/sys/version.hpp"
 

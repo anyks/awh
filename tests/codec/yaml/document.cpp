@@ -23,6 +23,7 @@
 	#define getpid _getpid
 #endif
 #include <cmath>
+#include <tuple>
 #include <csignal>
 #include <fstream>
 /**

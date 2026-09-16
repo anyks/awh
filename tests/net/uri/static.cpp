@@ -24,6 +24,7 @@
  * Стандартные заголовочные файлы
  */
 #include <set>
+#include <tuple>
 #include <random>
 #include <sstream>
 

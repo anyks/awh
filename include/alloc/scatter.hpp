@@ -84,8 +84,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ALLOC_SCATTER__
-#define __AWH_ALLOC_SCATTER__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -290,5 +289,3 @@ namespace awh {
 		} scatter_t;
 	};
 };
-
-#endif // __AWH_ALLOC_SCATTER__

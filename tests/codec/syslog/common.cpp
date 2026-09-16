@@ -69,7 +69,7 @@ TEST(CodecSysLogCommon, Messages) {
 	/**
 	 * Выполняем перебор всех кодов отказов разбора
 	 */
-	for(uint8_t code = 0; code <= static_cast <uint8_t> (syslog::error_t::MULTIPLE_RECORDS); code++){
+	for(uint8_t code = 0; code <= static_cast <uint8_t> (syslog::error_t::INVALID_MESSAGE_UTF8); code++){
 		// Получаем текст сообщения об очередном отказе
 		const string message(syslog::message(static_cast <syslog::error_t> (code)));
 		// Выполняем проверку непустоты текста сообщения об отказе
@@ -96,7 +96,7 @@ TEST(CodecSysLogCommon, Messages) {
 	 *          не поверялся вовсе. Выдала это лишь карта покрытия - `common.cpp` упал со
 	 *          100% до 97.22%, - а не разум и не прогон
 	 */
-	EXPECT_STREQ(syslog::message(static_cast <syslog::error_t> (static_cast <uint32_t> (syslog::error_t::MULTIPLE_RECORDS) + 1)), "unknown error");
+	EXPECT_STREQ(syslog::message(static_cast <syslog::error_t> (static_cast <uint32_t> (syslog::error_t::INVALID_MESSAGE_UTF8) + 1)), "unknown error");
 }
 
 /**

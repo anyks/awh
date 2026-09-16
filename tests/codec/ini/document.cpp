@@ -29,7 +29,9 @@
 	#include <process.h>
 	#define getpid _getpid
 #endif
+#include <tuple>
 #include <string>
+#include <algorithm>
 #include <encoding/unicode/utf8.hpp>
 #include <csignal>
 #include <fstream>

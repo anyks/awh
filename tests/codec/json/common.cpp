@@ -23,6 +23,7 @@
 #include <vector>
 #include <cstring>
 #include <unordered_set>
+#include <iomanip>
 
 /**
  * Подключаем заголовочные файлы проекта

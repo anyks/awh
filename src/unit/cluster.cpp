@@ -22,6 +22,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <deque>
 #include <thread>
 #include <cerrno>
 #include <cstdio>

@@ -23,6 +23,7 @@
 	#define getpid _getpid
 #endif
 #include <string>
+#include <limits>
 #include <encoding/unicode/utf8.hpp>
 #include <vector>
 #include <fstream>

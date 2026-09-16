@@ -25,6 +25,7 @@
 #include <cmath>
 #include <ctime>
 #include <locale>
+#include <limits>
 #include <iomanip>
 #include <cstring>
 #include <sstream>

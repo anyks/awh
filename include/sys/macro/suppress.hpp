@@ -138,6 +138,7 @@
 #pragma push_macro("NO_ERROR")
 #pragma push_macro("ALTERNATE")
 #pragma push_macro("TRANSPARENT")
+#pragma push_macro("OPTIONAL")
 #pragma push_macro("INVALID_SOCKET")
 #pragma push_macro("FS")
 #pragma push_macro("ES")
@@ -164,6 +165,7 @@
 #undef NO_ERROR
 #undef ALTERNATE
 #undef TRANSPARENT
+#undef OPTIONAL
 #undef INVALID_SOCKET
 
 /**

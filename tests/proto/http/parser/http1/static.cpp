@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <algorithm>
+#include <tuple>
 
 /**
  * Подключаем заголовочный файлы проекта

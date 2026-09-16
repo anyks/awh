@@ -64,6 +64,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <algorithm>
 
 /**
  * Для операционной системы MS Windows

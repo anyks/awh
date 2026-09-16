@@ -21,6 +21,12 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <tuple>
+#include <sstream>
+
+/**
  * Подключаем восполнение средств POSIX, отсутствующих у MS Windows
  */
 #include "../../posix.hpp"

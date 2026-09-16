@@ -63,8 +63,7 @@
 /**
  * Экранируем повторную инициализацию модуля
  */
-#ifndef __AWH_ALLOC_PROMPT__
-#define __AWH_ALLOC_PROMPT__
+#pragma once
 
 /**
  * Стандартные заголовочные файлы
@@ -175,5 +174,3 @@ namespace awh {
 		} prompt_t;
 	};
 };
-
-#endif // __AWH_ALLOC_PROMPT__

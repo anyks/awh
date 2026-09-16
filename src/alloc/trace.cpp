@@ -577,6 +577,16 @@ bool awh::alloc::Trace::ready() const noexcept {
 	return this->_warmed.load(std::memory_order_acquire);
 }
 /**
+ * @brief Метод определения нахождения потока внутри съёма
+ *
+ * @return признак нахождения потока внутри съёма
+ *
+ */
+bool awh::alloc::Trace::capturing() const noexcept {
+	// Выводим признак нахождения потока внутри съёма
+	return ::inside();
+}
+/**
  * @brief Метод получения названия способа съёма
  *
  * @return название способа съёма

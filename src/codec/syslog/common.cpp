@@ -99,6 +99,8 @@ const char * awh::codec::syslog::message(const error_t error) noexcept {
 		// Если файл записей открыть не удалось
 		case static_cast <uint8_t> (error_t::FILE_NOT_OPENED): return "file of the records could not be opened";
 		case static_cast <uint8_t> (error_t::FILE_NOT_READ): return "file of the records could not be read";
+		// Если текст сообщения меткою объявлен UTF-8, а годным UTF-8 не является
+		case static_cast <uint8_t> (error_t::INVALID_MESSAGE_UTF8): return "message is declared UTF-8 by the byte order mark yet is not valid UTF-8";
 	}
 	// Выводим описание неизвестного кода отказа
 	return "unknown error";

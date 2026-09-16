@@ -23,6 +23,7 @@
 /**
  * Стандартные модули
  */
+#include <iomanip>
 #include <iostream>
 #include <cinttypes>
 

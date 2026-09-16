@@ -22,6 +22,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <limits>
+
 #include <encoding/ascii.hpp>
 #include <num/lexical/lexical.hpp>
 #include <codec/numeric.hpp>
@@ -632,10 +634,75 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	if(value.empty())
 		// Выводим признак неудачного разбора
 		return false;
+	/**
+	 * Если содержимое является особым значением договора XSD
+	 *
+	 * @details Договор XSD (W3C XML Schema Part 2, §3.2.5) допускает ровно четыре
+	 *          особых написания: `INF`, `+INF`, `-INF` и `NaN`, и РЕГИСТР В НИХ
+	 *          ЗНАЧИМ - иных написаний лексика не содержит вовсе
+	 *
+	 * @warning Сличение ведётся ТОЧНОЕ и ДО общего разбора намеренно: разбор числа
+	 *          `fromChars` следует правилам языка, а не XSD, и принимает `inf`, `nan`,
+	 *          `infinity` и `INFINITY` в любом написании. Замер 16.09.2026: все они
+	 *          проходили, и содержимое, договору XSD не отвечающее, ложилось в дерево
+	 *          числом. Соседний вход `boolean` при этом держался строго - `True` и
+	 *          `TRUE` отвергал, - и мера строгости у двух входов одного кодека
+	 *          расходилась
+	 */
+	if((value.compare("INF") == 0) || (value.compare("+INF") == 0)){
+		// Запоминаем положительную бесконечность
+		result = ::std::numeric_limits <double>::infinity();
+		// Выводим признак успешного приведения
+		return true;
+	/**
+	 * Если содержимое является отрицательной бесконечностью
+	 */
+	} else if(value.compare("-INF") == 0) {
+		// Запоминаем отрицательную бесконечность
+		result = -::std::numeric_limits <double>::infinity();
+		// Выводим признак успешного приведения
+		return true;
+	/**
+	 * Если содержимое является нечислом
+	 */
+	} else if(value.compare("NaN") == 0) {
+		// Запоминаем нечисло
+		result = ::std::numeric_limits <double>::quiet_NaN();
+		// Выводим признак успешного приведения
+		return true;
+	}
+	/**
+	 * Содержимое, знак числа несущее
+	 *
+	 * @note Договор XSD допускает ведущий `+` наравне с `-`, а разбор `fromChars`
+	 *       плюса не принимает вовсе. Оттого плюс снимается здесь, и разбору
+	 *       достаётся остаток. Замер 16.09.2026: `+1.5`, `+0.5e-3` и `+INF`
+	 *       отвергались, будучи по договору XSD вполне законными
+	 */
+	string_view digits = value;
+	/**
+	 * Если содержимое начинается со знака числа
+	 */
+	if((digits.front() == '+') || (digits.front() == '-'))
+		// Снимаем знак числа с начала содержимого
+		digits.remove_prefix(1);
+	/**
+	 * Если за знаком числа не стоит ни цифры, ни точки
+	 *
+	 * @warning Застава эта и отсекает особые написания, договором XSD не признанные:
+	 *          `inf`, `nan`, `infinity` и всякое иное, что `fromChars` принял бы по
+	 *          правилам языка. Законные же особые значения разобраны ВЫШЕ точным
+	 *          сличением и сюда не доходят
+	 */
+	if(digits.empty() || (!awh::ascii::isDigit(digits.front()) && (digits.front() != '.')))
+		// Выводим признак неудачного разбора
+		return false;
+	// Содержимое, разбору подлежащее: без ведущего плюса, знак минуса сохраняя
+	const string_view parsed = ((value.front() == '+') ? digits : value);
 	// Разобранное значение, выходной переменной ещё не отданное
 	double number = 0;
 	// Выполняем разбор числа с плавающей точкой
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(parsed.data(), parsed.data() + parsed.length(), number);
 	// Выводим признак успешного разбора, если число разобрано целиком
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
@@ -648,7 +715,7 @@ bool awh::codec::xml::real(const string_view text, double & result) noexcept {
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
 	 */
-	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+	if(static_cast <bool> (res) && (res.ptr == (parsed.data() + parsed.length()))){
 		// Запоминаем разобранное значение
 		result = number;
 		// Выводим признак успешного приведения
