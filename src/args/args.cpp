@@ -1191,6 +1191,10 @@ bool awh::args::Args::filename(const string & filename, const codec::Bridge::for
  *          потребитель узнал бы о выборе лишь по неверно прочтённым настройкам.
  *          Запись `port = 8080` годится и INI, и TOML, и прочтения их расходятся
  *
+ * @note Расширения ведомы шесть: `.abc` у контейнера ABC, `.json`, `.yaml` с `.yml`,
+ *       `.toml`, `.ini` с `.conf` и `.xml`. Всякий вид записи, какой выдаётся
+ *       методом `save`, читается и по имени файла - круг замкнут у всех шести
+ *
  * @note Расширение `.conf` отдано наречию INI, а не TOML: у систем POSIX им
  *       зовутся именно файлы вида «ключ = значение» с разделами
  *
@@ -1211,8 +1215,20 @@ bool awh::args::Args::filename(const string & filename) noexcept {
 	string extension = filename.substr(pos + 1);
 	// Выполняем перевод расширения в нижний регистр
 	awh::fmk::transform(extension, awh::fmk::transform_t::LOWER_CASE);
+	/**
+	 * Если расширение означает запись контейнера ABC
+	 *
+	 * @warning Дорога эта была пропущена, и круг записи ABC не замыкался: выдача
+	 *          `save(путь, ABC)` проходила исправно, а чтение того же файла по имени
+	 *          отвечалось отказом «unknown format», тогда как всякий иной вид записи
+	 *          по имени читался. Потребителю оставалось звать чтение с указанием
+	 *          вида - о чём ему было знать неоткуда. Замерено 16.09.2026 аудитом
+	 */
+	if(extension.compare("abc") == 0)
+		// Выполняем чтение файла настроек записью контейнера ABC
+		return this->filename(filename, codec::Bridge::format_t::ABC);
 	// Если расширение означает запись JSON
-	if(extension.compare("json") == 0)
+	else if(extension.compare("json") == 0)
 		// Выполняем чтение файла настроек записью JSON
 		return this->filename(filename, codec::Bridge::format_t::JSON);
 	// Если расширение означает запись YAML
