@@ -1380,14 +1380,34 @@ namespace awh {
 					bool parse(const string_view text, const reader_t::settings_t & settings) noexcept;
 					/**
 					 * \~russian
-					 * @brief Метод получения кода ошибки разбора
+					 * @brief Метод извлечения кода отказа последней работы над деревом
 					 *
-					 * @return код ошибки последней операции разбора
+					 * @details Разбор текста, чтение файла, выдача текста и запись его в файл
+					 * ставят код этот заново каждая. Прежде отведён он был одному лишь разбору
 					 *
+					 * @note Договор этот ОБЩИЙ у кодеков: документ JSON и таблица CSV отвечают
+					 *       тем же кодом и тем же порядком
+					 *
+					 * @warning Описание здесь расходилось с делом и было исправлено 16.09.2026:
+					 *          обещало оно «код последней операции РАЗБОРА», тогда как выдача
+					 *          текста код перезаписывала наравне с разбором. Замер: отказ разбора
+					 *          `MISMATCHED_TAG` сменялся на `MISSING_ROOT` первым же зовом
+					 *          `dump()` - записывать пустое дерево нечего, - и звучащий, поверив
+					 *          описанию, искал бы в тексте отсутствие корня вместо несовпадения
+					 *          меток
+					 *
+					 * @return код отказа последней работы
 					 *
 					 * \~english
-					 * @brief Method of getting the error code of the parsing
-					 * @return error code of the last operation of the parsing
+					 * @brief Method of the extraction of the code of the refusal of the last operation over the tree
+					 * @details The parsing of a text, the reading of a file, the issuance of a text and the writing
+					 * of it into a file each set this code anew. Formerly it was allotted to the parsing alone
+					 * @note This contract is COMMON among the codecs: a JSON document and a CSV table answer
+					 *       with the same code and in the same order
+					 * @warning The description here diverged from the deed and was corrected on 16.09.2026: it promised
+					 *          the «code of the last operation of the PARSING», whereas the issuance of a text
+					 *          overwrote the code on a par with the parsing
+					 * @return code of the refusal of the last operation
 					 *
 					 * \~
 					 */

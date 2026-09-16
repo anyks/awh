@@ -4296,3 +4296,35 @@ TEST(CodecJsonDocument, RefusalOfTheWritingIsNotPassedAsAnEmptyDocument) {
 		ASSERT_EQ(document.error(), json::error_t::EMPTY_TEXT);
 	}
 }
+
+/**
+ * @brief Проверка того, что код отказа отвечает за последнюю работу над документом
+ *
+ * @details Разбор текста, чтение файла, выдача текста и запись его в файл ставят код
+ * заново каждая: договор этот общий у кодеков JSON, XML и CSV
+ *
+ */
+TEST(CodecJsonDocument, ErrorAnswersForLastOperation) {
+	// Объект документа
+	json::document_t document;
+	// Выполняем проверку отказа разбора текста с пропущенным значением
+	ASSERT_FALSE(document.parse("{\"b\":2,\"c\":}"));
+	// Выполняем проверку того, что причина отказа разбора названа
+	ASSERT_NE(document.error(), json::error_t::NONE);
+	// Выполняем выдачу текста пустого документа
+	const string text = document.dump();
+	// Выполняем проверку того, что выдавать оказалось нечего
+	ASSERT_TRUE(text.empty());
+	/**
+	 * Выполняем проверку того, что код отвечает уже за выдачу текста
+	 */
+	ASSERT_EQ(document.error(), json::error_t::EMPTY_TEXT);
+	// Выполняем проверку разбора годного текста документа
+	ASSERT_TRUE(document.parse("{\"a\":1}"));
+	// Выполняем проверку того, что удавшаяся работа код отпустила
+	ASSERT_EQ(document.error(), json::error_t::NONE);
+	// Выполняем выдачу текста непустого документа
+	ASSERT_FALSE(document.dump().empty());
+	// Выполняем проверку того, что удавшаяся выдача код не поставила
+	ASSERT_EQ(document.error(), json::error_t::NONE);
+}

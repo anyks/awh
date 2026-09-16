@@ -25028,6 +25028,65 @@ namespace io {
 	using namespace awh;
 
 	/**
+	 * @brief Предел глубины возвратного захода в отправку
+	 *
+	 * @details До этой глубины возвратный заход идёт быстрым путём - пишет в сокет
+	 *          немедленно. Дойдя до предела, отправка ОТКЛАДЫВАЕТСЯ: данные ложатся
+	 *          в очередь, и запись по ним пойдёт ближайшим оборотом цикла
+	 *
+	 * @warning Число замером НЕ подтверждено и подтверждено быть не может: настоящая
+	 *          глубина срыва зависит от размера кадра и от того, кто ещё лежит на
+	 *          стеке. На волокне стек 64 КБ вместо восьми мегабайт потока, и срыв
+	 *          придёт вшестеро раньше
+	 *
+	 */
+	static constexpr uint16_t DEPTH_LIMIT = 64;
+	/**
+	 * @brief Функция доступа к счётчику глубины возвратного захода в отправку
+	 *
+	 * @details Отправка зовёт отклик записи СИНХРОННО, а отклик вправе долить очередь
+	 *          новой отправкой. Счёт ведётся в одном месте - у самой отправки, - потому
+	 *          что мест, где отклик записи зовётся, полторы сотни
+	 *
+	 * @note Счётчик поточно-местный: отправку вправе звать не только поток цикла
+	 *
+	 * @return ссылка на счётчик глубины текущего потока
+	 *
+	 */
+	static uint16_t & depth() noexcept {
+		// Счётчик глубины возвратного захода в отправку
+		static thread_local uint16_t result = 0;
+		// Выводим счётчик глубины
+		return result;
+	}
+	/**
+	 * @brief Функция проверки права писать в сокет немедленно
+	 *
+	 * @details Отправка при пустой очереди пишет в сокет сразу и тут же зовёт отклик
+	 *          записи. Когда отклик доливает очередь новой отправкой, а очередь к тому
+	 *          мигу снова пуста, всё повторяется - и цепочка уходит вглубь стека ровно
+	 *          настолько, сколько успевает проглотить буфер сокета, прежде чем ответить
+	 *          отказом занятости
+	 *
+	 * @note Долив из отклика записи - схема законная, ею пользуются все сторонние
+	 *       библиотеки. Поэтому подошедший к пределу заход не отвергается, а
+	 *       ОТКЛАДЫВАЕТСЯ: данные ложатся в очередь, и запись по ним пойдёт ближайшим
+	 *       оборотом цикла по готовности сокета. Стек не растёт, данные не теряются
+	 *
+	 * @warning Замерено на сценарии потоковой передачи: глубина плавает от единиц до
+	 *          128 при одной и той же нагрузке на одной машине - она определяется
+	 *          ёмкостью буфера сокета и прытью приёмника. Потому предел и не отвергает
+	 *          отправку, а лишь переводит её на отложенный путь: отвергающий заслон
+	 *          обрывал законную цепочку долива, и передача вставала навсегда
+	 *
+	 * @return признак того, что писать в сокет можно прямо сейчас
+	 *
+	 */
+	static bool immediate() noexcept {
+		// Писать немедленно вправе заход, не подошедший к пределу глубины
+		return (::io::depth() < ::io::DEPTH_LIMIT);
+	}
+	/**
 	 * @brief Функция отправки данных события для файловой системы
 	 *
 	 * @param fs     объект события файловой системы, которому необходимо отправить данные
@@ -25167,7 +25226,7 @@ namespace io {
 					// Если событие является неблокирующим
 					if(ipc->state.options & event::options::NO_IO_BLOCK){
 						// Если очередь передачи данных пустая
-						if(ipc->transfer.queue.empty()){
+						if(ipc->transfer.queue.empty() && ::io::immediate()){
 							/**
 							 * Сбрасываем значение errno перед отправкой данных в сокет
 							 */
@@ -25323,7 +25382,7 @@ namespace io {
 					// Если событие является полублокирующим
 					} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 						// Если очередь передачи данных пустая
-						if(ipc->transfer.queue.empty()){
+						if(ipc->transfer.queue.empty() && ::io::immediate()){
 							// Переводим сокет в блокирующий режим
 							if(eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								/**
@@ -25499,7 +25558,7 @@ namespace io {
 					// Если событие является неблокирующим
 					if(ipc->state.options & event::options::NO_IO_BLOCK){
 						// Если очередь передачи данных пустая
-						if(ipc->transfer.queue.empty()){
+						if(ipc->transfer.queue.empty() && ::io::immediate()){
 							/**
 							 * Сбрасываем значение errno перед отправкой данных в сокет
 							 */
@@ -25622,7 +25681,7 @@ namespace io {
 					// Если событие является полублокирующим
 					} else if(ipc->state.options & event::options::SM_IO_BLOCK) {
 						// Если очередь передачи данных пустая
-						if(ipc->transfer.queue.empty()){
+						if(ipc->transfer.queue.empty() && ::io::immediate()){
 							// Переводим сокет в блокирующий режим
 							if(eth->socket.switchOption(ipc->transfer.fd, ipc->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								// Выполняем отправку данных в UDP-сокет
@@ -26802,7 +26861,7 @@ namespace io {
 					// Если событие является неблокирующим
 					if(peer->state.options & event::options::NO_IO_BLOCK){
 						// Если очередь передачи данных пустая
-						if(peer->transfer.queue.empty()){
+						if(peer->transfer.queue.empty() && ::io::immediate()){
 							/**
 							 * @brief Функция для отправки данных в сокет
 							 *
@@ -27142,7 +27201,7 @@ namespace io {
 					// Если событие является полублокирующим
 					} else if(peer->state.options & event::options::SM_IO_BLOCK) {
 						// Если очередь передачи данных пустая
-						if(peer->transfer.queue.empty()){
+						if(peer->transfer.queue.empty() && ::io::immediate()){
 							// Переводим сокет в блокирующий режим
 							if(eth->socket.switchOption(peer->transfer.fd, peer->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								// Если необходимо активировать таймаут на запись данных в сокет
@@ -27643,7 +27702,7 @@ namespace io {
 					// Если событие является неблокирующим
 					if(origin->state.options & event::options::NO_IO_BLOCK){
 						// Если очередь передачи данных пустая
-						if(origin->transfer.queue.empty()){
+						if(origin->transfer.queue.empty() && ::io::immediate()){
 							/**
 							 * Код ошибки, полученный САМОЙ отправкой
 							 *
@@ -27950,7 +28009,7 @@ namespace io {
 					// Если событие является полублокирующим
 					} else if(origin->state.options & event::options::SM_IO_BLOCK) {
 						// Если очередь передачи данных пустая
-						if(origin->transfer.queue.empty()){
+						if(origin->transfer.queue.empty() && ::io::immediate()){
 							// Переводим сокет в блокирующий режим
 							if(eth->socket.switchOption(origin->transfer.fd, origin->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 								// Если необходимо активировать таймаут на запись данных в сокет
@@ -28433,7 +28492,7 @@ namespace io {
 			// Если событие является неблокирующим
 			if(tunnel->state.options & event::options::NO_IO_BLOCK){
 				// Если очередь передачи данных пустая
-				if(tunnel->queue.empty()){
+				if(tunnel->queue.empty() && ::io::immediate()){
 					/**
 					 * Сбрасываем значение errno перед отправкой данных в сокет
 					 */
@@ -30480,7 +30539,7 @@ namespace io {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								/**
 								 * @brief Функция для отправки данных в сокет
 								 *
@@ -30809,7 +30868,7 @@ namespace io {
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								// Переводим сокет в блокирующий режим
 								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
@@ -31242,7 +31301,7 @@ namespace io {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								/**
 								 * @brief Функция для отправки данных в сокет
 								 *
@@ -31571,7 +31630,7 @@ namespace io {
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								// Переводим сокет в блокирующий режим
 								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
@@ -32036,7 +32095,7 @@ namespace io {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								/**
 								 * @brief Функция для отправки данных в сокет
 								 *
@@ -32378,7 +32437,7 @@ namespace io {
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								// Переводим сокет в блокирующий режим
 								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
@@ -32837,7 +32896,7 @@ namespace io {
 						// Если событие является неблокирующим
 						if(client->state.options & event::options::NO_IO_BLOCK){
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								/**
 								 * @brief Функция для отправки данных в сокет
 								 *
@@ -33179,7 +33238,7 @@ namespace io {
 						// Если событие является полублокирующим
 						} else if(client->state.options & event::options::SM_IO_BLOCK) {
 							// Если очередь передачи данных пустая
-							if(client->transfer.queue.empty()){
+							if(client->transfer.queue.empty() && ::io::immediate()){
 								// Переводим сокет в блокирующий режим
 								if(eth->socket.switchOption(client->transfer.fd, client->state.family, net::socket_mode_t::DISABLED, event::options::NO_IO_BLOCK)){
 									// Если необходимо активировать таймаут на запись данных в сокет
@@ -69583,17 +69642,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	 * @note Счётчик поточно-местный: отправку вправе звать не только поток цикла
 	 *
 	 */
-	static thread_local uint16_t depth = 0;
-	/**
-	 * @brief Предел возвратного захода в отправку
-	 *
-	 * @warning Взят С ЗАПАСОМ и замером НЕ подтверждён: настоящая глубина срыва зависит
-	 *          от размера кадра и от того, кто ещё лежит на стеке. Предел здесь не
-	 *          средство точности, а средство ГРОМКОСТИ - превратить молчаливый срыв
-	 *          стека во внятный доклад
-	 *
-	 */
-	static constexpr uint16_t DEPTH_LIMIT = 64;
+	uint16_t & depth = ::io::depth();
 	/**
 	 * Если возвратный заход зашёл слишком глубоко
 	 *
@@ -69611,7 +69660,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 	 *          памятью под ногами - то есть будет неотличим от порчи памяти. Правило,
 	 *          нарушение которого молчаливо, заводить нельзя
 	 */
-	if(depth >= DEPTH_LIMIT){
+	if(depth >= ::io::DEPTH_LIMIT){
 		// Выводим в журнал сообщение о возвратном заходе в отправку
 		log::print("send re-entered %u times from the write callback, the queue refill must be deferred, not immediate", log::flag_t::CRITICAL, static_cast <uint32_t> (depth));
 		// Выводим отсутствие принятых данных

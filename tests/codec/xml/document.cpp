@@ -3528,3 +3528,43 @@ TEST(CodecXmlDocument, TextMarkedWithTheUtf32ByteOrderMarkIsRefused) {
 		ASSERT_TRUE(straight.parse(big)) << xml::message(straight.error());
 	}
 }
+
+/**
+ * @brief Проверка того, что код отказа отвечает за последнюю работу над деревом
+ *
+ * @details Разбор текста, чтение файла, выдача текста и запись его в файл ставят код
+ * заново каждая: договор этот общий у кодеков JSON, XML и CSV
+ *
+ * @note Заведена 16.09.2026: описание входа обещало «код последней операции РАЗБОРА»,
+ *       тогда как выдача текста код перезаписывала наравне с разбором - отказ
+ *       `MISMATCHED_TAG` сменялся на `MISSING_ROOT` первым же зовом `dump()`. Описание
+ *       приведено к делу, а дело закреплено здесь
+ *
+ */
+TEST(CodecXmlDocument, ErrorAnswersForLastOperation) {
+	// Объект дерева разметки
+	xml::document_t document;
+	// Выполняем проверку отказа разбора текста с несовпадающими метками
+	ASSERT_FALSE(document.parse("<r><a>1</a><b></c></r>"));
+	// Выполняем проверку кода отказа разбора
+	ASSERT_EQ(document.error(), xml::error_t::MISMATCHED_TAG);
+	// Выполняем выдачу текста пустого дерева
+	const string text = document.dump();
+	// Выполняем проверку того, что выдавать оказалось нечего
+	ASSERT_TRUE(text.empty());
+	/**
+	 * Выполняем проверку того, что код отвечает уже за выдачу текста
+	 *
+	 * @note Отказ разбора кодом более не значится: работой последней была выдача, и
+	 *       отвечает код за неё
+	 */
+	ASSERT_EQ(document.error(), xml::error_t::MISSING_ROOT);
+	// Выполняем проверку разбора годного текста разметки
+	ASSERT_TRUE(document.parse("<r><a>1</a></r>"));
+	// Выполняем проверку того, что удавшаяся работа код отпустила
+	ASSERT_EQ(document.error(), xml::error_t::NONE);
+	// Выполняем выдачу текста непустого дерева
+	ASSERT_FALSE(document.dump().empty());
+	// Выполняем проверку того, что удавшаяся выдача код не поставила
+	ASSERT_EQ(document.error(), xml::error_t::NONE);
+}
