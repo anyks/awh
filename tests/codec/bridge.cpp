@@ -4025,3 +4025,71 @@ TEST(CodecBridge, TheNameCircleClosesOnTheMarkupRoadToo){
 	ASSERT_EQ(inner["a b"].text(), "первое") << record;
 	ASSERT_EQ(inner["a_x20_b"].text(), "второе") << record;
 }
+
+/**
+ * @brief Проверка того, что обнос корня бережёт пустоту единственного поля
+ *
+ * @details Значение пустое, корнем ставшее, выражается узлом `<k/>` - тем самым,
+ * коему правило пустого узла даёт истину умолчанием. Круг разрывался молча:
+ * настройка, поданная пустой записью, возвращалась истиной. То же поле рядом с
+ * соседом ложилось свойством и возвращалось собою - вид записи решал СОСЕД
+ *
+ */
+TEST(CodecBridge, TheRootWrapperKeepsTheEmptinessOfTheSoleField){
+	// Создаём мост кодеков
+	bridge_t bridge;
+	// Собираемое дерево из ОДНОГО поля с пустым значением
+	abc::value_t alone(abc::kind_t::MAP);
+	// Укладываем пустое значение единственного поля
+	alone["k"] = abc::value_t(string(""));
+	// Собираемая запись разметки
+	string single = "";
+	// Выполняем перевод дерева в запись разметки
+	ASSERT_TRUE(bridge.encode(alone, single, bridge_t::format_t::XML));
+	// Собираемое дерево обратного чтения
+	abc::value_t back;
+	// Выполняем обратное чтение собранной записи
+	ASSERT_TRUE(bridge.decode(single, back, bridge_t::format_t::XML)) << single;
+	// Получаем ссылку на содержимое обноса корня записи
+	const abc::value_t & inner = (back.contains(bridge.settings().root) ? back[bridge.settings().root] : back);
+	// Выполняем проверку того, что поле вернулось последовательностью знаков
+	ASSERT_TRUE(inner["k"].is(abc::type_t::STRING)) << "пустое значение вернулось иным видом: " << single;
+	// Выполняем проверку того, что значение осталось пустым
+	ASSERT_TRUE(inner["k"].text().empty()) << "пустое значение вернулось непустым: " << single;
+	/**
+	 * Выполняем проверку того, что поле пустое рядом с соседом ведёт себя так же
+	 *
+	 * @note Половина эта сторожит РАВЕНСТВО дорог: прежде поле рядом с соседом
+	 *       возвращалось собою, а то же поле в одиночестве - истиной
+	 */
+	abc::value_t paired(abc::kind_t::MAP);
+	// Укладываем пустое значение поля с соседом
+	paired["k"] = abc::value_t(string(""));
+	// Укладываем значение соседнего поля
+	paired["n"] = abc::value_t(string("слово"));
+	// Собираемая запись разметки
+	string record = "";
+	// Выполняем перевод дерева в запись разметки
+	ASSERT_TRUE(bridge.encode(paired, record, bridge_t::format_t::XML));
+	// Собираемое дерево обратного чтения
+	abc::value_t repeat;
+	// Выполняем обратное чтение собранной записи
+	ASSERT_TRUE(bridge.decode(record, repeat, bridge_t::format_t::XML)) << record;
+	// Получаем ссылку на содержимое обноса корня записи
+	const abc::value_t & couple = (repeat.contains(bridge.settings().root) ? repeat[bridge.settings().root] : repeat);
+	// Выполняем проверку того, что пустое значение уцелело и с соседом
+	ASSERT_TRUE(couple["k"].is(abc::type_t::STRING)) << record;
+	ASSERT_TRUE(couple["k"].text().empty()) << record;
+	/**
+	 * Выполняем проверку того, что правило пустого узла осталось прежним
+	 *
+	 * @warning Умолчание правила - решение владельца: у записи, ЧУЖИМ средством
+	 *          писанной, узел `<k/>` по-прежнему читается истиной. Правлена лишь
+	 *          СВОЯ запись, пустоту терявшая
+	 */
+	abc::value_t foreign;
+	// Выполняем чтение записи, чужим средством писанной
+	ASSERT_TRUE(bridge.decode("<config><k/></config>", foreign, bridge_t::format_t::XML));
+	// Выполняем проверку того, что пустой узел прочтён истиной
+	ASSERT_TRUE(foreign[bridge.settings().root]["k"].is(abc::type_t::BOOL)) << "правило пустого узла изменилось";
+}
