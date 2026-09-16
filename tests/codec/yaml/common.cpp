@@ -971,3 +971,44 @@ TEST(CodecYamlCommon, TheSignIsAllowedOnlyToTheDecimalNotationInTheDialect12){
 	// Выполняем проверку того, что знак минуса схемою JSON дозволен
 	ASSERT_EQ(yaml::resolve("-10", yaml::schema_t::JSON), yaml::type_t::NUMBER);
 }
+/**
+ * @brief Указатель основания записи берётся строчным и по своему наречию
+ *
+ * @details Описание 1.2 даёт целому лексику `0x[0-9a-fA-F]+` да `0o[0-7]+`, описание
+ *          1.1 - `[-+]?0x[0-9a-fA-F_]+` да ведущий нуль `[-+]?0[0-7_]+`. Заглавной
+ *          буквы указателя нет ни в одном из описаний, а запись `0o` есть
+ *          принадлежность одного лишь наречия 1.2
+ *
+ * @note Оба порока держались на том, что заход признания записи не сверялся со схемою
+ *       вовсе: `0X10` признавалось числом обеими схемами, а `0o17` - и наречием 1.1,
+ *       записи этой не знающим. Порознь ни одна схема порока не показывала
+ */
+TEST(CodecYamlCommon, TheRadixMarkerIsLowercaseAndBelongsToItsOwnDialect){
+	/**
+	 * Выполняем проверку того, что указатель строчный признаётся обеими схемами
+	 */
+	ASSERT_EQ(yaml::resolve("0x1F", yaml::schema_t::CORE), yaml::type_t::NUMBER);
+	// Выполняем проверку того, что указатель строчный признаётся наречием 1.1
+	ASSERT_EQ(yaml::resolve("0x1F", yaml::schema_t::LEGACY), yaml::type_t::NUMBER);
+	/**
+	 * Выполняем проверку того, что указатель заглавный не признаётся ни одной схемою
+	 */
+	ASSERT_EQ(yaml::resolve("0X1F", yaml::schema_t::CORE), yaml::type_t::STRING);
+	// Выполняем проверку того, что указатель заглавный не признаётся наречием 1.1
+	ASSERT_EQ(yaml::resolve("0X1F", yaml::schema_t::LEGACY), yaml::type_t::STRING);
+	/**
+	 * Выполняем проверку того, что запись восьмеричная 1.2 признаётся схемою своей
+	 */
+	ASSERT_EQ(yaml::resolve("0o17", yaml::schema_t::CORE), yaml::type_t::NUMBER);
+	/**
+	 * Выполняем проверку того, что наречие 1.1 записи этой не знает вовсе
+	 */
+	ASSERT_EQ(yaml::resolve("0o17", yaml::schema_t::LEGACY), yaml::type_t::STRING);
+	/**
+	 * Выполняем проверку того, что восьмеричное наречия 1.1 пишется ведущим нулём
+	 *
+	 * @note Наречие 1.2 записи этой числом не признаёт: `017` есть там строка, и
+	 *       расхождение это стережёт проверка `ResolveCore`
+	 */
+	ASSERT_EQ(yaml::resolve("017", yaml::schema_t::LEGACY), yaml::type_t::NUMBER);
+}
