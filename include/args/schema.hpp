@@ -366,15 +366,26 @@ namespace awh {
 				 * @details Справка собирается из самого описания, а не пишется отдельно:
 				 * написанная отдельно, она расходится с делом при первой же правке
 				 *
+				 * @param multiple признак дозволенности повтора настройками сбора
+				 *
 				 * @return собранный текст справки
+				 *
+				 * @warning Признак повтора спрашивается ДВАЖДЫ - у описания параметра и
+				 *          у настроек сбора, - ибо настройка сбора описание старше
+				 *          решением владельца от 15.09.2026. Прежде справка знала лишь
+				 *          описание и обещала «(repeatable)» тому параметру, чьи повторы
+				 *          сбор массивом не собирал вовсе: потребитель, справку
+				 *          прочитавший, подавал повтор и терял прежнее значение.
+				 *          Замерено 16.09.2026 аудитом
 				 *
 				 * \~english
 				 * @brief Method of the assembling of the help of the usage
+				 * @param multiple sign of the permission of a repetition by the settings of the collection
 				 * @return assembled text of the help
 				 *
 				 * \~
 				 */
-				string usage() const noexcept;
+				string usage(const bool multiple = true) const noexcept;
 			public:
 				/**
 				 * \~russian

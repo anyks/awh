@@ -282,10 +282,11 @@ bool awh::args::Schema::empty() const noexcept {
 /**
  * @brief Метод сборки справки о применении
  *
- * @return собранный текст справки
+ * @param multiple признак дозволенности повтора настройками сбора
+ * @return         собранный текст справки
  *
  */
-string awh::args::Schema::usage() const noexcept {
+string awh::args::Schema::usage(const bool multiple) const noexcept {
 	// Собираемый текст справки о применении
 	string result = "";
 	// Если название приложения установлено
@@ -368,8 +369,8 @@ string awh::args::Schema::usage() const noexcept {
 		if(param.preset)
 			// Добавляем в справку значение параметра по умолчанию
 			result.append(awh::fmk::format(" (default: %s)", param.fallback.c_str()));
-		// Если параметр дозволено подавать повторно
-		if(param.multiple)
+		// Если параметр дозволено подавать повторно и описанием, и настройками сбора
+		if(param.multiple && multiple)
 			// Добавляем в справку признак дозволенности повтора
 			result.append(" (repeatable)");
 		// Добавляем в справку перевод строки
