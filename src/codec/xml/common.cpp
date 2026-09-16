@@ -542,10 +542,33 @@ bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept
 	if(value.empty())
 		// Выводим признак неудачного разбора
 		return false;
+	// Содержимое, разбору отдаваемое
+	string_view digits = value;
+	/**
+	 * Если содержимое записано с ведущим знаком плюса
+	 *
+	 * @details Договор XSD (W3C XML Schema Part 2, §3.3.13) даёт `xs:integer` лексику
+	 *          `[\-+]?[0-9]+`, где плюс дозволен наравне с минусом, а разбор `fromChars`
+	 *          следует правилам языка и плюса не принимает вовсе. Оттого плюс снимается
+	 *          здесь, и разбору достаётся остаток
+	 *
+	 * @note Довод общий с соседним входом `real`, приведённым к лексике XSD прежде: мера
+	 *       строгости у входов одного кодека расходиться не должна. Замер 16.09.2026:
+	 *       `+5` отвергалось целым, будучи принятым дробным
+	 */
+	if(digits.front() == '+')
+		// Выполняем снятие ведущего знака плюса
+		digits.remove_prefix(1);
+	/**
+	 * Если за снятым знаком не осталось ничего
+	 */
+	if(digits.empty())
+		// Выводим признак неудачного разбора
+		return false;
 	// Разобранное значение, выходной переменной ещё не отданное
 	int64_t number = 0;
 	// Выполняем разбор целого числа со знаком
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), digits.data() + digits.length(), number);
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
 	 *
@@ -557,7 +580,7 @@ bool awh::codec::xml::integer(const string_view text, int64_t & result) noexcept
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
 	 */
-	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+	if(static_cast <bool> (res) && (res.ptr == (digits.data() + digits.length()))){
 		// Запоминаем разобранное значение
 		result = number;
 		// Выводим признак успешного приведения
@@ -584,18 +607,38 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 		// Выводим признак неудачного разбора
 		return false;
 	/**
-	 * Если содержимое записано со знаком числа
+	 * Если содержимое записано со знаком минуса
 	 *
-	 * @note Число со знаком в тип без знака не приводится даже тогда, когда знак
-	 *       положительный: запрошенный тип и есть указание на ожидаемую запись
+	 * @note Число отрицательное в тип без знака не приводится: запрошенный тип и есть
+	 *       указание на ожидаемую запись. Договор XSD (§3.3.20) дозволяет `-0` и у
+	 *       `xs:nonNegativeInteger`, но запись эта для беззнакового типа бессмысленна,
+	 *       и отвергается она намеренно
 	 */
-	if((value.front() == '-') || (value.front() == '+'))
+	if(value.front() == '-')
+		// Выводим признак неудачного разбора
+		return false;
+	// Содержимое, разбору отдаваемое
+	string_view digits = value;
+	/**
+	 * Если содержимое записано с ведущим знаком плюса
+	 *
+	 * @note Плюс договором XSD дозволен, а `fromChars` его не принимает - оттого он
+	 *       снимается здесь. Прежде плюс отвергался наравне с минусом, и `+5`
+	 *       беззнаковым не читалось, будучи по договору законным
+	 */
+	if(digits.front() == '+')
+		// Выполняем снятие ведущего знака плюса
+		digits.remove_prefix(1);
+	/**
+	 * Если за снятым знаком не осталось ничего
+	 */
+	if(digits.empty())
 		// Выводим признак неудачного разбора
 		return false;
 	// Разобранное значение, выходной переменной ещё не отданное
 	uint64_t number = 0;
 	// Выполняем разбор целого числа без знака
-	const lexical_t::result_t <char> res = lexical_t::fromChars(value.data(), value.data() + value.length(), number);
+	const lexical_t::result_t <char> res = lexical_t::fromChars(digits.data(), digits.data() + digits.length(), number);
 	// Выводим признак успешного разбора, если число разобрано целиком
 	/**
 	 * Выводим признак успешного приведения, если число разобрано целиком
@@ -608,7 +651,7 @@ bool awh::codec::xml::integer(const string_view text, uint64_t & result) noexcep
 	 *       единицу вместо нетронутого значения - ошибка обращения оборачивалась
 	 *       правдоподобным числом
 	 */
-	if(static_cast <bool> (res) && (res.ptr == (value.data() + value.length()))){
+	if(static_cast <bool> (res) && (res.ptr == (digits.data() + digits.length()))){
 		// Запоминаем разобранное значение
 		result = number;
 		// Выводим признак успешного приведения

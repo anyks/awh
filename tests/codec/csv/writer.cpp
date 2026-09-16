@@ -1631,54 +1631,54 @@ TEST(CodecCsvWriter, SignatureRequestedLateIsNotKept){
  */
 TEST(CodecCsvWriter, UnreadableContentRefused){
 	// Записывает одно поле и выводит признак успеха записи
-	const auto записать = [](const string & содержимое, string & текст) noexcept -> bool {
+	const auto writeField = [](const string & payload, string & output) noexcept -> bool {
 		// Объект записи текста таблицы
 		csv::writer_t writer;
 		/**
 		 * Если запись поля не удалась
 		 */
-		if(!writer.field(содержимое))
+		if(!writer.field(payload))
 			// Выводим признак отказа записи
 			return false;
 		// Запоминаем собранный текст таблицы
-		текст = writer.text();
+		output = writer.text();
 		// Выводим признак успешной записи
 		return true;
 	};
 	// Собранный текст таблицы
-	string текст;
+	string output;
 	/**
 	 * Выполняем проверку отказа записи у содержимого, разбором нечитаемого
 	 */
 	{
 		// Выполняем проверку отказа записи нулевого байта
-		ASSERT_FALSE(записать(string("a\0b", 3), текст));
+		ASSERT_FALSE(writeField(string("a\0b", 3), output));
 		// Выполняем проверку отказа записи управляющего знака области C0
-		ASSERT_FALSE(записать("a\x01" "b", текст));
+		ASSERT_FALSE(writeField("a\x01" "b", output));
 		// Выполняем проверку отказа записи забоя
-		ASSERT_FALSE(записать("a\x7F" "b", текст));
+		ASSERT_FALSE(writeField("a\x7F" "b", output));
 		// Выполняем проверку отказа записи оборванной последовательности UTF-8
-		ASSERT_FALSE(записать("a\xC3" "b", текст));
+		ASSERT_FALSE(writeField("a\xC3" "b", output));
 		// Выполняем проверку отказа записи одинокого суррогата
-		ASSERT_FALSE(записать("a\xED\xA0\x80" "b", текст));
+		ASSERT_FALSE(writeField("a\xED\xA0\x80" "b", output));
 		// Выполняем проверку отказа записи переросшей последовательности
-		ASSERT_FALSE(записать("a\xC0\x80" "b", текст));
+		ASSERT_FALSE(writeField("a\xC0\x80" "b", output));
 	}
 	/**
 	 * Выполняем проверку того, что представимое содержимое проходит круговым ходом
 	 */
 	{
 		// Содержимое, разбором читаемое
-		const vector <string> годное = {
+		const vector <string> acceptable = {
 			"обычное", "a\tb", "a\nb", "a\r\nb", "a,b", "a\"b", "", "   ",
 			"\xD0\xB6", "\xF0\x9F\x98\x80"
 		};
 		/**
 		 * Выполняем перебор всего годного содержимого
 		 */
-		for(auto & содержимое : годное){
+		for(auto & payload : acceptable){
 			// Выполняем проверку успешной записи годного содержимого
-			ASSERT_TRUE(записать(содержимое, текст)) << содержимое;
+			ASSERT_TRUE(writeField(payload, output)) << payload;
 			// Объект таблицы для обратного разбора
 			csv::document_t document;
 			// Получаем настройки таблицы
@@ -1688,9 +1688,9 @@ TEST(CodecCsvWriter, UnreadableContentRefused){
 			// Выполняем установку настроек таблицы
 			document.settings(settings);
 			// Выполняем проверку обратного разбора записанного текста
-			ASSERT_TRUE(document.parse(текст + "\r\n")) << содержимое;
+			ASSERT_TRUE(document.parse(output + "\r\n")) << payload;
 			// Выполняем проверку того, что содержимое вернулось дословно
-			ASSERT_EQ(string(document.get(0, 0)), содержимое) << содержимое;
+			ASSERT_EQ(string(document.get(0, 0)), payload) << payload;
 		}
 	}
 }

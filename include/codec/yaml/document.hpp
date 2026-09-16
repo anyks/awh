@@ -2490,6 +2490,28 @@ namespace awh {
 					const settings_t & settings() const noexcept;
 					/**
 					 * \~russian
+					 * @brief Метод получения настроек записи, отвечающих состоявшемуся разбору
+					 *
+					 * @details Выводит настройки записи из того разбора, какой состоялся: схему
+					 * разрешения видов скалярных значений, запись директивы наречия да черты
+					 * начала и конца документа. Прочитанное этими настройками записывается так,
+					 * что читается обратно без потерь
+					 *
+					 * @note Ход этот нужен зовущему, берущему `writer_t` сам: схема разбора
+					 * выводится из ТЕКСТА - директива `%YAML 1.1` переводит разбор на наречие
+					 * 1.1, - и ход `settings()` её не отдаёт вовсе, выводя настройки заданные
+					 *
+					 * @return настройки записи текста документа
+					 *
+					 * \~english
+					 * @brief Method of getting the settings of the writing corresponding to the parsing that has taken place
+					 * @return settings of the writing of a text of a document
+					 *
+					 * \~
+					 */
+					writer_t::settings_t writing() const noexcept;
+					/**
+					 * \~russian
 					 * @brief Метод установки настроек разбора документа
 					 *
 					 * @param settings устанавливаемые настройки разбора

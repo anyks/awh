@@ -259,8 +259,8 @@ std::string awh::alloc::Scatter::emit(const std::vector <uint8_t> & carrier, con
 	result.append(" * Порождено awh::alloc::Scatter. Ни секрета, ни зерна здесь нет:\n");
 	result.append(" * в носителе лежит наложение секрета на гамму, снять его нечем без зерна.\n");
 	result.append(" */\n");
-	// Место под строку разряда
-	char cell[8];
+	// Место под строку разряда: хватает и на "0x%02X", и на "%zu" 64-разрядного (до 20 цифр)
+	char cell[24];
 	// Дописываем объявление массива носителя
 	result.append("static const unsigned char ").append(name).append("[");
 	// Дописываем ёмкость носителя

@@ -30,6 +30,7 @@
  */
 #include <gtest/gtest.h>
 #include <codec/csv/csv.hpp>
+#include <codec/xml/xml.hpp>
 
 /**
  * Подключаем заголовочные файлы помощников проверок
@@ -298,13 +299,23 @@ TEST(CodecCsvCommon, Unsigned) {
 	// Выполняем проверку полученного значения
 	ASSERT_EQ(result, 42u);
 	/**
-	 * Выполняем проверку отказа приведения числа со знаком
+	 * Выполняем проверку приведения числа с ведущим знаком плюса
 	 *
-	 * @note Число со знаком в тип без знака не приводится даже тогда, когда знак
-	 *       положительный: запрошенный тип и есть указание на ожидаемую запись
+	 * @note Обиход таблиц пишет `+42` наравне с `42`, а мерою строгости взят кодек XML,
+	 *       где ведущий плюс дозволен договором XSD: расхождение двух кодеков на одном
+	 *       и том же поле было бы ловушкой тем более опасной, что молчаливой
 	 */
-	ASSERT_FALSE(csv::integer("+42", result));
-	// Выполняем проверку отказа приведения отрицательного числа
+	ASSERT_TRUE(csv::integer("+42", result));
+	// Выполняем проверку полученного значения
+	ASSERT_EQ(result, 42u);
+	// Выполняем проверку отказа приведения записи из одного лишь знака
+	ASSERT_FALSE(csv::integer("+", result));
+	/**
+	 * Выполняем проверку отказа приведения отрицательного числа
+	 *
+	 * @note Число отрицательное в тип без знака не приводится: запрошенный тип и есть
+	 *       указание на ожидаемую запись
+	 */
 	ASSERT_FALSE(csv::integer("-42", result));
 	// Выполняем проверку отказа приведения пустого содержимого
 	ASSERT_FALSE(csv::integer("", result));
@@ -612,5 +623,74 @@ TEST(CodecCsvCommon, EveryByteOrderMarkIsTold) {
 		ASSERT_EQ(csv::encoding(string("\x00\x00", 2)), csv::encoding_t::UTF8);
 		// Выполняем проверку текста длиною в три октета метки UTF-32
 		ASSERT_EQ(csv::encoding(string("\xFF\xFE\x00", 3)), csv::encoding_t::UTF16LE);
+	}
+}
+
+/**
+ * @brief Проверка согласия разметки и таблицы в чтении чисел из содержимого
+ *
+ * @details Договора о видах у таблиц нет вовсе - RFC 4180 знает лишь поля-строки, - и
+ * мерою строгости взят кодек XML с его лексикой XSD. Расхождение двух кодеков на одном
+ * и том же содержимом было бы ловушкой тем более опасной, что молчаливой
+ *
+ * @note Замер 16.09.2026 дал девять расхождений на сорока образцах: `+5` и `+INF`
+ *       принимались разметкой и отвергались таблицей, а `inf` и `nan` - наоборот.
+ *       Истинностные же слова расходятся НАМЕРЕННО: вольность таблицы описана договором
+ *
+ */
+TEST(CodecCsvCommon, NumericJudgementAgreesAcrossTheCodecs) {
+	// Проверяемые записи содержимого
+	const char * probes[] = {
+		"0", "-0", "+5", "007", " 7 ", "9223372036854775807", "9223372036854775808",
+		"-9223372036854775808", "18446744073709551615", "1e3", "1.0", ".5", "5.",
+		"0x10", "1_000", "", " ", "-", "+", "1e400", "INF", "+INF", "-INF", "NaN",
+		"inf", "nan", "Infinity", "1", "0"
+	};
+	/**
+	 * Выполняем перебор всех проверяемых записей
+	 */
+	for(const char * text : probes){
+		// Числа, полученные разбором разметки и разбором таблицы
+		int64_t markupSigned = 0, tableSigned = 0;
+		// Беззнаковые числа, полученные обоими разборами
+		uint64_t markupUnsigned = 0, tableUnsigned = 0;
+		// Дробные числа, полученные обоими разборами
+		double markupReal = 0., tableReal = 0.;
+		// Признак успеха разбора целого со знаком разметкой
+		const bool signedMarkup = awh::codec::xml::integer(string_view(text), markupSigned);
+		// Признак успеха разбора целого со знаком таблицей
+		const bool signedTable = awh::codec::csv::integer(string_view(text), tableSigned);
+		// Выполняем проверку согласия судей о целом со знаком
+		ASSERT_EQ(signedMarkup, signedTable) << text;
+		/**
+		 * Если целое со знаком разобрано обоими
+		 */
+		if(signedMarkup && signedTable)
+			// Выполняем проверку совпадения разобранных чисел
+			ASSERT_EQ(markupSigned, tableSigned) << text;
+		// Признак успеха разбора целого без знака разметкой
+		const bool unsignedMarkup = awh::codec::xml::integer(string_view(text), markupUnsigned);
+		// Признак успеха разбора целого без знака таблицей
+		const bool unsignedTable = awh::codec::csv::integer(string_view(text), tableUnsigned);
+		// Выполняем проверку согласия судей о целом без знака
+		ASSERT_EQ(unsignedMarkup, unsignedTable) << text;
+		/**
+		 * Если целое без знака разобрано обоими
+		 */
+		if(unsignedMarkup && unsignedTable)
+			// Выполняем проверку совпадения разобранных чисел
+			ASSERT_EQ(markupUnsigned, tableUnsigned) << text;
+		// Признак успеха разбора дробного разметкой
+		const bool realMarkup = awh::codec::xml::real(string_view(text), markupReal);
+		// Признак успеха разбора дробного таблицей
+		const bool realTable = awh::codec::csv::real(string_view(text), tableReal);
+		// Выполняем проверку согласия судей о дробном
+		ASSERT_EQ(realMarkup, realTable) << text;
+		/**
+		 * Если дробное разобрано обоими, а нечислом оно не является
+		 */
+		if(realMarkup && realTable && (markupReal == markupReal))
+			// Выполняем проверку совпадения разобранных чисел
+			ASSERT_EQ(markupReal, tableReal) << text;
 	}
 }

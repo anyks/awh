@@ -7451,7 +7451,7 @@ TEST(CodecXmlReader, RefusalSurfacesOnTraversalNotOnFeed){
  */
 TEST(CodecXmlReader, MergeTextSurvivesFeedBoundary){
 	// Собирает содержимое узла событиями при заданной склейке и нарезке
-	const auto собрать = [](const bool merge, const size_t piece) noexcept -> vector <string> {
+	const auto collect = [](const bool merge, const size_t piece) noexcept -> vector <string> {
 		// Объект чтения текста разметки
 		xml::reader_t reader;
 		// Получаем настройки чтения текста разметки
@@ -7498,16 +7498,16 @@ TEST(CodecXmlReader, MergeTextSurvivesFeedBoundary){
 	 */
 	{
 		// Выполняем проверку того, что содержимое пришло одним событием без склейки
-		ASSERT_EQ(собрать(false, 0).size(), static_cast <size_t> (1));
+		ASSERT_EQ(collect(false, 0).size(), static_cast <size_t> (1));
 		// Выполняем проверку того, что содержимое пришло одним событием со склейкой
-		ASSERT_EQ(собрать(true, 0).size(), static_cast <size_t> (1));
+		ASSERT_EQ(collect(true, 0).size(), static_cast <size_t> (1));
 	}
 	/**
 	 * Выполняем проверку того, что граница подачи содержимое разрывает без склейки
 	 */
 	{
 		// Собранные события содержимого при подаче по одному байту
-		const vector <string> parts = собрать(false, 1);
+		const vector <string> parts = collect(false, 1);
 		// Выполняем проверку того, что содержимое разорвано границей подачи
 		ASSERT_GT(parts.size(), static_cast <size_t> (1));
 		// Собранное содержимое узла
@@ -7524,7 +7524,7 @@ TEST(CodecXmlReader, MergeTextSurvivesFeedBoundary){
 	 */
 	{
 		// Собранные события содержимого при подаче по одному байту со склейкой
-		const vector <string> merged = собрать(true, 1);
+		const vector <string> merged = collect(true, 1);
 		// Выполняем проверку того, что содержимое пришло одним событием
 		ASSERT_EQ(merged.size(), static_cast <size_t> (1));
 		// Выполняем проверку содержимого узла
@@ -8822,3 +8822,104 @@ TEST(CodecXmlReader, ExternalEntityIsRefusedByEachOfTheThreeConditions) {
 	}
 }
 
+
+/**
+ * @brief Проверка того, что один отказ разбора рождает ровно одну запись в журнал
+ *
+ * @details Запись об отказе ведёт то место, каким оканчивается шаг разбора, и рождаться
+ * ей положено единожды: читающий журнал считает по ней отказы, а двойная запись и
+ * считает вдвое, и разнится местом - первая её половина несла место грубое, а вторая
+ * точное
+ *
+ * @note Заведено сличением трёх кодеков: разбор разметки писал дважды пятьдесят пять
+ *       отказов из девяноста семи, разбор JSON и CSV - по одной записи на отказ
+ *
+ */
+TEST(CodecXmlReader, EveryRefusalIsReportedOnce) {
+	// Сторож перехвата сообщений журнала
+	Journal journal;
+	// Проверяемые негодные тексты
+	const char * probes[] = {
+		"<a></b>",
+		"<a><b></b>",
+		"<a/></a>",
+		"<a/><b/>",
+		"<!--п-->",
+		"<a x='1' x='2'/>",
+		"<s:a/>",
+		"<a>&nope;</a>",
+		"<a x=1/>",
+		"<a><!-- -- --></a>",
+		"<a>&#0;</a>",
+		"<?xml version='2.0'?><a/>",
+		"<a>]]></a>",
+		"<a><1b/></a>",
+		"<a b'1'/>",
+		"<!DOCTYPE a [<!ELEMENT>]><a/>",
+		"<!DOCTYPE a [<!ATTLIST>]><a/>",
+		"<a xmlns:xml='urn:x'/>",
+		"<a>&#x110000;</a>",
+		"<a x='&nope;'/>"
+	};
+	/**
+	 * Выполняем перебор всех проверяемых негодных текстов
+	 */
+	for(const char * text : probes){
+		// Выполняем очистку собранных прежде сообщений журнала
+		journal.clear();
+		// Чтение проверяемого текста
+		xml::reader_t reader;
+		// Выполняем подачу проверяемого текста целиком
+		reader.feed(text, ::strlen(text), true);
+		// Выполняем перебор всех событий разбора
+		while(reader.next()) ;
+		// Выполняем проверку того, что разбор текста отказал
+		ASSERT_NE(reader.error(), xml::error_t::NONE) << text;
+		// Выполняем проверку того, что запись об отказе рождена ровно одна
+		ASSERT_EQ(journal.messages().size(), static_cast <size_t> (1)) << text;
+	}
+}
+
+/**
+ * @brief Проверка того, что отказ не оставляет полуснятого события
+ *
+ * @details Поля события - имя, содержимое, перечни атрибутов и объявлений - ложатся ПО
+ * ХОДУ снятия метки, а сличения, метку отвергающие, стоят НИЖЕ. Отказ обязан снять их
+ * все: договор велит перечню атрибутов заполняться СОБЫТИЕМ НАЧАЛА УЗЛА, а при отказе
+ * события этого не случилось вовсе
+ *
+ * @note Замер до правки 16.09.2026: `<a x='1' y=>` оставлял один атрибут, а
+ *       `<a x='1' x='2'/>` - два, причём вид события при том был уже сброшен в `NONE`.
+ *       Звучащий, спросивший атрибуты после отказа, получал поля отвергнутого узла
+ *
+ */
+TEST(CodecXmlReader, RefusalLeavesNoHalfTakenEvent) {
+	// Проверяемые негодные тексты, отказ у каких приходится на середину снятия метки
+	const char * probes[] = {
+		"<a x='1' y=>", "<a x='1' x='2'/>", "<a x='1' s:y='2'/>", "<a x='1' y='&nope;'/>",
+		"<a xmlns:p='urn:x' p:y='1' p:y='2'/>", "<a x='1' 1b='2'/>"
+	};
+	/**
+	 * Выполняем перебор всех проверяемых негодных текстов
+	 */
+	for(const char * text : probes){
+		// Чтение проверяемого текста
+		xml::reader_t reader;
+		// Выполняем подачу проверяемого текста целиком
+		reader.feed(text, ::strlen(text), true);
+		// Выполняем перебор всех событий разбора
+		while(reader.next()) ;
+		// Выполняем проверку того, что разбор текста отказал
+		ASSERT_NE(reader.error(), xml::error_t::NONE) << text;
+		// Выполняем проверку сброса вида события
+		ASSERT_EQ(reader.event(), xml::event_t::NONE) << text;
+		// Выполняем проверку того, что имя события снято
+		ASSERT_TRUE(reader.name().local.empty()) << text;
+		// Выполняем проверку того, что перечень атрибутов снят
+		ASSERT_TRUE(reader.attributes().empty()) << text;
+		// Выполняем проверку того, что перечень объявлений пространств имён снят
+		ASSERT_TRUE(reader.bindings().empty()) << text;
+		// Выполняем проверку того, что содержимое события снято
+		ASSERT_TRUE(reader.text().empty()) << text;
+	}
+}

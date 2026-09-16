@@ -1714,3 +1714,65 @@ TEST(CodecXmlEncoding, FastNameTableAgreesWithTheSlowJudge) {
 	// Выполняем проверку того, что намеренное расхождение ровно одно
 	ASSERT_EQ(diverged, 1u);
 }
+
+/**
+ * @brief Проверка отказа приведения при метке порядка байтов, навязанной кодировке противоречащей
+ *
+ * @details Метка порядка байтов - свидетельство о кодировке САМОГО ТЕКСТА, и расходится
+ * она с навязанной лишь тогда, когда одна из двух неверна. Какая именно - приведению
+ * знать неоткуда, и отвечает оно отказом, а не приведением по навязанной: последнее
+ * выдаёт мусор молча
+ *
+ * @note Договор этот общий у кодеков JSON, XML и CSV, и проверка у всех трёх одна и та
+ *       же. Замер до правки: CSV отвечал отказом по существу, JSON - молчаливым успехом
+ *       с двенадцатью байтами мусора, XML - отказом о негодном знаке
+ *
+ */
+TEST(CodecXmlEncoding, ByteOrderMarkContradictingTheForcedEncoding) {
+	{
+		// Приведение исходного текста
+		xml::decoder_t decoder;
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(xml::encoding_t::UTF16LE));
+		// Полученный приведением текст
+		string result;
+		// Текст в кодировке UTF-8 с меткою порядка байтов той же кодировки
+		const string text = string("\xEF\xBB\xBF") + "ab";
+		// Выполняем проверку отказа приведения исходного текста
+		ASSERT_FALSE(decoder.convert(text.data(), text.size(), true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), xml::error_t::INVALID_ENCODING);
+		// Выполняем проверку того, что мусора приведение не выдало
+		ASSERT_TRUE(result.empty());
+	}
+	{
+		// Приведение исходного текста
+		xml::decoder_t decoder;
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(xml::encoding_t::UTF16LE));
+		// Полученный приведением текст
+		string result;
+		// Текст в кодировке UTF-16 с прямым порядком байтов и меткою того же порядка
+		const string text = string("\xFE\xFF\x00\x61\x00\x62", 6);
+		// Выполняем проверку отказа приведения исходного текста
+		ASSERT_FALSE(decoder.convert(text.data(), text.size(), true, result));
+		// Выполняем проверку кода отказа приведения
+		ASSERT_EQ(decoder.error(), xml::error_t::INVALID_ENCODING);
+		// Выполняем проверку того, что мусора приведение не выдало
+		ASSERT_TRUE(result.empty());
+	}
+	{
+		// Приведение исходного текста
+		xml::decoder_t decoder;
+		// Выполняем навязывание кодировки исходного текста
+		ASSERT_TRUE(decoder.encoding(xml::encoding_t::UTF16LE));
+		// Полученный приведением текст
+		string result;
+		// Текст в кодировке UTF-16 с обратным порядком байтов и меткою того же порядка
+		const string text = string("\xFF\xFE\x61\x00\x62\x00", 6);
+		// Выполняем проверку приведения текста, метка которого навязанной кодировке отвечает
+		ASSERT_TRUE(decoder.convert(text.data(), text.size(), true, result));
+		// Выполняем проверку того, что метка порядка байтов с текста снята
+		ASSERT_EQ(result, "ab");
+	}
+}

@@ -46,6 +46,33 @@ using namespace std;
 using namespace rival;
 
 /**
+ * @brief Функция сведения описателя библиотеки к описателю сокета стенда
+ *
+ * @details У наречия POSIX описатель библиотеки - это целое, и приведение
+ *          тождественно. У MS Windows это описатель системы (`void *`), а сокет
+ *          там - целое без знака указательной ширины; сведение идёт через
+ *          целочисленный вид указательной ширины, иначе значение усекается молча
+ *
+ * @param fd описатель, отданный библиотекой
+ * @return   описатель сокета в виде, принятом стендом
+ *
+ */
+static inline rival::socket_t native(const uv_os_fd_t fd) noexcept {
+	/**
+	 * Если стенд собран под операционную систему MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		// Выводим описатель сокета, сведённый через целое указательной ширины
+		return static_cast <rival::socket_t> (reinterpret_cast <intptr_t> (fd));
+	/**
+	 * Если стенд собран под все остальные операционные системы
+	 */
+	#else
+		// Выводим описатель сокета как есть
+		return static_cast <rival::socket_t> (fd);
+	#endif
+}
+/**
  * @brief Внутреннее окружение стенда
  *
  * @details Библиотека не отдаёт готовность наружу: она сама читает в
@@ -571,11 +598,11 @@ namespace {
 		// Устанавливаем состояние подключения дескриптору
 		connection->handle.data = connection;
 		// Дескриптор сокета подключения
-		uv_os_fd_t fd = -1;
+		uv_os_fd_t fd{};
 		// Если дескриптор сокета подключения получен
 		if(::uv_fileno(reinterpret_cast <uv_handle_t *> (&connection->handle), &fd) == 0)
 			// Включаем немедленный обрыв соединения при закрытии сокета
-			hardClose(static_cast <int32_t> (fd));
+			hardClose(::native(fd));
 		// Запускаем чтение данных подключения
 		::uv_read_start(reinterpret_cast <uv_stream_t *> (&connection->handle), &::allocate, &::clientRead);
 	}
@@ -929,7 +956,7 @@ namespace {
 		// Устанавливаем состояние прогона сценария дескриптору подключения
 		state->handle->data = state;
 		// Дескриптор сокета подключения
-		uv_os_fd_t fd = -1;
+		uv_os_fd_t fd{};
 		/**
 		 * Если дескриптор сокета подключения получен
 		 *
@@ -940,7 +967,7 @@ namespace {
 		 */
 		if(::uv_fileno(reinterpret_cast <uv_handle_t *> (state->handle), &fd) == 0)
 			// Включаем немедленный обрыв соединения при закрытии сокета
-			hardClose(static_cast <int32_t> (fd));
+			hardClose(::native(fd));
 		// Выполняем закрытие текущего подключения
 		::uv_close(reinterpret_cast <uv_handle_t *> (state->handle), &::handshakeClosed);
 	}

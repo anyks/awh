@@ -1105,8 +1105,21 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	}
 	// Признак дозволенности знака подчёркивания между разрядами
 	const bool score = (schema == schema_t::LEGACY);
+	/**
+	 * Признак того, что запись открывается знаком числа
+	 *
+	 * @details Наречие 1.2 дозволяет знак ОДНОЙ ЛИШЬ записи десятичной: описание даёт
+	 *          целому лексику `[-+]?[0-9]+ | 0o[0-7]+ | 0x[0-9a-fA-F]+`, и знак стоит
+	 *          в ней только у первой из трёх. Наречие же 1.1 дозволяет знак всякой
+	 *          записи, шестнадцатеричной да двоичной в том числе
+	 *
+	 * @warning Прежде знак снимался разом для всех оснований, и запись `+0x10` читалась
+	 *          числом даже схемою 1.2, описанию вопреки. Нашло это сличение записей с
+	 *          ведущим знаком по всем трём схемам
+	 */
+	const bool signed_ = ((text.front() == '-') || (text.front() == '+'));
 	// Получаем запись числа без знака
-	const string_view number = (((text.front() == '-') || (text.front() == '+')) ? text.substr(1) : text);
+	const string_view number = (signed_ ? text.substr(1) : text);
 	/**
 	 * Если запись без знака пуста
 	 */
@@ -1139,13 +1152,13 @@ type_t awh::codec::yaml::resolve(const string_view text, const schema_t schema) 
 	/**
 	 * Если запись является числом шестнадцатеричной системы счисления
 	 */
-	if((number.size() > 2) && (number.at(0) == '0') && ((number.at(1) == 'x') || (number.at(1) == 'X')) && based(number.substr(2), 16, score))
+	if((number.size() > 2) && (!signed_ || (schema == schema_t::LEGACY)) && (number.at(0) == '0') && ((number.at(1) == 'x') || (number.at(1) == 'X')) && based(number.substr(2), 16, score))
 		// Выводим сборный вид числа
 		return type_t::NUMBER;
 	/**
 	 * Если запись является числом восьмеричной системы счисления наречия 1.2
 	 */
-	if((number.size() > 2) && (number.at(0) == '0') && (number.at(1) == 'o') && based(number.substr(2), 8, score))
+	if((number.size() > 2) && !signed_ && (number.at(0) == '0') && (number.at(1) == 'o') && based(number.substr(2), 8, score))
 		// Выводим сборный вид числа
 		return type_t::NUMBER;
 	/**

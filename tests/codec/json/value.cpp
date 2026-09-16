@@ -3527,7 +3527,7 @@ TEST(CodecJsonValue, TakingFromAStaleHandleGivesAnEmptyValue){
  */
 TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	// Извлекает число узким видом из заданной записи
-	const auto узко = [](const string & text) noexcept -> uint8_t {
+	const auto toNarrow = [](const string & text) noexcept -> uint8_t {
 		// Объект владеющего значения
 		json::value_t value;
 		// Выполняем разбор записи числа
@@ -3548,20 +3548,20 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	 */
 	{
 		// Выполняем проверку заворота целой записи по кругу
-		ASSERT_EQ(узко("300"), static_cast <uint8_t> (300));
+		ASSERT_EQ(toNarrow("300"), static_cast <uint8_t> (300));
 		// Выполняем проверку того, что дробная запись заворачивается ровно так же
-		ASSERT_EQ(узко("300.0"), static_cast <uint8_t> (300));
+		ASSERT_EQ(toNarrow("300.0"), static_cast <uint8_t> (300));
 		// Выполняем проверку того, что запись с порядком отвечает тем же числом
-		ASSERT_EQ(узко("3e2"), static_cast <uint8_t> (300));
+		ASSERT_EQ(toNarrow("3e2"), static_cast <uint8_t> (300));
 	}
 	/**
 	 * Выполняем проверку совпадения записей у числа отрицательного
 	 */
 	{
 		// Выполняем проверку переноса целой записи младшими разрядами
-		ASSERT_EQ(узко("-1"), static_cast <uint8_t> (-1));
+		ASSERT_EQ(toNarrow("-1"), static_cast <uint8_t> (-1));
 		// Выполняем проверку того, что дробная запись переносится ровно так же
-		ASSERT_EQ(узко("-1.0"), static_cast <uint8_t> (-1));
+		ASSERT_EQ(toNarrow("-1.0"), static_cast <uint8_t> (-1));
 	}
 	/**
 	 * Выполняем проверку границы, до которой правило вообще держится
@@ -3578,7 +3578,7 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	 */
 	{
 		// Извлекает число широким видом из заданной записи
-		const auto широко = [](const string & text) noexcept -> uint64_t {
+		const auto toWide = [](const string & text) noexcept -> uint64_t {
 			// Объект владеющего значения
 			json::value_t value;
 			// Выполняем разбор записи числа
@@ -3595,14 +3595,14 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 			return result;
 		};
 		// Предел точного представления целых числом двойной точности
-		const uint64_t предел = (static_cast <uint64_t> (1) << 53);
+		const uint64_t bound = (static_cast <uint64_t> (1) << 53);
 		// Выполняем проверку совпадения записей ровно на пределе
-		ASSERT_EQ(широко(std::to_string(предел)), предел);
-		ASSERT_EQ(широко(std::to_string(предел) + ".0"), предел);
+		ASSERT_EQ(toWide(std::to_string(bound)), bound);
+		ASSERT_EQ(toWide(std::to_string(bound) + ".0"), bound);
 		// Выполняем проверку того, что целая запись за пределом число сохраняет
-		ASSERT_EQ(широко(std::to_string(предел + 1)), предел + 1);
+		ASSERT_EQ(toWide(std::to_string(bound + 1)), bound + 1);
 		// Выполняем проверку того, что дробная запись за пределом число теряет у разбора
-		ASSERT_EQ(широко(std::to_string(предел + 1) + ".0"), предел);
+		ASSERT_EQ(toWide(std::to_string(bound + 1) + ".0"), bound);
 	}
 	/**
 	 * Выполняем проверку того, что предел вида остаётся у настоящего дробного
@@ -3613,7 +3613,7 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	 */
 	{
 		// Выполняем проверку упора настоящего дробного в предел вида
-		ASSERT_EQ(узко("300.5"), std::numeric_limits <uint8_t>::max());
+		ASSERT_EQ(toNarrow("300.5"), std::numeric_limits <uint8_t>::max());
 	}
 	/**
 	 * Выполняем проверку того, что помещающееся число обеими записями совпадает
@@ -3623,9 +3623,9 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	 */
 	{
 		// Выполняем проверку извлечения помещающегося числа целой записью
-		ASSERT_EQ(узко("123"), static_cast <uint8_t> (123));
+		ASSERT_EQ(toNarrow("123"), static_cast <uint8_t> (123));
 		// Выполняем проверку извлечения помещающегося числа дробной записью
-		ASSERT_EQ(узко("123.0"), static_cast <uint8_t> (123));
+		ASSERT_EQ(toNarrow("123.0"), static_cast <uint8_t> (123));
 	}
 	/**
 	 * Выполняем проверку переноса знака у широкого вида без знака
@@ -3635,23 +3635,23 @@ TEST(CodecJsonValue, BothSpellingsOfANumberExtractAlike){
 	 */
 	{
 		// Объект владеющего значения целой записью
-		json::value_t целое;
+		json::value_t intValue;
 		// Выполняем разбор целой записи отрицательного числа
-		ASSERT_TRUE(целое.parse("-1"));
+		ASSERT_TRUE(intValue.parse("-1"));
 		// Объект владеющего значения дробной записью
-		json::value_t дробное;
+		json::value_t realValue;
 		// Выполняем разбор дробной записи отрицательного числа
-		ASSERT_TRUE(дробное.parse("-1.0"));
+		ASSERT_TRUE(realValue.parse("-1.0"));
 		// Извлекаемые числа широкого вида без знака
-		uint64_t первое = 7, второе = 7;
+		uint64_t firstValue = 7, secondValue = 7;
 		// Выполняем извлечение целой записи видом без знака
-		ASSERT_TRUE(целое.value(первое));
+		ASSERT_TRUE(intValue.value(firstValue));
 		// Выполняем извлечение дробной записи видом без знака
-		ASSERT_TRUE(дробное.value(второе));
+		ASSERT_TRUE(realValue.value(secondValue));
 		// Выполняем проверку переноса знака у целой записи
-		ASSERT_EQ(первое, static_cast <uint64_t> (static_cast <int64_t> (-1)));
+		ASSERT_EQ(firstValue, static_cast <uint64_t> (static_cast <int64_t> (-1)));
 		// Выполняем проверку того, что дробная запись переносит знак ровно так же
-		ASSERT_EQ(второе, первое);
+		ASSERT_EQ(secondValue, firstValue);
 	}
 }
 

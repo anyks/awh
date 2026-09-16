@@ -41,6 +41,7 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <codec/xml/xml.hpp>
+#include <codec/csv/csv.hpp>
 
 /**
  * Подключаем заголовочные файлы тестового окружения
@@ -635,18 +636,32 @@ TEST(CodecXmlCommon, DefaultLimitsAreWrittenTwice) {
 TEST(CodecXmlCommon, UnsignedIntegerRefusesASignAndSingleByteEncodingIsNamed) {
 	/**
 	 * Разбор целого числа без знака
+	 *
+	 * @note Договор XSD (W3C XML Schema Part 2, §3.3.13) даёт целому лексику
+	 *       `[\-+]?[0-9]+`, где ведущий плюс дозволен, и разбор его принимает.
+	 *       Отвергается лишь минус: число отрицательное в тип без знака не приводится
 	 */
 	{
 		// Разбираемое число
 		uint64_t number = 0;
 		// Выполняем проверку отказа разбора записи с отрицательным знаком
 		ASSERT_FALSE(xml::integer(string_view("-7"), number));
-		// Выполняем проверку отказа разбора записи со знаком положительным
-		ASSERT_FALSE(xml::integer(string_view("+7"), number));
+		// Выполняем проверку разбора записи со знаком положительным
+		ASSERT_TRUE(xml::integer(string_view("+7"), number));
+		// Выполняем проверку разобранного числа
+		ASSERT_EQ(number, 7u);
+		// Выполняем проверку отказа разбора записи из одного знака
+		ASSERT_FALSE(xml::integer(string_view("+"), number));
 		// Выполняем проверку разбора записи без знака
 		ASSERT_TRUE(xml::integer(string_view("7"), number));
 		// Выполняем проверку разобранного числа
 		ASSERT_EQ(number, 7u);
+		// Разбираемое число со знаком
+		int64_t signedNumber = 0;
+		// Выполняем проверку разбора записи со знаком положительным
+		ASSERT_TRUE(xml::integer(string_view("+7"), signedNumber));
+		// Выполняем проверку разобранного числа
+		ASSERT_EQ(signedNumber, 7);
 	}
 	/**
 	 * Название вида кодировки
@@ -866,5 +881,74 @@ TEST(CodecXmlCommon, RealFollowsTheLexicalSpaceOfXSD) {
 		double value = 0.;
 		// Выполняем разбор дробного числа с пробельной обвязкой
 		ASSERT_TRUE(xml::real(text, value)) << "[" << text << "]";
+	}
+}
+
+/**
+ * @brief Проверка согласия разметки и таблицы в чтении чисел из содержимого
+ *
+ * @details Договора о видах у таблиц нет вовсе - RFC 4180 знает лишь поля-строки, - и
+ * мерою строгости взят кодек XML с его лексикой XSD. Расхождение двух кодеков на одном
+ * и том же содержимом было бы ловушкой тем более опасной, что молчаливой
+ *
+ * @note Замер 16.09.2026 дал девять расхождений на сорока образцах: `+5` и `+INF`
+ *       принимались разметкой и отвергались таблицей, а `inf` и `nan` - наоборот.
+ *       Истинностные же слова расходятся НАМЕРЕННО: вольность таблицы описана договором
+ *
+ */
+TEST(CodecXmlCommon, NumericJudgementAgreesAcrossTheCodecs) {
+	// Проверяемые записи содержимого
+	const char * probes[] = {
+		"0", "-0", "+5", "007", " 7 ", "9223372036854775807", "9223372036854775808",
+		"-9223372036854775808", "18446744073709551615", "1e3", "1.0", ".5", "5.",
+		"0x10", "1_000", "", " ", "-", "+", "1e400", "INF", "+INF", "-INF", "NaN",
+		"inf", "nan", "Infinity", "1", "0"
+	};
+	/**
+	 * Выполняем перебор всех проверяемых записей
+	 */
+	for(const char * text : probes){
+		// Числа, полученные разбором разметки и разбором таблицы
+		int64_t markupSigned = 0, tableSigned = 0;
+		// Беззнаковые числа, полученные обоими разборами
+		uint64_t markupUnsigned = 0, tableUnsigned = 0;
+		// Дробные числа, полученные обоими разборами
+		double markupReal = 0., tableReal = 0.;
+		// Признак успеха разбора целого со знаком разметкой
+		const bool signedMarkup = awh::codec::xml::integer(string_view(text), markupSigned);
+		// Признак успеха разбора целого со знаком таблицей
+		const bool signedTable = awh::codec::csv::integer(string_view(text), tableSigned);
+		// Выполняем проверку согласия судей о целом со знаком
+		ASSERT_EQ(signedMarkup, signedTable) << text;
+		/**
+		 * Если целое со знаком разобрано обоими
+		 */
+		if(signedMarkup && signedTable)
+			// Выполняем проверку совпадения разобранных чисел
+			ASSERT_EQ(markupSigned, tableSigned) << text;
+		// Признак успеха разбора целого без знака разметкой
+		const bool unsignedMarkup = awh::codec::xml::integer(string_view(text), markupUnsigned);
+		// Признак успеха разбора целого без знака таблицей
+		const bool unsignedTable = awh::codec::csv::integer(string_view(text), tableUnsigned);
+		// Выполняем проверку согласия судей о целом без знака
+		ASSERT_EQ(unsignedMarkup, unsignedTable) << text;
+		/**
+		 * Если целое без знака разобрано обоими
+		 */
+		if(unsignedMarkup && unsignedTable)
+			// Выполняем проверку совпадения разобранных чисел
+			ASSERT_EQ(markupUnsigned, tableUnsigned) << text;
+		// Признак успеха разбора дробного разметкой
+		const bool realMarkup = awh::codec::xml::real(string_view(text), markupReal);
+		// Признак успеха разбора дробного таблицей
+		const bool realTable = awh::codec::csv::real(string_view(text), tableReal);
+		// Выполняем проверку согласия судей о дробном
+		ASSERT_EQ(realMarkup, realTable) << text;
+		/**
+		 * Если дробное разобрано обоими, а нечислом оно не является
+		 */
+		if(realMarkup && realTable && (markupReal == markupReal))
+			// Выполняем проверку совпадения разобранных чисел
+			ASSERT_EQ(markupReal, tableReal) << text;
 	}
 }

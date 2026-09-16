@@ -158,6 +158,25 @@ namespace awh {
 					// Штамп времени последнего отбоя срока в миллисекундах
 					uint64_t _stamp;
 				private:
+					/**
+					 * \~russian
+					 * Номер круга отбоя срока
+					 *
+					 * @details Круг растёт всяким запуском и служит потоку отбоя опознанием себя:
+					 * поток, круг которого более не нынешний, выходит сам. Без него поток судил бы
+					 * о своей нужности по одному лишь признаку работы, общему на всех, - а перезапуск
+					 * ИЗ ОТКЛИКА ставит признак этот обратно в истину прежде, чем отставленный поток
+					 * успеет его прочесть, и отставленный продолжал отбивать наравне с новым. Замер
+					 * щупом 16.09.2026: после перезапуска из отклика срок отбивали ДВА потока,
+					 * 32 отбоя вместо двадцати
+					 *
+					 * \~english
+					 * Round number of the beating out of a deadline
+					 *
+					 * \~
+					 */
+					uint64_t _round;
+				private:
 					// Замок состояния отбоя срока
 					mutable mutex _mtx;
 				private:
@@ -193,13 +212,15 @@ namespace awh {
 					 * \~russian
 					 * @brief Метод отбоя срока своим потоком
 					 *
+					 * @param round номер круга отбоя, на котором поток заведён
 					 *
 					 * \~english
 					 * @brief Method of the beating out of a deadline by an own thread
+					 * @param round round number of the deadline the thread is created on
 					 *
 					 * \~
 					 */
-					void run() noexcept;
+					void run(const uint64_t round) noexcept;
 				public:
 					/**
 					 * \~russian

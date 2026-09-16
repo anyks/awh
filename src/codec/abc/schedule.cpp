@@ -61,7 +61,7 @@ namespace {
  * @brief Метод отбоя срока своим потоком
  *
  */
-void awh::codec::abc::Schedule::run() noexcept {
+void awh::codec::abc::Schedule::run(const uint64_t round) noexcept {
 	/**
 	 * Выполняем отбой срока, покуда работа отбоя не остановлена
 	 */
@@ -74,14 +74,21 @@ void awh::codec::abc::Schedule::run() noexcept {
 		 * Ожидание идёт на переменной, а не выдержкой: выдержка обязала бы остановку
 		 * дожидаться конца срока, а это зависание, а не остановка
 		 */
-		this->_cond.wait_for(lock, chrono::milliseconds(this->_delay), [this]() noexcept -> bool {
-			// Выводим признак остановки работы отбоя срока
-			return !this->_working;
+		this->_cond.wait_for(lock, chrono::milliseconds(this->_delay), [this, round]() noexcept -> bool {
+			// Выводим признак остановки работы отбоя срока либо смены круга отбоя
+			return (!this->_working || (this->_round != round));
 		});
 		/**
-		 * Если работа отбоя срока остановлена, выходим из потока
+		 * Если работа отбоя срока остановлена либо круг отбоя сменился, выходим из потока
+		 *
+		 * @warning Поверка круга здесь обязательна наравне с признаком работы: перезапуск ИЗ
+		 *          ОТКЛИКА снимает признак работы и тут же ставит его обратно, а поток,
+		 *          исполняющий отклик, прочесть снятое не успевает вовсе. Прежде поверялся
+		 *          один лишь признак, и отставленный поток отбивал срок наравне с новым -
+		 *          замер щупом 16.09.2026 дал 32 отбоя вместо двадцати и ДВА потока-отбивалы.
+		 *          Закреплено `CodecAbcSchedule.RestartFromInsideTheCallbackLeavesOneBeater`
 		 */
-		if(!this->_working)
+		if(!this->_working || (this->_round != round))
 			// Прекращаем отбой срока
 			return;
 		// Выполняем получение работы, зовомой по наступлении срока
@@ -140,6 +147,13 @@ bool awh::codec::abc::Schedule::start(const mode_t mode, const uint32_t delay) n
 	// Выполняем установку штампа времени начала отсчёта срока
 	this->_stamp = stamp();
 	/**
+	 * Выполняем переход на новый круг отбоя срока
+	 *
+	 * @note Круг растёт ВСЯКИМ запуском, а не одним лишь потоковым: запуск штампом времени
+	 *       равно отставляет прежний поток, и тот обязан о том узнать
+	 */
+	this->_round++;
+	/**
 	 * Если срок отбивается своим потоком
 	 */
 	if(mode == mode_t::THREAD){
@@ -157,7 +171,7 @@ bool awh::codec::abc::Schedule::start(const mode_t mode, const uint32_t delay) n
 		 *       в начале своего хода и подождёт, покуда запуск замок отпустит. Ожидания
 		 *       конца потока запуск не делает, оттого встречного ожидания тут нет
 		 */
-		this->_thread = thread(&Schedule::run, this);
+		this->_thread = thread(&Schedule::run, this, this->_round);
 		// Выполняем освобождение замка состояния отбоя срока
 		lock.unlock();
 	}
@@ -345,7 +359,7 @@ awh::codec::abc::Schedule::mode_t awh::codec::abc::Schedule::mode() const noexce
  *
  */
 awh::codec::abc::Schedule::Schedule() noexcept :
- _mode(mode_t::NONE), _delay(0), _working(false), _stamp(0), _callback(nullptr) {}
+ _mode(mode_t::NONE), _delay(0), _working(false), _stamp(0), _round(0), _callback(nullptr) {}
 /**
  * @brief Деструктор
  *

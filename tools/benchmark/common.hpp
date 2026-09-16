@@ -39,15 +39,30 @@
 
 /**
  * Системные заголовочные файлы
+ *
+ * @note Наборы наречия POSIX у MS Windows отсутствуют вовсе: средства сокетов там
+ *       живут в Winsock, а сведения о занятой памяти отдаёт не `getrusage`, а
+ *       подсистема сведений о процессе. Оттого подключения и разведены
  */
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <csignal>
-#include <sys/socket.h>
-#include <sys/resource.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
+#if defined(_WIN32) || defined(_WIN64)
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <mstcpip.h>
+	#include <mswsock.h>
+	#include <windows.h>
+	#include <psapi.h>
+	#include <io.h>
+	#include <csignal>
+#else
+	#include <unistd.h>
+	#include <fcntl.h>
+	#include <sys/types.h>
+	#include <csignal>
+	#include <sys/socket.h>
+	#include <sys/resource.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+#endif
 
 /**
  * @brief Пространство имён эталонных стендов сравнения
@@ -356,6 +371,22 @@ namespace rival {
 	 *
 	 */
 	static inline size_t footprint() noexcept {
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 *
+		 * @note Пиковый объём там берётся у подсистемы сведений о процессе:
+		 *       `getrusage` наречия POSIX у этой системы нет вовсе
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Объект сведений о памяти процесса
+			PROCESS_MEMORY_COUNTERS counters{};
+			// Если сведения о памяти процесса не получены
+			if(!::GetProcessMemoryInfo(::GetCurrentProcess(), &counters, sizeof(counters)))
+				// Выводим нулевой объём занятой памяти
+				return 0;
+			// Выводим пиковый объём занятой памяти: система сообщает его в октетах
+			return static_cast <size_t> (counters.PeakWorkingSetSize);
+		#else
 		// Объект сведений о потреблении ресурсов процессом
 		struct rusage usage{};
 		// Если сведения о потреблении ресурсов не получены
@@ -374,6 +405,7 @@ namespace rival {
 		#else
 			// Выводим пиковый объём занятой памяти: остальные системы сообщают его в кибибайтах
 			return (static_cast <size_t> (usage.ru_maxrss) * 1024);
+		#endif
 		#endif
 	}
 	/**
@@ -469,6 +501,16 @@ namespace rival {
 	 *
 	 */
 	static inline void limits() noexcept {
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 *
+		 * @note Мягкого предела описателей наречия POSIX у этой системы нет вовсе:
+		 *       таблица описателей растёт по мере надобности, поднимать нечего
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выходим: поднимать предел не требуется и нечем
+			return;
+		#else
 		// Пределы на количество открытых дескрипторов
 		struct rlimit rl{};
 		// Если действующие пределы получить не удалось, выходим
@@ -479,6 +521,7 @@ namespace rival {
 		rl.rlim_cur = rl.rlim_max;
 		// Устанавливаем поднятый предел
 		::setrlimit(RLIMIT_NOFILE, &rl);
+		#endif
 	}
 	/**
 	 * @brief Подъём предела дескрипторов прежде любого сценария
@@ -489,6 +532,47 @@ namespace rival {
 	 *
 	 */
 	static const struct Limits { Limits() noexcept { limits(); } } __limits;
+	/**
+	 * Если стенд собран под операционную систему MS Windows
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+	/**
+	 * @brief Подъём Winsock прежде любого сценария
+	 *
+	 * @details Средства сокетов у этой системы живут в отдельной библиотеке, и до
+	 *          её подъёма ВСЯКИЙ вызов `socket` отвечает отказом. Стенды, заводящие
+	 *          сокет средствами своей библиотеки, поднимают Winsock сами, а стенды,
+	 *          заводящие сокет напрямую, остались бы без него: слушающий сокет не
+	 *          создавался бы, наблюдатель вставал бы на недопустимый дескриптор, и
+	 *          прогон ждал бы события вечно, ничего не расходуя и ни о чём не
+	 *          сообщая
+	 *
+	 * @note Подъём выполняется заведением объекта, а не вызовом из главной функции,
+	 *       по той же причине, что и подъём предела описателей выше: сценарий может
+	 *       быть запущен отбором, и Winsock обязан быть поднят раньше любого из них
+	 *
+	 */
+	static const struct Winsock {
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Winsock() noexcept {
+			// Сведения о поднятой библиотеке сокетов
+			WSADATA data{};
+			// Выполняем подъём библиотеки сокетов
+			::WSAStartup(MAKEWORD(2, 2), &data);
+		}
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Winsock() noexcept {
+			// Выполняем опускание библиотеки сокетов
+			::WSACleanup();
+		}
+	} __winsock;
+	#endif
 	static inline const char * filter(const int32_t argc, char ** argv) noexcept {
 		/**
 		 * Перебираем параметры запуска стенда
@@ -503,61 +587,17 @@ namespace rival {
 		return nullptr;
 	}
 	/**
-	 * @brief Функция установки набора опций сокета
+	 * @brief Вид описателя сокета стенда
 	 *
-	 * @details Набор дословно повторяет опции, запрашиваемые стендом сетевого
-	 *          движка AWH: NO_SIGILL, NO_SIGPIPE, REUSE_ADDR, NO_IO_BLOCK,
-	 *          CLOSE_ON_EXEC и TCP_NO_DELAY. Прежде стенды просили две опции из
-	 *          шести, и разница в семь обращений к ядру на подключение
-	 *          записывалась движку в отставание, хотя ставилась постановкой
-	 *          замера, а не движком
-	 *
-	 * @param fd дескриптор настраиваемого сокета
+	 * @note У Winsock описатель шире целого со знаком и целым не является вовсе;
+	 *       сведение его к `int32_t` усекало бы значение молча
 	 *
 	 */
-	static inline void options(const int32_t fd) noexcept {
-		// Значение активации опции сокета
-		const int32_t enable = 1;
-		// Структура установки обработчика сигнала
-		struct sigaction act{};
-		// Обнуляем маску блокируемых сигналов
-		sigemptyset(&act.sa_mask);
-		// Устанавливаем флаги обработчика
-		act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
-		// Устанавливаем игнорирование сигнала
-		act.sa_handler = SIG_IGN;
-		// Отключаем сигнал недопустимой инструкции
-		::sigaction(SIGILL, &act, nullptr);
-		/**
-		 * Отключаем сигнал записи в закрытый сокет
-		 *
-		 * @details Посокетной настройки этой не у всех систем: BSD и macOS дают
-		 *          `SO_NOSIGPIPE`, а Linux и OpenBSD не дают вовсе, и сигнал глушится
-		 *          там на весь процесс обработчиком - ровно как чуть выше для SIGILL
-		 *
-		 * @note Тем же способом и в том же порядке настраивает себя измеряемый движок,
-		 *       так что стороны сравнения остаются в равных условиях: разница вышла бы
-		 *       не между библиотеками, а между настройками сокета
-		 *
-		 */
-		#if defined(SO_NOSIGPIPE)
-			// Отключаем сигнал посокетной настройкой
-			::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
-		#else
-			// Отключаем сигнал обработчиком на весь процесс
-			::sigaction(SIGPIPE, &act, nullptr);
-		#endif
-		// Разрешаем повторное использование адреса
-		::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
-		// Разрешаем повторное использование порта
-		::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable));
-		// Отключаем алгоритм Нейгла
-		::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
-		// Переводим сокет в неблокирующий режим
-		::fcntl(fd, F_SETFL, (::fcntl(fd, F_GETFL, 0) | O_NONBLOCK));
-		// Устанавливаем закрытие дескриптора при запуске программы
-		::fcntl(fd, F_SETFD, (::fcntl(fd, F_GETFD, 0) | FD_CLOEXEC));
-	}
+	#if defined(_WIN32) || defined(_WIN64)
+		using socket_t = SOCKET;
+	#else
+		using socket_t = int32_t;
+	#endif
 	/**
 	 * @brief Функция включения немедленного обрыва соединения при закрытии сокета
 	 *
@@ -579,7 +619,7 @@ namespace rival {
 	 * @param fd дескриптор сокета
 	 *
 	 */
-	static inline void hardClose(const int32_t fd) noexcept {
+	static inline void hardClose(const socket_t fd) noexcept {
 		/**
 		 * Если система различает срок задержки в тиках и в секундах
 		 */
@@ -600,7 +640,169 @@ namespace rival {
 		// Устанавливаем нулевой срок задержки закрытия
 		value.l_linger = 0;
 		// Включаем немедленный обрыв соединения при закрытии сокета
-		::setsockopt(fd, SOL_SOCKET, option, &value, sizeof(value));
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 *
+		 * @note Winsock принимает значение опции указателем на знаки, а не на
+		 *       произвольный вид, оттого приведение здесь обязательно
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Включаем немедленный обрыв соединения при закрытии сокета
+			::setsockopt(fd, SOL_SOCKET, option, reinterpret_cast <const char *> (&value), sizeof(value));
+		#else
+			// Включаем немедленный обрыв соединения при закрытии сокета
+			::setsockopt(fd, SOL_SOCKET, option, &value, sizeof(value));
+		#endif
+	}
+	/**
+	 * @brief Функция приведения буфера к виду, принимаемому интерфейсом сокетов
+	 *
+	 * @note Winsock объявляет буфер обмена указателем на знаки, тогда как
+	 *       наречие POSIX принимает произвольный вид. Указатель на знаки годен
+	 *       обеим сторонам, оттого приведение здесь одно на все системы
+	 *
+	 * @param ptr приводимый указатель на буфер обмена
+	 * @return    указатель на буфер обмена в принимаемом виде
+	 *
+	 */
+	static inline char * raw(void * ptr) noexcept {
+		// Выводим приведённый указатель на буфер обмена
+		return reinterpret_cast <char *> (ptr);
+	}
+	/**
+	 * @brief Функция приведения неизменяемого буфера к виду, принимаемому интерфейсом сокетов
+	 *
+	 * @param ptr приводимый указатель на буфер обмена
+	 * @return    указатель на буфер обмена в принимаемом виде
+	 *
+	 */
+	static inline const char * raw(const void * ptr) noexcept {
+		// Выводим приведённый указатель на буфер обмена
+		return reinterpret_cast <const char *> (ptr);
+	}
+	/**
+	 * @brief Признак недопустимого дескриптора сокета
+	 *
+	 * @note У наречия POSIX сокет это знаковое целое, и отказ обозначается
+	 *       отрицательным значением. У Winsock дескриптор беззнаковый, сравнение
+	 *       с нулём там истинным не станет НИКОГДА, оттого признак отказа заведён
+	 *       отдельным значением, а проверки идут через `broken`
+	 *
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		static constexpr socket_t INVALID = INVALID_SOCKET;
+	#else
+		static constexpr socket_t INVALID = static_cast <socket_t> (-1);
+	#endif
+	/**
+	 * @brief Функция проверки дескриптора сокета на пригодность
+	 *
+	 * @param fd проверяемый дескриптор сокета
+	 * @return   признак непригодности дескриптора
+	 *
+	 */
+	static inline bool broken(const socket_t fd) noexcept {
+		// Выводим признак непригодности дескриптора сокета
+		return (fd == INVALID);
+	}
+	/**
+	 * @brief Функция закрытия дескриптора сокета
+	 *
+	 * @note У MS Windows сокет закрывается только `closesocket`: `close` отвечает
+	 *       отказом и оставляет сокет живым, а занятый им порт - занятым
+	 *
+	 * @param fd закрываемый дескриптор сокета
+	 *
+	 */
+	static inline void shut(const socket_t fd) noexcept {
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Выполняем закрытие дескриптора сокета
+			::closesocket(fd);
+		#else
+			// Выполняем закрытие дескриптора сокета
+			::close(fd);
+		#endif
+	}
+	/**
+	 * @brief Функция установки набора опций сокета
+	 *
+	 * @details Набор дословно повторяет опции, запрашиваемые стендом сетевого
+	 *          движка AWH: NO_SIGILL, NO_SIGPIPE, REUSE_ADDR, NO_IO_BLOCK,
+	 *          CLOSE_ON_EXEC и TCP_NO_DELAY. Прежде стенды просили две опции из
+	 *          шести, и разница в семь обращений к ядру на подключение
+	 *          записывалась движку в отставание, хотя ставилась постановкой
+	 *          замера, а не движком
+	 *
+	 * @note У MS Windows набор этот выглядит иначе, и НЕ по недосмотру: сигналов
+	 *       наречия POSIX там нет вовсе, `SO_REUSEPORT` отсутствует, а
+	 *       `SO_REUSEADDR` значит другое - позволяет перехватить чужой занятый
+	 *       порт, - и потому не выставляется. Неблокирующий режим ставится
+	 *       `ioctlsocket`, а наследование дескриптора снимается средством ядра,
+	 *       поскольку `FD_CLOEXEC` там не существует. Тот же самый набор берёт
+	 *       себе под MS Windows и измеряемый движок
+	 *
+	 * @param fd дескриптор настраиваемого сокета
+	 *
+	 */
+	static inline void options(const socket_t fd) noexcept {
+		// Значение активации опции сокета
+		const int32_t enable = 1;
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Отключаем алгоритм Нейгла
+			::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast <const char *> (&enable), sizeof(enable));
+			// Требуемый режим блокировки ввода-вывода сокета
+			u_long blocking = 1;
+			// Переводим сокет в неблокирующий режим
+			::ioctlsocket(fd, FIONBIO, &blocking);
+			// Снимаем наследование дескриптора сокета порождёнными программами
+			::SetHandleInformation(reinterpret_cast <HANDLE> (fd), HANDLE_FLAG_INHERIT, 0);
+		#else
+			// Структура установки обработчика сигнала
+			struct sigaction act{};
+			// Обнуляем маску блокируемых сигналов
+			sigemptyset(&act.sa_mask);
+			// Устанавливаем флаги обработчика
+			act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
+			// Устанавливаем игнорирование сигнала
+			act.sa_handler = SIG_IGN;
+			// Отключаем сигнал недопустимой инструкции
+			::sigaction(SIGILL, &act, nullptr);
+			/**
+			 * Отключаем сигнал записи в закрытый сокет
+			 *
+			 * @details Посокетной настройки этой не у всех систем: BSD и macOS дают
+			 *          `SO_NOSIGPIPE`, а Linux и OpenBSD не дают вовсе, и сигнал глушится
+			 *          там на весь процесс обработчиком - ровно как чуть выше для SIGILL
+			 *
+			 * @note Тем же способом и в том же порядке настраивает себя измеряемый движок,
+			 *       так что стороны сравнения остаются в равных условиях: разница вышла бы
+			 *       не между библиотеками, а между настройками сокета
+			 *
+			 */
+			#if defined(SO_NOSIGPIPE)
+				// Отключаем сигнал посокетной настройкой
+				::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
+			#else
+				// Отключаем сигнал обработчиком на весь процесс
+				::sigaction(SIGPIPE, &act, nullptr);
+			#endif
+			// Разрешаем повторное использование адреса
+			::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+			// Разрешаем повторное использование порта
+			::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(enable));
+			// Отключаем алгоритм Нейгла
+			::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable));
+			// Переводим сокет в неблокирующий режим
+			::fcntl(fd, F_SETFL, (::fcntl(fd, F_GETFL, 0) | O_NONBLOCK));
+			// Устанавливаем закрытие дескриптора при запуске программы
+			::fcntl(fd, F_SETFD, (::fcntl(fd, F_GETFD, 0) | FD_CLOEXEC));
+		#endif
 	}
 	/**
 	 * @brief Функция создания слушающего сокета петлевого интерфейса
@@ -612,17 +814,29 @@ namespace rival {
 	 * @return        дескриптор слушающего сокета
 	 *
 	 */
-	static inline int32_t listener(struct sockaddr_in & address) noexcept {
+	static inline socket_t listener(struct sockaddr_in & address) noexcept {
 		// Выполняем создание слушающего сокета
-		const int32_t result = ::socket(AF_INET, SOCK_STREAM, 0);
+		const socket_t result = ::socket(AF_INET, SOCK_STREAM, 0);
 		// Если слушающий сокет не создан
-		if(result < 0)
+		if(broken(result))
 			// Выводим признак ошибки создания сокета
-			return -1;
+			return INVALID;
 		// Значение активации опции сокета
 		const int32_t enable = 1;
-		// Активируем переиспользование адреса сокета
-		::setsockopt(result, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 *
+		 * @note Переиспользование адреса здесь НЕ включается: порт запрашивается
+		 *       у системы свободным, а `SO_REUSEADDR` у Winsock позволяет встать
+		 *       на чужой занятый порт и получить чужой обмен
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Обозначаем значение активации опции использованным
+			(void) enable;
+		#else
+			// Активируем переиспользование адреса сокета
+			::setsockopt(result, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+		#endif
 		// Обнуляем параметры привязки сокета
 		::memset(&address, 0, sizeof(address));
 		// Устанавливаем семейство адреса
@@ -634,9 +848,9 @@ namespace rival {
 		// Если привязка слушающего сокета не выполнена
 		if(::bind(result, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
 			// Выполняем закрытие слушающего сокета
-			::close(result);
+			shut(result);
 			// Выводим признак ошибки привязки сокета
-			return -1;
+			return INVALID;
 		}
 		// Размер структуры параметров сокета
 		socklen_t length = sizeof(address);
@@ -644,8 +858,18 @@ namespace rival {
 		::getsockname(result, reinterpret_cast <struct sockaddr *> (&address), &length);
 		// Переводим сокет в режим прослушивания входящих подключений
 		::listen(result, BACKLOG);
-		// Переводим слушающий сокет в неблокирующий режим
-		::fcntl(result, F_SETFL, (::fcntl(result, F_GETFL, 0) | O_NONBLOCK));
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Требуемый режим блокировки ввода-вывода сокета
+			u_long blocking = 1;
+			// Переводим слушающий сокет в неблокирующий режим
+			::ioctlsocket(result, FIONBIO, &blocking);
+		#else
+			// Переводим слушающий сокет в неблокирующий режим
+			::fcntl(result, F_SETFL, (::fcntl(result, F_GETFL, 0) | O_NONBLOCK));
+		#endif
 		// Выводим дескриптор слушающего сокета
 		return result;
 	}
@@ -659,13 +883,13 @@ namespace rival {
 	 * @return        дескриптор клиентского сокета
 	 *
 	 */
-	static inline int32_t connector(const struct sockaddr_in & address) noexcept {
+	static inline socket_t connector(const struct sockaddr_in & address) noexcept {
 		// Выполняем создание клиентского сокета
-		const int32_t result = ::socket(AF_INET, SOCK_STREAM, 0);
+		const socket_t result = ::socket(AF_INET, SOCK_STREAM, 0);
 		// Если клиентский сокет не создан
-		if(result < 0)
+		if(broken(result))
 			// Выводим признак ошибки создания сокета
-			return -1;
+			return INVALID;
 		// Выполняем установку набора опций сокета
 		options(result);
 		// Выполняем подключение к слушающему сокету
@@ -679,7 +903,7 @@ namespace rival {
 	 * @param fd дескриптор принятого сокета
 	 *
 	 */
-	static inline void adjust(const int32_t fd) noexcept {
+	static inline void adjust(const socket_t fd) noexcept {
 		// Выполняем установку набора опций сокета
 		options(fd);
 	}
@@ -700,35 +924,59 @@ namespace rival {
 	 * @param fd дескриптор датаграммного сокета
 	 *
 	 */
-	static inline void adopt(const int32_t fd) noexcept {
+	static inline void adopt(const socket_t fd) noexcept {
 		// Значение активации опции сокета
 		const int32_t enable = 1;
-		// Структура установки обработчика сигнала
-		struct sigaction act{};
-		// Обнуляем маску блокируемых сигналов
-		sigemptyset(&act.sa_mask);
-		// Устанавливаем флаги обработчика
-		act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
-		// Устанавливаем игнорирование сигнала
-		act.sa_handler = SIG_IGN;
-		// Отключаем сигнал недопустимой инструкции
-		::sigaction(SIGILL, &act, nullptr);
 		/**
-		 * Отключаем сигнал записи в закрытый сокет тем же способом, что и потоковый набор
+		 * Если стенд собран под операционную систему MS Windows
+		 *
+		 * @note Отключение отказа приёма по недоставленной датаграмме обязательно:
+		 *       иначе ответ ICMP о недоступности порта роняет следующий приём
+		 *       ошибкой, и датаграмма теряется молча
 		 */
-		#if defined(SO_NOSIGPIPE)
-			// Отключаем сигнал посокетной настройкой
-			::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
+		#if defined(_WIN32) || defined(_WIN64)
+			// Обозначаем значение активации опции использованным
+			(void) enable;
+			// Требуемое состояние отказа приёма по недоставленной датаграмме
+			BOOL report = FALSE;
+			// Число полученных от ядра байт ответа
+			DWORD received = 0;
+			// Отключаем отказ приёма по недоставленной датаграмме
+			::WSAIoctl(fd, SIO_UDP_CONNRESET, &report, sizeof(report), nullptr, 0, &received, nullptr, nullptr);
+			// Требуемый режим блокировки ввода-вывода сокета
+			u_long blocking = 1;
+			// Переводим сокет в неблокирующий режим
+			::ioctlsocket(fd, FIONBIO, &blocking);
+			// Снимаем наследование дескриптора сокета порождёнными программами
+			::SetHandleInformation(reinterpret_cast <HANDLE> (fd), HANDLE_FLAG_INHERIT, 0);
 		#else
-			// Отключаем сигнал обработчиком на весь процесс
-			::sigaction(SIGPIPE, &act, nullptr);
+			// Структура установки обработчика сигнала
+			struct sigaction act{};
+			// Обнуляем маску блокируемых сигналов
+			sigemptyset(&act.sa_mask);
+			// Устанавливаем флаги обработчика
+			act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
+			// Устанавливаем игнорирование сигнала
+			act.sa_handler = SIG_IGN;
+			// Отключаем сигнал недопустимой инструкции
+			::sigaction(SIGILL, &act, nullptr);
+			/**
+			 * Отключаем сигнал записи в закрытый сокет тем же способом, что и потоковый набор
+			 */
+			#if defined(SO_NOSIGPIPE)
+				// Отключаем сигнал посокетной настройкой
+				::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable));
+			#else
+				// Отключаем сигнал обработчиком на весь процесс
+				::sigaction(SIGPIPE, &act, nullptr);
+			#endif
+			// Разрешаем повторное использование адреса
+			::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
+			// Переводим сокет в неблокирующий режим
+			::fcntl(fd, F_SETFL, (::fcntl(fd, F_GETFL, 0) | O_NONBLOCK));
+			// Устанавливаем закрытие дескриптора при запуске программы
+			::fcntl(fd, F_SETFD, (::fcntl(fd, F_GETFD, 0) | FD_CLOEXEC));
 		#endif
-		// Разрешаем повторное использование адреса
-		::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable));
-		// Переводим сокет в неблокирующий режим
-		::fcntl(fd, F_SETFL, (::fcntl(fd, F_GETFL, 0) | O_NONBLOCK));
-		// Устанавливаем закрытие дескриптора при запуске программы
-		::fcntl(fd, F_SETFD, (::fcntl(fd, F_GETFD, 0) | FD_CLOEXEC));
 	}
 	/**
 	 * @brief Функция создания приёмника датаграмм
@@ -747,19 +995,27 @@ namespace rival {
 	 * @return        дескриптор приёмника датаграмм
 	 *
 	 */
-	static inline int32_t receiver(struct sockaddr_in & address) noexcept {
+	static inline socket_t receiver(struct sockaddr_in & address) noexcept {
 		// Выполняем создание приёмника датаграмм
-		const int32_t result = ::socket(AF_INET, SOCK_DGRAM, 0);
+		const socket_t result = ::socket(AF_INET, SOCK_DGRAM, 0);
 		// Если приёмник датаграмм не создан
-		if(result < 0)
+		if(broken(result))
 			// Выводим признак ошибки создания сокета
-			return -1;
+			return INVALID;
 		// Выполняем установку набора опций датаграммного сокета
 		adopt(result);
 		// Требуемый объём приёмного буфера сокета
 		const int32_t capacity = DATAGRAM_BUFFER;
-		// Расширяем приёмный буфер сокета
-		::setsockopt(result, SOL_SOCKET, SO_RCVBUF, &capacity, sizeof(capacity));
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Расширяем приёмный буфер сокета
+			::setsockopt(result, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <const char *> (&capacity), sizeof(capacity));
+		#else
+			// Расширяем приёмный буфер сокета
+			::setsockopt(result, SOL_SOCKET, SO_RCVBUF, &capacity, sizeof(capacity));
+		#endif
 		// Обнуляем параметры привязки сокета
 		::memset(&address, 0, sizeof(address));
 		// Устанавливаем семейство адреса
@@ -771,9 +1027,9 @@ namespace rival {
 		// Если привязка приёмника не выполнена
 		if(::bind(result, reinterpret_cast <struct sockaddr *> (&address), sizeof(address)) != 0){
 			// Выполняем закрытие приёмника датаграмм
-			::close(result);
+			shut(result);
 			// Выводим признак ошибки привязки сокета
-			return -1;
+			return INVALID;
 		}
 		// Размер структуры параметров сокета
 		socklen_t length = sizeof(address);
@@ -794,19 +1050,27 @@ namespace rival {
 	 * @return        дескриптор отправителя датаграмм
 	 *
 	 */
-	static inline int32_t emitter(const struct sockaddr_in & address) noexcept {
+	static inline socket_t emitter(const struct sockaddr_in & address) noexcept {
 		// Выполняем создание отправителя датаграмм
-		const int32_t result = ::socket(AF_INET, SOCK_DGRAM, 0);
+		const socket_t result = ::socket(AF_INET, SOCK_DGRAM, 0);
 		// Если отправитель датаграмм не создан
-		if(result < 0)
+		if(broken(result))
 			// Выводим признак ошибки создания сокета
-			return -1;
+			return INVALID;
 		// Выполняем установку набора опций датаграммного сокета
 		adopt(result);
 		// Требуемый объём приёмного буфера сокета
 		const int32_t capacity = DATAGRAM_BUFFER;
-		// Расширяем приёмный буфер сокета
-		::setsockopt(result, SOL_SOCKET, SO_RCVBUF, &capacity, sizeof(capacity));
+		/**
+		 * Если стенд собран под операционную систему MS Windows
+		 */
+		#if defined(_WIN32) || defined(_WIN64)
+			// Расширяем приёмный буфер сокета
+			::setsockopt(result, SOL_SOCKET, SO_RCVBUF, reinterpret_cast <const char *> (&capacity), sizeof(capacity));
+		#else
+			// Расширяем приёмный буфер сокета
+			::setsockopt(result, SOL_SOCKET, SO_RCVBUF, &capacity, sizeof(capacity));
+		#endif
 		// Закрепляем за сокетом адрес приёмника датаграмм
 		::connect(result, reinterpret_cast <const struct sockaddr *> (&address), sizeof(address));
 		// Выводим дескриптор отправителя датаграмм

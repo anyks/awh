@@ -794,10 +794,20 @@ TEST(CodecYamlCommon, NarrowRadixApproximation) {
 	ASSERT_NEAR(number.real, 1e26, 1e12);
 	/**
 	 * Выполняем проверку того, что запись со знаком минус приближается верно
+	 *
+	 * @note Схема взята наречия 1.1: знак у записи шестнадцатеричной дозволен ОДНИМ
+	 *       ЛИШЬ наречием 1.1, а описание 1.2 даёт целому лексику
+	 *       `[-+]?[0-9]+ | 0o[0-7]+ | 0x[0-9a-fA-F]+`, где знак стоит у одной лишь
+	 *       записи десятичной. Прежде тут стояла схема 1.2, и проверка закрепляла
+	 *       чтение, описанию противное
 	 */
-	ASSERT_EQ(yaml::narrow("-0xFFFFFFFFFFFFFFFFFF", yaml::schema_t::CORE, number), yaml::type_t::EXTENDED);
+	ASSERT_EQ(yaml::narrow("-0xFFFFFFFFFFFFFFFFFF", yaml::schema_t::LEGACY, number), yaml::type_t::EXTENDED);
 	// Выполняем проверку знака дробного приближения
 	ASSERT_NEAR(number.real, -4722366482869645213695., 1e8);
+	/**
+	 * Выполняем проверку того, что схема 1.2 записи той же числом не признаёт вовсе
+	 */
+	ASSERT_EQ(yaml::narrow("-0xFFFFFFFFFFFFFFFFFF", yaml::schema_t::CORE, number), yaml::type_t::UNDEFINED);
 }
 /**
  * @brief Проверка описаний кодов отказа и названий видов, набором не взятых
@@ -900,4 +910,56 @@ TEST(CodecYamlCommon, QuotingBrokenSequence) {
 	ASSERT_EQ(yaml::quoting(broken, yaml::schema_t::CORE, false), yaml::style_t::DOUBLE);
 	// Выполняем проверку того, что значение обычное двойной ограды не требует
 	ASSERT_NE(yaml::quoting("обычное", yaml::schema_t::CORE, false), yaml::style_t::DOUBLE);
+}
+/**
+ * @brief Знак числа дозволен наречием 1.2 одной лишь записи десятичной
+ *
+ * @details Описание YAML 1.2 даёт целому лексику `[-+]?[0-9]+ | 0o[0-7]+ |
+ *          0x[0-9a-fA-F]+`, и знак стоит в ней у ОДНОЙ ЛИШЬ записи десятичной.
+ *          Наречие же 1.1 дозволяет знак и записи шестнадцатеричной с двоичной
+ *
+ * @note Прежде знак снимался разом для всех оснований, и запись `+0x10` читалась
+ *       числом всякой схемою. Нашло это сличение записей с ведущим знаком по трём
+ *       схемам разом - порознь ни одна схема порока не показывала
+ */
+TEST(CodecYamlCommon, TheSignIsAllowedOnlyToTheDecimalNotationInTheDialect12){
+	/**
+	 * Выполняем проверку того, что знак у десятичной записи дозволен обоими наречиями
+	 */
+	ASSERT_EQ(yaml::resolve("+10", yaml::schema_t::CORE), yaml::type_t::NUMBER);
+	// Выполняем проверку того, что знак у десятичной записи дозволен наречием 1.1
+	ASSERT_EQ(yaml::resolve("-10", yaml::schema_t::LEGACY), yaml::type_t::NUMBER);
+	/**
+	 * Выполняем проверку того, что запись шестнадцатеричная без знака числом признаётся
+	 */
+	ASSERT_EQ(yaml::resolve("0x10", yaml::schema_t::CORE), yaml::type_t::NUMBER);
+	/**
+	 * Выполняем проверку того, что знак у записи шестнадцатеричной наречием 1.2 отвергнут
+	 */
+	ASSERT_EQ(yaml::resolve("+0x10", yaml::schema_t::CORE), yaml::type_t::STRING);
+	// Выполняем проверку того, что и знак минуса у той же записи наречием 1.2 отвергнут
+	ASSERT_EQ(yaml::resolve("-0x10", yaml::schema_t::CORE), yaml::type_t::STRING);
+	/**
+	 * Выполняем проверку того, что наречие 1.1 знак у записи шестнадцатеричной дозволяет
+	 */
+	ASSERT_EQ(yaml::resolve("+0x10", yaml::schema_t::LEGACY), yaml::type_t::NUMBER);
+	// Выполняем проверку того, что наречие 1.1 дозволяет и знак минуса у той же записи
+	ASSERT_EQ(yaml::resolve("-0x10", yaml::schema_t::LEGACY), yaml::type_t::NUMBER);
+	/**
+	 * Выполняем проверку того, что запись восьмеричная наречия 1.2 знака не терпит вовсе
+	 *
+	 * @note Запись `0o` есть принадлежность наречия 1.2, и знака описание ей не даёт;
+	 *       наречие же 1.1 записи этой не знает вовсе, и знак ей не помощь
+	 */
+	ASSERT_EQ(yaml::resolve("+0o17", yaml::schema_t::CORE), yaml::type_t::STRING);
+	// Выполняем проверку того, что запись восьмеричная без знака числом признаётся
+	ASSERT_EQ(yaml::resolve("0o17", yaml::schema_t::CORE), yaml::type_t::NUMBER);
+	/**
+	 * Выполняем проверку того, что схема JSON ведущего плюса не терпит вовсе
+	 *
+	 * @note Описание JSON знака плюса числу не даёт, и запись `+10` там есть строка
+	 */
+	ASSERT_EQ(yaml::resolve("+10", yaml::schema_t::JSON), yaml::type_t::STRING);
+	// Выполняем проверку того, что знак минуса схемою JSON дозволен
+	ASSERT_EQ(yaml::resolve("-10", yaml::schema_t::JSON), yaml::type_t::NUMBER);
 }

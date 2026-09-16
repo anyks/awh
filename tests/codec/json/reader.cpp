@@ -24,6 +24,11 @@
  * Подключаем заголовочные файлы проекта
  */
 #include <gtest/gtest.h>
+
+/**
+ * Подключаем заголовочные файлы проверок
+ */
+#include "../journal.hpp"
 #include <codec/json/json.hpp>
 #include <sys/log.hpp>
 
@@ -1742,7 +1747,7 @@ TEST(CodecJsonReader, RefusalSurfacesOnFeed){
  */
 TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 	// Разбирает текст заданными настройками
-	const auto разбор = [](const string & text, const bool strict) noexcept -> bool {
+	const auto doParse = [](const string & text, const bool strict) noexcept -> bool {
 		// Объект контейнера документа
 		json::document_t doc;
 		// Получаем настройки контейнера документа
@@ -1767,26 +1772,26 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 	 */
 	{
 		// Выполняем проверку разбора текста с примечанием
-		ASSERT_TRUE(разбор("{\"a\":1 /* да */}", false));
+		ASSERT_TRUE(doParse("{\"a\":1 /* да */}", false));
 		// Выполняем проверку разбора текста с запятой перед закрывающей скобкой
-		ASSERT_TRUE(разбор("[1,2,]", false));
+		ASSERT_TRUE(doParse("[1,2,]", false));
 		// Выполняем проверку разбора текста с одинарными кавычками
-		ASSERT_TRUE(разбор("{'a':1}", false));
+		ASSERT_TRUE(doParse("{'a':1}", false));
 		// Выполняем проверку разбора текста с бесконечностью
-		ASSERT_TRUE(разбор("{\"a\":Infinity}", false));
+		ASSERT_TRUE(doParse("{\"a\":Infinity}", false));
 	}
 	/**
 	 * Выполняем проверку того, что строгий разбор гасит их все
 	 */
 	{
 		// Выполняем проверку отказа разбора текста с примечанием
-		ASSERT_FALSE(разбор("{\"a\":1 /* да */}", true));
+		ASSERT_FALSE(doParse("{\"a\":1 /* да */}", true));
 		// Выполняем проверку отказа разбора текста с запятой перед закрывающей скобкой
-		ASSERT_FALSE(разбор("[1,2,]", true));
+		ASSERT_FALSE(doParse("[1,2,]", true));
 		// Выполняем проверку отказа разбора текста с одинарными кавычками
-		ASSERT_FALSE(разбор("{'a':1}", true));
+		ASSERT_FALSE(doParse("{'a':1}", true));
 		// Выполняем проверку отказа разбора текста с бесконечностью
-		ASSERT_FALSE(разбор("{\"a\":Infinity}", true));
+		ASSERT_FALSE(doParse("{\"a\":Infinity}", true));
 	}
 	/**
 	 * Выполняем проверку того, что выдача настроек говорит лишь о действующем
@@ -1828,9 +1833,9 @@ TEST(CodecJsonReader, StrictExtinguishesRelaxations){
 	 */
 	{
 		// Выполняем проверку разбора текста, начатого меткой порядка байтов
-		ASSERT_TRUE(разбор(string("\xEF\xBB\xBF") + "{\"a\":1}", true));
+		ASSERT_TRUE(doParse(string("\xEF\xBB\xBF") + "{\"a\":1}", true));
 		// Выполняем проверку того, что знаки за окончанием документа отвергаются и без строгости
-		ASSERT_FALSE(разбор("{\"a\":1} мусор", false));
+		ASSERT_FALSE(doParse("{\"a\":1} мусор", false));
 	}
 }
 
@@ -2505,4 +2510,51 @@ TEST(CodecJsonReader, BothBoundsOfTheLowSurrogateAreGuarded) {
 	 */
 	// Выполняем проверку разбора правильной суррогатной пары
 	ASSERT_EQ(::join(::parse("\"\\uD83D\\uDE00\"")), "STR(\xF0\x9F\x98\x80) DOC END");
+}
+
+/**
+ * @brief Проверка того, что один отказ разбора рождает ровно одну запись в журнал
+ *
+ * @details Запись об отказе ведёт то место, каким оканчивается шаг разбора, и рождаться
+ * ей положено единожды: читающий журнал считает по ней отказы, а двойная запись и
+ * считает вдвое, и разнится местом - первая её половина несла место грубое, а вторая
+ * точное
+ *
+ * @note Заведено сличением трёх кодеков: разбор разметки писал дважды пятьдесят пять
+ *       отказов из девяноста семи, разбор JSON и CSV - по одной записи на отказ
+ *
+ */
+TEST(CodecJsonReader, EveryRefusalIsReportedOnce) {
+	// Сторож перехвата сообщений журнала
+	Journal journal;
+	// Проверяемые негодные тексты
+	const char * probes[] = {
+		"{\"а\":1,}",
+		"[1,2,@]",
+		"\"аб",
+		"{\"a\" 1}",
+		"[1,2]\n\nx",
+		"[01]",
+		"{'a':1}",
+		"[1,]",
+		"nul",
+		"[\"\\q\"]"
+	};
+	/**
+	 * Выполняем перебор всех проверяемых негодных текстов
+	 */
+	for(const char * text : probes){
+		// Выполняем очистку собранных прежде сообщений журнала
+		journal.clear();
+		// Чтение проверяемого текста
+		json::reader_t reader;
+		// Выполняем подачу проверяемого текста целиком
+		reader.feed(text, ::strlen(text), true);
+		// Выполняем перебор всех событий разбора
+		while(reader.next()) ;
+		// Выполняем проверку того, что разбор текста отказал
+		ASSERT_NE(reader.error(), json::error_t::NONE) << text;
+		// Выполняем проверку того, что запись об отказе рождена ровно одна
+		ASSERT_EQ(journal.messages().size(), static_cast <size_t> (1)) << text;
+	}
 }

@@ -41,6 +41,31 @@ COMPILER="${CXX:-c++}"
 # Собираем ключи сборки стенда
 OPTIONS="-O2 -std=c++20 -I$ROOT/include $FLAGS"
 
+#
+# Путь к библиотеке языка C++ того собирателя, каким собраны поверки
+#
+# @note Путь этот прописывается в двоичный файл: у DragonFly рядом стоят несколько
+#       собирателей, и файл, собранный `g++14`, при запуске подхватывал `libstdc++`
+#       от gcc11 и отваливался с «version GLIBCXX_3.4.32 not found». Сборка при этом
+#       зелёная, а отказ приходит от прогона, и причину пойдут искать в кодеке
+#
+# @warning Путь берётся лишь тогда, когда собиратель отдаёт его полным: `clang` на
+#          выдачу этого вопроса отвечает одним лишь именем файла, и `dirname` от него
+#          дал бы текущий каталог
+#
+# @note У целей MS Windows выдача эта негодна: библиотека там идёт отдельным файлом
+#       рядом с двоичным, и `rpath` у формата PE не работает вовсе
+#
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*) ;;
+	*)
+		STDLIB="$($COMPILER -print-file-name=libstdc++.so 2>/dev/null)"
+		case "$STDLIB" in
+			/*) OPTIONS="$OPTIONS -Wl,-rpath,$(cd "$(dirname "$STDLIB")" && pwd)" ;;
+		esac
+	;;
+esac
+
 # Выполняем заведение каталога собранного стенда
 mkdir -p "$OUTPUT"
 
@@ -79,13 +104,22 @@ if [ -z "$(ls -A "$OUTPUT/corpus" 2>/dev/null)" ]; then
 fi
 
 # Собираем перечень объектных файлов стенда
-OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
+OBJECTS="$OUTPUT/lexical-table.o $OUTPUT/codec-numeric.o $OUTPUT/sys-log.o $OUTPUT/sys-chrono.o $OUTPUT/sys-fmk.o $OUTPUT/sys-fs.o $OUTPUT/sys-os.o $OUTPUT/charset.o $OUTPUT/charset-table.o $OUTPUT/net-nwt.o $OUTPUT/alloc-alloc.o $OUTPUT/alloc-cache.o $OUTPUT/alloc-central.o $OUTPUT/alloc-classes.o $OUTPUT/alloc-guard.o $OUTPUT/alloc-huge.o $OUTPUT/alloc-link.o $OUTPUT/alloc-pages.o $OUTPUT/alloc-profile.o $OUTPUT/alloc-source.o $OUTPUT/alloc-spin.o $OUTPUT/alloc-trace.o $OUTPUT/alloc-elf.o $OUTPUT/alloc-mach.o $OUTPUT/alloc-pe.o $OUTPUT/uni-normalize.o $OUTPUT/uni-table.o $OUTPUT/uni-unicode.o $OUTPUT/uni-utf8.o"
 
 # Выводим сообщение о начале сборки стенда
 echo "Собираем стенд сличения TOML: $COMPILER"
 
 # Выполняем сборку таблицы степеней пятёрки модуля разбора чисел
 $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-table.o"
+
+#
+# Выполняем сборку перевода чисел, общего всем кодекам
+#
+# @note «src/codec/numeric.cpp» несёт тела «awh::codec::convert» и «numeric», какими
+#       кодек снимает числовые значения. Перечень частей тут ведётся ВРУЧНУЮ, и файл
+#       этот его миновал: связывание отвечало отсутствием девяти тел разом
+#
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/codec/numeric.cpp" -o "$OUTPUT/codec-numeric.o"
 
 #
 # Выполняем сборку ведения журнала работы и опоры его на средства системы
@@ -97,6 +131,27 @@ $COMPILER $OPTIONS -c "$ROOT/src/num/lexical/table.cpp" -o "$OUTPUT/lexical-tabl
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/sys-log.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/chrono.cpp" -o "$OUTPUT/sys-chrono.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fmk.cpp" -o "$OUTPUT/sys-fmk.o"
+#
+# Сборка хода работы с файловой системой
+#
+# @note Кодек с 13.09.2026 читает и пишет файлы ходом «fs_t», а не вызовами системы
+#       напрямую. Перечень частей тут ведётся ВРУЧНУЮ, и переезд этот его миновал:
+#       сборка валилась связыванием по «awh::Filesystem::write» да «unlink»
+#
+#
+# Слой файловой системы у macOS написан на Objective-C++
+#
+# @details «src/sys/fs.cpp» зовёт там «NSFileManager», и обычным C++ он не собирается
+#          вовсе: приходит «expected unqualified-id» прямо в заголовках основы. Отбор
+#          этот повторяет и CMakeLists.txt, где тому же файлу и только ему назначены
+#          эти ключи
+#
+if [ "$(uname -s)" = "Darwin" ]; then
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -x objective-c++ -fobjc-arc -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+else
+	$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/fs.cpp" -o "$OUTPUT/sys-fs.o"
+fi
+$COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/net/nwt.cpp" -o "$OUTPUT/net-nwt.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/normalize.cpp" -o "$OUTPUT/uni-normalize.o"
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/encoding/unicode/table.cpp" -o "$OUTPUT/uni-table.o"
@@ -154,6 +209,14 @@ done
 ##
 case "$(uname -s)" in
 	MINGW*|MSYS*|CYGWIN*) SYSTEM_LIBS="-lws2_32" ;;
+	#
+	# Слой файловой системы у macOS опирается на основу Foundation
+	#
+	# @note «src/sys/fs.cpp» зовёт там «NSFileManager» да «NSURL», и без основы этой
+	#       связывание отвечает отсутствием «_OBJC_CLASS_$_NSFileManager». Ровно так же
+	#       поступает и CMakeLists.txt
+	#
+	Darwin) SYSTEM_LIBS="-framework Foundation" ;;
 	*) SYSTEM_LIBS="" ;;
 esac
 

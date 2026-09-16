@@ -68,7 +68,7 @@ namespace {
 	 */
 	typedef struct Connection {
 		// Дескриптор сокета подключения
-		int32_t fd;
+		socket_t fd;
 		// Количество принятых октетов текущего сообщения
 		size_t received;
 		// Наблюдатель готовности подключения
@@ -140,7 +140,7 @@ namespace {
 		// Наблюдатель завершения текущего подключения
 		struct event * watcher;
 		// Дескриптор сокета текущего подключения
-		int32_t fd;
+		socket_t fd;
 		// Флаг активности замера
 		bool measuring;
 		// Количество выполненных циклов прогрева
@@ -168,11 +168,11 @@ namespace {
 	 */
 	static void peerRead(evutil_socket_t fd, short, void *) noexcept {
 		// Выполняем чтение принятых данных
-		const ssize_t bytes = ::recv(fd, gBuffer.data(), gBuffer.size(), 0);
+		const ssize_t bytes = ::recv(fd, raw(gBuffer.data()), gBuffer.size(), 0);
 		// Если данные приняты
 		if(bytes > 0)
 			// Возвращаем принятые данные отправителю
-			::send(fd, gBuffer.data(), static_cast <size_t> (bytes), 0);
+			::send(fd, raw(gBuffer.data()), static_cast <size_t> (bytes), 0);
 	}
 	/**
 	 * @brief Функция обратного вызова готовности чтения клиентского подключения
@@ -185,7 +185,7 @@ namespace {
 		// Получаем состояние подключения
 		connection_t * connection = reinterpret_cast <connection_t *> (arg);
 		// Выполняем чтение принятых данных
-		const ssize_t bytes = ::recv(fd, gBuffer.data(), ECHO_PAYLOAD, 0);
+		const ssize_t bytes = ::recv(fd, raw(gBuffer.data()), ECHO_PAYLOAD, 0);
 		// Если данные не приняты
 		if(bytes <= 0)
 			// Ожидаем следующей готовности подключения
@@ -201,7 +201,7 @@ namespace {
 		// Если обмен следует продолжать
 		if(connection->state->account())
 			// Отправляем следующее сообщение обмена
-			::send(fd, gPayload, ECHO_PAYLOAD, 0);
+			::send(fd, raw(gPayload), ECHO_PAYLOAD, 0);
 		// Останавливаем цикл событий
 		else ::event_base_loopbreak(connection->base);
 	}
@@ -222,7 +222,7 @@ namespace {
 		// Активируем наблюдатель готовности чтения
 		::event_add(connection->watcher, nullptr);
 		// Отправляем первое сообщение обмена
-		::send(fd, gPayload, ECHO_PAYLOAD, 0);
+		::send(fd, raw(gPayload), ECHO_PAYLOAD, 0);
 	}
 	/**
 	 * @brief Функция обратного вызова принятия входящего подключения сценария обмена
@@ -239,9 +239,9 @@ namespace {
 		 */
 		while(true){
 			// Выполняем приём входящего подключения
-			const int32_t peer = ::accept(fd, nullptr, nullptr);
+			const socket_t peer = ::accept(fd, nullptr, nullptr);
 			// Если ожидающих подключений не осталось
-			if(peer < 0)
+			if(broken(peer))
 				// Завершаем приём подключений
 				return;
 			// Выполняем настройку принятого сокета
@@ -278,7 +278,7 @@ namespace {
 		// Параметры привязки слушающего сокета
 		struct sockaddr_in address{};
 		// Создаём слушающий сокет петлевого интерфейса
-		const int32_t server = listener(address);
+		const socket_t server = listener(address);
 		// Список состояний принятых подключений
 		vector <unique_ptr <connection_t>> accepted;
 		// Резервируем память под состояния принятых подключений
@@ -333,7 +333,7 @@ namespace {
 			// Освобождаем наблюдатель готовности подключения
 			::event_free(connection->watcher);
 			// Выполняем закрытие сокета подключения
-			::close(connection->fd);
+			shut(connection->fd);
 		}
 		/**
 		 * Выполняем освобождение клиентских подключений
@@ -342,12 +342,12 @@ namespace {
 			// Освобождаем наблюдатель готовности подключения
 			::event_free(connection->watcher);
 			// Выполняем закрытие сокета подключения
-			::close(connection->fd);
+			shut(connection->fd);
 		}
 		// Освобождаем наблюдатель готовности слушающего сокета
 		::event_free(listen);
 		// Выполняем закрытие слушающего сокета
-		::close(server);
+		shut(server);
 		// Освобождаем цикл событий стенда
 		::event_base_free(base);
 		// Выводим итоги прогона сценария
@@ -359,7 +359,7 @@ namespace {
 	 */
 	typedef struct Datagram {
 		// Дескриптор датаграммного сокета
-		int32_t fd;
+		socket_t fd;
 		// Наблюдатель готовности сокета
 		struct event * watcher;
 		// Цикл событий стенда
@@ -401,13 +401,13 @@ namespace {
 			// Восстанавливаем размер структуры адреса отправителя
 			length = sizeof(source);
 			// Выполняем приём датаграммы
-			const ssize_t bytes = ::recvfrom(fd, gBuffer.data(), ECHO_PAYLOAD, 0, reinterpret_cast <struct sockaddr *> (&source), &length);
+			const ssize_t bytes = ::recvfrom(fd, raw(gBuffer.data()), ECHO_PAYLOAD, 0, reinterpret_cast <struct sockaddr *> (&source), &length);
 			// Если ожидающих датаграмм не осталось
 			if(bytes <= 0)
 				// Завершаем приём датаграмм
 				return;
 			// Возвращаем принятые октеты отправителю
-			::sendto(fd, gBuffer.data(), static_cast <size_t> (bytes), 0, reinterpret_cast <const struct sockaddr *> (&source), length);
+			::sendto(fd, raw(gBuffer.data()), static_cast <size_t> (bytes), 0, reinterpret_cast <const struct sockaddr *> (&source), length);
 		}
 	}
 	/**
@@ -421,7 +421,7 @@ namespace {
 		// Получаем состояние отправителя
 		datagram_t * datagram = reinterpret_cast <datagram_t *> (arg);
 		// Выполняем приём датаграммы
-		const ssize_t bytes = ::recv(fd, gBuffer.data(), ECHO_PAYLOAD, 0);
+		const ssize_t bytes = ::recv(fd, raw(gBuffer.data()), ECHO_PAYLOAD, 0);
 		// Если датаграмма не принята
 		if(bytes <= 0)
 			// Ожидаем следующей готовности сокета
@@ -429,7 +429,7 @@ namespace {
 		// Если обмен следует продолжать
 		if(datagram->state->account())
 			// Отправляем следующую датаграмму
-			::send(fd, gPayload, ECHO_PAYLOAD, 0);
+			::send(fd, raw(gPayload), ECHO_PAYLOAD, 0);
 		// Останавливаем цикл событий
 		else ::event_base_loopbreak(datagram->base);
 	}
@@ -479,7 +479,7 @@ namespace {
 		// Параметры привязки приёмника датаграмм
 		struct sockaddr_in address{};
 		// Создаём приёмник датаграмм петлевого интерфейса
-		const int32_t server = receiver(address);
+		const socket_t server = receiver(address);
 		// Создаём наблюдатель готовности приёмника датаграмм
 		struct event * listen = ::event_new(base, server, EV_READ | EV_PERSIST, &::receiverRead, nullptr);
 		// Активируем наблюдатель готовности приёмника датаграмм
@@ -507,7 +507,7 @@ namespace {
 			// Активируем наблюдатель готовности чтения отправителя
 			::event_add(datagram->watcher, nullptr);
 			// Отправляем первую датаграмму, начиная обмен
-			::send(datagram->fd, gPayload, ECHO_PAYLOAD, 0);
+			::send(datagram->fd, raw(gPayload), ECHO_PAYLOAD, 0);
 		}
 		// Создаём наблюдатель предельного срока прогона
 		struct event * deadline = ::event_new(base, -1, 0, &::expire, base);
@@ -537,14 +537,14 @@ namespace {
 			// Освобождаем наблюдатель готовности отправителя
 			::event_free(datagram->watcher);
 			// Выполняем закрытие сокета отправителя
-			::close(datagram->fd);
+			shut(datagram->fd);
 		}
 		// Освобождаем наблюдатель предельного срока прогона
 		::event_free(deadline);
 		// Освобождаем наблюдатель готовности приёмника датаграмм
 		::event_free(listen);
 		// Выполняем закрытие приёмника датаграмм
-		::close(server);
+		shut(server);
 		// Освобождаем цикл событий стенда
 		::event_base_free(base);
 		// Выводим итоги прогона сценария
@@ -596,7 +596,7 @@ namespace {
 		// Параметры привязки слушающего сокета
 		struct sockaddr_in address{};
 		// Создаём слушающий сокет петлевого интерфейса
-		const int32_t server = listener(address);
+		const socket_t server = listener(address);
 		// Список состояний принятых подключений
 		vector <unique_ptr <connection_t>> accepted;
 		// Резервируем память под состояния принятых подключений
@@ -661,7 +661,7 @@ namespace {
 		 */
 		for(size_t i = 0; i < IDLE_ACTIVE; i++)
 			// Отправляем первое сообщение обмена
-			::send(clients[i]->fd, gPayload, ECHO_PAYLOAD, 0);
+			::send(clients[i]->fd, raw(gPayload), ECHO_PAYLOAD, 0);
 		/**
 		 * Запускаем цикл событий до выполнения требуемого количества обменов
 		 */
@@ -679,7 +679,7 @@ namespace {
 			// Освобождаем наблюдатель готовности подключения
 			::event_free(connection->watcher);
 			// Выполняем закрытие сокета подключения
-			::close(connection->fd);
+			shut(connection->fd);
 		}
 		/**
 		 * Выполняем освобождение клиентских подключений
@@ -688,12 +688,12 @@ namespace {
 			// Освобождаем наблюдатель готовности подключения
 			::event_free(connection->watcher);
 			// Выполняем закрытие сокета подключения
-			::close(connection->fd);
+			shut(connection->fd);
 		}
 		// Освобождаем наблюдатель готовности слушающего сокета
 		::event_free(listen);
 		// Выполняем закрытие слушающего сокета
-		::close(server);
+		shut(server);
 		// Освобождаем цикл событий стенда
 		::event_base_free(base);
 		// Выводим итоги прогона сценария
@@ -710,7 +710,7 @@ namespace {
 		// Получаем состояние прогона сценария
 		stream_t * state = reinterpret_cast <stream_t *> (arg);
 		// Выполняем чтение принятых данных
-		const ssize_t bytes = ::recv(fd, gBuffer.data(), gBuffer.size(), 0);
+		const ssize_t bytes = ::recv(fd, raw(gBuffer.data()), gBuffer.size(), 0);
 		// Если данные не приняты
 		if(bytes <= 0)
 			// Ожидаем следующей готовности приёмника
@@ -736,7 +736,7 @@ namespace {
 		// Получаем состояние прогона сценария
 		stream_t * state = reinterpret_cast <stream_t *> (arg);
 		// Выполняем запись остатка текущего блока
-		const ssize_t bytes = ::send(fd, gChunk.data() + (STREAM_CHUNK - state->pending), state->pending, 0);
+		const ssize_t bytes = ::send(fd, raw(gChunk.data() + (STREAM_CHUNK - state->pending)), state->pending, 0);
 		// Если запись не выполнена
 		if(bytes <= 0)
 			// Ожидаем следующей готовности передатчика
@@ -775,15 +775,15 @@ namespace {
 		// Параметры привязки слушающего сокета
 		struct sockaddr_in address{};
 		// Создаём слушающий сокет петлевого интерфейса
-		const int32_t server = listener(address);
+		const socket_t server = listener(address);
 		// Выполняем подключение к слушающему сокету
-		const int32_t client = connector(address);
+		const socket_t client = connector(address);
 		// Дескриптор принятого подключения
-		int32_t peer = -1;
+		socket_t peer = INVALID;
 		/**
 		 * Ожидаем принятия входящего подключения
 		 */
-		while(peer < 0)
+		while(broken(peer))
 			// Выполняем приём входящего подключения
 			peer = ::accept(server, nullptr, nullptr);
 		// Выполняем настройку принятого сокета
@@ -817,11 +817,11 @@ namespace {
 		// Освобождаем наблюдатель готовности записи передатчика
 		::event_free(state.writer);
 		// Выполняем закрытие сокета приёмника
-		::close(peer);
+		shut(peer);
 		// Выполняем закрытие сокета передатчика
-		::close(client);
+		shut(client);
 		// Выполняем закрытие слушающего сокета
-		::close(server);
+		shut(server);
 		// Освобождаем цикл событий стенда
 		::event_base_free(state.base);
 		// Выводим итоги прогона сценария
@@ -839,9 +839,9 @@ namespace {
 		 */
 		while(true){
 			// Выполняем приём входящего подключения
-			const int32_t peer = ::accept(fd, nullptr, nullptr);
+			const socket_t peer = ::accept(fd, nullptr, nullptr);
 			// Если ожидающих подключений не осталось
-			if(peer < 0)
+			if(broken(peer))
 				// Завершаем приём подключений
 				return;
 			/**
@@ -858,7 +858,7 @@ namespace {
 			// Освобождаем наблюдатель готовности принятого подключения
 			::event_free(peerWatcher);
 			// Выполняем закрытие принятого подключения
-			::close(peer);
+			shut(peer);
 		}
 	}
 	/**
@@ -884,9 +884,9 @@ namespace {
 		// Размер получаемого значения
 		socklen_t length = sizeof(code);
 		// Выполняем получение исхода подключения
-		::getsockopt(state->fd, SOL_SOCKET, SO_ERROR, &code, &length);
+		::getsockopt(state->fd, SOL_SOCKET, SO_ERROR, raw(&code), &length);
 		// Выполняем закрытие сокета текущего подключения
-		::close(state->fd);
+		shut(state->fd);
 		// Если замер ещё не начат
 		if(!state->measuring){
 			// Считаем выполненный цикл прогрева
@@ -935,7 +935,7 @@ namespace {
 		// Создаём цикл событий стенда
 		state.base = ::event_base_new();
 		// Создаём слушающий сокет петлевого интерфейса
-		const int32_t server = listener(state.address);
+		const socket_t server = listener(state.address);
 		// Создаём наблюдатель готовности слушающего сокета
 		struct event * listen = ::event_new(state.base, server, EV_READ | EV_PERSIST, &::handshakeAccept, state.base);
 		// Активируем наблюдатель готовности слушающего сокета
@@ -959,7 +959,7 @@ namespace {
 		// Освобождаем наблюдатель готовности слушающего сокета
 		::event_free(listen);
 		// Выполняем закрытие слушающего сокета
-		::close(server);
+		shut(server);
 		// Освобождаем цикл событий стенда
 		::event_base_free(state.base);
 		// Выводим итоги прогона сценария
@@ -981,7 +981,7 @@ namespace {
 		// Дедлайн таймера в миллисекундах, отнесённый далеко в будущее
 		const uint32_t milliseconds = (DEADLINE_OFFSET + static_cast <uint32_t> (index % DEADLINE_SPREAD) + shift);
 		// Выводим дедлайн таймера
-		return timeval{static_cast <time_t> (milliseconds / 1000), static_cast <suseconds_t> ((milliseconds % 1000) * 1000)};
+		return timeval{static_cast <decltype(timeval::tv_sec)> (milliseconds / 1000), static_cast <decltype(timeval::tv_usec)> ((milliseconds % 1000) * 1000)};
 	}
 	/**
 	 * @brief Функция прогона сценария постановки таймеров с поиском по идентификатору
@@ -1442,7 +1442,7 @@ namespace {
 			// Дедлайн срабатывания таймера
 			struct timeval deadline{};
 			// Устанавливаем дедлайн таймера с разбросом по диапазону
-			deadline.tv_usec = static_cast <suseconds_t> ((1 + (i % TIMER_SPREAD)) * 1000);
+			deadline.tv_usec = static_cast <decltype(timeval::tv_usec)> ((1 + (i % TIMER_SPREAD)) * 1000);
 			// Выделяем состояние одноразового таймера
 			timer_state_t * state = new timer_state_t;
 			// Устанавливаем счётчик сработавших таймеров

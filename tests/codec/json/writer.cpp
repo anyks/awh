@@ -1553,13 +1553,13 @@ TEST(CodecJsonWriter, StreamSeparatorJudgedByWhatWasWritten){
  */
 TEST(CodecJsonWriter, DoubleSurvivesRoundTripBitForBit){
 	// Сличает число с ним же, прошедшим оборот записи и разбора
-	const auto оборот = [](const double число) noexcept -> bool {
+	const auto roundtrip = [](const double source) noexcept -> bool {
 		// Объект записи текста документа
 		json::writer_t writer;
 		/**
 		 * Если запись числа не удалась
 		 */
-		if(!writer.value(число))
+		if(!writer.value(source))
 			// Выводим признак неудачного оборота
 			return false;
 		// Объект владеющего значения
@@ -1571,36 +1571,36 @@ TEST(CodecJsonWriter, DoubleSurvivesRoundTripBitForBit){
 			// Выводим признак неудачного оборота
 			return false;
 		// Извлекаемое дробное число
-		double назад = 0.;
+		double restored = 0.;
 		/**
 		 * Если извлечение числа не удалось
 		 */
-		if(!value.value(назад))
+		if(!value.value(restored))
 			// Выводим признак неудачного оборота
 			return false;
 		// Разряды исходного и вернувшегося числа
-		uint64_t первые = 0, вторые = 0;
+		uint64_t firstBits = 0, secondBits = 0;
 		// Снимаем разряды исходного числа
-		::memcpy(&первые, &число, sizeof(первые));
+		::memcpy(&firstBits, &source, sizeof(firstBits));
 		// Снимаем разряды вернувшегося числа
-		::memcpy(&вторые, &назад, sizeof(вторые));
+		::memcpy(&secondBits, &restored, sizeof(secondBits));
 		// Выводим признак совпадения разрядов
-		return (первые == вторые);
+		return (firstBits == secondBits);
 	};
 	/**
 	 * Выполняем проверку оборота приметных чисел
 	 */
 	{
 		// Выполняем проверку оборота нуля и минус нуля
-		ASSERT_TRUE(оборот(0.));
-		ASSERT_TRUE(оборот(-0.));
+		ASSERT_TRUE(roundtrip(0.));
+		ASSERT_TRUE(roundtrip(-0.));
 		// Выполняем проверку оборота чисел, десятичной записи не имеющих
-		ASSERT_TRUE(оборот(0.1));
-		ASSERT_TRUE(оборот(0.3));
-		ASSERT_TRUE(оборот(2. / 3.));
+		ASSERT_TRUE(roundtrip(0.1));
+		ASSERT_TRUE(roundtrip(0.3));
+		ASSERT_TRUE(roundtrip(2. / 3.));
 		// Выполняем проверку оборота у границ разрядности
-		ASSERT_TRUE(оборот(std::numeric_limits <double>::min()));
-		ASSERT_TRUE(оборот(std::numeric_limits <double>::max()));
+		ASSERT_TRUE(roundtrip(std::numeric_limits <double>::min()));
+		ASSERT_TRUE(roundtrip(std::numeric_limits <double>::max()));
 		/**
 		 * Поднормальное число закрепляется лишь там, где машина его несёт
 		 *
@@ -1622,19 +1622,19 @@ TEST(CodecJsonWriter, DoubleSurvivesRoundTripBitForBit){
 			 */
 			if((probe * 1.) != 0.){
 				// Выполняем проверку оборота наименьшего поднормального числа
-				ASSERT_TRUE(оборот(std::numeric_limits <double>::denorm_min()));
+				ASSERT_TRUE(roundtrip(std::numeric_limits <double>::denorm_min()));
 			}
 		}
-		ASSERT_TRUE(оборот(std::numeric_limits <double>::epsilon()));
+		ASSERT_TRUE(roundtrip(std::numeric_limits <double>::epsilon()));
 		// Выполняем проверку оборота у предела точного представления целых
-		ASSERT_TRUE(оборот(9007199254740992.));
-		ASSERT_TRUE(оборот(9007199254740993.));
+		ASSERT_TRUE(roundtrip(9007199254740992.));
+		ASSERT_TRUE(roundtrip(9007199254740993.));
 		// Выполняем проверку оборота приметных постоянных
-		ASSERT_TRUE(оборот(3.141592653589793));
-		ASSERT_TRUE(оборот(2.718281828459045));
+		ASSERT_TRUE(roundtrip(3.141592653589793));
+		ASSERT_TRUE(roundtrip(2.718281828459045));
 		// Выполняем проверку оборота у краёв области значений
-		ASSERT_TRUE(оборот(1e-300));
-		ASSERT_TRUE(оборот(1e300));
+		ASSERT_TRUE(roundtrip(1e-300));
+		ASSERT_TRUE(roundtrip(1e300));
 	}
 }
 

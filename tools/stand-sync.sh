@@ -39,7 +39,11 @@ git fetch origin "$BRANCH" || exit 1
  # которых в старом дереве не существует
  ##
 git reset --hard "origin/$BRANCH" || exit 1
-git submodule update --init --recursive || exit 1
+##
+ # Отказ подмодуля сборку библиотеки не отменяет: часть из них нужна лишь
+ # проверкам и замерам, а иные хранилища временами не отдают нужный коммит
+ ##
+git submodule update --init --recursive || echo "ВНИМАНИЕ: подмодули обновились не полностью" >&2
 
 echo "стало: $(git log --oneline -1)"
 

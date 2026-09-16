@@ -453,10 +453,21 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	}
 	// Выполняем получение указателя на поданные октеты
 	const uint8_t * octets = reinterpret_cast <const uint8_t *> (buffer);
+	/**
+	 * Выполняем снятие вида подписи и вида хэш-суммы В СТОРОНЕ от выдаваемой записи
+	 *
+	 * @warning Класть их прямо в запись нельзя: ниже стоят ЧЕТЫРЕ сличения, и всякое
+	 *          отвечает отказом. Прежде поля эти ложились здесь, и отвергнутое снятие
+	 *          оставляло зовущему вид подписи с провода - замер щупом 16.09.2026 на
+	 *          записи, объявляющей Ed25519 с хэш-суммой SHA256: отказ дан, а поля несли
+	 *          3 и 4. Договор неприкосновенности объявлен заслоном короткого буфера
+	 *          выше, и держаться он обязан НА ВСЕХ путях отказа, а не на одном.
+	 *          Закреплено `SignatureFixture.TheRefusedSignatureRecordIsLeftIntact`
+	 */
 	// Выполняем снятие вида подписи владельца контейнера
-	sign.kind = static_cast <crypto_t::signature_t> (octets[0]);
+	const crypto_t::signature_t kind = static_cast <crypto_t::signature_t> (octets[0]);
 	// Выполняем снятие вида хэш-суммы, какой подпись выработана
-	sign.hash = static_cast <crypto_t::hash_t> (octets[1]);
+	const crypto_t::hash_t hash = static_cast <crypto_t::hash_t> (octets[1]);
 	// Выполняем снятие длины подписи владельца контейнера
 	const size_t length = (static_cast <size_t> (octets[2]) | (static_cast <size_t> (octets[3]) << 8));
 	// Выполняем снятие длины корня дерева свёрток
@@ -473,8 +484,8 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	/**
 	 * Если вид подписи владельца неведом либо не задан вовсе
 	 */
-	if((sign.kind == crypto_t::signature_t::NONE) ||
-	 (static_cast <uint8_t> (sign.kind) > static_cast <uint8_t> (crypto_t::signature_t::GOST512))){
+	if((kind == crypto_t::signature_t::NONE) ||
+	 (static_cast <uint8_t> (kind) > static_cast <uint8_t> (crypto_t::signature_t::GOST512))){
 		// Выполняем установку кода отказа повреждённой подписи
 		error = error_t::INVALID_SIGNATURE;
 		// Выводим признак неудачного снятия подписи
@@ -488,7 +499,7 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 	 * молча. Запись, объявляющая пару, какой кодек не уложил бы никогда, - подделана
 	 * либо испорчена, и подавать её работам шифрования нечего
 	 */
-	if(abc::digest(sign.kind, sign.hash) != sign.hash){
+	if(abc::digest(kind, hash) != hash){
 		// Выполняем установку кода отказа повреждённой подписи
 		error = error_t::INVALID_SIGNATURE;
 		// Выводим признак неудачного снятия подписи
@@ -517,6 +528,15 @@ bool awh::codec::abc::unpack(const void * buffer, const size_t size, sign_t & si
 		// Выводим признак неудачного снятия подписи
 		return false;
 	}
+	/**
+	 * Выполняем установку снятых полей записи подписи ПОСЛЕ всех сличений
+	 *
+	 * @warning Всякое новое сличение ставить ВЫШЕ этой черты, а не ниже
+	 */
+	// Выполняем установку вида подписи владельца контейнера
+	sign.kind = kind;
+	// Выполняем установку вида хэш-суммы, какой подпись выработана
+	sign.hash = hash;
 	// Выполняем снятие корня дерева свёрток
 	sign.root.assign(octets + SIGNATURE_HEADER, octets + SIGNATURE_HEADER + width);
 	// Выполняем снятие октетов подписи владельца контейнера
