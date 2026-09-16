@@ -250,14 +250,25 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 	 */
 	const bool zeroed = (
 		((text.front() == '0') && (text.length() > 1) && (text.at(1) != '.')) ||
-		((text.front() == '-') && (text.length() > 2) && (text.at(1) == '0') && (text.at(2) != '.'))
+		(((text.front() == '-') || (text.front() == '+')) && (text.length() > 2) && (text.at(1) == '0') && (text.at(2) != '.'))
 	);
 	// Если запись ведущего нуля не несёт
 	if(!zeroed){
+		/**
+		 * Запись значения, от ведущего плюса очищенная
+		 *
+		 * @warning Ведущий плюс отбрасывается затем, что разбор `num/lexical` его
+		 *          не принимает вовсе, а числом запись с ним быть не перестаёт.
+		 *          Прежде довод `--port=+42` ложился ПОСЛЕДОВАТЕЛЬНОСТЬЮ ЗНАКОВ,
+		 *          тогда как строка `port = +42` записи настроек давала число: одна
+		 *          и та же запись читалась по-разному в зависимости от источника.
+		 *          Замерено 16.09.2026 аудитом
+		 */
+		const string_view record = (((text.front() == '+') && (text.length() > 1)) ? text.substr(1) : text);
 		// Получаем начало и конец записи значения
-		const char * begin = text.data();
+		const char * begin = record.data();
 		// Получаем конец записи значения
-		const char * end = (begin + text.length());
+		const char * end = (begin + record.length());
 		/**
 		 * Определяем запись ЦЕЛОГО: ни точки, ни указателя степени в ней нет
 		 *
@@ -274,9 +285,9 @@ awh::codec::abc::value_t awh::args::Args::derive(const string_view text) const n
 		 *       знаков целиком - правило это то же, что и у моста, и два хода
 		 *       одного набора расходиться в толковании записи не должны
 		 */
-		if(text.find_first_of(".eE") == string_view::npos){
+		if(record.find_first_of(".eE") == string_view::npos){
 			// Если число записано со знаком
-			if(text.front() == '-'){
+			if(record.front() == '-'){
 				// Извлекаемое целое со знаком
 				int64_t number = 0;
 				// Выполняем извлечение целого со знаком из записи
@@ -406,7 +417,7 @@ bool awh::args::Args::lay(const string & path, codec::abc::value_t && value, con
  * @return       результат слияния
  *
  */
-bool awh::args::Args::merge(const codec::abc::value_t & value, const string & path, const source_t source) noexcept {
+bool awh::args::Args::merge(const codec::abc::value_t & value, const string & path, const source_t source, const bool derive) noexcept {
 	// Если сливаемое значение недействительно вовсе
 	if(!value.valid())
 		// Выходим из метода, сливать нечего
@@ -438,11 +449,34 @@ bool awh::args::Args::merge(const codec::abc::value_t & value, const string & pa
 			 * Выполняем слияние поля отображения вглубь: отображения сливаются
 			 * звено за звеном, а вместимые и одиночные значения ложатся целиком
 			 */
-			result = (this->merge(value[i], (path.empty() ? link : awh::fmk::format("%s/%s", path.c_str(), link.c_str())), source) && result);
+			result = (this->merge(value[i], (path.empty() ? link : awh::fmk::format("%s/%s", path.c_str(), link.c_str())), source, derive) && result);
 		}
 		// Выводим результат слияния полей отображения
 		return result;
 	}
+	/**
+	 * Если запись знаками надлежит вывести СВОИМ словарём
+	 *
+	 * @warning Ход этот стоит лишь у видов записи, своей системы видов НЕ имеющих
+	 *          - INI и разметки, - и разница эта намеренна. Словарь модуля шире
+	 *          словаря моста: `yes`, `on`, `off`, `no` он читает логическим
+	 *          значением, а `null` и `nil` - пустотою, тогда как мост, служащий
+	 *          всем потребителям разом, знает лишь `true` и `false`. Оттого одна и
+	 *          та же настройка читалась ПО-РАЗНОМУ: довод `--verbose=yes` давал
+	 *          логическую истину, а строка `verbose = yes` записи настроек -
+	 *          последовательность знаков, и приложение, спросившее `get<bool>`,
+	 *          получало разное в зависимости от ИСТОЧНИКА. Замерено 16.09.2026
+	 *          аудитом, закреплено проверкой
+	 *          `Args.TheVocabularyIsTheSameForEverySource`
+	 *
+	 * @note У записей JSON, YAML и TOML вывод этот НЕ ведётся: там вид значения
+	 *       объявлен самой записью, и строка `"yes"`, в кавычки взятая, есть
+	 *       строка по воле писавшего - обращать её логическим значением значило бы
+	 *       спорить с записью
+	 */
+	if(derive && value.is(codec::abc::type_t::STRING))
+		// Выполняем укладку записи, выведенной словарём модуля
+		return this->lay(path, this->derive(value.text()), source);
 	// Выполняем укладку сливаемого значения целиком
 	return this->lay(path, codec::abc::value_t(value), source);
 }
@@ -985,10 +1019,18 @@ bool awh::args::Args::config(const string_view text, const codec::Bridge::format
 		 */
 		if(value.key(0).value(name) && (name == this->_bridge.settings().root) && value[name].is(codec::abc::type_t::MAP))
 			// Выполняем слияние содержимого корневого узла с деревом настроек
-			return this->merge(value[name], "", source_t::FILE);
+			return this->merge(value[name], "", source_t::FILE, true);
 	}
+	/**
+	 * Признак вывода записей знаками словарём самого модуля
+	 *
+	 * @note Взводится лишь у видов записи, своей системы видов не имеющих: у INI и
+	 *       разметки всякое значение есть текст, и словарь модуля там обязан быть
+	 *       тем же, что и у довода запуска
+	 */
+	const bool derive = ((format == codec::Bridge::format_t::INI) || (format == codec::Bridge::format_t::XML));
 	// Выполняем слияние разобранного дерева с деревом настроек
-	return this->merge(value, "", source_t::FILE);
+	return this->merge(value, "", source_t::FILE, derive);
 }
 
 /**

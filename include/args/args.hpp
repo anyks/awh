@@ -283,7 +283,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				[[nodiscard]] bool merge(const codec::abc::value_t & value, const string & path, const source_t source) noexcept;
+				[[nodiscard]] bool merge(const codec::abc::value_t & value, const string & path, const source_t source, const bool derive = false) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод укладки разобранной лексемы по описанию ожидаемых

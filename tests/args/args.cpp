@@ -1457,3 +1457,48 @@ TEST(Args, EnvironmentNamesAreEscapedForTheStorageAxis){
 	static_cast <void> (::unsetenv("AWHTEST_C~D"));
 	static_cast <void> (::unsetenv("AWHTEST_NET_PORT"));
 }
+
+/**
+ * @brief Проверка того, что словарь вывода вида один у всякого источника
+ *
+ * @details Словарь модуля шире словаря моста: `yes`, `on`, `off`, `no` он читает
+ * логическим значением, а `null` и `nil` - пустотою. Записи INI и разметки своей
+ * системы видов не имеют, и значение оттуда выводилось СЛОВАРЁМ МОСТА: довод
+ * `--verbose=yes` давал истину, а строка `verbose = yes` - знаки, и приложение
+ * получало разное в зависимости от источника
+ *
+ */
+TEST(Args, TheVocabularyIsTheSameForEverySource){
+	// Выполняем перебор образцов, словарю модуля известных
+	for(auto & sample : vector <string> {"yes", "on", "no", "off", "null", "nil", "true", "false", "+42", "42", "0.25"}){
+		// Создаём объект сбора параметров запуска доводом
+		args_t cli;
+		// Выполняем разбор довода запуска с образцом
+		ASSERT_TRUE(cli.parse(vector <string> {string("--k=").append(sample)}));
+		// Выполняем перебор видов записи, своей системы видов не имеющих
+		for(auto & format : vector <codec::Bridge::format_t> {codec::Bridge::format_t::INI, codec::Bridge::format_t::XML}){
+			// Создаём объект чтения записи настроек
+			args_t config;
+			// Собираемая запись настроек с тем же образцом
+			const string record = ((format == codec::Bridge::format_t::INI) ?
+			 string("k = ").append(sample) : string("<config k=\"").append(sample).append("\"/>"));
+			// Выполняем чтение записи настроек
+			ASSERT_TRUE(config.config(record, format)) << "чтение записи с образцом [" << sample << "] отвечено отказом";
+			// Выполняем проверку того, что вид значения тот же самый
+			ASSERT_EQ(cli.root()["k"].type(), config.root()["k"].type())
+			 << "образец [" << sample << "] выведен разными видами у довода и у записи";
+		}
+	}
+	// Создаём объект сбора параметров запуска
+	args_t typed;
+	/**
+	 * Выполняем проверку того, что запись со своей системой видов словарём НЕ правится
+	 *
+	 * @note Вторая половина договора: строка `"yes"`, в кавычки взятая записью JSON,
+	 *       есть строка по воле писавшего, и обращать её логическим значением
+	 *       значило бы спорить с самой записью
+	 */
+	ASSERT_TRUE(typed.config("{\"k\":\"yes\"}", codec::Bridge::format_t::JSON));
+	// Выполняем проверку того, что вид значения записью сохранён
+	ASSERT_TRUE(typed.root()["k"].is(codec::abc::type_t::STRING)) << "словарь модуля переспорил запись со своей системой видов";
+}
