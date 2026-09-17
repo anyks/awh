@@ -563,7 +563,7 @@ void awh::unit::ICMP::error(const event::id_t eid, const event::error_t error, c
  * @return       нужно ли завершить клиента после истечения таймаута
  *
  */
-bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::action_t action, const uint32_t delay) noexcept {
 	// Снимаем флаг ожидания ответа от сервера
 	this->_transfer.waiting = false;
 	// Выполняем получение идентификатора функции обратного вызова

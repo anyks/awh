@@ -106,7 +106,7 @@ int32_t main(int32_t argc, char * argv[]) noexcept {
 		/**
 		 * Если извлечение числа из поля удалось
 		 */
-		if(document.numeric(row, static_cast <size_t> (1), price))
+		if(document.value(price, row, static_cast <size_t> (1)))
 			// Выводим извлечённое число
 			cout << " (" << price << ")";
 		// Выводим перевод строки

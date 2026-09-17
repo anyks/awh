@@ -255,7 +255,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
  * @param flag    флаг важности сообщения
  *
  */
-void awh::Buffer::error(const char * func, const char * message, const awh::log::flag_t flag) const noexcept {
+void awh::Buffer::error([[maybe_unused]] const char * func, const char * message, const awh::log::flag_t flag) const noexcept {
 	/**
 	 * Если включён режим отладки
 	 */

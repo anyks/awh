@@ -1245,3 +1245,144 @@ TEST(CodecCefWriter, SyslogPrefixCannotHoldTheSignature){
 	// Выполняем проверку отказа приставке, одним словом заголовка бывшей
 	EXPECT_FALSE(build("CEF:", result)) << "собрано: " << result;
 }
+
+/**
+ * @brief Проверка ПРЕДЕЛОВ записи, оборот замыкающих
+ *
+ * @details Читатель блюдёт четыре предела - длину поля заголовка, длину имени ключа
+ * расширения, важность события и номер редакции, - а писатель не блюл ни одного: кодек
+ * выдавал запись, которую сам же не принимает. Проверка гонит все четыре
+ *
+ * @note Найдено кругом аудита 17.09.2026 щупом оборота. Щуп при этом соврал дважды: подал
+ *       ветвь «/extensions» вместо «/extension» - о ту же букву спотыкались и прежде, - а
+ *       после спутал поле «/header/version» (номер редакции CEF) с выпуском изделия
+ *
+ * @warning Проверка закрепляет и РОВНЫЕ значения пределов: важность 10 и имя ключа
+ *          длиною ровно в предел записи подлежат, и сдвиг сличения на единицу отсекал бы
+ *          законные записи молча
+ *
+ */
+TEST(CodecCefWriter, RecordLimitsCloseTheRoundTrip){
+	// Образцовая запись, опытам основою служащая
+	constexpr const char * SAMPLE = "CEF:0|V|P|1.0|100|ИМЯ|5|src=10.0.0.1";
+	/**
+	 * Длина поля заголовка: предел MAX_HEADER_FIELD
+	 */
+	for(auto & path : {"/header/vendor", "/header/product", "/header/release", "/header/signature", "/header/name"}){
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем в поле заголовка значение, предел превышающее
+		ASSERT_TRUE(document.set(path, abc::value_t(string(0x4000 + 1, 'x')))) << path;
+		// Выполняем проверку того, что сборка записи отказом отвечена
+		EXPECT_TRUE(document.dump().empty()) << "поле, предел превысившее, записано: " << path;
+		// Выполняем проверку того, что отказ назвал причину слишком длинным полем
+		EXPECT_EQ(
+			static_cast <uint8_t> (document.error()),
+			static_cast <uint8_t> (cef::error_t::FIELD_TOO_LONG)
+		) << path;
+	}
+	/**
+	 * Длина имени ключа расширения: предел MAX_NAME
+	 */
+	{
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем пару расширения с именем ключа длиною ровно в предел
+		ASSERT_TRUE(document.set(string("/extension/") + string(1024, 'k'), abc::value_t(string("v"))));
+		// Выполняем проверку того, что имя длиною ровно в предел записано
+		EXPECT_FALSE(document.dump().empty()) << "имя ключа длиною ровно в предел отвергнуто";
+	}
+	{
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем пару расширения с именем ключа, предел превышающим
+		ASSERT_TRUE(document.set(string("/extension/") + string(1025, 'k'), abc::value_t(string("v"))));
+		// Выполняем проверку того, что сборка записи отказом отвечена
+		EXPECT_TRUE(document.dump().empty()) << "имя ключа, предел превысившее, записано";
+		// Выполняем проверку того, что отказ назвал причину слишком длинным именем
+		EXPECT_EQ(
+			static_cast <uint8_t> (document.error()),
+			static_cast <uint8_t> (cef::error_t::NAME_TOO_LONG)
+		);
+	}
+	/**
+	 * Важность события: предел MAX_SEVERITY
+	 */
+	{
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем важность события, пределу ровно отвечающую
+		ASSERT_TRUE(document.set("/header/severity", abc::value_t(static_cast <double> (10))));
+		// Выполняем проверку того, что важность на пределе записана
+		EXPECT_FALSE(document.dump().empty()) << "важность, пределу ровно отвечающая, отвергнута";
+	}
+	for(uint32_t severity : {11u, 99u, 4294967295u}){
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем важность события, предел превышающую
+		ASSERT_TRUE(document.set("/header/severity", abc::value_t(static_cast <double> (severity))));
+		// Выполняем проверку того, что сборка записи отказом отвечена
+		EXPECT_TRUE(document.dump().empty()) << "важность " << severity << " записана";
+		// Выполняем проверку того, что отказ назвал причину ошибочной важностью
+		EXPECT_EQ(
+			static_cast <uint8_t> (document.error()),
+			static_cast <uint8_t> (cef::error_t::INVALID_SEVERITY)
+		) << severity;
+	}
+	/**
+	 * Важность события, СЛОВОМ записанная, пределом не мерится
+	 */
+	{
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем важность события словом, описанием дозволенным
+		ASSERT_TRUE(document.set("/header/severity", abc::value_t(string("High"))));
+		// Выполняем проверку того, что важность словом записана
+		EXPECT_FALSE(document.dump().empty()) << "важность, словом записанная, отвергнута";
+	}
+	/**
+	 * Номер редакции записи: предел MAX_VERSION
+	 */
+	{
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем номер редакции, предел превышающий
+		ASSERT_TRUE(document.set("/header/version", abc::value_t(static_cast <double> (7))));
+		// Выполняем проверку того, что сборка записи отказом отвечена
+		EXPECT_TRUE(document.dump().empty()) << "неподдерживаемая редакция записана";
+		// Выполняем проверку того, что отказ назвал причину неподдерживаемой редакцией
+		EXPECT_EQ(
+			static_cast <uint8_t> (document.error()),
+			static_cast <uint8_t> (cef::error_t::UNSUPPORTED_VERSION)
+		);
+	}
+	{
+		// Объект документа события CEF
+		cef::document_t document;
+		// Выполняем проверку успешности разбора образцовой записи
+		ASSERT_TRUE(document.parse(SAMPLE));
+		// Укладываем номер редакции, числом не являющийся
+		ASSERT_TRUE(document.set("/header/version", abc::value_t(string("zero"))));
+		// Выполняем проверку того, что сборка записи отказом отвечена
+		EXPECT_TRUE(document.dump().empty()) << "редакция, числом не являющаяся, записана";
+		// Выполняем проверку того, что отказ назвал причину ошибочной редакцией
+		EXPECT_EQ(
+			static_cast <uint8_t> (document.error()),
+			static_cast <uint8_t> (cef::error_t::INVALID_VERSION)
+		);
+	}
+}

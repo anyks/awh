@@ -820,7 +820,7 @@ void awh::unit::NTP::response(const event::id_t eid, const uint8_t * data, const
  * @return       нужно ли завершить обработчик после истечения таймаута
  *
  */
-bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept {
 	// Если число попыток запроса не превышает максимально допустимое значение
 	if(this->_transfer.attempt < this->_transfer.attempts){
 		// Увеличиваем количество попыток получения ответа от NTP-сервера

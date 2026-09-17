@@ -385,25 +385,25 @@ TEST(CodecCsvDocument, Numeric) {
 	// Полученное знаковое целое значение
 	int32_t number = 0;
 	// Выполняем приведение содержимого поля к знаковому целому
-	ASSERT_TRUE(document.numeric <int32_t> (0, 0, number));
+	ASSERT_TRUE(document.value <int32_t> (number, 0, 0));
 	// Выполняем проверку полученного знакового целого значения
 	ASSERT_EQ(number, -42);
 	// Полученное значение с плавающей запятой
 	double real = 0.;
 	// Выполняем приведение содержимого поля к значению с плавающей запятой
-	ASSERT_TRUE(document.numeric <double> (0, 1, real));
+	ASSERT_TRUE(document.value <double> (real, 0, 1));
 	// Выполняем проверку полученного значения с плавающей запятой
 	ASSERT_EQ(real, 3.5);
 	// Полученное логическое значение
 	bool boolean = false;
 	// Выполняем приведение содержимого поля к логическому значению
-	ASSERT_TRUE(document.numeric <bool> (0, 2, boolean));
+	ASSERT_TRUE(document.value <bool> (boolean, 0, 2));
 	// Выполняем проверку полученного логического значения
 	ASSERT_TRUE(boolean);
 	// Выполняем проверку отказа приведения содержимого, числом не являющегося
-	ASSERT_FALSE(document.numeric <int32_t> (0, 3, number));
+	ASSERT_FALSE(document.value <int32_t> (number, 0, 3));
 	// Выполняем проверку отказа приведения содержимого за пределами таблицы
-	ASSERT_FALSE(document.numeric <int32_t> (1, 0, number));
+	ASSERT_FALSE(document.value <int32_t> (number, 1, 0));
 	// Полученное беззнаковое целое значение
 	uint32_t unsigned_ = 0;
 	/**
@@ -414,7 +414,7 @@ TEST(CodecCsvDocument, Numeric) {
 	 *       кругу правилами языка. Приведён кодек к общему договору решением владельца
 	 *       от 01.09.2026, а прежде отвечал здесь отказом
 	 */
-	ASSERT_TRUE(document.numeric <uint32_t> (0, 0, unsigned_));
+	ASSERT_TRUE(document.value <uint32_t> (unsigned_, 0, 0));
 	// Выполняем проверку завёрнутого значения: 2^32 - 42
 	ASSERT_EQ(unsigned_, static_cast <uint32_t> (4294967254));
 }
@@ -1009,35 +1009,35 @@ TEST(CodecCsvDocument, NarrowingWrapsAroundByTheLanguage) {
 	// Извлекаемое число видом в один байт без знака
 	uint8_t byte = 0;
 	// Выполняем проверку заворачивания числа, в один байт не помещающегося
-	ASSERT_TRUE(document.numeric(0, 0, byte));
+	ASSERT_TRUE(document.value(byte, 0, 0));
 	// Выполняем проверку завёрнутого значения: 300 - 256 = 44
 	ASSERT_EQ(byte, static_cast <uint8_t> (44));
 	// Выполняем проверку заворачивания отрицательного числа видом без знака
-	ASSERT_TRUE(document.numeric(0, 1, byte));
+	ASSERT_TRUE(document.value(byte, 0, 1));
 	// Выполняем проверку завёрнутого значения: 2^8 - 1
 	ASSERT_EQ(byte, static_cast <uint8_t> (255));
 	// Извлекаемое число видом в один байт со знаком
 	int8_t small = 0;
 	// Выполняем проверку извлечения отрицательного числа видом со знаком
-	ASSERT_TRUE(document.numeric(0, 1, small));
+	ASSERT_TRUE(document.value(small, 0, 1));
 	// Выполняем проверку извлечённого значения
 	ASSERT_EQ(small, static_cast <int8_t> (-1));
 	// Извлекаемое число видом в два байта без знака
 	uint16_t word = 0;
 	// Выполняем проверку заворачивания числа, в два байта не помещающегося
-	ASSERT_TRUE(document.numeric(0, 2, word));
+	ASSERT_TRUE(document.value(word, 0, 2));
 	// Выполняем проверку завёрнутого значения: 70000 - 65536 = 4464
 	ASSERT_EQ(word, static_cast <uint16_t> (4464));
 	// Выполняем проверку извлечения помещающегося числа
-	ASSERT_TRUE(document.numeric(0, 3, small));
+	ASSERT_TRUE(document.value(small, 0, 3));
 	// Выполняем проверку извлечённого значения
 	ASSERT_EQ(small, static_cast <int8_t> (127));
 	// Выполняем проверку заворачивания числа «300» видом в один байт со знаком
-	ASSERT_TRUE(document.numeric(0, 0, small));
+	ASSERT_TRUE(document.value(small, 0, 0));
 	// Выполняем проверку завёрнутого значения: 300 - 256 = 44
 	ASSERT_EQ(small, static_cast <int8_t> (44));
 	// Выполняем проверку извлечения того же числа видом в два байта без знака
-	ASSERT_TRUE(document.numeric(0, 0, word));
+	ASSERT_TRUE(document.value(word, 0, 0));
 	// Выполняем проверку извлечённого значения
 	ASSERT_EQ(word, static_cast <uint16_t> (300));
 }
@@ -1273,23 +1273,23 @@ TEST(CodecCsvDocument, RealNarrowingGivesInfinityNotARefusal) {
 	// Извлекаемое число дробным видом двойной точности
 	double couple = 0.;
 	// Выполняем проверку выдачи бесконечности числом, в одинарную точность не помещающимся
-	ASSERT_TRUE(document.numeric(0, 0, single));
+	ASSERT_TRUE(document.value(single, 0, 0));
 	// Выполняем проверку выданной бесконечности
 	ASSERT_TRUE(::std::isinf(single));
 	// Выполняем проверку извлечения того же числа видом двойной точности
-	ASSERT_TRUE(document.numeric(0, 0, couple));
+	ASSERT_TRUE(document.value(couple, 0, 0));
 	// Выполняем проверку извлечённого значения
 	ASSERT_DOUBLE_EQ(couple, 1e308);
 	// Выполняем проверку извлечения помещающегося числа
-	ASSERT_TRUE(document.numeric(0, 1, single));
+	ASSERT_TRUE(document.value(single, 0, 1));
 	// Выполняем проверку извлечённого значения
 	ASSERT_FLOAT_EQ(single, 3.5f);
 	// Выполняем проверку выдачи бесконечности отрицательным числом, в вид не помещающимся
-	ASSERT_TRUE(document.numeric(0, 2, single));
+	ASSERT_TRUE(document.value(single, 0, 2));
 	// Выполняем проверку знака выданной бесконечности
 	ASSERT_TRUE(::std::isinf(single) && (single < 0.f));
 	// Выполняем проверку выдачи бесконечности числом, и в двойную точность не помещающимся
-	ASSERT_TRUE(document.numeric(0, 3, couple));
+	ASSERT_TRUE(document.value(couple, 0, 3));
 	// Выполняем проверку выданной бесконечности
 	ASSERT_TRUE(::std::isinf(couple));
 	/**
@@ -1302,7 +1302,7 @@ TEST(CodecCsvDocument, RealNarrowingGivesInfinityNotARefusal) {
 		// Приёмник дробного вида с опознавательным значением
 		double control = -3.5;
 		// Выполняем проверку отказа извлечения записи
-		ASSERT_FALSE(document.numeric(0, i, control)) << i;
+		ASSERT_FALSE(document.value(control, 0, i)) << i;
 		// Выполняем проверку неприкосновенности приёмника при отказе
 		ASSERT_DOUBLE_EQ(control, -3.5) << i;
 	}
@@ -2513,7 +2513,7 @@ TEST(CodecCsvDocument, BothSpellingsOfANumberExtractAlike) {
 			// Выводим признак неудачного извлечения
 			return false;
 		// Выводим результат извлечения содержимого поля
-		return doc.numeric(0, 0, result);
+		return doc.value(result, 0, 0);
 	};
 	/**
 	 * Выполняем проверку совпадения написаний у вида, число вмещающего
@@ -2709,7 +2709,7 @@ TEST(CodecCsvDocument, BothEndsOfNumberLossAreAcceptedAlike) {
 			// Выводим признак неудачного извлечения
 			return false;
 		// Выводим результат извлечения содержимого поля
-		return doc.numeric(0, 0, result);
+		return doc.value(result, 0, 0);
 	};
 	// Извлечённое значение одинарной точности
 	float single = 0.f;
@@ -3084,7 +3084,7 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 *
 		 * @note Вид этот отвергает ВСЕ записи: числом не является ни одна из них
 		 */
-		EXPECT_FALSE(document.numeric <uint8_t> (i, 0, small));
+		EXPECT_FALSE(document.value <uint8_t> (small, i, 0));
 		// Выполняем проверку неприкосновенности приёмника при отказе
 		EXPECT_EQ(small, 77u);
 		// Приёмник целого вида СО ЗНАКОМ с опознавательным значением
@@ -3098,13 +3098,13 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 *       его к целым, и без неё «true» отвергалось бы. Ветвь эта такой же путь
 		 *       отказа, как знаковая и беззнаковая, и покрыта быть обязана
 		 */
-		EXPECT_FALSE(document.numeric <bool> (i, 0, flag));
+		EXPECT_FALSE(document.value <bool> (flag, i, 0));
 		// Выполняем проверку неприкосновенности приёмника при отказе
 		EXPECT_TRUE(flag);
 		/**
 		 * Если запись извлечению целым без знака не поддалась
 		 */
-		if(!document.numeric <uint64_t> (i, 0, big)){
+		if(!document.value <uint64_t> (big, i, 0)){
 			// Выполняем проверку неприкосновенности приёмника при отказе
 			EXPECT_EQ(big, 12345u);
 		}
@@ -3115,7 +3115,7 @@ TEST(CodecCsvDocument, ReceiverIsUntouchedOnEveryRefusal) {
 		 *       слепа к половине путей отказа: проба зрячести 01.09.2026 записью в
 		 *       приёмник ВНУТРИ знаковой ветви оставалась зелёной
 		 */
-		if(!document.numeric <int64_t> (i, 0, signedBig)){
+		if(!document.value <int64_t> (signedBig, i, 0)){
 			// Выполняем проверку неприкосновенности приёмника при отказе
 			EXPECT_EQ(signedBig, -777);
 		}
@@ -3315,11 +3315,11 @@ TEST(CodecCsvDocument, LossOnMachineWithoutSubnormalsGivesZeroNotARefusal) {
 		// Приёмник целого вида со знаком с опознавательным значением
 		int64_t big = -777;
 		// Выполняем проверку извлечения видом без знака
-		EXPECT_TRUE(document.numeric <uint8_t> (0, 0, small));
+		EXPECT_TRUE(document.value <uint8_t> (small, 0, 0));
 		// Выполняем проверку выданного нуля вместо отказа
 		EXPECT_EQ(small, 0u);
 		// Выполняем проверку извлечения видом со знаком
-		EXPECT_TRUE(document.numeric <int64_t> (0, 0, big));
+		EXPECT_TRUE(document.value <int64_t> (big, 0, 0));
 		// Выполняем проверку выданного нуля вместо отказа
 		EXPECT_EQ(big, 0);
 	}
@@ -3406,7 +3406,7 @@ TEST(CodecCsvDocument, NumberExtractionIsDeafToTheRoundingMode) {
 			// Извлечённое значение двойной точности
 			double value = 0.;
 			// Выполняем извлечение числа записи
-			ASSERT_TRUE(document.numeric <double> (i, 0, value));
+			ASSERT_TRUE(document.value <double> (value, i, 0));
 			// Разряды извлечённого числа
 			uint64_t bits = 0;
 			// Выполняем снятие разрядов извлечённого числа
@@ -3564,23 +3564,23 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	 *
 	 * @note Вид этот берётся первым оттого, что потребителю он привычнее прочих
 	 */
-	ASSERT_TRUE(document.numeric <size_t> (0, 0, sized));
+	ASSERT_TRUE(document.value <size_t> (sized, 0, 0));
 	// Выполняем проверку приведённого числа
 	ASSERT_EQ(sized, static_cast <size_t> (4096));
 	// Выполняем приведение содержимого поля приёмником вида `long`
-	ASSERT_TRUE(document.numeric <long> (0, 1, lesser));
+	ASSERT_TRUE(document.value <long> (lesser, 0, 1));
 	// Выполняем проверку приведённого числа
 	ASSERT_EQ(lesser, -9223372036854775807L);
 	// Выполняем приведение содержимого поля приёмником вида `long long`
-	ASSERT_TRUE(document.numeric <long long> (0, 1, greater));
+	ASSERT_TRUE(document.value <long long> (greater, 0, 1));
 	// Выполняем проверку приведённого числа
 	ASSERT_EQ(greater, -9223372036854775807LL);
 	// Выполняем приведение содержимого поля приёмником вида `unsigned long`
-	ASSERT_TRUE(document.numeric <unsigned long> (0, 2, unsignedLesser));
+	ASSERT_TRUE(document.value <unsigned long> (unsignedLesser, 0, 2));
 	// Выполняем проверку приведённого числа
 	ASSERT_EQ(unsignedLesser, 18446744073709551615UL);
 	// Выполняем приведение содержимого поля приёмником вида `signed char`
-	ASSERT_TRUE(document.numeric <signed char> (0, 3, narrow));
+	ASSERT_TRUE(document.value <signed char> (narrow, 0, 3));
 	// Выполняем проверку приведённого числа
 	ASSERT_EQ(narrow, static_cast <signed char> (-128));
 	/**
@@ -3610,7 +3610,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 		// Приёмник вида `char`, самостоятельного среди видов языка
 		char letter = 0;
 		// Выполняем приведение содержимого поля приёмником вида `char`
-		ASSERT_TRUE(narrowed.numeric <char> (0, 0, letter));
+		ASSERT_TRUE(narrowed.value <char> (letter, 0, 0));
 		// Выполняем проверку приведённого числа
 		ASSERT_EQ(letter, static_cast <char> (100));
 	}
@@ -3622,7 +3622,7 @@ TEST(CodecCsvDocument, NumberConversionAcceptsLanguageKinds) {
 	 */
 	long keeper = 42;
 	// Выполняем проверку отказа приведения поля отсутствующего
-	ASSERT_FALSE(document.numeric <long> (9, 9, keeper));
+	ASSERT_FALSE(document.value <long> (keeper, 9, 9));
 	// Выполняем проверку того, что приёмник отказом не тронут
 	ASSERT_EQ(keeper, 42L);
 }
@@ -4045,4 +4045,88 @@ TEST(CodecCsvDocument, RefusalOfTheFeedStopsTheFileReading){
 		// Выполняем проверку того, что чтение прекращено, а не дочитано до конца
 		ASSERT_LT(count, 100u);
 	}
+}
+
+/**
+ * Проверка приведения содержимого поля по имени столбца
+ *
+ * @details Ход `value(result, row, name)` заведён 17.09.2026 решением владельца парою к
+ * ходу `get(row, name)`: приведение к числу было доступно лишь по НОМЕРУ столбца, тогда
+ * как получение содержимого - и по номеру, и по имени. Проверка стережёт и согласие
+ * обоих ходов между собою, и отказ на имя, какого таблица не несёт
+ *
+ * @note Отказ на неведомое имя здесь существен: `get` в том же положении выдаёт ПУСТОЕ
+ *       содержимое, ибо выдаёт вид, отказать которым нечем. Ход же приведения выдаёт
+ *       признак успеха, и правдивость его - весь его смысл
+ *
+ * @warning Проверяется и таблица, ПРОЧТЁННАЯ БЕЗ ЗАГЛАВИЯ: имён столбцов она не знает
+ *          вовсе, и всякое имя обязано отвечать отказом, а не попаданием в столбец
+ *          случайного номера
+ *
+ * @warning Столбец НУЛЕВОЙ здесь ЧИСЛОВОЙ намеренно, и переставлять столбцы нельзя.
+ *          Первая редакция проверки держала нулевым столбец со словами, и мутация
+ *          «не найдя имени, брать столбец ноль» ею НЕ ЛОВИЛАСЬ: подмена вела в поле со
+ *          словом, приведение отвергало его само, и красноты не выходило. Случай обязан
+ *          быть таков, чтобы верный ход и подменённый давали РАЗНЫЙ ответ - ныне подмена
+ *          дала бы успех там, где ждётся отказ
+ */
+TEST(CodecCsvDocument, TheFieldIsConvertedByTheNameOfItsColumn) {
+	// Объект контейнера таблицы
+	csv::document_t document;
+	// Выполняем разбор текста таблицы с объявленным заголовком
+	ASSERT_TRUE(document.parse("цена,имя,годен\n42,а,true\n3.5,б,false\n", heading()));
+	// Приёмник целого значения
+	int32_t whole = -1;
+	// Выполняем приведение содержимого поля по имени столбца
+	ASSERT_TRUE(document.value(whole, 0, "цена"));
+	// Выполняем проверку извлечённого целого значения
+	ASSERT_EQ(whole, 42);
+	// Приёмник дробного значения
+	double real = -1.0;
+	// Выполняем приведение содержимого поля второй записи
+	ASSERT_TRUE(document.value(real, 1, "цена"));
+	// Выполняем проверку извлечённого дробного значения
+	ASSERT_DOUBLE_EQ(real, 3.5);
+	// Приёмник логического значения
+	bool flag = false;
+	// Выполняем приведение содержимого логического поля
+	ASSERT_TRUE(document.value(flag, 0, "годен"));
+	// Выполняем проверку извлечённого логического значения
+	ASSERT_TRUE(flag);
+	/**
+	 * Выполняем сличение хода по имени с ходом по номеру
+	 *
+	 * @note Оба обязаны дать одно и то же: ход по имени есть розыск номера да зов хода
+	 *       по номеру, и расхождение здесь означало бы розыск, ведущий не в тот столбец
+	 */
+	for(size_t row = 0; row < document.rows(); row++){
+		// Значение, извлечённое по имени столбца
+		double named = 0.0;
+		// Значение, извлечённое по номеру столбца
+		double numbered = 0.0;
+		// Выполняем извлечение значения обоими ходами
+		ASSERT_EQ(document.value(named, row, "цена"), document.value(numbered, row, static_cast <size_t> (0))) << row;
+		// Выполняем проверку того, что оба хода дали одно значение
+		ASSERT_DOUBLE_EQ(named, numbered) << row;
+	}
+	// Приёмник, значение какого обязано пережить отказ нетронутым
+	int32_t keeper = 777;
+	// Выполняем приведение по имени столбца, какого таблица не несёт
+	ASSERT_FALSE(document.value(keeper, 0, "отсутствует"));
+	// Выполняем проверку того, что приёмник отказом не тронут
+	ASSERT_EQ(keeper, 777);
+	// Выполняем приведение поля, содержимое какого числом не является
+	ASSERT_FALSE(document.value(keeper, 0, "имя"));
+	// Выполняем проверку того, что приёмник не тронут и этим отказом
+	ASSERT_EQ(keeper, 777);
+	// Объект контейнера таблицы, прочтённой без заглавия
+	csv::document_t plain;
+	// Выполняем разбор того же текста без объявления заголовка
+	ASSERT_TRUE(plain.parse("цена,имя,годен\n42,а,true\n"));
+	// Выполняем проверку того, что имён столбцов таблица не знает
+	ASSERT_TRUE(plain.header().empty());
+	// Выполняем приведение по имени у таблицы, заглавия не имеющей
+	ASSERT_FALSE(plain.value(keeper, 1, "цена"));
+	// Выполняем проверку того, что приёмник не тронут и здесь
+	ASSERT_EQ(keeper, 777);
 }

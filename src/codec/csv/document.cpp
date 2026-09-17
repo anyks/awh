@@ -1637,16 +1637,21 @@ vector <string_view> awh::codec::csv::Document::col(const string_view name) cons
  * @brief Метод приведения содержимого поля к числу либо логическому значению
  *
  * @tparam T тип получаемого значения
- * @param row номер записи, считая с нуля
- * @param col номер столбца, считая с нуля
  * @param result полученное значение
+ * @param row    номер записи, считая с нуля
+ * @param col    номер столбца, считая с нуля
  * @return       результат приведения
+ *
+ * @note Имя хода и порядок доводов приведены к общему виду шести прочих кодеков
+ *       17.09.2026 решением владельца - прежде звался он `numeric(row, col, result)`.
+ *       Содержимое поля забрано здесь в переменную `content`, а не `value`: имя `value`
+ *       ныне носит сам ход, и одноимённая местная переменная затеняла бы его
  *
  */
 template <typename T>
-bool awh::codec::csv::Document::numeric(const size_t row, const size_t col, T & result) const noexcept {
+bool awh::codec::csv::Document::value(T & result, const size_t row, const size_t col) const noexcept {
 	// Получаем содержимое искомого поля
-	const string_view value = this->get(row, col);
+	const string_view content = this->get(row, col);
 	// Разрядный вид, тождественный виду языка приёмника
 	typedef typename fixed_t <T>::type fixed;
 	/**
@@ -1654,7 +1659,7 @@ bool awh::codec::csv::Document::numeric(const size_t row, const size_t col, T & 
 	 */
 	if constexpr(std::is_same <T, fixed>::value)
 		// Выводим признак успешности извлечения числа общим для кодеков местом
-		return awh::codec::numeric <T> (value, result);
+		return awh::codec::numeric <T> (content, result);
 	/**
 	 * Если вид приёмника есть иной вид языка той же ширины
 	 */
@@ -1662,7 +1667,7 @@ bool awh::codec::csv::Document::numeric(const size_t row, const size_t col, T & 
 		// Приёмник разрядного вида для извлечения числа
 		fixed number = fixed();
 		// Выполняем извлечение числа общим для кодеков местом
-		const bool ok = awh::codec::numeric <fixed> (value, number);
+		const bool ok = awh::codec::numeric <fixed> (content, number);
 		/**
 		 * Если извлечение числа удалось
 		 *
@@ -1732,6 +1737,34 @@ static bool writable(const string_view text) noexcept {
 	return true;
 }
 /**
+ * @brief Метод приведения содержимого поля к числу либо логическому значению по имени столбца
+ *
+ * @tparam T тип получаемого значения
+ * @param result полученное значение
+ * @param row    номер записи, считая с нуля
+ * @param name   имя столбца
+ * @return       результат приведения
+ *
+ * @note Ход этот парен ходу `get(row, name)` и повторяет его розыск столбца. Отличие
+ *       одно: не найдя имени, `get` выдаёт пустое содержимое, а здесь выдаётся ОТКАЗ -
+ *       признак успеха обязан быть правдив, и приёмник при отказе не трогается вовсе,
+ *       ровно как у хода по номеру
+ *
+ */
+template <typename T>
+bool awh::codec::csv::Document::value(T & result, const size_t row, const string_view name) const noexcept {
+	// Получаем номер столбца по его имени
+	const uint32_t col = this->column(name);
+	/**
+	 * Если столбца с таким именем таблица не содержит
+	 */
+	if(col == NO_INDEX)
+		// Выводим признак неудачного приведения
+		return false;
+	// Выводим признак успешности приведения содержимого поля
+	return this->value <T> (result, row, static_cast <size_t> (col));
+}
+/**
  * Выполняем явное порождение метода приведения содержимого поля по всем видам ЯЗЫКА
  *
  * @warning Перечень ведётся видами языка, а не разрядными обозначениями: последние суть
@@ -1741,7 +1774,8 @@ static bool writable(const string_view text) noexcept {
  * @note Вид `char` не порождается НАМЕРЕННО, и довод тот же, что у записи: `char` есть
  *       вид знака, а не числа. Виды `signed char` и `unsigned char` порождаются
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <bool> (const size_t, const size_t, bool &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <bool> (bool &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <bool> (bool &, const size_t, const string_view) const noexcept;
 /**
  * Порождение видом `char` заведено 08.09.2026 по находке на стендах Sun
  *
@@ -1758,19 +1792,32 @@ template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <bool> (c
  *       система, и решает по-разному
  *
  */
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <char> (const size_t, const size_t, char &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <signed char> (const size_t, const size_t, signed char &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned char> (const size_t, const size_t, unsigned char &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <short> (const size_t, const size_t, short &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned short> (const size_t, const size_t, unsigned short &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <int> (const size_t, const size_t, int &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned int> (const size_t, const size_t, unsigned int &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <long> (const size_t, const size_t, long &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned long> (const size_t, const size_t, unsigned long &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <long long> (const size_t, const size_t, long long &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <unsigned long long> (const size_t, const size_t, unsigned long long &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <float> (const size_t, const size_t, float &) const noexcept;
-template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::numeric <double> (const size_t, const size_t, double &) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <char> (char &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <char> (char &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <signed char> (signed char &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <signed char> (signed char &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned char> (unsigned char &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned char> (unsigned char &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <short> (short &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <short> (short &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned short> (unsigned short &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned short> (unsigned short &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <int> (int &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <int> (int &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned int> (unsigned int &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned int> (unsigned int &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long> (long &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long> (long &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long> (unsigned long &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long> (unsigned long &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long long> (long long &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <long long> (long long &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long long> (unsigned long long &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <unsigned long long> (unsigned long long &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <float> (float &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <float> (float &, const size_t, const string_view) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <double> (double &, const size_t, const size_t) const noexcept;
+template __AWH_SHARED_EXPORT__ bool awh::codec::csv::Document::value <double> (double &, const size_t, const string_view) const noexcept;
 /**
  * @brief Метод установки заголовка таблицы
  *

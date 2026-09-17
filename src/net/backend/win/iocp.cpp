@@ -9610,8 +9610,9 @@ namespace post {
 			 *       случай дорого, и придти он обязан со свидетельством, а не с одним кодом
 			 */
 			// Разновидность описателя и длина места под ответ
-			int32_t kind = 0, length = static_cast <int32_t> (sizeof(kind));
+			int32_t kind = 0;
 			// Признак того, что описатель является гнездом
+			int32_t length = static_cast <int32_t> (sizeof(kind));
 			const bool socket = (::__awh_getsockopt__(static_cast <SOCKET> (sock), SOL_SOCKET, SO_TYPE, &kind, &length) == 0);
 			// Место под имя описателя
 			struct sockaddr_storage address{};
@@ -11019,19 +11020,6 @@ namespace kernel {
 	static unordered_map <uint64_t, unique_ptr <acception_t>> acceptions;
 
 	/**
-	 * @brief Семейства слушающих дескрипторов, добытые однажды
-	 *
-	 * @details Подача наложенного приёма обязана завести сокет под принимаемое
-	 *          подключение ЗАРАНЕЕ, а для этого ей нужно семейство слушающего.
-	 *          Спрашивать его у ядра при всякой подаче незачем: семейство сокета за
-	 *          его жизнь не меняется ни разу, а подача идёт на КАЖДОЕ принимаемое
-	 *          подключение. Учёт снимается там же, где снимается весь прочий учёт по
-	 *          закрываемому дескриптору
-	 *
-	 */
-	static unordered_map <net::socket_t, uint16_t> families;
-
-	/**
 	 * @brief Принятые подключения, ожидающие выдачи движку, по слушающим дескрипторам
 	 *
 	 * @details Наложенный приём подключение уже ПРИНЯЛ, и обращению `accept` принимать
@@ -11145,8 +11133,6 @@ namespace kernel {
 				::kernel::accepted.erase(j);
 			}
 		}
-		// Снимаем учёт добытого семейства закрываемого дескриптора
-		::kernel::families.erase(sock);
 		/**
 		 * Снимаем и заведённую по дескриптору родную отправку
 		 *
@@ -12626,40 +12612,16 @@ namespace kernel {
 				return ::inflight::INVALID;
 			}
 		}
-		// Семейство, к которому принадлежит слушающий сокет
-		uint16_t family = 0;
-		// Выполняем поиск семейства слушающего сокета среди добытых
-		auto f = ::kernel::families.find(sock);
-		// Если семейство слушающего сокета уже добыто
-		if(f != ::kernel::families.end())
-			// Получаем семейство слушающего сокета из учёта
-			family = f->second;
-		// Если семейство слушающего сокета ещё не добыто
-		else {
-			// Адрес, к которому привязан слушающий сокет
-			struct sockaddr_storage bound;
-			// Размер адреса, к которому привязан слушающий сокет
-			int32_t length = static_cast <int32_t> (sizeof(bound));
-			// Если добыть адрес слушающего сокета не удалось
-			if(::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&bound), &length) != 0){
-				// Записываем ошибку в лог
-				log::print("%s: cannot obtain family of listening descriptor %llu: %s", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (sock), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
-				// Выводим отсутствие метки завершения
-				return ::inflight::INVALID;
-			}
-			// Запоминаем семейство слушающего сокета
-			family = static_cast <uint16_t> (bound.ss_family);
-			/**
-			 * Заносим добытое семейство в учёт
-			 *
-			 * @note Занесение вправе бросить, а обращение объявлено `noexcept`: отказ
-			 *       занесения не беда - следующая подача добудет семейство у ядра заново
-			 */
-			try {
-				// Заносим семейство слушающего сокета в учёт
-				::kernel::families.emplace(sock, family);
-			// Если занести семейство не удалось, оставляем учёт как есть
-			} catch(const std::exception &) {}
+		// Адрес, к которому привязан слушающий сокет
+		struct sockaddr_storage bound{};
+		// Размер адреса, к которому привязан слушающий сокет
+		int32_t length = static_cast <int32_t> (sizeof(bound));
+		// Если добыть адрес слушающего сокета не удалось
+		if(::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&bound), &length) != 0){
+			// Записываем ошибку в лог
+			log::print("%s: cannot obtain family of listening descriptor %llu: %s", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (sock), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+			// Выводим отсутствие метки завершения
+			return ::inflight::INVALID;
 		}
 		/**
 		 * Заводим сокет под принимаемое подключение
@@ -12674,8 +12636,8 @@ namespace kernel {
 		 *       было нечем
 		 */
 		const SOCKET peer = ::WSASocketW(
-			static_cast <int32_t> (family), SOCK_STREAM,
-			((family == AF_UNIX) ? 0 : IPPROTO_TCP), nullptr, 0, WSA_FLAG_OVERLAPPED
+			static_cast <int32_t> (bound.ss_family), SOCK_STREAM,
+			((bound.ss_family == AF_UNIX) ? 0 : IPPROTO_TCP), nullptr, 0, WSA_FLAG_OVERLAPPED
 		);
 		// Если сокет под принимаемое подключение завести не удалось
 		if(peer == static_cast <SOCKET> (~static_cast <SOCKET> (0))){
@@ -13447,8 +13409,9 @@ namespace kernel {
 				 */
 				case static_cast <uint32_t> (WSAEINVAL): {
 					// Разновидность описателя и длина места под ответ
-					int32_t kind = 0, length = static_cast <int32_t> (sizeof(kind));
+					int32_t kind = 0;
 					// Признак дейтаграммного описателя
+					int32_t length = static_cast <int32_t> (sizeof(kind));
 					const bool datagram = ((::__awh_getsockopt__(static_cast <SOCKET> (state.sock), SOL_SOCKET, SO_TYPE, &kind, &length) == 0) && (kind == SOCK_DGRAM));
 					// Место под имя описателя
 					struct sockaddr_storage name{};

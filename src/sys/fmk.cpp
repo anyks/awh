@@ -6314,7 +6314,7 @@ string awh::fmk::format(string_view format, const vector <string> & items) noexc
 		 * @param to   строка на которую нужно заменить
 		 *
 		 */
-		auto replaceFn = [&format, &items](string & str, const string & from, const string & to) noexcept {
+		auto replaceFn = [&](string & str, const string & from, const string & to) noexcept {
 			/**
 			 * Выполняем отлов ошибок
 			 */
@@ -6414,7 +6414,7 @@ wstring awh::fmk::format(wstring_view format, const vector <wstring> & items) no
 		 * @param to   строка на которую нужно заменить
 		 *
 		 */
-		auto replaceFn = [&format, &items](wstring & str, const wstring & from, const wstring & to) noexcept {
+		auto replaceFn = [&](wstring & str, const wstring & from, const wstring & to) noexcept {
 			/**
 			 * Выполняем отлов ошибок
 			 */

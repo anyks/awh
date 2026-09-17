@@ -892,10 +892,20 @@ namespace awh {
 					 * @brief Метод приведения содержимого поля к числу либо логическому значению
 					 *
 					 * @tparam T тип получаемого значения
-					 * @param row номер записи, считая с нуля
-					 * @param col номер столбца, считая с нуля
 					 * @param result полученное значение
+					 * @param row    номер записи, считая с нуля
+					 * @param col    номер столбца, считая с нуля
 					 * @return       результат приведения
+					 *
+					 * @note Имя хода и порядок доводов приведены к общему виду 17.09.2026
+					 *       решением владельца. Прежде ход этот звался `numeric` и принимал
+					 *       приёмник ПОСЛЕДНИМ - `numeric(row, col, result)`, - тогда как
+					 *       шесть прочих кодеков рамки зовут его `value` и принимают приёмник
+					 *       ПЕРВЫМ: `value(result, key, section)` у INI, `value(result, path)`
+					 *       у TOML, `value(result, local, uri)` у разметки XML. Общий вопрос
+					 *       обязан носить общее имя, а имя `numeric` отведено низовому разбору
+					 *       записи в число (`awh::codec::numeric`) - публичному ходу документа
+					 *       оно не принадлежит вовсе
 					 *
 					 * @note Число, в затребованный вид не помещающееся, отвергается, а не
 					 *       усекается: «300» к `uint8_t` и «1e308» к `float` отвечают отказом
@@ -933,15 +943,60 @@ namespace awh {
 					 * \~english
 					 * @brief Method of converting the content of a field to a number or to a logical value
 					 * @tparam T type of the value being obtained
-					 * @param row number of the record, counting from zero
-					 * @param col number of the column, counting from zero
 					 * @param result obtained value
+					 * @param row    number of the record, counting from zero
+					 * @param col    number of the column, counting from zero
 					 * @return       result of the conversion
+					 * @note The name of the method and the order of the arguments were brought to the common
+					 * shape on 17.09.2026 by the decision of the owner. Formerly this method was called `numeric`
+					 * and took the receiver LAST, whereas the six other codecs of the framework call it `value`
+					 * and take the receiver FIRST
 					 *
 					 * \~
 					 */
 					template <typename T>
-					bool numeric(const size_t row, const size_t col, T & result) const noexcept;
+					bool value(T & result, const size_t row, const size_t col) const noexcept;
+					/**
+					 * \~russian
+					 * @brief Метод приведения содержимого поля к числу либо логическому значению по имени столбца
+					 *
+					 * @tparam T тип получаемого значения
+					 * @param result полученное значение
+					 * @param row    номер записи, считая с нуля
+					 * @param name   имя столбца
+					 * @return       результат приведения
+					 *
+					 * @details Ход этот парен ходу `get(row, name)`: имя столбца отыскивается
+					 * в заглавии таблицы, а найденный номер передаётся ходу по номеру. Всё, что
+					 * сказано о приведении у хода по номеру, верно и здесь
+					 *
+					 * @note Столбец, имени какого таблица не несёт, отвечает ОТКАЗОМ, а не
+					 *       пустым значением: `get` в том же положении выдаёт пустое
+					 *       содержимое, ибо выдаёт вид, отказать которым нечем, а здесь
+					 *       выдаётся признак успеха, и он обязан быть правдив. Тем же
+					 *       правилом живёт и приведение поля, содержимое какого числом не
+					 *       является
+					 *
+					 * @warning Заглавие у таблицы берётся лишь тогда, когда чтение заказано с
+					 *          ним: таблица, прочтённая без заглавия, имён столбцов не знает
+					 *          вовсе, и ход этот ответит отказом на всякое имя
+					 *
+					 * \~english
+					 * @brief Method of converting the content of a field to a number or to a logical value by the name of the column
+					 * @tparam T type of the value being obtained
+					 * @param result obtained value
+					 * @param row    number of the record, counting from zero
+					 * @param name   name of the column
+					 * @return       result of the conversion
+					 * @note A column whose name the table does not carry answers with a REFUSAL rather than
+					 * with an empty value: `get` in the same position issues an empty content, for it issues
+					 * a view, by which there is nothing to refuse, whereas here a sign of success is issued,
+					 * and it is obliged to be truthful
+					 *
+					 * \~
+					 */
+					template <typename T>
+					bool value(T & result, const size_t row, const string_view name) const noexcept;
 					/**
 					 * \~russian
 					 * @brief Метод установки заголовка таблицы

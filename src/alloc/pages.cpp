@@ -123,15 +123,23 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 	// Действительно выданный размер
 	size_t actual = 0;
 	// Требуемый размер новой таблицы в байтах
-	const size_t size = (length * sizeof(chunk_t *));
+	const size_t size = (length * sizeof(std::atomic <chunk_t *>));
 	// Берём у источника память под новую таблицу
-	chunk_t ** table = reinterpret_cast <chunk_t **> (this->_source->alloc(size, 0, actual));
+	std::atomic <chunk_t *> * table = reinterpret_cast <std::atomic <chunk_t *> *> (this->_source->alloc(size, 0, actual));
 	// Если память под таблицу не выдана
 	if(table == nullptr)
 		// Отвечаем отказом
 		return false;
-	// Обнуляем места новой таблицы
-	::memset(table, 0, size);
+	/**
+	 * Обнуляем места новой таблицы по одному
+	 *
+	 * Не `memset`: места неделимы (`std::atomic<chunk_t *>`), а побайтового их обнуления
+	 * стандарт не обещает - тем же доводом обнуляются указатели куска в `grow`. Цена
+	 * перебора - однажды на перестроение, событие редкое
+	 */
+	for(size_t i = 0; i < length; i++)
+		// Обнуляем место таблицы
+		table[i].store(nullptr, std::memory_order_relaxed);
 	// Запоминаем прежнюю запись таблицы
 	registry_t * previous = this->_registry.load(std::memory_order_relaxed);
 	// Берём у источника память под запись новой таблицы
@@ -182,7 +190,7 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 		 */
 		for(size_t i = 0; i < previous->length; i++){
 			// Получаем кусок, лежащий в очередном месте
-			chunk_t * chunk = previous->table[i];
+			chunk_t * chunk = previous->table[i].load(std::memory_order_relaxed);
 			// Если место прежней таблицы пусто
 			if(chunk == nullptr)
 				// Переходим к следующему месту
@@ -194,11 +202,17 @@ bool awh::alloc::Pages::rehash(const size_t length) noexcept {
 			/**
 			 * Ищем свободное место, начиная с найденного
 			 */
-			while(table[index] != nullptr)
+			while(table[index].load(std::memory_order_relaxed) != nullptr)
 				// Переходим к следующему месту таблицы
 				index = ((index + 1) & (length - 1));
-			// Записываем кусок в найденное место
-			table[index] = chunk;
+			/**
+			 * Кладём кусок обычной записью: таблица ещё НЕ действует
+			 *
+			 * Видимой читателю она станет ниже релизом самой записи (`_registry`), и тот
+			 * релиз отдаёт разом и слоты, и поля кусков - отдельного упорядочивания
+			 * переносу не нужно
+			 */
+			table[index].store(chunk, std::memory_order_relaxed);
 			// Увеличиваем число перенесённых кусков
 			enrolled++;
 		}
@@ -249,16 +263,29 @@ bool awh::alloc::Pages::enroll(chunk_t * chunk) noexcept {
 	/**
 	 * Ищем свободное место, перебирая места подряд
 	 */
-	while(registry->table[index] != nullptr){
+	while(true){
+		// Получаем кусок, лежащий в очередном месте
+		chunk_t * const held = registry->table[index].load(std::memory_order_relaxed);
+		// Если место таблицы пусто - оно и есть искомое
+		if(held == nullptr)
+			// Прекращаем перебор
+			break;
 		// Если кусок в таблице уже есть
-		if((reinterpret_cast <uintptr_t> (registry->table[index]->base) / CHUNK) == key)
+		if((reinterpret_cast <uintptr_t> (held->base) / CHUNK) == key)
 			// Вносить нечего
 			return true;
 		// Переходим к следующему месту таблицы
 		index = ((index + 1) & (registry->length - 1));
 	}
-	// Записываем кусок в найденное место
-	registry->table[index] = chunk;
+	/**
+	 * Кладём кусок в действующую таблицу РЕЛИЗОМ
+	 *
+	 * Таблица уже видна читателю (`discover`), а тот берёт слоты захватом. Поля куска
+	 * (`base`/`size`) записаны в `grow` ПРЕЖДЕ этого вызова: релиз слота отдаёт их
+	 * читателю вместе с указателем, и опубликованного куска с невидимыми полями он не
+	 * застанет
+	 */
+	registry->table[index].store(chunk, std::memory_order_release);
 	// Увеличиваем число внесённых кусков
 	this->_enrolled++;
 	// Отвечаем успехом
@@ -305,9 +332,19 @@ awh::alloc::Pages::chunk_t * awh::alloc::Pages::discover(const void * addr) cons
 	/**
 	 * Ищем кусок, перебирая места подряд
 	 */
-	while(registry->table[index] != nullptr){
-		// Получаем кусок, лежащий в очередном месте
-		chunk_t * chunk = registry->table[index];
+	while(true){
+		/**
+		 * Берём кусок очередного места ЗАХВАТОМ
+		 *
+		 * `enroll` кладёт кусок в действующую таблицу релизом, а поля куска пишет прежде
+		 * него: захват здесь отдаёт читателю указатель вместе с полями, и слота с
+		 * недозаполненным куском он не увидит
+		 */
+		chunk_t * chunk = registry->table[index].load(std::memory_order_acquire);
+		// Если место таблицы пусто - перебор окончен
+		if(chunk == nullptr)
+			// Прекращаем перебор
+			break;
 		// Если ключ куска совпал с ключом адреса
 		if((reinterpret_cast <uintptr_t> (chunk->base) / CHUNK) == key){
 			/**

@@ -486,18 +486,27 @@ namespace {
 		size_t fired = 0;
 		// Список таймеров стенда
 		vector <unique_ptr <asio::steady_timer>> list;
-		// Резервируем память под таймеры стенда
-		list.reserve(DEADLINE_COUNT);
+		/**
+		 * Резервируем память под таймеры стенда
+		 *
+		 * @warning Величины берутся `TIMER_COUNT` и `TIMER_SPREAD`, как у прочих
+		 *          стендов соперников. Прежде здесь стояли `DEADLINE_COUNT` и
+		 *          `DEADLINE_SPREAD` - величины СОСЕДНЕГО сценария, вдесятеро меньшие:
+		 *          при них потолок сценария составлял 50 000 таймеров в секунду, и
+		 *          стенд упирался в него, показывая 49 903, то есть 99.8 % потолка.
+		 *          Мерилась при этом не библиотека, а сам потолок
+		 */
+		list.reserve(TIMER_COUNT);
 		// Момент начала замера
 		const auto start = now();
 		/**
 		 * Выполняем постановку требуемого количества таймеров
 		 */
-		for(size_t i = 0; i < DEADLINE_COUNT; i++){
+		for(size_t i = 0; i < TIMER_COUNT; i++){
 			// Создаём таймер стенда
 			list.push_back(unique_ptr <asio::steady_timer> (new asio::steady_timer(context)));
 			// Устанавливаем срок срабатывания таймера
-			list.back()->expires_after(std::chrono::milliseconds(static_cast <int64_t> (i % DEADLINE_SPREAD)));
+			list.back()->expires_after(std::chrono::milliseconds(static_cast <int64_t> (1 + (i % TIMER_SPREAD))));
 			// Выполняем постановку таймера
 			list.back()->async_wait([&fired](const boost::system::error_code & error) noexcept -> void {
 				// Если таймер сработал, увеличиваем количество сработавших
