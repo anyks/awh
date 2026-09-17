@@ -4180,3 +4180,78 @@ TEST(CodecBridge, TheNeighbourNeverDecidesTheShapeOfAnEmptyValue){
 		}
 	}
 }
+
+/**
+ * @brief Проверка того, что негодное имя пометки перечня оглашается настройкой
+ *
+ * @details Имя негодное отвечалось отказом ЗАПИСИ, а имя ПУСТОЕ не отвечалось ничем:
+ * пометка не ставилась, перевод объявлял успех, и вложенный перечень уходил в запись
+ * пустым узлом, обратным же чтением пропадал вовсе. Потребитель, имя пометки
+ * обнуливший, терял содержимое молча
+ *
+ */
+TEST(CodecBridge, TheNameOfTheArrayMarkIsJudgedAsASetting){
+	// Собираемое дерево с ВЛОЖЕННЫМ перечнем
+	abc::value_t tree(abc::kind_t::MAP);
+	// Собираемые перечни дерева
+	abc::value_t outer(abc::kind_t::ARRAY), inner(abc::kind_t::ARRAY);
+	// Наполняем вложенный перечень значениями
+	ASSERT_TRUE(inner.push(abc::value_t(static_cast <int64_t> (1))));
+	ASSERT_TRUE(inner.push(abc::value_t(static_cast <int64_t> (2))));
+	// Укладываем вложенный перечень во внешний
+	ASSERT_TRUE(outer.push(inner));
+	// Укладываем внешний перечень полем дерева
+	tree["a"] = outer;
+	/**
+	 * Выполняем перебор негодных имён пометки перечня
+	 *
+	 * @note Имя пустое и имя, разметке негодное, - оба суть изъян НАСТРОЙКИ, и
+	 *       оглашаться обязаны одним кодом: потребитель чинит настройку, а не дерево
+	 */
+	for(auto & name : {string(""), string("не годен"), string("3mark")}){
+		// Создаём мост кодеков
+		bridge_t bridge;
+		// Извлекаем настройки моста кодеков
+		bridge_t::settings_t settings = bridge.settings();
+		// Устанавливаем негодное имя пометки перечня
+		settings.array = name;
+		// Устанавливаем настройки моста кодеков
+		bridge.settings(settings);
+		// Собираемая запись разметки
+		string record = "";
+		// Выполняем проверку того, что перевод отвечен отказом
+		ASSERT_FALSE(bridge.encode(tree, record, bridge_t::format_t::XML)) << "имя пометки \"" << name << "\" принято; собрано: " << record;
+		// Выполняем проверку того, что отказ назван изъяном настроек
+		ASSERT_EQ(bridge.error(), bridge_t::error_t::SETTINGS) << "имя пометки \"" << name << "\" оглашено не настройкой";
+		// Выполняем проверку того, что запись осталась пустой
+		ASSERT_TRUE(record.empty()) << "отказ оставил запись недособранной: " << record;
+	}
+	/**
+	 * Выполняем проверку того, что имя годное по-прежнему принимается
+	 *
+	 * @note Половина эта сторожит от ограды слишком широкой: поверка обязана
+	 *       отвергать негодное, а не всякое
+	 */
+	bridge_t bridge;
+	// Извлекаем настройки моста кодеков
+	bridge_t::settings_t settings = bridge.settings();
+	// Устанавливаем своё годное имя пометки перечня
+	settings.array = "mark";
+	// Устанавливаем настройки моста кодеков
+	bridge.settings(settings);
+	// Собираемая запись разметки
+	string record = "";
+	// Выполняем перевод дерева в запись разметки
+	ASSERT_TRUE(bridge.encode(tree, record, bridge_t::format_t::XML)) << "годное имя пометки отвергнуто";
+	// Выполняем проверку того, что пометка поставлена своим именем
+	ASSERT_NE(record.find("mark=\"true\""), string::npos) << "пометка поставлена не своим именем: " << record;
+	// Собираемое дерево обратного чтения
+	abc::value_t back;
+	// Выполняем обратное чтение собранной записи
+	ASSERT_TRUE(bridge.decode(record, back, bridge_t::format_t::XML)) << record;
+	// Получаем содержимое обноса корня записи
+	const abc::value_t & inner2 = (back.contains(bridge.settings().root) ? back[bridge.settings().root] : back);
+	// Выполняем проверку того, что вложенный перечень уцелел
+	ASSERT_TRUE(inner2["a"].is(abc::type_t::ARRAY)) << record;
+	ASSERT_TRUE(inner2["a"][0].is(abc::type_t::ARRAY)) << "вложенный перечень потерян: " << record;
+}
