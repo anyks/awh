@@ -35,7 +35,15 @@
 #include <thread>
 #include <atomic>
 #include <cstdlib>
-#include <pthread.h>
+/**
+ * Заголовок POSIX-потоков нужен лишь проверке исчерпания ключей ниже, и лишь там, где
+ * место потока хранится ключом POSIX. У оснастки MSVC его нет вовсе (модуль хранит
+ * признак на FLS, не на pthread_key), а у MinGW он есть - оттого гуард по _MSC_VER, а не
+ * по _WIN32: под MinGW проверка законна и проходит
+ */
+#if !defined(_MSC_VER)
+	#include <pthread.h>
+#endif
 
 /**
  * Модули операционной системы
@@ -252,6 +260,12 @@ TEST_F(AllocFixture, SymbolResolutionIsHonest){
 	EXPECT_FALSE(awh::alloc::Allocator::symbol(reinterpret_cast <const void *> (0x20), nothing));
 }
 
+/**
+ * Проверка исчерпания ключей POSIX собирается лишь там, где они есть: у оснастки MSVC
+ * место потока хранится на FLS, а не на pthread_key, и такого исчерпания не бывает.
+ * Гуард по _MSC_VER, а не по _WIN32: под MinGW ключи POSIX есть, и проверка законна
+ */
+#if !defined(_MSC_VER)
 TEST_F(AllocFixture, TraceSurvivesHighNumberedKeys){
 	// Ключи, съедающие первый уровень места под значения
 	pthread_key_t eaten[64];
@@ -302,6 +316,7 @@ TEST_F(AllocFixture, TraceSurvivesHighNumberedKeys){
 		// Снимаем ключ, съедавший место
 		::pthread_key_delete(eaten[i]);
 }
+#endif
 
 /**
  * @brief Проверка повторного учёта того же адреса

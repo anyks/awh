@@ -9571,7 +9571,31 @@ namespace post {
 		 *          отсутствием метки, и узел закрывается тем же путём, каким закрылся бы
 		 *          при чтении нуля октет
 		 */
-		if((error != ERROR_PIPE_NOT_CONNECTED) && (error != ERROR_BROKEN_PIPE)){
+		/**
+		 * Закрытое встречной стороной соединение отказом не считается тоже
+		 *
+		 * @details Коды 10054, 10053, 10052 и 64 означают одно: соединения больше нет -
+		 *          сторона оборвала его сегментом RST, отменила или потеряла. Подавать
+		 *          по нему нечего, и это обычное завершение обмена, а не поломка. Разбор
+		 *          дальше идёт своим чередом: подача отвечает отсутствием метки, и узел
+		 *          закрывается тем же путём, каким закрылся бы при чтении нуля октет
+		 *
+		 * @warning Заведено по замеру, а не по догадке. Сценарий приёма подключений
+		 *          закрывает соединения сегментом RST намеренно, и движок писал на это
+		 *          «критично» ДВАЖДЫ на каждое подключение: 8464 записи за один прогон
+		 *          при полном благополучии. Шум этот стоил дорого вдвойне - и сам по
+		 *          себе, и разбором описателя с двумя обращениями к ядру, какой идёт
+		 *          ниже ради каждой такой записи
+		 *
+		 * @note Довод тот же, что и у кодов канала выше: запись уровня «критично» при
+		 *       обычном течении работы прячет настоящие дефекты, и в этом файле это
+		 *       уже случалось
+		 */
+		const bool dropped = (
+			(error == static_cast <DWORD> (WSAECONNRESET)) || (error == static_cast <DWORD> (WSAECONNABORTED)) ||
+			(error == static_cast <DWORD> (WSAENETRESET)) || (error == ERROR_NETNAME_DELETED)
+		);
+		if((error != ERROR_PIPE_NOT_CONNECTED) && (error != ERROR_BROKEN_PIPE) && !dropped){
 			/**
 			 * Состояние описателя снимается ЗДЕСЬ ЖЕ, а не оставляется на разбор
 			 *
@@ -10979,8 +11003,13 @@ namespace kernel {
 		/**
 		 * @brief Конструктор
 		 *
+		 * @note Буфер адресов НЕ обнуляется намеренно: заполняет его система, а
+		 *       читается он лишь после прихода завершения и лишь в той части, какую
+		 *       система заполнила. Обнуление стоило бы 288 октетов записи на КАЖДОЕ
+		 *       принимаемое подключение и было бы тут же перезаписано
+		 *
 		 */
-		Acception() noexcept : sock(net::invalid_socket_t), buffer{} {}
+		Acception() noexcept : sock(net::invalid_socket_t) {}
 	} acception_t;
 
 	/**
@@ -10988,6 +11017,19 @@ namespace kernel {
 	 *
 	 */
 	static unordered_map <uint64_t, unique_ptr <acception_t>> acceptions;
+
+	/**
+	 * @brief Семейства слушающих дескрипторов, добытые однажды
+	 *
+	 * @details Подача наложенного приёма обязана завести сокет под принимаемое
+	 *          подключение ЗАРАНЕЕ, а для этого ей нужно семейство слушающего.
+	 *          Спрашивать его у ядра при всякой подаче незачем: семейство сокета за
+	 *          его жизнь не меняется ни разу, а подача идёт на КАЖДОЕ принимаемое
+	 *          подключение. Учёт снимается там же, где снимается весь прочий учёт по
+	 *          закрываемому дескриптору
+	 *
+	 */
+	static unordered_map <net::socket_t, uint16_t> families;
 
 	/**
 	 * @brief Принятые подключения, ожидающие выдачи движку, по слушающим дескрипторам
@@ -11103,6 +11145,8 @@ namespace kernel {
 				::kernel::accepted.erase(j);
 			}
 		}
+		// Снимаем учёт добытого семейства закрываемого дескриптора
+		::kernel::families.erase(sock);
 		/**
 		 * Снимаем и заведённую по дескриптору родную отправку
 		 *
@@ -12582,16 +12626,40 @@ namespace kernel {
 				return ::inflight::INVALID;
 			}
 		}
-		// Адрес, к которому привязан слушающий сокет
-		struct sockaddr_storage bound{};
-		// Размер адреса, к которому привязан слушающий сокет
-		int32_t length = static_cast <int32_t> (sizeof(bound));
-		// Если добыть адрес слушающего сокета не удалось
-		if(::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&bound), &length) != 0){
-			// Записываем ошибку в лог
-			log::print("%s: cannot obtain family of listening descriptor %llu: %s", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (sock), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
-			// Выводим отсутствие метки завершения
-			return ::inflight::INVALID;
+		// Семейство, к которому принадлежит слушающий сокет
+		uint16_t family = 0;
+		// Выполняем поиск семейства слушающего сокета среди добытых
+		auto f = ::kernel::families.find(sock);
+		// Если семейство слушающего сокета уже добыто
+		if(f != ::kernel::families.end())
+			// Получаем семейство слушающего сокета из учёта
+			family = f->second;
+		// Если семейство слушающего сокета ещё не добыто
+		else {
+			// Адрес, к которому привязан слушающий сокет
+			struct sockaddr_storage bound;
+			// Размер адреса, к которому привязан слушающий сокет
+			int32_t length = static_cast <int32_t> (sizeof(bound));
+			// Если добыть адрес слушающего сокета не удалось
+			if(::__awh_getsockname__(static_cast <SOCKET> (sock), reinterpret_cast <struct sockaddr *> (&bound), &length) != 0){
+				// Записываем ошибку в лог
+				log::print("%s: cannot obtain family of listening descriptor %llu: %s", log::flag_t::CRITICAL, ::__AWH_IO_BACKEND__, static_cast <uint64_t> (sock), ::kernel::message(static_cast <DWORD> (::WSAGetLastError())).c_str());
+				// Выводим отсутствие метки завершения
+				return ::inflight::INVALID;
+			}
+			// Запоминаем семейство слушающего сокета
+			family = static_cast <uint16_t> (bound.ss_family);
+			/**
+			 * Заносим добытое семейство в учёт
+			 *
+			 * @note Занесение вправе бросить, а обращение объявлено `noexcept`: отказ
+			 *       занесения не беда - следующая подача добудет семейство у ядра заново
+			 */
+			try {
+				// Заносим семейство слушающего сокета в учёт
+				::kernel::families.emplace(sock, family);
+			// Если занести семейство не удалось, оставляем учёт как есть
+			} catch(const std::exception &) {}
 		}
 		/**
 		 * Заводим сокет под принимаемое подключение
@@ -12606,8 +12674,8 @@ namespace kernel {
 		 *       было нечем
 		 */
 		const SOCKET peer = ::WSASocketW(
-			static_cast <int32_t> (bound.ss_family), SOCK_STREAM,
-			((bound.ss_family == AF_UNIX) ? 0 : IPPROTO_TCP), nullptr, 0, WSA_FLAG_OVERLAPPED
+			static_cast <int32_t> (family), SOCK_STREAM,
+			((family == AF_UNIX) ? 0 : IPPROTO_TCP), nullptr, 0, WSA_FLAG_OVERLAPPED
 		);
 		// Если сокет под принимаемое подключение завести не удалось
 		if(peer == static_cast <SOCKET> (~static_cast <SOCKET> (0))){
@@ -13300,7 +13368,25 @@ namespace kernel {
 				case static_cast <uint32_t> (ERROR_BROKEN_PIPE):
 				case static_cast <uint32_t> (ERROR_NO_DATA):
 				case static_cast <uint32_t> (ERROR_OPERATION_ABORTED):
-				case static_cast <uint32_t> (ERROR_INVALID_HANDLE): {
+				case static_cast <uint32_t> (ERROR_INVALID_HANDLE):
+				/**
+				 * Сокетные коды того же смысла - соединения больше нет
+				 *
+				 * @details 10054, 10053, 10052 и 64 означают, что встречная сторона оборвала
+				 *          соединение, отменила его либо потеряла. Окончательность их та же,
+				 *          что и у кодов канала выше, а недоставало их здесь по недосмотру:
+				 *          соединение, оборванное сегментом RST, уходило в ветвь по
+				 *          умолчанию и подавалось заново до 64 раз подряд
+				 *
+				 * @warning Найдено замером, а не разбором кода: щуп раскладки выделений
+				 *          показал 674 одинаковые записи «критично» по ОДНОМУ описателю за
+				 *          прогон сценария приёма. Повторы эти не только писали в журнал -
+				 *          они тратили обращения к ядру на соединение, какого уже нет
+				 */
+				case static_cast <uint32_t> (WSAECONNRESET):
+				case static_cast <uint32_t> (WSAECONNABORTED):
+				case static_cast <uint32_t> (WSAENETRESET):
+				case static_cast <uint32_t> (ERROR_NETNAME_DELETED): {
 					// Записываем ошибку в лог
 					log::print("%s: event poll submission rejected: ident=%llu, events=0x%x: %s", log::flag_t::CRITICAL,
 					 ::__AWH_IO_BACKEND__, static_cast <uint64_t> (state.sock), events, ::kernel::message(rejection).c_str());
@@ -28787,7 +28873,7 @@ namespace io {
 						 *       обращения, которое он бережёт. Границу очертил замер - довод
 						 *       при `::drain::INLINE_LIMIT`
 						 */
-						if(peer->transfer.queue.empty() && !((size <= ::drain::INLINE_LIMIT) && (peer->state.protocol != event::protocol_t::SCTP) &&
+						if(peer->transfer.queue.empty() && ::io::immediate() && !((size <= ::drain::INLINE_LIMIT) && (peer->state.protocol != event::protocol_t::SCTP) &&
 						   (::bandwidth::write == 0) && !peer->hasBandwidth() && ::drain::usable(peer->transfer.fd))){
 							/**
 							 * @brief Функция для отправки данных в сокет
@@ -32455,7 +32541,7 @@ namespace io {
 						 *       обращения, которое он бережёт. Границу очертил замер - довод
 						 *       при `::drain::INLINE_LIMIT`
 						 */
-						if(client->transfer.queue.empty() && !((size <= ::drain::INLINE_LIMIT) && (client->state.protocol != event::protocol_t::SCTP) &&
+						if(client->transfer.queue.empty() && ::io::immediate() && !((size <= ::drain::INLINE_LIMIT) && (client->state.protocol != event::protocol_t::SCTP) &&
 						   (::bandwidth::write == 0) && !client->hasBandwidth() && ::drain::usable(client->transfer.fd))){
 							/**
 							 * @brief Функция для отправки данных в сокет

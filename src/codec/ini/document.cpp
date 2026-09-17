@@ -2861,6 +2861,18 @@ bool awh::codec::ini::Document::empty() const noexcept {
 void awh::codec::ini::Document::clear() noexcept {
 	// Выполняем сброс кода ошибки разбора
 	this->fault(error_t::NONE);
+	/**
+	 * Выполняем сброс кодировки, какою прочитан текст
+	 *
+	 * @details Кодировку ставит разбор по метке порядка байтов, и очистка её не трогала:
+	 *          дерево, очищенное вслед за разбором текста с меткою, ход `encoding()`
+	 *          отвечал кодировкой текста СНЕСЁННОГО
+	 *
+	 * @note Сосед YAML в том же месте кодировку сбрасывает, и расхождение это было
+	 *       замерено 17.09.2026 сличением трёх кодеков рядом: порознь ответ `UTF8`
+	 *       выглядит правдоподобно, пока не спросишь, о каком тексте он
+	 */
+	this->_encoding = encoding_t::NONE;
 	// Выполняем сброс признака наличия обращений к значениям
 	this->_referenced = false;
 	// Выполняем сброс признака устаревшей подстановки обращений
@@ -3415,14 +3427,6 @@ awh::codec::ini::Document::Document() noexcept :
  */
 awh::codec::ini::Document::Document(const settings_t & settings) noexcept :
  _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _referenced(false), _stale(false), _dangling(false), _settings(settings) {}
-/**
- * @brief Деструктор
- *
- */
-awh::codec::ini::Document::~Document() noexcept {
-	// Выполняем освобождение дерева настроек
-	this->clear();
-}
 /**
  * @brief Шаблон типа числа результата разбора
  *

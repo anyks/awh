@@ -259,9 +259,43 @@ namespace awh {
 						 * \~
 						 */
 						bool strict;
-						// Признак выдачи событий пустых строк
+						/**
+						 * \~russian
+						 * Признак выдачи событий пустых строк
+						 *
+						 * @note Признак этот правит ПОТОКОМ СОБЫТИЙ, а не составом таблицы:
+						 * контейнер `document_t` пустые строки содержимым не считает и в
+						 * записи их не заносит НИ ПРИ КАКОМ его значении. Закреплено
+						 * проверкою `CodecCsvDocument.CommentsAndBlankLinesDoNotBecomeRecords`
+						 *
+						 * @note Толкование это расходится с обиходом иных средств - разбор
+						 * таблиц у языка Python выдаёт пустую строку записью без полей, и
+						 * грамматика RFC 4180 такому толкованию не противоречит, - и
+						 * расхождение здесь описано нарочно. Сличено внешним судьёю 17.09.2026
+						 *
+						 * \~english
+						 * Flag of the issuance of the events of the blank lines
+						 * @note This flag governs the STREAM OF EVENTS rather than the composition of the table:
+						 * the container `document_t` does not consider the blank lines to be a content and does not
+						 * put them into the records under ANY of its values
+						 *
+						 * \~
+						 */
 						bool emitBlanks;
-						// Признак выдачи событий примечаний
+						/**
+						 * \~russian
+						 * Признак выдачи событий примечаний
+						 *
+						 * @note Довод общий с `emitBlanks`: поток событий правится, состав
+						 * таблицы - нет
+						 *
+						 * \~english
+						 * Flag of the issuance of the events of the comments
+						 * @note The argument is common with `emitBlanks`: the stream of the events is governed,
+						 * the composition of the table is not
+						 *
+						 * \~
+						 */
 						bool emitComments;
 						/**
 						 * \~russian

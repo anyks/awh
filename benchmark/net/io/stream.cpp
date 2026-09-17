@@ -136,7 +136,7 @@ namespace {
 		// Устанавливаем адрес события сервера
 		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем опции принятого подключения
 			io.setOptions(cid, options());
 			/**
@@ -144,7 +144,7 @@ namespace {
 			 * приёмник только считает принятые октеты, разбор данных в сценарии
 			 * пропускной способности измерял бы потребителя, а не движок
 			 */
-			io.on(cid, [&state](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+			io.on(cid, [&state]([[maybe_unused]] const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
 				// Накапливаем количество принятых октетов
 				state.received += size;
 				// Если весь объём передачи принят

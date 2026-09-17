@@ -237,7 +237,7 @@ namespace {
 		// Резервируем память под состояния принятых подключений
 		accepted.reserve(connections);
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &accepted](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &accepted]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем опции принятого подключения
 			io.setOptions(cid, options());
 			// Создаём состояние принятого подключения

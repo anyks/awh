@@ -2224,6 +2224,16 @@ namespace awh {
 					 * @note Договор этот ОБЩИЙ у кодеков: таблица CSV и владеющие значения
 					 *       разметки XML и документа JSON отвечают тем же кодом и тем же порядком
 					 *
+					 * @note Правка дерева (`set`, `erase`) код этот СБРАСЫВАЕТ, а своего не ставит
+					 *       вовсе: указатель, ведущий в никуда, оглашается одним лишь возвратом
+					 *       лжи. Замер 17.09.2026: разбор `{"a":}` отказывал кодом, а первый же
+					 *       отказавший `set` сменял его на «нет ошибки» - вопрошающий об `error()`
+					 *       после неудачной правки узнаёт НЕ причину её, и судить об отказе правки
+					 *       надлежит по возвращаемому признаку. Дерево разметки XML держится того
+					 *       же правила, с одним исключением: прививка корня, узлом разметки не
+					 *       являющегося, ставит там `MISSING_ROOT`. У JSON корнем бывает значение
+					 *       любого вида, и отказу этому взяться неоткуда
+					 *
 					 * @return код отказа последней работы
 					 *
 					 * \~english
@@ -2232,6 +2242,11 @@ namespace awh {
 					 * of it into a file each set this code anew. Formerly it was allotted to the parsing alone
 					 * @note This contract is COMMON among the codecs: a CSV table and the owning values
 					 *       of an XML markup and of a JSON document answer with the same code and in the same order
+					 * @note An editing of the tree (`set`, `erase`) RESETS this code and sets none of its own:
+					 *       a pointer leading nowhere is announced by the return of a falsehood alone.
+					 *       A measurement of 17.09.2026: the parsing of `{"a":}` refused with a code, and the
+					 *       very first refused `set` changed it to «no error» — one who asks `error()` after
+					 *       a failed editing learns NOT the cause of it
 					 * @return code of the refusal of the last operation
 					 *
 					 * \~

@@ -182,7 +182,7 @@ namespace {
 		// Устанавливаем адрес события сервера
 		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&state](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		io.on(server, static_cast <awh::engine::callback::accept_t> ([&state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Запоминаем принятое подключение для освобождения
 			state.accepted.push_back(cid);
 		}));

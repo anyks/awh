@@ -8875,9 +8875,17 @@ namespace kernel {
 		/**
 		 * Выполняем перебор всех дескрипторов, ждущих согласования
 		 */
-		// Дескрипторы, чья подача ядром не принята
-		vector <net::socket_t> retry;
-		for(auto & sock : ::kernel::pending){
+		/**
+		 * Количество дескрипторов, удержанных в очереди согласования
+		 *
+		 * @details Непринятое ядром уплотняется В САМОЙ очереди: читаем её по порядку,
+		 *          а удержанное складываем с начала. Запись всегда идёт позади чтения,
+		 *          оттого перебор и уплотнение уживаются в одном проходе
+		 */
+		size_t kept = 0;
+		for(size_t index = 0; index < ::kernel::pending.size(); index++){
+			// Получаем очередной дескриптор, ждущий согласования
+			const net::socket_t sock = ::kernel::pending.at(index);
 			// Выполняем поиск записи учёта по дескриптору
 			auto i = ::kernel::registry.find(sock);
 			// Если запись учёта жива и согласования всё ещё ждёт
@@ -8887,18 +8895,24 @@ namespace kernel {
 				// Если согласование вернуло признак расхождения, подача не удалась
 				if(i->second.pending)
 					// Оставляем дескриптор в очереди согласования на следующий оборот
-					retry.push_back(sock);
+					::kernel::pending.at(kept++) = sock;
 			}
 		}
 		/**
-		 * Очищаем очередь согласования, удерживая непринятое ядром
+		 * Усекаем очередь согласования до удержанного
 		 *
 		 * @warning Прежде очередь чистилась целиком - вместе с дескрипторами, чью
 		 *          подачу ядро не приняло. Заново такой дескриптор попал бы в очередь
 		 *          лишь тогда, когда с ним случится что-то ещё, а событию, которое
 		 *          лишь ждёт данных, случиться может и нечему
+		 *
+		 * @warning Усечение здесь обязано идти именно `resize`: прежде на этом месте
+		 *          стояло перемещение отдельной очереди, и оно отдавало нашей очереди
+		 *          ЧУЖУЮ ёмкость - пустую. Всякий оборот начинался с нулевой ёмкости,
+		 *          и подписки набивали её заново с перевыделениями. Замерено на приёме
+		 *          подключений: три выдачи памяти на подключение из пяти лишних
 		 */
-		::kernel::pending = ::move(retry);
+		::kernel::pending.resize(kept);
 		// Выводим результат согласования
 		return result;
 	}
@@ -25957,7 +25971,7 @@ namespace io {
 						 *       обращения, которое он бережёт. Границу очертил замер - довод
 						 *       при `::drain::INLINE_LIMIT`
 						 */
-						if(peer->transfer.queue.empty() && !((size <= ::drain::INLINE_LIMIT) && (peer->state.protocol != event::protocol_t::SCTP) &&
+						if(peer->transfer.queue.empty() && ::io::immediate() && !((size <= ::drain::INLINE_LIMIT) && (peer->state.protocol != event::protocol_t::SCTP) &&
 						   (::bandwidth::write == 0) && !peer->hasBandwidth() && ::drain::usable(peer->transfer.fd))){
 							/**
 							 * @brief Функция для отправки данных в сокет
@@ -29631,7 +29645,7 @@ namespace io {
 						 *       обращения, которое он бережёт. Границу очертил замер - довод
 						 *       при `::drain::INLINE_LIMIT`
 						 */
-						if(client->transfer.queue.empty() && !((size <= ::drain::INLINE_LIMIT) && (client->state.protocol != event::protocol_t::SCTP) &&
+						if(client->transfer.queue.empty() && ::io::immediate() && !((size <= ::drain::INLINE_LIMIT) && (client->state.protocol != event::protocol_t::SCTP) &&
 						   (::bandwidth::write == 0) && !client->hasBandwidth() && ::drain::usable(client->transfer.fd))){
 							/**
 							 * @brief Функция для отправки данных в сокет

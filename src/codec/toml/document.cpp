@@ -3831,6 +3831,18 @@ size_t awh::codec::toml::Document::footprint() const noexcept {
 void awh::codec::toml::Document::clear() noexcept {
 	// Выполняем сброс кода ошибки последней операции
 	this->_error = error_t::NONE;
+	/**
+	 * Выполняем сброс кодировки, какою прочитан текст
+	 *
+	 * @details Кодировку ставит разбор по метке порядка байтов, и очистка её не трогала:
+	 *          дерево, очищенное вслед за разбором текста с меткою, ход `encoding()`
+	 *          отвечал кодировкой текста СНЕСЁННОГО
+	 *
+	 * @note Сосед YAML в том же месте кодировку сбрасывает, и расхождение это было
+	 *       замерено 17.09.2026 сличением трёх кодеков рядом: порознь ответ `UTF8`
+	 *       выглядит правдоподобно, пока не спросишь, о каком тексте он
+	 */
+	this->_encoding = encoding_t::NONE;
 	// Выполняем сброс положения обнаруженной ошибки
 	this->_errorLocation = location_t();
 	// Выполняем очистку хранилища знаков
@@ -4339,14 +4351,6 @@ awh::codec::toml::Document::Document(const settings_t & settings) noexcept :
  _encoding(encoding_t::NONE), _fs(), _error(error_t::NONE), _garbage(0), _compacted(0) {
 	// Выполняем установку настроек дерева настроек
 	this->settings(settings);
-}
-/**
- * @brief Деструктор
- *
- */
-awh::codec::toml::Document::~Document() noexcept {
-	// Выполняем освобождение дерева настроек
-	this->clear();
 }
 
 /**

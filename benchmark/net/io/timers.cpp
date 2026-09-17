@@ -151,7 +151,7 @@ namespace {
 			// Устанавливаем дедлайн таймера с разбросом по диапазону
 			io.setTimeout(id, awh::event::action_t::NONE, (1 + static_cast <uint32_t> (i % TIMER_SPREAD)));
 			// Устанавливаем функцию обратного вызова на срабатывание таймера
-			io.on(id, static_cast <awh::engine::callback::status_t> ([&fired](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+			io.on(id, static_cast <awh::engine::callback::status_t> ([&fired]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				// Если таймер сработал
 				if(status == awh::event::status_t::SUCCESS)
 					// Считаем сработавший таймер

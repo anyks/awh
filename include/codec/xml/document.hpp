@@ -1388,6 +1388,17 @@ namespace awh {
 					 * @note Договор этот ОБЩИЙ у кодеков: документ JSON и таблица CSV отвечают
 					 *       тем же кодом и тем же порядком
 					 *
+					 * @note Правка дерева (`set`, `erase`, `reset`, `graft`) код этот СБРАСЫВАЕТ,
+					 *       а своего почти никогда не ставит: путь, ведущий в никуда, оглашается
+					 *       одним лишь возвратом лжи. Замер 17.09.2026: разбор `<a></b>` отказывал
+					 *       кодом `MISMATCHED_TAG`, а первый же отказавший `set` сменял его на
+					 *       «нет ошибки» - вопрошающий об `error()` после неудачной правки узнаёт
+					 *       НЕ причину её, и судить об отказе правки надлежит по возвращаемому
+					 *       признаку. Исключение одно: прививка корня, узлом разметки не
+					 *       являющегося, ставит `MISSING_ROOT`. У дерева JSON правка сбрасывает код
+					 *       тем же порядком, а исключения не имеет вовсе - корнем его бывает
+					 *       значение любого вида
+					 *
 					 * @warning Описание здесь расходилось с делом и было исправлено 16.09.2026:
 					 *          обещало оно «код последней операции РАЗБОРА», тогда как выдача
 					 *          текста код перезаписывала наравне с разбором. Замер: отказ разбора
@@ -1404,6 +1415,12 @@ namespace awh {
 					 * of it into a file each set this code anew. Formerly it was allotted to the parsing alone
 					 * @note This contract is COMMON among the codecs: a JSON document and a CSV table answer
 					 *       with the same code and in the same order
+					 * @note An editing of the tree (`set`, `erase`, `reset`, `graft`) RESETS this code and
+					 *       almost never sets one of its own: a path leading nowhere is announced by the return
+					 *       of a falsehood alone. A measurement of 17.09.2026: the parsing of `<a></b>` refused
+					 *       with `MISMATCHED_TAG`, and the very first refused `set` changed it to «no error» —
+					 *       one who asks `error()` after a failed editing learns NOT the cause of it. The one
+					 *       exception: the grafting of a root that is not a markup node sets `MISSING_ROOT`
 					 * @warning The description here diverged from the deed and was corrected on 16.09.2026: it promised
 					 *          the «code of the last operation of the PARSING», whereas the issuance of a text
 					 *          overwrote the code on a par with the parsing

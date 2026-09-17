@@ -232,7 +232,7 @@ namespace {
 		// Устанавливаем адрес события сервера
 		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state, limiting](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state, limiting]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем опции принятого подключения
 			io.setOptions(cid, options());
 			// Если ограничивается приём, ставим предел принятому подключению
@@ -243,7 +243,7 @@ namespace {
 			 * Устанавливаем функцию обратного вызова на чтение из принятого
 			 * подключения: приёмник только считает принятые октеты
 			 */
-			io.on(cid, [&state](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+			io.on(cid, [&state]([[maybe_unused]] const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
 				// Накапливаем количество принятых октетов
 				state.received += size;
 				// Если замер выполняется и отведённое ему время истекло
@@ -389,13 +389,13 @@ namespace {
 		// Устанавливаем адрес события сервера
 		io.setAddress(server, awh::event::address_t::IPV4, "127.0.0.1");
 		// Устанавливаем функцию обратного вызова на принятие входящего подключения
-		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state](const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
+		io.on(server, static_cast <awh::engine::callback::accept_t> ([&io, &state]([[maybe_unused]] const awh::event::id_t sid, const awh::event::id_t cid) noexcept -> void {
 			// Устанавливаем опции принятого подключения
 			io.setOptions(cid, options());
 			// Устанавливаем недостижимый предел пропускной способности на приём данных
 			io.bandwidth(cid, awh::event::limiting_t::INGRESS, OVERHEAD_LIMIT);
 			// Устанавливаем функцию обратного вызова на чтение из принятого подключения
-			io.on(cid, [&state](const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
+			io.on(cid, [&state]([[maybe_unused]] const awh::event::id_t eid, const uint8_t *, const size_t size) noexcept -> void {
 				// Накапливаем количество принятых октетов
 				state.received += size;
 				// Если весь объём передачи принят

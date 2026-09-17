@@ -526,6 +526,11 @@ namespace awh {
 					 * @note Договор этот ОБЩИЙ у кодеков: владеющие значения разметки XML и
 					 *       документа JSON отвечают тем же кодом и тем же порядком
 					 *
+					 * @note Правка таблицы (`append`, `header`) код этот СБРАСЫВАЕТ, своего не
+					 *       ставя. Замер 17.09.2026: разбор незакрытой обвязки отказывал кодом, а
+					 *       первая же дописка записи сменяла его на «нет ошибки». Правка деревьев
+					 *       XML и JSON ведёт себя так же
+					 *
 					 * @return код отказа последней работы
 					 *
 					 * \~english
@@ -535,6 +540,9 @@ namespace awh {
 					 * and the refusal of the writing was lost entirely
 					 * @note This contract is COMMON among the codecs: the owning values of an XML markup
 					 *       and of a JSON document answer with the same code and in the same order
+					 * @note An editing of the table (`append`, `header`) RESETS this code, setting none of its
+					 *       own. A measurement of 17.09.2026: the parsing of an unclosed quoting refused with
+					 *       a code, and the very first appending of a record changed it to «no error»
 					 * @return code of the refusal of the last operation
 					 *
 					 * \~
