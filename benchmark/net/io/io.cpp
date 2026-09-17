@@ -48,6 +48,13 @@
 	#include <sys/socket.h>
 	#include <sys/resource.h>
 	#include <netinet/in.h>
+	/**
+	 * Диапазон эфемерных портов у систем BSD и Solaris добывается через sysctl
+	 * по имени, а у Linux читается из /proc - там этого заголовка не нужно
+	 */
+	#if !defined(__linux__)
+		#include <sys/sysctl.h>
+	#endif
 #endif
 
 /**
@@ -194,6 +201,113 @@ bool awh::benchmark::io::descriptors(const size_t required, std::string & reason
 		reason.assign(buffer);
 		// Выводим признак недостаточности предела описателей
 		return false;
+	#endif
+}
+/**
+ * @brief Функция оценки достаточности диапазона эфемерных портов
+ *
+ * @details Заведена отдельно от добычи границ: добываются они у каждой системы
+ *          по-своему, а судятся одинаково, и повторять суждение в каждой ветви
+ *          значило бы держать один и тот же расчёт в трёх местах
+ *
+ * @param first    нижняя граница диапазона
+ * @param last     верхняя граница диапазона
+ * @param required потребное количество исходящих портов
+ * @param reason   причина невозможности прогона (заполняется при отказе)
+ * @return         признак достаточности диапазона
+ *
+ */
+static bool enough(const size_t first, const size_t last, const size_t required, std::string & reason) noexcept {
+	// Количество портов, отведённых системой под исходящие подключения
+	const size_t available = ((last - first) + 1);
+	// Если портов диапазона достаточно
+	if(available >= required)
+		// Выводим признак достаточности диапазона
+		return true;
+	// Место под собираемую причину невозможности прогона
+	char buffer[224] = {0};
+	// Собираем причину невозможности прогона
+	::snprintf(
+		buffer, sizeof(buffer),
+		"эфемерных портов %zu (диапазон %zu-%zu) при потребных %zu - прогон невозможен по окружению",
+		available, first, last, required
+	);
+	// Устанавливаем причину невозможности прогона
+	reason.assign(buffer);
+	// Выводим признак недостаточности диапазона
+	return false;
+}
+/**
+ * @brief Функция проверки запаса эфемерных портов под прогон
+ *
+ * @param required потребное количество исходящих портов
+ * @param reason   причина невозможности прогона (заполняется при отказе)
+ * @return         признак достаточности диапазона эфемерных портов
+ *
+ */
+bool awh::benchmark::io::ports(const size_t required, std::string & reason) noexcept {
+	/**
+	 * Если сборка производится под операционную систему MS Windows
+	 *
+	 * @note Диапазон там правится реестром и настройкой netsh, а не общедоступным
+	 *       чтением: сведений о нём прогон не добывает и прогону не мешает
+	 */
+	#if defined(_WIN32) || defined(_WIN64)
+		(void) required;
+		(void) reason;
+		// Выводим признак достаточности диапазона
+		return true;
+	/**
+	 * Если операционной системой является Linux
+	 */
+	#elif defined(__linux__)
+		// Границы диапазона эфемерных портов
+		size_t first = 0, last = 0;
+		// Открываем настройку диапазона эфемерных портов
+		FILE * file = ::fopen("/proc/sys/net/ipv4/ip_local_port_range", "r");
+		// Если настройку прочитать не удалось, прогону не мешаем
+		if(file == nullptr)
+			// Выводим признак достаточности диапазона
+			return true;
+		// Выполняем чтение границ диапазона
+		const bool readed = (::fscanf(file, "%zu %zu", &first, &last) == 2);
+		// Закрываем настройку диапазона эфемерных портов
+		::fclose(file);
+		// Если границы прочитать не удалось, прогону не мешаем
+		if(!readed)
+			// Выводим признак достаточности диапазона
+			return true;
+		// Выполняем проверку достаточности прочитанного диапазона
+		return ::enough(first, last, required, reason);
+	/**
+	 * Если операционной системой является BSD либо Solaris
+	 */
+	#else
+		// Границы диапазона эфемерных портов
+		int32_t first = 0, last = 0;
+		// Размеры извлекаемых значений
+		size_t length = sizeof(first);
+		/**
+		 * Если нижнюю границу диапазона получить не удалось, прогону не мешаем
+		 *
+		 * @note Настройки эти есть не у всех систем: у Solaris диапазон правится
+		 *       через ndd, и sysctl о нём не знает вовсе
+		 */
+		if(::sysctlbyname("net.inet.ip.portrange.first", &first, &length, nullptr, 0) != 0)
+			// Выводим признак достаточности диапазона
+			return true;
+		// Восстанавливаем размер извлекаемого значения
+		length = sizeof(last);
+		// Если верхнюю границу диапазона получить не удалось, прогону не мешаем
+		if(::sysctlbyname("net.inet.ip.portrange.last", &last, &length, nullptr, 0) != 0)
+			// Выводим признак достаточности диапазона
+			return true;
+		// Если границы получены бессмысленными, прогону не мешаем
+		if((first <= 0) || (last <= 0) || (last < first))
+			// Выводим признак достаточности диапазона
+			return true;
+		// Выполняем проверку достаточности полученного диапазона
+		return ::enough(static_cast <size_t> (first), static_cast <size_t> (last), required, reason);
 	#endif
 }
 /**
