@@ -4093,3 +4093,90 @@ TEST(CodecBridge, TheRootWrapperKeepsTheEmptinessOfTheSoleField){
 	// Выполняем проверку того, что пустой узел прочтён истиной
 	ASSERT_TRUE(foreign[bridge.settings().root]["k"].is(abc::type_t::BOOL)) << "правило пустого узла изменилось";
 }
+
+/**
+ * @brief Проверка того, что сосед не решает вида записи у пустого значения
+ *
+ * @details Пустых значений пять, и все они дают узел без содержимого: пустая
+ * запись, значение никакое, пустое отображение, пустой перечень и значение
+ * недействительное. Обнос корня, снимаемый у поля одинокого, обращал такой узел в
+ * корень записи, и обратное чтение возвращало ИСТИНУ правилом пустого узла - мимо
+ * правила сужения, которое то же поле рядом с соседом спрашивало исправно
+ *
+ */
+TEST(CodecBridge, TheNeighbourNeverDecidesTheShapeOfAnEmptyValue){
+	// Перечень правил сужения записи
+	const vector <bridge_t::narrow_t> rules = {bridge_t::narrow_t::STRICT, bridge_t::narrow_t::TEXT, bridge_t::narrow_t::SKIP};
+	// Выполняем перебор всех правил сужения
+	for(auto rule : rules){
+		// Выполняем перебор всех видов пустого значения
+		for(uint8_t kind = 0; kind < 5; kind++){
+			// Создаём мост кодеков
+			bridge_t bridge;
+			// Извлекаем настройки моста кодеков
+			bridge_t::settings_t settings = bridge.settings();
+			// Устанавливаем правило сужения записи
+			settings.narrow = rule;
+			// Устанавливаем настройки моста кодеков
+			bridge.settings(settings);
+			// Собираемое пустое значение проверяемого вида
+			abc::value_t sole;
+			// Определяем вид собираемого пустого значения
+			switch(kind){
+				// Собираем пустую последовательность знаков
+				case 0: sole = abc::value_t(string("")); break;
+				// Собираем значение никакое
+				case 1: sole = abc::value_t(abc::kind_t::NUL); break;
+				// Собираем пустое отображение
+				case 2: sole = abc::value_t(abc::kind_t::MAP); break;
+				// Собираем пустой перечень
+				case 3: sole = abc::value_t(abc::kind_t::ARRAY); break;
+				// Значение недействительное остаётся как есть
+				case 4: break;
+			}
+			// Собираемое дерево из ОДНОГО поля
+			abc::value_t alone(abc::kind_t::MAP);
+			// Укладываем пустое значение единственного поля
+			alone["k"] = sole;
+			// Собираемое дерево из того же поля С СОСЕДОМ
+			abc::value_t paired(abc::kind_t::MAP);
+			// Укладываем пустое значение поля с соседом
+			paired["k"] = sole;
+			// Укладываем значение соседнего поля
+			paired["n"] = abc::value_t(string("сосед"));
+			// Собираемые записи разметки обоих деревьев
+			string single = "", record = "";
+			// Выполняем перевод обоих деревьев в запись разметки
+			const bool one = bridge.encode(alone, single, bridge_t::format_t::XML);
+			const bool two = bridge.encode(paired, record, bridge_t::format_t::XML);
+			/**
+			 * Выполняем проверку того, что ответ у обоих деревьев ОДИН
+			 *
+			 * @note Каков он именно - отказ при строгом сужении, пустая запись при
+			 *       обращении в знаки либо пропуск, - решает правило сужения, и
+			 *       сторожится здесь не сам ответ, а РАВЕНСТВО его у одинокого поля
+			 *       и у поля при соседе
+			 */
+			ASSERT_EQ(one, two) << "вид " << static_cast <uint32_t> (kind) << " при правиле " << static_cast <uint32_t> (rule) << ": одинокое поле отвечено иначе, нежели поле при соседе";
+			// Если оба перевода отвечены отказом, сличать далее нечего
+			if(!one)
+				// Продолжаем перебор видов пустого значения дальше
+				continue;
+			// Собираемые деревья обратного чтения
+			abc::value_t back, repeat;
+			// Выполняем обратное чтение обеих записей
+			ASSERT_TRUE(bridge.decode(single, back, bridge_t::format_t::XML)) << single;
+			ASSERT_TRUE(bridge.decode(record, repeat, bridge_t::format_t::XML)) << record;
+			// Получаем содержимое обноса корня у обеих записей
+			const abc::value_t & first = (back.contains(settings.root) ? back[settings.root] : back);
+			const abc::value_t & second = (repeat.contains(settings.root) ? repeat[settings.root] : repeat);
+			// Выполняем проверку того, что поле уцелело либо пропало у обоих разом
+			ASSERT_EQ(first.contains("k"), second.contains("k")) << "вид " << static_cast <uint32_t> (kind) << " при правиле " << static_cast <uint32_t> (rule) << ": сосед решил судьбу поля; один: " << single << " с соседом: " << record;
+			// Если поле уцелело у обоих
+			if(first.contains("k"))
+				// Выполняем проверку того, что вид значения у обоих один
+				ASSERT_EQ(static_cast <uint32_t> (first["k"].type()), static_cast <uint32_t> (second["k"].type()))
+				 << "вид " << static_cast <uint32_t> (kind) << " при правиле " << static_cast <uint32_t> (rule) << ": сосед решил вид значения; один: " << single << " с соседом: " << record;
+		}
+	}
+}
