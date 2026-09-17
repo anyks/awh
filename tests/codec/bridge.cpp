@@ -4255,3 +4255,86 @@ TEST(CodecBridge, TheNameOfTheArrayMarkIsJudgedAsASetting){
 	ASSERT_TRUE(inner2["a"].is(abc::type_t::ARRAY)) << record;
 	ASSERT_TRUE(inner2["a"][0].is(abc::type_t::ARRAY)) << "вложенный перечень потерян: " << record;
 }
+
+/**
+ * @brief Проверка того, что вид никакой судится всеми дорогами одинаково
+ *
+ * @details Записи INI и разметки выразить вид никакой нечем - обе кладут пустоту, а
+ * обратное чтение отдаёт пустую последовательность знаков. Прежде обе принимали его
+ * и при СТРОГОМ сужении, разрывая круг молча, тогда как запись TOML на том же дереве
+ * отвечала отказом: одно дерево получало два разных ответа от дорог, равно вида не
+ * несущих
+ *
+ */
+TEST(CodecBridge, TheNullKindIsJudgedTheSameByEveryRoad){
+	// Собираемое дерево со значением никаким
+	abc::value_t tree(abc::kind_t::MAP);
+	// Укладываем значение никакое
+	tree["k"] = abc::value_t(abc::kind_t::NUL);
+	// Укладываем значение соседнего поля
+	tree["n"] = abc::value_t(string("сосед"));
+	/**
+	 * Дороги, своей системы видов НЕ несущие
+	 *
+	 * @note Вид никакой им невыразим, и при строгом сужении все три обязаны отвечать
+	 *       отказом - одним и тем же
+	 */
+	const vector <bridge_t::format_t> narrowed = {bridge_t::format_t::TOML, bridge_t::format_t::INI, bridge_t::format_t::XML};
+	// Выполняем перебор дорог, своей системы видов не несущих
+	for(auto format : narrowed){
+		// Создаём мост кодеков
+		bridge_t bridge;
+		// Извлекаем настройки моста кодеков
+		bridge_t::settings_t settings = bridge.settings();
+		// Устанавливаем строгое правило сужения записи
+		settings.narrow = bridge_t::narrow_t::STRICT;
+		// Устанавливаем настройки моста кодеков
+		bridge.settings(settings);
+		// Собираемая запись перевода
+		string record = "";
+		// Выполняем проверку того, что перевод отвечен отказом
+		ASSERT_FALSE(bridge.encode(tree, record, format)) << "вид никакой принят дорогой " << static_cast <uint32_t> (format) << "; собрано: " << record;
+		// Выполняем проверку того, что отказ назван неведомым видом
+		ASSERT_EQ(bridge.error(), bridge_t::error_t::UNSUPPORTED) << "отказ дороги " << static_cast <uint32_t> (format) << " назван причиной иною";
+		/**
+		 * Выполняем проверку того, что правило НЕСТРОГОЕ вид этот принимает
+		 *
+		 * @note Пустота остаётся законным исходом у правил нестрогих, но исход этот
+		 *       назван ПРАВИЛОМ, а не выбран молча
+		 */
+		settings.narrow = bridge_t::narrow_t::TEXT;
+		// Устанавливаем настройки моста кодеков
+		bridge.settings(settings);
+		// Выполняем очистку собираемой записи
+		record.clear();
+		// Выполняем проверку того, что обращение в знаки перевод принимает
+		ASSERT_TRUE(bridge.encode(tree, record, format)) << "обращение в знаки отвергло вид никакой у дороги " << static_cast <uint32_t> (format);
+	}
+	/**
+	 * Дороги, свою систему видов несущие
+	 *
+	 * @note Им вид никакой родной, и круг его обязан замыкаться при всяком правиле
+	 */
+	const vector <bridge_t::format_t> whole = {bridge_t::format_t::ABC, bridge_t::format_t::JSON, bridge_t::format_t::YAML};
+	// Выполняем перебор дорог, свою систему видов несущих
+	for(auto format : whole){
+		// Создаём мост кодеков
+		bridge_t bridge;
+		// Извлекаем настройки моста кодеков
+		bridge_t::settings_t settings = bridge.settings();
+		// Устанавливаем строгое правило сужения записи
+		settings.narrow = bridge_t::narrow_t::STRICT;
+		// Устанавливаем настройки моста кодеков
+		bridge.settings(settings);
+		// Собираемая запись перевода
+		string record = "";
+		// Выполняем перевод дерева в запись кодека
+		ASSERT_TRUE(bridge.encode(tree, record, format)) << "вид никакой отвергнут дорогой " << static_cast <uint32_t> (format);
+		// Собираемое дерево обратного чтения
+		abc::value_t back;
+		// Выполняем обратное чтение собранной записи
+		ASSERT_TRUE(bridge.decode(record, back, format));
+		// Выполняем проверку того, что вид никакой вернулся собою
+		ASSERT_TRUE(back["k"].is(abc::type_t::NUL)) << "вид никакой не уцелел у дороги " << static_cast <uint32_t> (format);
+	}
+}
