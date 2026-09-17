@@ -2897,16 +2897,6 @@ awh::codec::toml::Writer::Writer() noexcept :
 awh::codec::toml::Writer::Writer(const settings_t & settings) noexcept :
  _error(error_t::NONE), _tabled(false), _trailable(false), _torn(false), _length(0), _restore(0),
  _written(settings.newline), _settings(settings) {}
-/**
- * @brief Деструктор
- *
- */
-awh::codec::toml::Writer::~Writer() noexcept {
-	// Выполняем очистку собираемого текста настроек
-	this->_text.clear();
-	// Выполняем очистку стопы уровней вложенности
-	this->_levels.clear();
-}
 
 /**
  * @brief Шаблон типа записываемого числа

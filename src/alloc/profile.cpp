@@ -44,7 +44,7 @@ awh::alloc::Profile::record_t * const awh::alloc::Profile::_tomb = reinterpret_c
  */
 awh::alloc::Profile::Profile() noexcept :
  _source(nullptr), _trace(nullptr), _table(nullptr), _length(0), _region(0), _enrolled(0),
- _buried(0), _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _spare(nullptr),
+ _buried(0), _walking(false), _meta(nullptr), _metaLeft(0), _metaChunks(nullptr), _spare(nullptr),
  _rate(0), _counter(0), _live(0) {}
 
 /**
@@ -199,13 +199,26 @@ bool awh::alloc::Profile::insert(record_t * record) noexcept {
 	 */
 	// Если таблица не заведена либо занята наполовину
 	if((this->_length == 0) || (((this->_enrolled + this->_buried + 1) * 2) > this->_length)){
-		// Выбираем длину перестраиваемой таблицы
-		const size_t length = ((this->_length == 0) ? TABLE :
-		 ((((this->_enrolled + 1) * 2) > this->_length) ? (this->_length * 2) : this->_length));
-		// Перестраиваем таблицу выбранной длины
-		if(!this->rehash(length))
-			// Отвечаем отказом
-			return false;
+		/**
+		 * Во время перебора таблицу НЕ перестраиваем
+		 *
+		 * Перестроение пересыпало бы записи по новым местам, а перебор `walk` держит на
+		 * них курсор, отпуская замок между пачками: пересыпь их под ним - и часть блоков
+		 * потерялась бы из доклада о течи, а иные попали бы в него дважды. Выдачи, пришедшие
+		 * в разгар перебора (их делает и сам отклик, и соседние потоки), тогда просто
+		 * отбрасываются - ниже вернётся отказ при отсутствии места; для мгновенного слепка
+		 * это допустимо. Заведение самой таблицы (длина ноль) не откладываем: без неё
+		 * перебор бы и не начался
+		 */
+		if((this->_length == 0) || !this->_walking){
+			// Выбираем длину перестраиваемой таблицы
+			const size_t length = ((this->_length == 0) ? TABLE :
+			 ((((this->_enrolled + 1) * 2) > this->_length) ? (this->_length * 2) : this->_length));
+			// Перестраиваем таблицу выбранной длины
+			if(!this->rehash(length))
+				// Отвечаем отказом
+				return false;
+		}
 	}
 	// Определяем ключ записи: адрес выданного блока
 	const uintptr_t key = reinterpret_cast <uintptr_t> (record->block);
@@ -626,6 +639,19 @@ size_t awh::alloc::Profile::walk(walker_t callback, void * context) noexcept {
 	// Признак прекращения перебора откликом
 	bool stopped = false;
 	/**
+	 * Отмечаем перебор идущим
+	 *
+	 * Пока он идёт, внесение не перестраивает таблицу: курсор перебора держится на местах,
+	 * и пересыпь их - часть блоков потерялась бы, иные удвоились. Признак читается внесением
+	 * под тем же замком, оттого и ставится под ним
+	 */
+	{
+		// Захватываем замок учёта
+		hold_t hold(this->_lock);
+		// Отмечаем перебор идущим
+		this->_walking = true;
+	}
+	/**
 	 * Перебираем таблицу учёта пачками
 	 */
 	while(!stopped){
@@ -687,6 +713,13 @@ size_t awh::alloc::Profile::walk(walker_t callback, void * context) noexcept {
 				break;
 			}
 		}
+	}
+	// Отмечаем перебор законченным: таблице снова можно перестраиваться
+	{
+		// Захватываем замок учёта
+		hold_t hold(this->_lock);
+		// Снимаем признак идущего перебора
+		this->_walking = false;
 	}
 	// Выводим число перебранных блоков
 	return result;

@@ -110,6 +110,9 @@ extern "C" {
 	 */
 	void * _libc_recallocarray(void * ptr, size_t oldnmemb, size_t newnmemb, size_t size) {
 		if((size != 0) && (newnmemb > (static_cast <size_t> (-1) / size))){ errno = ENOMEM; return nullptr; }
+		// Старое произведение проверяем тем же порядком: заворот дал бы КОРОТКИЙ `had`, а
+		// на нём держатся и перенос содержимого, и затирание старой тайны перед `free`
+		if((size != 0) && (oldnmemb > (static_cast <size_t> (-1) / size))){ errno = EINVAL; return nullptr; }
 		const size_t want = (newnmemb * size), had = (oldnmemb * size);
 		void * result = ::calloc(newnmemb, size);
 		if((result != nullptr) && (ptr != nullptr)){

@@ -856,9 +856,17 @@ namespace {
 		 */
 		const size_t taken = bootstrapUsed.fetch_add(whole, std::memory_order_relaxed);
 		// Если места в области не осталось
-		if((taken + whole) > BOOTSTRAP)
+		if((taken + whole) > BOOTSTRAP){
+			/**
+			 * Возвращаем занятое место счётчику
+			 *
+			 * Без отката один запрос сверх остатка навсегда двигал бы счётчик за предел, и
+			 * всякая следующая выдача отвечала бы отказом даже там, где место ещё было
+			 */
+			bootstrapUsed.fetch_sub(whole, std::memory_order_relaxed);
 			// Выдавать нечего
 			return nullptr;
+		}
 		// Получаем занятое место
 		uint8_t * base = (bootstrap + taken);
 		// Записываем размер блока заголовком

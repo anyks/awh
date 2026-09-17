@@ -49,6 +49,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -216,10 +217,10 @@ namespace awh {
 				spin_t _reserve;
 				// Придержанные области по числу страниц
 				kept_t * _kept[Pages::PAGES + 1];
-				// Объём придержанного в байтах
-				size_t _keptBytes;
-				// Потолок придержки в байтах
-				size_t _keptCeiling;
+				// Объём придержанного в байтах (читается без замка на быстрых путях, оттого атомарен)
+				std::atomic <size_t> _keptBytes;
+				// Потолок придержки в байтах (читается без замка на быстрых путях, оттого атомарен)
+				std::atomic <size_t> _keptCeiling;
 			private:
 				/**
 				 * \~russian

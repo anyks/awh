@@ -1623,15 +1623,29 @@ namespace awh {
 					Reader(const settings_t & settings) noexcept;
 					/**
 					 * \~russian
-					 * @brief Деструктор
+					 * @brief Ходы копии и переноса
 					 *
+					 * @details Объявлены они ради ПЕРЕНОСА: прежде тут стоял деструктор, чистивший
+					 * поля зовом `clear()`, и объявление его отменяло порождение переносящих ходов -
+					 * по правилу языка неявный перенос у класса с деструктором объявленным не
+					 * порождается вовсе, и перенос молча обращался копией
+					 *
+					 * @note Деструктор тот был ИЗЛИШЕН: чистил он строки да перечни, кои
+					 * освободятся деструкторами своими сами. Сосед YAML деструктора не имеет, и
+					 * перенос у него работал всё это время
+					 *
+					 * @warning Объявлены ЧЕТЫРЕ хода разом по правилу пяти: объявление одного лишь
+					 * переноса подавило бы порождение копии
 					 *
 					 * \~english
-					 * @brief Destructor
+					 * @brief The calls of the copying and of the moving
 					 *
 					 * \~
 					 */
-					~Reader() noexcept;
+					Reader(const Reader &) = default;
+					Reader(Reader &&) noexcept = default;
+					Reader & operator = (const Reader &) = default;
+					Reader & operator = (Reader &&) noexcept = default;
 			} reader_t;
 		};
 	};

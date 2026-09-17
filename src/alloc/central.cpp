@@ -132,7 +132,7 @@ void awh::alloc::Central::reset() noexcept {
 			// Обнуляем голову списка придержанных областей
 			this->_kept[i] = nullptr;
 		// Обнуляем объём придержанного
-		this->_keptBytes = 0;
+		this->_keptBytes.store(0, std::memory_order_relaxed);
 	}
 	// Обнуляем разряды размеров
 	this->_classes = nullptr;
@@ -430,7 +430,7 @@ void * awh::alloc::Central::take(const size_t pages, size_t * served) noexcept {
  */
 void * awh::alloc::Central::recall(const size_t pages) noexcept {
 	// Если придержка выключена либо размер ей не по мерке
-	if((this->_keptCeiling == 0) || (pages == 0) || (pages > KEPT_PAGES))
+	if((this->_keptCeiling.load(std::memory_order_relaxed) == 0) || (pages == 0) || (pages > KEPT_PAGES))
 		// Выдавать нечего
 		return nullptr;
 	// Захватываем замок придержки
@@ -445,8 +445,9 @@ void * awh::alloc::Central::recall(const size_t pages) noexcept {
 	this->_kept[pages] = kept->next;
 	// Определяем объём выдаваемой области
 	const size_t held = (pages * Pages::PAGE);
-	// Уменьшаем объём придержанного, не уходя ниже нуля
-	this->_keptBytes -= ((this->_keptBytes < held) ? this->_keptBytes : held);
+	// Уменьшаем объём придержанного, не уходя ниже нуля (под замком, оттого чтение-запись раздельны)
+	const size_t have = this->_keptBytes.load(std::memory_order_relaxed);
+	this->_keptBytes.store((have - ((have < held) ? have : held)), std::memory_order_relaxed);
 	// Выводим придержанную область
 	return reinterpret_cast <void *> (kept);
 }
@@ -460,7 +461,7 @@ void * awh::alloc::Central::recall(const size_t pages) noexcept {
  */
 bool awh::alloc::Central::keep(void * addr, const size_t pages) noexcept {
 	// Если придержка выключена, область не задана либо размер ей не по мерке
-	if((this->_keptCeiling == 0) || (addr == nullptr) || (pages == 0) || (pages > KEPT_PAGES))
+	if((this->_keptCeiling.load(std::memory_order_relaxed) == 0) || (addr == nullptr) || (pages == 0) || (pages > KEPT_PAGES))
 		// Придерживать нечего
 		return false;
 	// Определяем объём придерживаемой области
@@ -468,7 +469,7 @@ bool awh::alloc::Central::keep(void * addr, const size_t pages) noexcept {
 	// Захватываем замок придержки
 	hold_t hold(this->_reserve);
 	// Если потолок придержки перебран
-	if((this->_keptBytes + held) > this->_keptCeiling)
+	if((this->_keptBytes.load(std::memory_order_relaxed) + held) > this->_keptCeiling.load(std::memory_order_relaxed))
 		// Придерживать больше нечем: область уйдёт куче обычным путём
 		return false;
 	/**
@@ -485,8 +486,8 @@ bool awh::alloc::Central::keep(void * addr, const size_t pages) noexcept {
 	kept->pages = pages;
 	// Головой списка становится придержанная область
 	this->_kept[pages] = kept;
-	// Увеличиваем объём придержанного
-	this->_keptBytes += held;
+	// Увеличиваем объём придержанного (под замком, оттого чтение-запись раздельны)
+	this->_keptBytes.store((this->_keptBytes.load(std::memory_order_relaxed) + held), std::memory_order_relaxed);
 	// Отвечаем успехом
 	return true;
 }
@@ -525,7 +526,7 @@ size_t awh::alloc::Central::unkeep(const bool all) noexcept {
 			 */
 			while(this->_kept[i] != nullptr){
 				// Если потолок соблюдён и отдавать всё не просили
-				if(!all && (this->_keptBytes <= this->_keptCeiling))
+				if(!all && (this->_keptBytes.load(std::memory_order_relaxed) <= this->_keptCeiling.load(std::memory_order_relaxed)))
 					// Снимать больше нечего
 					break;
 				// Изымаем голову списка
@@ -534,8 +535,9 @@ size_t awh::alloc::Central::unkeep(const bool all) noexcept {
 				this->_kept[i] = kept->next;
 				// Определяем объём изъятой области
 				const size_t held = (i * Pages::PAGE);
-				// Уменьшаем объём придержанного, не уходя ниже нуля
-				this->_keptBytes -= ((this->_keptBytes < held) ? this->_keptBytes : held);
+				// Уменьшаем объём придержанного, не уходя ниже нуля (под замком)
+				const size_t have = this->_keptBytes.load(std::memory_order_relaxed);
+				this->_keptBytes.store((have - ((have < held) ? have : held)), std::memory_order_relaxed);
 				// Связываем изъятую область со снятой цепочкой
 				kept->next = taken;
 				// Головой снятой цепочки становится изъятая область
@@ -544,7 +546,7 @@ size_t awh::alloc::Central::unkeep(const bool all) noexcept {
 				result += held;
 			}
 			// Если потолок соблюдён и отдавать всё не просили
-			if(!all && (this->_keptBytes <= this->_keptCeiling))
+			if(!all && (this->_keptBytes.load(std::memory_order_relaxed) <= this->_keptCeiling.load(std::memory_order_relaxed)))
 				// Снимать больше нечего
 				break;
 		}
@@ -679,7 +681,7 @@ bool awh::alloc::Central::expand(void * addr, const size_t size) noexcept {
 	 * не отдав её, мы своею же придержкой заслоняем себе рост
 	 */
 	// Если придерживать нечего
-	if(this->_keptBytes == 0)
+	if(this->_keptBytes.load(std::memory_order_relaxed) == 0)
 		// Расти некуда
 		return false;
 	// Отдаём придержанное куче
@@ -864,7 +866,7 @@ void awh::alloc::Central::keeper(const size_t limit) noexcept {
 		// Захватываем замок придержки
 		hold_t hold(this->_reserve);
 		// Запоминаем потолок придержки
-		this->_keptCeiling = limit;
+		this->_keptCeiling.store(limit, std::memory_order_relaxed);
 	}
 	/**
 	 * Приводим придержанное к новому потолку

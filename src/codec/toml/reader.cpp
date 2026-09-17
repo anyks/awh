@@ -4172,16 +4172,6 @@ awh::codec::toml::Reader::Reader(const settings_t & settings) noexcept :
 	// Выполняем установку навязанной извне кодировки исходного текста
 	this->_decoder.encoding(settings.encoding);
 }
-/**
- * @brief Деструктор
- *
- */
-awh::codec::toml::Reader::~Reader() noexcept {
-	// Выполняем очистку накопленного текста настроек
-	this->_buffer.clear();
-	// Выполняем очистку хранилища содержимого событий записи
-	this->_store.clear();
-}
 
 /**
  * Возвращаем системные макросы потребителю библиотеки:

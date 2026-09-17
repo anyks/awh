@@ -2802,18 +2802,6 @@ awh::codec::ini::Reader::Reader(const settings_t & settings) noexcept :
 	// Выполняем установку кодировки исходного текста
 	this->_decoder.encoding(this->_settings.encoding);
 }
-/**
- * @brief Деструктор
- *
- */
-awh::codec::ini::Reader::~Reader() noexcept {
-	// Выполняем очистку приведённого исходного текста
-	this->_buffer.clear();
-	// Выполняем очистку перечня объявленных разделов
-	this->_sections.clear();
-	// Выполняем очистку перечня объявленных свойств
-	this->_keys.clear();
-}
 
 /**
  * @brief Шаблон типа числа результата разбора

@@ -1821,14 +1821,6 @@ awh::codec::ini::Writer::Writer(const settings_t & settings) noexcept :
  _error(error_t::NONE), _sectioned(false), _valued(false), _guarded(false), _written(settings.newline),
  _settings(settings) {}
 /**
- * @brief Деструктор
- *
- */
-awh::codec::ini::Writer::~Writer() noexcept {
-	// Выполняем очистку собранного текста настроек
-	this->_text.clear();
-}
-/**
  * @brief Шаблон типа записываемого числа
  *
  * @tparam T тип записываемого числа
