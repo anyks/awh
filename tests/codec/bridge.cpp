@@ -4338,3 +4338,87 @@ TEST(CodecBridge, TheNullKindIsJudgedTheSameByEveryRoad){
 		ASSERT_TRUE(back["k"].is(abc::type_t::NUL)) << "вид никакой не уцелел у дороги " << static_cast <uint32_t> (format);
 	}
 }
+
+/**
+ * @brief Проверка того, что число неконечное судится правилом, а не отказом записи
+ *
+ * @details Не-число и бесконечность записи JSON неведомы по стандарту, и обращаться
+ * с ними надлежит правилом сужения, как и со всяким иным видом, записи неведомым.
+ * Прежде они уходили прямо писателю, и тот отвечал отказом ЗАПИСИ при ВСЯКОМ правиле:
+ * пропуск поля не роняли, а валили весь перевод, и отказ указывал на изъян записи
+ * там, где негоден был вид значения. Прочие пять дорог то же дерево принимали
+ *
+ */
+TEST(CodecBridge, TheNonFiniteRealIsJudgedByTheNarrowingRule){
+	// Перечень неконечных чисел дробных
+	const vector <double> values = {std::nan(""), std::numeric_limits <double>::infinity(), -std::numeric_limits <double>::infinity()};
+	// Выполняем перебор всех неконечных чисел
+	for(auto number : values){
+		// Собираемое дерево с неконечным числом
+		abc::value_t tree(abc::kind_t::MAP);
+		// Укладываем неконечное число полем дерева
+		tree["k"] = abc::value_t(number);
+		// Укладываем значение соседнего поля
+		tree["n"] = abc::value_t(string("сосед"));
+		// Создаём мост кодеков
+		bridge_t bridge;
+		// Извлекаем настройки моста кодеков
+		bridge_t::settings_t settings = bridge.settings();
+		// Устанавливаем строгое правило сужения записи
+		settings.narrow = bridge_t::narrow_t::STRICT;
+		// Устанавливаем настройки моста кодеков
+		bridge.settings(settings);
+		// Собираемая запись перевода
+		string record = "";
+		// Выполняем проверку того, что строгое правило отвечает отказом
+		ASSERT_FALSE(bridge.encode(tree, record, bridge_t::format_t::JSON)) << "неконечное число принято записью JSON: " << record;
+		/**
+		 * Выполняем проверку того, что отказ назван НЕВЕДОМЫМ ВИДОМ
+		 *
+		 * @note Прежде он назывался отказом записи - изъяном кодека, а не значения, -
+		 *       и потребитель шёл искать неисправность в писателе
+		 */
+		ASSERT_EQ(bridge.error(), bridge_t::error_t::UNSUPPORTED) << "отказ назван причиной иною";
+		// Устанавливаем правило обращения в знаки
+		settings.narrow = bridge_t::narrow_t::TEXT;
+		// Устанавливаем настройки моста кодеков
+		bridge.settings(settings);
+		// Выполняем очистку собираемой записи
+		record.clear();
+		// Выполняем проверку того, что обращение в знаки перевод принимает
+		ASSERT_TRUE(bridge.encode(tree, record, bridge_t::format_t::JSON)) << "обращение в знаки отвергло неконечное число";
+		// Выполняем проверку того, что сосед уцелел
+		ASSERT_NE(record.find("сосед"), string::npos) << record;
+		// Устанавливаем правило пропуска значения
+		settings.narrow = bridge_t::narrow_t::SKIP;
+		// Устанавливаем настройки моста кодеков
+		bridge.settings(settings);
+		// Выполняем очистку собираемой записи
+		record.clear();
+		// Выполняем проверку того, что пропуск перевод принимает
+		ASSERT_TRUE(bridge.encode(tree, record, bridge_t::format_t::JSON)) << "пропуск отверг неконечное число";
+	}
+	/**
+	 * Выполняем проверку записи неконечного числа у дорог, знаками его пишущих
+	 *
+	 * @warning Правило приписки точки со значащим нулём обращало записи `nan` и `inf`
+	 *          в `nan.0` да `inf.0` - записи, ни одному наречию не принадлежащие и
+	 *          числом обратно не читаемые
+	 */
+	for(auto format : {bridge_t::format_t::XML, bridge_t::format_t::INI}){
+		// Создаём мост кодеков
+		bridge_t bridge;
+		// Собираемое дерево с неконечным числом
+		abc::value_t tree(abc::kind_t::MAP);
+		// Укладываем не-число полем дерева
+		tree["k"] = abc::value_t(std::nan(""));
+		// Собираемая запись перевода
+		string record = "";
+		// Выполняем перевод дерева в запись кодека
+		ASSERT_TRUE(bridge.encode(tree, record, format));
+		// Выполняем проверку того, что точка со значащим нулём не приписана
+		ASSERT_EQ(record.find("nan.0"), string::npos) << "запись не-числа снабжена дробной частью: " << record;
+		// Выполняем проверку того, что само не-число записано
+		ASSERT_NE(record.find("nan"), string::npos) << "запись не-числа потеряна: " << record;
+	}
+}
