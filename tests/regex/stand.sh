@@ -136,10 +136,15 @@ esac
 # Перечень отстаёт от дерева молча: приписанный к разбору Юникода файл таблиц в
 # него не попал бы, и стенд отказал бы связыванием. Подкаталог «src/regex/grok»
 # в маску не входит и приписан отдельно - его проверяет «tests/regex/grok.cpp».
-# Оттуда же и кодек JSON: надстройка Grok выдаёт разбор деревом «json_t»
+# Оттуда же и кодек JSON: надстройка Grok выдаёт разбор деревом «json_t».
+#
+# Модуль файловой системы нужен дважды: кодек JSON читает и пишет документы
+# через «awh::fs_t», а проверки «StorageFilesystem» кладут запись хранилища
+# на диск тем же объектом. Без него связывание отказывало символом
+# «Filesystem::read» на всех системах разом
 ##
 SUPPORT="$ROOT/src/sys/log.cpp $ROOT/src/sys/fmk.cpp $ROOT/src/sys/chrono.cpp \
- $ROOT/src/sys/os.cpp $ROOT/src/net/nwt.cpp $ROOT/src/num/lexical/table.cpp \
+ $ROOT/src/sys/os.cpp $ROOT/src/sys/fs.cpp $ROOT/src/net/nwt.cpp $ROOT/src/num/lexical/table.cpp \
  $ROOT/src/encoding/charset/*.cpp $ROOT/src/alloc/*.cpp $CAPTURE"
 SOURCES="$ROOT/tests/main.cpp $ROOT/tests/regex/*.cpp \
  $ROOT/src/regex/*.cpp $ROOT/src/regex/grok/*.cpp \
@@ -171,8 +176,22 @@ echo "--- сборка набора проверок"
 # Канал, закрытый на сороковой строке, шлёт собирателю обрыв, и тот гибнет на полпути:
 # стенд отчитывается ложным отказом сборки
 ##
+##
+# У macOS исходники собираются как Objective-C++
+#
+# Модуль файловой системы берёт «Foundation» ради пути к домашнему каталогу и
+# пишется там на Objective-C++; полная сборка ставит признак этот проверкам
+# на Apple сама. Признак «-x none» обязателен ПЕРЕД архивом эталона: ключ «-x»
+# правит вид всех доводов последующих, и архив ушёл бы собирателю исходником
+##
+LANGUAGE=""
+RELEASE=""
+if [ "$(uname -s)" = "Darwin" ]; then
+	LANGUAGE="-x objective-c++ -fobjc-arc"
+	RELEASE="-x none"
+fi
 $CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS $DEFINES $INCLUDES \
- -o "$OUT/regex-tests" $SOURCES $LIBRARY \
+ -o "$OUT/regex-tests" $LANGUAGE $SOURCES $RELEASE $LIBRARY \
  -L"$GTEST/lib" -lgmock -lgtest -lgtest_main $LIBS > "$OUT/build.log" 2>&1
 head -40 "$OUT/build.log"
 if [ ! -x "$OUT/regex-tests" ] && [ ! -x "$OUT/regex-tests.exe" ]; then

@@ -36,6 +36,8 @@
 #include <regex/pike.hpp>
 #include <regex/backtrack.hpp>
 #include <regex/codegen.hpp>
+#include <regex/emitter.hpp>
+#include <regex/assembly.hpp>
 #include <regex/storage.hpp>
 #include <regex/probe.hpp>
 #include <regex/regex.hpp>
@@ -1088,14 +1090,35 @@ TEST(Regex, EngineProbing) {
 		regex::expression_t expression;
 		// Выполняем сборку регулярного выражения с порождением машинного кода
 		ASSERT_TRUE(engine.build("[a-z]+@[a-z]+", static_cast <uint32_t> (regex::flag_t::JIT), expression));
-		// Выполняем проверку порождения сопоставителя выражения
-		ASSERT_TRUE(expression.machine != nullptr);
+		// Получаем признак поддержки порождения машинного кода сборкой
+		const bool generated = (regex::emitter_t::available() && regex::assembly_t::available());
+		/**
+		 * Выполняем проверку порождения сопоставителя выражения
+		 *
+		 * @details Пропуск блока на машине без порождения был бы молчаливым
+		 *          отключением: здесь утверждается обратное - сопоставителя
+		 *          нет, путь машинного кода не пройден, а совпадение найдено
+		 *          толкователем всё равно. Так блок стережёт и Эльбрус: сборка,
+		 *          выдавшая там сопоставитель, исполняла бы чужие команды.
+		 *
+		 */
+		if(generated)
+			// Выполняем проверку порождения сопоставителя выражения
+			ASSERT_TRUE(expression.machine != nullptr);
+		// Выполняем проверку отсутствия сопоставителя на машине без порождения
+		else ASSERT_TRUE(expression.machine == nullptr) << "сопоставитель порождён набору команд, порождению не подлежащему";
 		// Выполняем сброс счётчиков путей исполнения
 		regex::probe_t::reset();
 		// Выполняем поиск совпадения в тексте
 		ASSERT_TRUE(engine.exec(expression, "mail forman@anyks and more", 0, captures));
-		// Выполняем проверку прохождения пути сопоставления машинным кодом
-		EXPECT_GT(regex::probe_t::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
+		/**
+		 * Если машинный код сборкой порождается
+		 */
+		if(generated)
+			// Выполняем проверку прохождения пути сопоставления машинным кодом
+			EXPECT_GT(regex::probe_t::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
+		// Выполняем проверку непрохождения пути машинного кода на машине без порождения
+		else EXPECT_EQ(regex::probe_t::count(regex::path_t::JITTED), static_cast <uint64_t> (0));
 	}
 	/**
 	 * Выполняем проверку прохождения пути поиска последовательностью
@@ -2529,6 +2552,16 @@ TEST(Regex, MatchingAtomicRecursion) {
  *
  */
 TEST(Regex, CodegenImprint) {
+	/**
+	 * Если порождение машинного кода сборкой не поддерживается
+	 *
+	 * @details Порождатель владеет наборами ARM64 и x86-64; на прочих (Эльбрус)
+	 *          выражения исполняются толкователями, и проверять здесь нечего
+	 *
+	 */
+	if(!regex::emitter_t::available() || !regex::assembly_t::available())
+		// Выходим из проверки порождённого машинного кода
+		GTEST_SKIP() << "порождение машинного кода сборкой не поддерживается";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Создаём собираемое регулярное выражение
@@ -2628,6 +2661,16 @@ TEST(Regex, CodegenImprint) {
  *
  */
 TEST(Regex, CodegenRollback) {
+	/**
+	 * Если порождение машинного кода сборкой не поддерживается
+	 *
+	 * @details Порождатель владеет наборами ARM64 и x86-64; на прочих (Эльбрус)
+	 *          выражения исполняются толкователями, и проверять здесь нечего
+	 *
+	 */
+	if(!regex::emitter_t::available() || !regex::assembly_t::available())
+		// Выходим из проверки порождённого машинного кода
+		GTEST_SKIP() << "порождение машинного кода сборкой не поддерживается";
 	// Создаём объект движка регулярных выражений
 	regex::engine_t engine;
 	// Создаём собираемое регулярное выражение

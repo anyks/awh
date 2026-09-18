@@ -101,18 +101,37 @@ PROGRAM=$(command -v "$MAKE")
  # Она занимает около минуты, а меняться ей нечего: подмодуль закреплён. Пересобрать
  # её насильно можно, удалив каталог сборки целиком
  ##
+##
+ # Порождение машинного кода эталону доступно не на всякой машине
+ #
+ # Порождатель эталона sljit владеет x86, ARM, PPC, MIPS, RISC-V, s390x и
+ # LoongArch; прочим (Эльбрус) `pcre2_jit_compile.c` отвечает «#error Unsupported
+ # architecture», и эталон не собирался вовсе. Признак неподдержки sljit выводит
+ # сам, и спрашивается он у него же - пробой препроцессора, а не перечнем имён
+ # машин: перечень отстал бы от sljit молча, а проба с ним не расходится никогда.
+ #
+ # Эталон без кода сличается на равных и там: наш модуль на такой машине кода
+ # не порождает тоже, и обе стороны идут толкователем
+ ##
+JIT=ON
+if ! printf '#include "sljitConfigCPU.h"\n#if defined SLJIT_CONFIG_UNSUPPORTED && SLJIT_CONFIG_UNSUPPORTED\n#error\n#endif\n' \
+   | ${CC:-cc} -E -I"$PCRE/deps/sljit/sljit_src" -x c - > /dev/null 2>&1; then
+	JIT=OFF
+	echo "эталон PCRE2 собирается БЕЗ порождения машинного кода: sljit набору команд $(uname -m) не обучен" >&2
+fi
+
 if [ ! -f "$OUT/libpcre2-8.a" ]; then
 	echo "--- сборка эталона PCRE2 ($PROGRAM $GENERATOR)" >&2
 	mkdir -p "$OUT"
 	##
-	 # Порождение машинного кода у эталона включается НАРОЧНО
+	 # Порождение машинного кода у эталона включается НАРОЧНО всюду, где sljit его умеет
 	 #
 	 # Наш модуль сличается с эталоном на равных: у обоих оба способа исполнения.
 	 # Эталон без кода мерил бы разбор программы против нашего машинного кода, и
 	 # сличение обратилось бы в похвальбу
 	 ##
 	( cd "$OUT" && cmake "$PCRE" "$GENERATOR" -DCMAKE_MAKE_PROGRAM="$PROGRAM" -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
-	   -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_SUPPORT_JIT=ON \
+	   -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_SUPPORT_JIT=$JIT \
 	   -DPCRE2_BUILD_TESTS=OFF -DPCRE2_BUILD_PCRE2GREP=OFF > cmake.log 2>&1 \
 	  && $MAKE $JOBS > make.log 2>&1 ) || { echo "ОТКАЗ СБОРКИ эталона, смотрите $OUT/make.log и cmake.log" >&2; exit 1; }
 fi

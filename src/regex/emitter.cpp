@@ -1184,3 +1184,281 @@ bool awh::regex::Emitter::resolve() noexcept {
 }
 
 #endif // defined(__aarch64__) || defined(_M_ARM64)
+
+/**
+ * Если сборка выполняется для набора команд, порождению машинного кода не подлежащего
+ *
+ * @details Порождатель владеет двумя наборами команд - ARM64 и x86-64, - а прочие
+ *          (Эльбрус, RISC-V, POWER, MIPS, LoongArch) исполняются толкователями.
+ *          Метод «available» отвечает им отказом, и до порождения дело не доходит;
+ *          однако тела методов обязаны существовать и здесь: сопоставитель
+ *          зовёт их, и без тел библиотека не связывалась вовсе - отказ этот
+ *          вскрылся на процессоре Эльбрус, первом наборе команд третьем.
+ *
+ *          Всякая команда отмечает отказ порождения, а не пишет ничего молча:
+ *          вызов, прошедший мимо проверки «available», обязан обернуться
+ *          отказом, видимым через «failed», а не пустым кодом, годным с виду.
+ *
+ */
+#if !defined(__aarch64__) && !defined(_M_ARM64) && !defined(__x86_64__) && !defined(_M_X64)
+/**
+ * @brief Метод порождения пролога подпрограммы сопоставителя
+ *
+ * @param frame не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::prologue([[maybe_unused]] const uint32_t frame) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения эпилога подпрограммы сопоставителя
+ *
+ * @param frame не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::epilogue([[maybe_unused]] const uint32_t frame) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения входа во вложенную подпрограмму
+ *
+ * @param frame не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::enter([[maybe_unused]] const uint32_t frame) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения выхода из вложенной подпрограммы
+ *
+ * @param frame не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::leave([[maybe_unused]] const uint32_t frame) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения безусловного перехода
+ *
+ * @param label не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::jump([[maybe_unused]] const size_t label) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения перехода по условию
+ *
+ * @param cond не используется: порождение набору команд недоступно
+ * @param label не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::branch([[maybe_unused]] const cond_t cond, [[maybe_unused]] const size_t label) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения сравнения регистров
+ *
+ * @param first не используется: порождение набору команд недоступно
+ * @param second не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::compare([[maybe_unused]] const reg_t first, [[maybe_unused]] const reg_t second) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения сравнения регистра с постоянной
+ *
+ * @param reg не используется: порождение набору команд недоступно
+ * @param value не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::compare([[maybe_unused]] const reg_t reg, [[maybe_unused]] const uint32_t value) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения сложения с постоянной
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param source не используется: порождение набору команд недоступно
+ * @param value не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::add([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t source, [[maybe_unused]] const uint32_t value) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения вычитания постоянной
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param source не используется: порождение набору команд недоступно
+ * @param value не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::sub([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t source, [[maybe_unused]] const uint32_t value) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения пересылки регистра
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param source не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::move([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t source) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения загрузки постоянной
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param value не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::move([[maybe_unused]] const reg_t target, [[maybe_unused]] const uint64_t value) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения чтения байта по смещению
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param base не используется: порождение набору команд недоступно
+ * @param offset не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::load([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t base, [[maybe_unused]] const reg_t offset) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения чтения поля обстановки
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param index не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::context([[maybe_unused]] const reg_t target, [[maybe_unused]] const uint32_t index) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения чтения ячейки по индексу
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param base не используется: порождение набору команд недоступно
+ * @param index не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::fetch([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t base, [[maybe_unused]] const uint32_t index) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения записи ячейки по индексу
+ *
+ * @param source не используется: порождение набору команд недоступно
+ * @param base не используется: порождение набору команд недоступно
+ * @param index не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::store([[maybe_unused]] const reg_t source, [[maybe_unused]] const reg_t base, [[maybe_unused]] const uint32_t index) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения чтения ячейки по смещению в регистре
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param base не используется: порождение набору команд недоступно
+ * @param offset не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::fetch([[maybe_unused]] const reg_t target, [[maybe_unused]] const reg_t base, [[maybe_unused]] const reg_t offset) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения записи ячейки по смещению в регистре
+ *
+ * @param source не используется: порождение набору команд недоступно
+ * @param base не используется: порождение набору команд недоступно
+ * @param offset не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::store([[maybe_unused]] const reg_t source, [[maybe_unused]] const reg_t base, [[maybe_unused]] const reg_t offset) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения вызова подпрограммы по адресу
+ *
+ * @param reg не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::call([[maybe_unused]] const reg_t reg) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения вычисления адреса метки
+ *
+ * @param target не используется: порождение набору команд недоступно
+ * @param label не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::address([[maybe_unused]] const reg_t target, [[maybe_unused]] const size_t label) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения перехода по адресу в регистре
+ *
+ * @param reg не используется: порождение набору команд недоступно
+ *
+ */
+void awh::regex::Emitter::proceed([[maybe_unused]] const reg_t reg) noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения метки приземления перехода
+ *
+ */
+void awh::regex::Emitter::landing() noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод порождения возврата из подпрограммы
+ *
+ */
+void awh::regex::Emitter::ret() noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+}
+/**
+ * @brief Метод разрешения отложенных переходов
+ *
+ * @return результат разрешения: отказ, ибо порождение набору команд недоступно
+ *
+ */
+bool awh::regex::Emitter::resolve() noexcept {
+	// Отмечаем отказ порождения машинного кода
+	this->_failed = true;
+	// Выводим отказ разрешения отложенных переходов
+	return false;
+}
+
+#endif // !defined(__aarch64__) && !defined(_M_ARM64) && !defined(__x86_64__) && !defined(_M_X64)

@@ -620,19 +620,31 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод проверки поддержки порождения машинного кода сборкой
 				 *
-				 * @details Порождение выполнено для набора команд ARM64, поэтому
-				 *          сборки для прочих наборов команд его не получают.
-				 *          Отсутствие поддержки изъяном не является: сопоставление
-				 *          выполняется исполнением программы, как и прежде.
+				 * @details Порождение выполнено для наборов команд ARM64 и x86-64;
+				 *          сборки для прочих наборов (Эльбрус, RISC-V, POWER) его
+				 *          не получают. Отсутствие поддержки изъяном не является:
+				 *          сопоставление выполняется исполнением программы, как и прежде.
+				 *
+				 * @note На наборах без порождения методы команд существуют - без них
+				 *       сопоставитель не связывался бы, - но всякий из них лишь
+				 *       отмечает отказ, видимый через «failed», а «resolve» отвечает
+				 *       ложью. Вызов, прошедший мимо этой проверки, получает отказ,
+				 *       а не пустой код, годный с виду. Отказ этот вскрыт на
+				 *       процессоре Эльбрус, первом наборе команд третьем.
 				 *
 				 * @return результат проверки поддержки порождения машинного кода
 				 *
 				 * \~english
 				 * @brief Method of checking the support of machine code generation by the build
-				 * @details The generation is implemented for the ARM64 instruction set, therefore
-				 *          builds for the other instruction sets do not receive it.
+				 * @details The generation is implemented for the ARM64 and x86-64 instruction sets;
+				 *          builds for the other sets (Elbrus, RISC-V, POWER) do not receive it.
 				 *          The absence of the support is not a defect: the matching
 				 *          is performed by executing the program, as before.
+				 * @note On the sets without generation the instruction methods exist - without them
+				 *       the matcher would not link, - but each of them only marks a failure
+				 *       visible through «failed», and «resolve» answers false. A call that bypassed
+				 *       this check receives a failure rather than empty code that looks fit.
+				 *       The failure was uncovered on the Elbrus processor, the first third instruction set.
 				 * @return result of checking the support of machine code generation
 				 *
 				 * \~
