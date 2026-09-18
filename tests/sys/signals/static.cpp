@@ -557,9 +557,15 @@ TEST_F(SignalsFixture, CallbackSignalValueTest){
 	 * @warning Возврата из функции нет: она либо завершится сигналом, либо процесс
 	 *          выйдет из обработчика сигнала
 	 *
+	 * @note Атрибут ставится по ответу самого собирателя, а не по его имени: не
+	 *       всякий собиратель, выдающий себя за GCC, атрибут этот знает, а
+	 *       незнакомый он пропускает с предупреждением
+	 *
 	 */
-	#if defined(__clang__) || defined(__GNUC__)
-		__attribute__((no_sanitize("undefined")))
+	#if defined(__has_attribute)
+		#if __has_attribute(no_sanitize)
+			__attribute__((no_sanitize("undefined")))
+		#endif
 	#endif
 	static void segfault() noexcept {
 		// Формируем недопустимый указатель

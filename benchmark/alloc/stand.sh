@@ -7,7 +7,8 @@
 #
 # @author Yuriy Lobarev
 #
-# @brief Отдельный стенд замеров распределителя памяти — сличение нашего с системным
+# @brief Отдельный стенд замеров распределителя памяти — сличение нашего с системным и
+#        с соперниками, собранными из подмодулей AWH (jemalloc, gperftools)
 #
 # @details Собирается ДВЕ программы из ОДНОГО исходника: одна на нашем распределителе,
 #          другая на системном. Разница между ними одна - какой распределитель
@@ -90,165 +91,203 @@ head -40 "$OUT/sys.log"
 # Исходник тот же самый и ключи те же: разница ОДНА - какая библиотека обслуживает
 # выдачу. Соперники подменяют malloc-семейство собою при связывании, ровно как и мы у
 # систем ELF, оттого сборка их ничем не отличается от системной, кроме одной библиотеки
+##
+##
+# Соперники собираются ИЗ ПОДМОДУЛЕЙ AWH и только оттуда
 #
-# Соперника берём, лишь когда он на машине есть: перечень их у систем разный, а
-# требовать всех значило бы закрыть себе стенд. У FreeBSD, к слову, СИСТЕМНЫЙ
-# распределитель и ЕСТЬ jemalloc - отдельного пакета там нет вовсе, и это не пробел
+# Решено владельцем: наш распределитель собирается из дерева, и соперник обязан
+# собираться из того же дерева - из `submodules/`, рядом с зависимостями самого AWH.
+# Библиотека из системы - это ЧУЖАЯ сборка: иная версия, иные ключи, - и сличение с нею
+# мерило бы вдобавок разницу сборок. Прежде стенд перебирал системные каталоги и на
+# Эльбрусе подхватил системный jemalloc (18.09.2026). Поиска по системе здесь нет вовсе:
+# подмодуль не выложен либо не собрался - соперник пропускается с отчётом, без подмены
+#
+# Собирается КОПИЯ подмодуля в каталоге стенда: сам подмодуль остаётся нетронутым, а
+# заплаты переноса (`sh/patches/<имя>`) ложатся на копию
 ##
 RIVALS=""
+# Число ядер для сборки соперников
+JOBS=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)
 ##
-# Пути поиска библиотек соперников при ЗАПУСКЕ
+# Сборщик GNU
 #
-# Собраться мало: у NetBSD библиотеки лежат в /usr/pkg/lib, куда загрузчик сам не
-# смотрит, и собранная программа отвечает «Shared object not found» уже на запуске.
-# Ключ этот вписывает путь в саму программу
+# Makefile у jemalloc требует GNU make, а у систем BSD обычный `make` иной породы
 ##
+MAKE=make
+command -v gmake >/dev/null 2>&1 && MAKE=gmake
 ##
-# Пути ищутся И при СБОРКЕ, а не только при запуске
+# Ключи связывания статической библиотеки ЦЕЛИКОМ
 #
-# Прежде здесь стоял один `-rpath`, то есть путь для загрузчика, а искать библиотеку
-# при связывании собирателю было негде. Связывание при этом молча УДАВАЛОСЬ: `malloc` и
-# `free` есть в самой libc, и программа выходила без соперника вовсе - а столбец его в
-# отчёте показывал СИСТЕМНЫЙ распределитель под чужим именем
-#
-# Проверено на этой самой машине: `otool -L` у собранного стенда соперника показывал
-# один libSystem, а рядом лежала библиотека tcmalloc набора x86_64 при машине arm64.
-# Связыватель её отбрасывал предупреждением - не отказом, - и всё сходилось
+# Статическая библиотека отдаёт в программу лишь те части, на какие есть ссылки. У ELF
+# этого хватило бы - `malloc` определён в самой библиотеке соперника. Но у macOS
+# соперник встаёт на место зоны ОТКЛИКОМ ЗАГРУЗКИ, на какой не ссылается никто, и без
+# ключа выпал бы из программы молча. Берём библиотеку целиком всюду, одним порядком
 ##
-##
-# Каталоги соперников перебираются ПООДИНОЧКЕ, а не складываются в одну строку
-#
-# Складывать их нельзя по двум причинам, обе проверены на этой самой машине.
-#
-# Первая: без `-L` собиратель библиотеку не ищет вовсе, а связывание молча УДАЁТСЯ -
-# `malloc` и `free` есть в самой libc, и программа выходит без соперника. Столбец его
-# в отчёте показывал СИСТЕМНЫЙ распределитель под чужим именем, а `otool -L` у стенда
-# соперника - один libSystem. Так сличение с порогом велось не с тем, с кем задумано.
-#
-# Вторая: сложенные вместе каталоги ссорятся. Рядом лежала библиотека tcmalloc набора
-# x86_64 при машине arm64; связыватель встречал её первой, отбрасывал ПРЕДУПРЕЖДЕНИЕМ
-# и до годной библиотеки в соседнем каталоге не доходил. Оттого каждый каталог
-# пробуется сам по себе, и годным считается первый, чей соперник ДОКАЗАЛ обслуживание
-##
-DIRS=""
-for dir in /usr/pkg/lib /usr/local/lib /opt/homebrew/lib /opt/local/lib; do
-	[ -d "$dir" ] && DIRS="$DIRS $dir"
-done
-# Пустой каталог означает поиск по умолчанию: у большинства систем библиотека лежит там
-DIRS="_ $DIRS"
-##
-# Ищем соперников пробной сборкой, а не наличием файла
-#
-# Файл библиотеки может лежать без заголовков или быть неподходящего набора команд;
-# связывание отвечает на вопрос «годен ли он» окончательно
-##
-for rival in jemalloc tcmalloc_minimal; do
-	# Признак учёта, каким соперник доказывает обслуживание выдачи
-	SERVES=""
-	case "$rival" in
-		tcmalloc_minimal|tcmalloc) SERVES="tcmalloc" ;;
-		jemalloc) SERVES="jemalloc" ;;
+whole(){
+	case "$(uname -s)" in
+		Darwin) echo "-Wl,-force_load,$1" ;;
+		SunOS) echo "-Wl,-z,allextract $1 -Wl,-z,defaultextract" ;;
+		*) echo "-Wl,--whole-archive $1 -Wl,--no-whole-archive" ;;
 	esac
-	# Ключи связывания годного каталога
-	FOUND=""
+}
+##
+# Метод сборки jemalloc из подмодуля
+#
+# Отвечает путём статической библиотеки в ARCHIVE; отказ - кодом возврата
+##
+build_jemalloc(){
+	SRC="$ROOT/submodules/jemalloc"
+	WORK="$OUT/rival-jemalloc"
+	# Если подмодуль не выложен
+	[ -f "$SRC/configure.ac" ] || { echo "подмодуль не выложен: git submodule update --init submodules/jemalloc"; return 1; }
 	##
-	# Найденность отмечается ОТДЕЛЬНЫМ признаком, а не пустотой ключей
+	# Сценарий настройки порождается, лишь если его ещё нет
 	#
-	# Ключи годного каталога пусты, когда соперник лежит на пути поиска по умолчанию, -
-	# а так он лежит у большинства систем Linux. Судить о находке по пустоте строки
-	# значило бы объявлять «не доказано» именно там, где соперник и вправду обслуживает
-	# выдачу: обе пробы проходили, признак оставался пустым, и соперник отбрасывался.
-	# Проверено на Debian 12, где jemalloc и tcmalloc лежат в /usr/lib
+	# В подмодуле его нет: git хранит одно `configure.ac`. Но поклажа стенда везёт его
+	# уже порождённым, и тогда autoconf на машине не нужен - на 18.09.2026 он стоял у пяти
+	# стендов из четырнадцати. Порождённый сценарий переносим по самому своему назначению
 	##
-	SEIZED=""
+	[ -f "$SRC/configure" ] || command -v autoconf >/dev/null 2>&1 || { echo "нет autoconf"; return 1; }
+	mkdir -p "$WORK" && cp -R "$SRC" "$WORK/src" && rm -f "$WORK/src/.git" || return 1
 	##
-	# Перебираем каталоги ПООДИНОЧКЕ
+	# Версию пишем сами: у копии подмодуля нет своей истории, и настройка без неё
+	# сочинила бы 0.0.0
 	#
-	# Годным считается первый каталог, чей соперник прошёл все три испытания подряд:
-	# связался, запустился и ДОКАЗАЛ обслуживание выдачи. Первые два по отдельности
-	# ничего не значат - оба проходят и при библиотеке, не связанной вовсе
+	# Пишем её лишь при удаче: дерево, доставленное на стенд поклажей, истории не несёт
+	# вовсе, и перенаправление в файл затёрло бы пустотой уже лежащий там VERSION.
+	# Спрашиваем git лишь при `.git` в самом подмодуле: без него `git -C` поднялся бы к
+	# объемлющему хранилищу и описал бы ЧУЖУЮ историю
 	##
-	for dir in $DIRS; do
-		# Собираем ключи каталога: подчёркивание означает поиск по умолчанию
-		if [ "$dir" = "_" ]; then LINK=""; else LINK="-L$dir -Wl,-rpath,$dir"; fi
-		# Пробуем связаться с соперником из этого каталога
-		$CXX -std=c++17 -O2 $FLAGS $LINK -o "$OUT/probe-$rival" -x c++ - "-l$rival" > /dev/null 2>&1 <<-'PROBE' || continue
-		#include <cstdlib>
-		int main(){ void * one = ::malloc(64); ::free(one); return 0; }
-		PROBE
-		##
-		# Собраться мало - соперник обязан ЗАПУСТИТЬСЯ
-		#
-		# Программа, не нашедшая библиотеку при запуске, печатает пустоту, и свод по
-		# такому выводу отчитывается «соперника нет» вместо отказа
-		##
-		"$OUT/probe-$rival" > /dev/null 2>&1 || continue
-		##
-		# Запуститься мало - соперник обязан ДОКАЗАТЬ, что обслуживает выдачу
-		#
-		# Связывание само по себе не значит, что `malloc` достался сопернику: `malloc`
-		# и `free` есть в самой libc, и связывание УДАЁТСЯ даже тогда, когда библиотека
-		# соперника отброшена по несходству набора команд - предупреждением, не отказом.
-		# Проверено здесь же: `otool -L` у стенда соперника показывал один libSystem, а
-		# столбец в отчёте всё это время сличал нас с СИСТЕМНЫМ распределителем под
-		# чужим именем
-		#
-		# Доказательством служит УЧЁТ самого соперника: берём мегабайт обычным `malloc`
-		# и смотрим, вырос ли счёт занятого у него. Признак этот единственный надёжный.
-		# Проверено на трёх щупах: `dladdr` у `malloc` называет библиотеку, где имя
-		# ОПРЕДЕЛЕНО, а не ту, что его обслуживает, и всегда отвечает системной; а
-		# `malloc_zone_from_ptr` у macOS зовёт зоной «DefaultMallocZone» даже блоки
-		# самого tcmalloc. Оба щупа отвечали «соперник в стороне», и оба врали
-		##
-		[ -n "$SERVES" ] || { FOUND="$LINK"; SEIZED="да"; break; }
-		$CXX -std=c++17 -O2 $FLAGS $LINK -D"AWH_RIVAL_$SERVES" -o "$OUT/serves-$rival" -x c++ - "-l$rival" > "$OUT/serves-$rival.log" 2>&1 <<-'SERVE' || continue
-		#include <cstdlib>
-		#include <cstddef>
-		#if defined(AWH_RIVAL_tcmalloc)
-			extern "C" int MallocExtension_GetNumericProperty(const char *, size_t *);
-			static bool counted(size_t & value){ return (MallocExtension_GetNumericProperty("generic.current_allocated_bytes", &value) != 0); }
-		#else
-			extern "C" int mallctl(const char *, void *, size_t *, void *, size_t);
-			static bool counted(size_t & value){
-				unsigned long long epoch = 1; size_t span = sizeof(epoch);
-				mallctl("epoch", &epoch, &span, &epoch, span);
-				size_t size = sizeof(value);
-				return (mallctl("stats.allocated", &value, &size, nullptr, 0) == 0);
-			}
-		#endif
-		int main(){
-			size_t before = 0, after = 0;
-			if(!counted(before)) return 2;
-			void * blocks[256];
-			for(int i = 0; i < 256; i++) blocks[i] = ::malloc(4096);
-			if(!counted(after)) return 2;
-			for(int i = 0; i < 256; i++) ::free(blocks[i]);
-			return ((after - before) > 500000) ? 0 : 1;
+	VERSION=""
+	[ -e "$SRC/.git" ] && VERSION=$(git -C "$SRC" describe --long --abbrev=40 2>/dev/null)
+	[ -n "$VERSION" ] && echo "$VERSION" > "$WORK/src/VERSION"
+	##
+	# Наименьшее выравнивание задаётся ключом лишь там, где jemalloc его не знает
+	#
+	# У e2k перечень `quantum.h` отвечает `#error`; `max_align_t` там 16 байт, то есть
+	# 2^4. Прочим системам ключ не нужен: соперник собирается так, как задумал сам
+	##
+	QUANTUM=""
+	case "$(uname -m)" in e2k*) QUANTUM="--with-lg-quantum=4" ;; esac
+	# Префикс имён пуст: соперник обязан отвечать за сам `malloc`, как и мы
+	(cd "$WORK/src" && { [ -f configure ] || autoconf; } && ./configure --prefix="$WORK/root" --with-jemalloc-prefix= $QUANTUM && \
+	 $MAKE -j"$JOBS" build_lib_static) > "$WORK/build.log" 2>&1 || { echo "сборка не удалась: $WORK/build.log"; tail -5 "$WORK/build.log"; return 1; }
+	ARCHIVE="$WORK/src/lib/libjemalloc.a"
+	[ -f "$ARCHIVE" ]
+}
+##
+# Метод сборки tcmalloc (gperftools, часть minimal) из подмодуля
+#
+# Отвечает путём статической библиотеки в ARCHIVE; отказ - кодом возврата
+##
+build_tcmalloc(){
+	SRC="$ROOT/submodules/gperftools"
+	WORK="$OUT/rival-tcmalloc"
+	# Если подмодуль не выложен
+	[ -f "$SRC/CMakeLists.txt" ] || { echo "подмодуль не выложен: git submodule update --init submodules/gperftools"; return 1; }
+	# Если нечем собрать
+	command -v cmake >/dev/null 2>&1 || { echo "нет cmake"; return 1; }
+	mkdir -p "$WORK" && cp -R "$SRC" "$WORK/src" && rm -f "$WORK/src/.git" || return 1
+	##
+	# Заплата переноса: gperftools не знает строки кэша у e2k и отвечает `#error`
+	#
+	# Заплата лишь добавляет ветвь `__e2k__` и прочим системам ничего не меняет
+	##
+	(cd "$WORK/src" && git apply "$ROOT/sh/patches/gperftools/gperftools.patch") > "$WORK/build.log" 2>&1 || { echo "заплата не легла: $WORK/build.log"; return 1; }
+	(cmake -S "$WORK/src" -B "$WORK/build" -DCMAKE_BUILD_TYPE=Release -Dgperftools_build_minimal=ON \
+	 -DBUILD_SHARED_LIBS=OFF -Dgperftools_build_benchmark=OFF -DBUILD_TESTING=OFF && \
+	 cmake --build "$WORK/build" -j "$JOBS" --target tcmalloc_minimal) >> "$WORK/build.log" 2>&1 || { echo "сборка не удалась: $WORK/build.log"; tail -5 "$WORK/build.log"; return 1; }
+	ARCHIVE="$WORK/build/libtcmalloc_minimal.a"
+	##
+	# Служебная часть gperftools лежит ОТДЕЛЬНОЙ библиотекой
+	#
+	# Сборка через cmake выносит спин-замки, журнал и разбор окружения в `libcommon.a`, и
+	# статическому связыванию она нужна рядом с основной: без неё щуп учёта не связывался
+	# вовсе (`SpinLock::SlowUnlock`, `TCMallocGetenvSafe` не определены, macOS 18.09.2026)
+	##
+	COMMON="$WORK/build/libcommon.a"
+	[ -f "$ARCHIVE" ] && [ -f "$COMMON" ]
+}
+for rival in jemalloc tcmalloc_minimal; do
+	ARCHIVE=""
+	echo "--- соперник $rival: сборка из подмодуля"
+	case "$rival" in
+		jemalloc)
+			SERVES="jemalloc"
+			# Библиотеки, какие jemalloc зовёт сам
+			LIBS="-lm -lpthread"
+			[ "$(uname -s)" = "Linux" ] && LIBS="$LIBS -ldl"
+			build_jemalloc || { echo "--- соперник $rival: НЕ СОБРАН - пропущен"; continue; }
+		;;
+		tcmalloc_minimal)
+			SERVES="tcmalloc"
+			build_tcmalloc || { echo "--- соперник $rival: НЕ СОБРАН - пропущен"; continue; }
+			# Служебная часть gperftools и нити
+			LIBS="$COMMON -lpthread"
+		;;
+	esac
+	# Ключи связывания соперника
+	LINK="$(whole "$ARCHIVE") $LIBS"
+	##
+	# Собраться мало - соперник обязан ДОКАЗАТЬ, что обслуживает выдачу
+	#
+	# Связывание само по себе не значит, что `malloc` достался сопернику: `malloc` и
+	# `free` есть в самой libc, и связывание удаётся, даже когда часть соперника из
+	# программы выпала. Так уже было: столбец соперника долго сличал нас с СИСТЕМНЫМ
+	# распределителем под чужим именем (разобрано в COMPARISON.md, раздел «ОТЗЫВ»)
+	#
+	# Доказательством служит УЧЁТ самого соперника: берём мегабайт обычным `malloc` и
+	# смотрим, вырос ли счёт занятого у него. `dladdr` и `malloc_zone_from_ptr` для этого
+	# негодны - оба отвечали «соперник в стороне» и оба врали
+	##
+	##
+	# Язык сбрасывается `-x none` сразу за исходником со стандартного ввода
+	#
+	# `-x c++` действует на ВСЕ входные файлы следом, и статическая библиотека, поданная
+	# у ELF обычным входным файлом внутри `--whole-archive`, читалась бы как исходник C++:
+	# щуп не собирался, и соперник выходил «не доказанным» (Эльбрус, 18.09.2026). У macOS
+	# библиотека идёт доводом связывателя (`-force_load`), оттого там это не всплывало
+	##
+	$CXX -std=c++17 -O2 $FLAGS -D"AWH_RIVAL_$SERVES" -o "$OUT/serves-$rival" -x c++ - -x none $LINK > "$OUT/serves-$rival.log" 2>&1 <<-'SERVE'
+	#include <cstdlib>
+	#include <cstddef>
+	#if defined(AWH_RIVAL_tcmalloc)
+		extern "C" int MallocExtension_GetNumericProperty(const char *, size_t *);
+		static bool counted(size_t & value){ return (MallocExtension_GetNumericProperty("generic.current_allocated_bytes", &value) != 0); }
+	#else
+		extern "C" int mallctl(const char *, void *, size_t *, void *, size_t);
+		static bool counted(size_t & value){
+			unsigned long long epoch = 1; size_t span = sizeof(epoch);
+			mallctl("epoch", &epoch, &span, &epoch, span);
+			size_t size = sizeof(value);
+			return (mallctl("stats.allocated", &value, &size, nullptr, 0) == 0);
 		}
-		SERVE
-		# Соперник обязан ответить приростом учёта
-		"$OUT/serves-$rival" > /dev/null 2>&1 || continue
-		# Каталог годен: соперник доказал обслуживание
-		FOUND="$LINK"
-		SEIZED="да"
-		break
-	done
+	#endif
+	int main(){
+		size_t before = 0, after = 0;
+		if(!counted(before)) return 2;
+		void * blocks[256];
+		for(int i = 0; i < 256; i++) blocks[i] = ::malloc(4096);
+		if(!counted(after)) return 2;
+		for(int i = 0; i < 256; i++) ::free(blocks[i]);
+		return ((after - before) > 500000) ? 0 : 1;
+	}
+	SERVE
 	##
 	# Недоказанного соперника НЕ БЕРЁМ вовсе
 	#
 	# Столбец недоказанного соперника хуже отсутствия столбца: он выглядит сличением, а
-	# сличает нас с системным распределителем под чужим именем. Порог скорости по такому
-	# столбцу судить нельзя
+	# сличает нас неведомо с кем. Порог скорости по такому столбцу судить нельзя
 	##
-	if [ -z "$SEIZED" ]; then
-		echo "--- соперник $rival: обслуживание выдачи НЕ ДОКАЗАНО ни в одном каталоге - пропущен"
+	if ! "$OUT/serves-$rival" > /dev/null 2>&1; then
+		echo "--- соперник $rival: обслуживание выдачи НЕ ДОКАЗАНО - пропущен ($OUT/serves-$rival.log)"
 		continue
 	fi
 	RIVALS="$RIVALS $rival"
 	echo "--- соперник $rival: обслуживание выдачи ДОКАЗАНО учётом"
 	echo "--- сборка на сопернике: $rival"
-	$CXX -std=c++17 -O2 $NOBUILTIN $FLAGS -DAWH_BENCH_SYSTEM -I "$ROOT/include" \
-	 -o "$OUT/bench-$rival" "$ROOT/benchmark/alloc/stand.cpp" $FOUND "-l$rival" -lpthread \
+	$CXX -std=c++17 -O2 $NOBUILTIN $FLAGS -DAWH_BENCH_SYSTEM -DAWH_BENCH_RIVAL="\"$rival\"" -I "$ROOT/include" \
+	 -o "$OUT/bench-$rival" "$ROOT/benchmark/alloc/stand.cpp" $LINK \
 	 > "$OUT/$rival.log" 2>&1
 	head -40 "$OUT/$rival.log"
 done

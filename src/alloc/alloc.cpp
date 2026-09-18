@@ -2769,6 +2769,27 @@ namespace {
 #endif
 
 /**
+ * Спецификация исключений функций выдачи - та же, что у объявления системы
+ *
+ * Стандарт требует, чтобы ВСЕ объявления функции несли совместимую спецификацию
+ * исключений ([except.spec]). glibc объявляет семейство выдачи с `__THROW`, то есть в
+ * C++ - `noexcept(true)`, а определения без неё с ним расходятся. GCC прощает это
+ * молча, раз прежнее объявление лежит в системном заголовке; LCC у Эльбруса (передняя
+ * часть EDG) отвечает предупреждением #541 на каждое имя.
+ *
+ * Берём ИМЕННО `__THROW` самой библиотеки, а не пишем `noexcept`: он определён ровно
+ * там, где им объявлены эти функции, - у glibc любого набора команд, - и совпадает с
+ * объявлением буква в букву. Прочие библиотеки (macOS, BSD, musl, Solaris, Windows)
+ * объявляют выдачу без спецификации и `__THROW` не знают - у них определения остаются
+ * прежними. Выдача исключений не бросает вовсе, так что обещание верно по существу
+ */
+#if defined(__THROW)
+	#define AWH_ALLOC_THROW __THROW
+#else
+	#define AWH_ALLOC_THROW
+#endif
+
+/**
  * @brief Метод обнуления выдаваемого по настройке
  *
  * @note Заведён общим куском: обнулять обязана ВСЯКАЯ выдача, а не одна лишь `malloc`.
@@ -2818,7 +2839,7 @@ static AWH_ALLOC_INLINE void * blanked(void * result, const size_t from, const s
  * @return     адрес выданной памяти либо nullptr
  *
  */
-AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(malloc)(size_t size) {
+AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(malloc)(size_t size) AWH_ALLOC_THROW {
 	// Выдаём память требуемого размера, обнуляя её по настройке
 	return ::blanked(::reserve(size), 0, size);
 }
@@ -2828,7 +2849,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(malloc)(size_t size) {
  * @param ptr адрес освобождаемой памяти
  *
  */
-AWH_ALLOC_LINKAGE void AWH_ALLOC_HOOK(free)(void * ptr) {
+AWH_ALLOC_LINKAGE void AWH_ALLOC_HOOK(free)(void * ptr) AWH_ALLOC_THROW {
 	// Освобождаем память
 	::discard(ptr);
 }
@@ -2840,7 +2861,7 @@ AWH_ALLOC_LINKAGE void AWH_ALLOC_HOOK(free)(void * ptr) {
  * @return      адрес выданной памяти либо nullptr
  *
  */
-AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(calloc)(size_t count, size_t size) {
+AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(calloc)(size_t count, size_t size) AWH_ALLOC_THROW {
 	// Если считать нечего
 	if((count == 0) || (size == 0))
 		// Выдаём наименьший блок
@@ -2873,7 +2894,7 @@ AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(calloc)(size_t count, size_t size) {
  * @return     адрес выданной памяти либо nullptr
  *
  */
-AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) {
+AWH_ALLOC_LINKAGE void * AWH_ALLOC_HOOK(realloc)(void * ptr, size_t size) AWH_ALLOC_THROW {
 	/**
 	 * Если изменять нечего, выдаём память как это делает `malloc`
 	 *
@@ -3268,7 +3289,7 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 	 * @return          адрес выданной памяти либо nullptr
 	 *
 	 */
-	extern "C" void * memalign(size_t alignment, size_t size) {
+	extern "C" void * memalign(size_t alignment, size_t size) AWH_ALLOC_THROW {
 		// Выдаём память с требуемым выравниванием
 		return __awh_alloc_memalign__(alignment, size);
 	}
@@ -3316,7 +3337,7 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 		 * Имя у Linux и Solaris
 		 */
 		#if defined(__linux__) || ((defined(__sun__) || defined(__sun) || defined(sun)) && (defined(__SVR4) || defined(__svr4__)))
-			extern "C" size_t malloc_usable_size(void * ptr) {
+			extern "C" size_t malloc_usable_size(void * ptr) AWH_ALLOC_THROW {
 				// Выводим размер выданного блока
 				return __awh_alloc_usable__(ptr);
 			}
@@ -3324,7 +3345,7 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 		 * Имя у FreeBSD и DragonFly
 		 */
 		#else
-			extern "C" size_t malloc_size(const void * ptr) {
+			extern "C" size_t malloc_size(const void * ptr) AWH_ALLOC_THROW {
 				// Выводим размер выданного блока
 				return __awh_alloc_usable__(ptr);
 			}
@@ -3342,7 +3363,7 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 	 * @return          адрес выданной памяти либо nullptr
 	 *
 	 */
-	extern "C" void * aligned_alloc(size_t alignment, size_t size) {
+	extern "C" void * aligned_alloc(size_t alignment, size_t size) AWH_ALLOC_THROW {
 		// Выдаём память с требуемым выравниванием
 		return __awh_alloc_memalign__(alignment, size);
 	}
@@ -3355,7 +3376,7 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 	 * @return          нуль при успехе, иначе код ошибки
 	 *
 	 */
-	extern "C" int posix_memalign(void ** memptr, size_t alignment, size_t size) {
+	extern "C" int posix_memalign(void ** memptr, size_t alignment, size_t size) AWH_ALLOC_THROW {
 		// Если записывать некуда
 		if(memptr == nullptr)
 			// Отвечаем отказом
@@ -3387,7 +3408,7 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	extern "C" void * valloc(size_t size) {
+	extern "C" void * valloc(size_t size) AWH_ALLOC_THROW {
 		// Выдаём память, выровненную по странице системы
 		return __awh_alloc_memalign__(__awh_alloc_pagesize__(), size);
 	}
@@ -3398,7 +3419,7 @@ static void * __awh_alloc_memalign__(size_t alignment, size_t size) {
 	 * @return     адрес выданной памяти либо nullptr
 	 *
 	 */
-	extern "C" void * pvalloc(size_t size) {
+	extern "C" void * pvalloc(size_t size) AWH_ALLOC_THROW {
 		// Получаем размер страницы системы
 		const size_t grain = __awh_alloc_pagesize__();
 		/**

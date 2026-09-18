@@ -1,0 +1,14 @@
+diff --git a/src/base/basictypes.h b/src/base/basictypes.h
+index fc65de1..4cd363d 100644
+--- a/src/base/basictypes.h
++++ b/src/base/basictypes.h
+@@ -168,6 +168,9 @@ inline void bit_store(Dest* dest, const Source* source) {
+ #define CACHELINE_ALIGNED __attribute__((aligned(64)))
+ #elif defined(__sparcv9) || defined(__sparcv9__) || defined(__sparc_v9__)
+ #define CACHELINE_ALIGNED __attribute__((aligned(64)))
++#elif defined(__e2k__)
++#define CACHELINE_ALIGNED __attribute__((aligned(64)))
++// Elbrus (e2k): L1D line is 32 bytes, L2/L3 lines are 64 bytes; 64-byte aligned implies 32-byte aligned
+ #else
+ #error Could not determine cache line length - unknown architecture
+ #endif

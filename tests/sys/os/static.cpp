@@ -178,6 +178,11 @@ TEST_F(OSFixture, ArchitectureOSTest){
 			// Записываем в лог информацию о текущем прцоессоре
 			std::cout << "CPU: x86_64" << std::endl;
 		break;
+		// Если архитектура процессора принадлежит к Эльбрус
+		case static_cast <uint8_t> (awh::os_t::cpu_t::E2K):
+			// Записываем в лог информацию о текущем прцоессоре
+			std::cout << "CPU: E2K" << std::endl;
+		break;
 		// Если архитектура процессора не определена
 		case static_cast <uint8_t> (awh::os_t::cpu_t::UNKNOWN):
 			// Записываем в лог информацию о текущем прцоессоре

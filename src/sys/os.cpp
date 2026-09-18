@@ -1070,6 +1070,12 @@ awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcep
 		// Возвращаем определённую архитектуру процессора
 		return cpu_t::MIPS;
 	/**
+	 * Если процессор принадлежит к Эльбрус
+	 */
+	#elif defined(__e2k__)
+		// Возвращаем определённую архитектуру процессора
+		return cpu_t::E2K;
+	/**
 	 * Для остальных типов процессоров
 	 */
 	#else

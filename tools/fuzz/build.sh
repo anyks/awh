@@ -392,6 +392,14 @@ if [ "$CODEC" = "alloc" ]; then
 	 # отвечает задвоенным «Logging::print»
 	 #
 	FRAMEWORK=$(echo "$FRAMEWORK" | sed 's|src/sys/log\.cpp||')
+	##
+	 # Заведение ядра у ворошителя распределителя НАСТОЯЩЕЕ
+	 #
+	 # «src/sys/fmk.cpp» остаётся в перечне, и признак этот снимает пустую подпорку
+	 # «awh::fmk::initialize», какую ворошитель несёт для отдельной сборки по описанию.
+	 # Без признака связывание ответило бы задвоенным именем
+	 #
+	FUZZDEFS="-DAWH_FUZZ_FRAMEWORK"
 fi
 
 if [ "$(uname -s)" = "OpenBSD" ]; then
@@ -979,7 +987,7 @@ if [ "$CODEC_DIR" = "abc" ] || [ "$CODEC_DIR" = "cef" ] || [ "$CODEC_DIR" = "bri
 fi
 
 # Выполняем сборку самого ворошителя
-$COMPILER $OPTIONS -c "$ROOT/tools/fuzz/$CODEC.cpp" -o "$OUTPUT/fuzz.o"
+$COMPILER $OPTIONS $FUZZDEFS -c "$ROOT/tools/fuzz/$CODEC.cpp" -o "$OUTPUT/fuzz.o"
 
 # Выполняем связывание ворошителя
 $COMPILER $OPTIONS "$OUTPUT/fuzz.o" $OBJECTS $DEPEND $SYSTEM_LIBS $ZLIB -o "$OUTPUT/$CODEC-fuzz"
