@@ -3242,3 +3242,261 @@ TEST(Regex, EngineSolidRun) {
 		EXPECT_EQ(regex::probe_t::count(regex::path_t::SOLIDING), static_cast <uint64_t> (0));
 	}
 }
+
+/**
+ * @brief Проверка отказа по набору начальных байтов у привязанного выражения
+ *
+ * @details Выражение, к позиции начала поиска привязанное, совпадение начинает
+ *          лишь в ней, отчего байт в этой позиции, набору допустимых начальных
+ *          не принадлежащий, решает отказ целиком. Проверка стережёт обе стороны
+ *          решения: отказ там, где он законен, и его ОТСУТСТВИЕ там, где набор
+ *          неприменим. Вторая сторона важнее первой: набор неприменим ровно
+ *          тогда, когда совпадение способно не поглотить ни байта, и отказ,
+ *          туда внесённый, отбрасывал бы пустое совпадение молча.
+ *
+ */
+TEST(Regex, EngineAnchoredBarrier) {
+	/**
+	 * Выполняем проверку заведения учёта путей исполнения
+	 *
+	 * @details Отказ здесь намеренный: молчаливый пропуск проверки равен
+	 *          молчаливому отключению того, что она стережёт.
+	 *
+	 */
+	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	// Создаём объект движка регулярных выражений
+	regex::engine_t engine;
+	// Создаём набор границ совпадения
+	vector <pair <size_t, size_t>> captures;
+	/**
+	 * Выполняем проверку отказа по байту в позиции начала поиска
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, к началу текста привязанного
+		ASSERT_TRUE(engine.build("^(\\d{1,3})\\.(\\d{1,3})", 0, expression));
+		// Получаем текст сопоставления, цифрой не начинающийся
+		const string text = "GET /index.html HTTP/1.1";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		EXPECT_FALSE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку выполнения отказа по набору начальных байтов
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
+	}
+	/**
+	 * Выполняем проверку отсутствия отказа при байте, набору принадлежащем
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, к началу текста привязанного
+		ASSERT_TRUE(engine.build("^(\\d{1,3})\\.(\\d{1,3})", 0, expression));
+		// Получаем текст сопоставления, цифрой начинающийся
+		const string text = "192.168.001.100";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (3));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (7));
+		// Выполняем проверку отсутствия отказа по набору начальных байтов
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (0));
+	}
+	/**
+	 * Выполняем проверку выражения, способного не поглотить ни байта
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, совпадение пустое допускающего
+		ASSERT_TRUE(engine.build("^\\d*", 0, expression));
+		// Получаем текст сопоставления, цифрой не начинающийся
+		const string text = "GET /index.html";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		/**
+		 * Выполняем сопоставление выражения с текстом
+		 *
+		 * @details Совпадение пустое в позиции нулевой законно, и набор
+		 *          допустимых начальных байтов выражению этому неприменим:
+		 *          отказ по байту отбросил бы совпадение молча.
+		 *
+		 */
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (1));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (0));
+		// Выполняем проверку отсутствия отказа по набору начальных байтов
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (0));
+	}
+	/**
+	 * Выполняем проверку позиции поиска за концом текста
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		/**
+		 * Выполняем сборку выражения, к позиции начала поиска привязанного
+		 *
+		 * @details Класс, а не литерал: выражение с ведущим литералом до проверки
+		 *          этой не доходит вовсе - отказ устанавливает поиск литерала,
+		 *          исполнению с возвратом предшествующий.
+		 *
+		 */
+		ASSERT_TRUE(engine.build("\\G[0-9]+", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "abc";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		/**
+		 * Выполняем сопоставление выражения с позиции конца текста
+		 *
+		 * @details Совпадение поглощает байт, а поглощать за концом текста
+		 *          нечего: отказ решается тем же доводом, что и байтом чуждым.
+		 *
+		 */
+		EXPECT_FALSE(engine.exec(expression, text, text.size(), captures));
+		// Выполняем проверку выполнения отказа по набору начальных байтов
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::BARRING), static_cast <uint64_t> (1));
+	}
+}
+
+/**
+ * \~russian
+ * @brief Проверка продвижения ленивого ряда повторения
+ *
+ * @details Ленивое повторение, за которым стоит одиночный символ, продвигается
+ *          к ближайшему байту, продолжению пригодному, взамен возврата
+ *          в продолжение на каждом символе ряда. Закрепление ведётся учётом
+ *          пути «SLIDING»: продвижение вердикта не меняет, и отмена его
+ *          прошла бы молча, обнаружившись одним лишь замером.
+ *
+ * \~english
+ * @brief Lazy repetition run advance test
+ *
+ * @details A lazy repetition followed by a single character advances to the
+ *          nearest byte the continuation accepts instead of returning into the
+ *          continuation at every character of the run. It is pinned by the
+ *          "SLIDING" path count: the advance does not change the verdict, so
+ *          its removal would pass silently and show up only in a benchmark.
+ *
+ */
+TEST(Regex, EngineLazySlide) {
+	/**
+	 * Выполняем проверку заведения учёта путей исполнения
+	 *
+	 * @details Отказ здесь намеренный: молчаливый пропуск проверки равен
+	 *          молчаливому отключению того, что она стережёт.
+	 *
+	 */
+	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	// Создаём объект движка регулярных выражений
+	regex::engine_t engine;
+	// Создаём набор границ совпадения
+	vector <pair <size_t, size_t>> captures;
+	/**
+	 * Выполняем проверку продвижения ряда любых символов
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения с ленивым рядом любых символов
+		ASSERT_TRUE(engine.build(".*?needle", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "haystack haystack needle here";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (1));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, text.find("needle") + 6);
+		// Выполняем проверку выполнения продвижения ленивого ряда
+		EXPECT_GE(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (1));
+	}
+	/**
+	 * Выполняем проверку остановки продвижения символом, телу чуждым
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения с ленивым рядом символов класса
+		ASSERT_TRUE(engine.build("[a-c]*?d", 0, expression));
+		/**
+		 * Получаем текст сопоставления, ряд разрывающий
+		 *
+		 * @details Искомый байт лежит за символом «x», телу повторения
+		 *          чуждым: продвижение обязано остановиться на нём, а не
+		 *          перешагнуть его следом за поиском байта. Иначе совпадение
+		 *          вышло бы от позиции нулевой взамен четвёртой.
+		 *
+		 */
+		const string text = "abcxd";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (1));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (4));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (5));
+		// Выполняем проверку выполнения продвижения ленивого ряда
+		EXPECT_GE(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (1));
+	}
+	/**
+	 * Выполняем проверку неприменимости продвижения при безразличии к написанию
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, к написанию безразличного
+		ASSERT_TRUE(engine.build("(?i).*?x", 0, expression));
+		// Получаем текст сопоставления в написании прописном
+		const string text = "ABCX";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (1));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (4));
+		/**
+		 * Выполняем проверку отсутствия продвижения ленивого ряда
+		 *
+		 * @details Продолжение, к написанию безразличное, принимает два байта,
+		 *          а продвижение ведётся поиском одного: применимость его
+		 *          выписана с порождателя кода дословно, и расхождение путей
+		 *          дало бы совпадения разные у разбора и у машинного кода.
+		 *
+		 */
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (0));
+	}
+	/**
+	 * Выполняем проверку неприменимости продвижения при продолжении классом
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения с продолжением классом символов
+		ASSERT_TRUE(engine.build(".*?[0-9]", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "abc7";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (1));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (4));
+		// Выполняем проверку отсутствия продвижения ленивого ряда
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (0));
+	}
+}

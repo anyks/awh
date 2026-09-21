@@ -518,6 +518,47 @@ namespace awh {
 					 */
 					Table() noexcept : modes(0), bytes{} {}
 				} table_t;
+				/**
+				 * \~russian
+				 * @brief Разрешение таблицы принадлежности байтов классу символов
+				 *
+				 * @details Разрешение ведёт адрес таблицы вместе с набором режимов,
+				 *          при каком та построена, и служит прямым путём от номера
+				 *          класса к таблице: набор таблиц ведётся номерами, и путь
+				 *          через него - цепочка обращений зависимых, задержкой памяти
+				 *          ограниченная. Адрес действителен, покуда набор таблиц
+				 *          не перемещался: обновляются разрешения целиком и ровно
+				 *          там, где таблица заводится.
+				 *
+				 * \~english
+				 * @brief Resolution of the byte belonging table of a character class
+				 * @details A resolution carries the address of the table together with the set
+				 *          of modes it was built with, and serves as a direct way from the number
+				 *          of the class to the table: the set of tables is kept by numbers, and
+				 *          the way through it is a chain of dependent references bounded by the
+				 *          latency of the memory. The address is valid as long as the set of tables
+				 *          has not moved: the resolutions are updated as a whole and exactly where
+				 *          a table is set up.
+				 *
+				 * \~
+				 */
+				typedef struct Lookup {
+					// Набор режимов, при каком построена таблица
+					uint32_t modes;
+					// Адрес таблицы принадлежности значений байта классу
+					const uint8_t * bytes;
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Lookup() noexcept : modes(0), bytes(nullptr) {}
+				} lookup_t;
 			private:
 				// Исполняемая программа регулярного выражения
 				const program_t * _program;
@@ -755,6 +796,26 @@ namespace awh {
 				 * \~
 				 */
 				vector <table_t> _tables;
+			private:
+				/**
+				 * \~russian
+				 * Разрешения таблиц принадлежности байтов по номерам классов
+				 *
+				 * @details Набор служит прямым путём от номера класса к таблице его.
+				 *          Ведётся он рядом с набором номеров, а не взамен его:
+				 *          номера переживают перемещение набора таблиц, адреса же
+				 *          нет, и восстановление адресов идёт именно по номерам.
+				 *
+				 * \~english
+				 * Resolutions of the byte belonging tables by the numbers of the classes
+				 * @details The set serves as a direct way from the number of a class to its table.
+				 *          It is kept next to the set of numbers rather than instead of it:
+				 *          the numbers survive a move of the set of tables, whereas the addresses
+				 *          do not, and the restoration of the addresses goes exactly by the numbers.
+				 *
+				 * \~
+				 */
+				vector <lookup_t> _lookup;
 			private:
 				// Набор точек возврата исполнения программы
 				vector <point_t> _points;
@@ -1307,6 +1368,30 @@ namespace awh {
 				 * \~
 				 */
 				const uint8_t * table(const instruction_t & instruction) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод построения таблицы принадлежности байтов классу символов
+				 *
+				 * @details Метод заводит таблицу классу, её не имеющему, строит её обходом
+				 *          пространства значений байта и обновляет набор разрешений целиком.
+				 *          Вынесен он из «table» отдельно затем, чтобы путь частый - выдача
+				 *          таблицы разрешённой - остался коротким и встраиваемым.
+				 *
+				 * @param instruction инструкция класса символов, повторением проходимого
+				 * @return            таблица принадлежности значений байта классу
+				 *
+				 * \~english
+				 * @brief Method of building the byte belonging table of a character class
+				 * @details The method sets up a table for a class that has none, builds it by
+				 *          walking the space of the byte values and updates the set of resolutions
+				 *          as a whole. It is separated out of «table» so that the frequent path —
+				 *          issuing a resolved table — stays short and inlinable.
+				 * @param instruction instruction of the character class walked by a repetition
+				 * @return            table of the belonging of the byte values to the class
+				 *
+				 * \~
+				 */
+				const uint8_t * tabulate(const instruction_t & instruction) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод проверки принадлежности символа классу символов

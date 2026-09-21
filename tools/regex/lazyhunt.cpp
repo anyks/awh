@@ -180,22 +180,38 @@ int main(int argc, char ** argv) {
 		const string & text;
 		size_t repeats;
 	} SCENARIOS[] = {
-		{"lazy-short",           "\\w+?@\\w+?\\.",     shortText(), 20000},
-		{"lazy-dotstar",         ".*?needle",          longText(),     40},
-		{"region-capture-heavy", "(?:(\\w+) )+forman", heavyText(),  1000},
-		{"backref-heavy",        "(\\w+) \\1",         heavyText(), 20000},
 		{"address-absent",       "^(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})$", shortText(), 40000},
+		{"digits-short",         "[0-9]{3,5}",         shortText(), 40000},
+		{"digits-long",          "[0-9]{3,5}",         longText(),    200},
+		{"region-medium",        "(?:[a-z]+/)+v1",     mediumText(), 40000},
+		{"request-short",        "(?m)^(GET|POST) (\\S+) HTTP/(\\d)\\.(\\d)\\r?$", shortText(), 40000},
+		{"address-short",        "(?m)^Host: (\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\r?$", shortText(), 40000},
+		{"region-varied-long",   "(?:[a-z]+ )+dog",    longText(),   4000},
 		{"captures-medium",      "(\\w+)@(\\w+)\\.(\\w+)", mediumText(), 20000},
-		{"captures-poss",       "(\\w++)@(\\w++)\\.(\\w+)", mediumText(), 20000},
-		{"region-heavy-poss",   "(?:(\\w++) )+forman", heavyText(),  1000},
-		{"backref-poss",        "(\\w++) \\1",         heavyText(), 20000}
+		{"region-lazy-long",     "(?:[a-z]+ )+?dog",   longText(),   4000},
+		{"lazy-short",           "\\w+?@\\w+?\\.",     shortText(), 20000},
+		{"region-capture-heavy", "(?:(\\w+) )+forman", heavyText(),  1000},
+		{"backref-heavy",        "(\\w+) \\1",         heavyText(), 20000}
 	};
-	// Набор имён путей исполнения
+
+	/**
+	 * Набор имён путей исполнения
+	 *
+	 * @details Длина набора обязана равняться «path_t::COUNT»: недостача
+	 *          одного имени валит щуп разбором пустого указателя, и находка
+	 *          эта принадлежит самому щупу, а не измеряемому модулю
+	 *
+	 */
 	static const char * PATHS[] = {
 		"JITTED", "PLAIN", "SEEKING", "CACHING", "PIKING", "TRACKING",
 		"BOUNDING", "PRESUMING", "DENYING", "VERIFYING", "SWEEPING",
-		"HALTING", "REUSING", "SUBSETTING", "TABULATING", "PROBING", "LINING", "SOLIDING"
+		"HALTING", "REUSING", "SUBSETTING", "TABULATING", "PROBING",
+		"LINING", "SOLIDING", "BARRING", "SLIDING"
 	};
+	static_assert(
+		(sizeof(PATHS) / sizeof(PATHS[0])) == static_cast <size_t> (awh::regex::path_t::COUNT),
+		"перечень имён путей исполнения разошёлся с перечислением «path_t»"
+	);
 	/**
 	 * Если щупу задано имя сценария, выполняем долгий прогон под снятие образцов стека
 	 */

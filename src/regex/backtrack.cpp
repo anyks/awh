@@ -535,6 +535,45 @@ void awh::regex::Backtrack::rollback(const size_t mark) noexcept {
  *
  */
 const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) noexcept {
+	// Получаем номер класса символов, повторяемого инструкцией
+	const uint32_t index = instruction.charclass.index;
+	/**
+	 * Если таблица классу символов уже разрешена
+	 *
+	 * @details Разрешение идёт набором указателей по номеру класса - двумя
+	 *          обращениями к памяти подряд, - взамен прежней цепочки из шести
+	 *          обращений зависимых: размер хранилища классов через программу,
+	 *          размер набора номеров, номер таблицы, адрес набора таблиц, набор
+	 *          режимов таблицы. Цепочка та упиралась в задержку памяти, а не
+	 *          в объём работы, и снятие образцов стека показало на «[0-9]{3,5}»
+	 *          четырнадцать сотых всего времени сопоставления.
+	 *
+	 *          Набор режимов сличается наравне с наличием: он входит в ключ
+	 *          таблицы, и разрешение, его не поверяющее, выдало бы таблицу,
+	 *          при режиме ином построенную.
+	 *
+	 */
+	if(static_cast <size_t> (index) < this->_lookup.size()) {
+		// Получаем разрешение таблицы класса символов
+		const lookup_t & resolved = this->_lookup[index];
+		/**
+		 * Если разрешение таблицы действительно
+		 */
+		if((resolved.bytes != nullptr) && (resolved.modes == instruction.flags))
+			// Выводим таблицу принадлежности значений байта классу
+			return resolved.bytes;
+	}
+	// Выводим таблицу принадлежности, построением её разрешив
+	return this->tabulate(instruction);
+}
+/**
+ * @brief Метод построения таблицы принадлежности байтов классу символов
+ *
+ * @param instruction инструкция класса символов, повторением проходимого
+ * @return            таблица принадлежности значений байта классу
+ *
+ */
+const uint8_t * awh::regex::Backtrack::tabulate(const instruction_t & instruction) noexcept {
 	/**
 	 * @brief Таблица класса, хранилищу классов не принадлежащего
 	 *
@@ -572,6 +611,8 @@ const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) 
 			this->_tables.clear();
 			// Выполняем сброс номеров таблиц по номерам классов
 			this->_indexes.assign(this->_indexes.size(), INVALID_ADDRESS);
+			// Выполняем сброс разрешений таблиц по номерам классов
+			this->_lookup.clear();
 		}
 		// Выполняем установку номера таблицы класса символов
 		this->_indexes[index] = static_cast <uint32_t> (this->_tables.size());
@@ -606,6 +647,33 @@ const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) 
 			result.bytes[i] = (belongs(value, i, instruction.flags) ? 1 : 0);
 		// Выполняем установку набора режимов построенной таблицы
 		result.modes = instruction.flags;
+	}
+	/**
+	 * Выполняем обновление набора разрешений таблиц целиком
+	 *
+	 * @details Разрешения ведутся адресами таблиц, а набор таблиц при заведении
+	 *          очередной перемещается в памяти: обновить одно разрешение мало -
+	 *          прочие после перемещения указывали бы в память освобождённую.
+	 *          Обход этот приходится на заведение таблицы, случающееся однажды
+	 *          на класс, тогда как разрешение зовётся на каждом символе.
+	 *
+	 */
+	this->_lookup.assign(this->_indexes.size(), lookup_t());
+	/**
+	 * Выполняем обход набора номеров таблиц по номерам классов
+	 */
+	for(size_t i = 0; i < this->_indexes.size(); i++) {
+		/**
+		 * Если таблица классу символов заведена
+		 */
+		if(this->_indexes[i] != INVALID_ADDRESS) {
+			// Получаем таблицу принадлежности байтов классу символов
+			const table_t & table = this->_tables[this->_indexes[i]];
+			// Выполняем установку набора режимов, при каком построена таблица
+			this->_lookup[i].modes = table.modes;
+			// Выполняем установку адреса таблицы принадлежности байтов
+			this->_lookup[i].bytes = table.bytes;
+		}
 	}
 	// Выводим таблицу принадлежности значений байта классу
 	return result.bytes;
@@ -1629,6 +1697,8 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 * Если продвижение ленивого ряда применимо
 						 */
 						if(this->advance(instruction, moved, reached)) {
+							// Выполняем учёт продвижения ленивого ряда
+							AWH_REGEX_TICK(path_t::SLIDING);
 							/**
 							 * Учитываем пройденные символы ряда в объёме работы сопоставления
 							 *
@@ -2681,6 +2751,8 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		this->_identity = program.id;
 		// Выполняем отмену номеров таблиц принадлежности байтов классам
 		this->_indexes.clear();
+		// Выполняем сброс разрешений таблиц по номерам классов
+		this->_lookup.clear();
 		// Выполняем отмену таблиц принадлежности байтов классам
 		this->_tables.clear();
 	}
