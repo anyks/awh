@@ -95,7 +95,7 @@ TEST_F(FmkFixture, DomainZoneFmkTest){
 	// Тестируем установку доменных зон
 	awh::fmk::domainZones({"anyks", "google", "yandex"});
 	// Добавляем новую доменную зону
-	awh::fmk::domainZone("goga");
+	awh::fmk::domainZone("demo");
 	// Добавляем ещё одну доменную зону
 	ASSERT_EQ(4, awh::fmk::domainZones().size());
 	/**
@@ -103,7 +103,7 @@ TEST_F(FmkFixture, DomainZoneFmkTest){
 	 */
 	for(auto & zone : awh::fmk::domainZones())
 		// Проверяем что доменная зона установлена корректно
-		ASSERT_TRUE((zone.compare("goga") == 0) || (zone.compare("anyks") == 0) || (zone.compare("google") == 0) || (zone.compare("yandex") == 0));
+		ASSERT_TRUE((zone.compare("demo") == 0) || (zone.compare("anyks") == 0) || (zone.compare("google") == 0) || (zone.compare("yandex") == 0));
 }
 
 /**

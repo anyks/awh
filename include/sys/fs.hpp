@@ -485,8 +485,7 @@ namespace awh {
 			 *       дерева о чистых заголовочных файлах. Порядок этот важен не только видом:
 			 *       `windows.h` приносит макросы `ERROR`, `DELETE`, `TEXT`, и, стой включение
 			 *       в заголовке, они расходились бы по всякому кодеку, его включившему. В
-			 *       исходнике же они заперты одной единицей трансляции. Указал на это владелец
-			 *       кодеков INI, YAML и TOML
+			 *       исходнике же они заперты одной единицей трансляции
 			 *
 			 * @note Снос целевого файла перед `rename()` был бы способом более простым, но
 			 *       НЕВЕРНЫМ: между сносом и переименованием целевого файла не существует
@@ -521,7 +520,7 @@ namespace awh {
 			 *       about pure header files. This order is important not only in appearance:
 			 *       `windows.h` brings the macros `ERROR`, `DELETE`, `TEXT`, and if included in the header,
 			 *       they would diverge for any codec that included it. In the source code,
-			 *       they are locked in one translation unit. The owner of the INI, YAML and TOML codecs pointed this out
+			 *       they are locked in one translation unit
 			 *
 			 * @note Demolishing the target file before `rename()` would be a simpler method, but it is WRONG:
 			 *       between demolition and renaming, the target file does not exist at all,

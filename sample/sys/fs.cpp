@@ -81,8 +81,8 @@ int32_t main(){
 	// Устанавливаем владельца на файл
 	// fs.chown("../README.md", "forman", "staff");
 	// Создаём каталог
-	cout << " !!! Create Dir: " << fs.mkdir("../data/test/goga") << endl;
-	// cout << " !!! Create Dir: " << fs.mkdir("../data/test/goga", "forman", "staff") << endl;
+	cout << " !!! Create Dir: " << fs.mkdir("../data/test/sample") << endl;
+	// cout << " !!! Create Dir: " << fs.mkdir("../data/test/sample", "forman", "staff") << endl;
 	// Удаляем каталог по адресу
 	cout << " !!! Remove Dir: " << fs.unlink("../data") << endl;
 	// Извлекаем название и расширение файла

@@ -67,8 +67,8 @@ FRAMEWORK="src/sys/log.cpp src/sys/chrono.cpp src/sys/fmk.cpp src/net/nwt.cpp
 	src/alloc/capture/elf.cpp src/alloc/capture/mach.cpp src/alloc/capture/pe.cpp
 	src/num/lexical/table.cpp"
 [ "$SYS" = OpenBSD ] && FRAMEWORK="$(echo "$FRAMEWORK" | sed 's|src/alloc/alloc\.cpp||') src/alloc/capture/obsd.cpp"
-# «src/codec/replace.cpp» из перечня СНЯТ: владелец перенёс подмену целевого файла в
-# «sys/fs» ходом replaceAddress и удалил модуль после перехода всех кодеков. Перечень
+# «src/codec/replace.cpp» из перечня СНЯТ: подмена целевого файла перенесена в
+# «sys/fs» ходом replaceAddress, а модуль удалён после перехода всех кодеков. Перечень
 # частей у стенда ведётся вручную, и удалённый файл остался бы в нём молча - стенд
 # отказал бы на сборке, а причина выглядела бы поломкой кода
 CODEC="src/codec/numeric.cpp src/codec/bridge.cpp"

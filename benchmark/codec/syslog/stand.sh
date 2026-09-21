@@ -153,7 +153,7 @@ $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/log.cpp" -o "$OUTPUT/s
 #
 #
 # @note Модуль «sys/fs» опирается на сведения о системе - розыск пользователя и группы
-#       для смены владельца, - и без «src/sys/os.cpp» связывание отказывает на
+#       для смены владельца файла, - и без «src/sys/os.cpp» связывание отказывает на
 #       `awh::Operating_System::group`. Третьей стороны тот не тянет
 #
 $COMPILER $OPTIONS -Wno-c++11-narrowing -c "$ROOT/src/sys/os.cpp" -o "$OUTPUT/sys-os.o"
