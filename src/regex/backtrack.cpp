@@ -346,7 +346,7 @@ namespace {
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
+ _program(nullptr), _start(0), _attempt(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
 /**
  * @brief Метод установки допустимого объёма работы сопоставления
  *
@@ -356,6 +356,26 @@ awh::regex::Backtrack::Backtrack() noexcept :
 void awh::regex::Backtrack::budget(const size_t budget) noexcept {
 	// Выполняем установку допустимого объёма работы сопоставления
 	this->_budget = ((budget < this->_ceiling) ? budget : this->_ceiling);
+}
+/**
+ * @brief Метод установки наибольшего числа попыток сопоставления
+ *
+ * @param horizon наибольшее число попыток сопоставления
+ *
+ */
+void awh::regex::Backtrack::horizon(const size_t horizon) noexcept {
+	// Выполняем установку наибольшего числа попыток сопоставления
+	this->_horizon = horizon;
+}
+/**
+ * @brief Метод извлечения признака прекращения пределом числа попыток
+ *
+ * @return признак прекращения сопоставления пределом числа попыток
+ *
+ */
+bool awh::regex::Backtrack::bounded() const noexcept {
+	// Выводим признак прекращения сопоставления пределом числа попыток
+	return this->_bounded;
 }
 /**
  * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
@@ -580,6 +600,40 @@ const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) 
 	return result.bytes;
 }
 /**
+ * @brief Метод проверки принадлежности символа классу символов
+ *
+ * @param instruction инструкция класса символов
+ * @param code        проверяемое кодовое значение символа
+ * @return            результат проверки принадлежности символа классу
+ *
+ */
+bool awh::regex::Backtrack::member(const instruction_t & instruction, const uint32_t code) noexcept {
+	/**
+	 * Если кодовое значение в один байт не укладывается
+	 *
+	 * @details Таблица покрывает двести пятьдесят шесть первых кодовых значений -
+	 *          ровно те, которые вне режима разбора UTF-8 и встречаются. Значение
+	 *          большее приходит лишь разбором UTF-8 и проверяется вычислением:
+	 *          построение таблицы на всю область Юникода обошлось бы дороже
+	 *          всякой выгоды, а таблица частичная давала бы отказ ложный.
+	 *
+	 */
+	if(code >= 0x100)
+		// Выводим результат принадлежности символа классу символов вычислением
+		return belongs(this->_program->charclass(instruction.charclass.index), code, instruction.flags);
+	/**
+	 * Выводим результат принадлежности символа классу символов по таблице
+	 *
+	 * @details Прежде здесь стояло вычисление принадлежности на каждом символе -
+	 *          обход диапазонов класса и свойств Юникода подряд, - тогда как ряд
+	 *          повторения того же класса шёл по таблице. Снятие образцов стека
+	 *          показало, что на выражении «\w+?@\w+?\.» вычисление это занимает
+	 *          двадцать восемь сотых всего времени сопоставления.
+	 *
+	 */
+	return (this->table(instruction)[code] != 0);
+}
+/**
  * @brief Метод сопоставления символа одиночной инструкцией
  *
  * @param instruction сопоставляющая инструкция программы
@@ -588,7 +642,7 @@ const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) 
  * @return            результат сопоставления символа инструкцией
  *
  */
-bool awh::regex::Backtrack::single(const instruction_t & instruction, const size_t pos, size_t & width) const noexcept {
+bool awh::regex::Backtrack::single(const instruction_t & instruction, const size_t pos, size_t & width) noexcept {
 	// Выполняем установку длины сопоставленного символа
 	width = 1;
 	/**
@@ -619,7 +673,7 @@ bool awh::regex::Backtrack::single(const instruction_t & instruction, const size
 		// Выполняем сопоставление символа из класса символов
 		case static_cast <uint8_t> (opcode_t::CLASS):
 			// Выводим результат принадлежности символа классу символов
-			return belongs(this->_program->charclass(instruction.charclass.index), code, instruction.flags);
+			return this->member(instruction, code);
 		/**
 		 * Выполняем сопоставление любого символа
 		 */
@@ -1979,7 +2033,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							 */
 							case static_cast <uint8_t> (opcode_t::CLASS):
 								// Выполняем проверку принадлежности символа классу символов
-								matched = belongs(this->_program->charclass(instruction.charclass.index), code, instruction.flags);
+								matched = this->member(instruction, code);
 							break;
 							/**
 							 * Выполняем сопоставление любого символа
@@ -2308,6 +2362,21 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	// Выполняем восстановление предельного объёма работы сопоставления
 	this->_budget = this->_ceiling;
 	/**
+	 * Выполняем установку действующего предела числа попыток
+	 *
+	 * @details Предел, вызывающей стороною установленный, действует на одно
+	 *          сопоставление и снимается по его принятии - тем же порядком,
+	 *          каким принимается объём работы.
+	 *
+	 */
+	const size_t horizon = this->_horizon;
+	// Выполняем снятие предела числа попыток
+	this->_horizon = string_view::npos;
+	// Выполняем сброс признака прекращения пределом числа попыток
+	this->_bounded = false;
+	// Количество выполненных попыток сопоставления
+	size_t probes = 0;
+	/**
 	 * Если выражение задаёт предел шагов сопоставления своим указанием
 	 *
 	 * @details Предел, выражением заданный указанием «(*LIMIT_MATCH=N)», предел
@@ -2382,6 +2451,51 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	this->_control = 0;
 	this->_failing = string_view::npos;
 	/**
+	 * Определяем применимость проверки возможности совпадения по литералу
+	 *
+	 * @details Проверка применима лишь при удалении неограниченном: удаление
+	 *          ограниченное даёт отбор позиционный, самою позицию продвигающий,
+	 *          и проверка при нём излишня.
+	 *
+	 */
+	const bool checking = (!bound && !program.prefilter.literal.empty() &&
+	 (program.prefilter.distance == string_view::npos));
+	/**
+	 * Позиция вхождения обязательного литерала, попытками ещё не пройденного
+	 *
+	 * @details Прежде проверка возможности совпадения выполнялась на КАЖДОЙ
+	 *          позиции попытки, а проходит она остаток текста до конца: проход
+	 *          по тексту оказывался вложен в проход по позициям, и стоимость
+	 *          росла квадратом длины текста. Сам заголовок отбора о том и
+	 *          говорит - проба ближнего участка заведена там из расчёта, что
+	 *          проверка выполняется «единожды на сопоставление».
+	 *
+	 *          Ныне запоминается место вхождения литерала, и покуда попытки его
+	 *          не прошли, ответ проверки известен наперёд. Розыск повторяется
+	 *          лишь по прохождении вхождения, отчего проходы по тексту
+	 *          складываются в один, а ранний отказ сохраняется в точности:
+	 *          отсутствие литерала правее позиции попытки по-прежнему
+	 *          прекращает сопоставление немедля.
+	 *
+	 */
+	size_t required = string_view::npos;
+	/**
+	 * Если проверка возможности совпадения по литералу применима
+	 */
+	if(checking) {
+		// Выполняем поиск обязательного литерала в оставшемся тексте
+		required = seek(text, program.prefilter.literal, pos);
+		/**
+		 * Если обязательный литерал в оставшемся тексте отсутствует
+		 */
+		if(required == string_view::npos) {
+			// Выполняем учёт отказа по проверке возможности совпадения
+			AWH_REGEX_TICK(path_t::DENYING);
+			// Выводим результат поиска совпадения
+			return false;
+		}
+	}
+	/**
 	 * Выполняем обход позиций начала попытки сопоставления
 	 */
 	while(true) {
@@ -2444,11 +2558,27 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			 *          он лишь проверке возможности совпадения.
 			 *
 			 */
-			} else if(!program.prefilter.possible(text, pos)) {
-				// Выполняем учёт отказа по проверке возможности совпадения
-				AWH_REGEX_TICK(path_t::DENYING);
-				// Выводим результат поиска совпадения
-				return false;
+			/**
+			 * Если попытки вхождение обязательного литерала прошли
+			 *
+			 * @details Покуда вхождение лежит правее позиции попытки, совпадение
+			 *          возможно, и розыск повторять незачем: ответ известен
+			 *          наперёд. Место установки вхождения и довод в пользу
+			 *          такого порядка - выше, при заведении «required».
+			 *
+			 */
+			} else if(checking && (pos > required)) {
+				// Выполняем повторный поиск обязательного литерала в остатке текста
+				required = seek(text, program.prefilter.literal, pos);
+				/**
+				 * Если обязательный литерал в оставшемся тексте отсутствует
+				 */
+				if(required == string_view::npos) {
+					// Выполняем учёт отказа по проверке возможности совпадения
+					AWH_REGEX_TICK(path_t::DENYING);
+					// Выводим результат поиска совпадения
+					return false;
+				}
 			}
 		}
 		/**
@@ -2475,6 +2605,29 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 				return false;
 			// Переходим к позиции возможного начала совпадения
 			pos = candidate;
+		}
+		/**
+		 * Если число попыток предел исчерпало
+		 *
+		 * @details Отказ этот отсутствием совпадения НЕ является: совпадение,
+		 *          началом лежащее дальше, остаётся неиспытанным, и вызывающая
+		 *          сторона обязана обратиться к способу запасному. Отличается он
+		 *          признаком, а не кодом ошибки: код ошибки принадлежит договору
+		 *          движка и вида поиска не касается.
+		 *
+		 *          Считаются именно ПОПЫТКИ, а не пройденные позиции: отбор
+		 *          по обязательному литералу перешагивает через текст целыми
+		 *          участками, и предел по позициям отнимал бы у него ровно то,
+		 *          ради чего он заведён. Замером на «(?:HT|TP)/1» с длинным
+		 *          текстом предел по позициям давал 0.58, предел по попыткам -
+		 *          сорок три.
+		 *
+		 */
+		if(probes++ >= horizon) {
+			// Выполняем установку признака прекращения пределом числа попыток
+			this->_bounded = true;
+			// Выводим результат поиска совпадения
+			return false;
 		}
 		/**
 		 * Выполняем сброс набора позиций захвата групп

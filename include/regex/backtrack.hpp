@@ -584,6 +584,29 @@ namespace awh {
 				 */
 				size_t _ceiling;
 			private:
+				/**
+				 * \~russian
+				 * Наибольшее число попыток сопоставления
+				 *
+				 * @details Предел действует на одно последующее сопоставление и служит
+				 *          вызывающей стороне, располагающей запасным способом: поиск,
+				 *          предел исчерпавший, прекращается, а отказ отмечается особо -
+				 *          отсутствием совпадения он не является.
+				 *
+				 * \~english
+				 * Largest number of matching attempts
+				 * @details The limit acts on one subsequent match and serves
+				 *          a calling side that has a fallback way at its disposal: the search
+				 *          that has exhausted the limit is stopped, while the failure is marked specially —
+				 *          it is not an absence of a match.
+				 *
+				 * \~
+				 */
+				size_t _horizon;
+			private:
+				// Признак прекращения сопоставления пределом числа попыток
+				bool _bounded;
+			private:
 				// Действующий объём работы текущего сопоставления
 				size_t _limit;
 			private:
@@ -941,7 +964,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				bool single(const instruction_t & instruction, const size_t pos, size_t & width) const noexcept;
+				bool single(const instruction_t & instruction, const size_t pos, size_t & width) noexcept;
 			public:
 				/**
 				 * \~russian
@@ -969,6 +992,66 @@ namespace awh {
 				 * \~
 				 */
 				void budget(const size_t budget) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод установки наибольшего числа попыток сопоставления
+				 *
+				 * @details Предел действует на одно последующее сопоставление, после
+				 *          которого снимается. Требуется он вызывающей стороне, желающей
+				 *          испытать исполнение с возвратом малою ценой, не платя за проход
+				 *          всего текста: совпадение, столькими попытками не найденное,
+				 *          отыскивается способом запасным.
+				 *
+				 *          Считаются попытки, а не позиции: отбор по обязательному литералу
+				 *          перешагивает через текст целыми участками, и предел по позициям
+				 *          отнимал бы у него ровно то, ради чего он заведён.
+				 *
+				 *          Предел этот НЕ равнозначен объёму работы: объём ограничивает
+				 *          шаги, а одна попытка способна пройти весь текст единственным
+				 *          повторением, отчего оба предела и ставятся вместе.
+				 *
+				 * @param horizon наибольшее число попыток сопоставления
+				 *
+				 * \~english
+				 * @brief Method of setting the largest number of matching attempts
+				 * @details The limit acts on one subsequent match, after which
+				 *          it is removed. It is required by a calling side that wishes
+				 *          to try the execution with backtracking at a small price without paying for
+				 *          a pass over the whole text: a match not found in that many attempts
+				 *          is located by the fallback way.
+				 *          The attempts are counted rather than the positions: the selection by the mandatory literal
+				 *          steps over whole stretches of the text, and a limit by the positions
+				 *          would take away from it exactly what it is introduced for.
+				 *          This limit is NOT equivalent to the amount of work: the amount bounds
+				 *          the steps, while a single attempt is able to pass over the whole text by a single
+				 *          repetition, which is why both limits are set together.
+				 * @param horizon largest number of matching attempts
+				 *
+				 * \~
+				 */
+				void horizon(const size_t horizon) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения признака прекращения пределом числа попыток
+				 *
+				 * @details Признак отличает отказ по пределу числа попыток от отсутствия
+				 *          совпадения: первый требует запасного способа, второй
+				 *          окончателен.
+				 *
+				 * @return признак прекращения сопоставления пределом числа попыток
+				 *
+				 * \~english
+				 * @brief Method of getting the indication of a stop by the limit of the attempts
+				 * @details The indication distinguishes a failure by the limit of the attempts from an absence
+				 *          of a match: the first requires the fallback way, the second
+				 *          is final.
+				 * @return indication of a stop of the matching by the limit of the attempts
+				 *
+				 * \~
+				 */
+				bool bounded() const noexcept;
 			public:
 				/**
 				 * \~russian
@@ -1224,6 +1307,32 @@ namespace awh {
 				 * \~
 				 */
 				const uint8_t * table(const instruction_t & instruction) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод проверки принадлежности символа классу символов
+				 *
+				 * @details Значение, в один байт укладывающееся, проверяется таблицей,
+				 *          а значение большее - вычислением: таблица покрывает лишь
+				 *          двести пятьдесят шесть первых кодовых значений, а сложение
+				 *          её на всю область Юникода стоило бы больше всякой выгоды.
+				 *
+				 * @param instruction инструкция класса символов
+				 * @param code        проверяемое кодовое значение символа
+				 * @return            результат проверки принадлежности символа классу
+				 *
+				 * \~english
+				 * @brief Method of checking the belonging of a character to a character class
+				 * @details A value that fits into a single byte is checked by the table, while
+				 *          a greater value is checked by computation: the table covers only
+				 *          the first two hundred and fifty six code values, and building it
+				 *          for the whole Unicode area would cost more than any gain.
+				 * @param instruction instruction of the character class
+				 * @param code        checked code value of the character
+				 * @return            result of the check of the belonging of the character to the class
+				 *
+				 * \~
+				 */
+				bool member(const instruction_t & instruction, const uint32_t code) noexcept;
 			public:
 				/**
 				 * \~russian

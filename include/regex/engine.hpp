@@ -300,6 +300,72 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Наибольшая длина текста, при какой проход детерминированного исполнения излишен
+		 *
+		 * @details Детерминированное исполнение устанавливает НАЛИЧИЕ совпадения
+		 *          и позицию его завершения, а границы устанавливает исполнение
+		 *          с возвратом, проходящее текст заново: на длинном тексте первый
+		 *          проход окупается - он отсекает отказ многократно дешевле, - а
+		 *          на коротком он чистый накладной расход. Замером на тексте в сто
+		 *          пять байтов получено: проход детерминированного исполнения
+		 *          занимал 171 наносекунду из 473 на выражении
+		 *          «(?m)^[A-Za-z0-9-]+: .+$».
+		 *
+		 * \~english
+		 * @brief Largest length of the text at which the pass of the deterministic execution is superfluous
+		 * @details The deterministic execution establishes the PRESENCE of a match
+		 *          and the position of its end, while the boundaries are established by the execution
+		 *          with backtracking, which walks the text anew: on a long text the first
+		 *          pass pays off — it rejects a failure many times cheaper — while
+		 *          on a short one it is a pure overhead. Measurement on a text of one hundred
+		 *          and five bytes yielded: the pass of the deterministic execution
+		 *          took 171 nanoseconds out of 473 on the «(?m)^[A-Za-z0-9-]+: .+$» expression.
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_DIRECT = 0x100;
+
+		/**
+		 * \~russian
+		 * @brief Наибольшее число попыток пробы исполнением с возвратом
+		 *
+		 * @details Проба испытывает исполнение с возвратом прежде прохода
+		 *          детерминированного исполнения, и цена её обязана оставаться
+		 *          малой долей того прохода: текст, порога длины превышающий,
+		 *          отдаётся пробе не целиком, а числом попыток. Считаются именно
+		 *          попытки: отбор по обязательному литералу перешагивает через
+		 *          текст целыми участками, и предел по позициям отнимал бы у него
+		 *          ровно то, ради чего он заведён - замером на «(?:HT|TP)/1»
+		 *          с длинным текстом предел по позициям давал долю 0.58, предел
+		 *          по попыткам - сорок четыре.
+		 *
+		 *          Текст, порога длины не превышающий, пробе отдаётся целиком:
+		 *          предел попыток оборвал бы его на половине, и совпадение,
+		 *          лежащее к концу короткого текста, стоило бы двух проходов
+		 *          вместо одного.
+		 *
+		 * \~english
+		 * @brief Largest number of attempts of the probe by execution with backtracking
+		 * @details The probe tries the execution with backtracking before the pass
+		 *          of the deterministic execution, and its price is bound to remain
+		 *          a small share of that pass: a text exceeding the length threshold
+		 *          is given to the probe not as a whole but by a number of attempts. The attempts
+		 *          are what is counted: the selection by the mandatory literal steps over
+		 *          whole stretches of the text, and a limit by the positions would take away from it
+		 *          exactly what it is introduced for — measurement on «(?:HT|TP)/1»
+		 *          with a long text gave a ratio of 0.58 for the limit by the positions and
+		 *          forty four for the limit by the attempts.
+		 *          A text not exceeding the length threshold is given to the probe as a whole:
+		 *          the limit of the attempts would break it off halfway, and a match
+		 *          lying towards the end of a short text would cost two passes
+		 *          instead of one.
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_PROBES = 0x40;
+
+		/**
+		 * \~russian
 		 * @brief Отношение допустимого объёма работы исполнения с возвратом к его оценке
 		 *
 		 * @details Объём работы исполнения с возвратом, не прибегающего к перебору,
