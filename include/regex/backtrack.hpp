@@ -290,6 +290,30 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Наибольшее количество таблиц принадлежности байтов классам
+		 *
+		 * @details Таблица заводится на каждый класс, пройденный повторением, и живёт
+		 *          до смены программы. Программа надстройки Grok несёт классов десятки
+		 *          тысяч, и без предела таблицы её заняли бы мегабайты на каждый
+		 *          объект исполнения. По достижении предела таблицы сбрасываются
+		 *          разом, как сбрасывается кэш состояний детерминированного исполнения:
+		 *          предел держит память, а выражение обычное его не достигает вовсе.
+		 *
+		 * \~english
+		 * @brief Largest number of the byte belonging tables of the classes
+		 * @details A table is set up for every class walked by a repetition, and lives
+		 *          until the program changes. A program of the Grok extension carries tens
+		 *          of thousands of classes, and without a limit its tables would take
+		 *          megabytes for every execution object. Upon reaching the limit the tables
+		 *          are reset all at once, as the state cache of the deterministic execution is:
+		 *          the limit bounds the memory, while an ordinary expression never reaches it.
+		 *
+		 * \~
+		 */
+		constexpr size_t MAX_TABLES = 0x400;
+
+		/**
+		 * \~russian
 		 * @brief Класс исполнения регулярного выражения с возвратом
 		 *
 		 * @details Класс исполняет программу единственным состоянием, сохраняя точки
@@ -461,6 +485,40 @@ namespace awh {
 					Change() noexcept : slot(0), value(0) {}
 				} change_t;
 			private:
+				/**
+				 * \~russian
+				 * @brief Таблица принадлежности значений байта классу символов
+				 *
+				 * @details Набор режимов хранится вместе с таблицей: принадлежность
+				 *          зависит от режима сопоставления без учёта регистра наравне
+				 *          с самим классом.
+				 *
+				 * \~english
+				 * @brief Table of the belonging of the byte values to a character class
+				 * @details The set of modes is kept together with the table: the belonging
+				 *          depends on the case-insensitive matching mode on a par with
+				 *          the class itself.
+				 *
+				 * \~
+				 */
+				typedef struct Table {
+					// Набор режимов, при каком построена таблица
+					uint32_t modes;
+					// Принадлежность значений байта классу символов
+					uint8_t bytes[0x100];
+					/**
+					 * \~russian
+					 * @brief Конструктор
+					 *
+					 *
+					 * \~english
+					 * @brief Constructor
+					 *
+					 * \~
+					 */
+					Table() noexcept : modes(0), bytes{} {}
+				} table_t;
+			private:
 				// Исполняемая программа регулярного выражения
 				const program_t * _program;
 			private:
@@ -622,36 +680,58 @@ namespace awh {
 				// Действующая вложенность исполнений программы
 				size_t _nested;
 			private:
+				// Опознание программы, для какой построены таблицы принадлежности байтов
+				uint64_t _identity;
+			private:
 				/**
 				 * \~russian
-				 * Класс символов, для какого построена таблица принадлежности байтов
+				 * Номера таблиц принадлежности байтов по номерам классов программы
 				 *
-				 * @details Проход ряда повторения обращается к одному и тому же классу
-				 *          на каждом символе, поэтому таблица удерживается для последнего
-				 *          встреченного класса. Набор режимов сохраняется вместе с ним:
-				 *          принадлежность зависит от режима сопоставления без учёта
-				 *          регистра наравне с самим классом.
+				 * @details Номер «INVALID_ADDRESS» означает, что таблица классу ещё
+				 *          не заведена. Набор растёт до наибольшего номера класса,
+				 *          пройденного повторением, а не до числа классов программы:
+				 *          сброс его при смене программы обходится без обхода.
 				 *
 				 * \~english
-				 * The character class the byte belonging table is built for
-				 * @details Walking a run of a repetition refers to one and the same class
-				 *          at every character, therefore the table is held for the last
-				 *          encountered class. The set of modes is kept together with it:
-				 *          the belonging depends on the case-insensitive matching mode
-				 *          on a par with the class itself.
+				 * Numbers of the byte belonging tables by the numbers of the classes of the program
+				 * @details The number «INVALID_ADDRESS» means that no table has been set up for
+				 *          the class yet. The set grows up to the largest number of a class
+				 *          walked by a repetition rather than to the number of classes of the
+				 *          program: resetting it on a change of the program needs no walk.
 				 *
 				 * \~
 				 */
-				uint32_t _member;
+				vector <uint32_t> _indexes;
 			private:
-				// Набор режимов, при каком построена таблица принадлежности байтов
-				uint32_t _modes;
-			private:
-				// Опознание программы, для какой построена таблица принадлежности байтов
-				uint64_t _identity;
-			private:
-				// Таблица принадлежности значений байта классу символов
-				uint8_t _bytes[0x100];
+				/**
+				 * \~russian
+				 * Таблицы принадлежности байтов классам, пройденным повторением
+				 *
+				 * @details Таблица заводится на КАЖДЫЙ класс, а не одна на класс последний
+				 *          встреченный. Повторение «(?:[a-z]+/)+» компиляция разворачивает
+				 *          в два вхождения класса, и всякое вхождение заводит собственную
+				 *          запись набора классов. Таблица одна перестраивалась тогда при
+				 *          каждом переходе между вхождениями - по 256 разборов класса
+				 *          на перестройку, дважды за сопоставление, - и это давало 92%
+				 *          времени сопоставления. Сличение толкователя с толкователем
+				 *          эталона PCRE2 показало долю 0.04 на таком выражении, 0.59
+				 *          с таблицей на каждый класс.
+				 *
+				 * \~english
+				 * Byte belonging tables of the classes walked by a repetition
+				 * @details A table is set up for EVERY class rather than one for the last encountered
+				 *          class. The compilation unrolls the repetition «(?:[a-z]+/)+» into two
+				 *          occurrences of the class, and every occurrence sets up its own record
+				 *          of the set of classes. A single table was then rebuilt at every
+				 *          transition between the occurrences — 256 class evaluations per
+				 *          rebuild, twice per match, — and that took 92% of the matching time.
+				 *          Comparing the interpreter with the interpreter of the PCRE2 reference
+				 *          showed the ratio of 0.04 on such an expression, 0.59 with a table
+				 *          for every class.
+				 *
+				 * \~
+				 */
+				vector <table_t> _tables;
 			private:
 				// Набор точек возврата исполнения программы
 				vector <point_t> _points;
@@ -1123,6 +1203,27 @@ namespace awh {
 				 * \~
 				 */
 				void rollback(const size_t mark) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения таблицы принадлежности байтов классу символов
+				 *
+				 * @details Таблица строится при первом обращении к классу и удерживается
+				 *          до смены программы, а при смене набора режимов перестраивается.
+				 *
+				 * @param instruction инструкция класса символов, повторением проходимого
+				 * @return            таблица принадлежности значений байта классу
+				 *
+				 * \~english
+				 * @brief Method of getting the byte belonging table of a character class
+				 * @details The table is built on the first reference to the class and is held
+				 *          until the program changes, while a change of the set of modes rebuilds it.
+				 * @param instruction instruction of the character class walked by a repetition
+				 * @return            table of the belonging of the byte values to the class
+				 *
+				 * \~
+				 */
+				const uint8_t * table(const instruction_t & instruction) noexcept;
 			public:
 				/**
 				 * \~russian

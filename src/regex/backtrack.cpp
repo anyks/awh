@@ -346,10 +346,7 @@ namespace {
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _member(INVALID_ADDRESS), _modes(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {
-	// Выполняем сброс таблицы принадлежности значений байта классу символов
-	::memset(this->_bytes, 0, sizeof(this->_bytes));
-}
+ _program(nullptr), _start(0), _attempt(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
 /**
  * @brief Метод установки допустимого объёма работы сопоставления
  *
@@ -498,6 +495,89 @@ void awh::regex::Backtrack::rollback(const size_t mark) noexcept {
 		// Выполняем удаление изменения отметки из журнала
 		this->_remarks.pop_back();
 	}
+}
+/**
+ * @brief Метод извлечения таблицы принадлежности байтов классу символов
+ *
+ * @param instruction инструкция класса символов, повторением проходимого
+ * @return            таблица принадлежности значений байта классу
+ *
+ */
+const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) noexcept {
+	/**
+	 * @brief Таблица класса, хранилищу классов не принадлежащего
+	 *
+	 */
+	static const uint8_t stray[0x100] = {};
+	// Получаем номер класса символов, повторяемого инструкцией
+	const uint32_t index = instruction.charclass.index;
+	/**
+	 * Если номер класса символов хранилищу классов не принадлежит
+	 *
+	 * @details Обзор такого класса пуст и ни одного байта не принимает: так
+	 *          отвечает «charclass», последний заслон от записи поддельной.
+	 *          Набор номеров таблиц на такой номер не расширяется намеренно:
+	 *          номер из поддельной записи расширил бы его до миллиардов ячеек.
+	 *
+	 */
+	if(static_cast <size_t> (index) >= this->_program->classes.size())
+		// Выводим таблицу класса, не принимающего ни одного байта
+		return stray;
+	/**
+	 * Если номер класса выходит за пределы набора номеров таблиц
+	 */
+	if(static_cast <size_t> (index) >= this->_indexes.size())
+		// Выполняем расширение набора номеров таблиц до номера класса
+		this->_indexes.resize(static_cast <size_t> (index) + 1, INVALID_ADDRESS);
+	/**
+	 * Если таблица классу символов не заведена
+	 */
+	if(this->_indexes[index] == INVALID_ADDRESS) {
+		/**
+		 * Если количество заведённых таблиц достигло предела
+		 */
+		if(this->_tables.size() >= MAX_TABLES) {
+			// Выполняем сброс заведённых таблиц
+			this->_tables.clear();
+			// Выполняем сброс номеров таблиц по номерам классов
+			this->_indexes.assign(this->_indexes.size(), INVALID_ADDRESS);
+		}
+		// Выполняем установку номера таблицы класса символов
+		this->_indexes[index] = static_cast <uint32_t> (this->_tables.size());
+		// Выполняем заведение таблицы класса символов
+		this->_tables.emplace_back();
+		// Выполняем установку набора режимов, заведомо иного: таблица строится ниже
+		this->_tables.back().modes = ~instruction.flags;
+	}
+	// Получаем таблицу класса символов
+	table_t & result = this->_tables[this->_indexes[index]];
+	/**
+	 * Если таблица построена при ином наборе режимов либо не построена вовсе
+	 *
+	 * @details Набор режимов входит в ключ таблицы наравне с классом. Ныне каждое
+	 *          вхождение класса в выражение заводит собственную запись набора
+	 *          классов, отчего один класс с разными режимами не встречается, и
+	 *          перестройка по смене режимов не достижима. Она сохранена как условие
+	 *          правильности: объединение одинаковых классов в одну запись сделало
+	 *          бы её единственной защитой.
+	 *
+	 */
+	if(result.modes != instruction.flags) {
+		// Выполняем учёт построения таблицы принадлежности байтов классу
+		AWH_REGEX_TICK(path_t::TABULATING);
+		// Получаем класс символов, повторяемый инструкцией
+		const classview_t value = this->_program->charclass(index);
+		/**
+		 * Выполняем обход пространства значений байта
+		 */
+		for(uint32_t i = 0; i < 0x100; i++)
+			// Выполняем установку принадлежности значения байта классу
+			result.bytes[i] = (belongs(value, i, instruction.flags) ? 1 : 0);
+		// Выполняем установку набора режимов построенной таблицы
+		result.modes = instruction.flags;
+	}
+	// Выводим таблицу принадлежности значений байта классу
+	return result.bytes;
 }
 /**
  * @brief Метод сопоставления символа одиночной инструкцией
@@ -1046,47 +1126,23 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						 * Если ряд состоит из символов класса вне режима разбора UTF-8
 						 */
 						if((repeated.type == opcode_t::CLASS) && !hasFlag(this->_program->flags, flag_t::UTF)) {
-							// Получаем класс символов, повторяемый инструкцией
-							const classview_t value = this->_program->charclass(repeated.charclass.index);
 							/**
-							 * Если таблица принадлежности байтов построена для иного класса
+							 * Получаем таблицу принадлежности байтов классу символов
 							 *
 							 * @details Проход ряда обращается к одному классу на каждом
 							 *          символе, тогда как принадлежность байта классу
 							 *          выводится обходом набора его диапазонов и набора
 							 *          свойств Юникода. Таблица заменяет обход единственным
-							 *          обращением и удерживается до смены класса.
+							 *          обращением и удерживается до смены программы.
 							 *
 							 */
-							if((this->_member != repeated.charclass.index) || (this->_modes != repeated.flags)) {
-								/**
-								 * @details Набор режимов входит в ключ таблицы наравне
-								 *          с классом. Ныне каждое вхождение класса
-								 *          в выражение заводит собственную запись набора
-								 *          классов, отчего один класс с разными режимами
-								 *          не встречается, и проверка эта не достижима.
-								 *          Она сохранена как условие правильности:
-								 *          объединение одинаковых классов в одну запись
-								 *          сделало бы её единственной защитой.
-								 *
-								 */
-								/**
-								 * Выполняем обход пространства значений байта
-								 */
-								for(uint32_t i = 0; i < 0x100; i++)
-									// Выполняем установку принадлежности значения байта классу
-									this->_bytes[i] = (belongs(value, i, repeated.flags) ? 1 : 0);
-								// Выполняем установку класса символов построенной таблицы
-								this->_member = repeated.charclass.index;
-								// Выполняем установку набора режимов построенной таблицы
-								this->_modes = repeated.flags;
-							}
+							const uint8_t * bytes = this->table(repeated);
 							// Получаем адрес начала текста сопоставления
 							const char * source = this->_text.data();
 							/**
 							 * Выполняем проход ряда подходящих символов
 							 */
-							while((passed < size) && (this->_bytes[static_cast <uint8_t> (source[passed])] != 0))
+							while((passed < size) && (bytes[static_cast <uint8_t> (source[passed])] != 0))
 								// Переходим к следующей позиции текста сопоставления
 								passed++;
 							// Выполняем установку количества пройденных символов ряда
@@ -2218,17 +2274,20 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	/**
 	 * Если исполняется программа, отличная от исполненной ранее
 	 *
-	 * @details Таблица принадлежности байтов удерживается по адресу класса символов,
-	 *          а набор классов принадлежит программе, поэтому адрес освобождённого
-	 *          класса способен совпасть с адресом класса иной программы. Смена
-	 *          программы таблицу отменяет, что такое совпадение исключает.
+	 * @details Таблицы принадлежности байтов удерживаются по номерам классов символов,
+	 *          а набор классов принадлежит программе, поэтому номер класса одной
+	 *          программы совпадает с номером класса иной. Смена программы таблицы
+	 *          отменяет, что такое совпадение исключает. Размещение наборов при этом
+	 *          сохраняется: чередование выражений памяти заново не выделяет.
 	 *
 	 */
 	if((this->_program != &program) || (this->_identity != program.id)) {
 		// Выполняем установку опознания исполняемой программы
 		this->_identity = program.id;
-		// Выполняем отмену таблицы принадлежности значений байта классу символов
-		this->_member = INVALID_ADDRESS;
+		// Выполняем отмену номеров таблиц принадлежности байтов классам
+		this->_indexes.clear();
+		// Выполняем отмену таблиц принадлежности байтов классам
+		this->_tables.clear();
 	}
 	// Выполняем установку исполняемой программы регулярного выражения
 	this->_program = &program;
