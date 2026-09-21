@@ -893,6 +893,40 @@ namespace awh {
 			bool anchored;
 			/**
 			 * \~russian
+			 * Признак выражения, привязанного к началу строки
+			 *
+			 * @details Выражение начинается привязкой, выполнимой лишь в начале
+			 *          строки, поэтому попытка сопоставления в позиции иной
+			 *          заведомо отказывает. Обход позиций начала попытки
+			 *          пропускает такие позиции разом, не разбирая программы:
+			 *          на тексте из четырёх строк попыток выходит четыре
+			 *          вместо ста пяти.
+			 *
+			 *          Признак этот с признаком привязки к позиции начала поиска
+			 *          не совпадает: тот означает единственную попытку, а этот -
+			 *          попытки в позициях, числом ограниченных. Выражение,
+			 *          привязанное к началу поиска, несёт оба, и обход позиций
+			 *          разбирает сперва привязку.
+			 *
+			 * \~english
+			 * Indication of an expression anchored to the beginning of a line
+			 * @details The expression begins with an anchor that can hold only at the beginning
+			 *          of a line, therefore a matching attempt at any other position
+			 *          fails for certain. Walking the positions of the beginning of an attempt
+			 *          skips such positions at once without taking the program apart:
+			 *          on a text of four lines there are four attempts
+			 *          instead of a hundred and five.
+			 *          This indication does not coincide with the indication of the anchoring to the position
+			 *          where the search starts: that one means a single attempt, while this one means
+			 *          attempts at positions limited in number. An expression
+			 *          anchored to the beginning of the search carries both, and the walk over the positions
+			 *          takes the anchoring apart first.
+			 *
+			 * \~
+			 */
+			bool startline;
+			/**
+			 * \~russian
 			 * @brief Конструктор
 			 *
 			 *
@@ -901,7 +935,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Program() noexcept : id(0), captures(0), cells(0), flags(0), steps(~0u), depth(~0u), heap(~0u), newline(newline_t::LF), marker(~0u), plain(false), sweeping(false), anchored(false) {}
+			Program() noexcept : id(0), captures(0), cells(0), flags(0), steps(~0u), depth(~0u), heap(~0u), newline(newline_t::LF), marker(~0u), plain(false), sweeping(false), anchored(false), startline(false) {}
 			/**
 			 * \~russian
 			 * @brief Метод извлечения обзора класса символов программы

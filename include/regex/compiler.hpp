@@ -1003,8 +1003,15 @@ namespace awh {
 				 *          позиции совпадения не ограничивающие, обходятся насквозь,
 				 *          а сброс начала совпадения обход прекращает.
 				 *
+				 *          Признак «lines» переводит разбор с привязки к позиции начала
+				 *          поиска на привязку к началу строки: привязка «^» тогда
+				 *          подтверждается и в режиме «MULTILINE», а привязка к началу
+				 *          попытки «\\G» - напротив, отвергается, ибо позиция начала
+				 *          поиска началом строки быть не обязана.
+				 *
 				 * @param id    индекс проверяемого узла в арене узлов
 				 * @param chain флаг обхода цепочки узлов одного уровня вложенности
+				 * @param lines флаг разбора привязки к началу строки
 				 * @return      результат проверки начала сопоставления привязкой
 				 *
 				 * \~english
@@ -1013,13 +1020,19 @@ namespace awh {
 				 *          begins with it on all paths of the expression. Zero-length anchors
 				 *          that do not limit the positions of a match are walked through,
 				 *          and a reset of the beginning of a match stops the walk.
+				 *          The «lines» flag switches the analysis from the anchor to the position where the search
+				 *          starts to the anchor to the beginning of a line: the «^» anchor is then
+				 *          confirmed in the «MULTILINE» mode as well, while the anchor to the beginning
+				 *          of an attempt «\\G» is, on the contrary, rejected, since the position where the search
+				 *          starts is not bound to be the beginning of a line.
 				 * @param id    index of the checked node in the node arena
 				 * @param chain flag of walking a chain of nodes of the same nesting level
+				 * @param lines flag of the analysis of the anchor to the beginning of a line
 				 * @return      result of checking that matching begins with an anchor
 				 *
 				 * \~
 				 */
-				bool anchoring(const node_id_t id, const bool chain) const noexcept;
+				bool anchoring(const node_id_t id, const bool chain, const bool lines) const noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод распознавания выражения, привязанного к позиции начала поиска
@@ -1037,6 +1050,27 @@ namespace awh {
 				 * \~
 				 */
 				void anchored() noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод распознавания выражения, привязанного к началу строки
+				 *
+				 * @details Признак служит обходу позиций начала попытки: позиции, началом
+				 *          строки не являющиеся, пропускаются им разом. Выражение,
+				 *          привязанное к позиции начала поиска, признака этого тоже
+				 *          удостаивается - попытка у него единственная, и обход до
+				 *          пропуска не доходит.
+				 *
+				 * \~english
+				 * @brief Method of recognizing an expression anchored to the beginning of a line
+				 * @details The indication serves the walk over the positions of the beginning of an attempt: the positions
+				 *          that are not the beginning of a line are skipped by it at once. An expression
+				 *          anchored to the position where the search starts is also granted this indication —
+				 *          its attempt is a single one, and the walk does not reach
+				 *          the skipping.
+				 *
+				 * \~
+				 */
+				void startline() noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод проверки обязательного продвижения узла по тексту

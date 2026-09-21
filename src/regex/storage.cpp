@@ -680,6 +680,7 @@ void awh::regex::Storage::save(const program_t & program, string & result) const
 	write8(static_cast <uint8_t> (program.plain ? 1 : 0), result);
 	write8(static_cast <uint8_t> (program.sweeping ? 1 : 0), result);
 	write8(static_cast <uint8_t> (program.anchored ? 1 : 0), result);
+	write8(static_cast <uint8_t> (program.startline ? 1 : 0), result);
 	// Выполняем запись последовательности символов выражения
 	writeText(program.text, result);
 	// Выполняем запись признаков предварительного отбора позиций
@@ -799,7 +800,7 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 	/**
 	 * Выполняем чтение признаков программы
 	 */
-	for(uint8_t pass = 0; pass < 3; pass++) {
+	for(uint8_t pass = 0; pass < 4; pass++) {
 		/**
 		 * Если чтение очередного признака программы не выполнено
 		 */
@@ -819,6 +820,8 @@ bool awh::regex::Storage::load(string_view data, size_t & offset, program_t & pr
 			case 1: program.sweeping = (flag != 0); break;
 			// Выполняем установку признака привязки к позиции начала поиска
 			case 2: program.anchored = (flag != 0); break;
+			// Выполняем установку признака привязки к началу строки
+			case 3: program.startline = (flag != 0); break;
 		}
 	}
 	/**

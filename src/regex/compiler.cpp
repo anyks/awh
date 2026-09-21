@@ -3767,10 +3767,11 @@ void awh::regex::Compiler::sweeping() noexcept {
  *
  * @param id    индекс проверяемого узла в арене узлов
  * @param chain флаг обхода цепочки узлов одного уровня вложенности
+ * @param lines флаг разбора привязки к началу строки
  * @return      результат проверки начала сопоставления привязкой
  *
  */
-bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain) const noexcept {
+bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain, const bool lines) const noexcept {
 	/**
 	 * Выполняем обход цепочки узлов одного уровня вложенности
 	 */
@@ -3793,10 +3794,20 @@ bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain) const
 					 * Если привязка соответствует началу текста
 					 */
 					case static_cast <uint8_t> (anchor_t::TEXT_BEGIN):
-					// Если привязка соответствует началу текущей попытки поиска
-					case static_cast <uint8_t> (anchor_t::SEARCH_HEAD):
 						// Выводим начало сопоставления привязкой к позиции начала поиска
 						return true;
+					/**
+					 * Если привязка соответствует началу текущей попытки поиска
+					 *
+					 * @details Привязка эта разбору начала строки НЕ подлежит: позиция
+					 *          начала поиска началом строки быть не обязана, и пропуск
+					 *          позиций, началом строки не являющихся, отбросил бы
+					 *          единственную позицию, выражением допускаемую.
+					 *
+					 */
+					case static_cast <uint8_t> (anchor_t::SEARCH_HEAD):
+						// Выводим начало сопоставления привязкой к позиции начала поиска
+						return !lines;
 					/**
 					 * Если привязка соответствует началу текста или строки
 					 *
@@ -3806,6 +3817,17 @@ bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain) const
 					 *
 					 */
 					case static_cast <uint8_t> (anchor_t::LINE_BEGIN):
+						/**
+						 * Если ведётся разбор привязки к началу строки
+						 *
+						 * @details Началу строки привязка эта отвечает в любом режиме:
+						 *          вне «MULTILINE» она допускает одно лишь начало текста,
+						 *          а начало текста началом строки и является.
+						 *
+						 */
+						if(lines)
+							// Выводим начало сопоставления привязкой к началу строки
+							return true;
 						// Выводим начало сопоставления привязкой к позиции начала поиска
 						return ((node.flags & static_cast <uint32_t> (flag_t::MULTILINE)) == 0);
 					/**
@@ -3830,7 +3852,7 @@ bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain) const
 			// Если узел является последовательностью элементов
 			case static_cast <uint8_t> (node_t::CONCAT):
 				// Выводим результат проверки начала сопоставления телом узла
-				return this->anchoring(node.child, true);
+				return this->anchoring(node.child, true, lines);
 			/**
 			 * Если узел является выбором одной из ветвей
 			 */
@@ -3848,7 +3870,7 @@ bool awh::regex::Compiler::anchoring(const node_id_t id, const bool chain) const
 					/**
 					 * Если ветвь выражения привязкой не начинается
 					 */
-					if(!this->anchoring(branch, false))
+					if(!this->anchoring(branch, false, lines))
 						// Выводим отсутствие привязки к позиции начала поиска
 						return false;
 				}
@@ -3881,7 +3903,29 @@ void awh::regex::Compiler::anchored() noexcept {
 		return;
 	}
 	// Выполняем установку признака привязки к позиции начала поиска
-	this->_program->anchored = this->anchoring(this->_parser->root(), true);
+	this->_program->anchored = this->anchoring(this->_parser->root(), true, false);
+}
+/**
+ * @brief Метод распознавания выражения, привязанного к началу строки
+ *
+ */
+void awh::regex::Compiler::startline() noexcept {
+	/**
+	 * Если выражение к позиции начала поиска привязано
+	 *
+	 * @details Привязка к позиции начала поиска привязку к началу строки
+	 *          поглощает: попытка у такого выражения единственная, и обход
+	 *          позиций до пропуска не доходит вовсе.
+	 *
+	 */
+	if(this->_program->anchored) {
+		// Выполняем установку признака привязки к началу строки
+		this->_program->startline = true;
+		// Выходим из метода распознавания выражения
+		return;
+	}
+	// Выполняем установку признака привязки к началу строки
+	this->_program->startline = this->anchoring(this->_parser->root(), true, true);
 }
 /**
  * @brief Метод пометки повторений одиночного символа
@@ -4597,6 +4641,8 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 		this->sweeping();
 		// Выполняем распознавание выражения, привязанного к позиции начала поиска
 		this->anchored();
+		// Выполняем распознавание выражения, привязанного к началу строки
+		this->startline();
 	}
 	// Выводим результат выполнения компиляции
 	return true;

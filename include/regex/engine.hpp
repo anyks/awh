@@ -528,6 +528,45 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
+				 * @brief Метод пробы сопоставления исполнением с возвратом
+				 *
+				 * @details Проба испытывает исполнение с возвратом прежде прохода
+				 *          детерминированного исполнения и снимает его, когда
+				 *          совпадение лежит близко к началу поиска. Цена пробы
+				 *          ограничена двумя пределами - числом попыток и объёмом
+				 *          работы, - а доводы в пользу обоих даны при определении
+				 *          метода.
+				 *
+				 * @param expression сопоставляемое регулярное выражение
+				 * @param text       текст для сопоставления
+				 * @param start      позиция начала поиска совпадения
+				 * @param captures   набор границ совпадения и захваченных групп
+				 * @param result     исход сопоставления, пробою установленный
+				 * @param exhausted  признак исчерпания объёма работы при объёме полном
+				 * @return           признак разрешения вопроса пробою
+				 *
+				 * \~english
+				 * @brief Method of the probe of matching by execution with backtracking
+				 * @details The probe tries the execution with backtracking before the pass
+				 *          of the deterministic execution and removes it when
+				 *          the match lies close to the beginning of the search. The price of the probe
+				 *          is bounded by two limits — the number of attempts and the amount
+				 *          of work — and the arguments in favour of both are given at the definition
+				 *          of the method.
+				 * @param expression matched regular expression
+				 * @param text       text to match
+				 * @param start      position to start the search for a match from
+				 * @param captures   set of the boundaries of the match and of the captured groups
+				 * @param result     outcome of the matching established by the probe
+				 * @param exhausted  indication of the exhaustion of the amount of work at the full amount
+				 * @return           indication that the question was resolved by the probe
+				 *
+				 * \~
+				 */
+				bool probe(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted) noexcept;
+			private:
+				/**
+				 * \~russian
 				 * Набор границ, отбрасываемый проверкой наличия совпадения
 				 *
 				 * @details Проверка наличия совпадения границ захвата не выдаёт,
