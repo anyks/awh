@@ -1255,6 +1255,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/regex/assembly.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/emitter.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/emitterx64.cpp"
+    "${CMAKE_SOURCE_DIR}/src/regex/emittere2k.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/codegen.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/regex/regex.cpp"

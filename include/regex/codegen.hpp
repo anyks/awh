@@ -813,7 +813,6 @@ namespace awh {
 	 */
 	using namespace std;
 
-
 	/**
 	 * \~russian
 	 * @brief Пространство имён модуля регулярных выражений

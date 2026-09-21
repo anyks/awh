@@ -620,9 +620,9 @@ namespace awh {
 				 * \~russian
 				 * @brief Метод проверки поддержки порождения машинного кода сборкой
 				 *
-				 * @details Порождение выполнено для наборов команд ARM64 и x86-64;
-				 *          сборки для прочих наборов (Эльбрус, RISC-V, POWER) его
-				 *          не получают. Отсутствие поддержки изъяном не является:
+				 * @details Порождение выполнено для наборов команд ARM64, x86-64
+				 *          и Эльбрус (e2k); сборки для прочих наборов (RISC-V, POWER)
+				 *          его не получают. Отсутствие поддержки изъяном не является:
 				 *          сопоставление выполняется исполнением программы, как и прежде.
 				 *
 				 * @note На наборах без порождения методы команд существуют - без них
@@ -630,14 +630,16 @@ namespace awh {
 				 *       отмечает отказ, видимый через «failed», а «resolve» отвечает
 				 *       ложью. Вызов, прошедший мимо этой проверки, получает отказ,
 				 *       а не пустой код, годный с виду. Отказ этот вскрыт на
-				 *       процессоре Эльбрус, первом наборе команд третьем.
+				 *       процессоре Эльбрус, первом наборе команд третьем, - и он же
+				 *       стал первым набором, порождение под какой заведено следом:
+				 *       эталонная реализация PCRE2 его не знает вовсе.
 				 *
 				 * @return результат проверки поддержки порождения машинного кода
 				 *
 				 * \~english
 				 * @brief Method of checking the support of machine code generation by the build
-				 * @details The generation is implemented for the ARM64 and x86-64 instruction sets;
-				 *          builds for the other sets (Elbrus, RISC-V, POWER) do not receive it.
+				 * @details The generation is implemented for the ARM64, x86-64 and Elbrus (e2k)
+				 *          instruction sets; builds for the other sets (RISC-V, POWER) do not receive it.
 				 *          The absence of the support is not a defect: the matching
 				 *          is performed by executing the program, as before.
 				 * @note On the sets without generation the instruction methods exist - without them
