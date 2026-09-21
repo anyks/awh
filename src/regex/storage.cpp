@@ -1030,7 +1030,19 @@ bool awh::regex::Storage::verify(const program_t & program) const noexcept {
 				 * Если адреса ветвей программе не принадлежат
 				 */
 				if(!inside(instruction.split.first) || !inside(instruction.split.second) ||
-				 !inside(instruction.split.run) || !inside(instruction.split.lazy))
+				 !inside(instruction.split.run))
+					// Выводим результат проверки правильности программы
+					return false;
+				/**
+				 * Если признак бесплодности возврата в ряд поддельный
+				 *
+				 * @details Признак снимает точки возврата ряда повторения целиком,
+				 *          и запись поддельная сняла бы их там, где перебор длин
+				 *          плодотворен: совпадение пропало бы молча. Значение
+				 *          признака иное, нежели ноль либо единица, запись выдаёт.
+				 *
+				 */
+				if((instruction.split.solid > 1) || (instruction.split.lazily > 1))
 					// Выводим результат проверки правильности программы
 					return false;
 			} break;

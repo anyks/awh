@@ -1333,6 +1333,47 @@ namespace awh {
 				 * \~
 				 */
 				bool member(const instruction_t & instruction, const uint32_t code) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод продвижения ленивого повторения одиночного символа
+				 *
+				 * @details Ленивый ряд сопоставление продолжает сразу, а тело повторения
+				 *          поглощает по символу лишь по отказу продолжения. Продолжение,
+				 *          начинаемое сопоставлением одиночного символа, отвергает
+				 *          всякое положение, где текст несёт байт иной, и ряд продвигается
+				 *          сразу к ближайшему такому байту взамен возврата в продолжение
+				 *          на каждом символе. Положения, рядом пропускаемые, поверяются
+				 *          принадлежностью телу повторения: ряд за байт, телу чуждый,
+				 *          не проходит. Условие применимости дословно повторяет условие
+				 *          порождателя кода - пути обязаны пропускать одни и те же
+				 *          положения, иначе сличение их разошлось бы захватами.
+				 *
+				 * @param instruction инструкция перехода, ленивое повторение возглавляющая
+				 * @param pos         позиция ряда, продвижением изменяемая
+				 * @param reached     признак достижения положения, продолжению пригодного
+				 * @return            результат применимости продвижения ряда
+				 *
+				 * \~english
+				 * @brief Method of the advancement of a lazy repetition of a single character
+				 * @details A lazy row continues the matching at once, while the body of the
+				 *          repetition consumes a character only upon a refusal of the continuation.
+				 *          A continuation begun by the matching of a single character rejects
+				 *          every position where the text carries a different byte, and the row
+				 *          advances straight to the nearest such byte instead of returning into
+				 *          the continuation at every character. The positions skipped by the row
+				 *          are verified by the belonging to the body of the repetition: the row
+				 *          does not pass a byte foreign to the body. The condition of applicability
+				 *          repeats the condition of the code generator word for word — the paths
+				 *          must skip the same positions, otherwise their comparison would diverge
+				 *          in the captures.
+				 * @param instruction instruction of the branch heading the lazy repetition
+				 * @param pos         position of the row changed by the advancement
+				 * @param reached     flag of reaching a position suitable for the continuation
+				 * @return            result of the applicability of the advancement of the row
+				 *
+				 * \~
+				 */
+				bool advance(const instruction_t & instruction, size_t & pos, bool & reached) noexcept;
 			public:
 				/**
 				 * \~russian

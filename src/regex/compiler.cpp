@@ -29,6 +29,7 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
+#include <regex/text.hpp>
 #include <regex/probe.hpp>
 #include <regex/compiler.hpp>
 
@@ -3951,8 +3952,10 @@ void awh::regex::Compiler::mark() noexcept {
 			continue;
 		// Выполняем сброс пометки повторения одиночного символа
 		instructions.at(i).split.run = INVALID_ADDRESS;
-		// Выполняем сброс пометки ленивого повторения одиночного символа
-		instructions.at(i).split.lazy = INVALID_ADDRESS;
+		// Выполняем сброс признака ленивости повторения одиночного символа
+		instructions.at(i).split.lazily = 0;
+		// Выполняем сброс признака бесплодности возврата в ряд повторения
+		instructions.at(i).split.solid = 0;
 		/**
 		 * Получаем признак ленивого повторения элемента выражения
 		 *
@@ -4014,8 +4017,146 @@ void awh::regex::Compiler::mark() noexcept {
 			// Переходим к следующей инструкции программы
 			continue;
 		// Выполняем пометку перехода адресом тела повторения одиночного символа
-		(lazy ? instructions.at(i).split.lazy : instructions.at(i).split.run) = body;
+		instructions.at(i).split.run = body;
+		// Выполняем установку признака ленивости повторения одиночного символа
+		instructions.at(i).split.lazily = (lazy ? 1 : 0);
+		/**
+		 * Если повторение жадное, выполняем разбор бесплодности возврата в ряд
+		 *
+		 * @details Возврат в ряд ленивый длин не перебирает вовсе - ряд растёт
+		 *          по отказу продолжения, а не убывает, - и разбор ему не нужен.
+		 *
+		 */
+		if(!lazy)
+			// Выполняем установку признака бесплодности возврата в ряд повторения
+			instructions.at(i).split.solid = (this->futile(body, instructions.at(i).split.second) ? 1 : 0);
 	}
+}
+/**
+ * @brief Метод разбора бесплодности возврата в ряд повторения
+ *
+ * @param body тело повторения одиночного символа
+ * @param exit адрес ветви завершения повторения
+ * @return     результат разбора бесплодности возврата в ряд
+ *
+ */
+bool awh::regex::Compiler::futile(const address_t body, const address_t exit) const noexcept {
+	// Получаем набор инструкций программы регулярного выражения
+	const Sequence <instruction_t> & instructions = this->_program->instructions;
+	// Получаем инструкцию тела повторения одиночного символа
+	const instruction_t & repeated = instructions.at(static_cast <size_t> (body));
+	/**
+	 * Получаем адрес первой инструкции продолжения, текст поглощающей
+	 *
+	 * @details Сохранение позиции в ячейке захвата текста не поглощает и отказа
+	 *          не даёт, отчего решения не правит: «(\w+)@» несёт его между рядом
+	 *          и «собакой», и разбор, его не перешагивающий, повторения
+	 *          захватывающие обошёл бы стороной - те самые, где перебор длин
+	 *          и обходится дороже всего.
+	 *
+	 */
+	size_t following = static_cast <size_t> (exit);
+	/**
+	 * Выполняем обход инструкций продолжения сопоставления
+	 */
+	while((following < instructions.size()) && (instructions.at(following).type == opcode_t::SAVE))
+		// Переходим к инструкции продолжения следующей
+		following++;
+	/**
+	 * Если продолжение за пределы программы выходит
+	 */
+	if(following >= instructions.size())
+		// Выводим отсутствие бесплодности возврата в ряд повторения
+		return false;
+	// Получаем инструкцию продолжения сопоставления
+	const instruction_t & next = instructions.at(following);
+	/**
+	 * Если продолжение начинается не сопоставлением одиночного символа
+	 *
+	 * @details Разбор ведётся по первому символу продолжения, и продолжение,
+	 *          такого символа не дающее, от разбора отстраняется. Отстраняется
+	 *          заодно и завершение сопоставления: исполнение с возвратом
+	 *          завершается в заданной позиции при проверке ретроспективной,
+	 *          и перебор длин ряда там плодотворен.
+	 *
+	 */
+	if(next.type != opcode_t::CHAR)
+		// Выводим отсутствие бесплодности возврата в ряд повторения
+		return false;
+	/**
+	 * Если продолжение сопоставляется без учёта регистра вне области ASCII
+	 *
+	 * @details Область свёртки регистра вне ASCII знаками не исчерпывается
+	 *          парою: разбор её потребовал бы обхода таблиц свёртки, а выгода
+	 *          от него ничтожна рядом с выражениями обыкновенными.
+	 *
+	 */
+	if(regex::hasFlag(next.flags, flag_t::CASELESS) && (next.letter.code >= 0x80))
+		// Выводим отсутствие бесплодности возврата в ряд повторения
+		return false;
+	// Набор кодовых значений, продолжению отвечающих
+	uint32_t codes[2] = {next.letter.code, next.letter.code};
+	/**
+	 * Если продолжение сопоставляется без учёта регистра
+	 */
+	if(regex::hasFlag(next.flags, flag_t::CASELESS)) {
+		// Выполняем установку значения буквы строчной
+		codes[0] = ((next.letter.code >= 0x41) && (next.letter.code <= 0x5A) ? (next.letter.code + 0x20) : next.letter.code);
+		// Выполняем установку значения буквы прописной
+		codes[1] = ((next.letter.code >= 0x61) && (next.letter.code <= 0x7A) ? (next.letter.code - 0x20) : next.letter.code);
+	}
+	/**
+	 * Определяем код операции тела повторения одиночного символа
+	 */
+	switch(static_cast <uint8_t> (repeated.type)) {
+		/**
+		 * Выполняем разбор тела, одиночный символ сопоставляющего
+		 */
+		case static_cast <uint8_t> (opcode_t::CHAR): {
+			/**
+			 * Если тело повторения сопоставляется без учёта регистра вне области ASCII
+			 */
+			if(regex::hasFlag(repeated.flags, flag_t::CASELESS) && (repeated.letter.code >= 0x80))
+				// Выводим отсутствие бесплодности возврата в ряд повторения
+				return false;
+			// Набор кодовых значений, телу повторения отвечающих
+			uint32_t values[2] = {repeated.letter.code, repeated.letter.code};
+			/**
+			 * Если тело повторения сопоставляется без учёта регистра
+			 */
+			if(regex::hasFlag(repeated.flags, flag_t::CASELESS)) {
+				// Выполняем установку значения буквы строчной
+				values[0] = ((repeated.letter.code >= 0x41) && (repeated.letter.code <= 0x5A) ? (repeated.letter.code + 0x20) : repeated.letter.code);
+				// Выполняем установку значения буквы прописной
+				values[1] = ((repeated.letter.code >= 0x61) && (repeated.letter.code <= 0x7A) ? (repeated.letter.code - 0x20) : repeated.letter.code);
+			}
+			// Выводим результат несовпадения наборов кодовых значений
+			return ((codes[0] != values[0]) && (codes[0] != values[1]) &&
+			 (codes[1] != values[0]) && (codes[1] != values[1]));
+		}
+		/**
+		 * Выполняем разбор тела, символ из класса сопоставляющего
+		 */
+		case static_cast <uint8_t> (opcode_t::CLASS): {
+			// Получаем класс символов, повторяемый телом
+			const classview_t value = this->_program->charclass(repeated.charclass.index);
+			// Выводим результат непринадлежности значений продолжения классу
+			return (!regex::belongs(value, codes[0], repeated.flags) && !regex::belongs(value, codes[1], repeated.flags));
+		}
+		/**
+		 * Выполняем разбор тела, любой символ сопоставляющего
+		 *
+		 * @details Точка вне режима «DOTALL» переводу строки не отвечает, и ряд
+		 *          её упирается ровно в него: продолжение, перевода строки
+		 *          и ждущее, возврата в ряд не требует.
+		 *
+		 */
+		case static_cast <uint8_t> (opcode_t::ANY):
+			// Выводим результат ожидания продолжением перевода строки
+			return (!regex::hasFlag(repeated.flags, flag_t::DOTALL) && (codes[0] == 0x0A) && (codes[1] == 0x0A));
+	}
+	// Выводим отсутствие бесплодности возврата в ряд повторения
+	return false;
 }
 /**
  * @brief Метод компиляции узла проверки окружения

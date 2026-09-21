@@ -672,8 +672,7 @@ namespace {
 		/**
 		 * Если переход возглавляет повторение одиночного символа
 		 */
-		if((instruction.split.run != awh::regex::INVALID_ADDRESS) ||
-		 (instruction.split.lazy != awh::regex::INVALID_ADDRESS))
+		if(instruction.split.run != awh::regex::INVALID_ADDRESS)
 			// Выводим неприменимость разбора повторения над областью
 			return false;
 		/**
@@ -1735,7 +1734,7 @@ namespace {
 		 */
 		if((instruction.type != awh::regex::opcode_t::SPLIT) ||
 		 (instruction.split.run == awh::regex::INVALID_ADDRESS) ||
-		 (instruction.split.lazy != awh::regex::INVALID_ADDRESS))
+		 (instruction.split.lazily != 0))
 			// Выводим неприменимость отдачи обратным проходом
 			return false;
 		/**
@@ -2548,9 +2547,9 @@ namespace {
 				 */
 				case static_cast <uint8_t> (awh::regex::opcode_t::SPLIT): {
 					// Получаем признак ленивого повторения одиночного символа
-					const bool lazily = (instruction.split.lazy != awh::regex::INVALID_ADDRESS);
+					const bool lazily = (instruction.split.lazily != 0);
 					// Получаем адрес тела повторения одиночного символа
-					const awh::regex::address_t body = (lazily ? instruction.split.lazy : instruction.split.run);
+					const awh::regex::address_t body = instruction.split.run;
 					/**
 					 * Если переход возглавляет цепочку ветвей выбора одной из них
 					 */
@@ -5731,8 +5730,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция выбирает одну из ветвей выражения
 		 */
-		if((instruction.type == opcode_t::SPLIT) && (instruction.split.run == INVALID_ADDRESS) &&
-		 (instruction.split.lazy == INVALID_ADDRESS)) {
+		if((instruction.type == opcode_t::SPLIT) && (instruction.split.run == INVALID_ADDRESS)) {
 			// Адрес начала тела повторения над областью
 			address_t opening = INVALID_ADDRESS;
 			// Адрес перехода назад, тело повторения завершающего
@@ -6851,9 +6849,9 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *          кадра, что и отступление жадного.
 		 *
 		 */
-		if(instruction.split.lazy != INVALID_ADDRESS) {
+		if(instruction.split.lazily != 0) {
 			// Получаем инструкцию тела ленивого повторения одиночного символа
-			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.lazy));
+			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.run));
 			// Выполняем заведение таблицы принадлежности байтов тела повторения
 			const size_t number = this->table(repeated, program);
 			/**

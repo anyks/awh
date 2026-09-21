@@ -263,35 +263,68 @@ namespace awh {
 					address_t run;
 					/**
 					 * \~russian
-					 * Адрес тела ленивого повторения одиночного символа
+					 * Признак ленивости повторения одиночного символа
 					 *
 					 * @details Ленивое повторение компилируется тем же переходом по
 					 *          двум ветвям, но ветви его переставлены: сопоставление
 					 *          продолжается за повторением, а тело повторяется лишь
-					 *          по отказу продолжения. Проход ряда одним ходом
-					 *          ленивому повторению неприменим, поэтому адрес его
-					 *          заведён отдельным полем, а не признаком при поле
-					 *          общем: исполнение с возвратом читает пометку жадного
-					 *          повторения на каждом переходе по двум ветвям, и
-					 *          чтение двух полей взамен одного обходилось там
-					 *          потерей в четыре сотых.
+					 *          по отказу продолжения. Адрес тела оба повторения ведут
+					 *          полем общим, а рознятся признаком этим: исполнение
+					 *          с возвратом читает пометку повторения на КАЖДОМ переходе
+					 *          по двум ветвям, и выбор одной из ветвей - переход самый
+					 *          частый. Поле отдельное под ленивое тело пробовалось
+					 *          и стоило чтения второго на каждом переходе: замером
+					 *          чередованием получена потеря до двенадцати сотых
+					 *          на «GET|POST|PUT|DELETE|HEAD|OPTIONS» и до десяти
+					 *          на выражениях с повторениями ограниченными.
 					 *
 					 * \~english
-					 * Address of the body of a lazy repetition of a single character
-					 * @details A lazy repetition is compiled by the same two-branch
-					 *          jump, but its branches are swapped: matching
-					 *          continues past the repetition, and the body is repeated only
-					 *          when the continuation fails. Walking a run in one move is
-					 *          inapplicable to a lazy repetition, therefore its address is
-					 *          introduced as a separate field rather than as an indication at a common
-					 *          field: backtracking execution reads the mark of a greedy
-					 *          repetition at every two-branch jump, and
-					 *          reading two fields instead of one cost there
-					 *          a loss of four hundredths.
+					 * Flag of the laziness of a repetition of a single character
+					 * @details A lazy repetition is compiled by the same two-branch jump, but
+					 *          its branches are swapped: matching continues past the repetition,
+					 *          and the body is repeated only upon a refusal of the continuation.
+					 *          Both repetitions carry the address of the body in a common field
+					 *          and differ by this flag: backtracking execution reads the mark of
+					 *          a repetition at EVERY two-branch jump, and choosing one of the
+					 *          branches is the most frequent jump. A separate field for the lazy
+					 *          body was tried and cost a second read at every jump: interleaved
+					 *          measurement yielded a loss of up to twelve hundredths on
+					 *          «GET|POST|PUT|DELETE|HEAD|OPTIONS» and up to ten on the
+					 *          expressions with bounded repetitions.
 					 *
 					 * \~
 					 */
-					address_t lazy;
+					uint8_t lazily;
+					/**
+					 * \~russian
+					 * Признак бесплодности возврата в ряд повторения
+					 *
+					 * @details Ряд жадный проходит подходящие символы до упора, а возврат
+					 *          в него перебирает длины ряда убывающие, продолжение
+					 *          на каждой повторяя. Перебор этот бесплоден, когда символ,
+					 *          телом повторения поглощаемый, продолжению заведомо
+					 *          не отвечает: «\w+@» на ряду из букв упрётся в «собаку»
+					 *          при всякой длине, ибо «собака» букве не равна. Признак
+					 *          ставится разбором при сборке и означает, что точки
+					 *          возврата ряду не нужны вовсе. Эталон зовёт это
+					 *          «auto-possessification» и ведёт разбор тем же доводом.
+					 *
+					 * \~english
+					 * Flag of the futility of backtracking into a run of the repetition
+					 * @details A greedy run walks the matching characters to the limit, while
+					 *          backtracking into it enumerates the decreasing lengths of the run,
+					 *          repeating the continuation at every one. That enumeration is futile
+					 *          when a character consumed by the body of the repetition certainly
+					 *          does not suit the continuation: «\w+@» on a run of letters runs into
+					 *          the «at» sign at every length, because the «at» sign does not equal
+					 *          a letter. The flag is set by the analysis during the build and means
+					 *          that the run needs no backtracking points at all. The reference calls
+					 *          this «auto-possessification» and conducts the analysis by the same
+					 *          argument.
+					 *
+					 * \~
+					 */
+					uint8_t solid;
 				} split;
 				/**
 				 * \~russian

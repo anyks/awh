@@ -960,6 +960,39 @@ namespace awh {
 				void mark() noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод разбора бесплодности возврата в ряд повторения
+				 *
+				 * @details Возврат в жадный ряд перебирает длины его убывающие, продолжение
+				 *          на каждой повторяя. Перебор этот бесплоден, когда символ, телом
+				 *          повторения поглощаемый, продолжению заведомо не отвечает:
+				 *          убавив ряд на символ, продолжение упрётся ровно в него.
+				 *          Разбор ведётся по первому символу продолжения, сохранение
+				 *          позиции в ячейке захвата перешагивая: оно текста не поглощает
+				 *          и отказа не даёт. Эталон зовёт это «auto-possessification».
+				 *
+				 * @param body тело повторения одиночного символа
+				 * @param exit адрес ветви завершения повторения
+				 * @return     результат разбора бесплодности возврата в ряд
+				 *
+				 * \~english
+				 * @brief Method of the analysis of the futility of backtracking into a run of the repetition
+				 * @details Backtracking into a greedy run enumerates its decreasing lengths, repeating
+				 *          the continuation at every one. That enumeration is futile when a character
+				 *          consumed by the body of the repetition certainly does not suit the
+				 *          continuation: having shortened the run by a character, the continuation
+				 *          runs into exactly it. The analysis is conducted by the first character of
+				 *          the continuation, stepping over the saving of a position into a capture
+				 *          cell: it consumes no text and gives no refusal. The reference calls this
+				 *          «auto-possessification».
+				 * @param body body of the repetition of a single character
+				 * @param exit address of the branch completing the repetition
+				 * @return     result of the analysis of the futility of backtracking into the run
+				 *
+				 * \~
+				 */
+				bool futile(const address_t body, const address_t exit) const noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод подсчёта повторений любого символа и проверки их вложенности
 				 *
 				 * @param id     индекс проверяемого узла в арене узлов

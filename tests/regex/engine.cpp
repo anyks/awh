@@ -3122,3 +3122,123 @@ TEST(Regex, EngineStartLine) {
 		EXPECT_EQ(regex::probe_t::count(regex::path_t::LINING), static_cast <uint64_t> (0));
 	}
 }
+
+/**
+ * @brief Проверка пропуска точек возврата ряда повторения
+ *
+ * @details Возврат в жадный ряд перебирает длины его убывающие, продолжение
+ *          на каждой повторяя, и перебор этот бесплоден, когда символ, телом
+ *          повторения поглощаемый, продолжению заведомо не отвечает. Проверка
+ *          стережёт обе стороны решения: пропуск там, где он законен, и его
+ *          ОТСУТСТВИЕ там, где перебор длин плодотворен. Вторая сторона
+ *          важнее первой: разбор, ошибшийся в её пользу, отбрасывал бы
+ *          совпадения молча.
+ *
+ */
+TEST(Regex, EngineSolidRun) {
+	/**
+	 * Выполняем проверку заведения учёта путей исполнения
+	 *
+	 * @details Отказ здесь намеренный: молчаливый пропуск проверки равен
+	 *          молчаливому отключению того, что она стережёт.
+	 *
+	 */
+	ASSERT_TRUE(regex::probe_t::enabled()) << "набор собран без учёта путей исполнения";
+	// Создаём объект движка регулярных выражений
+	regex::engine_t engine;
+	// Создаём набор границ совпадения
+	vector <pair <size_t, size_t>> captures;
+	/**
+	 * Выполняем проверку пропуска точек возврата ряда, продолжению чуждого
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, ряд которого упирается в знак вне класса
+		ASSERT_TRUE(engine.build("(\\w+)@", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "abc@def";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (4));
+		// Выполняем проверку границ захвата группы первой
+		EXPECT_EQ(captures.at(1).first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
+		/**
+		 * Выполняем проверку выполнения пропуска точек возврата
+		 *
+		 * @details Класс «\w» «собаки» не содержит, и всякая длина ряда
+		 *          убавленная упёрлась бы ровно в неё: точки возврата ряду
+		 *          не нужны вовсе.
+		 *
+		 */
+		EXPECT_GE(regex::probe_t::count(regex::path_t::SOLIDING), static_cast <uint64_t> (1));
+	}
+	/**
+	 * Выполняем проверку сохранения точек возврата ряда, продолжению родственного
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, ряд которого продолжению родственен
+		ASSERT_TRUE(engine.build("^(\\w+)b", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "aaab";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		/**
+		 * Выполняем сопоставление выражения с текстом
+		 *
+		 * @details Ряд поглощает текст целиком, и совпадение даётся лишь
+		 *          возвратом в него: пропуск точек отбросил бы его молча.
+		 *
+		 */
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (4));
+		// Выполняем проверку границ захвата группы первой
+		EXPECT_EQ(captures.at(1).first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
+		// Выполняем проверку отсутствия пропуска точек возврата
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::SOLIDING), static_cast <uint64_t> (0));
+	}
+	/**
+	 * Выполняем проверку родства по свёртке регистра
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, ряд которого родственен продолжению регистром
+		ASSERT_TRUE(engine.build("(?i)([a-z]+)X", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "abcX";
+		// Выполняем сброс счётчиков путей исполнения
+		regex::probe_t::reset();
+		/**
+		 * Выполняем сопоставление выражения с текстом
+		 *
+		 * @details Класс «[a-z]» без учёта регистра содержит и «X», отчего ряд
+		 *          поглощает текст целиком, а совпадение даётся лишь возвратом
+		 *          в него. Разбор, свёртку регистра не учитывающий, счёл бы
+		 *          «X» классу чуждым и отбросил бы совпадение молча.
+		 *
+		 */
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (4));
+		// Выполняем проверку границ захвата группы первой
+		EXPECT_EQ(captures.at(1).first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
+		// Выполняем проверку отсутствия пропуска точек возврата
+		EXPECT_EQ(regex::probe_t::count(regex::path_t::SOLIDING), static_cast <uint64_t> (0));
+	}
+}
