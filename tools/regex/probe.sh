@@ -22,7 +22,8 @@ set -e
 NAME="$1"
 if [ -z "$NAME" ]; then
 	echo "Использование: $0 <имя щупа> [доводы щупа]" >&2
-	echo "Щупы: $(cd "$(dirname "$0")" && ls passes.cpp longpass.cpp lazyhunt.cpp 2>/dev/null | sed 's/\.cpp//' | tr '\n' ' ')" >&2
+	# Перечень щупов берётся каталогом: выписанный руками, он устаревает молча
+	echo "Щупы: $(cd "$(dirname "$0")" && ls *.cpp 2>/dev/null | sed 's/\.cpp//' | tr '\n' ' ')" >&2
 	exit 2
 fi
 shift
