@@ -542,6 +542,69 @@ namespace awh {
 				 * \~
 				 */
 				size_t _seats;
+			#if defined(__e2k__)
+			private:
+				/**
+				 * \~russian
+				 * @brief Широкая команда процессора, к выдаче отложенная
+				 *
+				 * @details Набор команд e2k исполняет широкую команду, несущую
+				 *          до шести операций каналами. Порождение выдавало по одной
+				 *          операции в команду - занят был один канал из шести, -
+				 *          и уплотнение ведётся откладыванием: команда собранная
+				 *          держится здесь, а операция следующая к ней прирастает,
+				 *          когда канал ей находится и зависимости того не мешают.
+				 *          Наборам команд ARM64 и x86-64 состав этот не нужен вовсе
+				 *          и ими не трогается: команда там одиночная по устройству.
+				 *
+				 * \~english
+				 * @brief A wide processor instruction deferred for emission
+				 * @details The e2k instruction set executes a wide instruction carrying
+				 *          up to six operations in channels. The generation emitted one
+				 *          operation per instruction - one channel out of six was busy -
+				 *          and the packing is done by deferral: the assembled instruction
+				 *          is kept here, and the next operation is appended to it when
+				 *          a channel is found for it and the dependencies do not forbid it.
+				 *          The ARM64 and x86-64 instruction sets do not need this state
+				 *          at all and do not touch it: an instruction there is single by design.
+				 *
+				 * \~
+				 */
+				typedef struct Packed {
+					// Слоги арифметико-логических каналов и признаки их наличия
+					uint32_t als[6];
+					bool has[6];
+					// Слог расширения канала нулевого и признак его наличия
+					uint16_t ales;
+					bool extended;
+					// Слог коротких операций и признак его наличия
+					uint32_t stub;
+					bool stubbed;
+					// Слоги управления и признаки их наличия
+					uint32_t cs0, cs1;
+					bool first, second;
+					// Слоги литералов, младший первым
+					uint32_t lts[2];
+					// Количество слогов литералов
+					uint8_t literals;
+					// Маска регистров, командою записываемых
+					uint32_t writes;
+					// Маска предикатов, командою записываемых
+					uint8_t predicates;
+					// Признак наличия отложенной команды
+					bool opened;
+					/**
+					 * @brief Конструктор широкой команды
+					 *
+					 */
+					Packed() noexcept : als{0, 0, 0, 0, 0, 0}, has{false, false, false, false, false, false},
+					 ales(0), extended(false), stub(0), stubbed(false), cs0(0), cs1(0), first(false), second(false),
+					 lts{0, 0}, literals(0), writes(0), predicates(0), opened(false) {}
+				} packed_t;
+			private:
+				// Широкая команда процессора, к выдаче отложенная
+				packed_t _packed;
+			#endif // defined(__e2k__)
 			private:
 				// Положения меток в порождаемой последовательности команд
 				vector <size_t> _labels;
@@ -594,6 +657,77 @@ namespace awh {
 			private:
 				// Флаг отказа порождения машинного кода
 				bool _failed;
+			#if defined(__e2k__)
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод выдачи широкой команды, к выдаче отложенной
+				 *
+				 * @details Выдача обязательна перед всяким местом, куда управление
+				 *          приходит со стороны либо откуда уходит: заведение метки,
+				 *          переход, вызов, заведение и снятие окна регистров. Иначе
+				 *          операция, к команде прирощенная, оказалась бы исполненной
+				 *          и на том пути, где её быть не должно. Отложенной команды
+				 *          нет - метод не делает ничего.
+				 *
+				 * \~english
+				 * @brief Method of emitting the wide instruction deferred for emission
+				 * @details The emission is obligatory before every place control enters
+				 *          from the side or leaves from: declaring a label, a jump, a call,
+				 *          opening and closing the register window. Otherwise an operation
+				 *          appended to the instruction would turn out executed on a path
+				 *          where it must not be. If there is no deferred instruction,
+				 *          the method does nothing.
+				 *
+				 * \~
+				 */
+				void flush() noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод отведения канала широкой команды под операцию
+				 *
+				 * @details Операция прирастает к команде отложенной, когда ей
+				 *          находится свободный канал из числа допустимых и когда
+				 *          доводы её не берутся из того, что команда эта пишет:
+				 *          операции широкой команды читают состояние на её начало,
+				 *          а пишут по её завершении. Прирасти нельзя - команда
+				 *          отложенная выдаётся, а место её занимает новая.
+				 *
+				 * @note Запись в регистр, командою читаемый, помехой НЕ является:
+				 *       чтение идёт по началу команды и записи не видит. Помеха -
+				 *       чтение записанного да запись в один регистр дважды.
+				 *
+				 * @param channels маска каналов, операцию принимающих
+				 * @param reads    маска регистров, операцией читаемых
+				 * @param writes   маска регистров, операцией записываемых
+				 *
+				 * @return номер отведённого канала широкой команды
+				 *
+				 * \~english
+				 * @brief Method of allocating a wide instruction channel for an operation
+				 * @details The operation is appended to the deferred instruction when
+				 *          a free channel is found for it among the allowed ones and when
+				 *          its arguments are not taken from what that instruction writes:
+				 *          the operations of a wide instruction read the state as of its
+				 *          beginning and write upon its completion. If appending is impossible,
+				 *          the deferred instruction is emitted and a new one takes its place.
+				 *
+				 * @note A write into a register read by the instruction is NOT an obstacle:
+				 *       the reading is done as of the beginning of the instruction and does not
+				 *       see the writes. The obstacles are reading what is written and writing
+				 *       into one register twice.
+				 *
+				 * @param channels mask of the channels accepting the operation
+				 * @param reads    mask of the registers read by the operation
+				 * @param writes   mask of the registers written by the operation
+				 *
+				 * @return number of the allocated channel of the wide instruction
+				 *
+				 * \~
+				 */
+				uint8_t reserve(const uint8_t channels, const uint32_t reads, const uint32_t writes) noexcept;
+			#endif // defined(__e2k__)
 			private:
 				/**
 				 * \~russian
