@@ -4080,9 +4080,95 @@ bool awh::regex::Compiler::futile(const address_t body, const address_t exit) co
 	 *          и перебор длин ряда там плодотворен.
 	 *
 	 */
-	if(next.type != opcode_t::CHAR)
+	if(next.type != opcode_t::CHAR) {
+		/**
+		 * Если продолжение начинается сопоставлением символа из класса
+		 *
+		 * @details Непересечение наборов байтов доказывается перебором
+		 *          пространства значений: набор класса перечислением
+		 *          не выражается, и пары кодовых значений, для продолжения
+		 *          символом заведённой, здесь не хватает.
+		 *
+		 */
+		if(next.type == opcode_t::CLASS) {
+			// Получаем класс символов, продолжением сопоставляемый
+			const classview_t following = this->_program->charclass(next.charclass.index);
+			/**
+			 * Выполняем обход пространства значений байта
+			 */
+			for(uint32_t letter = 0; letter < 0x100; letter++) {
+				/**
+				 * Если значение байта продолжению не отвечает
+				 */
+				if(!regex::belongs(following, letter, next.flags))
+					// Выполняем переход к значению байта следующему
+					continue;
+				/**
+				 * Определяем код операции тела повторения одиночного символа
+				 */
+				switch(static_cast <uint8_t> (repeated.type)) {
+					// Тело повторения сопоставляет одиночный символ
+					case static_cast <uint8_t> (opcode_t::CHAR): {
+						/**
+						 * Если значение байта телу повторения отвечает
+						 */
+						if(letter == repeated.letter.code)
+							// Выводим отсутствие бесплодности возврата в ряд повторения
+							return false;
+						/**
+						 * Если тело повторения сопоставляется без учёта регистра
+						 */
+						if(regex::hasFlag(repeated.flags, flag_t::CASELESS) && (repeated.letter.code < 0x80)) {
+							// Получаем значение буквы строчной
+							const uint32_t lower = ((repeated.letter.code >= 0x41) && (repeated.letter.code <= 0x5A) ?
+							 (repeated.letter.code + 0x20) : repeated.letter.code);
+							// Получаем значение буквы прописной
+							const uint32_t upper = ((repeated.letter.code >= 0x61) && (repeated.letter.code <= 0x7A) ?
+							 (repeated.letter.code - 0x20) : repeated.letter.code);
+							/**
+							 * Если значение байта одной из букв пары отвечает
+							 */
+							if((letter == lower) || (letter == upper))
+								// Выводим отсутствие бесплодности возврата в ряд повторения
+								return false;
+						}
+					} break;
+					// Тело повторения сопоставляет символ из класса
+					case static_cast <uint8_t> (opcode_t::CLASS): {
+						/**
+						 * Если значение байта классу тела повторения отвечает
+						 */
+						if(regex::belongs(this->_program->charclass(repeated.charclass.index), letter, repeated.flags))
+							// Выводим отсутствие бесплодности возврата в ряд повторения
+							return false;
+					} break;
+					/**
+					 * Тело повторения сопоставляет любой символ
+					 *
+					 * @details Точка вне режима «DOTALL» отвечает всякому байту,
+					 *          кроме перевода строки: непересечение возможно
+					 *          лишь тогда, когда продолжение переводом строки
+					 *          и исчерпывается
+					 *
+					 */
+					case static_cast <uint8_t> (opcode_t::ANY): {
+						/**
+						 * Если значение байта телу повторения отвечает
+						 */
+						if(regex::hasFlag(repeated.flags, flag_t::DOTALL) || (letter != 0x0A))
+							// Выводим отсутствие бесплодности возврата в ряд повторения
+							return false;
+					} break;
+					// Тело повторения иное разбору не поддаётся
+					default: return false;
+				}
+			}
+			// Выводим бесплодность возврата в ряд повторения
+			return true;
+		}
 		// Выводим отсутствие бесплодности возврата в ряд повторения
 		return false;
+	}
 	/**
 	 * Если продолжение сопоставляется без учёта регистра вне области ASCII
 	 *
