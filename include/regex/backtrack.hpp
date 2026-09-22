@@ -595,6 +595,48 @@ namespace awh {
 			private:
 				/**
 				 * \~russian
+				 * Счётчики мер работы сопоставления, разысканием ведомые
+				 *
+				 * @details Счётчики ведутся полями, а не общим учётом «probe_t»:
+				 *          приращение разделяемого счётчика внутри проверки
+				 *          принадлежности классу раздуло бы её собственное время
+				 *          в образце стека - том самом орудии, каким разыскание
+				 *          и ведётся. Поля складываются дёшево, а в общий учёт
+				 *          вносятся разом по завершении сопоставления.
+				 *
+				 *          Поля заведены безусловно, а приращение их ограждено
+				 *          признаком сборки «AWH_REGEX_PROBING»: ограда вокруг
+				 *          самих полей развела бы состав класса между сборками,
+				 *          и единица трансляции, собранная без признака, читала
+				 *          бы соседние поля по смещениям чужим.
+				 *
+				 * \~english
+				 * Counters of the measures of the work of matching, kept for the investigation
+				 * @details The counters are kept as fields rather than in the shared "probe_t"
+				 *          accounting: incrementing a shared counter inside the check of
+				 *          membership in a character class would inflate that check's own time
+				 *          in the stack sample — the very instrument by which the investigation
+				 *          is carried out. Fields add cheaply, and are contributed to the shared
+				 *          accounting in one go upon completion of the match.
+				 *
+				 *          The fields are declared unconditionally while their incrementing is
+				 *          guarded by the build flag "AWH_REGEX_PROBING": a guard around the
+				 *          fields themselves would diverge the layout of the class between
+				 *          builds, and a translation unit built without the flag would read
+				 *          the neighbouring fields at foreign offsets.
+				 *
+				 * \~
+				 */
+				size_t _saves;
+				// Количество выполненных проверок принадлежности байта классу символов
+				size_t _checks;
+				// Количество размещённых точек возврата
+				size_t _points_spent;
+				// Количество заведённых кадров вызова подвыражения
+				size_t _frames_spent;
+			private:
+				/**
+				 * \~russian
 				 * Допустимое количество шагов сопоставления
 				 *
 				 * @details Объём действует на одно сопоставление и восстанавливается

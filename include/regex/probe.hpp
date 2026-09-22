@@ -117,6 +117,50 @@ namespace awh {
 		};
 		/**
 		 * \~russian
+		 * @brief Мера работы сопоставления, учёту подлежащая
+		 *
+		 * @details Мера работы от пути исполнения отличается родом, а не величиной,
+		 *          и оттого заведена отдельным перечислением. Путь - это ускоритель,
+		 *          вердикта не меняющий: погасить его можно, и итог останется верен.
+		 *          Мера работы гашению не подлежит вовсе - шаг цикла либо запись
+		 *          ячейки захвата есть само сопоставление, а не ускорение его.
+		 *
+		 *          Заведена мера ради довода о причине. Время правки в горячей
+		 *          единице трансляции недоказательно: всякая правка двигает
+		 *          выравнивание тесных циклов в ней же, и сдвиг этот доходил
+		 *          до полутора десятков сотых - больше самой правки. Число
+		 *          же операций от выравнивания и от загрузки машины не зависит
+		 *          вовсе и меняется скачком, отчего и годится доводом.
+		 *
+		 * \~english
+		 * @brief Measure of the work of matching subject to accounting
+		 * @details A measure of work differs from an execution path in kind, not in size,
+		 *          and is therefore defined as a separate enumeration. A path is an
+		 *          accelerator that does not change the verdict: it can be switched off
+		 *          and the outcome stays correct. A measure of work cannot be switched off
+		 *          at all — a step of the loop or a save of a capture cell is the matching
+		 *          itself, not an acceleration of it.
+		 *
+		 *          The measure is introduced for the sake of an argument about causation.
+		 *          The time of an edit in a hot translation unit proves nothing: every edit
+		 *          shifts the alignment of the tight loops in that same unit, and that shift
+		 *          reached fifteen hundredths — more than the edit being measured. The count
+		 *          of operations, on the contrary, does not depend on alignment or on the
+		 *          load of the machine at all and changes stepwise, which is what makes it
+		 *          an argument.
+		 *
+		 * \~
+		 */
+		enum class work_t : uint8_t {
+			STEPS  = 0x00, // Шаги цикла исполнения с возвратом
+			SAVES  = 0x01, // Записи границы ячейки захвата текста
+			CHECKS = 0x02, // Проверки принадлежности байта классу символов
+			POINTS = 0x03, // Размещения точки возврата
+			FRAMES = 0x04, // Заведения кадра вызова подвыражения
+			COUNT  = 0x05  // Количество учитываемых мер работы
+		};
+		/**
+		 * \~russian
 		 * @brief Класс учёта путей исполнения сопоставления
 		 *
 		 * @details Учёт ведётся лишь у библиотеки, признаком сборки
@@ -193,6 +237,48 @@ namespace awh {
 				 * \~
 				 */
 				static void tick(const path_t path) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод извлечения счётчика меры работы
+				 *
+				 * @param work учитываемая мера работы сопоставления
+				 * @return     количество операций учитываемой меры
+				 *
+				 * \~english
+				 * @brief Method of getting the counter of a measure of work
+				 * @param work measure of the work of matching being accounted for
+				 * @return     number of operations of the measure being accounted for
+				 *
+				 * \~
+				 */
+				static uint64_t amount(const work_t work) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод учёта выполненных операций меры работы
+				 *
+				 * @param work  выполненная мера работы сопоставления
+				 * @param count количество выполненных операций
+				 *
+				 * @details Количество принимается величиной, а не единицей, ибо цикл
+				 *          исполнения ведёт счётчик шагов местной переменной и вносит
+				 *          его разом по завершении: приращение разделяемого счётчика
+				 *          на каждом шаге обошлось бы дороже самого шага и исказило бы
+				 *          образец стека, по какому и ведётся разыскание.
+				 *
+				 * \~english
+				 * @brief Method of accounting for the operations performed of a measure of work
+				 * @param work  measure of the work of matching that was performed
+				 * @param count number of operations performed
+				 *
+				 * @details The count is taken as a quantity rather than as a unit, because the
+				 *          execution loop keeps its step counter in a local variable and adds it
+				 *          in one go upon completion: incrementing a shared counter at every step
+				 *          would cost more than the step itself and would distort the stack
+				 *          sample by which the investigation is carried out.
+				 *
+				 * \~
+				 */
+				static void spend(const work_t work, const uint64_t count) noexcept;
 		} probe_t;
 	};
 };
@@ -205,6 +291,14 @@ namespace awh {
 	 * Учёт прохождения пути исполнения сопоставления
 	 */
 	#define AWH_REGEX_TICK(PATH) awh::regex::Probe::tick(PATH)
+	/**
+	 * Учёт выполненных операций меры работы сопоставления
+	 */
+	#define AWH_REGEX_SPEND(WORK, COUNT) awh::regex::Probe::spend(WORK, COUNT)
+	/**
+	 * Приращение местного счётчика меры работы, полем исполнителя ведомого
+	 */
+	#define AWH_REGEX_COUNTED(FIELD) ((FIELD)++)
 /**
  * Если учёт путей исполнения сопоставления не заведён
  */
@@ -213,4 +307,12 @@ namespace awh {
 	 * Учёт не ведётся: приращение счётчика расхода стоит дороже пути учитываемого
 	 */
 	#define AWH_REGEX_TICK(PATH) ((void) 0)
+	/**
+	 * Учёт не ведётся: приращение счётчика стоит дороже операции учитываемой
+	 */
+	#define AWH_REGEX_SPEND(WORK, COUNT) ((void) 0)
+	/**
+	 * Учёт не ведётся: приращение поля стоит дороже операции учитываемой
+	 */
+	#define AWH_REGEX_COUNTED(FIELD) ((void) 0)
 #endif

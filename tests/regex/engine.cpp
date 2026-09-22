@@ -3538,3 +3538,132 @@ TEST(Regex, EngineLazySlide) {
 		EXPECT_EQ(regex::probe_t::count(regex::path_t::SLIDING), static_cast <uint64_t> (0));
 	}
 }
+/**
+ * @brief Проверка учёта мер работы исполнения с возвратом
+ *
+ * @details Меры работы - шаги цикла, записи ячеек захвата, проверки
+ *          принадлежности классу, точки возврата и кадры вызова - заведены
+ *          доводом о причине: время правки в горячей единице трансляции
+ *          недоказательно, ибо всякая правка двигает выравнивание тесных
+ *          циклов в ней же, а число операций от выравнивания не зависит.
+ *
+ *          Проверка стережёт сам учёт: счётчик, молча обнулившийся, обратил бы
+ *          всякое последующее сличение в согласие с любой правкой.
+ *
+ */
+TEST(Regex, EngineWorkCounters) {
+	/**
+	 * Если учёт при сборке не заведён
+	 *
+	 * @details Пропуск проверки равен молчаливому отключению того, что она
+	 *          стережёт, поэтому набор отвечает отказом
+	 *
+	 */
+	ASSERT_TRUE(regex::probe_t::enabled());
+	// Создаём движок сопоставления
+	regex::engine_t engine;
+	// Создаём набор границ обнаруженного совпадения
+	vector <pair <size_t, size_t>> captures;
+	/**
+	 * Выполняем проверку учёта шагов, записей и проверок принадлежности
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения с группами захвата и классами символов
+		ASSERT_TRUE(engine.build("(\\w+)@(\\w+)\\.(\\w+)", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "forman@anyks.com";
+		// Выполняем сброс счётчиков
+		regex::probe_t::reset();
+		// Выполняем проверку обнуления счётчиков сбросом
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::STEPS), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::SAVES), static_cast <uint64_t> (0));
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку обнаружения всех групп захвата
+		ASSERT_EQ(captures.size(), static_cast <size_t> (4));
+		/**
+		 * Выполняем проверку учёта шагов цикла исполнения
+		 *
+		 * @details Выражение это исполняется с возвратом, и шагов у него
+		 *          заведомо больше числа групп захвата
+		 *
+		 */
+		EXPECT_GT(regex::probe_t::amount(regex::work_t::STEPS), static_cast <uint64_t> (4));
+		/**
+		 * Выполняем проверку учёта записей границ ячеек захвата
+		 *
+		 * @details Групп захвата три, что даёт шесть ячеек, да пара границ
+		 *          самого совпадения: записей не менее восьми
+		 *
+		 */
+		EXPECT_GE(regex::probe_t::amount(regex::work_t::SAVES), static_cast <uint64_t> (8));
+		// Выполняем проверку учёта проверок принадлежности байта классу
+		EXPECT_GT(regex::probe_t::amount(regex::work_t::CHECKS), static_cast <uint64_t> (0));
+	}
+	/**
+	 * Выполняем проверку независимости мер работы от загрузки машины
+	 *
+	 * @details Два сопоставления одного выражения с одним текстом обязаны дать
+	 *          числа, совпадающие ДО ЕДИНИЦЫ: в этом и состоит годность меры
+	 *          доводом там, где время недоказательно
+	 *
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения повторения класса символов
+		ASSERT_TRUE(engine.build("(?:(\\w+) )+forman", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "alpha bravo charlie forman";
+		// Выполняем сброс счётчиков
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Получаем снятые меры работы первого сопоставления
+		const uint64_t steps = regex::probe_t::amount(regex::work_t::STEPS);
+		const uint64_t saves = regex::probe_t::amount(regex::work_t::SAVES);
+		const uint64_t checks = regex::probe_t::amount(regex::work_t::CHECKS);
+		const uint64_t points = regex::probe_t::amount(regex::work_t::POINTS);
+		// Выполняем проверку непустоты снятых мер работы
+		ASSERT_GT(steps, static_cast <uint64_t> (0));
+		ASSERT_GT(points, static_cast <uint64_t> (0));
+		// Выполняем сброс счётчиков
+		regex::probe_t::reset();
+		// Выполняем повторное сопоставление того же выражения с тем же текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку совпадения мер работы обоих сопоставлений
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::STEPS), steps);
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::SAVES), saves);
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::CHECKS), checks);
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::POINTS), points);
+	}
+	/**
+	 * Выполняем проверку молчания мер работы у пути, возврата не берущего
+	 *
+	 * @details Выражение, литералом сопоставляемое, ведётся отбором позиций
+	 *          и цикла исполнения не заводит вовсе: меры работы у него нулевые,
+	 *          и ненулевая мера означала бы учёт, к чужому пути прилипший
+	 *
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения, литералом сопоставляемого
+		ASSERT_TRUE(engine.build("Content-Length", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "GET / HTTP/1.1\r\nContent-Length: 42\r\n\r\n";
+		// Выполняем сброс счётчиков
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку прохождения пути поиска литерала
+		ASSERT_GT(regex::probe_t::count(regex::path_t::PLAIN), static_cast <uint64_t> (0));
+		// Выполняем проверку молчания мер работы исполнения с возвратом
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::STEPS), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::SAVES), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::CHECKS), static_cast <uint64_t> (0));
+		EXPECT_EQ(regex::probe_t::amount(regex::work_t::POINTS), static_cast <uint64_t> (0));
+	}
+}

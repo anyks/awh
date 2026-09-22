@@ -282,7 +282,8 @@ int main(int argc, char ** argv) {
 		return 1;
 	}
 	// Выводим заголовок таблицы
-	::printf("%-22s %10s %10s   %s\n", "сценарий", "нс", "совп.", "пути исполнения");
+	::printf("%-22s %10s %8s %8s %8s %8s %8s   %s\n", "сценарий", "нс",
+	 "шагов", "записей", "проверок", "точек", "кадров", "пути исполнения");
 	/**
 	 * Выполняем перебор разбираемых выражений
 	 */
@@ -308,6 +309,14 @@ int main(int argc, char ** argv) {
 		awh::regex::probe_t::reset();
 		// Выполняем снятие путей исполнения одним сопоставлением
 		engine.exec(expression, scenario.text, 0, captures);
+		// Набор снятых мер работы сопоставления
+		uint64_t works[static_cast <size_t> (awh::regex::work_t::COUNT)];
+		/**
+		 * Выполняем обход всех учитываемых мер работы сопоставления
+		 */
+		for(uint8_t i = 0; i < static_cast <uint8_t> (awh::regex::work_t::COUNT); i++)
+			// Получаем количество операций очередной меры работы
+			works[i] = awh::regex::probe_t::amount(static_cast <awh::regex::work_t> (i));
 		// Строка перечня путей исполнения
 		string paths;
 		/**
@@ -332,8 +341,10 @@ int main(int argc, char ** argv) {
 			engine.exec(expression, scenario.text, 0, captures);
 		});
 		// Выводим строку таблицы
-		::printf("%-22s %10.0f %10s   %s\n", scenario.name, matching,
-		 (found ? "есть" : "нет"), paths.c_str());
+		::printf("%-22s %10.0f %8llu %8llu %8llu %8llu %8llu   %s\n", scenario.name, matching,
+		 static_cast <unsigned long long> (works[0]), static_cast <unsigned long long> (works[1]),
+		 static_cast <unsigned long long> (works[2]), static_cast <unsigned long long> (works[3]),
+		 static_cast <unsigned long long> (works[4]), paths.c_str());
 	}
 	// Выводим результат работы щупа
 	return ((argc > 1) ? (argv[0] != nullptr) : 0);

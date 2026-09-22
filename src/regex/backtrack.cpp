@@ -346,7 +346,7 @@ namespace {
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
+ _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
 /**
  * @brief Метод установки допустимого объёма работы сопоставления
  *
@@ -459,6 +459,13 @@ size_t awh::regex::Backtrack::marked() const noexcept {
  *
  */
 void awh::regex::Backtrack::store(const uint32_t slot, const size_t value) noexcept {
+	/**
+	 * Если учёт мер работы сопоставления заведён
+	 */
+	#if defined(AWH_REGEX_PROBING)
+		// Выполняем учёт записи границы ячейки захвата
+		this->_saves++;
+	#endif
 	/**
 	 * Если номер ячейки захвата находится за пределами набора
 	 */
@@ -687,6 +694,13 @@ const uint8_t * awh::regex::Backtrack::tabulate(const instruction_t & instructio
  *
  */
 bool awh::regex::Backtrack::member(const instruction_t & instruction, const uint32_t code) noexcept {
+	/**
+	 * Если учёт мер работы сопоставления заведён
+	 */
+	#if defined(AWH_REGEX_PROBING)
+		// Выполняем учёт проверки принадлежности байта классу
+		this->_checks++;
+	#endif
 	/**
 	 * Если кодовое значение в один байт не укладывается
 	 *
@@ -1345,6 +1359,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						continue;
 					}
 					// Выполняем размещение точки возврата глагола управления
+					AWH_REGEX_COUNTED(this->_points_spent);
 					this->_points.emplace_back();
 					// Выполняем установку номера ячейки отметки ветви охватывающей
 					this->_points.back().cell = instruction.control.cell;
@@ -1602,6 +1617,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							 */
 							if(count > 0) {
 								// Выполняем размещение точки возврата к ветви завершения повторения
+								AWH_REGEX_COUNTED(this->_points_spent);
 								this->_points.emplace_back();
 								// Выполняем установку адреса ветви завершения повторения
 								this->_points.back().pc = exit;
@@ -1631,6 +1647,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 									// Выходим из цикла размещения точек возврата
 									break;
 								// Выполняем размещение точки возврата к ветви завершения повторения
+								AWH_REGEX_COUNTED(this->_points_spent);
 								this->_points.emplace_back();
 								// Выполняем установку адреса ветви завершения повторения
 								this->_points.back().pc = exit;
@@ -1731,6 +1748,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						}
 					}
 					// Выполняем размещение точки возврата к ветви с наименьшим приоритетом
+					AWH_REGEX_COUNTED(this->_points_spent);
 					this->_points.emplace_back();
 					// Выполняем установку адреса ветви с наименьшим приоритетом
 					this->_points.back().pc = instruction.split.second;
@@ -1978,6 +1996,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 							 */
 							if(length > least) {
 								// Выполняем размещение точки перебора длин проверки
+								AWH_REGEX_COUNTED(this->_points_spent);
 								this->_points.emplace_back();
 								// Получаем размещённую точку перебора длин проверки
 								point_t & entry = this->_points.back();
@@ -2249,6 +2268,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 *          возврат внутрь вызова остаётся допустимым.
 					 *
 					 */
+					AWH_REGEX_COUNTED(this->_points_spent);
 					this->_points.emplace_back();
 					// Выполняем установку флага восстановления кадра вызова
 					this->_points.back().frame = true;
@@ -2257,6 +2277,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					// Выполняем установку размера журнала изменений ячеек захвата
 					this->_points.back().journal = this->_journal.size();
 					// Выполняем размещение кадра рекурсивного вызова
+					AWH_REGEX_COUNTED(this->_frames_spent);
 					this->_frames.emplace_back();
 					// Выполняем установку адреса возврата из рекурсивного вызова
 					this->_frames.back().back = (pc + 1);
@@ -2388,6 +2409,7 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					/**
 					 * Выполняем размещение точки восстановления исполняемого вызова
 					 */
+					AWH_REGEX_COUNTED(this->_points_spent);
 					this->_points.emplace_back();
 					// Выполняем установку флага восстановления кадра вызова
 					this->_points.back().frame = true;
@@ -2737,6 +2759,34 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
  */
 bool awh::regex::Backtrack::exec(const program_t & program, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, const mode_t mode) noexcept {
 	/**
+	 * @brief Сторож внесения мер работы в общий учёт
+	 *
+	 * @details Сопоставление покидается семью возвратами, и внесение по каждому
+	 *          из них потерялось бы при заведении возврата восьмого. Деструктор
+	 *          же зовётся всяким выходом без изъятия.
+	 *
+	 */
+	struct Spending {
+		// Учитываемое исполнение с возвратом
+		const Backtrack * owner;
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~Spending() noexcept {
+			// Выполняем внесение счётчика шагов сопоставления
+			AWH_REGEX_SPEND(work_t::STEPS, this->owner->_steps);
+			// Выполняем внесение счётчика записей границы ячейки захвата
+			AWH_REGEX_SPEND(work_t::SAVES, this->owner->_saves);
+			// Выполняем внесение счётчика проверок принадлежности байта классу
+			AWH_REGEX_SPEND(work_t::CHECKS, this->owner->_checks);
+			// Выполняем внесение счётчика размещённых точек возврата
+			AWH_REGEX_SPEND(work_t::POINTS, this->owner->_points_spent);
+			// Выполняем внесение счётчика заведённых кадров вызова
+			AWH_REGEX_SPEND(work_t::FRAMES, this->owner->_frames_spent);
+		}
+	} spending{this};
+	/**
 	 * Если исполняется программа, отличная от исполненной ранее
 	 *
 	 * @details Таблицы принадлежности байтов удерживаются по номерам классов символов,
@@ -2764,6 +2814,19 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	this->_start = start;
 	// Выполняем сброс количества выполненных шагов сопоставления
 	this->_steps = 0;
+	/**
+	 * Если учёт мер работы сопоставления заведён
+	 */
+	#if defined(AWH_REGEX_PROBING)
+		// Выполняем сброс счётчика записей границы ячейки захвата
+		this->_saves = 0;
+		// Выполняем сброс счётчика проверок принадлежности байта классу
+		this->_checks = 0;
+		// Выполняем сброс счётчика размещённых точек возврата
+		this->_points_spent = 0;
+		// Выполняем сброс счётчика заведённых кадров вызова
+		this->_frames_spent = 0;
+	#endif
 	/**
 	 * Выполняем установку действующего объёма работы сопоставления
 	 *
