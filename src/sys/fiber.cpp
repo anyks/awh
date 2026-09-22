@@ -64,10 +64,10 @@
 #include <utility>
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочные файлы проекта
  */
-#include <sys/fiber.hpp>
 #include <sys/log.hpp>
+#include <sys/fiber.hpp>
 
 /**
  * Используем стандартное пространство имён

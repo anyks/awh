@@ -57,15 +57,22 @@
 #include <sstream>
 #include <cstdlib>
 #include <fcntl.h>
-#include <sys/dirent.hpp>
+
 /**
  * Заголовок замков файлов принадлежит наречиям POSIX: у оснастки MSVC его нет вовсе,
  * а приёмов его библиотека здесь не зовёт - подключение остаётся лишь для тех систем,
  * где он есть
  */
 #if !defined(_MSC_VER)
+	/**
+	 * Подключаем системный заголовочный файл
+	 */
 	#include <sys/file.h>
 #endif
+
+/**
+ * Системные заголовочные файлы
+ */
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -127,11 +134,12 @@
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <sys/fs.hpp>
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
+#include <sys/dirent.hpp>
 
 /**
  * Используем стандартное пространство имён
@@ -158,10 +166,10 @@ namespace awh {
 				 *
 				 */
 				typedef struct Place {
-					// Объект дескриптора вложенного каталога
-					awh::dir::_WDIR * handle;
 					// Адрес вложенного каталога
 					string address;
+					// Объект дескриптора вложенного каталога
+					dir::_WDIR * handle;
 					/**
 					 * @brief Конструктор
 					 *
@@ -169,8 +177,8 @@ namespace awh {
 					 * @param address адрес вложенного каталога
 					 *
 					 */
-					explicit Place(awh::dir::_WDIR * handle, string_view address) noexcept :
-					 handle(handle), address{address} {}
+					explicit Place(dir::_WDIR * handle, string_view address) noexcept :
+					 address{address}, handle(handle) {}
 				} place_t;
 			private:
 				// Признак того, что незавершённую запись надлежит отдать повторно
@@ -198,7 +206,7 @@ namespace awh {
 				string _address;
 			private:
 				// Объект дескриптора
-				awh::dir::_WDIR * _handle;
+				dir::_WDIR * _handle;
 			private:
 				/**
 				 * @brief Места обхода вложенных каталогов
@@ -271,7 +279,7 @@ namespace awh {
 				 * @param handle объект дескриптора
 				 *
 				 */
-				void set(awh::dir::_WDIR * handle) noexcept;
+				void set(dir::_WDIR * handle) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки незавершённости обхода
@@ -309,7 +317,7 @@ namespace awh {
 				 * @return объект дескриптора вложенного каталога
 				 *
 				 */
-				awh::dir::_WDIR * top() const noexcept;
+				dir::_WDIR * top() const noexcept;
 				/**
 				 * @brief Метод извлечения адреса верхнего места обхода
 				 *
@@ -330,7 +338,7 @@ namespace awh {
 				 * @param address адрес вложенного каталога
 				 *
 				 */
-				void push(awh::dir::_WDIR * handle, string_view address) noexcept;
+				void push(dir::_WDIR * handle, string_view address) noexcept;
 			public:
 				/**
 				 * @brief Метод извлечения адреса незавершённой записи обхода
@@ -355,7 +363,7 @@ namespace awh {
 				 * @return объект дескриптора
 				 *
 				 */
-				operator awh::dir::_WDIR * () const noexcept;
+				operator dir::_WDIR * () const noexcept;
 			public:
 				/**
 				 * @brief Конструктор
@@ -368,7 +376,7 @@ namespace awh {
 				 * @param handle объект дескриптора
 				 *
 				 */
-				explicit HandleDir(awh::dir::_WDIR * handle) noexcept;
+				explicit HandleDir(dir::_WDIR * handle) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -397,7 +405,7 @@ namespace awh {
 			// Если каталог валиден
 			if(this->valid())
 				// Выполняем перемотку каталога к началу
-				awh::dir::_wrewinddir(this->_handle);
+				dir::_wrewinddir(this->_handle);
 		}
 		/**
 		 * @brief Метод сброса состояния обхода
@@ -414,14 +422,14 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(place.handle != nullptr)
 					// Закрываем вложенный каталог
-					awh::dir::_wclosedir(place.handle);
+					dir::_wclosedir(place.handle);
 			}
 			// Выполняем очистку стопки мест обхода
 			this->_places.clear();
 			// Если каталог валиден
 			if(this->valid()){
 				// Закрываем каталог
-				awh::dir::_wclosedir(this->_handle);
+				dir::_wclosedir(this->_handle);
 				// Сбрасываем объект дескриптора
 				this->_handle = nullptr;
 			}
@@ -488,7 +496,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		void HandleDir::set(awh::dir::_WDIR * handle) noexcept {
+		void HandleDir::set(dir::_WDIR * handle) noexcept {
 			// Если установка ещё не выполнена
 			if(!this->valid())
 				// Выполняем установку
@@ -540,7 +548,7 @@ namespace awh {
 		 * @return объект дескриптора вложенного каталога
 		 *
 		 */
-		awh::dir::_WDIR * HandleDir::top() const noexcept {
+		dir::_WDIR * HandleDir::top() const noexcept {
 			// Возвращаем дескриптор верхнего места обхода
 			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
 		}
@@ -564,7 +572,7 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(this->_places.back().handle != nullptr)
 					// Закрываем вложенный каталог
-					awh::dir::_wclosedir(this->_places.back().handle);
+					dir::_wclosedir(this->_places.back().handle);
 				// Выполняем снятие верхнего места обхода
 				this->_places.pop_back();
 			}
@@ -576,7 +584,7 @@ namespace awh {
 		 * @param address адрес вложенного каталога
 		 *
 		 */
-		void HandleDir::push(awh::dir::_WDIR * handle, string_view address) noexcept {
+		void HandleDir::push(dir::_WDIR * handle, string_view address) noexcept {
 			// Если вложенный каталог валиден
 			if(handle != nullptr)
 				// Выполняем добавление места обхода
@@ -616,7 +624,7 @@ namespace awh {
 		 * @return объект дескриптора
 		 *
 		 */
-		HandleDir::operator awh::dir::_WDIR * () const noexcept {
+		HandleDir::operator dir::_WDIR * () const noexcept {
 			// Возвращаем объект дескриптора
 			return this->_handle;
 		}
@@ -635,7 +643,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		HandleDir::HandleDir(awh::dir::_WDIR * handle) noexcept :
+		HandleDir::HandleDir(dir::_WDIR * handle) noexcept :
 		 _repeat(false), _active(false),
 		 _delivered(0), _pendingType(0),
 		 _pending{""}, _address{""},
@@ -772,10 +780,10 @@ namespace awh {
 				 *
 				 */
 				typedef struct Place {
-					// Объект дескриптора вложенного каталога
-					awh::dir::DIR * handle;
 					// Адрес вложенного каталога
 					string address;
+					// Объект дескриптора вложенного каталога
+					dir::DIR * handle;
 					/**
 					 * @brief Конструктор
 					 *
@@ -783,8 +791,8 @@ namespace awh {
 					 * @param address адрес вложенного каталога
 					 *
 					 */
-					explicit Place(awh::dir::DIR * handle, string_view address) noexcept :
-					 handle(handle), address{address} {}
+					explicit Place(dir::DIR * handle, string_view address) noexcept :
+					 address{address}, handle(handle) {}
 				} place_t;
 			private:
 				// Признак того, что незавершённую запись надлежит отдать повторно
@@ -812,7 +820,7 @@ namespace awh {
 				string _address;
 			private:
 				// Объект дескриптора
-				awh::dir::DIR * _handle;
+				dir::DIR * _handle;
 			private:
 				/**
 				 * @brief Места обхода вложенных каталогов
@@ -885,7 +893,7 @@ namespace awh {
 				 * @param handle объект дескриптора
 				 *
 				 */
-				void set(awh::dir::DIR * handle) noexcept;
+				void set(dir::DIR * handle) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки незавершённости обхода
@@ -923,7 +931,7 @@ namespace awh {
 				 * @return объект дескриптора вложенного каталога
 				 *
 				 */
-				awh::dir::DIR * top() const noexcept;
+				dir::DIR * top() const noexcept;
 				/**
 				 * @brief Метод извлечения адреса верхнего места обхода
 				 *
@@ -944,7 +952,7 @@ namespace awh {
 				 * @param address адрес вложенного каталога
 				 *
 				 */
-				void push(awh::dir::DIR * handle, string_view address) noexcept;
+				void push(dir::DIR * handle, string_view address) noexcept;
 			public:
 				/**
 				 * @brief Метод извлечения адреса незавершённой записи обхода
@@ -969,7 +977,7 @@ namespace awh {
 				 * @return объект дескриптора
 				 *
 				 */
-				operator awh::dir::DIR * () const noexcept;
+				operator dir::DIR * () const noexcept;
 			public:
 				/**
 				 * @brief Конструктор
@@ -982,7 +990,7 @@ namespace awh {
 				 * @param dir объект каталога
 				 *
 				 */
-				explicit HandleDir(awh::dir::DIR * dir) noexcept;
+				explicit HandleDir(dir::DIR * dir) noexcept;
 				/**
 				 * @brief Деструктор
 				 *
@@ -1011,7 +1019,7 @@ namespace awh {
 			// Если каталог валиден
 			if(this->valid())
 				// Выполняем перемотку каталога к началу
-				awh::dir::rewinddir(this->_handle);
+				dir::rewinddir(this->_handle);
 		}
 		/**
 		 * @brief Метод сброса состояния обхода
@@ -1028,14 +1036,14 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(place.handle != nullptr)
 					// Закрываем вложенный каталог
-					awh::dir::closedir(place.handle);
+					dir::closedir(place.handle);
 			}
 			// Выполняем очистку стопки мест обхода
 			this->_places.clear();
 			// Если каталог валиден
 			if(this->valid()){
 				// Закрываем каталог
-				awh::dir::closedir(this->_handle);
+				dir::closedir(this->_handle);
 				// Сбрасываем объект дескриптора
 				this->_handle = nullptr;
 			}
@@ -1102,7 +1110,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		void HandleDir::set(awh::dir::DIR * handle) noexcept {
+		void HandleDir::set(dir::DIR * handle) noexcept {
 			// Если установка ещё не выполнена
 			if(!this->valid())
 				// Выполняем установку
@@ -1154,7 +1162,7 @@ namespace awh {
 		 * @return объект дескриптора вложенного каталога
 		 *
 		 */
-		awh::dir::DIR * HandleDir::top() const noexcept {
+		dir::DIR * HandleDir::top() const noexcept {
 			// Возвращаем дескриптор верхнего места обхода
 			return (!this->_places.empty() ? this->_places.back().handle : nullptr);
 		}
@@ -1178,7 +1186,7 @@ namespace awh {
 				// Если вложенный каталог валиден
 				if(this->_places.back().handle != nullptr)
 					// Закрываем вложенный каталог
-					awh::dir::closedir(this->_places.back().handle);
+					dir::closedir(this->_places.back().handle);
 				// Выполняем снятие верхнего места обхода
 				this->_places.pop_back();
 			}
@@ -1190,7 +1198,7 @@ namespace awh {
 		 * @param address адрес вложенного каталога
 		 *
 		 */
-		void HandleDir::push(awh::dir::DIR * handle, string_view address) noexcept {
+		void HandleDir::push(dir::DIR * handle, string_view address) noexcept {
 			// Если вложенный каталог валиден
 			if(handle != nullptr)
 				// Выполняем добавление места обхода
@@ -1230,7 +1238,7 @@ namespace awh {
 		 * @return объект дескриптора
 		 *
 		 */
-		HandleDir::operator awh::dir::DIR * () const noexcept {
+		HandleDir::operator dir::DIR * () const noexcept {
 			// Возвращаем объект дескриптора
 			return this->_handle;
 		}
@@ -1249,7 +1257,7 @@ namespace awh {
 		 * @param handle объект дескриптора
 		 *
 		 */
-		HandleDir::HandleDir(awh::dir::DIR * handle) noexcept :
+		HandleDir::HandleDir(dir::DIR * handle) noexcept :
 		 _repeat(false), _active(false),
 		 _delivered(0), _pendingType(0),
 		 _pending{""}, _address{""},
