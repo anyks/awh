@@ -282,8 +282,8 @@ int main(int argc, char ** argv) {
 		return 1;
 	}
 	// Выводим заголовок таблицы
-	::printf("%-22s %10s %8s %8s %8s %8s %8s   %s\n", "сценарий", "нс",
-	 "шагов", "записей", "проверок", "точек", "кадров", "пути исполнения");
+	::printf("%-22s %10s %8s %8s %8s %8s %8s %8s   %s\n", "сценарий", "нс",
+	 "шагов", "записей", "проверок", "точек", "кадров", "обходов", "пути исполнения");
 	/**
 	 * Выполняем перебор разбираемых выражений
 	 */
@@ -341,10 +341,11 @@ int main(int argc, char ** argv) {
 			engine.exec(expression, scenario.text, 0, captures);
 		});
 		// Выводим строку таблицы
-		::printf("%-22s %10.0f %8llu %8llu %8llu %8llu %8llu   %s\n", scenario.name, matching,
+		::printf("%-22s %10.0f %8llu %8llu %8llu %8llu %8llu %8llu   %s\n", scenario.name, matching,
 		 static_cast <unsigned long long> (works[0]), static_cast <unsigned long long> (works[1]),
 		 static_cast <unsigned long long> (works[2]), static_cast <unsigned long long> (works[3]),
-		 static_cast <unsigned long long> (works[4]), paths.c_str());
+		 static_cast <unsigned long long> (works[4]), static_cast <unsigned long long> (works[5]),
+		 paths.c_str());
 	}
 	// Выводим результат работы щупа
 	return ((argc > 1) ? (argv[0] != nullptr) : 0);

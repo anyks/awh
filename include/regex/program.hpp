@@ -170,6 +170,55 @@ namespace awh {
 		typedef struct __AWH_SHARED_EXPORT__ Instruction {
 			// Код операции инструкции программы
 			opcode_t type;
+			/**
+			 * \~russian
+			 * Количество одинаковых инструкций подряд, с этой начинающихся
+			 *
+			 * @details Счётное повторение одиночного символа разворачивается
+			 *          копиями: «[0-9]{3,5}» даёт три копии обязательные
+			 *          да две необязательные. Копии обязательные идут подряд
+			 *          и управления между собою не принимают, отчего проход
+			 *          их тесным циклом равен проходу по одной, а заходов
+			 *          в разбор кода операции стоит один взамен трёх.
+			 *
+			 *          Пометка развёрнутой формы НЕ отменяет: исполнение
+			 *          без возврата и детерминированное исполнение ведут
+			 *          наборы состояний по графу инструкций и счётчиков
+			 *          не имеют вовсе, отчего обходят копии по одной,
+			 *          пометки не замечая. Оттого же пометка ставится
+			 *          КАЖДОЙ копии ряда со своим остатком: управление,
+			 *          в середину ряда пришедшее, поглотит ровно столько,
+			 *          сколько от ряда осталось.
+			 *
+			 *          Поле умещается в зазор выравнивания: размер инструкции
+			 *          остаётся прежним, и устройство записи хранилища
+			 *          пометкой не затрагивается. Единица означает отсутствие
+			 *          ряда и есть значение по умолчанию.
+			 *
+			 * \~english
+			 * Number of identical instructions in a row starting with this one
+			 * @details A counted repetition of a single character is unrolled into copies:
+			 *          "[0-9]{3,5}" yields three mandatory copies and two optional ones.
+			 *          The mandatory copies follow one another and do not take control
+			 *          between themselves, so traversing them in a tight loop equals
+			 *          traversing them one by one, while costing one trip through the
+			 *          dispatch of the operation code instead of three.
+			 *
+			 *          The mark does NOT cancel the unrolled form: the execution without
+			 *          backtracking and the deterministic execution carry sets of states
+			 *          over the graph of instructions and have no counters at all, so they
+			 *          walk the copies one by one without noticing the mark. For the same
+			 *          reason the mark is placed on EVERY copy of the row with its own
+			 *          remainder: control that arrives in the middle of the row will consume
+			 *          exactly as much as is left of the row.
+			 *
+			 *          The field fits into the alignment gap: the size of the instruction
+			 *          stays the same, and the layout of the storage record is not affected
+			 *          by the mark. A unit means the absence of a row and is the default.
+			 *
+			 * \~
+			 */
+			uint16_t repeat;
 			// Набор режимов компиляции, действующих для инструкции
 			uint32_t flags;
 			/**
@@ -639,7 +688,7 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			Instruction() noexcept : type(opcode_t::MATCH), flags(0), letter{0} {}
+			Instruction() noexcept : type(opcode_t::MATCH), repeat(1), flags(0), letter{0} {}
 		} instruction_t;
 
 		/**

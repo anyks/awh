@@ -123,7 +123,7 @@
 	 *       настольного приложения экономия мнимая - Foundation там загружен и без
 	 *       нас, - а для служб и утилит настоящая
 	 */
-	#if (TARGET_OS_MAC && !TARGET_OS_IPHONE) && !defined(AWH_NO_MACOS_ALIAS)
+	#if (defined(TARGET_OS_MAC) && !defined(TARGET_OS_IPHONE)) && !defined(AWH_NO_MACOS_ALIAS)
 		/**
 		 * Включаем поддержку Objective-C автоматического управления памятью
 		 */
@@ -2008,13 +2008,13 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Открываем указанный каталог
-							HandleDir dir(awh::dir::_wopendir(fmk::convert(address).c_str()));
+							HandleDir dir(dir::_wopendir(fmk::convert(address).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							HandleDir dir(awh::dir::opendir(address.c_str()));
+							HandleDir dir(dir::opendir(address.c_str()));
 						#endif
 						// Если каталог открыт
 						if((result = dir.valid())){
@@ -2025,11 +2025,11 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 								// Структура проверка статистики
 								struct _stat info{};
 								// Создаем указатель на содержимое каталога
-								awh::dir::_wdirent * ptr = nullptr;
+								dir::_wdirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = awh::dir::_wreaddir(dir))){
+								while((ptr = dir::_wreaddir(dir))){
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
@@ -2037,11 +2037,11 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 								// Структура проверка статистики
 								struct stat info{};
 								// Создаем указатель на содержимое каталога
-								awh::dir::dirent * ptr = nullptr;
+								dir::dirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = awh::dir::readdir(dir))){
+								while((ptr = dir::readdir(dir))){
 							#endif
 									/**
 									 * Для операционной системы MS Windows
@@ -3309,13 +3309,13 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Открываем указанный каталог
-							HandleDir dir(awh::dir::_wopendir(fmk::convert(path.data()).c_str()));
+							HandleDir dir(dir::_wopendir(fmk::convert(path.data()).c_str()));
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Открываем указанный каталог
-							HandleDir dir(awh::dir::opendir(path.data()));
+							HandleDir dir(dir::opendir(path.data()));
 						#endif
 						// Если каталог открыт
 						if(dir.valid()){
@@ -3324,21 +3324,21 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 							 */
 							#if defined(_WIN32) || defined(_WIN64)
 								// Создаем указатель на содержимое каталога
-								awh::dir::_wdirent * ptr = nullptr;
+								dir::_wdirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = awh::dir::_wreaddir(dir))){
+								while((ptr = dir::_wreaddir(dir))){
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
 							#else
 								// Создаем указатель на содержимое каталога
-								awh::dir::dirent * ptr = nullptr;
+								dir::dirent * ptr = nullptr;
 								/**
 								 * Выполняем чтение содержимого каталога
 								 */
-								while((ptr = awh::dir::readdir(dir))){
+								while((ptr = dir::readdir(dir))){
 							#endif
 									/**
 									 * Для операционной системы MS Windows
@@ -3502,13 +3502,13 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 				 */
 				#if defined(_WIN32) || defined(_WIN64)
 					// Открываем указанный каталог
-					HandleDir dir(awh::dir::_wopendir(fmk::convert(path.data()).c_str()));
+					HandleDir dir(dir::_wopendir(fmk::convert(path.data()).c_str()));
 				/**
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#else
 					// Открываем указанный каталог
-					HandleDir dir(awh::dir::opendir(path.data()));
+					HandleDir dir(dir::opendir(path.data()));
 				#endif
 					// Если каталог открыт
 					if(dir.valid()){
@@ -3517,21 +3517,21 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 						 */
 						#if defined(_WIN32) || defined(_WIN64)
 							// Создаем указатель на содержимое каталога
-							awh::dir::_wdirent * ptr = nullptr;
+							dir::_wdirent * ptr = nullptr;
 							/**
 							 * Выполняем чтение содержимого каталога
 							 */
-							while((ptr = awh::dir::_wreaddir(dir))){
+							while((ptr = dir::_wreaddir(dir))){
 						/**
 						 * Для операционной системы не являющейся MS Windows
 						 */
 						#else
 							// Создаем указатель на содержимое каталога
-							awh::dir::dirent * ptr = nullptr;
+							dir::dirent * ptr = nullptr;
 							/**
 							 * Выполняем чтение содержимого каталога
 							 */
-							while((ptr = awh::dir::readdir(dir))){
+							while((ptr = dir::readdir(dir))){
 						#endif
 								/**
 								 * Для операционной системы MS Windows
@@ -6053,13 +6053,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Открываем корень обхода
-						dir.set(awh::dir::_wopendir(fmk::convert(root).c_str()));
+						dir.set(dir::_wopendir(fmk::convert(root).c_str()));
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Открываем корень обхода
-						dir.set(awh::dir::opendir(root.c_str()));
+						dir.set(dir::opendir(root.c_str()));
 					#endif
 					// Запоминаем адрес, которому объект служит
 					dir.address(root);
@@ -6149,13 +6149,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 					 */
 					#if defined(_WIN32) || defined(_WIN64)
 						// Выполняем чтение содержимого каталога
-						awh::dir::_wdirent * ptr = awh::dir::_wreaddir(dir.empty() ? static_cast <awh::dir::_WDIR *> (dir) : dir.top());
+						dir::_wdirent * ptr = dir::_wreaddir(dir.empty() ? static_cast <dir::_WDIR *> (dir) : dir.top());
 					/**
 					 * Для операционной системы не являющейся MS Windows
 					 */
 					#else
 						// Выполняем чтение содержимого каталога
-						awh::dir::dirent * ptr = awh::dir::readdir(dir.empty() ? static_cast <awh::dir::DIR *> (dir) : dir.top());
+						dir::dirent * ptr = dir::readdir(dir.empty() ? static_cast <dir::DIR *> (dir) : dir.top());
 					#endif
 					// Если содержимое каталога исчерпано
 					if(ptr == nullptr){
@@ -6216,13 +6216,13 @@ bool awh::Filesystem::walkdir(string_view path, string_view ext, const bool recu
 								 */
 								#if defined(_WIN32) || defined(_WIN64)
 									// Открываем вложенный каталог
-									awh::dir::_WDIR * nested = awh::dir::_wopendir(fmk::convert(address).c_str());
+									dir::_WDIR * nested = dir::_wopendir(fmk::convert(address).c_str());
 								/**
 								 * Для операционной системы не являющейся MS Windows
 								 */
 								#else
 									// Открываем вложенный каталог
-									awh::dir::DIR * nested = awh::dir::opendir(address.c_str());
+									dir::DIR * nested = dir::opendir(address.c_str());
 								#endif
 								// Если вложенный каталог открыт
 								if(nested != nullptr){
@@ -6804,4 +6804,9 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
  * @brief Конструктор
  *
  */
-awh::Filesystem::Filesystem() noexcept : _os() {}
+awh::Filesystem::Filesystem() noexcept {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Filesystem::~Filesystem() noexcept {}

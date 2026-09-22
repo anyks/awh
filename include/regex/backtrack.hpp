@@ -634,6 +634,8 @@ namespace awh {
 				size_t _points_spent;
 				// Количество заведённых кадров вызова подвыражения
 				size_t _frames_spent;
+				// Количество обходов цикла исполнения с возвратом
+				size_t _rounds;
 			private:
 				/**
 				 * \~russian
@@ -1410,6 +1412,28 @@ namespace awh {
 				 * \~
 				 */
 				const uint8_t * table(const instruction_t & instruction) noexcept;
+			private:
+				/**
+				 * \~russian
+				 * @brief Метод прохода ряда класса символов по таблице принадлежности байтов
+				 *
+				 * @param instruction инструкция сопоставления класса символов
+				 * @param from        позиция начала прохода в тексте сопоставления
+				 * @param size        размер текста сопоставления
+				 * @param series      количество копий ряда, поглощению подлежащих
+				 * @return            количество копий ряда, проходом поглощённых
+				 *
+				 * \~english
+				 * @brief Method of walking a row of a character class by the byte belonging table
+				 * @param instruction instruction matching a character class
+				 * @param from        position of the start of the walk in the matching text
+				 * @param size        size of the matching text
+				 * @param series      number of the copies of the row subject to consumption
+				 * @return            number of the copies of the row consumed by the walk
+				 *
+				 * \~
+				 */
+				size_t consume(const instruction_t & instruction, const size_t from, const size_t size, const uint16_t series) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод построения таблицы принадлежности байтов классу символов

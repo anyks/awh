@@ -1413,6 +1413,6 @@ namespace awh {
 			 *
 			 * \~
 			 */
-			~Filesystem() noexcept {}
+			~Filesystem() noexcept;
 	} fs_t;
 };

@@ -110,11 +110,12 @@ static void listing(awh::regex::engine_t & engine, const char * pattern) noexcep
 		 */
 		else if(instruction.type == awh::regex::opcode_t::CLASS)
 			// Выводим строку инструкции сопоставления класса
-			::printf("  %3zu  %-9s index=%u\n", i, name, instruction.charclass.index);
+			::printf("  %3zu  %-9s index=%u repeat=%u\n", i, name, instruction.charclass.index,
+			 static_cast <uint32_t> (instruction.repeat));
 		/**
 		 * Инструкция прочая печатается одним именем
 		 */
-		else ::printf("  %3zu  %-9s\n", i, name);
+		else ::printf("  %3zu  %-9s repeat=%u\n", i, name, static_cast <uint32_t> (instruction.repeat));
 	}
 }
 

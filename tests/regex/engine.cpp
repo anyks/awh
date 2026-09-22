@@ -3847,3 +3847,144 @@ TEST(Regex, EngineClassFolding) {
 		EXPECT_EQ(text.substr(captures.at(4).first, (captures.at(4).second - captures.at(4).first)), "176");
 	}
 }
+/**
+ * @brief Проверка прохода ряда одинаковых инструкций одним заходом
+ *
+ * @details Счётное повторение одиночного символа компилируется копиями:
+ *          «[0-9]{3,5}» даёт три копии обязательные да две необязательные.
+ *          Копии обязательные идут подряд и управления между собою не
+ *          принимают, отчего проходятся одним заходом в разбор кода операции.
+ *
+ *          Пометка развёрнутой формы не отменяет, и вердикт от неё не зависит
+ *          вовсе: сличение исходов её не замечает, и стеречь её надлежит
+ *          счётчиком обходов. Без проверки этой проход рядом отвалился бы
+ *          молча - ровно как молча отвалилось бы и продвижение ленивого ряда,
+ *          пока ему не завели свой счётчик.
+ *
+ */
+TEST(Regex, EngineSeriesRun) {
+	/**
+	 * Если учёт при сборке не заведён
+	 */
+	ASSERT_TRUE(regex::probe_t::enabled());
+	// Создаём движок сопоставления
+	regex::engine_t engine;
+	// Создаём набор границ обнаруженного совпадения
+	vector <pair <size_t, size_t>> captures;
+	/**
+	 * Выполняем проверку убавления обходов у счётного повторения класса
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения счётного повторения класса
+		ASSERT_TRUE(engine.build("[0-9]{3,5}", 0, expression));
+		/**
+		 * Выполняем проверку пометки копий обязательной части
+		 *
+		 * @details Копий обязательных три, и пометка ставится всякой со своим
+		 *          остатком: управление, в середину ряда пришедшее, поглотит
+		 *          ровно столько, сколько от ряда осталось
+		 *
+		 */
+		ASSERT_GE(static_cast <size_t> (expression.forward.instructions.size()), static_cast <size_t> (4));
+		EXPECT_EQ(static_cast <uint32_t> (expression.forward.instructions.at(1).repeat), static_cast <uint32_t> (3));
+		EXPECT_EQ(static_cast <uint32_t> (expression.forward.instructions.at(2).repeat), static_cast <uint32_t> (2));
+		EXPECT_EQ(static_cast <uint32_t> (expression.forward.instructions.at(3).repeat), static_cast <uint32_t> (1));
+		// Получаем текст сопоставления
+		const string text = "abc1234xyz";
+		// Выполняем сброс счётчиков
+		regex::probe_t::reset();
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ обнаруженного совпадения
+		ASSERT_EQ(captures.size(), static_cast <size_t> (1));
+		EXPECT_EQ(captures.front().first, static_cast <size_t> (3));
+		EXPECT_EQ(captures.front().second, static_cast <size_t> (7));
+		/**
+		 * Выполняем проверку превосходства работы над обходами
+		 *
+		 * @details Работа считается по копиям, а обход - по заходам в разбор
+		 *          кода операции: ряд из трёх копий стоит трёх единиц работы
+		 *          и одного обхода. Равенство их означало бы, что проход рядом
+		 *          не ведётся вовсе
+		 *
+		 */
+		EXPECT_LT(regex::probe_t::amount(regex::work_t::ROUNDS),
+		 regex::probe_t::amount(regex::work_t::STEPS));
+	}
+	/**
+	 * Выполняем проверку прохода ряда у повторения литерала
+	 *
+	 * @details Ряд складывается не только счётным повторением: «aaa» даёт
+	 *          три копии одинаковые точно так же
+	 *
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения повторения литерала
+		ASSERT_TRUE(engine.build("aaa", 0, expression));
+		// Выполняем проверку пометки копий литерала
+		ASSERT_GE(static_cast <size_t> (expression.forward.instructions.size()), static_cast <size_t> (4));
+		EXPECT_EQ(static_cast <uint32_t> (expression.forward.instructions.at(1).repeat), static_cast <uint32_t> (3));
+	}
+	/**
+	 * Выполняем проверку точности границ ряда
+	 *
+	 * @details Ряд обязан поглотить ровно столько копий, сколько помечено:
+	 *          поглощение лишнего дало бы совпадение там, где его нет,
+	 *          а недобор - отказ там, где совпадение есть
+	 *
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения повторения ровно трёх символов
+		ASSERT_TRUE(engine.build("^a{3}$", 0, expression));
+		// Выполняем проверку отказа на двух символах
+		EXPECT_FALSE(engine.exec(expression, "aa", 0, captures));
+		// Выполняем проверку совпадения на трёх символах
+		EXPECT_TRUE(engine.exec(expression, "aaa", 0, captures));
+		// Выполняем проверку отказа на четырёх символах
+		EXPECT_FALSE(engine.exec(expression, "aaaa", 0, captures));
+	}
+	/**
+	 * Выполняем проверку упирания ряда в конец текста
+	 *
+	 * @details Ряд, конца текста достигший, обязан дать отказ, а не поглотить
+	 *          байты за пределами: проверка эта стережёт границу цикла прохода
+	 *
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения счётного повторения класса
+		ASSERT_TRUE(engine.build("[0-9]{5}", 0, expression));
+		// Выполняем проверку отказа на тексте короче ряда
+		EXPECT_FALSE(engine.exec(expression, "1234", 0, captures));
+		// Выполняем проверку совпадения на тексте длины достаточной
+		EXPECT_TRUE(engine.exec(expression, "12345", 0, captures));
+	}
+	/**
+	 * Выполняем проверку неизменности вердикта пометкой
+	 *
+	 * @details Сопоставление обязано давать те же границы и те же захваты,
+	 *          что и проход по одной копии
+	 *
+	 */
+	{
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку выражения разбора адреса
+		ASSERT_TRUE(engine.build("(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})", 0, expression));
+		// Получаем текст сопоставления
+		const string text = "Host: 192.168.53.176\r\n";
+		// Выполняем сопоставление выражения с текстом
+		ASSERT_TRUE(engine.exec(expression, text, 0, captures));
+		// Выполняем проверку границ совпадения и всех четырёх групп захвата
+		ASSERT_EQ(captures.size(), static_cast <size_t> (5));
+		EXPECT_EQ(text.substr(captures.at(1).first, (captures.at(1).second - captures.at(1).first)), "192");
+		EXPECT_EQ(text.substr(captures.at(4).first, (captures.at(4).second - captures.at(4).first)), "176");
+	}
+}

@@ -996,6 +996,26 @@ namespace awh {
 				void mark() noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод пометки рядов одинаковых инструкций подряд
+				 *
+				 * @details Копии счётного повторения одиночного символа идут подряд
+				 *          и управления между собою не принимают: проход их тесным
+				 *          циклом равен проходу по одной, а заходов в разбор кода
+				 *          операции стоит один взамен нескольких
+				 *
+				 * \~english
+				 * @brief Method of marking the rows of identical instructions in a row
+				 * @details The copies of a counted repetition of a single character follow
+				 *          one another and do not take control between themselves: traversing
+				 *          them in a tight loop equals traversing them one by one, while
+				 *          costing one trip through the dispatch of the operation code
+				 *          instead of several
+				 *
+				 * \~
+				 */
+				void series() noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод разбора бесплодности возврата в ряд повторения
 				 *
 				 * @details Возврат в жадный ряд перебирает длины его убывающие, продолжение

@@ -346,7 +346,7 @@ namespace {
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
+ _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
 /**
  * @brief Метод установки допустимого объёма работы сопоставления
  *
@@ -541,6 +541,53 @@ void awh::regex::Backtrack::rollback(const size_t mark) noexcept {
  * @return            таблица принадлежности значений байта классу
  *
  */
+/**
+ * @brief Метод прохода ряда класса символов по таблице принадлежности байтов
+ *
+ * @details Ряд одинаковых инструкций сопоставления класса проходится тесным
+ *          циклом по таблице принадлежности - тем самым, каким проходится
+ *          и ряд неограниченный. Разбор кода операции выносится из цикла
+ *          вовсе: на «[0-9]{512}» это дало без малого десятикратно против
+ *          сопоставления по одной копии.
+ *
+ * @note Метод отделён от цикла исполнения намеренно. Внесённый телом цикла,
+ *       он разрастил его настолько, что пострадал соседний «exec» - тот, что
+ *       гоняет поиск предфильтра, - и литеральные сценарии, цикла исполнения
+ *       не касающиеся вовсе, просели на четверть.
+ *
+ * @param instruction инструкция сопоставления класса символов
+ * @param from        позиция начала прохода в тексте сопоставления
+ * @param size        размер текста сопоставления
+ * @param series      количество копий ряда, поглощению подлежащих
+ * @return            количество копий ряда, проходом поглощённых
+ *
+ */
+size_t awh::regex::Backtrack::consume(const instruction_t & instruction, const size_t from, const size_t size, const uint16_t series) noexcept {
+	// Получаем таблицу принадлежности байтов классу символов
+	const uint8_t * bytes = this->table(instruction);
+	// Получаем адрес начала текста сопоставления
+	const char * source = this->_text.data();
+	// Получаем позицию, рядом достижимую
+	const size_t reach = (((size - from) < static_cast <size_t> (series)) ?
+	 size : (from + static_cast <size_t> (series)));
+	// Позиция прохода ряда по тексту сопоставления
+	size_t passed = from;
+	/**
+	 * Выполняем проход ряда по таблице принадлежности байтов
+	 */
+	while((passed < reach) && (bytes[static_cast <uint8_t> (source[passed])] != 0))
+		// Переходим к следующей позиции текста сопоставления
+		passed++;
+	/**
+	 * Если учёт мер работы сопоставления заведён
+	 */
+	#if defined(AWH_REGEX_PROBING)
+		// Выполняем учёт проверок принадлежности байта классу
+		this->_checks += ((passed - from) + ((passed < reach) ? 1 : 0));
+	#endif
+	// Выводим количество копий ряда, проходом поглощённых
+	return (passed - from);
+}
 const uint8_t * awh::regex::Backtrack::table(const instruction_t & instruction) noexcept {
 	// Получаем номер класса символов, повторяемого инструкцией
 	const uint32_t index = instruction.charclass.index;
@@ -1252,6 +1299,8 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 	while(true) {
 		// Флаг отказа сопоставления исполняемой инструкции
 		bool failed = false;
+		// Выполняем учёт обхода цикла исполнения с возвратом
+		AWH_REGEX_COUNTED(this->_rounds);
 		/**
 		 * Если допустимый объём работы сопоставления исчерпан
 		 */
@@ -2429,6 +2478,20 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 				 */
 				default: {
 					/**
+					 * Получаем длину ряда одинаковых инструкций, с этой начинающегося
+					 *
+					 * @details Копии счётного повторения одиночного символа идут подряд
+					 *          и управления между собою не принимают, отчего проходятся
+					 *          одним заходом: «[0-9]{3,5}» стоит трёх заходов взамен
+					 *          пяти, а «(?m)^Host: (\d{1,3})...» - вдвое меньше того,
+					 *          что стоило прежде. Единица означает отсутствие ряда
+					 *          и даёт поведение прежнее в точности.
+					 *
+					 */
+					const uint16_t series = instruction.repeat;
+					// Количество копий ряда, уже поглощённых сопоставлением
+					uint16_t taken = 0;
+					/**
 					 * Если позиция сопоставления находится в конце текста
 					 */
 					if(current >= size)
@@ -2438,6 +2501,59 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 					 * Выполняем сопоставление символа инструкцией
 					 */
 					else {
+						/**
+						 * Если ряд проходится таблицей принадлежности байтов
+						 *
+						 * @details Цикл общий ниже разбирает код операции НА КАЖДОМ БАЙТЕ:
+						 *          заход в разбор он снимает, а самый разбор оставляет,
+						 *          отчего ряд из пятисот копий давал выигрыш лишь в шестую
+						 *          часть при убыли заходов в сто с лишним раз. Ряд же класса
+						 *          символов вне режима разбора UTF-8 проходится тесным циклом
+						 *          по таблице принадлежности - тем самым, каким проходится
+						 *          и ряд неограниченный, - и разбор кода операции выносится
+						 *          из цикла вовсе.
+						 *
+						 */
+						/**
+						 * Если ряд поглощён проходом по таблице принадлежности байтов
+						 *
+						 * @details Проход вынесен отдельным методом намеренно. Внесённый
+						 *          тело цикла исполнения, он разрастил его настолько, что
+						 *          пострадал соседний «Backtrack::exec» - тот самый, что
+						 *          гоняет поиск предфильтра: литеральные сценарии, цикла
+						 *          исполнения не касающиеся вовсе, просели на четверть.
+						 *          Замер это показал, а опыт со сборкой, несущей один лишь
+						 *          проход компилятора, привязку доказал.
+						 *
+						 */
+						if((series > 1) && (instruction.type == opcode_t::CLASS) &&
+						 !hasFlag(this->_program->flags, flag_t::UTF)) {
+							// Выполняем проход ряда класса символов по таблице принадлежности
+							const size_t consumed = this->consume(instruction, current, size, series);
+							/**
+							 * Если ряд поглощён целиком
+							 */
+							if(consumed == static_cast <size_t> (series)) {
+								// Выполняем учёт объёма работы копий последующих
+								steps += (static_cast <size_t> (series) - 1);
+								// Переходим к позиции текста за рядом
+								current += consumed;
+								// Переходим к инструкции, за рядом следующей
+								pc += static_cast <address_t> (series);
+								// Продолжаем исполнение программы регулярного выражения
+								continue;
+							}
+							// Выполняем установку флага отказа сопоставления
+							failed = true;
+						}
+						/**
+						 * Выполняем проход ряда одинаковых инструкций
+						 *
+						 * @details Проход ведётся одним заходом: код операции
+						 *          разбирается однажды, а копии поглощаются циклом
+						 *
+						 */
+						else while(true) {
 						// Длина сопоставляемого символа в байтах
 						size_t width = 1;
 						// Получаем кодовое значение сопоставляемого символа
@@ -2503,16 +2619,58 @@ bool awh::regex::Backtrack::run(const address_t address, const size_t pos, const
 						/**
 						 * Если символ инструкцией сопоставлен
 						 */
-						if(matched) {
-							// Переходим к следующей позиции текста сопоставления
-							current += width;
-							// Переходим к следующей инструкции программы
-							pc++;
+						if(!matched) {
+							// Выполняем установку флага отказа сопоставления
+							failed = true;
+							// Выходим из прохода ряда одинаковых инструкций
+							break;
+						}
+						// Переходим к следующей позиции текста сопоставления
+						current += width;
+						/**
+						 * Если ряд поглощён целиком
+						 *
+						 * @details Сличение это единственное и есть вся плата
+						 *          прохода рядом у инструкции одиночной: ряд
+						 *          длиною в единицу выходит из цикла тотчас,
+						 *          сравнений лишних не неся. Плата эта внесена
+						 *          намеренно - выражения без рядов вовсе
+						 *          составляют большую часть набора замеров.
+						 *
+						 */
+						if(++taken >= series)
+							// Выходим из прохода ряда одинаковых инструкций
+							break;
+						/**
+						 * Если позиция сопоставления в конец текста упёрлась
+						 */
+						if(current >= size) {
+							// Выполняем установку флага отказа сопоставления
+							failed = true;
+							// Выходим из прохода ряда одинаковых инструкций
+							break;
+						}
+						/**
+						 * Выполняем учёт единицы объёма работы сопоставления
+						 *
+						 * @details Учёт ведётся ПО КОПИЯМ, а не по заходам:
+						 *          предел объёма стережёт работу, и один заход,
+						 *          три байта поглотивший, стоит трёх её единиц.
+						 *          Заход первый учтён шапкою цикла исполнения,
+						 *          отчего учитываются копии последующие.
+						 *
+						 */
+						steps++;
+						}
+						/**
+						 * Если ряд поглощён целиком
+						 */
+						if(!failed) {
+							// Переходим к инструкции, за рядом следующей
+							pc += static_cast <address_t> (series);
 							// Продолжаем исполнение программы регулярного выражения
 							continue;
 						}
-						// Выполняем установку флага отказа сопоставления
-						failed = true;
 					}
 				}
 			}
@@ -2784,6 +2942,8 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			AWH_REGEX_SPEND(work_t::POINTS, this->owner->_points_spent);
 			// Выполняем внесение счётчика заведённых кадров вызова
 			AWH_REGEX_SPEND(work_t::FRAMES, this->owner->_frames_spent);
+			// Выполняем внесение счётчика обходов цикла исполнения
+			AWH_REGEX_SPEND(work_t::ROUNDS, this->owner->_rounds);
 		}
 	} spending{this};
 	/**
@@ -2826,6 +2986,8 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		this->_points_spent = 0;
 		// Выполняем сброс счётчика заведённых кадров вызова
 		this->_frames_spent = 0;
+		// Выполняем сброс счётчика обходов цикла исполнения
+		this->_rounds = 0;
 	#endif
 	/**
 	 * Выполняем установку действующего объёма работы сопоставления
