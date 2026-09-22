@@ -430,6 +430,42 @@ namespace awh {
 				 */
 				vector <node_id_t> _chain;
 			private:
+				/**
+				 * \~russian
+				 * Набор режимов, с какими размещался всякий класс символов
+				 *
+				 * @details Набор ведётся ради отсева повторов классов и живёт
+				 *          лишь при сборке: в запись хранилища он не входит,
+				 *          отчего устройство её отсевом не затрагивается вовсе.
+				 *
+				 *          Режимы в ключе отсева обязательны. Таблица
+				 *          принадлежности байтов у исполнения с возвратом
+				 *          держится по номеру класса и строится с учётом
+				 *          режимов инструкции, перестраиваясь при их смене.
+				 *          Отсев без режимов свёл бы «(?i)[a-z]» и «[a-z]»
+				 *          к номеру одному, и таблица перестраивалась бы
+				 *          на всяком чередовании между ними - тот самый
+				 *          промах об одной ячейке, какой стережёт проверка
+				 *          «Regex.EngineRepeatTables».
+				 *
+				 * \~english
+				 * Set of the modes with which each character class was stored
+				 * @details The set is kept for the sake of folding duplicate classes and lives
+				 *          only during the build: it does not enter the storage record, so the
+				 *          layout of that record is not affected by the folding at all.
+				 *
+				 *          The modes in the folding key are mandatory. The byte membership table
+				 *          of the execution with backtracking is held by the class index and is
+				 *          built with regard to the modes of the instruction, being rebuilt when
+				 *          they change. Folding without the modes would bring "(?i)[a-z]" and
+				 *          "[a-z]" to one index, and the table would be rebuilt on every
+				 *          alternation between them — the very one-cell miss that the test
+				 *          "Regex.EngineRepeatTables" guards.
+				 *
+				 * \~
+				 */
+				vector <uint32_t> _modes;
+			private:
 				// Код ошибки последней операции компиляции
 				error_t _error;
 			public:
@@ -1421,7 +1457,7 @@ namespace awh {
 				 *
 				 * \~
 				 */
-				uint32_t store(const class_t & value) noexcept;
+				uint32_t store(const class_t & value, const uint32_t flags) noexcept;
 			private:
 				/**
 				 * \~russian

@@ -349,7 +349,7 @@ awh::regex::address_t awh::regex::Compiler::emit(const opcode_t type, const uint
  * @return      индекс класса символов в хранилище классов
  *
  */
-uint32_t awh::regex::Compiler::store(const class_t & value) noexcept {
+uint32_t awh::regex::Compiler::store(const class_t & value, const uint32_t flags) noexcept {
 	// Получаем индекс размещаемого класса символов
 	const uint32_t result = static_cast <uint32_t> (this->_program->classes.size());
 	// Создаём ссылку на размещаемый класс символов
@@ -364,12 +364,68 @@ uint32_t awh::regex::Compiler::store(const class_t & value) noexcept {
 	record.properties = static_cast <uint32_t> (this->_program->properties.size());
 	// Выполняем установку количества свойств класса
 	record.propertyCount = static_cast <uint32_t> (value.properties.size());
+	/**
+	 * Выполняем поиск класса, размещаемому равного
+	 *
+	 * @details Всякое вхождение класса в выражении размещалось записью своей,
+	 *          отчего «[0-9]{3,5}» заводило ПЯТЬ записей одного и того же
+	 *          класса - пять наборов диапазонов, пять таблиц принадлежности
+	 *          байтов у исполнения с возвратом и пять ячеек разрешения таблиц.
+	 *          Совпадение классов при этом не случайно, а обычно: счётное
+	 *          повторение разворачивается копиями, и копии эти равны по
+	 *          определению.
+	 *
+	 *          Поиск ведётся перебором, а не соответствием по свёртке: классов
+	 *          у выражения единицы, перебор их идёт при сборке однажды, а
+	 *          свёртка потребовала бы устойчивого правила для набора диапазонов
+	 *          и стоила бы дороже самого перебора. Отсев при этом ничего
+	 *          не решает о правильности - он лишь сводит равные записи в одну,
+	 *          и вердикт от него не зависит вовсе.
+	 *
+	 */
+	for(size_t i = 0; i < this->_program->classes.size(); i++) {
+		// Получаем очередную размещённую ссылку на класс символов
+		const classref_t & exists = this->_program->classes[i];
+		/**
+		 * Если признак отрицания либо состав класса не совпадает
+		 */
+		if((this->_modes.at(i) != flags) || (exists.negative != record.negative) ||
+		 (exists.rangeCount != record.rangeCount) || (exists.propertyCount != record.propertyCount))
+			// Переходим к классу символов следующему
+			continue;
+		// Флаг совпадения состава классов символов
+		bool same = true;
+		/**
+		 * Выполняем обход диапазонов размещаемого класса символов
+		 */
+		for(size_t j = 0; same && (j < value.ranges.size()); j++) {
+			// Получаем диапазон размещённого класса символов
+			const range_t & already = this->_program->ranges[static_cast <size_t> (exists.ranges) + j];
+			// Выполняем сличение границ диапазонов классов символов
+			same = ((already.begin == value.ranges.at(j).begin) && (already.end == value.ranges.at(j).end));
+		}
+		/**
+		 * Выполняем обход свойств размещаемого класса символов
+		 */
+		for(size_t j = 0; same && (j < value.properties.size()); j++)
+			// Выполняем сличение свойств классов символов
+			same = (::memcmp(&this->_program->properties[static_cast <size_t> (exists.properties) + j],
+			 &value.properties.at(j), sizeof(property_t)) == 0);
+		/**
+		 * Если состав классов символов совпал
+		 */
+		if(same)
+			// Выводим индекс класса символов, ранее размещённого
+			return static_cast <uint32_t> (i);
+	}
 	// Выполняем перенос диапазонов класса в сплошной набор программы
 	this->_program->ranges.append(value.ranges.data(), value.ranges.size());
 	// Выполняем перенос свойств класса в сплошной набор программы
 	this->_program->properties.append(value.properties.data(), value.properties.size());
 	// Выполняем размещение ссылки на класс символов в хранилище
 	this->_program->classes.push_back(record);
+	// Выполняем учёт режимов, с какими класс символов размещён
+	this->_modes.push_back(flags);
 	// Выводим индекс класса символов в хранилище классов
 	return result;
 }
@@ -550,7 +606,7 @@ bool awh::regex::Compiler::merging(const node_id_t id) noexcept {
 		merged.negative = true;
 	}
 	// Выполняем размещение объединённого класса символов в программе
-	const uint32_t index = this->store(merged);
+	const uint32_t index = this->store(merged, node.flags);
 	// Выполняем размещение инструкции сопоставления класса символов
 	const address_t address = this->emit(opcode_t::CLASS, node.flags);
 	/**
@@ -910,7 +966,7 @@ bool awh::regex::Compiler::flattening(const node_id_t id) noexcept {
 		// Выводим неприменимость свёртки повторения
 		return false;
 	// Выполняем размещение объединённого класса символов в программе
-	const uint32_t index = this->store(merged);
+	const uint32_t index = this->store(merged, node.flags);
 	// Выполняем размещение инструкции перехода по двум ветвям ряда
 	const address_t split = this->emit(opcode_t::SPLIT, node.flags);
 	/**
@@ -1378,7 +1434,7 @@ bool awh::regex::Compiler::compileNode(const node_id_t id) noexcept {
 			// Получаем класс символов синтаксического дерева
 			const class_t & value = this->_parser->charClass(node.charclass.index);
 			// Выполняем размещение класса символов в программе
-			const uint32_t index = this->store(value);
+			const uint32_t index = this->store(value, node.flags);
 			// Выполняем размещение инструкции сопоставления класса символов
 			const address_t address = this->emit(opcode_t::CLASS, node.flags);
 			/**
@@ -4745,6 +4801,8 @@ bool awh::regex::Compiler::build(const Parser & parser, program_t & program) noe
 	this->_visited.clear();
 	// Выполняем очистку сберегательного ряда узлов цепочки
 	this->_chain.clear();
+	// Выполняем очистку набора режимов размещённых классов символов
+	this->_modes.clear();
 	// Выполняем сброс сберегательной программы построителя
 	program.reset();
 	/**
