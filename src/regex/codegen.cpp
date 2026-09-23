@@ -1591,6 +1591,63 @@ namespace {
 	}
 
 	/**
+	 * @brief Наибольшее количество звеньев цепочки, проходом развёрнутым порождаемое
+	 *
+	 * @details Цепочка ограниченного повторения проходится кодом развёрнутым - по
+	 *          семи командам на копию, - а не циклом: цикл требовал бы регистра
+	 *          под предел прохода, тогда как регистр размера текста приходит
+	 *          доводом и сохраняется при заходах в подпрограммы, и опускать его
+	 *          ради предела значило бы рисковать там, где выигрыш мал. Цепочка
+	 *          длиннее порога порождается прежним путём, развилкой на звено:
+	 *          вердикт от того не меняется, меняется одно лишь время.
+	 *
+	 */
+	constexpr uint16_t CHAIN_UNROLL = 16;
+
+	/**
+	 * @brief Функция получения адреса тела ряда повторения одиночного символа
+	 *
+	 * @details Ряд помечается двумя способами. Ряд безграничный несёт адрес тела
+	 *          полем «run»: повторение его компилируется переходом с возвратом
+	 *          к началу. Цепочка ограниченного повторения несёт количество копий
+	 *          полем «most», а тело её следует за переходом всегда: обратного
+	 *          перехода в ней нет вовсе, и адрес тела выводится положением.
+	 *
+	 *          Поле «run» под цепочку не занято намеренно: читается оно здесь
+	 *          многими местами, и цепочка, им помеченная, прошла бы там без
+	 *          предела. Помощник этот - единственное место, где пометки сводятся
+	 *          воедино, и всякое место, ряду подвластное, берёт тело отсюда.
+	 *
+	 * @param program     программа регулярного выражения
+	 * @param pc          адрес перехода по двум ветвям
+	 * @param instruction инструкция перехода по двум ветвям
+	 * @return            адрес тела ряда либо недействительный адрес
+	 *
+	 */
+	awh::regex::address_t repetend(const awh::regex::program_t & program, const awh::regex::address_t pc, const awh::regex::instruction_t & instruction) noexcept {
+		/**
+		 * Если переход возглавляет ряд безграничный
+		 */
+		if(instruction.split.run != awh::regex::INVALID_ADDRESS)
+			// Выводим адрес тела ряда безграничного
+			return instruction.split.run;
+		/**
+		 * Если переход цепочки ограниченного повторения не возглавляет
+		 *
+		 * @details Цепочка ленивая пометки не получает вовсе, а жадная ведёт
+		 *          телом ветвь первую, стоящую сразу за переходом.
+		 *
+		 */
+		if((instruction.split.most == 0) || (instruction.split.most > CHAIN_UNROLL) ||
+		 (static_cast <size_t> (instruction.split.first) != (static_cast <size_t> (pc) + 1)) ||
+		 ((static_cast <size_t> (pc) + 1) >= program.instructions.size()))
+			// Выводим недействительный адрес
+			return awh::regex::INVALID_ADDRESS;
+		// Выводим адрес тела цепочки, за переходом следующего
+		return static_cast <awh::regex::address_t> (pc + 1);
+	}
+
+	/**
 	 * @brief Функция проверки прохода ряда повторения без отдачи
 	 *
 	 * @details Жадный ряд, отступая, отдаёт по одному сопоставлению тела
@@ -1608,12 +1665,18 @@ namespace {
 	 *          прекращает его отдельно: продолжение за ним необязательно,
 	 *          и непересечение с первой инструкцией его ничего не доказывает.
 	 *
+	 *          Отступление цепочки ограниченного повторения бесплодно тем же
+	 *          доводом, хотя проход её останавливается и пределом, а не одним
+	 *          лишь байтом чужим: отступая, цепочка открывает продолжению лишь
+	 *          байты, ею же поглощённые, а те продолжению не подходят.
+	 *
 	 * @param program     программа регулярного выражения
 	 * @param instruction инструкция перехода по двум ветвям ряда повторения
+	 * @param body        адрес тела ряда повторения
 	 * @return            результат проверки прохода ряда без отдачи
 	 *
 	 */
-	bool sealing(const awh::regex::program_t & program, const awh::regex::instruction_t & instruction) noexcept {
+	bool sealing(const awh::regex::program_t & program, const awh::regex::instruction_t & instruction, const awh::regex::address_t body) noexcept {
 		// Наибольшее количество переходов, разбором проходимых
 		constexpr size_t HOPS = 16;
 		// Получаем адрес продолжения сопоставления вслед за рядом
@@ -1650,7 +1713,7 @@ namespace {
 				case static_cast <uint8_t> (awh::regex::opcode_t::CHAR):
 				case static_cast <uint8_t> (awh::regex::opcode_t::CLASS): {
 					// Получаем инструкцию тела ряда повторения
-					const awh::regex::instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.run));
+					const awh::regex::instruction_t & repeated = program.instructions.at(static_cast <size_t> (body));
 					/**
 					 * Выполняем обход пространства значений байта
 					 */
@@ -1744,7 +1807,7 @@ namespace {
 		 *          и мест на них у повторения без записи нет.
 		 *
 		 */
-		if(!sealing(program, instruction))
+		if(!sealing(program, instruction, instruction.split.run))
 			// Выводим неприменимость отдачи обратным проходом
 			return false;
 		// Получаем инструкцию тела ряда повторения
@@ -2114,12 +2177,15 @@ namespace {
 	 *
 	 * @param program проверяемая программа регулярного выражения
 	 * @param runs    количество рядов повторения одиночного символа
+	 * @param bounded количество цепочек ограниченного повторения среди рядов
 	 * @return        результат проверки применимости кодогенерации
 	 *
 	 */
-	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting, size_t & grounds) noexcept {
+	bool walk(const awh::regex::program_t & program, size_t & runs, size_t & chains, size_t & deciders, size_t & loops, size_t & framed, size_t & recorded, size_t & atomics, size_t & looks, size_t & calls, size_t (& deeps)[5], bool & entangled, bool & referring, bool & rooting, size_t & grounds, size_t & bounded) noexcept {
 		// Выполняем сброс количества рядов повторения
 		runs = 0;
+		// Выполняем сброс количества цепочек ограниченного повторения
+		bounded = 0;
 		// Выполняем сброс количества цепочек ветвей выбора
 		chains = 0;
 		// Выполняем сброс количества мест запоминания границ групп
@@ -2549,7 +2615,7 @@ namespace {
 					// Получаем признак ленивого повторения одиночного символа
 					const bool lazily = (instruction.split.lazily != 0);
 					// Получаем адрес тела повторения одиночного символа
-					const awh::regex::address_t body = instruction.split.run;
+					const awh::regex::address_t body = repetend(program, pc, instruction);
 					/**
 					 * Если переход возглавляет цепочку ветвей выбора одной из них
 					 */
@@ -2890,6 +2956,18 @@ namespace {
 					if(++runs > awh::regex::MAX_RUNS)
 						// Выводим неприменимость кодогенерации к программе
 						return false;
+					/**
+					 * Если ряд есть цепочка ограниченного повторения
+					 *
+					 * @details Счёт ведётся ради пропуска пройденного участка: пропуск
+					 *          стоит на том, что конец ряда при начале попытки более
+					 *          позднем остаётся прежним, а конец цепочки задаёт предел,
+					 *          и попытка поздняя уводит его дальше.
+					 *
+					 */
+					if(instruction.split.run == awh::regex::INVALID_ADDRESS)
+						// Увеличиваем количество цепочек ограниченного повторения
+						bounded++;
 					// Увеличиваем количество рядов повторения уровня записи
 					rows++;
 					/**
@@ -3377,11 +3455,13 @@ bool awh::regex::Codegen::applicable(const program_t & program) noexcept {
 	bool rooting = false;
 	// Наибольшая глубина вложения атомарных групп выражения
 	size_t grounds = 0;
+	// Количество цепочек ограниченного повторения среди рядов
+	size_t bounded = 0;
 	// Выводим результат проверки применимости кодогенерации
 	/**
 	 * Если обход программы применимости не выявил
 	 */
-	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds))
+	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds, bounded))
 		// Выводим неприменимость кодогенерации к программе
 		return false;
 	// Выводим применимость кодогенерации к программе
@@ -3441,6 +3521,8 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	bool rooting = false;
 	// Наибольшая глубина вложения атомарных групп выражения
 	size_t grounds = 0;
+	// Количество цепочек ограниченного повторения среди рядов
+	size_t bounded = 0;
 	/**
 	 * Если кодогенерация сборкой не поддерживается
 	 */
@@ -3450,7 +3532,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	/**
 	 * Если кодогенерация к программе неприменима
 	 */
-	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds))
+	if(!walk(program, runs, chains, deciders, loops, framed, recorded, atomics, looks, calls, deeps, entangled, referring, rooting, grounds, bounded))
 		// Выводим результат порождения сопоставителя
 		return false;
 	// Подписываемся на перечисление регистров соглашения о вызове
@@ -3869,8 +3951,13 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 	 *          конца его пройденному тексту не отвечает, тогда как пропуск
 	 *          ведётся именно положением конца первого ряда.
 	 *
+	 *          Помехой служит и цепочка ограниченного повторения: конец её задаёт
+	 *          предел, а не байт чужой, и попытка поздняя уводит его дальше.
+	 *          У «[0-9]{0,3}x» на «77777x» пропуск перескочил бы с позиции
+	 *          первой на третью и отдал совпадение «[3,6)» взамен левейшего «[2,6)».
+	 *
 	 */
-	const bool skipping = (!program.anchored && (chains == 0) && (deciders == 0) && (loops == 0) && !entangled && !referring && (runs > 0));
+	const bool skipping = (!program.anchored && (chains == 0) && (deciders == 0) && (loops == 0) && (bounded == 0) && !entangled && !referring && (runs > 0));
 	/**
 	 * Получаем размер кадра вызова порождаемого сопоставителя
 	 *
@@ -5730,7 +5817,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		/**
 		 * Если инструкция выбирает одну из ветвей выражения
 		 */
-		if((instruction.type == opcode_t::SPLIT) && (instruction.split.run == INVALID_ADDRESS)) {
+		if((instruction.type == opcode_t::SPLIT) && (repetend(program, pc, instruction) == INVALID_ADDRESS)) {
 			// Адрес начала тела повторения над областью
 			address_t opening = INVALID_ADDRESS;
 			// Адрес перехода назад, тело повторения завершающего
@@ -7124,8 +7211,19 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 		 *
 		 */
 		{
+			// Получаем адрес тела повторения одиночного символа
+			const address_t body = repetend(program, pc, instruction);
 			// Получаем инструкцию тела повторения одиночного символа
-			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (instruction.split.run));
+			const instruction_t & repeated = program.instructions.at(static_cast <size_t> (body));
+			/**
+			 * Получаем количество копий цепочки ограниченного повторения
+			 *
+			 * @details Нуль означает ряд безграничный. Цепочка проходится тем же
+			 *          порядком, что и ряд, - проход, сохранение положений, отступление
+			 *          по одному байту до начала, - и разнится лишь пределом прохода.
+			 *
+			 */
+			const uint16_t most = ((instruction.split.run == INVALID_ADDRESS) ? instruction.split.most : 0);
 			/**
 			 * Получаем признак прохода ряда повторения без отдачи
 			 *
@@ -7140,7 +7238,7 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 			 *          отставание от эталона с 2.27 до 1.05.
 			 *
 			 */
-			const bool sealed = sealing(program, instruction);
+			const bool sealed = sealing(program, instruction, body);
 			// Выполняем заведение таблицы принадлежности байтов тела повторения
 			const size_t number = this->table(repeated, program);
 			// Заводим метку прохода ряда подходящих символов
@@ -7199,13 +7297,50 @@ bool awh::regex::Codegen::compile(const program_t & program) noexcept {
 				}
 			}
 			/**
+			 * Если ряд есть цепочка ограниченного повторения
+			 */
+			if(most > 0) {
+				/**
+				 * Порождаем проход цепочки ограниченного повторения развёрнутым
+				 *
+				 * @details Ходы ряда безграничного - установка позиции в размер
+				 *          текста и поиск предела подпрограммой - цепочке заказаны:
+				 *          оба проходят текст без предела. Проход развёрнут по копии
+				 *          на звено, семью командами на каждую, взамен развилки
+				 *          с возвратом на всякое звено, какою цепочка шла прежде:
+				 *          щупом «jitcost» звено стоило двадцати трёх команд.
+				 *
+				 */
+				emitter.context(reg_t::SCRATCH, static_cast <uint32_t> (number));
+				// Выполняем расстановку метки прохода цепочки
+				emitter.place(scan);
+				/**
+				 * Выполняем порождение копий прохода цепочки
+				 */
+				for(uint16_t copy = 0; copy < most; copy++) {
+					// Выполняем сравнение позиции сопоставления с размером текста
+					emitter.compare(reg_t::CURSOR, reg_t::SIZE);
+					// Выполняем переход к завершению прохода при достижении конца текста
+					emitter.branch(cond_t::ABOVE, complete);
+					// Выполняем чтение байта текста в позиции сопоставления
+					emitter.load(reg_t::LETTER, reg_t::TEXT, reg_t::CURSOR);
+					// Выполняем чтение принадлежности байта таблице сопоставления
+					emitter.load(reg_t::SPARE, reg_t::SCRATCH, reg_t::LETTER);
+					// Выполняем сравнение принадлежности байта с нулём
+					emitter.compare(reg_t::SPARE, static_cast <uint32_t> (0));
+					// Выполняем переход к завершению прохода при непринадлежности байта
+					emitter.branch(cond_t::EQUAL, complete);
+					// Переходим к следующей позиции текста сопоставления
+					emitter.add(reg_t::CURSOR, reg_t::CURSOR, 1);
+				}
+			/**
 			 * Если ряд повторения принимает всякое значение байта
 			 *
 			 * @details Проход такого ряда упирается лишь в конец текста, отчего
 			 *          и порождается установкой позиции в размер его.
 			 *
 			 */
-			if(limits == 0) {
+			} else if(limits == 0) {
 				// Выполняем установку позиции сопоставления в размер текста
 				emitter.move(reg_t::CURSOR, reg_t::SIZE);
 				// Выполняем расстановку метки завершения прохода ряда
