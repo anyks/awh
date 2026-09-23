@@ -213,6 +213,28 @@ namespace awh {
 
 		/**
 		 * \~russian
+		 * @brief Признак цепочки ограниченного повторения, одним ходом не пройденной
+		 *
+		 * @details Проход цепочки берётся не у всякого тела, и отказ его надлежит
+		 *          отличить от прохода, поглотившего копий нуль: первый велит пройти
+		 *          цепочку по инструкциям, второй же означает переход к выходу
+		 *          немедленный. Признаком служит значение, количеством копий
+		 *          недостижимое: копий в цепочке не более разрядности поля пометки.
+		 *
+		 * \~english
+		 * @brief Mark of a chain of a bounded repetition not walked in one move
+		 * @details The walk of a chain is not taken for every body, and its refusal must be
+		 *          told apart from a walk that consumed zero copies: the first orders to walk
+		 *          the chain by instructions, whereas the second means an immediate transition
+		 *          to the exit. The mark is a value unreachable by a number of copies: there
+		 *          are no more copies in a chain than the width of the field of the mark.
+		 *
+		 * \~
+		 */
+		constexpr size_t UNCHAINED = static_cast <size_t> (-1);
+
+		/**
+		 * \~russian
 		 * @brief Наибольшее допустимое количество кадров рекурсивных вызовов
 		 *
 		 * @details Кадр вызова сохраняется до отмены вызова возвратом, поэтому их
@@ -1434,6 +1456,44 @@ namespace awh {
 				 * \~
 				 */
 				size_t consume(const instruction_t & instruction, const size_t from, const size_t size, const uint16_t series) noexcept;
+				/**
+				 * \~russian
+				 * @brief Метод прохода цепочки ограниченного повторения одиночного символа
+				 *
+				 * @details Цепочка проходится одним ходом и точкой возврата единственной
+				 *          взамен двух инструкций и точки на каждую копию. Проход берётся
+				 *          лишь у тела из класса символов вне режима разбора UTF-8; тело
+				 *          иное проходится по инструкциям, о чём и говорит выдача
+				 *
+				 * @note Метод отделён от цикла исполнения намеренно и отделён замером:
+				 *       внесённый телом цикла, он обобрал соседей своих по единице
+				 *       трансляции на четверть скорости
+				 *
+				 * @param instruction переход, цепочку возглавляющий
+				 * @param pc          адрес перехода в программе регулярного выражения
+				 * @param from        позиция начала прохода в тексте сопоставления
+				 * @param size        размер текста сопоставления
+				 * @return            количество копий цепочки, проходом поглощённых
+				 *
+				 * \~english
+				 * @brief Method of walking a chain of a bounded repetition of a single character
+				 * @details The chain is walked in one move and with a single backtracking point
+				 *          instead of two instructions and a point per every copy. The walk is
+				 *          taken only for a body of a character class outside the UTF-8 parsing
+				 *          mode; another body is walked by instructions, which is what the return
+				 *          value tells
+				 * @note The method is separated from the execution loop deliberately, and it is
+				 *       separated by measurement: placed into the body of the loop, it robbed
+				 *       its neighbours in the translation unit of a quarter of their speed
+				 * @param instruction the jump heading the chain
+				 * @param pc          address of the jump in the program of the regular expression
+				 * @param from        position of the start of the walk in the matching text
+				 * @param size        size of the matching text
+				 * @return            number of the copies of the chain consumed by the walk
+				 *
+				 * \~
+				 */
+				size_t chain(const instruction_t & instruction, const address_t pc, const size_t from, const size_t size) noexcept;
 				/**
 				 * \~russian
 				 * @brief Метод построения таблицы принадлежности байтов классу символов

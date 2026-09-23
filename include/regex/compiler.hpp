@@ -1016,6 +1016,27 @@ namespace awh {
 				void series() noexcept;
 				/**
 				 * \~russian
+				 * @brief Метод пометки цепочек ограниченного повторения одиночного символа
+				 *
+				 * @details Повторение ограниченное компилируется цепочкой переходов
+				 *          с выходом общим, обратного перехода не несущей вовсе, отчего
+				 *          пометка безграничного ряда её не берёт. Пометка даёт проход
+				 *          цепочки одним ходом и одной точкой возврата взамен двух
+				 *          инструкций и точки на каждую копию
+				 *
+				 * \~english
+				 * @brief Method of marking the chains of a bounded repetition of a single character
+				 * @details A bounded repetition is compiled as a chain of jumps with a common
+				 *          exit, carrying no backward jump at all, which is why the mark of
+				 *          an unbounded row does not cover it. The mark yields a traversal of
+				 *          the chain in one move and with one backtracking point instead of
+				 *          two instructions and a point per every copy
+				 *
+				 * \~
+				 */
+				void bounded() noexcept;
+				/**
+				 * \~russian
 				 * @brief Метод разбора бесплодности возврата в ряд повторения
 				 *
 				 * @details Возврат в жадный ряд перебирает длины его убывающие, продолжение

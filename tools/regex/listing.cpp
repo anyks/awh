@@ -69,10 +69,11 @@ static void listing(awh::regex::engine_t & engine, const char * pattern) noexcep
 	// Получаем набор инструкций собранной программы
 	const auto & instructions = expression.forward.instructions;
 	// Выводим заголовок печати программы
-	::printf("\n%s — инструкций %zu, классов %zu, диапазонов %zu\n", pattern,
+	::printf("\n%s — инструкций %zu, классов %zu, диапазонов %zu, байт на инструкцию %zu\n", pattern,
 	 static_cast <size_t> (instructions.size()),
 	 static_cast <size_t> (expression.forward.classes.size()),
-	 static_cast <size_t> (expression.forward.ranges.size()));
+	 static_cast <size_t> (expression.forward.ranges.size()),
+	 sizeof(awh::regex::instruction_t));
 	/**
 	 * Выполняем обход инструкций собранной программы
 	 */
@@ -88,11 +89,12 @@ static void listing(awh::regex::engine_t & engine, const char * pattern) noexcep
 		 */
 		if(instruction.type == awh::regex::opcode_t::SPLIT){
 			// Выводим строку инструкции перехода по двум ветвям
-			::printf("  %3zu  %-9s first=%u second=%u run=%d lazily=%u solid=%u\n", i, name,
+			::printf("  %3zu  %-9s first=%u second=%u run=%d lazily=%u solid=%u most=%u\n", i, name,
 			 instruction.split.first, instruction.split.second,
 			 static_cast <int32_t> (instruction.split.run),
 			 static_cast <uint32_t> (instruction.split.lazily),
-			 static_cast <uint32_t> (instruction.split.solid));
+			 static_cast <uint32_t> (instruction.split.solid),
+			 static_cast <uint32_t> (instruction.split.most));
 		/**
 		 * Если инструкция выполняет безусловный переход
 		 */

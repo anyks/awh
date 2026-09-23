@@ -191,5 +191,9 @@ $ROOT/submodule.sh add jemalloc https://github.com/jemalloc/jemalloc.git
 $ROOT/submodule.sh remove gperftools
 $ROOT/submodule.sh add gperftools https://github.com/gperftools/gperftools.git
 
+# Выполняем пересборку сабмодуля OpenSSL
+$ROOT/submodule.sh remove openssl
+$ROOT/submodule.sh add openssl https://github.com/openssl/openssl.git
+
 # Выводим список добавленных модулей
 cat $ROOT/../.gitmodules

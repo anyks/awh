@@ -374,6 +374,56 @@ namespace awh {
 					 * \~
 					 */
 					uint8_t solid;
+					/**
+					 * \~russian
+					 * Количество копий ограниченного повторения одиночного символа
+					 *
+					 * @details Повторение ограниченное - «\d{1,3}» - компилируется
+					 *          не переходом с возвратом к началу, а ЦЕПОЧКОЙ переходов:
+					 *          «SPLIT(тело,выход) тело SPLIT(тело,выход) тело», где
+					 *          выход у всей цепочки общий, а тело всякий раз следует
+					 *          за переходом. Обратного перехода в ней нет вовсе, отчего
+					 *          пометка безграничного ряда её не берёт, и проход её
+					 *          стоил двух инструкций на каждую копию.
+					 *
+					 *          Значение есть количество копий, переходом возглавляемых,
+					 *          и ставится оно КАЖДОМУ переходу цепочки со своим остатком:
+					 *          управление приходит и в середину её. Нуль означает,
+					 *          что переход цепочки не возглавляет.
+					 *
+					 *          Поле легло в зазор выравнивания операндов перехода:
+					 *          размер инструкции от пометки не изменился. Адрес тела
+					 *          в нём не хранится намеренно - тело следует за переходом
+					 *          всегда, - а поле «run» под него не занято оттого, что
+					 *          кодогенератор читает его десятью местами и порождённый
+					 *          им код прошёл бы цепочку без предела.
+					 *
+					 * \~english
+					 * Number of copies of a bounded repetition of a single character
+					 * @details A bounded repetition — «\d{1,3}» — is compiled not as a jump
+					 *          with a return to the beginning but as a CHAIN of jumps:
+					 *          «SPLIT(body,exit) body SPLIT(body,exit) body», where
+					 *          the exit is common to the whole chain and the body always
+					 *          follows the jump. There is no backward jump in it at all,
+					 *          which is why the mark of an unbounded row does not cover it,
+					 *          and traversing it cost two instructions per every copy.
+					 *
+					 *          The value is the number of copies headed by the jump,
+					 *          and it is placed on EVERY jump of the chain with its own
+					 *          remainder: control arrives in the middle of it as well.
+					 *          Zero means that the jump heads no chain.
+					 *
+					 *          The field fits into the alignment gap of the operands of
+					 *          the jump: the size of the instruction is not changed by the
+					 *          mark. The address of the body is deliberately not kept in it —
+					 *          the body always follows the jump — and the «run» field is not
+					 *          taken for it because the code generator reads that field in ten
+					 *          places and the code it generates would walk the chain
+					 *          without a limit.
+					 *
+					 * \~
+					 */
+					uint16_t most;
 				} split;
 				/**
 				 * \~russian
@@ -690,6 +740,81 @@ namespace awh {
 			 */
 			Instruction() noexcept : type(opcode_t::MATCH), repeat(1), flags(0), letter{0} {}
 		} instruction_t;
+
+		/**
+		 * \~russian
+		 * @brief Функция проверки одинаковости двух инструкций программы
+		 *
+		 * @details Одинаковыми считаются инструкции, сопоставляющие один и тот же
+		 *          одиночный символ одними и теми же режимами: ряд таких копий
+		 *          проходится одним заходом, и длина ряда помечает каждую копию.
+		 *          Инструкции прочие ряду неподвластны, сколь бы ни были похожи:
+		 *          переход по двум ветвям и сохранение позиции управление принимают,
+		 *          и проход их одним заходом равенства исполнению не сохраняет.
+		 *
+		 *          Правило ведётся здесь одним местом намеренно: пометку ставит
+		 *          сборка, а поверяет её восстановление записи, и разойдись два
+		 *          прочтения правила - поверка отвергла бы пометку правильную либо,
+		 *          что хуже, приняла бы поддельную.
+		 *
+		 * @param first  инструкция первая
+		 * @param second инструкция вторая
+		 * @return       результат проверки одинаковости инструкций
+		 *
+		 * \~english
+		 * @brief Function of checking whether two instructions of the program are identical
+		 * @details Identical are the instructions matching one and the same single character
+		 *          with one and the same modes: a row of such copies is traversed in one trip,
+		 *          and the length of the row marks every copy. The other instructions are
+		 *          not subject to a row however similar they are: a two-branch jump and
+		 *          a saving of a position take control, and traversing them in one trip
+		 *          does not preserve the equality to the execution.
+		 *
+		 *          The rule is kept here in a single place deliberately: the mark is placed
+		 *          by the build and verified by the restoration of the record, and were
+		 *          the two readings of the rule to diverge, the verification would reject
+		 *          a correct mark or, what is worse, accept a forged one.
+		 *
+		 * @param first  the first instruction
+		 * @param second the second instruction
+		 * @return       result of checking whether the instructions are identical
+		 *
+		 * \~
+		 */
+		AWH_REGEX_INLINE bool identical(const instruction_t & first, const instruction_t & second) noexcept {
+			/**
+			 * Если код операции либо набор режимов не совпадает
+			 */
+			if((first.type != second.type) || (first.flags != second.flags))
+				// Выводим отсутствие одинаковости инструкций
+				return false;
+			/**
+			 * Определяем код операции сличаемых инструкций
+			 */
+			switch(static_cast <uint8_t> (first.type)) {
+				/**
+				 * Сопоставление одиночного символа сличается кодовым значением
+				 */
+				case static_cast <uint8_t> (opcode_t::CHAR):
+				case static_cast <uint8_t> (opcode_t::CODEUNIT):
+					// Выводим результат сличения кодовых значений символов
+					return (first.letter.code == second.letter.code);
+				// Сопоставление символа из класса сличается номером класса
+				case static_cast <uint8_t> (opcode_t::CLASS):
+					// Выводим результат сличения номеров классов символов
+					return (first.charclass.index == second.charclass.index);
+				/**
+				 * Сопоставление любого символа операндов не несёт вовсе
+				 *
+				 * @details Режимы сличены выше, а «DOTALL» лежит именно в них:
+				 *          инструкции с режимами равными неотличимы
+				 *
+				 */
+				case static_cast <uint8_t> (opcode_t::ANY): return true;
+			}
+			// Инструкция прочая ряду неподвластна
+			return false;
+		}
 
 		/**
 		 * \~russian
