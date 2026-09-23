@@ -393,12 +393,16 @@ bool awh::regex::Engine::test(string_view text, const size_t start) noexcept {
  * @param captures   набор границ совпадения и захваченных групп
  * @param result     исход сопоставления, пробою установленный
  * @param exhausted  признак исчерпания объёма работы при объёме полном
+ * @param frontier   позиция, левее которой попытки пробы окончательно
+ *                   отказали, либо «npos», если проба пределом не прервана
  * @return           признак разрешения вопроса пробою
  *
  */
-bool awh::regex::Engine::probe(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted) noexcept {
+bool awh::regex::Engine::probe(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept {
 	// Выполняем сброс признака исчерпания объёма работы
 	exhausted = false;
+	// Выполняем сброс позиции прекращения пробы пределом
+	frontier = string_view::npos;
 	/**
 	 * Если выражение пробе не подлежит
 	 */
@@ -455,6 +459,15 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 		return true;
 	}
 	/**
+	 * Выполняем учёт пробы, пределом оборванной
+	 *
+	 * @details Проба эта работы не сняла, а внесла: вопрос уходит автомату,
+	 *          и попытки, пробою сделанные, пропадают. Счётчик удавшихся проб
+	 *          её не видит, и прежде она вскрывалась лишь отменою пробы целиком.
+	 *
+	 */
+	AWH_REGEX_TICK(path_t::YIELDING);
+	/**
 	 * Выполняем установку признака исчерпания объёма работы
 	 *
 	 * @details Признак ставится лишь тогда, когда объём был ПОЛНЫМ, то есть весь
@@ -463,6 +476,14 @@ bool awh::regex::Engine::probe(const expression_t & expression, string_view text
 	 *
 	 */
 	exhausted = ((this->_backtrack.error() == error_t::BUDGET_EXCEEDED) && (span <= MAX_DIRECT));
+	/**
+	 * Выполняем получение позиции, на которой проба прекращена пределом
+	 *
+	 * @details Попытки левее неё окончательно отказали, и проход повторный,
+	 *          с той же позиции начала поиска идущий, повторять их не обязан.
+	 *
+	 */
+	frontier = this->_backtrack.frontier();
 	// Выводим отсутствие разрешения вопроса пробою
 	return false;
 }
@@ -875,13 +896,15 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	 *
 	 */
 	bool exhausted = false;
+	// Позиция, левее которой попытки пробы окончательно отказали
+	size_t frontier = string_view::npos;
 	{
 		// Исход сопоставления, пробою установленный
 		bool answer = false;
 		/**
 		 * Если проба исполнением с возвратом вопрос разрешила
 		 */
-		if(this->probe(expression, text, start, captures, answer, exhausted))
+		if(this->probe(expression, text, start, captures, answer, exhausted, frontier))
 			// Выводим исход сопоставления, пробою установленный
 			return answer;
 	}
@@ -919,6 +942,19 @@ bool awh::regex::Engine::exec(const expression_t & expression, string_view text,
 	if(!exhausted && ((span <= MAX_BACKTRACK) || !expression.forward.prefilter.leading.empty())) {
 		// Выполняем установку допустимого объёма работы исполнения с возвратом
 		this->_backtrack.budget((span + 1) * expression.forward.instructions.size() * BACKTRACK_RATIO);
+		/**
+		 * Выполняем установку позиции первой попытки прохода повторного
+		 *
+		 * @details Проба, пределом прерванная, свои попытки уже сделала, и все они
+		 *          левее позиции прерывания окончательно отказали. Прежде проход
+		 *          этот начинал с начала поиска и повторял их: на тексте в два
+		 *          килобайта с совпадением у конца - шестьдесят четыре попытки
+		 *          из четырёхсот, и отмена пробы целиком ускоряла такие строки на
+		 *          пятнадцатую долю. Проба не прерванная позиции не даёт, и проход
+		 *          идёт с начала поиска, как прежде.
+		 *
+		 */
+		this->_backtrack.onset(frontier);
 		/**
 		 * Если сопоставление исполнением с возвратом выполнено
 		 */

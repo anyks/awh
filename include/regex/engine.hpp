@@ -543,6 +543,8 @@ namespace awh {
 				 * @param captures   набор границ совпадения и захваченных групп
 				 * @param result     исход сопоставления, пробою установленный
 				 * @param exhausted  признак исчерпания объёма работы при объёме полном
+				 * @param frontier   позиция, левее которой попытки пробы окончательно
+				 *                   отказали, либо «npos», если проба пределом не прервана
 				 * @return           признак разрешения вопроса пробою
 				 *
 				 * \~english
@@ -559,11 +561,13 @@ namespace awh {
 				 * @param captures   set of the boundaries of the match and of the captured groups
 				 * @param result     outcome of the matching established by the probe
 				 * @param exhausted  indication of the exhaustion of the amount of work at the full amount
+				 * @param frontier   position to the left of which the attempts of the probe have failed
+				 *                   conclusively, or «npos» if the probe was not interrupted by a limit
 				 * @return           indication that the question was resolved by the probe
 				 *
 				 * \~
 				 */
-				bool probe(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted) noexcept;
+				bool probe(const expression_t & expression, string_view text, const size_t start, vector <pair <size_t, size_t>> & captures, bool & result, bool & exhausted, size_t & frontier) noexcept;
 			private:
 				/**
 				 * \~russian

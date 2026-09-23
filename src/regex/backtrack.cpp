@@ -346,7 +346,7 @@ namespace {
  *
  */
 awh::regex::Backtrack::Backtrack() noexcept :
- _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
+ _program(nullptr), _start(0), _attempt(0), _steps(0), _saves(0), _checks(0), _points_spent(0), _frames_spent(0), _rounds(0), _budget(MAX_STEPS), _ceiling(MAX_STEPS), _horizon(string_view::npos), _bounded(false), _onset(string_view::npos), _frontier(string_view::npos), _limit(MAX_STEPS), _nesting(MAX_RECURSION), _deepest(MAX_RECURSION), _memory(numeric_limits <size_t>::max()), _control(0), _resume(0), _failing(string_view::npos), _nested(0), _identity(0), _current(string_view::npos), _error(error_t::NONE) {}
 /**
  * @brief Метод установки допустимого объёма работы сопоставления
  *
@@ -376,6 +376,26 @@ void awh::regex::Backtrack::horizon(const size_t horizon) noexcept {
 bool awh::regex::Backtrack::bounded() const noexcept {
 	// Выводим признак прекращения сопоставления пределом числа попыток
 	return this->_bounded;
+}
+/**
+ * @brief Метод установки позиции первой попытки сопоставления
+ *
+ * @param onset позиция первой попытки сопоставления
+ *
+ */
+void awh::regex::Backtrack::onset(const size_t onset) noexcept {
+	// Выполняем установку позиции первой попытки сопоставления
+	this->_onset = onset;
+}
+/**
+ * @brief Метод извлечения позиции, на которой сопоставление прекращено пределом
+ *
+ * @return позиция прекращения сопоставления либо «npos»
+ *
+ */
+size_t awh::regex::Backtrack::frontier() const noexcept {
+	// Выводим позицию прекращения сопоставления пределом
+	return this->_frontier;
 }
 /**
  * @brief Метод установки наибольшей допустимой глубины рекурсивных вызовов
@@ -3027,9 +3047,22 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 *          же зовётся всяким выходом без изъятия.
 	 *
 	 */
+	/**
+	 * Количество выполненных попыток сопоставления
+	 *
+	 * @details Счётчик этот ведёт предел числа попыток, и он же вносится в учёт
+	 *          мерой попыток - однажды, при выходе. Внесение на каждой попытке
+	 *          стоило бы сложения атомарного и добавляло бы к заходу в попытку
+	 *          около наносекунды у сборки с учётом, а поле объекта сдвинуло бы
+	 *          смещения прочих полей и изменило бы код сборки без учёта
+	 *
+	 */
+	size_t probes = 0;
 	struct Spending {
 		// Учитываемое исполнение с возвратом
 		const Backtrack * owner;
+		// Количество выполненных попыток сопоставления
+		const size_t * probes;
 		/**
 		 * @brief Деструктор
 		 *
@@ -3047,8 +3080,17 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			AWH_REGEX_SPEND(work_t::FRAMES, this->owner->_frames_spent);
 			// Выполняем внесение счётчика обходов цикла исполнения
 			AWH_REGEX_SPEND(work_t::ROUNDS, this->owner->_rounds);
+			/**
+			 * Выполняем внесение счётчика попыток сопоставления
+			 *
+			 * @details Предел числа попыток засчитывает попытку до её начала:
+			 *          сопоставление, пределом прерванное, последней попытки
+			 *          не делает, и она из счёта исключается
+			 *
+			 */
+			AWH_REGEX_SPEND(work_t::ATTEMPTS, (* this->probes) - (this->owner->_bounded ? 1 : 0));
 		}
-	} spending{this};
+	} spending{this, &probes};
 	/**
 	 * Если исполняется программа, отличная от исполненной ранее
 	 *
@@ -3115,8 +3157,19 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	this->_horizon = string_view::npos;
 	// Выполняем сброс признака прекращения пределом числа попыток
 	this->_bounded = false;
-	// Количество выполненных попыток сопоставления
-	size_t probes = 0;
+	/**
+	 * Выполняем установку действующей позиции первой попытки
+	 *
+	 * @details Позиция, вызывающей стороной установленная, действует на одно
+	 *          сопоставление и снимается по его принятии - тем же порядком,
+	 *          каким принимается предел числа попыток.
+	 *
+	 */
+	const size_t onset = this->_onset;
+	// Выполняем снятие позиции первой попытки
+	this->_onset = string_view::npos;
+	// Выполняем сброс позиции прекращения сопоставления пределом
+	this->_frontier = string_view::npos;
 	/**
 	 * Если выражение задаёт предел шагов сопоставления своим указанием
 	 *
@@ -3175,6 +3228,20 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 */
 	const bool bound = ((mode == mode_t::ANCHORED) || program.anchored);
 	/**
+	 * Если позиция первой попытки задана правее начала поиска
+	 *
+	 * @details Левее позиции этой попытки уже сделаны вызывающей стороной и
+	 *          окончательно отказали: совпадение там не начинается, и обход
+	 *          начинается с неё. Начало поиска остаётся прежним - о нём судят
+	 *          привязка «\G» и признак «ATSTART». Выражению привязанному позиция
+	 *          не дана: попытка у него единственная, в самом начале поиска, и
+	 *          перенос её отнял бы у него совпадение.
+	 *
+	 */
+	if(!bound && (onset != string_view::npos) && (onset > pos))
+		// Переходим к позиции первой попытки
+		pos = ((onset > size) ? size : onset);
+	/**
 	 * Определяем привязку выражения к началу строки
 	 *
 	 * @details Выражение, начинающееся привязкой к началу строки на всех путях,
@@ -3202,8 +3269,17 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 *
 	 */
 	const uint32_t lineage = (program.flags | static_cast <uint32_t> (flag_t::MULTILINE));
-	// Выполняем размещение набора позиций захвата групп
-	this->_slots.resize((((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells)));
+	/**
+	 * Выполняем размещение набора позиций захвата групп с пометкой их пустыми
+	 *
+	 * @details Набор сбрасывается однажды на сопоставление, а не на всякую
+	 *          попытку: попытка отказавшая откатывает журнал изменений до
+	 *          пустого и возвращает всякую ячейку к значению до себя. Прежний
+	 *          сброс на всякую попытку был избыточен и стоил 2.2 наносекунды
+	 *          из 24.5 цены попытки - внешний вызов «vector::assign».
+	 *
+	 */
+	this->_slots.assign((((static_cast <size_t> (program.captures) + 1) * 2) + static_cast <size_t> (program.cells)), string_view::npos);
 	// Выполняем очистку набора отметок состояния возврата
 	this->_marks.clear();
 	// Выполняем очистку журнала изменений отметок атомарных групп
@@ -3229,6 +3305,18 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 	 */
 	const bool checking = (!bound && !program.prefilter.literal.empty() &&
 	 (program.prefilter.distance == string_view::npos));
+	/**
+	 * Определяем применимость проверки байта позиции на месте
+	 *
+	 * @details Отбор позиций, в позиции допустимой, вернул бы её же, а стоит
+	 *          он внешнего вызова - три наносекунды на всякую попытку из 24.5
+	 *          её цены. Проверка байта тем же набором, каким ведёт отбор, ему
+	 *          равносильна в точности. Отбор ведущим литералом длиннее байта
+	 *          проверкой не заменяется: он сличает литерал целиком, а набор
+	 *          несёт лишь первый байт его.
+	 *
+	 */
+	const bool screening = (!bound && program.prefilter.active && (program.prefilter.leading.size() < 2));
 	/**
 	 * Позиция вхождения обязательного литерала, попытками ещё не пройденного
 	 *
@@ -3351,9 +3439,15 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 			}
 		}
 		/**
-		 * Если предварительный отбор позиций сопоставления применим
+		 * Если предварительный отбор позиций сопоставления применим, а байт позиции не допустим
+		 *
+		 * @details Позиция, байт которой набору допустимых принадлежит, уже есть
+		 *          начало возможного совпадения, и отбор её не сдвинул бы.
+		 *
 		 */
-		if(!bound && program.prefilter.active) {
+		if(!bound && program.prefilter.active && !(screening && (pos < size) &&
+		 program.prefilter.bytes[static_cast <uint8_t> (text[pos])] &&
+		 !(program.prefilter.utf && ((static_cast <uint8_t> (text[pos]) & 0xC0) == 0x80)))) {
 			// Выполняем поиск ближайшей позиции возможного начала совпадения
 			const size_t candidate = program.prefilter.search(text, pos);
 			/**
@@ -3474,17 +3568,23 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		if(probes++ >= horizon) {
 			// Выполняем установку признака прекращения пределом числа попыток
 			this->_bounded = true;
+			// Выполняем установку позиции попытки, до предела не допущенной
+			this->_frontier = pos;
 			// Выводим результат поиска совпадения
 			return false;
 		}
 		/**
-		 * Выполняем сброс набора позиций захвата групп
+		 * Сброс набора позиций захвата групп на попытку НЕ выполняется
 		 *
-		 * @details Захваты, установленные отказавшей попыткой сопоставления,
-		 *          в следующей попытке недействительны.
+		 * @details Захваты, установленные отказавшей попыткой, в следующей
+		 *          недействительны, но и не остаются: исполнение, исчерпав точки
+		 *          возврата, откатывает журнал изменений до отметки своего входа,
+		 *          а у попытки она - журнал пустой. Всякий иной выход из исполнения
+		 *          без совпадения ставит ошибку и прекращает сопоставление целиком,
+		 *          отчего следующей попытки не бывает. Набор сброшен однажды - при
+		 *          входе в сопоставление.
 		 *
 		 */
-		this->_slots.assign(this->_slots.size(), string_view::npos);
 		/**
 		 * Выполняем сброс вида глагола, попытку прекратившего
 		 *
@@ -3518,9 +3618,12 @@ bool awh::regex::Backtrack::exec(const program_t & program, string_view text, co
 		/**
 		 * Если допустимый объём работы сопоставления исчерпан
 		 */
-		if(this->_error != error_t::NONE)
+		if(this->_error != error_t::NONE) {
+			// Выполняем установку позиции попытки, пределом прерванной
+			this->_frontier = pos;
 			// Выводим результат поиска совпадения
 			return false;
+		}
 		/**
 		 * Если попытка сопоставления прекращена глаголом управления
 		 *

@@ -69,6 +69,18 @@
  *          Решение закреплено тестом
  *          «Regex.InterfaceNonAtomicLookarounds».
  *
+ *          <b>Ячейки захвата сбрасываются однажды на сопоставление, а не на
+ *          всякую попытку.</b> Сброс на попытку выглядит обязательным - захваты
+ *          попытки отказавшей в следующей недействительны, - но избыточен:
+ *          исполнение, исчерпав точки возврата, откатывает журнал изменений
+ *          до отметки своего входа, а у попытки она - журнал пустой, отчего
+ *          всякая ячейка возвращается к значению до попытки. Всякий иной выход
+ *          без совпадения ставит ошибку и прекращает сопоставление целиком.
+ *          Сброс на попытку стоил внешнего вызова «vector::assign» - 2.2
+ *          наносекунды из 24.5 цены попытки. Вернуть его надлежит лишь вместе
+ *          с выходом без совпадения, журнала не откатывающим. Решение закреплено
+ *          тестом «Regex.EngineStaleCaptures».
+ *
  * \~english
  * @brief Header file of the execution of regular expressions with backtracking — the Backtrack class,
  *        which executes the program by a single state while saving backtracking points,
@@ -120,6 +132,18 @@
  *          of the walk in the field of the run of positions.
  *          The decision is pinned by the test
  *          «Regex.InterfaceNonAtomicLookarounds».
+ *
+ *          <b>The capture cells are reset once per matching rather than at every
+ *          attempt.</b> A reset per attempt looks mandatory - the captures of a failed
+ *          attempt are invalid in the next one, - but is redundant: the execution,
+ *          having exhausted the backtracking points, rolls the change log back to the
+ *          mark of its entry, and for an attempt that mark is an empty log, whereby
+ *          every cell returns to its value before the attempt. Every other exit
+ *          without a match sets an error and stops the matching as a whole.
+ *          The reset per attempt cost an external call of «vector::assign» - 2.2
+ *          nanoseconds out of the 24.5 of the price of an attempt. It is to be brought
+ *          back only together with an exit without a match that does not roll the log
+ *          back. The decision is pinned by the «Regex.EngineStaleCaptures» test.
  *
  * \~
  *
@@ -714,6 +738,31 @@ namespace awh {
 				// Признак прекращения сопоставления пределом числа попыток
 				bool _bounded;
 			private:
+				/**
+				 * \~russian
+				 * Позиция первой попытки сопоставления
+				 *
+				 * @details Позиция действует на одно последующее сопоставление и служит
+				 *          вызывающей стороне, знающей, что левее неё совпадение не
+				 *          начинается: попытки там уже сделаны и окончательно отказали.
+				 *          Начала поиска она не меняет - привязка «\G» и признак
+				 *          «ATSTART» по-прежнему судят о нём.
+				 *
+				 * \~english
+				 * Position of the first matching attempt
+				 * @details The position acts on one subsequent match and serves a calling side
+				 *          that knows no match starts to the left of it: the attempts there have
+				 *          already been made and have failed conclusively. It does not change
+				 *          the start of the search - the «\G» anchor and the «ATSTART» flag
+				 *          still judge by the latter.
+				 *
+				 * \~
+				 */
+				size_t _onset;
+			private:
+				// Позиция попытки, на которой сопоставление прекращено пределом
+				size_t _frontier;
+			private:
 				// Действующий объём работы текущего сопоставления
 				size_t _limit;
 			private:
@@ -1179,6 +1228,59 @@ namespace awh {
 				 * \~
 				 */
 				bool bounded() const noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод установки позиции первой попытки сопоставления
+				 *
+				 * @details Позиция действует на одно последующее сопоставление, после
+				 *          чего снимается. Она нужна вызывающей стороне, повторяющей поиск,
+				 *          прежде прерванный пределом: попытки левее позиции, на которой
+				 *          предел его прервал, окончательно отказали, и повторять их
+				 *          незачем. Начало поиска при этом остаётся прежним - о нём судят
+				 *          привязка «\G» и признак «ATSTART», - а у выражения, к началу
+				 *          поиска привязанного, позиция не действует вовсе: попытка у него
+				 *          единственная.
+				 *
+				 * @param onset позиция первой попытки сопоставления
+				 *
+				 * \~english
+				 * @brief Method of setting the position of the first matching attempt
+				 * @details The position acts on one subsequent match, after which it is
+				 *          removed. It is needed by a calling side repeating a search previously
+				 *          interrupted by a limit: the attempts to the left of the position where
+				 *          the limit interrupted it have failed conclusively, and there is no need
+				 *          to repeat them. The start of the search stays the same - the «\G»
+				 *          anchor and the «ATSTART» flag judge by it, - and for an expression
+				 *          anchored to the start of the search the position does not act at all:
+				 *          it has a single attempt.
+				 * @param onset position of the first matching attempt
+				 *
+				 * \~
+				 */
+				void onset(const size_t onset) noexcept;
+			public:
+				/**
+				 * \~russian
+				 * @brief Метод извлечения позиции, на которой сопоставление прекращено пределом
+				 *
+				 * @details Позиция принадлежит попытке, пределом прерванной либо до
+				 *          предела не допущенной: все попытки левее неё окончательно
+				 *          отказали. Сопоставление, пределом не прерванное, позиции
+				 *          не устанавливает.
+				 *
+				 * @return позиция прекращения сопоставления либо «npos»
+				 *
+				 * \~english
+				 * @brief Method of getting the position where the matching was stopped by a limit
+				 * @details The position belongs to the attempt interrupted by the limit or not
+				 *          admitted before it: all the attempts to the left of it have failed
+				 *          conclusively. A matching not interrupted by a limit sets no position.
+				 * @return position of the stop of the matching or «npos»
+				 *
+				 * \~
+				 */
+				size_t frontier() const noexcept;
 			public:
 				/**
 				 * \~russian

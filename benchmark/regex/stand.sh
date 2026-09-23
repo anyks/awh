@@ -122,6 +122,14 @@ SOURCES="$ROOT/benchmark/main.cpp $ROOT/benchmark/regex/matching/matching.cpp \
 # MS Windows связывание отвечает «undefined symbol», хотя символ в архиве лежит.
 # У прочих систем макрос этот не значит ничего
 ##
+##
+# Прежний двоичный файл удаляется ДО сборки
+#
+# Исход сборки судится наличием двоичного файла, а каталог стенда переживает
+# прогоны: сборка отказавшая оставила бы на месте файл прогона прежнего, и стенд
+# снял бы замеры старого кода, выдав их за замеры нового
+##
+rm -f "$OUT/bench-regex" "$OUT/bench-regex.exe"
 $CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS -DAWH_BENCHMARK_PCRE2 -DPCRE2_STATIC \
  -I "$ROOT/include" -I "$ROOT/tools/benchmark/syscount" -I "$HEADERS" \
  -o "$OUT/bench-regex" $SOURCES "$LIBRARY" $LIBS > "$OUT/build.log" 2>&1

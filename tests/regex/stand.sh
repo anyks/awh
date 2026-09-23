@@ -190,6 +190,14 @@ if [ "$(uname -s)" = "Darwin" ]; then
 	LANGUAGE="-x objective-c++ -fobjc-arc"
 	RELEASE="-x none"
 fi
+##
+# Прежний двоичный файл удаляется ДО сборки
+#
+# Исход сборки судится наличием двоичного файла, а каталог стенда переживает
+# прогоны: сборка отказавшая оставила бы на месте файл прогона прежнего, и стенд
+# прогнал бы старый код, отчитавшись о нём как о новом
+##
+rm -f "$OUT/regex-tests" "$OUT/regex-tests.exe"
 $CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS $DEFINES $INCLUDES \
  -o "$OUT/regex-tests" $LANGUAGE $SOURCES $RELEASE $LIBRARY \
  -L"$GTEST/lib" -lgmock -lgtest -lgtest_main $LIBS > "$OUT/build.log" 2>&1
