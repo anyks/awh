@@ -81,6 +81,22 @@
  *          с выходом без совпадения, журнала не откатывающим. Решение закреплено
  *          тестом «Regex.EngineStaleCaptures».
  *
+ *          <b>Инструкция одиночная ведётся путём отдельным от прохода ряда, и
+ *          разбор кода операции в них повторён.</b> Свести оба разбора в один
+ *          напрашивается, но возвращает цикл по копиям ряда на путь самый частый:
+ *          цикл, заводимый и ради копии единственной, стоил на всякой инструкции.
+ *          Путь одиночки ведётся прежним в точности, каким был до прохода рядов,
+ *          а проверка пометки цепочки на всяком переходе отмечена маловероятной.
+ *          Обе правки судились вместе, сборками выпуска на трёх машинах, по двадцати
+ *          одной строке замера: на Эльбрусе выросли двадцать, от 1.6 до 7.8 процента,
+ *          на ARM64 - девятнадцать, на x86-64 - пятнадцать, и нигде ни одна
+ *          не просела, кроме двух строк x86-64 - «digits-long» и «literal-short».
+ *          Обе принадлежат размещению функций: при выравнивании их по 64 байтам
+ *          в обеих сборках просадки пропадают, а прибавка остаётся. Расхождение
+ *          двух разборов ловит тест
+ *          «Regex.EngineSingleAndSeries»: всякий код операции, ряд образующий,
+ *          сличается одиночкой и рядом с исполнением без возврата.
+ *
  * \~english
  * @brief Header file of the execution of regular expressions with backtracking — the Backtrack class,
  *        which executes the program by a single state while saving backtracking points,
@@ -144,6 +160,24 @@
  *          nanoseconds out of the 24.5 of the price of an attempt. It is to be brought
  *          back only together with an exit without a match that does not roll the log
  *          back. The decision is pinned by the «Regex.EngineStaleCaptures» test.
+ *
+ *          <b>A single instruction is executed by a path separate from walking
+ *          a row, and the dispatch on the operation code is repeated in them.</b>
+ *          Merging both dispatches into one suggests itself, but brings the loop over
+ *          the copies of a row back onto the most frequent path: the loop, set up even
+ *          for a sole copy, cost at every instruction. The path of a single instruction
+ *          is kept exactly the former one it was before walking rows, and the check
+ *          of the chain mark on every split is marked as unlikely. Both edits were
+ *          judged together, by release builds on three machines, over twenty one
+ *          rows of the measurement: on Elbrus twenty grew, from 1.6 to 7.8 percent,
+ *          on ARM64 nineteen, on x86-64 fifteen, and nowhere did any drop, except
+ *          two rows of x86-64 - «digits-long» and «literal-short». Both belong to
+ *          the placement of functions: with them aligned by 64 bytes in both builds
+ *          the drops disappear, and the gain remains. A divergence of the two
+ *          dispatches is caught by the
+ *          «Regex.EngineSingleAndSeries» test: every operation code forming a row
+ *          is compared, as a single and as a row, with the execution without
+ *          backtracking.
  *
  * \~
  *

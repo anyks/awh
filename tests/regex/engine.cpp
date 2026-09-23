@@ -3989,6 +3989,267 @@ TEST(Regex, EngineSeriesRun) {
 	}
 }
 /**
+ * @brief Проверка равносильности пути одиночной инструкции и прохода ряда
+ *
+ * @details Исполнение с возвратом ведёт инструкцию одиночную путём отдельным,
+ *          а ряд одинаковых копий - проходом одним заходом, и разбор кода
+ *          операции в них повторён намеренно: смотрите раздел «Намеренные
+ *          решения» заголовка исполнения с возвратом. Повторённое расходится
+ *          молча, и проверка стережёт оба пути разом: всякое выражение набора
+ *          несёт инструкцию одного кода операции и одиночкой, и рядом, а вердикт
+ *          с границами захватов сличается с исполнением без возврата, рядов
+ *          не знающим вовсе.
+ *
+ */
+TEST(Regex, EngineSingleAndSeries) {
+	/**
+	 * @brief Набор выражений и текстов сопоставления
+	 *
+	 */
+	const struct {
+		// Текст регулярного выражения
+		const char * pattern;
+		// Набор режимов компиляции регулярного выражения
+		uint32_t flags;
+		// Код операции, несомый одиночкой и рядом
+		regex::opcode_t type;
+		// Набор текстов сопоставления
+		vector <string> texts;
+	} samples[] = {
+		// Одиночный символ с учётом регистра
+		{"a(b{3})c", 0x00, regex::opcode_t::CHAR, {"abbbc", "abbc", "abbbbc", "xxabbbcxx", "abbb", "ab"}},
+		// Одиночный символ без учёта регистра
+		{"a(b{3})c", 0x01, regex::opcode_t::CHAR, {"ABbBc", "aBBC", "xAbBbCx", "aBbB"}},
+		// Класс символов вне режима разбора UTF-8: ряд проходится таблицей принадлежности
+		{"[0-9]x([0-9]{4})", 0x00, regex::opcode_t::CLASS, {"1x2345", "1x234", "1x23a5", "a1x2345b", "9x0000"}},
+		// Класс символов в режиме разбора UTF-8: ряд проходится сопоставлением по символу
+		{"[а-я]ж([а-я]{3})", 0x20, regex::opcode_t::CLASS, {"эжабв", "эжаб", "эж1бв", "ээжабвг"}},
+		// Любой символ, переводу строки не отвечающий
+		{"a.b(.{3})c", 0x00, regex::opcode_t::ANY, {"a1b234c", "a1b23c", "a1b2\n4c", "a\nb234c"}},
+		// Любой символ в режиме соответствия точки переводу строки
+		{"a.b(.{3})c", 0x04, regex::opcode_t::ANY, {"a1b2\n4c", "a\nb234c", "a1b23c"}},
+		/**
+		 * Одиночная единица кодирования вне режима разбора UTF-8
+		 *
+		 * @details В режиме разбора UTF-8 единица кодирования исполнению без возврата
+		 *          недоступна вовсе - сборка отказывает ему в ней, - и сличать там
+		 *          не с чем: случай этот проверяется ниже вердиктами заданными
+		 *
+		 */
+		{"a\\Cb(\\C{2})c", 0x00, regex::opcode_t::CODEUNIT, {"aqbЯc", "aЯbЯc", "aqbЯ", "aqb\n\nc"}}
+	};
+	/**
+	 * Выполняем обход набора проверяемых выражений
+	 */
+	for(auto & sample : samples) {
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения
+		ASSERT_TRUE(engine.build(sample.pattern, sample.flags, expression)) << sample.pattern;
+		// Получаем инструкции прямой программы выражения
+		const auto & instructions = expression.forward.instructions;
+		// Количество одиночек кода операции выборки
+		size_t singles = 0;
+		// Количество рядов кода операции выборки
+		size_t series = 0;
+		/**
+		 * Выполняем обход инструкций программы
+		 *
+		 * @details Копия ряда последняя несёт пометку единичную, как и одиночка,
+		 *          но исполнению одиночкой не достаётся: ряд поглощается заходом
+		 *          в голову его. Одиночкой считается лишь инструкция, копией
+		 *          предшествующей не являющаяся
+		 *
+		 */
+		for(size_t i = 0; i < instructions.size(); i++) {
+			// Получаем инструкцию программы
+			const auto & instruction = instructions.at(i);
+			/**
+			 * Если код операции инструкции выборке не отвечает
+			 */
+			if(instruction.type != sample.type)
+				// Переходим к следующей инструкции программы
+				continue;
+			/**
+			 * Если инструкция возглавляет ряд
+			 */
+			if(instruction.repeat > 1)
+				// Увеличиваем количество рядов
+				series++;
+			/**
+			 * Если инструкция копией предшествующей не является
+			 */
+			else if((i == 0) || !regex::identical(instructions.at(i - 1), instruction))
+				// Увеличиваем количество одиночек
+				singles++;
+		}
+		// Выполняем проверку наличия одиночки: путь её обязан исполняться
+		EXPECT_GT(singles, static_cast <size_t> (0)) << sample.pattern;
+		// Выполняем проверку наличия ряда: проход его обязан исполняться
+		EXPECT_GT(series, static_cast <size_t> (0)) << sample.pattern;
+		// Количество текстов с совпадением
+		size_t matched = 0;
+		// Количество текстов без совпадения
+		size_t refused = 0;
+		/**
+		 * Выполняем обход текстов сопоставления
+		 */
+		for(auto & text : sample.texts) {
+			// Создаём объект исполнения без возврата
+			regex::pike_t pike;
+			// Создаём набор границ, установленных исполнением с возвратом
+			vector <pair <size_t, size_t>> received;
+			// Создаём набор границ, установленных исполнением без возврата
+			vector <pair <size_t, size_t>> expected;
+			// Создаём объект исполнения с возвратом
+			regex::backtrack_t backtrack;
+			// Выполняем установку допустимого объёма работы сопоставления
+			backtrack.budget(0xFFFFFFF);
+			// Выполняем сопоставление регулярного выражения исполнением с возвратом
+			const bool result = backtrack.exec(expression.forward, text, 0, received);
+			// Выполняем проверку совпадения вердикта сопоставления
+			ASSERT_EQ(result, pike.exec(expression.forward, text, 0, expected)) << sample.pattern << " / " << text;
+			// Выполняем учёт вердикта сопоставления
+			(result ? matched : refused)++;
+			// Выполняем проверку количества установленных границ
+			ASSERT_EQ(received.size(), expected.size()) << sample.pattern << " / " << text;
+			/**
+			 * Выполняем обход набора установленных границ
+			 */
+			for(size_t i = 0; i < received.size(); i++) {
+				// Выполняем проверку начальной границы захвата
+				EXPECT_EQ(received.at(i).first, expected.at(i).first) << sample.pattern << " / " << text << ", группа " << i;
+				// Выполняем проверку конечной границы захвата
+				EXPECT_EQ(received.at(i).second, expected.at(i).second) << sample.pattern << " / " << text << ", группа " << i;
+			}
+		}
+		// Выполняем проверку наличия совпадения: выборка обязана его давать
+		EXPECT_GT(matched, static_cast <size_t> (0)) << sample.pattern;
+		// Выполняем проверку наличия отказа: выборка обязана его давать
+		EXPECT_GT(refused, static_cast <size_t> (0)) << sample.pattern;
+	}
+	/**
+	 * Выполняем проверку единицы кодирования в режиме разбора UTF-8
+	 *
+	 * @details Разбор символа даёт здесь ширину многобайтную, а единица кодирования
+	 *          обязана её перекрыть единицей: одиночка и ряд делают это каждый
+	 *          в своём разборе кода операции, и расхождение их в этом месте
+	 *          рассекло бы символ иначе
+	 *
+	 */
+	{
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения в режиме разбора UTF-8
+		ASSERT_TRUE(engine.build("a\\Cb(\\C{2})c", 0x20, expression));
+		// Получаем инструкции прямой программы выражения
+		const auto & instructions = expression.forward.instructions;
+		// Флаг наличия одиночки единицы кодирования
+		bool single = false;
+		// Флаг наличия ряда единиц кодирования
+		bool series = false;
+		/**
+		 * Выполняем обход инструкций программы
+		 */
+		for(size_t i = 0; i < instructions.size(); i++) {
+			/**
+			 * Если инструкция сопоставляет единицу кодирования
+			 */
+			if(instructions.at(i).type == regex::opcode_t::CODEUNIT) {
+				// Выполняем учёт ряда единиц кодирования
+				series = (series || (instructions.at(i).repeat > 1));
+				// Выполняем учёт одиночки единицы кодирования
+				single = (single || ((instructions.at(i).repeat == 1) && ((i == 0) || !regex::identical(instructions.at(i - 1), instructions.at(i)))));
+			}
+		}
+		// Выполняем проверку наличия одиночки
+		EXPECT_TRUE(single);
+		// Выполняем проверку наличия ряда
+		EXPECT_TRUE(series);
+		// Создаём объект исполнения с возвратом
+		regex::backtrack_t backtrack;
+		// Выполняем установку допустимого объёма работы сопоставления
+		backtrack.budget(0xFFFFFFF);
+		// Создаём набор границ обнаруженного совпадения
+		vector <pair <size_t, size_t>> captures;
+		// Выполняем проверку совпадения: ряд из двух единиц поглощает символ двухбайтный целиком
+		ASSERT_TRUE(backtrack.exec(expression.forward, "aqbЯc", 0, captures));
+		// Выполняем проверку количества установленных границ
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		// Выполняем проверку границ совпадения
+		EXPECT_EQ(captures.at(0).first, static_cast <size_t> (0));
+		EXPECT_EQ(captures.at(0).second, static_cast <size_t> (6));
+		// Выполняем проверку границ группы: два байта символа «Я»
+		EXPECT_EQ(captures.at(1).first, static_cast <size_t> (3));
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (5));
+		// Выполняем проверку отказа: одиночка поглощает байт первый, и «b» упирается во второй
+		EXPECT_FALSE(backtrack.exec(expression.forward, "aЯbЯc", 0, captures));
+		// Выполняем проверку отказа: за рядом текст исчерпан
+		EXPECT_FALSE(backtrack.exec(expression.forward, "aqbЯ", 0, captures));
+	}
+	/**
+	 * Выполняем проверку расширенного графемного кластера
+	 *
+	 * @details Кластер ряда не образует - копии его не одинаковы по ширине, - и
+	 *          ведётся одиночкой всегда, а исполнению без возврата недоступен
+	 *          вовсе: ширину разбор кода операции берёт здесь не от символа,
+	 *          а от кластера, и путь одиночки обязан её сохранить
+	 *
+	 */
+	{
+		// Создаём объект движка регулярных выражений
+		regex::engine_t engine;
+		// Создаём собираемое регулярное выражение
+		regex::expression_t expression;
+		// Выполняем сборку регулярного выражения в режиме разбора UTF-8
+		ASSERT_TRUE(engine.build("a(\\X)b", 0x20, expression));
+		// Флаг наличия кластера в программе
+		bool present = false;
+		/**
+		 * Выполняем обход инструкций программы
+		 */
+		for(size_t i = 0; i < expression.forward.instructions.size(); i++) {
+			/**
+			 * Если инструкция сопоставляет графемный кластер
+			 */
+			if(expression.forward.instructions.at(i).type == regex::opcode_t::GRAPHEME) {
+				// Выполняем учёт кластера в программе
+				present = true;
+				// Выполняем проверку отсутствия ряда у кластера
+				EXPECT_EQ(static_cast <uint32_t> (expression.forward.instructions.at(i).repeat), static_cast <uint32_t> (1));
+			}
+		}
+		// Выполняем проверку наличия кластера в программе
+		EXPECT_TRUE(present);
+		// Создаём объект исполнения с возвратом
+		regex::backtrack_t backtrack;
+		// Выполняем установку допустимого объёма работы сопоставления
+		backtrack.budget(0xFFFFFFF);
+		// Создаём набор границ обнаруженного совпадения
+		vector <pair <size_t, size_t>> captures;
+		// Выполняем проверку кластера из одного символа
+		ASSERT_TRUE(backtrack.exec(expression.forward, "aeb", 0, captures));
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		EXPECT_EQ(captures.at(1).first, static_cast <size_t> (1));
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (2));
+		// Выполняем проверку кластера из буквы и знака ударения: три байта одним ходом
+		ASSERT_TRUE(backtrack.exec(expression.forward, "ae\xCC\x81" "b", 0, captures));
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		EXPECT_EQ(captures.at(1).first, static_cast <size_t> (1));
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (4));
+		// Выполняем проверку кластера из символа двухбайтного
+		ASSERT_TRUE(backtrack.exec(expression.forward, "a\xD0\xAF" "b", 0, captures));
+		ASSERT_EQ(captures.size(), static_cast <size_t> (2));
+		EXPECT_EQ(captures.at(1).second, static_cast <size_t> (3));
+		// Выполняем проверку отказа: кластер поглощает «b», и продолжению её не остаётся
+		EXPECT_FALSE(backtrack.exec(expression.forward, "ab", 0, captures));
+	}
+}
+/**
  * @brief Тест прохода цепочки ограниченного повторения одиночного символа
  *
  * @details Повторение ограниченное - «\d{1,3}» - компилируется цепочкой переходов

@@ -130,7 +130,17 @@ SOURCES="$ROOT/benchmark/main.cpp $ROOT/benchmark/regex/matching/matching.cpp \
 # снял бы замеры старого кода, выдав их за замеры нового
 ##
 rm -f "$OUT/bench-regex" "$OUT/bench-regex.exe"
-$CXX -std=c++17 -O2 -Wno-c++11-narrowing $FLAGS -DAWH_BENCHMARK_PCRE2 -DPCRE2_STATIC \
+##
+# Модуль собирается тем же уровнем оптимизации, каким его собирает выпуск
+#
+# Сборка выпуска идёт с «-O3 -DNDEBUG», и так же собирается эталон PCRE2 - через
+# CMake в режиме «Release». Стенд собирал модуль с «-O2» и мерил тем самым не ту
+# сборку, какую получает потребитель, а сличал её с «-O3» эталона. Для правок
+# горячего цикла уровни расходились даже знаком: одна и та же правка давала +7%
+# на «-O2» и −7% на «-O3». Ключи набора команд x86-64 из сборки выпуска
+# («-march=core2 -mrdrnd») здесь не нужны: путей, по ним ветвящихся, модуль не несёт
+##
+$CXX -std=c++17 -O3 -DNDEBUG -Wno-c++11-narrowing $FLAGS -DAWH_BENCHMARK_PCRE2 -DPCRE2_STATIC \
  -I "$ROOT/include" -I "$ROOT/tools/benchmark/syscount" -I "$HEADERS" \
  -o "$OUT/bench-regex" $SOURCES "$LIBRARY" $LIBS > "$OUT/build.log" 2>&1
 ##
