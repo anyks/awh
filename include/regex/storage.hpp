@@ -62,6 +62,25 @@
  *          запись испорченная обязана обернуться отказом, а не блужданием по
  *          памяти.
  *
+ *          <b>Поверка стережёт память и сообразность полей, а не верность
+ *          записи тексту выражения.</b> Запись, сообразная сама с собою, но
+ *          несущая иную программу, поверкой принимается: вердикт выражения
+ *          меняет и подделка самих инструкций, поймать которую без пересборки
+ *          выражения нечем. Отбор позиций тому пример: набор допустимых байтов
+ *          поверка сличает с признаком единственного байта - два равносильных
+ *          пути исполнения читают порознь то и другое, - а литералы
+ *          обязательный и ведущий выводятся из дерева разбора, записи
+ *          не принадлежащего, и поверены быть не могут вовсе. Эталон
+ *          поверяет меньше нашего: по описанию его запись
+ *          «pcre2_serialize_decode» проверяется лишь на простую сообразность,
+ *          испорченная уводит чтение за её конец, и источник требуется
+ *          доверенный. Верность записи источнику недоверенному обеспечивает
+ *          шифр потребителя с проверкой подлинности - обработчик «cipher_t», -
+ *          а не поверка: шифр без неё податлив и правке вслепую. Решение
+ *          закреплено проверкой «Regex.StoragePrefilterUnique»: признак,
+ *          набору не отвечающий, отвергается, набор иной, но сообразный,
+ *          принимается.
+ *
  *          <b>Порождённый машинный код хранится вместе с выражением.</b>
  *          Порождение его заново обходится почти двенадцатью микросекундами на
  *          выражение против двух с половиною на всё прочее восстановление, то
@@ -126,6 +145,24 @@
  *          character sequences, to state cells and to group numbers are checked:
  *          a corrupted record must turn into a failure rather than into wandering over
  *          memory.
+ *          <b>Verification guards memory and the consistency of the fields, not the
+ *          fidelity of the record to the text of the expression.</b> A record consistent
+ *          with itself but carrying a different program is accepted by verification:
+ *          forging the instructions themselves changes the verdict too, and nothing
+ *          can catch that without rebuilding the expression. The position selection is
+ *          an example: verification checks the set of admissible bytes against the
+ *          indication of a single byte — two equivalent execution paths read them
+ *          separately, — while the required and leading literals are derived from the
+ *          parse tree, which the record does not carry, and cannot be verified at all.
+ *          The reference verifies less than we do: by its description a
+ *          «pcre2_serialize_decode» record gets only simple consistency checking,
+ *          a corrupted one leads reading beyond its end, and a trusted source is
+ *          required. Fidelity of a record from an untrusted source is provided by an
+ *          authenticated cipher of the consumer — the «cipher_t» handler — rather than
+ *          by verification: a cipher without authentication yields to blind editing.
+ *          The decision is pinned by the «Regex.StoragePrefilterUnique» test: an
+ *          indication not matching the set is rejected, a different but consistent set
+ *          is accepted.
  *          <b>The generated machine code is kept together with the expression.</b>
  *          Generating it anew costs almost twelve microseconds per
  *          expression against two and a half for all the rest of the restoration, that

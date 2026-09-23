@@ -1113,6 +1113,36 @@ namespace awh {
 				}
 				/**
 				 * \~russian
+				 * @brief Метод получения изменяемых записей набора
+				 *
+				 * @details Набор обозревающий обращается во владеющий однажды, и
+				 *          проход по записям указателем не несёт на всякой записи
+				 *          ни проверки границ, ни проверки владения. Проходы
+				 *          разметки программы при сборке обходят набор инструкций
+				 *          целиком, и извлечение по номеру с проверкой - вызов
+				 *          внешний - обходилось им дороже самой разметки. Указатель
+				 *          годен, покуда набор не растёт.
+				 *
+				 * @return изменяемые записи набора
+				 *
+				 * \~english
+				 * @brief Method of getting the mutable records of the sequence
+				 * @details A viewing sequence is turned into an owning one once, and a pass
+				 *          over the records by pointer carries neither a bounds check nor
+				 *          an ownership check on every record. The pointer stays valid
+				 *          as long as the sequence does not grow.
+				 * @return the mutable records of the sequence
+				 *
+				 * \~
+				 */
+				T * records() noexcept {
+					// Выполняем обращение набора обозревающего во владеющий
+					this->detach();
+					// Выводим изменяемые записи набора
+					return const_cast <T *> (this->_records);
+				}
+				/**
+				 * \~russian
 				 * @brief Метод извлечения изменяемой последней записи набора
 				 *
 				 * @return последняя запись набора

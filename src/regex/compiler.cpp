@@ -383,13 +383,30 @@ uint32_t awh::regex::Compiler::store(const class_t & value, const uint32_t flags
 	 *          и вердикт от него не зависит вовсе.
 	 *
 	 */
+	/**
+	 * Получаем размещённые записи наборов классов, диапазонов и свойств
+	 *
+	 * @details Записи читаются указателем, а не извлечением по номеру: извлечение
+	 *          из набора изменяемого всякий раз проверяет владение набором, а сличение
+	 *          ведётся при всяком размещении класса по всем размещённым прежде.
+	 *          Границы участков стерегутся сборкой: всякая ссылка размещена ею же.
+	 *
+	 */
+	const classref_t * const classes = this->_program->classes.data();
+	// Получаем размещённые записи набора диапазонов
+	const range_t * const ranges = this->_program->ranges.data();
+	// Получаем размещённые записи набора свойств
+	const property_t * const properties = this->_program->properties.data();
+	/**
+	 * Выполняем перебор размещённых классов символов
+	 */
 	for(size_t i = 0; i < this->_program->classes.size(); i++) {
 		// Получаем очередную размещённую ссылку на класс символов
-		const classref_t & exists = this->_program->classes[i];
+		const classref_t & exists = classes[i];
 		/**
 		 * Если признак отрицания либо состав класса не совпадает
 		 */
-		if((this->_modes.at(i) != flags) || (exists.negative != record.negative) ||
+		if((this->_modes[i] != flags) || (exists.negative != record.negative) ||
 		 (exists.rangeCount != record.rangeCount) || (exists.propertyCount != record.propertyCount))
 			// Переходим к классу символов следующему
 			continue;
@@ -400,17 +417,17 @@ uint32_t awh::regex::Compiler::store(const class_t & value, const uint32_t flags
 		 */
 		for(size_t j = 0; same && (j < value.ranges.size()); j++) {
 			// Получаем диапазон размещённого класса символов
-			const range_t & already = this->_program->ranges[static_cast <size_t> (exists.ranges) + j];
+			const range_t & already = ranges[static_cast <size_t> (exists.ranges) + j];
 			// Выполняем сличение границ диапазонов классов символов
-			same = ((already.begin == value.ranges.at(j).begin) && (already.end == value.ranges.at(j).end));
+			same = ((already.begin == value.ranges[j].begin) && (already.end == value.ranges[j].end));
 		}
 		/**
 		 * Выполняем обход свойств размещаемого класса символов
 		 */
 		for(size_t j = 0; same && (j < value.properties.size()); j++)
 			// Выполняем сличение свойств классов символов
-			same = (::memcmp(&this->_program->properties[static_cast <size_t> (exists.properties) + j],
-			 &value.properties.at(j), sizeof(property_t)) == 0);
+			same = (::memcmp(&properties[static_cast <size_t> (exists.properties) + j],
+			 &value.properties[j], sizeof(property_t)) == 0);
 		/**
 		 * Если состав классов символов совпал
 		 */
@@ -4009,34 +4026,43 @@ void awh::regex::Compiler::startline() noexcept {
  *
  */
 void awh::regex::Compiler::series() noexcept {
-	// Получаем набор инструкций программы регулярного выражения
-	Sequence <instruction_t> & instructions = this->_program->instructions;
+	// Получаем количество инструкций программы регулярного выражения
+	const size_t count = this->_program->instructions.size();
 	/**
 	 * Если программа регулярного выражения пуста
 	 */
-	if(instructions.empty())
+	if(count == 0)
 		// Выходим из пометки рядов одинаковых инструкций
 		return;
+	/**
+	 * Получаем изменяемые записи набора инструкций
+	 *
+	 * @details Проход ведётся указателем, а не извлечением по номеру: оно
+	 *          внешним вызовом с проверкой границ стоило проходу дороже самой
+	 *          пометки, а номера здесь ограничены самим обходом.
+	 *
+	 */
+	instruction_t * const instructions = this->_program->instructions.records();
 	// Наибольшая длина ряда, полем пометки выразимая
 	constexpr size_t LONGEST = 0xFFFF;
 	/**
 	 * Выполняем обход инструкций программы с конца
 	 */
-	for(size_t i = instructions.size(); i > 0; i--) {
+	for(size_t i = count; i > 0; i--) {
 		// Получаем номер разбираемой инструкции программы
 		const size_t index = (i - 1);
 		// Получаем разбираемую инструкцию программы
-		instruction_t & instruction = instructions.at(index);
+		instruction_t & instruction = instructions[index];
 		// Выполняем установку отсутствия ряда одинаковых инструкций
 		instruction.repeat = 1;
 		/**
 		 * Если инструкция последняя в программе
 		 */
-		if((index + 1) >= instructions.size())
+		if((index + 1) >= count)
 			// Переходим к инструкции предыдущей
 			continue;
 		// Получаем инструкцию, за разбираемой следующую
-		const instruction_t & next = instructions.at(index + 1);
+		const instruction_t & next = instructions[index + 1];
 		/**
 		 * Если инструкции не одинаковы либо ряд предела достиг
 		 */
@@ -4073,24 +4099,32 @@ void awh::regex::Compiler::series() noexcept {
  *
  */
 void awh::regex::Compiler::bounded() noexcept {
-	// Получаем набор инструкций программы регулярного выражения
-	Sequence <instruction_t> & instructions = this->_program->instructions;
+	// Получаем количество инструкций программы регулярного выражения
+	const size_t count = this->_program->instructions.size();
 	/**
 	 * Если программа регулярного выражения пуста
 	 */
-	if(instructions.empty())
+	if(count == 0)
 		// Выходим из пометки цепочек ограниченного повторения
 		return;
+	/**
+	 * Получаем изменяемые записи набора инструкций
+	 *
+	 * @details Проход ведётся указателем, а не извлечением по номеру: смотрите
+	 *          примечание при «Compiler::series».
+	 *
+	 */
+	instruction_t * const instructions = this->_program->instructions.records();
 	// Наибольшее количество копий, полем пометки выразимое
 	constexpr size_t LONGEST = 0xFFFF;
 	/**
 	 * Выполняем обход инструкций программы с конца
 	 */
-	for(size_t i = instructions.size(); i > 0; i--) {
+	for(size_t i = count; i > 0; i--) {
 		// Получаем номер разбираемой инструкции программы
 		const size_t index = (i - 1);
 		// Получаем разбираемую инструкцию программы
-		instruction_t & instruction = instructions.at(index);
+		instruction_t & instruction = instructions[index];
 		/**
 		 * Если инструкция не является переходом по двум ветвям
 		 */
@@ -4126,11 +4160,11 @@ void awh::regex::Compiler::bounded() noexcept {
 		/**
 		 * Если тело повторения за пределы программы выходит
 		 */
-		if((index + 1) >= instructions.size())
+		if((index + 1) >= count)
 			// Переходим к инструкции предыдущей
 			continue;
 		// Получаем инструкцию тела повторения одиночного символа
-		const instruction_t & body = instructions.at(index + 1);
+		const instruction_t & body = instructions[index + 1];
 		/**
 		 * Если телом повторения сопоставляется не одиночный символ
 		 *
@@ -4158,11 +4192,11 @@ void awh::regex::Compiler::bounded() noexcept {
 		/**
 		 * Если за телом повторения следует не звено цепочки
 		 */
-		if(((index + 2) >= instructions.size()) || (instructions.at(index + 2).type != opcode_t::SPLIT))
+		if(((index + 2) >= count) || (instructions[index + 2].type != opcode_t::SPLIT))
 			// Переходим к инструкции предыдущей
 			continue;
 		// Получаем звено цепочки, за телом повторения следующее
-		const instruction_t & following = instructions.at(index + 2);
+		const instruction_t & following = instructions[index + 2];
 		/**
 		 * Если звено цепочки не помечено либо количество копий предела достигло
 		 */
@@ -4176,9 +4210,14 @@ void awh::regex::Compiler::bounded() noexcept {
 			// Переходим к инструкции предыдущей
 			continue;
 		/**
-		 * Если тело звена цепочки телу разбираемого перехода не одинаково
+		 * Если тело звена цепочки программе не принадлежит либо телу разбираемого перехода не одинаково
+		 *
+		 * @details Звено помеченное тело своё несёт всегда - пометку оно получило,
+		 *          лишь тело имея, - и заслон границы стоит ради прохода указателем:
+		 *          извлечение по номеру стерегло её само.
+		 *
 		 */
-		if(!identical(body, instructions.at(index + 3)))
+		if(((index + 3) >= count) || !identical(body, instructions[index + 3]))
 			// Переходим к инструкции предыдущей
 			continue;
 		// Выполняем установку количества копий ограниченного повторения
@@ -4195,24 +4234,40 @@ void awh::regex::Compiler::bounded() noexcept {
  *
  */
 void awh::regex::Compiler::mark() noexcept {
-	// Получаем набор инструкций программы регулярного выражения
-	Sequence <instruction_t> & instructions = this->_program->instructions;
+	// Получаем количество инструкций программы регулярного выражения
+	const size_t count = this->_program->instructions.size();
+	/**
+	 * Если программа регулярного выражения пуста
+	 */
+	if(count == 0)
+		// Выходим из пометки повторений одиночного символа
+		return;
+	/**
+	 * Получаем изменяемые записи набора инструкций
+	 *
+	 * @details Проход ведётся указателем, а не извлечением по номеру: смотрите
+	 *          примечание при «Compiler::series».
+	 *
+	 */
+	instruction_t * const instructions = this->_program->instructions.records();
 	/**
 	 * Выполняем обход инструкций программы регулярного выражения
 	 */
-	for(size_t i = 0; i < instructions.size(); i++) {
+	for(size_t i = 0; i < count; i++) {
+		// Получаем разбираемую инструкцию программы
+		instruction_t & instruction = instructions[i];
 		/**
 		 * Если инструкция не является переходом по двум ветвям
 		 */
-		if(instructions.at(i).type != opcode_t::SPLIT)
+		if(instruction.type != opcode_t::SPLIT)
 			// Переходим к следующей инструкции программы
 			continue;
 		// Выполняем сброс пометки повторения одиночного символа
-		instructions.at(i).split.run = INVALID_ADDRESS;
+		instruction.split.run = INVALID_ADDRESS;
 		// Выполняем сброс признака ленивости повторения одиночного символа
-		instructions.at(i).split.lazily = 0;
+		instruction.split.lazily = 0;
 		// Выполняем сброс признака бесплодности возврата в ряд повторения
-		instructions.at(i).split.solid = 0;
+		instruction.split.solid = 0;
 		/**
 		 * Получаем признак ленивого повторения элемента выражения
 		 *
@@ -4221,13 +4276,13 @@ void awh::regex::Compiler::mark() noexcept {
 		 *          сопоставление за повторением.
 		 *
 		 */
-		const bool lazy = (static_cast <size_t> (instructions.at(i).split.second) == (i + 1));
+		const bool lazy = (static_cast <size_t> (instruction.split.second) == (i + 1));
 		// Получаем адрес ветви повторения элемента выражения
-		const address_t body = (lazy ? instructions.at(i).split.second : instructions.at(i).split.first);
+		const address_t body = (lazy ? instruction.split.second : instruction.split.first);
 		/**
 		 * Если тело повторения и переход к началу повторения выходят за пределы программы
 		 */
-		if((static_cast <size_t> (body) + 1) >= instructions.size())
+		if((static_cast <size_t> (body) + 1) >= count)
 			// Переходим к следующей инструкции программы
 			continue;
 		/**
@@ -4238,7 +4293,7 @@ void awh::regex::Compiler::mark() noexcept {
 		 *          ряда одним ходом к ним неприменим.
 		 *
 		 */
-		switch(static_cast <uint8_t> (instructions.at(body).type)) {
+		switch(static_cast <uint8_t> (instructions[body].type)) {
 			// Сопоставление одиночного символа проходу ряда доступно
 			case static_cast <uint8_t> (opcode_t::CHAR):
 			// Сопоставление символа из класса символов проходу ряда доступно
@@ -4253,13 +4308,13 @@ void awh::regex::Compiler::mark() noexcept {
 		/**
 		 * Если за телом повторения следует не переход к началу повторения
 		 */
-		if(instructions.at(body + 1).type != opcode_t::JUMP)
+		if(instructions[body + 1].type != opcode_t::JUMP)
 			// Переходим к следующей инструкции программы
 			continue;
 		/**
 		 * Если переход выполняется не к началу повторения
 		 */
-		if(instructions.at(body + 1).jump.target != static_cast <address_t> (i))
+		if(instructions[body + 1].jump.target != static_cast <address_t> (i))
 			// Переходим к следующей инструкции программы
 			continue;
 		/**
@@ -4270,13 +4325,13 @@ void awh::regex::Compiler::mark() noexcept {
 		 *          исполнение с инструкции, следующей за переходом к началу.
 		 *
 		 */
-		if((lazy ? instructions.at(i).split.first : instructions.at(i).split.second) != static_cast <address_t> (body + 2))
+		if((lazy ? instruction.split.first : instruction.split.second) != static_cast <address_t> (body + 2))
 			// Переходим к следующей инструкции программы
 			continue;
 		// Выполняем пометку перехода адресом тела повторения одиночного символа
-		instructions.at(i).split.run = body;
+		instruction.split.run = body;
 		// Выполняем установку признака ленивости повторения одиночного символа
-		instructions.at(i).split.lazily = (lazy ? 1 : 0);
+		instruction.split.lazily = (lazy ? 1 : 0);
 		/**
 		 * Если повторение жадное, выполняем разбор бесплодности возврата в ряд
 		 *
@@ -4286,7 +4341,7 @@ void awh::regex::Compiler::mark() noexcept {
 		 */
 		if(!lazy)
 			// Выполняем установку признака бесплодности возврата в ряд повторения
-			instructions.at(i).split.solid = (this->futile(body, instructions.at(i).split.second) ? 1 : 0);
+			instruction.split.solid = (this->futile(body, instruction.split.second) ? 1 : 0);
 	}
 }
 /**
