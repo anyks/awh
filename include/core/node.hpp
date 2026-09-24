@@ -67,6 +67,9 @@ namespace awh {
 					// Флаг выполнения валидации доменного имени
 					bool verify;
 				public:
+					// Доменное имя сертификата для SNI (допускается маска вида *.example.com)
+					string host;
+				public:
 					// Ключ SSL-сертификата
 					string key;
 					// SSL-сертификат
@@ -284,17 +287,13 @@ namespace awh {
 			/**
 			 * @brief Метод установки SSL-параметров
 			 *
+			 * Параметры verify, ciphers, ca, capath и crl общие для всего сервера и применяются при каждом вызове.
+			 * Если указано доменное имя (host), сертификат устанавливается для этого имени (SNI); первый такой
+			 * сертификат становится и сертификатом по умолчанию, если тот ещё не задан
+			 *
 			 * @param ssl параметры SSL для установки
 			 */
 			void ssl(const ssl_t & ssl) noexcept;
-			/**
-			 * @brief Метод установки сертификата сервера для доменного имени (SNI)
-			 *
-			 * @param host доменное имя (допускается маска вида *.example.com)
-			 * @param cert файл цепочки сертификатов
-			 * @param key  приватный ключ сертификата
-			 */
-			void certificate(const string & host, const string & cert, const string & key) noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта DNS-резолвера

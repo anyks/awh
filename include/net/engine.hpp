@@ -723,15 +723,6 @@ namespace awh {
 			#endif
 		private:
 			/**
-			 * @brief Функция обратного вызова для генерации куков
-			 *
-			 * @param ssl    объект SSL
-			 * @param cookie данные куков
-			 * @param size   количество символов
-			 * @return       результат проверки
-			 */
-			static int32_t generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept;
-			/**
 			 * @brief Функция обратного вызова выбора сертификата сервера по доменному имени (SNI)
 			 *
 			 * @param ssl объект SSL
@@ -740,6 +731,15 @@ namespace awh {
 			 * @return    результат выбора сертификата
 			 */
 			static int32_t serverName(SSL * ssl, int32_t * ad, void * ctx) noexcept;
+			/**
+			 * @brief Функция обратного вызова для генерации куков
+			 *
+			 * @param ssl    объект SSL
+			 * @param cookie данные куков
+			 * @param size   количество символов
+			 * @return       результат проверки
+			 */
+			static int32_t generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept;
 			/**
 			 * @brief Функция обратного вызова для проверки куков
 			 *
@@ -938,6 +938,8 @@ namespace awh {
 			void certificate(const string & pem, const string & key = "") noexcept;
 			/**
 			 * @brief Метод установки файлов сертификата сервера для доменного имени (SNI)
+			 *
+			 * Если сертификат по умолчанию ещё не задан, этот сертификат становится и сертификатом по умолчанию
 			 *
 			 * @param host доменное имя (допускается маска вида *.example.com)
 			 * @param pem  файл цепочки сертификатов

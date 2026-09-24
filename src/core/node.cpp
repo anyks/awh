@@ -31,6 +31,8 @@ using namespace std;
 awh::Node::SSL & awh::Node::SSL::operator = (ssl_t && ssl) noexcept {
 	// Выполняем копирование флага валидации доменного имени
 	this->verify = ssl.verify;
+	// Выполняем перемещение доменного имени сертификата
+	this->host = ::move(ssl.host);
 	// Выполняем перемещение ключа SSL-сертификата
 	this->key = ::move(ssl.key);
 	// Выполняем перемещение SSL-сертификата
@@ -55,6 +57,8 @@ awh::Node::SSL & awh::Node::SSL::operator = (ssl_t && ssl) noexcept {
 awh::Node::SSL & awh::Node::SSL::operator = (const ssl_t & ssl) noexcept {
 	// Выполняем копирование флага валидации доменного имени
 	this->verify = ssl.verify;
+	// Выполняем копирование доменного имени сертификата
+	this->host = ssl.host;
 	// Выполняем копирование ключа SSL-сертификата
 	this->key = ssl.key;
 	// Выполняем копирование SSL-сертификата
@@ -80,6 +84,7 @@ bool awh::Node::SSL::operator == (const ssl_t & ssl) noexcept {
 	// Выполняем сравнения двух объектов SSL-параметров
 	bool result = (
 		(this->verify == ssl.verify) &&
+		(this->host.compare(ssl.host) == 0) &&
 		(this->key.compare(ssl.key) == 0) &&
 		(this->cert.compare(ssl.cert) == 0) &&
 		(this->ca.compare(ssl.ca) == 0) &&
@@ -112,6 +117,8 @@ bool awh::Node::SSL::operator == (const ssl_t & ssl) noexcept {
 awh::Node::SSL::SSL(ssl_t && ssl) noexcept {
 	// Выполняем копирование флага валидации доменного имени
 	this->verify = ssl.verify;
+	// Выполняем перемещение доменного имени сертификата
+	this->host = ::move(ssl.host);
 	// Выполняем перемещение ключа SSL-сертификата
 	this->key = ::move(ssl.key);
 	// Выполняем перемещение SSL-сертификата
@@ -133,6 +140,8 @@ awh::Node::SSL::SSL(ssl_t && ssl) noexcept {
 awh::Node::SSL::SSL(const ssl_t & ssl) noexcept {
 	// Выполняем копирование флага валидации доменного имени
 	this->verify = ssl.verify;
+	// Выполняем копирование доменного имени сертификата
+	this->host = ssl.host;
 	// Выполняем копирование ключа SSL-сертификата
 	this->key = ssl.key;
 	// Выполняем копирование SSL-сертификата
@@ -150,7 +159,7 @@ awh::Node::SSL::SSL(const ssl_t & ssl) noexcept {
  * @brief Конструктор
  *
  */
-awh::Node::SSL::SSL() noexcept : verify(true), key{""}, cert{""}, ca{""}, crl{""}, capath{""} {}
+awh::Node::SSL::SSL() noexcept : verify(true), host{""}, key{""}, cert{""}, ca{""}, crl{""}, capath{""} {}
 /**
  * @brief Метод удаления всех схем сети
  *
@@ -448,21 +457,12 @@ void awh::Node::ssl(const ssl_t & ssl) noexcept {
 	this->_engine.crl(ssl.crl);
 	// Устанавливаем адрес CA-файла
 	this->_engine.ca(ssl.ca, ssl.capath);
-	// Устанавливаем файлы сертификата
-	this->_engine.certificate(ssl.cert, ssl.key);
-}
-/**
- * @brief Метод установки сертификата сервера для доменного имени (SNI)
- *
- * @param host доменное имя (допускается маска вида *.example.com)
- * @param cert файл цепочки сертификатов
- * @param key  приватный ключ сертификата
- */
-void awh::Node::certificate(const string & host, const string & cert, const string & key) noexcept {
-	// Выполняем блокировку потока
-	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
-	// Устанавливаем файлы сертификата для доменного имени
-	this->_engine.certificate(host, cert, key);
+	// Если указано доменное имя, устанавливаем сертификат для него (SNI)
+	if(!ssl.host.empty())
+		// Устанавливаем файлы сертификата для доменного имени
+		this->_engine.certificate(ssl.host, ssl.cert, ssl.key);
+	// Устанавливаем файлы сертификата по умолчанию
+	else this->_engine.certificate(ssl.cert, ssl.key);
 }
 /**
  * @brief Метод установки объекта DNS-резолвера

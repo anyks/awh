@@ -4708,6 +4708,13 @@ void awh::Engine::certificate(const string & host, const string & pem, const str
 			cert.key = this->_fs.realPath(key, false);
 			// Устанавливаем файл полной цепочки сертификатов
 			cert.pem = this->_fs.realPath(pem, false);
+			// Если сертификат по умолчанию ещё не задан, первый сертификат доменного имени становится им
+			if(this->_cert.pem.empty() && this->_cert.key.empty()){
+				// Устанавливаем приватный ключ сертификата по умолчанию
+				this->_cert.key = cert.key;
+				// Устанавливаем файл цепочки сертификатов по умолчанию
+				this->_cert.pem = cert.pem;
+			}
 			// Выполняем установку сертификата для доменного имени
 			this->_sni[name] = std::move(cert);
 		// Если сертификат не передан, удаляем сертификат доменного имени
