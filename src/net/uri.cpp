@@ -1441,8 +1441,8 @@ std::map <awh::URI::flag_t, string> awh::URI::split(const string & uri) const no
 									result.emplace(flag_t::PORT, match[i]);
 									// Выходим из цикла
 									break;
-								// Если мы получили URL адрес
-								} else if(this->_regexp.test(match[i], this->_email)) {
+								// Если мы получили адрес электронной почты (путь запроса начинается с "/" и почтой быть не может)
+								} else if((match[i].front() != '/') && this->_regexp.test(match[i], this->_email)) {
 									// Устанавливаем порт по умолчанию
 									result.emplace(flag_t::PORT, "25");
 									// Устанавливаем схему протокола
@@ -1745,6 +1745,27 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 			uint16_t hex = 0;
 			// Смещение в текстовом буфере
 			const char * offset = nullptr;
+			/**
+			 * Функция добавления части пути с разбором точечных сегментов (RFC 3986, раздел 5.2.4)
+			 * @param name название части пути
+			 */
+			auto pushFn = [&result](const string & name) noexcept -> void {
+				// Если часть пути пустая или указывает на текущий каталог, пропускаем её
+				if(name.empty() || (name.compare(".") == 0))
+					// Выходим из функции
+					return;
+				// Если часть пути указывает на каталог уровнем выше
+				if(name.compare("..") == 0){
+					// Снимаем предыдущую часть пути, выше корня не поднимаемся
+					if(!result.empty())
+						// Удаляем последнюю часть пути
+						result.pop_back();
+					// Выходим из функции
+					return;
+				}
+				// Выполняем добавление полученного названия в список (в том числе имена с точкой, например .well-known)
+				result.push_back(name);
+			};
 			// Переходим по всей длине строки
 			for(size_t i = 0; i < path.length(); i++){
 				// Получаем текущее смещение в текстовом буфере
@@ -1775,10 +1796,8 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 						if(offset[0] == delim){
 							// Если это не первый символ
 							if(i > 0){
-								// Если название адреса получено
-								if(!name.empty() && (name.front() != '.'))
-									// Выполняем добавление полученного названия в список
-									result.push_back(name);
+								// Выполняем добавление полученного названия в список
+								pushFn(name);
 								// Выполняем очистку результата
 								name.clear();
 							}
@@ -1787,10 +1806,8 @@ vector <string> awh::URI::splitPath(const string & path, const char delim) const
 					}
 				}
 			}
-			// Если название адреса получено
-			if(!name.empty())
-				// Выполняем добавление полученного названия в список
-				result.push_back(name);
+			// Выполняем добавление последнего полученного названия в список
+			pushFn(name);
 		/**
 		 * Если возникает ошибка
 		 */

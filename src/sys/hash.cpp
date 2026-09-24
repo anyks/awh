@@ -498,9 +498,9 @@ static void lzma(const char * buffer, const size_t size, const awh::hash_t::even
 					// Актуальный размер сжатых данных
 					size_t actual = 0;
 					// Выделяем буфер памяти нужного нам размера
-					result.resize(size, 0);
+					result.resize(::lzma_stream_buffer_bound(size), 0);
 					// Выполняем компрессию буфера данных
-					lzma_ret rv = ::lzma_stream_buffer_encode(const_cast <lzma_filter *> (filters), LZMA_CHECK_NONE, nullptr, reinterpret_cast <const uint8_t *> (buffer), size, reinterpret_cast <uint8_t *> (result.data()), &actual, size - 1);
+					lzma_ret rv = ::lzma_stream_buffer_encode(const_cast <lzma_filter *> (filters), LZMA_CHECK_NONE, nullptr, reinterpret_cast <const uint8_t *> (buffer), size, reinterpret_cast <uint8_t *> (result.data()), &actual, result.size());
 					// Если мы получили ошибку
 					if(rv != LZMA_OK){
 						// Выполняем очистку результата
@@ -616,7 +616,7 @@ static void bzip2(const char * buffer, const size_t size, const awh::hash_t::eve
 						return;
 					}
 					// Выделяем память на результирующий буфер
-					result.resize(size, 0);
+					result.resize(size + (size / 100) + 600, 0);
 					// Указываем размер входного буфера
 					stream.avail_in = static_cast <uint32_t> (size);
 					// Заполняем входные данные буфера
@@ -1197,7 +1197,7 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 						// Заполняем входные данные буфера
 						zs.next_in = reinterpret_cast <Bytef *> (const_cast <char *> (buffer));
 						// Выделяем память на результирующий буфер
-						result.resize(size, 0);
+						result.resize(::deflateBound(&zs, static_cast <uLong> (size)), 0);
 						/**
 						 * Выполняем компрессию всех данных
 						 */
@@ -1205,7 +1205,7 @@ static void gzip(const char * buffer, const size_t size, const uint32_t level, c
 							// Устанавливаем буфер для получения результата
 							zs.next_out = reinterpret_cast <Bytef *> (result.data() + zs.total_out);
 							// Устанавливаем максимальный размер буфера
-							zs.avail_out = (static_cast <uint32_t> (size) - zs.total_out);
+							zs.avail_out = static_cast <uint32_t> (result.size() - zs.total_out);
 							// Выполняем сжатие
 							rv = ::deflate(&zs, Z_FINISH);
 							// Если произошла ошибка компрессии

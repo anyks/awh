@@ -4061,9 +4061,15 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 										 */
 										switch(i){
 											case 6:
-											case 7:
 											case 8:
 											case 9: allow = !available[i]; break;
+											// Кодирование тела, указанное приложением, выводим как есть (кроме identity)
+											case 7: {
+												// Если заголовок кодирования тела найден
+												if(available[i])
+													// Заголовок identity означает отсутствие кодирования и в ответ не выводится
+													allow = !this->_fmk->compare(header.second, "identity");
+											} break;
 										}
 										// Если ответ является информационным
 										if((((res.code >= 100) && (res.code < 200)) || (res.code == 204)) && available[i]){
@@ -4153,6 +4159,10 @@ awh::buffer_t awh::Http::process(const process_t flag, const web_t::provider_t &
 									response.append(this->_fmk->format("Date: %s\r\n", this->date().c_str()));
 								}
 							}
+							// Если приложение само указало кодирование тела, тело уже подготовлено и повторно не сжимается
+							if(available[7])
+								// Отключаем сжатие тела сообщения
+								const_cast <http_t *> (this)->_compressors.selected = compressor_t::NONE;
 							// Если запрос должен содержать тело и тело ответа существует
 							if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 								// Устанавливаем Content-Type если не передан
@@ -5035,9 +5045,15 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 											case 2:
 											case 3:
 											case 6:
-											case 7:
 											case 8:
 											case 9: allow = !available[i]; break;
+											// Кодирование тела, указанное приложением, выводим как есть (кроме identity)
+											case 7: {
+												// Если заголовок кодирования тела найден
+												if(available[i])
+													// Заголовок identity означает отсутствие кодирования и в ответ не выводится
+													allow = !this->_fmk->compare(header.second, "identity");
+											} break;
 										}
 										// Если ответ является информационным
 										if((((res.code >= 100) && (res.code < 200)) || (res.code == 204)) && available[i]){
@@ -5111,6 +5127,10 @@ vector <std::pair <string, string>> awh::Http::process2(const process_t flag, co
 									result.push_back(std::make_pair("date", this->date()));
 								}
 							}
+							// Если приложение само указало кодирование тела, тело уже подготовлено и повторно не сжимается
+							if(available[7])
+								// Отключаем сжатие тела сообщения
+								const_cast <http_t *> (this)->_compressors.selected = compressor_t::NONE;
 							// Если запрос должен содержать тело и тело ответа существует
 							if((res.code >= 200) && (res.code != 204) && (res.code != 304) && (res.code != 308)){
 								// Устанавливаем Content-Type если не передан

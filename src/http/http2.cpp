@@ -969,10 +969,10 @@ size_t awh::Http2::available(const int32_t sid) const noexcept {
 		if((sessionBytes > 0) && (streamBytes > 0))
 			// Определяем минимальное количество байт которые возможно отправить
 			result = static_cast <size_t> (::min(sessionBytes, streamBytes));
-		// Если количество байт достуных для отправки в поток получены отрицательные
-		else if((sessionBytes > 0) && (streamBytes <= 0))
-			// Устанавливаем количество доступных байт для отправки
-			result = static_cast <size_t> (sessionBytes);
+		/**
+		 * Если окно потока или сессии исчерпано, отправлять нельзя: результат остаётся нулевым,
+		 * и оставшиеся записи досылаются после получения фрейма WINDOW_UPDATE
+		 */
 	}
 	// Выводим результат
 	return result;
