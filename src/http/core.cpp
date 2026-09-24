@@ -1776,7 +1776,7 @@ void awh::Http::header2(const string & key, const string & val) noexcept {
 			// Создаём объект работы с IP-адресами
 			net_t net(this->_log);
 			// Устанавливаем хост
-			this->header("Host", val);
+			this->header("host", val);
 			// Получаем объект параметров запроса
 			web_t::req_t request = this->_web.request();
 			// Получаем хост запрашиваемого сервера

@@ -287,6 +287,14 @@ namespace awh {
 			 * @param ssl параметры SSL для установки
 			 */
 			void ssl(const ssl_t & ssl) noexcept;
+			/**
+			 * @brief Метод установки сертификата сервера для доменного имени (SNI)
+			 *
+			 * @param host доменное имя (допускается маска вида *.example.com)
+			 * @param cert файл цепочки сертификатов
+			 * @param key  приватный ключ сертификата
+			 */
+			void certificate(const string & host, const string & cert, const string & key) noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта DNS-резолвера

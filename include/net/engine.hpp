@@ -44,6 +44,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
+#include <unordered_map>
 #include <sys/types.h>
 
 /**
@@ -592,6 +593,8 @@ namespace awh {
 		private:
 			// Объект файлов сертификатов
 			mutable cert_t _cert;
+			// Сертификаты сервера по доменным именам (SNI)
+			std::unordered_map <string, cert_t> _sni;
 		private:
 			// Флаг инициализации куков
 			static bool _cookieInit;
@@ -728,6 +731,15 @@ namespace awh {
 			 * @return       результат проверки
 			 */
 			static int32_t generateCookie(SSL * ssl, uint8_t * cookie, uint32_t * size) noexcept;
+			/**
+			 * @brief Функция обратного вызова выбора сертификата сервера по доменному имени (SNI)
+			 *
+			 * @param ssl объект SSL
+			 * @param ad  код предупреждения TLS
+			 * @param ctx передаваемый контекст
+			 * @return    результат выбора сертификата
+			 */
+			static int32_t serverName(SSL * ssl, int32_t * ad, void * ctx) noexcept;
 			/**
 			 * @brief Функция обратного вызова для проверки куков
 			 *
@@ -924,6 +936,14 @@ namespace awh {
 			 * @param key приватный ключ сертификата (если требуется)
 			 */
 			void certificate(const string & pem, const string & key = "") noexcept;
+			/**
+			 * @brief Метод установки файлов сертификата сервера для доменного имени (SNI)
+			 *
+			 * @param host доменное имя (допускается маска вида *.example.com)
+			 * @param pem  файл цепочки сертификатов
+			 * @param key  приватный ключ сертификата
+			 */
+			void certificate(const string & host, const string & pem, const string & key) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

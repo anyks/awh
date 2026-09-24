@@ -2735,6 +2735,60 @@ int32_t awh::Engine::verifyHost(X509_STORE_CTX * x509, void * ctx) noexcept {
 	}
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 /**
+ * @brief Функция обратного вызова выбора сертификата сервера по доменному имени (SNI)
+ *
+ * @param ssl объект SSL
+ * @param ad  код предупреждения TLS
+ * @param ctx передаваемый контекст
+ * @return    результат выбора сертификата
+ */
+int32_t awh::Engine::serverName(SSL * ssl, [[maybe_unused]] int32_t * ad, void * ctx) noexcept {
+	// Если данные переданы
+	if((ssl != nullptr) && (ctx != nullptr)){
+		// Получаем объект движка
+		const engine_t * engine = reinterpret_cast <const engine_t *> (ctx);
+		// Получаем доменное имя, переданное клиентом
+		const char * name = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
+		// Если доменное имя получено и сертификаты по доменам установлены
+		if((name != nullptr) && !engine->_sni.empty()){
+			// Получаем доменное имя в нижнем регистре
+			string host = name;
+			// Переводим доменное имя в нижний регистр
+			engine->_fmk->transform(host, fmk_t::transform_t::LOWER);
+			// Выполняем поиск сертификата для доменного имени
+			auto i = engine->_sni.find(host);
+			// Если сертификат для доменного имени не найден
+			if(i == engine->_sni.end()){
+				// Позиция первой точки в доменном имени
+				const size_t pos = host.find('.');
+				// Если домен содержит поддомен
+				if(pos != string::npos)
+					// Выполняем поиск сертификата по маске домена
+					i = engine->_sni.find(engine->_fmk->format("*%s", host.substr(pos).c_str()));
+			}
+			// Если сертификат для доменного имени найден
+			if(i != engine->_sni.end()){
+				// Если цепочка сертификатов не может быть установлена
+				if(::SSL_use_certificate_chain_file(ssl, i->second.pem.c_str()) < 1){
+					// Выводим в лог сообщение
+					engine->_log->print("Certificate for host %s cannot be set", log_t::flag_t::CRITICAL, host.c_str());
+					// Прерываем рукопожатие
+					return SSL_TLSEXT_ERR_ALERT_FATAL;
+				}
+				// Если приватный ключ не может быть установлен или недействителен
+				if((::SSL_use_PrivateKey_file(ssl, i->second.key.c_str(), SSL_FILETYPE_PEM) < 1) || (::SSL_check_private_key(ssl) < 1)){
+					// Выводим в лог сообщение
+					engine->_log->print("Private key for host %s cannot be set", log_t::flag_t::CRITICAL, host.c_str());
+					// Прерываем рукопожатие
+					return SSL_TLSEXT_ERR_ALERT_FATAL;
+				}
+			}
+		}
+	}
+	// Продолжаем рукопожатие, для неизвестного домена остаётся сертификат по умолчанию
+	return SSL_TLSEXT_ERR_OK;
+}
+/**
  * @brief Функция обратного вызова для генерации куков
  *
  * @param ssl    объект SSL
@@ -3820,6 +3874,13 @@ void awh::Engine::wrap(ctx_t & target, addr_t * address) noexcept {
 				::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &verifyCert);
 			// Запрещаем выполнять првоерку сертификата пользователя
 			} else ::SSL_CTX_set_verify(target._ctx, SSL_VERIFY_NONE, nullptr);
+			// Если установлены сертификаты по доменным именам
+			if(!this->_sni.empty()){
+				// Устанавливаем функцию выбора сертификата по доменному имени (SNI)
+				::SSL_CTX_set_tlsext_servername_callback(target._ctx, &serverName);
+				// Передаём объект движка в функцию выбора сертификата
+				::SSL_CTX_set_tlsext_servername_arg(target._ctx, this);
+			}
 			// Создаем SSL объект
 			target._ssl = ::SSL_new(target._ctx);
 			// Если объект не создан
@@ -4624,6 +4685,34 @@ void awh::Engine::certificate(const string & pem, const string & key) noexcept {
 		this->_cert.pem = this->_fs.realPath(pem, false);
 	// Если сертификат не передан, очищаем установленный адрес сертификата
 	else this->_cert.pem.clear();
+}
+/**
+ * @brief Метод установки файлов сертификата сервера для доменного имени (SNI)
+ *
+ * @param host доменное имя (допускается маска вида *.example.com)
+ * @param pem  файл цепочки сертификатов
+ * @param key  приватный ключ сертификата
+ */
+void awh::Engine::certificate(const string & host, const string & pem, const string & key) noexcept {
+	// Если доменное имя передано
+	if(!host.empty()){
+		// Получаем доменное имя в нижнем регистре
+		string name = host;
+		// Переводим доменное имя в нижний регистр
+		this->_fmk->transform(name, fmk_t::transform_t::LOWER);
+		// Если сертификат и ключ переданы
+		if(!pem.empty() && !key.empty()){
+			// Создаём объект файлов сертификата
+			cert_t cert;
+			// Устанавливаем приватный ключ сертификата
+			cert.key = this->_fs.realPath(key, false);
+			// Устанавливаем файл полной цепочки сертификатов
+			cert.pem = this->_fs.realPath(pem, false);
+			// Выполняем установку сертификата для доменного имени
+			this->_sni[name] = std::move(cert);
+		// Если сертификат не передан, удаляем сертификат доменного имени
+		} else this->_sni.erase(name);
+	}
 }
 /**
  * @brief Конструктор

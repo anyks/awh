@@ -452,6 +452,19 @@ void awh::Node::ssl(const ssl_t & ssl) noexcept {
 	this->_engine.certificate(ssl.cert, ssl.key);
 }
 /**
+ * @brief Метод установки сертификата сервера для доменного имени (SNI)
+ *
+ * @param host доменное имя (допускается маска вида *.example.com)
+ * @param cert файл цепочки сертификатов
+ * @param key  приватный ключ сертификата
+ */
+void awh::Node::certificate(const string & host, const string & cert, const string & key) noexcept {
+	// Выполняем блокировку потока
+	const lock_guard <std::recursive_mutex> lock(this->_mtx.main);
+	// Устанавливаем файлы сертификата для доменного имени
+	this->_engine.certificate(host, cert, key);
+}
+/**
  * @brief Метод установки объекта DNS-резолвера
  *
  * @param dns объект DNS-резолвер
